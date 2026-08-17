@@ -1,8 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router"
-import { ArrowRight, Building2, FolderKanban, Users } from "lucide-react"
-
 import { buttonVariants } from "@acme/ui/components/button"
 import { cn } from "@acme/ui/lib/utils"
+import { createFileRoute } from "@tanstack/react-router"
+import { ArrowRight, Building2, FolderKanban, Users } from "lucide-react"
 
 import { SiteShell } from "@/components/site-shell"
 import { portalUrl, workspaceUrl } from "@/lib/app-urls"

@@ -1,14 +1,12 @@
 {
   "name": "@acme/portal",
   "version": "0.0.0",
-  "type": "module",
   "private": true,
+  "type": "module",
   "scripts": {
-    "dev": "vite dev --port 3001",
     "build": "vite build",
+    "dev": "vite dev --port 3001",
     "preview": "vite preview --port 3101",
-    "lint": "eslint",
-    "format": "prettier --write \"**/*.{ts,tsx}\" --ignore-path ../../.prettierignore",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -27,12 +25,10 @@
   },
   "devDependencies": {
     "@tanstack/devtools-vite": "catalog:",
-    "@tanstack/eslint-config": "catalog:",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "catalog:",
-    "eslint": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:"
   }

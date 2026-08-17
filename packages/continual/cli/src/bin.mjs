@@ -58,7 +58,7 @@ function studioOptions(args) {
   }
 
   return {
-    browser: browserName === "none" ? false : true,
+    browser: browserName !== "none",
     port,
     runtimeUrl: parsedUrl.origin,
   }

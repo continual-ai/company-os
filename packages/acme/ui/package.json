@@ -1,12 +1,16 @@
 {
   "name": "@acme/ui",
   "version": "0.0.0",
+  "private": true,
   "description": "Acme design tokens and shared application components.",
   "type": "module",
-  "private": true,
+  "exports": {
+    "./globals.css": "./src/styles/globals.css",
+    "./lib/*": "./src/lib/*.ts",
+    "./components/*": "./src/components/*.tsx",
+    "./hooks/*": "./src/hooks/*.ts"
+  },
   "scripts": {
-    "lint": "eslint",
-    "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -24,19 +28,11 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "catalog:",
-    "@tanstack/eslint-config": "catalog:",
     "@turbo/gen": "^2.9.15",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
-    "eslint": "catalog:",
     "tailwindcss": "catalog:",
     "typescript": "catalog:"
-  },
-  "exports": {
-    "./globals.css": "./src/styles/globals.css",
-    "./lib/*": "./src/lib/*.ts",
-    "./components/*": "./src/components/*.tsx",
-    "./hooks/*": "./src/hooks/*.ts"
   }
 }

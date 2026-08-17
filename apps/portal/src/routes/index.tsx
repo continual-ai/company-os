@@ -1,6 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router"
-
 import { Button } from "@acme/ui/components/button"
+import { createFileRoute } from "@tanstack/react-router"
 
 const projects = [
   { name: "Northwind rollout", status: "In progress" },

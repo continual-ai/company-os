@@ -1,25 +1,22 @@
 {
   "name": "@continual/client",
   "version": "0.0.0",
+  "private": true,
   "description": "Universal type-safe client for a deployed Continual Company Runtime.",
   "type": "module",
-  "private": true,
   "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
   "scripts": {
     "build": "tsc --noEmit",
-    "lint": "eslint",
-    "format": "prettier --write \"**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@continual/model": "workspace:*"
+    "@continual/model": "workspace:*",
+    "zod": "catalog:"
   },
   "devDependencies": {
-    "@tanstack/eslint-config": "catalog:",
-    "eslint": "catalog:",
     "typescript": "catalog:"
-  },
-  "exports": {
-    ".": "./src/index.ts"
   }
 }

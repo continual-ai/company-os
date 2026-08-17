@@ -1,7 +1,6 @@
-import { Link } from "@tanstack/react-router"
-
 import { buttonVariants } from "@acme/ui/components/button"
 import { cn } from "@acme/ui/lib/utils"
+import { Link } from "@tanstack/react-router"
 
 import { portalUrl, workspaceUrl } from "@/lib/app-urls"
 

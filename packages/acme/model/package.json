@@ -1,26 +1,22 @@
 {
   "name": "@acme/model",
   "version": "0.0.0",
+  "private": true,
   "description": "The public Acme Company Model.",
   "type": "module",
-  "private": true,
   "sideEffects": false,
+  "exports": {
+    ".": "./src/project.ts",
+    "./crm": "./src/modules/crm/index.ts"
+  },
   "scripts": {
     "build": "tsc --noEmit",
-    "lint": "eslint",
-    "format": "prettier --write \"**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@continual/model": "workspace:*"
   },
   "devDependencies": {
-    "@tanstack/eslint-config": "catalog:",
-    "eslint": "catalog:",
     "typescript": "catalog:"
-  },
-  "exports": {
-    ".": "./src/project.ts",
-    "./crm": "./src/modules/crm/index.ts"
   }
 }

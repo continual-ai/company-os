@@ -33,8 +33,9 @@ packages/
     studio/       Generic runtime explorer
     cli/          Local developer commands
 
-company.config.ts    Canonical company composition
-continual.config.ts  Optional Continual compatibility entrypoint
+tools/
+  oxlint/anti-slop/     Vendored low-evidence code rules
+  oxlint/company-os/    Source-owned repository rules
 ```
 
 The first operating module is a deliberately small CRM with Customers, Contacts, and Projects.
@@ -75,6 +76,26 @@ contract rather than importing server internals:
 pnpm studio
 ```
 
+## Code quality
+
+Oxlint handles JavaScript and TypeScript with type-aware checks, vendored anti-slop rules, and
+source-owned Company OS import rules. Turbo Boundaries checks cross-package relative imports and
+undeclared workspace dependencies. Oxfmt is the only formatter and also sorts imports, package
+manifests, and Tailwind classes.
+
+```sh
+pnpm lint
+pnpm lint:fix
+pnpm format
+pnpm format:check
+```
+
+Source filenames use kebab-case. Framework-owned names such as TanStack Router's `__root.tsx` are
+narrowly exempted, and generated route trees are not linted or formatted. Internal barrel files,
+wildcard exports, and re-export chains are prohibited. A package may expose one deliberate public
+facade using explicit named re-exports from its top-level `src/index.ts`; allowed facades are
+registered explicitly in the Company OS Oxlint rule.
+
 ## Architecture
 
 - **One company model.** Apps and agents are interfaces over the same definitions and governed
@@ -82,6 +103,8 @@ pnpm studio
 - **Company source stays company-owned.** Business nouns, rules, UI, migrations, and private
   implementations belong under `@acme/*` or `apps/*`.
 - **Framework code stays universal.** `@continual/*` packages must not import `@acme/*`.
+- **Composition stays executable.** The API owns private runtime composition; the repository root
+  owns workspace tooling but no business dependency graph.
 - **The runtime is standalone.** Hosted identity, agents, connections, and deployment may be added
   through adapters; the core system must still run locally with direct providers.
 - **Ports are earned.** Add a capability port only when it is smaller than the provider SDK, owns
@@ -90,11 +113,11 @@ pnpm studio
 - **Start as a modular monolith.** Keep one backend, one database, and one transaction boundary
   until independent scaling or isolation is a demonstrated requirement.
 
-The boundary checker enforces the most important browser/server and company/framework dependency
-rules:
+Oxlint enforces the browser/server and company/framework import direction, while Turbo Boundaries
+enforces workspace package integrity. Both run through one command:
 
 ```sh
-pnpm check:boundaries
+pnpm lint
 ```
 
 ## Current status

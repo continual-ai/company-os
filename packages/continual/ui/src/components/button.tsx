@@ -1,8 +1,7 @@
 import { Button as ButtonPrimitive } from "@base-ui/react/button"
+import { cn } from "@continual/ui/lib/utils"
 import { cva } from "class-variance-authority"
 import type { VariantProps } from "class-variance-authority"
-
-import { cn } from "@continual/ui/lib/utils"
 
 const buttonVariants = cva(
   "inline-flex h-9 items-center justify-center gap-2 rounded-md border border-transparent px-3 text-sm font-medium transition-colors outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 disabled:pointer-events-none disabled:opacity-50",

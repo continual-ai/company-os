@@ -8,5 +8,5 @@
     "noUnusedParameters": true,
     "types": ["node"]
   },
-  "include": ["src", "eslint.config.js"]
+  "include": ["src"]
 }

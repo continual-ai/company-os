@@ -1,1 +1,0 @@
-export { describeModel } from "./description"

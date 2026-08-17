@@ -1,15 +1,19 @@
 {
   "name": "@continual/studio",
   "version": "0.0.0",
+  "private": true,
   "description": "Local web application for inspecting and operating a Continual Runtime.",
   "type": "module",
-  "private": true,
+  "exports": {
+    "./server": {
+      "types": "./src/launcher.d.ts",
+      "import": "./src/launcher.mjs"
+    }
+  },
   "scripts": {
-    "dev": "vite dev --port 5555",
     "build": "vite build",
+    "dev": "vite dev --port 5555",
     "preview": "vite preview --port 5555",
-    "lint": "eslint",
-    "format": "prettier --write \"**/*.{js,mjs,ts,tsx}\" --ignore-path ../../../.prettierignore",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -26,17 +30,9 @@
     "vite": "catalog:"
   },
   "devDependencies": {
-    "@tanstack/eslint-config": "catalog:",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
-    "eslint": "catalog:",
     "typescript": "catalog:"
-  },
-  "exports": {
-    "./server": {
-      "types": "./src/launcher.d.ts",
-      "import": "./src/launcher.mjs"
-    }
   }
 }

@@ -10,5 +10,5 @@
       "@continual/ui/*": ["./src/*"]
     }
   },
-  "include": ["src", "eslint.config.js"]
+  "include": ["src"]
 }

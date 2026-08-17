@@ -64,8 +64,8 @@ export function select<const TOptions extends ReadonlyArray<Choice>>(
   return { kind: "select", ...options }
 }
 
-export function link<const TObject extends DefinedObject>(
-  options: FieldOptions & { object: TObject }
+export function link(
+  options: FieldOptions & { object: DefinedObject }
 ): LinkFieldDefinition {
   const { object, ...fieldOptions } = options
   return { kind: "link", objectId: object.id, ...fieldOptions }

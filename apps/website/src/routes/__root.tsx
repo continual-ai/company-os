@@ -1,8 +1,7 @@
 import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router"
 
-import appCss from "@acme/ui/globals.css?url"
-
 import websiteCss from "@/styles/website.css?url"
+import appCss from "@acme/ui/globals.css?url"
 
 export const Route = createRootRoute({
   head: () => ({

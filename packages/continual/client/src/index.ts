@@ -1,4 +1,60 @@
 import type { DefinedProject, ModelDescription } from "@continual/model"
+import { z } from "zod"
+
+const fieldOptions = {
+  description: z.string().optional(),
+  required: z.boolean().optional(),
+}
+
+const fieldDefinitionSchema = z.discriminatedUnion("kind", [
+  z.object({
+    ...fieldOptions,
+    kind: z.enum(["date", "email", "phone", "text", "url"]),
+  }),
+  z.object({
+    ...fieldOptions,
+    kind: z.literal("select"),
+    options: z.array(
+      z.object({ label: z.string().optional(), value: z.string() })
+    ),
+  }),
+  z.object({ ...fieldOptions, kind: z.literal("link"), objectId: z.string() }),
+])
+
+const modelDescriptionSchema = z.object({
+  apps: z.array(
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      source: z.string(),
+      type: z.string(),
+    })
+  ),
+  modules: z.array(
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      objects: z.array(
+        z.object({
+          description: z.string().optional(),
+          display: z.object({
+            status: z.string().optional(),
+            subtitle: z.string().optional(),
+            title: z.string(),
+          }),
+          fields: z.record(z.string(), fieldDefinitionSchema),
+          id: z.string(),
+          name: z.string(),
+          pluralName: z.string(),
+        })
+      ),
+    })
+  ),
+  project: z.object({ id: z.string(), name: z.string() }),
+  version: z.literal("0.1"),
+}) satisfies z.ZodType<ModelDescription>
+
+const healthSchema = z.object({ ok: z.boolean() })
 
 export interface RuntimeClientOptions {
   headers?: () =>
@@ -32,7 +88,7 @@ export function createRuntimeClient(
 ): RuntimeClient {
   const origin = new URL(options.origin)
 
-  async function request<T>(path: string): Promise<T> {
+  async function request<T>(path: string, schema: z.ZodType<T>): Promise<T> {
     const headers = await options.headers?.()
     const response = await fetch(new URL(path, origin), { headers })
 
@@ -43,12 +99,12 @@ export function createRuntimeClient(
       )
     }
 
-    return (await response.json()) as T
+    return schema.parse(await response.json())
   }
 
   return {
-    describeModel: () => request<ModelDescription>("/api/model"),
-    health: () => request<{ ok: boolean }>("/health"),
+    describeModel: () => request("/api/model", modelDescriptionSchema),
+    health: () => request("/health", healthSchema),
   }
 }
 

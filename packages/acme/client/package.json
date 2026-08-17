@@ -1,14 +1,15 @@
 {
   "name": "@acme/client",
   "version": "0.0.0",
+  "private": true,
   "description": "Acme client types and Runtime configuration.",
   "type": "module",
-  "private": true,
   "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
   "scripts": {
     "build": "tsc --noEmit",
-    "lint": "eslint",
-    "format": "prettier --write \"**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -16,11 +17,6 @@
     "@continual/client": "workspace:*"
   },
   "devDependencies": {
-    "@tanstack/eslint-config": "catalog:",
-    "eslint": "catalog:",
     "typescript": "catalog:"
-  },
-  "exports": {
-    ".": "./src/index.ts"
   }
 }

@@ -1,7 +1,6 @@
-import { createServerFn } from "@tanstack/react-start"
-
 import { createRuntimeClient } from "@continual/client"
 import type { ModelDescription } from "@continual/model"
+import { createServerFn } from "@tanstack/react-start"
 
 export interface RuntimeOverview {
   connected: boolean
@@ -34,7 +33,7 @@ export const getRuntimeOverview = createServerFn({ method: "GET" }).handler(
       ])
 
       return {
-        connected: health.ok === true,
+        connected: health.ok,
         model,
         runtimeUrl: origin,
       }
