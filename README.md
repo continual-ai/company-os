@@ -81,14 +81,23 @@ pnpm studio
 Oxlint handles JavaScript and TypeScript with type-aware checks, vendored anti-slop rules, and
 source-owned Company OS import rules. Turbo Boundaries checks cross-package relative imports and
 undeclared workspace dependencies. Oxfmt is the only formatter and also sorts imports, package
-manifests, and Tailwind classes.
+manifests, and Tailwind classes. Knip checks the workspace graph for unused files, exports, and
+dependencies.
 
-```sh
-pnpm lint
-pnpm lint:fix
-pnpm format
-pnpm format:check
-```
+| Command             | Purpose                                                         | Writes files |
+| ------------------- | --------------------------------------------------------------- | ------------ |
+| `pnpm dev`          | Run the applications and Continual CLI in development mode      | No           |
+| `pnpm format`       | Format the repository with Oxfmt                                | Yes          |
+| `pnpm format:check` | Verify formatting without changing files                        | No           |
+| `pnpm lint`         | Run Oxlint and Turbo Boundaries                                 | No           |
+| `pnpm lint:fix`     | Apply safe Oxlint fixes, then verify Turbo Boundaries           | Yes          |
+| `pnpm deadcode`     | Find unused files, exports, and dependencies with Knip          | No           |
+| `pnpm typecheck`    | Type-check every workspace package                              | No           |
+| `pnpm check`        | Run formatting, lint, dead-code, and type checks without writes | No           |
+| `pnpm build`        | Build every workspace package                                   | No           |
+
+There is no `pnpm test` command yet because this scaffold does not contain a test suite. Add the
+root command and Turbo task with the first tests.
 
 Source filenames use kebab-case. Framework-owned names such as TanStack Router's `__root.tsx` are
 narrowly exempted, and generated route trees are not linted or formatted. Internal barrel files,

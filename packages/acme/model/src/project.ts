@@ -33,5 +33,3 @@ export const Acme = defineProject({
     }),
   ],
 })
-
-export default Acme

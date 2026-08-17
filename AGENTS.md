@@ -52,5 +52,6 @@ several narrow capabilities.
 
 ## Verification
 
-Run `pnpm check` for package boundaries, formatting, lint, and TypeScript. Run `pnpm build`
-before changing routing, bundling, or application dependencies.
+Run `pnpm check` for formatting, lint, package boundaries, dead code, and TypeScript. The command
+only verifies; it does not rewrite files. Run `pnpm format` to format the repository. Run
+`pnpm build` before changing routing, bundling, or application dependencies.

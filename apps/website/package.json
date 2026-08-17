@@ -10,18 +10,13 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@acme/client": "workspace:*",
     "@acme/ui": "workspace:*",
     "@tailwindcss/vite": "catalog:",
-    "@tanstack/react-devtools": "catalog:",
     "@tanstack/react-router": "catalog:",
-    "@tanstack/react-router-devtools": "catalog:",
     "@tanstack/react-start": "catalog:",
-    "@tanstack/router-plugin": "catalog:",
     "lucide-react": "catalog:",
     "react": "catalog:",
-    "react-dom": "catalog:",
-    "tailwindcss": "catalog:"
+    "react-dom": "catalog:"
   },
   "devDependencies": {
     "@tanstack/devtools-vite": "catalog:",

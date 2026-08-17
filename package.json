@@ -5,8 +5,9 @@
   "type": "module",
   "scripts": {
     "build": "turbo build",
-    "check": "pnpm format:check && pnpm lint && pnpm typecheck",
+    "check": "pnpm format:check && pnpm lint && pnpm deadcode && pnpm typecheck",
     "continual": "node packages/continual/cli/src/bin.mjs",
+    "deadcode": "knip",
     "dev": "turbo dev --filter='./apps/*' --filter=@continual/cli",
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
@@ -17,6 +18,7 @@
   },
   "devDependencies": {
     "@oxlint/plugins": "1.78.0",
+    "knip": "6.32.2",
     "oxfmt": "0.63.0",
     "oxlint": "1.78.0",
     "oxlint-tsgolint": "7.0.2001",
@@ -24,7 +26,7 @@
     "typescript": "6.0.3"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=20.19.0"
   },
   "packageManager": "pnpm@10.33.4",
   "pnpm": {
