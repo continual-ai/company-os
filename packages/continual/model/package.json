@@ -1,0 +1,22 @@
+{
+  "name": "@continual/model",
+  "version": "0.0.0",
+  "description": "Type-safe primitives for defining Continual Company Models.",
+  "type": "module",
+  "private": true,
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsc --noEmit",
+    "lint": "eslint",
+    "format": "prettier --write \"**/*.{ts,tsx}\"",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@tanstack/eslint-config": "catalog:",
+    "eslint": "catalog:",
+    "typescript": "catalog:"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}

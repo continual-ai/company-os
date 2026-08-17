@@ -1,0 +1,39 @@
+{
+  "name": "@acme/workspace",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "vite dev --port 3002",
+    "build": "vite build",
+    "preview": "vite preview --port 3102",
+    "lint": "eslint",
+    "format": "prettier --write \"**/*.{ts,tsx}\" --ignore-path ../../.prettierignore",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@acme/client": "workspace:*",
+    "@acme/ui": "workspace:*",
+    "@tailwindcss/vite": "catalog:",
+    "@tanstack/react-devtools": "catalog:",
+    "@tanstack/react-router": "catalog:",
+    "@tanstack/react-router-devtools": "catalog:",
+    "@tanstack/react-start": "catalog:",
+    "@tanstack/router-plugin": "catalog:",
+    "lucide-react": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "tailwindcss": "catalog:"
+  },
+  "devDependencies": {
+    "@tanstack/devtools-vite": "catalog:",
+    "@tanstack/eslint-config": "catalog:",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
+    "eslint": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:"
+  }
+}

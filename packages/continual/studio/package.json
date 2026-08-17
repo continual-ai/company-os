@@ -1,0 +1,42 @@
+{
+  "name": "@continual/studio",
+  "version": "0.0.0",
+  "description": "Local web application for inspecting and operating a Continual Runtime.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "vite dev --port 5555",
+    "build": "vite build",
+    "preview": "vite preview --port 5555",
+    "lint": "eslint",
+    "format": "prettier --write \"**/*.{js,mjs,ts,tsx}\" --ignore-path ../../../.prettierignore",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@continual/client": "workspace:*",
+    "@continual/model": "workspace:*",
+    "@continual/ui": "workspace:*",
+    "@tailwindcss/vite": "catalog:",
+    "@tanstack/react-router": "catalog:",
+    "@tanstack/react-start": "catalog:",
+    "@tanstack/router-plugin": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "vite": "catalog:"
+  },
+  "devDependencies": {
+    "@tanstack/eslint-config": "catalog:",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "eslint": "catalog:",
+    "typescript": "catalog:"
+  },
+  "exports": {
+    "./server": {
+      "types": "./src/launcher.d.ts",
+      "import": "./src/launcher.mjs"
+    }
+  }
+}

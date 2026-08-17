@@ -1,0 +1,12 @@
+.website {
+  background-image: radial-gradient(
+    circle at 80% 0%,
+    oklch(0.96 0.025 250 / 0.8),
+    transparent 30rem
+  );
+  background-repeat: no-repeat;
+}
+
+::selection {
+  background: oklch(0.81 0.105 251 / 0.45);
+}

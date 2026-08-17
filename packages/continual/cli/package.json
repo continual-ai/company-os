@@ -1,0 +1,26 @@
+{
+  "name": "@continual/cli",
+  "version": "0.0.0",
+  "description": "Command-line interface for Continual developer tooling.",
+  "type": "module",
+  "private": true,
+  "bin": {
+    "continual": "./src/bin.mjs"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "dev": "node src/bin.mjs studio --browser none",
+    "lint": "eslint",
+    "format": "prettier --write \"src/**/*.{js,mjs}\"",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@continual/studio": "workspace:*"
+  },
+  "devDependencies": {
+    "@tanstack/eslint-config": "catalog:",
+    "@types/node": "catalog:",
+    "eslint": "catalog:",
+    "typescript": "catalog:"
+  }
+}

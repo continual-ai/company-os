@@ -1,0 +1,47 @@
+@import "tailwindcss";
+@import "@fontsource-variable/geist";
+
+@source "../../../studio/src/**/*.{ts,tsx}";
+@source "../../../../../apps/**/*.{ts,tsx}";
+
+@theme inline {
+  --font-sans: "Geist Variable", sans-serif;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-ring: var(--ring);
+}
+
+:root {
+  --background: oklch(0.985 0.003 247.858);
+  --foreground: oklch(0.18 0.018 248);
+  --muted: oklch(0.95 0.006 247.9);
+  --muted-foreground: oklch(0.48 0.018 248);
+  --border: oklch(0.89 0.009 247.9);
+  --primary: oklch(0.28 0.052 167);
+  --primary-foreground: oklch(0.985 0.003 247.858);
+  --ring: oklch(0.5 0.08 167);
+  color-scheme: light;
+  font-family: var(--font-sans);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply m-0 bg-background text-foreground antialiased;
+  }
+
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+  }
+}
