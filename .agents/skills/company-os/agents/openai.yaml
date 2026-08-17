@@ -1,0 +1,4 @@
+interface:
+  display_name: "Company OS"
+  short_description: "Draft Company OS architecture context"
+  default_prompt: "Use $company-os as draft context, reason from first principles, and recommend the best architecture for this change."

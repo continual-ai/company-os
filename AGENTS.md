@@ -3,6 +3,18 @@
 This is the canonical standalone Company OS scaffold. Keep it useful without the Continual hosted
 platform.
 
+## Context skills
+
+- Use `$company-os` for the product model, source concepts, data-model vision, and customer-owned
+  architecture.
+- Use `$continual` for optional hosted-platform concepts and integration boundaries.
+
+Both skills are working drafts. Reason from first principles, recommend stronger designs when they
+conflict with current thinking, and update the skills after a direction is accepted or proven.
+
+The canonical skills live in `.agents/skills`. `.codex/skills` and `.claude/skills` point there so
+all supported agents share one copy.
+
 ## Ownership
 
 - `@acme/*` and `apps/*` are source-owned by the example company. Business nouns and behavior
@@ -12,6 +24,9 @@ platform.
   API implementation, Studio, or CLI.
 - The API is the private composition root. Bind repositories, services, ports, and provider
   adapters there.
+- Use explicit imports inside packages. Do not add wildcard exports, internal barrel files, or
+  re-export chains. A package's top-level `src/index.ts` may use explicit named re-exports as its
+  deliberate public API when registered in the Company OS Oxlint rule.
 
 ## Stack
 

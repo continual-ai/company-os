@@ -1,0 +1,4 @@
+interface:
+  display_name: "Continual"
+  short_description: "Draft Continual platform context"
+  default_prompt: "Use $continual as draft context, reason from first principles, and recommend the best platform boundary for this change."
