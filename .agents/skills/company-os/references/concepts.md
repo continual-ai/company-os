@@ -29,7 +29,7 @@ should be introduced through real vertical slices rather than speculative framew
 
 | Concept                    | Meaning                                                                                                     | Status                     |
 | -------------------------- | ----------------------------------------------------------------------------------------------------------- | -------------------------- |
-| Project or company model   | The explicit closed-world composition of modules and apps                                                   | Current                    |
+| Company contract           | The explicit closed-world composition of business modules and capabilities                                 | Current, objects only      |
 | Module                     | A cohesive, headless business capability                                                                    | Current, objects only      |
 | Object                     | A durable business type such as Customer or Project                                                         | Current                    |
 | Record                     | One stored instance of an object                                                                            | Direction                  |
@@ -41,13 +41,13 @@ should be introduced through real vertical slices rather than speculative framew
 | Metric                     | A stable named calculation; observations are its values for a time or window                                | Vision                     |
 | Document                   | Source-owned knowledge with identity, authorization, and provenance                                         | Direction                  |
 | Skill                      | Source-owned instructions that teach an agent how to perform work                                           | Direction                  |
-| App                        | A separately executable interface over the shared backend                                                   | Current, registration only |
+| App                        | A separately executable interface over the shared backend                                                   | Current                    |
 | Connection                 | Authorized access to an external system or capability                                                       | Direction                  |
 | Infrastructure declaration | Source-owned desired infrastructure such as a queue, schedule, domain, or secret reference                  | Direction                  |
 
-A module should eventually keep the objects, tools, metrics, loops, documents, and skills for one
-business capability together. Apps remain outside modules because one app commonly spans several
-capabilities.
+A module should eventually keep the objects, actions, queries, metrics, loops, documents, and
+skills for one business capability together. Apps are repository-owned deployables rather than
+semantic contract entries because one app commonly spans several capabilities.
 
 ## Data-model vision
 
@@ -58,7 +58,7 @@ provenance, and discoverable operations rather than inferring them independently
 Keep the project database ordinary and source-owned. The framework may compile registered objects
 to tables or map them onto company-owned storage, but not every table must become an object. Custom
 tables, views, indexes, constraints, functions, extensions, and SQL remain valid implementation.
-Only registered concepts join the shared semantic contract.
+Only registered concepts join `@acme/contract`.
 
 Prefer these integrity rules as the model grows:
 

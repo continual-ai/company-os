@@ -20,10 +20,12 @@ all supported agents share one copy.
 - `@acme/*` and `apps/*` are source-owned by the example company. Business nouns and behavior
   belong here.
 - `@continual/*` is reusable framework code. It must never import `@acme/*`.
-- Browser applications use `@acme/client` and `@acme/ui`; they do not import the server runtime,
-  API implementation, Studio, or CLI.
-- The API is the private composition root. Bind repositories, services, ports, and provider
-  adapters there.
+- `@acme/contract` owns the browser-safe semantic business contract. It may depend on
+  `@continual/runtime`, but not on UI, handlers, persistence, or provider code.
+- Browser applications use `@acme/ui` and the browser-safe contract/client surfaces exposed by
+  `@acme/contract` and `@continual/runtime`; they never import `apps/company-api`.
+- `apps/company-api` is the private composition root. Bind repositories, services, Effect layers,
+  ports, and provider adapters there.
 - Use explicit imports inside packages. Do not add wildcard exports, internal barrel files, or
   re-export chains. A package's top-level `src/index.ts` may use explicit named re-exports as its
   deliberate public API when registered in the Company OS Oxlint rule.
@@ -31,6 +33,9 @@ all supported agents share one copy.
 ## Stack
 
 - Use TanStack Start for every user-facing application.
+- Use Effect v4 conventions for new runtime and backend code. Verify APIs against the installed v4
+  version; do not copy Effect v3 patterns or introduce an abstraction only to imitate an Effect
+  package name.
 - Use the source-owned shadcn components and Tailwind CSS v4 tokens in `@acme/ui`.
 - Use `pnpm` and Turborepo. Do not add another frontend framework or component library.
 - Keep the Runtime contract compatible with ordinary Fetch so it can run locally or behind

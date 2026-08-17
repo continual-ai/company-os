@@ -1,6 +1,19 @@
 import { defineRule } from "@oxlint/plugins"
 import type { ESTree } from "@oxlint/plugins"
 
+const APPLICATION_PACKAGE_NAMES = [
+  "client-portal",
+  "company-api",
+  "company-os",
+  "marketing-site",
+] as const
+
+const BROWSER_APPLICATIONS: ReadonlyArray<string> = [
+  "app:client-portal",
+  "app:company-os",
+  "app:marketing-site",
+]
+
 function packageNameForFile(filename: string): string | null {
   const normalizedFilename = filename.replaceAll("\\", "/")
   const libraryMatch = normalizedFilename.match(
@@ -11,7 +24,7 @@ function packageNameForFile(filename: string): string | null {
   const applicationMatch = normalizedFilename.match(
     /(?:^|\/)apps\/([^/]+)(?:\/|$)/
   )
-  return applicationMatch ? `@acme/${applicationMatch[1]}` : null
+  return applicationMatch ? `app:${applicationMatch[1]}` : null
 }
 
 function isPackage(specifier: string, packageName: string): boolean {
@@ -31,117 +44,48 @@ function forbiddenReason(
   }
 
   if (
-    packageName === "@continual/model" &&
-    isAnyPackage(specifier, [
-      "@continual/cli",
-      "@continual/client",
-      "@continual/runtime",
-      "@continual/studio",
-      "@continual/ui",
-    ])
+    packageName.startsWith("@continual/") &&
+    APPLICATION_PACKAGE_NAMES.some((appName) => isPackage(specifier, appName))
   ) {
-    return "@continual/model must remain independent of clients, UI, tooling, and server execution."
+    return "Reusable @continual packages cannot depend on company applications."
   }
 
   if (
-    packageName === "@continual/client" &&
-    isAnyPackage(specifier, [
-      "@continual/cli",
-      "@continual/runtime",
-      "@continual/studio",
-      "@continual/ui",
-    ])
-  ) {
-    return "@continual/client must remain browser-safe and independent of runtime and presentation packages."
-  }
-
-  if (
-    packageName === "@continual/runtime" &&
-    isAnyPackage(specifier, [
-      "@continual/cli",
-      "@continual/client",
-      "@continual/studio",
-      "@continual/ui",
-    ])
-  ) {
-    return "@continual/runtime may depend on the model, but not clients, UI, or developer tooling."
-  }
-
-  if (
-    packageName === "@continual/ui" &&
-    isAnyPackage(specifier, [
-      "@continual/cli",
-      "@continual/runtime",
-      "@continual/studio",
-    ])
-  ) {
-    return "@continual/ui must remain browser-safe and independent of runtime and complete applications."
-  }
-
-  if (
-    packageName === "@continual/studio" &&
-    isPackage(specifier, "@continual/runtime")
-  ) {
-    return "@continual/studio must inspect deployed runtimes through @continual/client, never through server internals."
-  }
-
-  if (
-    packageName === "@acme/model" &&
-    ((specifier.startsWith("@acme/") && !isPackage(specifier, "@acme/model")) ||
+    packageName === "@acme/contract" &&
+    ((specifier.startsWith("@acme/") &&
+      !isPackage(specifier, "@acme/contract")) ||
       (specifier.startsWith("@continual/") &&
-        !isPackage(specifier, "@continual/model")))
+        !isPackage(specifier, "@continual/runtime")))
   ) {
-    return "@acme/model is a public definition package and may depend only on @continual/model."
-  }
-
-  if (
-    packageName === "@acme/client" &&
-    isAnyPackage(specifier, [
-      "@acme/api",
-      "@continual/cli",
-      "@continual/runtime",
-      "@continual/studio",
-    ])
-  ) {
-    return "@acme/client must remain browser-safe and independent of server and developer packages."
+    return "@acme/contract may depend only on @continual/runtime; it cannot depend on UI or implementations."
   }
 
   if (
     packageName === "@acme/ui" &&
-    isAnyPackage(specifier, [
-      "@acme/api",
-      "@continual/cli",
-      "@continual/runtime",
-      "@continual/studio",
-    ])
+    (isAnyPackage(specifier, ["@acme/contract", "@continual/runtime"]) ||
+      APPLICATION_PACKAGE_NAMES.some((appName) =>
+        isPackage(specifier, appName)
+      ))
   ) {
-    return "@acme/ui must remain browser-safe and independent of server execution and developer applications."
+    return "@acme/ui owns presentation primitives and cannot depend on business definitions, execution, or applications."
+  }
+
+  if (packageName === "app:company-api" && isPackage(specifier, "@acme/ui")) {
+    return "The Company API is a headless composition root and cannot depend on UI."
   }
 
   if (
-    packageName === "@acme/api" &&
-    isAnyPackage(specifier, [
-      "@acme/ui",
-      "@continual/cli",
-      "@continual/studio",
-      "@continual/ui",
-    ])
+    BROWSER_APPLICATIONS.includes(packageName) &&
+    isPackage(specifier, "company-api")
   ) {
-    return "The Acme API is headless and cannot embed developer tooling or UI packages."
+    return "Browser applications consume the Runtime's HTTP client contract, never the API implementation."
   }
 
   if (
-    ["@acme/portal", "@acme/website", "@acme/workspace"].includes(
-      packageName
-    ) &&
-    isAnyPackage(specifier, [
-      "@acme/api",
-      "@continual/cli",
-      "@continual/runtime",
-      "@continual/studio",
-    ])
+    packageName.startsWith("app:") &&
+    APPLICATION_PACKAGE_NAMES.some((appName) => isPackage(specifier, appName))
   ) {
-    return "Frontend applications must use @acme/client instead of server or developer packages."
+    return "Applications are independent deployables and cannot import one another."
   }
 
   return null

@@ -1,13 +1,15 @@
 # @continual/runtime
 
-The server-only execution engine for a Company Model. Persistence,
-transactions, authorization, Tool implementation binding, and the oRPC,
-OpenAPI, and MCP projections belong here.
+The reusable kernel for defining and running a Company OS. It currently owns
+semantic definition primitives and a metadata projection. Execution, HTTP,
+OpenAPI, MCP, and typed clients belong in this boundary as concrete slices
+introduce them.
 
-`describeModel` derives a serializable public model description for clients and
-Studio directly from the registered definitions. It is not a separately
-authored or deployed manifest.
+Company packages import the browser-safe definition surface from this package.
+The private API composition root supplies the concrete company contract,
+repositories, services, and adapters. `@continual/runtime` never imports
+`@acme/*`.
 
-This package may depend on `@continual/model`. It must never import `@acme/*`;
-customer-specific models and implementations are supplied by the API
-composition root.
+The package is intentionally a single boundary while the kernel is small.
+Subpath exports can isolate client, server, and platform-specific entrypoints as
+real implementations appear; they do not need separate packages by default.

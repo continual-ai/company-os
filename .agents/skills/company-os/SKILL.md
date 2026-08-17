@@ -43,11 +43,12 @@ For a new end-to-end business capability, read both references.
 ## Durable starting points
 
 - Keep source and business data customer-owned and locally operable.
-- Keep one company model behind public software, customer portals, internal operations, APIs, and
-  agents.
-- Put company-specific nouns and behavior in `@acme/*` or `apps/*`; keep `@continual/*` reusable.
-- Keep the API as the private composition root. Pass dependencies explicitly at real external
-  boundaries.
+- Keep one company contract behind public software, customer portals, internal operations, APIs,
+  and agents.
+- Put company-specific nouns and behavior in `@acme/contract` or `apps/*`; keep
+  `@continual/runtime` reusable.
+- Keep `apps/company-api` as the private composition root. Pass dependencies explicitly at real
+  external boundaries.
 - Treat a modular monolith, ordinary Postgres, and one transaction boundary as economical defaults,
   not permanent laws.
 - Earn abstractions from concrete slices. Keep vendor types at the edge and business policy in the

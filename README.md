@@ -2,45 +2,54 @@
 
 The source-owned software a company runs on.
 
-This repository is an opinionated, standalone starting point for a company operating system: one
-business model shared by customer-facing software, internal operations, APIs, and agents. It uses a
-Turborepo with TanStack Start, React 19, shadcn, Tailwind CSS v4, Hono, and TypeScript.
+This repository is a standalone Company OS scaffold: one semantic business
+contract shared by customer-facing software, internal operations, APIs, and
+agents. The example company is **Acme**. Company source lives under `@acme/*`
+and `apps/*`; reusable framework code lives under `@continual/*` and never
+depends on Acme or the hosted Continual platform.
 
-The example company is **Acme**. Replace `@acme/*` with the real company namespace as the system
-becomes yours. The reusable framework remains under `@continual/*` and has no dependency on Acme
-or the Continual hosted platform.
-
-## What is here
+## Repository shape
 
 ```text
 apps/
-  website/       Public TanStack Start website
-  portal/        Customer-facing TanStack Start portal
-  workspace/     Internal TanStack Start operations workspace
-  api/           Headless HTTP runtime and private composition root
+  company-api/      Backend and private composition root
+  company-os/       Internal management and operations UI
+  client-portal/    Customer-facing application
+  marketing-site/   Public website
 
 packages/
   acme/
-    model/        Source-owned business definitions
-    client/       Browser-safe typed runtime binding
-    ui/           Company-owned shadcn components and Tailwind v4 tokens
+    contract/       Business objects and, next, actions and policies
+    ui/             Company-owned components and Tailwind v4 tokens
 
   continual/
-    model/        Browser-safe framework primitives
-    client/       Browser/SSR-safe runtime client
-    runtime/      Server-only model execution
-    ui/           Reusable framework UI
-    studio/       Generic runtime explorer
-    cli/          Local developer commands
-
-tools/
-  oxlint/anti-slop/     Vendored low-evidence code rules
-  oxlint/company-os/    Source-owned repository rules
+    runtime/        Semantic definitions, projections, and execution kernel
 ```
 
-The first operating module is a deliberately small CRM with Customers, Contacts, and Projects.
-The next useful proof is an inquiry that creates or links those records, enters the work queue, is
-reviewed by an operator, and becomes visible in the portal.
+The app folder names are deployment names. Their private npm names match the
+folders, so filters and deployment configuration use the same vocabulary.
+Scoped package names are reserved for importable source boundaries.
+
+## Contract, runtime, and API
+
+`@acme/contract` defines the business meaning that consumers share. It may
+contain objects, actions, queries, policies, and presentation metadata, but no
+handlers, persistence, provider SDKs, or app inventory.
+
+`@continual/runtime` owns the reusable definition language and every mechanical
+projection of that contract: execution, Fetch-compatible HTTP, typed clients,
+OpenAPI, MCP, and metadata. These projections should not become separate
+business contracts.
+
+`apps/company-api` supplies Acme's implementations and is the only composition
+root. It binds repositories, services, Effect layers, capability ports, and
+provider adapters. Browser apps will create a typed runtime client directly
+from `@acme/contract` when the first action/query slice earns that API; there is
+no empty `@acme/client` wrapper today.
+
+There is also no empty platform package. Add an `@continual/platform-*`
+boundary when a concrete runtime host or shared adapter implementation exists,
+not merely to reserve a name.
 
 ## Run it
 
@@ -52,86 +61,64 @@ pnpm check
 pnpm dev
 ```
 
-| Surface   | URL                   |
-| --------- | --------------------- |
-| Website   | http://localhost:3000 |
-| Portal    | http://localhost:3001 |
-| Workspace | http://localhost:3002 |
-| API       | http://localhost:4000 |
-| Studio    | http://localhost:5555 |
+| App            | URL                   |
+| -------------- | --------------------- |
+| Marketing site | http://localhost:3000 |
+| Client portal  | http://localhost:3001 |
+| Company OS     | http://localhost:3002 |
+| Company API    | http://localhost:4000 |
 
-Run one surface with a package filter:
-
-```sh
-pnpm --filter @acme/website dev
-pnpm --filter @acme/portal dev
-pnpm --filter @acme/workspace dev
-pnpm --filter @acme/api dev
-```
-
-The API currently exposes `GET /health` and `GET /api/model`. Studio reads that public runtime
-contract rather than importing server internals:
+Run one deployable with its app name:
 
 ```sh
-pnpm studio
+pnpm --filter marketing-site dev
+pnpm --filter client-portal dev
+pnpm --filter company-os dev
+pnpm --filter company-api dev
 ```
+
+The transitional Hono API exposes `GET /health` and `GET /api/contract`. The
+next backend slice should test the Effect v4 architecture with a real business
+action before introducing more framework packages.
+
+## Architecture rules
+
+- Keep company nouns, rules, UI, migrations, and private implementations in
+  `@acme/*` or `apps/*`.
+- Keep `@continual/*` universal and independent of company source.
+- Treat every app and agent as an interface over one governed backend, not as a
+  separate business authority.
+- Derive transport and client surfaces from explicit actions and queries; do
+  not infer a public CRUD API from object definitions.
+- Start as a modular monolith with one database and transaction boundary.
+- Add capability ports only when they isolate a smaller stable contract and
+  support a meaningful alternate implementation.
+- Use Effect v4 conventions for new runtime and backend work; verify v4 APIs
+  against the installed version instead of carrying forward v3 patterns.
 
 ## Code quality
 
-Oxlint handles JavaScript and TypeScript with type-aware checks, vendored anti-slop rules, and
-source-owned Company OS import rules. Turbo Boundaries checks cross-package relative imports and
-undeclared workspace dependencies. Oxfmt is the only formatter and also sorts imports, package
-manifests, and Tailwind classes. Knip checks the workspace graph for unused files, exports, and
-dependencies.
+Oxlint enforces source-level ownership and import direction. Turbo Boundaries
+checks workspace dependencies. Oxfmt formats source and manifests, and Knip
+checks unused files, exports, and dependencies.
 
 | Command             | Purpose                                                         | Writes files |
 | ------------------- | --------------------------------------------------------------- | ------------ |
-| `pnpm dev`          | Run the applications and Continual CLI in development mode      | No           |
+| `pnpm dev`          | Run all four applications                                       | No           |
 | `pnpm format`       | Format the repository with Oxfmt                                | Yes          |
 | `pnpm format:check` | Verify formatting without changing files                        | No           |
 | `pnpm lint`         | Run Oxlint and Turbo Boundaries                                 | No           |
-| `pnpm lint:fix`     | Apply safe Oxlint fixes, then verify Turbo Boundaries           | Yes          |
 | `pnpm deadcode`     | Find unused files, exports, and dependencies with Knip          | No           |
 | `pnpm typecheck`    | Type-check every workspace package                              | No           |
 | `pnpm check`        | Run formatting, lint, dead-code, and type checks without writes | No           |
-| `pnpm build`        | Build every workspace package                                   | No           |
+| `pnpm build`        | Build production application bundles                            | No           |
 
-There is no `pnpm test` command yet because this scaffold does not contain a test suite. Add the
-root command and Turbo task with the first tests.
-
-Source filenames use kebab-case. Framework-owned names such as TanStack Router's `__root.tsx` are
-narrowly exempted, and generated route trees are not linted or formatted. Internal barrel files,
-wildcard exports, and re-export chains are prohibited. A package may expose one deliberate public
-facade using explicit named re-exports from its top-level `src/index.ts`; allowed facades are
-registered explicitly in the Company OS Oxlint rule.
-
-## Architecture
-
-- **One company model.** Apps and agents are interfaces over the same definitions and governed
-  capabilities. They do not become separate business authorities.
-- **Company source stays company-owned.** Business nouns, rules, UI, migrations, and private
-  implementations belong under `@acme/*` or `apps/*`.
-- **Framework code stays universal.** `@continual/*` packages must not import `@acme/*`.
-- **Composition stays executable.** The API owns private runtime composition; the repository root
-  owns workspace tooling but no business dependency graph.
-- **The runtime is standalone.** Hosted identity, agents, connections, and deployment may be added
-  through adapters; the core system must still run locally with direct providers.
-- **Ports are earned.** Add a capability port only when it is smaller than the provider SDK, owns
-  no vendor types, and has a useful local or in-memory implementation. Name adapters provider-first,
-  such as `ResendEmailDeliveryAdapter` or `ContinualAgentExecutionAdapter`.
-- **Start as a modular monolith.** Keep one backend, one database, and one transaction boundary
-  until independent scaling or isolation is a demonstrated requirement.
-
-Oxlint enforces the browser/server and company/framework import direction, while Turbo Boundaries
-enforces workspace package integrity. Both run through one command:
-
-```sh
-pnpm lint
-```
+The Turbo graph reserves a `test` task for Vitest. Add the root command and CI
+step with the first real tests so an empty suite cannot report a false success.
 
 ## Current status
 
-This is an architectural scaffold, not a finished ERP or autonomous company. The package graph,
-TanStack surfaces, model description endpoint, Studio, design system, and boundary checks work.
-Persistence, authorization, typed actions, OpenAPI, MCP, and the first complete operating loop are
-the next implementation slices.
+The package graph, four TanStack surfaces, semantic CRM objects, contract
+description endpoint, design system, and boundary checks work. Persistence,
+authorization, Effect services and layers, typed actions, HTTP/client
+projection, and the first complete operating loop remain to be built.

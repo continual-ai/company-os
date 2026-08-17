@@ -5,14 +5,15 @@
 
 ## Ownership map
 
-| Owner              | Paths                                            | Responsibility                                                                                |
-| ------------------ | ------------------------------------------------ | --------------------------------------------------------------------------------------------- |
-| Company            | `packages/acme/*`, `apps/*`                      | Business nouns, rules, UI, migrations, services, adapters, and composition                    |
-| Reusable framework | `packages/continual/*`                           | Universal definitions, runtime machinery, browser-safe clients, generic UI, Studio, and CLI   |
-| Hosted platform    | Outside this repository                          | Optional identity, agents, connections, managed infrastructure, delivery, controls, and audit |
+| Owner              | Paths                       | Responsibility                                                                                |
+| ------------------ | --------------------------- | --------------------------------------------------------------------------------------------- |
+| Company            | `packages/acme/*`, `apps/*` | Business nouns, rules, UI, migrations, services, adapters, and composition                    |
+| Reusable framework | `packages/continual/*`      | Universal definitions, projections, execution, and browser-safe client machinery              |
+| Hosted platform    | Outside this repository     | Optional identity, agents, connections, managed infrastructure, delivery, controls, and audit |
 
-`@continual/*` must never import `@acme/*`. Browser apps use `@acme/client` and `@acme/ui`; they do
-not import server runtime, API internals, Studio, or CLI. The API is the private composition root.
+`@continual/*` must never import `@acme/*`. Browser apps use `@acme/ui`, `@acme/contract`, and
+browser-safe runtime client entrypoints; they never import `apps/company-api`. The Company API is
+the private composition root.
 
 ## Target request path
 
@@ -30,16 +31,16 @@ app or agent
 Transport validates and binds a request. A service or tool owns one business intent, including
 policy, transaction, domain events, approvals, and coordination. Repositories own persistence
 queries and row mapping. Provider adapters own vendor SDKs. Assemble the graph once in
-`apps/api/src/composition-root.ts` and pass dependencies explicitly.
+`apps/company-api/src/composition-root.ts` and pass dependencies explicitly.
 
 Do not create all layers mechanically. A small slice may remain direct until policy, persistence,
 or external effects justify a boundary.
 
 ## Source and contract
 
-Keep the company model explicit and closed-world: only definitions composed by
-`packages/acme/model/src/project.ts` belong to it. Do not discover modules or capabilities from
-filenames.
+Keep the company contract explicit and closed-world: only definitions composed by
+`packages/acme/contract/src/index.ts` belong to it. Do not discover modules or capabilities from
+filenames. The contract contains business semantics, not an inventory of repository apps.
 
 Use explicit imports inside a package. Do not create internal barrel files, wildcard exports, or
 re-export chains. A package may keep one deliberate public facade at its top-level `src/index.ts`;
@@ -70,9 +71,11 @@ business implementation. Add a projection when a real consumer requires it.
 
 ## Apps and agents
 
-Website, portal, workspace, Studio, and agent conversations are interfaces over the same backend.
-Keep consumer-specific queries and presentation with the consumer, while business rules and writes
-remain behind governed capabilities.
+The marketing site, client portal, Company OS, and agent conversations are interfaces over the
+same backend. Keep consumer-specific queries and presentation with the consumer, while business
+rules and writes remain behind governed capabilities. A generic model inspector may return as a
+development tool when real operating needs earn it; it is not a separate product surface by
+default.
 
 Agents receive authorized tools and documents, never raw database credentials or private runtime
 objects. A human-facing work queue may coordinate review and approval, but it should refer to

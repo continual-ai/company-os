@@ -1,18 +1,15 @@
-import { MODEL_DESCRIPTION_VERSION } from "@continual/model"
-import type { DefinedProject, ModelDescription } from "@continual/model"
+import type { DefinedCompany } from "./definition/company"
+import {
+  COMPANY_DESCRIPTION_VERSION,
+  type CompanyDescription,
+} from "./description-types"
 
-/** Derives Studio- and API-safe metadata from the live Company Model. */
-export function describeModel(project: DefinedProject): ModelDescription {
+/** Derives transport- and UI-safe metadata from the live company contract. */
+export function describeCompany(company: DefinedCompany): CompanyDescription {
   return {
-    version: MODEL_DESCRIPTION_VERSION,
-    project: { id: project.id, name: project.name },
-    apps: project.apps.map(({ id, name, source, type }) => ({
-      id,
-      name,
-      source,
-      type,
-    })),
-    modules: project.modules.map((module) => ({
+    version: COMPANY_DESCRIPTION_VERSION,
+    company: { id: company.id, name: company.name },
+    modules: company.modules.map((module) => ({
       id: module.id,
       name: module.name,
       objects: module.objects.map((object) => ({

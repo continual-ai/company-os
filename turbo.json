@@ -4,16 +4,19 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "env": ["VITE_PORTAL_URL", "VITE_WORKSPACE_URL"],
+      "env": ["VITE_CLIENT_PORTAL_URL", "VITE_COMPANY_OS_URL"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
       "outputs": [".output/**", "dist/**"]
     },
     "typecheck": {
       "dependsOn": ["^typecheck"]
     },
+    "test": {
+      "dependsOn": ["^test"]
+    },
     "dev": {
       "cache": false,
-      "env": ["VITE_PORTAL_URL", "VITE_WORKSPACE_URL"],
+      "env": ["VITE_CLIENT_PORTAL_URL", "VITE_COMPANY_OS_URL"],
       "persistent": true
     }
   }

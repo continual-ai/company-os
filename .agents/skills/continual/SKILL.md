@@ -20,7 +20,8 @@ platform behavior, reason independently, and recommend a better boundary when on
 This repository uses `@continual/*` for reusable, local framework packages. That does not mean the
 hosted Continual platform is required. Keep these concerns separate:
 
-- **Framework:** model definitions, runtime, client, UI, Studio, and CLI that run from this repo.
+- **Framework:** the reusable `@continual/runtime` kernel and any concrete platform packages earned
+  by implementation in this repo.
 - **Platform:** optional surrounding services such as identity, agent execution, connections,
   managed infrastructure, deployment, controls, and audit.
 
