@@ -1,7 +1,7 @@
-import { Acme } from "@acme/contract"
+import { AcmeApi } from "@acme/api"
 import { describeCompany } from "@continual/runtime"
 
-export const contractDescription = describeCompany(Acme)
+export const apiDescription = describeCompany(AcmeApi)
 
 // Repositories, services, capability ports, provider adapters, and Effect
 // layers are assembled here. Transport routes remain thin projections over

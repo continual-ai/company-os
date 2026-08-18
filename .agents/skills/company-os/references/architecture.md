@@ -11,7 +11,7 @@
 | Reusable framework | `packages/continual/*`      | Universal definitions, projections, execution, and browser-safe client machinery              |
 | Hosted platform    | Outside this repository     | Optional identity, agents, connections, managed infrastructure, delivery, controls, and audit |
 
-`@continual/*` must never import `@acme/*`. Browser apps use `@acme/ui`, `@acme/contract`, and
+`@continual/*` must never import `@acme/*`. Browser apps use `@acme/ui`, `@acme/api`, and
 browser-safe runtime client entrypoints; they never import server-only Company OS modules. The
 server boundary of `apps/company-os` is the private composition root; its internal Console and
 external transports are interfaces over the same governed backend.
@@ -37,11 +37,11 @@ queries and row mapping. Provider adapters own vendor SDKs. Assemble the graph o
 Do not create all layers mechanically. A small slice may remain direct until policy, persistence,
 or external effects justify a boundary.
 
-## Source and contract
+## Source and API
 
-Keep the company contract explicit and closed-world: only definitions composed by
-`packages/acme/contract/src/index.ts` belong to it. Do not discover modules or capabilities from
-filenames. The contract contains business semantics, not an inventory of repository apps.
+Keep the company API explicit and closed-world: only definitions composed by
+`packages/acme/api/src/index.ts` belong to it. Do not discover modules or capabilities from
+filenames. The API contract contains business semantics, not an inventory of repository apps.
 
 Use explicit imports inside a package. Do not create internal barrel files, wildcard exports, or
 re-export chains. A package may keep one deliberate public facade at its top-level `src/index.ts`;

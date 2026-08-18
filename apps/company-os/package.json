@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@acme/contract": "workspace:*",
+    "@acme/api": "workspace:*",
     "@acme/ui": "workspace:*",
     "@continual/runtime": "workspace:*",
     "@tailwindcss/vite": "catalog:",

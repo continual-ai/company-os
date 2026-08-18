@@ -29,7 +29,7 @@ should be introduced through real vertical slices rather than speculative framew
 
 | Concept                    | Meaning                                                                                                     | Status                     |
 | -------------------------- | ----------------------------------------------------------------------------------------------------------- | -------------------------- |
-| Company contract           | The explicit closed-world composition of business modules and capabilities                                 | Current, objects only      |
+| Company API                | The explicit closed-world contract of business modules and capabilities                                    | Current, objects only      |
 | Module                     | A cohesive, headless business capability                                                                    | Current, objects only      |
 | Object                     | A durable business type such as Customer or Project                                                         | Current                    |
 | Record                     | One stored instance of an object                                                                            | Direction                  |
@@ -47,7 +47,7 @@ should be introduced through real vertical slices rather than speculative framew
 
 A module should eventually keep the objects, actions, queries, metrics, loops, documents, and
 skills for one business capability together. Apps are repository-owned deployables rather than
-semantic contract entries because one app commonly spans several capabilities.
+semantic API entries because one app commonly spans several capabilities.
 
 ## Data-model vision
 
@@ -58,7 +58,7 @@ provenance, and discoverable operations rather than inferring them independently
 Keep the project database ordinary and source-owned. The framework may compile registered objects
 to tables or map them onto company-owned storage, but not every table must become an object. Custom
 tables, views, indexes, constraints, functions, extensions, and SQL remain valid implementation.
-Only registered concepts join `@acme/contract`.
+Only registered concepts join `@acme/api`.
 
 Prefer these integrity rules as the model grows:
 

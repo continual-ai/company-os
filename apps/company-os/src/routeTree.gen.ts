@@ -11,7 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as HealthRouteImport } from './routes/health'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ApiContractRouteImport } from './routes/api/contract'
+import { Route as ApiDescriptionRouteImport } from './routes/api/description'
 
 const HealthRoute = HealthRouteImport.update({
   id: '/health',
@@ -23,40 +23,40 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiContractRoute = ApiContractRouteImport.update({
-  id: '/api/contract',
-  path: '/api/contract',
+const ApiDescriptionRoute = ApiDescriptionRouteImport.update({
+  id: '/api/description',
+  path: '/api/description',
   getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/health': typeof HealthRoute
-  '/api/contract': typeof ApiContractRoute
+  '/api/description': typeof ApiDescriptionRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/health': typeof HealthRoute
-  '/api/contract': typeof ApiContractRoute
+  '/api/description': typeof ApiDescriptionRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/health': typeof HealthRoute
-  '/api/contract': typeof ApiContractRoute
+  '/api/description': typeof ApiDescriptionRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/health' | '/api/contract'
+  fullPaths: '/' | '/health' | '/api/description'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/health' | '/api/contract'
-  id: '__root__' | '/' | '/health' | '/api/contract'
+  to: '/' | '/health' | '/api/description'
+  id: '__root__' | '/' | '/health' | '/api/description'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   HealthRoute: typeof HealthRoute
-  ApiContractRoute: typeof ApiContractRoute
+  ApiDescriptionRoute: typeof ApiDescriptionRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -75,11 +75,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/contract': {
-      id: '/api/contract'
-      path: '/api/contract'
-      fullPath: '/api/contract'
-      preLoaderRoute: typeof ApiContractRouteImport
+    '/api/description': {
+      id: '/api/description'
+      path: '/api/description'
+      fullPath: '/api/description'
+      preLoaderRoute: typeof ApiDescriptionRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -88,7 +88,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   HealthRoute: HealthRoute,
-  ApiContractRoute: ApiContractRoute,
+  ApiDescriptionRoute: ApiDescriptionRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

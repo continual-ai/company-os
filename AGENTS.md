@@ -20,10 +20,10 @@ all supported agents share one copy.
 - `@acme/*` and `apps/*` are source-owned by the example company. Business nouns and behavior
   belong here.
 - `@continual/*` is reusable framework code. It must never import `@acme/*`.
-- `@acme/contract` owns the browser-safe semantic business contract. It may depend on
+- `@acme/api` owns the browser-safe semantic company API contract. It may depend on
   `@continual/runtime`, but not on UI, handlers, persistence, or provider code.
 - Browser applications use `@acme/ui` and the browser-safe contract/client surfaces exposed by
-  `@acme/contract` and `@continual/runtime`; they never import server-only Company OS modules.
+  `@acme/api` and `@continual/runtime`; they never import server-only Company OS modules.
 - `apps/company-os` is the full-stack Company OS and private composition root. Bind repositories,
   services, Effect layers, ports, and provider adapters in its server boundary. Keep its Console,
   server functions, and external API routes as interfaces over the same governed capabilities.

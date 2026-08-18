@@ -44,18 +44,17 @@ function forbiddenReason(
   }
 
   if (
-    packageName === "@acme/contract" &&
-    ((specifier.startsWith("@acme/") &&
-      !isPackage(specifier, "@acme/contract")) ||
+    packageName === "@acme/api" &&
+    ((specifier.startsWith("@acme/") && !isPackage(specifier, "@acme/api")) ||
       (specifier.startsWith("@continual/") &&
         !isPackage(specifier, "@continual/runtime")))
   ) {
-    return "@acme/contract may depend only on @continual/runtime; it cannot depend on UI or implementations."
+    return "@acme/api may depend only on @continual/runtime; it cannot depend on UI or implementations."
   }
 
   if (
     packageName === "@acme/ui" &&
-    (isAnyPackage(specifier, ["@acme/contract", "@continual/runtime"]) ||
+    (isAnyPackage(specifier, ["@acme/api", "@continual/runtime"]) ||
       APPLICATION_PACKAGE_NAMES.some((appName) =>
         isPackage(specifier, appName)
       ))

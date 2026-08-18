@@ -1,8 +1,8 @@
 {
-  "name": "@acme/contract",
+  "name": "@acme/api",
   "version": "0.0.0",
   "private": true,
-  "description": "The public semantic contract for Acme's Company OS.",
+  "description": "The browser-safe semantic API contract for Acme's Company OS.",
   "type": "module",
   "sideEffects": false,
   "exports": {

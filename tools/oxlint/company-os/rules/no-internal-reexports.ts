@@ -2,7 +2,7 @@ import { defineRule } from "@oxlint/plugins"
 import type { ESTree } from "@oxlint/plugins"
 
 const PUBLIC_PACKAGE_ENTRYPOINTS = [
-  "packages/acme/contract/src/index.ts",
+  "packages/acme/api/src/index.ts",
   "packages/continual/runtime/src/index.ts",
 ] as const
 

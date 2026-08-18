@@ -43,9 +43,9 @@ For a new end-to-end business capability, read both references.
 ## Durable starting points
 
 - Keep source and business data customer-owned and locally operable.
-- Keep one company contract behind public software, customer portals, internal operations, APIs,
-  and agents.
-- Put company-specific nouns and behavior in `@acme/contract` or `apps/*`; keep
+- Keep one company API contract behind public software, customer portals, internal operations, and
+  agents.
+- Put company-specific nouns and behavior in `@acme/api` or `apps/*`; keep
   `@continual/runtime` reusable.
 - Keep the server boundary of `apps/company-os` as the private composition root. Pass dependencies
   explicitly at real external boundaries.
