@@ -23,9 +23,10 @@ all supported agents share one copy.
 - `@acme/contract` owns the browser-safe semantic business contract. It may depend on
   `@continual/runtime`, but not on UI, handlers, persistence, or provider code.
 - Browser applications use `@acme/ui` and the browser-safe contract/client surfaces exposed by
-  `@acme/contract` and `@continual/runtime`; they never import `apps/company-api`.
-- `apps/company-api` is the private composition root. Bind repositories, services, Effect layers,
-  ports, and provider adapters there.
+  `@acme/contract` and `@continual/runtime`; they never import server-only Company OS modules.
+- `apps/company-os` is the full-stack Company OS and private composition root. Bind repositories,
+  services, Effect layers, ports, and provider adapters in its server boundary. Keep its Console,
+  server functions, and external API routes as interfaces over the same governed capabilities.
 - Use explicit imports inside packages. Do not add wildcard exports, internal barrel files, or
   re-export chains. A package's top-level `src/index.ts` may use explicit named re-exports as its
   deliberate public API when registered in the Company OS Oxlint rule.

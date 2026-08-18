@@ -12,8 +12,9 @@
 | Hosted platform    | Outside this repository     | Optional identity, agents, connections, managed infrastructure, delivery, controls, and audit |
 
 `@continual/*` must never import `@acme/*`. Browser apps use `@acme/ui`, `@acme/contract`, and
-browser-safe runtime client entrypoints; they never import `apps/company-api`. The Company API is
-the private composition root.
+browser-safe runtime client entrypoints; they never import server-only Company OS modules. The
+server boundary of `apps/company-os` is the private composition root; its internal Console and
+external transports are interfaces over the same governed backend.
 
 ## Target request path
 
@@ -31,7 +32,7 @@ app or agent
 Transport validates and binds a request. A service or tool owns one business intent, including
 policy, transaction, domain events, approvals, and coordination. Repositories own persistence
 queries and row mapping. Provider adapters own vendor SDKs. Assemble the graph once in
-`apps/company-api/src/composition-root.ts` and pass dependencies explicitly.
+`apps/company-os/src/server/composition-root.server.ts` and pass dependencies explicitly.
 
 Do not create all layers mechanically. A small slice may remain direct until policy, persistence,
 or external effects justify a boundary.
@@ -71,11 +72,12 @@ business implementation. Add a projection when a real consumer requires it.
 
 ## Apps and agents
 
-The marketing site, client portal, Company OS, and agent conversations are interfaces over the
-same backend. Keep consumer-specific queries and presentation with the consumer, while business
-rules and writes remain behind governed capabilities. A generic model inspector may return as a
-development tool when real operating needs earn it; it is not a separate product surface by
-default.
+The marketing site, client portal, internal Console, and agent conversations are interfaces over
+the Company OS backend. The backend and Console share one full-stack TanStack Start deployment;
+that deployment choice does not weaken the contract or server-only boundaries. Keep
+consumer-specific queries and presentation with the consumer, while business rules and writes
+remain behind governed capabilities. A generic model inspector may return as a development tool
+when real operating needs earn it; it is not a separate product surface by default.
 
 Agents receive authorized tools and documents, never raw database credentials or private runtime
 objects. A human-facing work queue may coordinate review and approval, but it should refer to

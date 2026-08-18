@@ -47,8 +47,8 @@ For a new end-to-end business capability, read both references.
   and agents.
 - Put company-specific nouns and behavior in `@acme/contract` or `apps/*`; keep
   `@continual/runtime` reusable.
-- Keep `apps/company-api` as the private composition root. Pass dependencies explicitly at real
-  external boundaries.
+- Keep the server boundary of `apps/company-os` as the private composition root. Pass dependencies
+  explicitly at real external boundaries.
 - Treat a modular monolith, ordinary Postgres, and one transaction boundary as economical defaults,
   not permanent laws.
 - Earn abstractions from concrete slices. Keep vendor types at the edge and business policy in the

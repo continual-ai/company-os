@@ -12,8 +12,7 @@ depends on Acme or the hosted Continual platform.
 
 ```text
 apps/
-  company-api/      Backend and private composition root
-  company-os/       Internal management and operations UI
+  company-os/       Full-stack backend and internal Console
   client-portal/    Customer-facing application
   marketing-site/   Public website
 
@@ -41,11 +40,13 @@ projection of that contract: execution, Fetch-compatible HTTP, typed clients,
 OpenAPI, MCP, and metadata. These projections should not become separate
 business contracts.
 
-`apps/company-api` supplies Acme's implementations and is the only composition
-root. It binds repositories, services, Effect layers, capability ports, and
-provider adapters. Browser apps will create a typed runtime client directly
-from `@acme/contract` when the first action/query slice earns that API; there is
-no empty `@acme/client` wrapper today.
+`apps/company-os` is Acme's full-stack backend, internal Console, and only
+composition root. Its server boundary binds repositories, services, Effect
+layers, capability ports, and provider adapters. TanStack server functions and
+external API routes are thin interfaces over the same governed capabilities.
+Other apps will create a typed runtime client directly from `@acme/contract`
+when the first action/query slice earns that API; there is no empty
+`@acme/client` wrapper today.
 
 There is also no empty platform package. Add an `@continual/platform-*`
 boundary when a concrete runtime host or shared adapter implementation exists,
@@ -66,7 +67,6 @@ pnpm dev
 | Marketing site | http://localhost:3000 |
 | Client portal  | http://localhost:3001 |
 | Company OS     | http://localhost:3002 |
-| Company API    | http://localhost:4000 |
 
 Run one deployable with its app name:
 
@@ -74,12 +74,12 @@ Run one deployable with its app name:
 pnpm --filter marketing-site dev
 pnpm --filter client-portal dev
 pnpm --filter company-os dev
-pnpm --filter company-api dev
 ```
 
-The transitional Hono API exposes `GET /health` and `GET /api/contract`. The
-next backend slice should test the Effect v4 architecture with a real business
-action before introducing more framework packages.
+The Company OS exposes `GET /health` and `GET /api/contract` through TanStack
+Start server routes. The next backend slice should test the Effect v4
+architecture with a real business action before introducing more framework
+packages.
 
 ## Architecture rules
 
@@ -104,7 +104,7 @@ checks unused files, exports, and dependencies.
 
 | Command             | Purpose                                                         | Writes files |
 | ------------------- | --------------------------------------------------------------- | ------------ |
-| `pnpm dev`          | Run all four applications                                       | No           |
+| `pnpm dev`          | Run all three applications                                      | No           |
 | `pnpm format`       | Format the repository with Oxfmt                                | Yes          |
 | `pnpm format:check` | Verify formatting without changing files                        | No           |
 | `pnpm lint`         | Run Oxlint and Turbo Boundaries                                 | No           |
@@ -118,7 +118,7 @@ step with the first real tests so an empty suite cannot report a false success.
 
 ## Current status
 
-The package graph, four TanStack surfaces, semantic CRM objects, contract
+The package graph, three TanStack applications, semantic CRM objects, contract
 description endpoint, design system, and boundary checks work. Persistence,
 authorization, Effect services and layers, typed actions, HTTP/client
 projection, and the first complete operating loop remain to be built.

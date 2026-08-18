@@ -9,8 +9,9 @@ Keep the core Company OS locally operable. Add a Continual dependency at a bound
 platform provides a concrete capability, and preserve a direct-provider, local, or in-memory path
 when it is meaningful.
 
-Bind hosted implementations in `apps/company-api/src/composition-root.ts`. Keep Continual API or
-SDK types inside the adapter. Company services consume semantic company-owned contracts.
+Bind hosted implementations in `apps/company-os/src/server/composition-root.server.ts`. Keep
+Continual API or SDK types inside the adapter. Company services consume semantic company-owned
+contracts.
 
 ## Capability ports and adapters
 

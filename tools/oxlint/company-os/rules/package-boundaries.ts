@@ -3,16 +3,9 @@ import type { ESTree } from "@oxlint/plugins"
 
 const APPLICATION_PACKAGE_NAMES = [
   "client-portal",
-  "company-api",
   "company-os",
   "marketing-site",
 ] as const
-
-const BROWSER_APPLICATIONS: ReadonlyArray<string> = [
-  "app:client-portal",
-  "app:company-os",
-  "app:marketing-site",
-]
 
 function packageNameForFile(filename: string): string | null {
   const normalizedFilename = filename.replaceAll("\\", "/")
@@ -68,17 +61,6 @@ function forbiddenReason(
       ))
   ) {
     return "@acme/ui owns presentation primitives and cannot depend on business definitions, execution, or applications."
-  }
-
-  if (packageName === "app:company-api" && isPackage(specifier, "@acme/ui")) {
-    return "The Company API is a headless composition root and cannot depend on UI."
-  }
-
-  if (
-    BROWSER_APPLICATIONS.includes(packageName) &&
-    isPackage(specifier, "company-api")
-  ) {
-    return "Browser applications consume the Runtime's HTTP client contract, never the API implementation."
   }
 
   if (
