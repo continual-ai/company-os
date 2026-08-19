@@ -11,11 +11,16 @@ import { Button } from "@acme/ui/components/button"
 import { cn } from "@acme/ui/lib/utils"
 ```
 
-Import the global theme once from an app root:
+Import the global theme from each app's local Tailwind entry so the app owns its source scan and
+any app-specific styles:
 
-```ts
-import "@acme/ui/globals.css"
+```css
+@import "@acme/ui/globals.css";
+
+@source "../**/*.{ts,tsx}";
 ```
+
+Add a shared primitive with `pnpm ui:add <component>` from the repository root.
 
 ## Boundaries
 

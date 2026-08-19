@@ -43,6 +43,25 @@ Keep the company API explicit and closed-world: only definitions composed by
 `packages/acme/api/src/index.ts` belong to it. Do not discover modules or capabilities from
 filenames. The API contract contains business semantics, not an inventory of repository apps.
 
+Object IDs, collection names, and object-scoped action verbs form one flat company-wide namespace.
+Modules organize source, documentation, and default Console navigation; they do not appear in client
+paths or prohibit cross-module references and actions. Validate global identity, action subjects,
+and method collisions when composing the company.
+
+Create, get, list, update, delete, and batch-get are standard object operations rather than authored
+actions. Lists use bounded page sizes and opaque continuation tokens, returning an empty next-page
+token at the end; batch-get is bounded and order-preserving. Mutation routes expose one idempotency
+key convention. Custom object actions use
+their declared verb in client methods and project to an AIP-style route such as
+`POST /api/v1/leads/{leadId}:qualify`. The subject ID comes from the route; it is not repeated in the
+JSON payload. Keep these rules in the reusable HTTP projection rather than writing transport details
+into company definitions.
+
+The current Effect v4 projection lives at `@continual/runtime/effect/http`. It compiles the closed
+company definition to one `HttpApi`, derives OpenAPI 3.1 from that value, and provides the
+Fetch-compatible Scalar handler mounted by `apps/company-os`. The documented operations are a
+contract preview until the Company OS composition root supplies real handlers.
+
 Use explicit imports inside a package. Do not create internal barrel files, wildcard exports, or
 re-export chains. A package may keep one deliberate public facade at its top-level `src/index.ts`;
 that facade uses explicit named re-exports and is the target of the package's `exports["."]` entry.
@@ -52,6 +71,18 @@ point the package export directly at that file.
 Author a concept once and derive its serializable description, client types, documentation, and
 eventual protocol projections. The runtime contract stays compatible with ordinary Fetch so the
 same backend can run locally or behind different hosts.
+
+Company source uses the portable schema and field vocabulary exported by `@continual/runtime`;
+it does not import Effect Schema. Server code compiles those definitions through
+`@continual/runtime/effect`. This keeps Effect v4 available for validation and execution without
+making it the durable Company API format.
+
+Field behavior is part of that portable contract. Records have total output shapes and fields are
+non-nullable by default. Create-required input, explicit nullability, kind-level zero values,
+defaults, output-only behavior, and immutability mechanically drive distinct response, create, and
+update schemas. Transport projections preserve those semantics with native annotations such as
+OpenAPI `readOnly`; they do not reconstruct behavior from naming conventions. Write-only secrets
+belong to operation or action inputs rather than durable object fields.
 
 Treat MCP, REST, and OpenAPI as projections of one backend contract. None should become a parallel
 business implementation. Add a projection when a real consumer requires it.

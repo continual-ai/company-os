@@ -1,21 +1,40 @@
-import { defineObject, email, link, phone, text } from "@continual/runtime"
+import { defineObject, field } from "@continual/runtime"
 
-import { Customer } from "./customer"
+import { Company } from "./company"
 
 export const Contact = defineObject({
   id: "contact",
+  collection: "contacts",
   name: "Contact",
   pluralName: "Contacts",
-  description: "A person associated with a customer organization.",
+  description: "A person Acme communicates or does business with.",
   fields: {
-    customerId: link({ object: Customer, required: true }),
-    firstName: text({ required: true }),
-    lastName: text({ required: true }),
-    title: text(),
-    email: email({ required: true }),
-    phone: phone(),
+    photo: field.image({ label: "Photo", aspectRatio: 1, nullable: true }),
+    primaryCompanyId: field.reference({
+      object: Company,
+      label: "Primary company",
+      nullable: true,
+      description:
+        "The contact's primary company. Broader company associations are intentionally deferred.",
+    }),
+    firstName: field.text({
+      label: "First name",
+      required: true,
+      minLength: 1,
+      maxLength: 100,
+    }),
+    lastName: field.text({
+      label: "Last name",
+      required: true,
+      minLength: 1,
+      maxLength: 100,
+    }),
+    jobTitle: field.text({ label: "Job title", maxLength: 150 }),
+    email: field.email({ label: "Email", maxLength: 320 }),
+    phone: field.phone({ label: "Phone", maxLength: 50 }),
   },
   display: {
+    image: "photo",
     title: "lastName",
     subtitle: "email",
   },

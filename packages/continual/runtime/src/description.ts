@@ -12,14 +12,23 @@ export function describeCompany(company: DefinedCompany): CompanyDescription {
     modules: company.modules.map((module) => ({
       id: module.id,
       name: module.name,
-      objects: module.objects.map((object) => ({
-        id: object.id,
-        name: object.name,
-        pluralName: object.pluralName,
-        description: object.description,
-        fields: { ...object.fields },
-        display: { ...object.display },
-      })),
+      actions: module.actions.map((action) => ({ ...action })),
+      objects: module.objects.map((object) => {
+        const description: CompanyDescription["modules"][number]["objects"][number] =
+          {
+            id: object.id,
+            collection: object.collection,
+            name: object.name,
+            pluralName: object.pluralName,
+            operations: { ...object.operations },
+            fields: { ...object.fields },
+            display: { ...object.display },
+          }
+        if (object.description !== undefined) {
+          description.description = object.description
+        }
+        return description
+      }),
     })),
   }
 }

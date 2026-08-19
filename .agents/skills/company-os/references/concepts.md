@@ -29,12 +29,14 @@ should be introduced through real vertical slices rather than speculative framew
 
 | Concept                    | Meaning                                                                                                     | Status                     |
 | -------------------------- | ----------------------------------------------------------------------------------------------------------- | -------------------------- |
-| Company API                | The explicit closed-world contract of business modules and capabilities                                    | Current, objects only      |
-| Module                     | A cohesive, headless business capability                                                                    | Current, objects only      |
-| Object                     | A durable business type such as Customer or Project                                                         | Current                    |
-| Record                     | One stored instance of an object                                                                            | Direction                  |
-| Field                      | A typed value declared on an object                                                                         | Current                    |
+| Company API                | The explicit closed-world contract of business modules and capabilities                                    | Current, objects/actions   |
+| Module                     | A lightweight source and default-UI grouping for a cohesive business capability                             | Current, objects/actions   |
+| Object                     | A durable business type such as Company or Contact                                                          | Current                    |
+| Record                     | One stored instance with runtime-owned identity, audit fields, annotations, and concurrency token            | Current, base shape        |
+| Field                      | A typed value with semantic kind, validation, behavior, and optional default                                | Current                    |
 | Relationship               | A typed link between business objects                                                                       | Current, direct links      |
+| Operation                  | A conventional create, get, list, update, delete, or batch-get capability exposed by an object              | Current, HTTP projection   |
+| Action                     | A custom typed business command with input, output, categorized errors, and an object subject               | Current, HTTP projection   |
 | Object interface           | An abstract contract explicitly implemented by multiple concrete objects; it has no records of its own      | Direction                  |
 | Tool                       | A typed business capability available to authorized people, apps, or agents                                 | Direction                  |
 | Loop                       | A recurring, goal-directed controller that observes state, acts through tools, checks outcomes, and repeats | Vision                     |
@@ -45,9 +47,44 @@ should be introduced through real vertical slices rather than speculative framew
 | Connection                 | Authorized access to an external system or capability                                                       | Direction                  |
 | Infrastructure declaration | Source-owned desired infrastructure such as a queue, schedule, domain, or secret reference                  | Direction                  |
 
-A module should eventually keep the objects, actions, queries, metrics, loops, documents, and
-skills for one business capability together. Apps are repository-owned deployables rather than
-semantic API entries because one app commonly spans several capabilities.
+A module groups the objects, actions, queries, metrics, loops, documents, and skills for one
+business capability. It does not namespace client methods, isolate storage or deployment, define a
+permission boundary, or prevent actions and references from crossing modules. Apps are
+repository-owned deployables rather than semantic API entries because one app commonly spans
+several capabilities.
+
+Objects expose conventional create, get, list, update, delete, and batch-get operations by default
+and may disable operations explicitly. These operations have uniform semantics and runtime-derived
+request and response shapes; companies do not redefine each one as an action. Actions are custom
+business verbs such as qualifying a lead. They declare only action-specific input because the
+subject record ID is supplied separately by the invocation or transport path.
+
+Every record includes base `id`, `etag`, `annotations`, `createdAt`, `createdById`, `updatedAt`, and
+`updatedById` fields. `annotations` is the caller-managed string map; the other fields are
+runtime-owned. Company fields may not redefine those names. Normal writes must identify an actor;
+bootstrap and migration paths may use an explicit system actor.
+
+Fields preserve semantic kinds such as email, domain, URL, phone, calendar date, timestamp, money,
+file, and image rather than collapsing them into text. Record shapes are total: every declared
+field is present in output, never optional or `undefined`. Fields are non-nullable by default.
+`required` means the caller must supply the field on create; otherwise omission applies an explicit
+default, the kind's honest zero value, or `null` only when `nullable: true` is declared. Textual
+values use `""`, numbers use `0` when their constraints permit it, and future collection fields use
+`[]` or `{}`. References, dates, timestamps, money, files, images, and selects have no universal
+zero value, so an ordinary field of one of those kinds must be required, nullable, or defaulted.
+
+Output-only and immutable remain independent behaviors. Output-only fields are supplied by the
+runtime and excluded from create and update. Immutable fields may be repeated on update, but
+changing their stored value is a validation failure. Update omission means no change; a kind's zero
+value clears an ordinary field, while `null` clears only a nullable field. Write-only secrets are
+operation or action inputs rather than object fields.
+
+Standard transport failures use shared unauthenticated, permission-denied, not-found, conflict,
+and validation shapes; they are not redefined for each object. Validation details distinguish
+field violations from global violations so interfaces do not parse prose. Declared company errors
+are reserved for meaningful domain failures and use a stable company-facing code, a human-facing
+message, typed details, and a standard semantic category. Protocol projections map categories to
+their own status representation; company definitions do not contain HTTP status codes.
 
 ## Data-model vision
 
@@ -72,6 +109,10 @@ Prefer these integrity rules as the model grows:
   pairs.
 - Derive public descriptions and client types from registered definitions. Do not maintain a
   second handwritten model contract.
+- Keep the semantic schema portable and serializable. Runtime integrations may compile it to
+  Effect Schema, JSON Schema, OpenAPI, forms, or other projections without changing company source.
+- Store files and images as stable asset references rather than delivery URLs. Upload, download,
+  preview, crop, and signed-URL behavior are projections and runtime implementation concerns.
 - Give each synchronized fact one authority. Derived views and caches never govern business truth.
 
 ## Operating loops and improvement

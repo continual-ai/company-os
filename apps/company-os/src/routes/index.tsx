@@ -1,20 +1,13 @@
+import { AcmeApi } from "@acme/api"
 import { Button } from "@acme/ui/components/button"
 import { createFileRoute } from "@tanstack/react-router"
 
-const model = [
-  {
-    name: "Customers",
-    description: "Organizations Acme serves or is preparing to serve",
-  },
-  {
-    name: "Contacts",
-    description: "People connected to customers and projects",
-  },
-  {
-    name: "Projects",
-    description: "Inquiries, proposals, active delivery, and outcomes",
-  },
-] as const
+const model = AcmeApi.modules.flatMap((module) =>
+  module.objects.map((object) => ({
+    name: object.pluralName,
+    description: object.description,
+  }))
+)
 
 const work = [
   "Qualify the new Northwind inquiry",
@@ -32,9 +25,17 @@ function CompanyOsHome() {
           <p className="font-medium">Acme</p>
           <p className="text-sm text-muted-foreground">Company OS</p>
         </div>
-        <Button variant="outline" disabled>
-          Sign in — coming next
-        </Button>
+        <div className="flex items-center gap-2">
+          <a
+            href="/api/docs"
+            className="inline-flex h-8 items-center border px-2.5 text-xs font-medium hover:bg-muted"
+          >
+            API reference
+          </a>
+          <Button variant="outline" disabled>
+            Sign in — coming next
+          </Button>
+        </div>
       </header>
 
       <section className="grid gap-12 py-12 lg:grid-cols-[1fr_24rem]">
@@ -49,7 +50,7 @@ function CompanyOsHome() {
             These surfaces will use the same typed definitions and governed
             capabilities exposed through the runtime API and MCP.
           </p>
-          <div className="mt-10 grid border-t sm:grid-cols-3">
+          <div className="mt-10 grid border-t sm:grid-cols-2 xl:grid-cols-4">
             {model.map((object) => (
               <article
                 key={object.name}

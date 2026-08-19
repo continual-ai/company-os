@@ -1,0 +1,3 @@
+@import "@acme/ui/globals.css";
+
+@source "../**/*.{ts,tsx}";

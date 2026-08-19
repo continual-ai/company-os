@@ -1,7 +1,6 @@
 import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router"
 
-import marketingSiteCss from "@/styles/marketing-site.css?url"
-import appCss from "@acme/ui/globals.css?url"
+import appCss from "@/styles/app.css?url"
 
 export const Route = createRootRoute({
   head: () => ({
@@ -16,10 +15,7 @@ export const Route = createRootRoute({
       },
       { name: "theme-color", content: "#ffffff" },
     ],
-    links: [
-      { rel: "stylesheet", href: appCss },
-      { rel: "stylesheet", href: marketingSiteCss },
-    ],
+    links: [{ rel: "stylesheet", href: appCss }],
   }),
   notFoundComponent: () => (
     <main className="grid min-h-svh place-items-center px-6">

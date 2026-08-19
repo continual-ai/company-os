@@ -10,9 +10,11 @@ This repository uses **Acme** as the example company. Acme owns `@acme/*` and `a
 framework code lives in `@continual/*` and has no dependency on Acme or the hosted Continual
 platform.
 
-> **Current state:** the package boundaries, three TanStack Start apps, CRM object definitions, and
-> a serializable API description work. Persistence, authorization, actions, typed clients, and
-> Effect-backed execution do not exist yet.
+> **Current state:** the package boundaries, three TanStack Start apps, portable CRM objects,
+> standard operations and record conventions, custom actions, semantic field types, serializable
+> API description, Effect Schema and Effect `HttpApi` projections, generated OpenAPI 3.1, and a
+> Scalar API browser work. Persistence, authorization, endpoint handlers, and typed clients do not
+> exist yet.
 
 ## Mental model
 
@@ -43,7 +45,7 @@ apps/
 
 packages/
   acme/
-    api/            Acme's browser-safe semantic API contract
+    api/            Acme's browser-safe, Effect-independent API contract
     ui/             Acme's shared components and design tokens
   continual/
     runtime/        Reusable definition and runtime kernel
@@ -82,7 +84,10 @@ The Company OS also exposes:
 ```sh
 curl http://localhost:3002/health
 curl http://localhost:3002/api/description
+curl http://localhost:3002/api/openapi
 ```
+
+Browse the generated API at <http://localhost:3002/api/docs>.
 
 Run one app with `pnpm --filter <app> dev`, for example:
 
@@ -94,6 +99,7 @@ pnpm --filter company-os dev
 
 - Company nouns, rules, UI, migrations, and private implementations belong in `@acme/*` or
   `apps/*`.
+- Modules organize source and default navigation while objects and actions remain globally addressable.
 - Reusable definitions and mechanical projections belong in `@continual/*`, which never imports
   company source.
 - `apps/company-os` is the only composition root. Repositories, services, Effect layers, ports, and
@@ -105,18 +111,19 @@ pnpm --filter company-os dev
 
 ## Commands
 
-| Command       | Purpose                                                  |
-| ------------- | -------------------------------------------------------- |
-| `pnpm dev`    | Run all apps                                             |
-| `pnpm check`  | Check formatting, lint, boundaries, dead code, and types |
-| `pnpm format` | Format the repository                                    |
-| `pnpm build`  | Build every app                                          |
+| Command                   | Purpose                                                  |
+| ------------------------- | -------------------------------------------------------- |
+| `pnpm dev`                | Run all apps                                             |
+| `pnpm check`              | Check formatting, lint, boundaries, dead code, and types |
+| `pnpm format`             | Format the repository                                    |
+| `pnpm build`              | Build every app                                          |
+| `pnpm ui:add <component>` | Add a source-owned shadcn primitive to `@acme/ui`        |
 
-Turbo is ready for a `test` task, but the root test command and CI step should arrive with the first
-real Vitest suite rather than an empty green check.
+Run the focused Vitest suites with `pnpm test`.
 
 ## Next slice
 
-Build one real business operation end to end: define its action and result in `@acme/api`, execute
-it through Effect v4 services in `apps/company-os`, persist it, authorize it, and call it from an
-app. That slice should prove which runtime abstractions deserve to remain.
+Review the generated standard operations and `POST /api/v1/leads/{leadId}:qualify` contract in
+Scalar. Then bind one real CRM object through Effect handlers, authorization, persistence,
+pagination, and idempotency before implementing `qualifyLead` across leads, companies, and
+contacts.

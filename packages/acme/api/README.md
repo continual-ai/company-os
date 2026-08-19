@@ -22,10 +22,18 @@ import { AcmeApi } from "@acme/api"
 - TanStack routes, React components, or app inventory
 - Transport-specific business logic
 
-The only runtime dependency is `@continual/runtime`. Private implementations are composed in the
-server boundary of `apps/company-os`.
+The only runtime dependency is the portable root API of `@continual/runtime`. Acme definitions do
+not import Effect; private implementations and Effect projections are composed in the server
+boundary of `apps/company-os`.
 
 ## Current state
 
-`AcmeApi` contains a CRM module with Customer, Contact, and Project objects. Actions, queries, and
-policies have not been defined yet.
+`AcmeApi` contains a CRM module with Company, Contact, Lead, and Deal objects plus a typed
+`qualifyLead` custom action contract. The objects expose create, get, list, update, delete, and
+batch-get operations by default. `qualifyLead` declares only the custom, idempotent `qualify` verb;
+deal creation remains the standard create operation on deals. Company logos and contact photos use
+portable image references, while email, domain, URL, money, and date fields retain their semantic
+types. Record shapes are total and non-nullable by default: textual fields use their empty zero
+value, while images, references, money, and dates opt into nullability where absence is meaningful.
+Queries, policies, handlers, persistence, asset delivery, and generalized associations have not
+been defined yet.

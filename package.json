@@ -12,7 +12,9 @@
     "format:check": "oxfmt --check .",
     "lint": "oxlint . && turbo boundaries",
     "lint:fix": "oxlint --fix . && turbo boundaries",
-    "typecheck": "turbo typecheck"
+    "test": "turbo test",
+    "typecheck": "tsc --noEmit && turbo typecheck",
+    "ui:add": "pnpm --filter @acme/ui exec shadcn add"
   },
   "devDependencies": {
     "@oxlint/plugins": "1.78.0",

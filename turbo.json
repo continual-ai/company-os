@@ -1,5 +1,10 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalDependencies": [
+    "tsconfig.app.json",
+    "tsconfig.base.json",
+    "tsconfig.react.json"
+  ],
   "ui": "tui",
   "tasks": {
     "build": {

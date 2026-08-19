@@ -60,6 +60,7 @@
     "company-os/no-internal-reexports": "error",
     "company-os/package-boundaries": "error",
     "eqeqeq": "error",
+    "import/no-relative-parent-imports": "error",
     "jsx-a11y/label-has-associated-control": "error",
     "oxc/no-barrel-file": ["error", { "threshold": 0 }],
     "react/react-in-jsx-scope": "off",
