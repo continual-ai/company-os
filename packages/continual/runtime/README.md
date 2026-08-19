@@ -9,7 +9,7 @@ imports `@acme/*`.
 ```ts
 import {
   defineAction,
-  defineCompany,
+  defineApi,
   defineModule,
   defineObject,
   field,
@@ -38,19 +38,48 @@ Effect is an implementation projection rather than part of the public definition
 ```ts
 import { toEffectObjectSchema, toEffectSchema } from "@continual/runtime/effect"
 import {
-  compileCompanyHttpApi,
-  makeCompanyApiReference,
-  toOpenApiDocument,
+  createApiReference,
+  createHttpApi,
 } from "@continual/runtime/effect/http"
 ```
+
+The private server composition root uses Effect's own OpenAPI projection directly:
+
+```ts
+import { OpenApi } from "effect/unstable/httpapi"
+
+const httpApi = createHttpApi(AcmeApi)
+const openApiDocument = OpenApi.fromApi(httpApi)
+const apiReference = createApiReference(httpApi)
+```
+
+Browser and SSR consumers construct an inferred client directly from the semantic contract:
+
+```ts
+import { AcmeApi } from "@acme/api"
+import { createClient } from "@continual/runtime/client"
+
+const client = createClient(AcmeApi, {
+  baseUrl: "https://company.example/api/v1",
+})
+
+await client.companies.list({ pageSize: 25 })
+await client.leads.qualify(leadId)
+```
+
+`createClient` materializes an ordinary object rather than generating source or adding module
+namespaces. Collection identities group enabled standard operations and custom action verbs, so
+the compiler can infer the complete surface from `AcmeApi`. OpenAPI `operationId` values remain
+globally unique transport identifiers and do not dictate this client shape.
 
 ## Current state
 
 The package implements schemas, fields, objects, conventional operation metadata, custom actions,
-base records, categorized errors, modules, companies, a versioned description projection, and
-Effect v4 Schema and `HttpApi` compilation. The HTTP projection generates standard object routes,
+base records, categorized errors, modules, semantic APIs, a versioned description projection, and
+Effect v4 Schema and `HttpApi` construction. The HTTP projection derives standard object routes,
 AIP-style custom-action routes, an OpenAPI 3.1 document, and a Fetch-compatible Scalar reference
-handler. Endpoint execution, clients, asset upload/download, and MCP remain to be built.
+handler. The Fetch-based client derives resource-scoped methods directly from a live contract.
+Endpoint execution, runtime response decoding, asset upload/download, and MCP remain to be built.
 
 Objects enable `create`, `get`, `list`, `update`, `delete`, and `batchGet` by default. Standard
 operations are runtime-defined methods, not authored actions. Use an explicit opt-out when one

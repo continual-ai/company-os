@@ -1,15 +1,15 @@
 import { AcmeApi } from "@acme/api"
-import { describeCompany } from "@continual/runtime"
+import { createApiDescription } from "@continual/runtime"
 import {
-  compileCompanyHttpApi,
-  makeCompanyApiReference,
-  toOpenApiDocument,
+  createApiReference,
+  createHttpApi,
 } from "@continual/runtime/effect/http"
+import { OpenApi } from "effect/unstable/httpapi"
 
-export const apiDescription = describeCompany(AcmeApi)
-const companyHttpApi = compileCompanyHttpApi(AcmeApi)
-export const openApiDocument = toOpenApiDocument(companyHttpApi)
-export const apiReference = makeCompanyApiReference(companyHttpApi)
+export const apiDescription = createApiDescription(AcmeApi)
+const httpApi = createHttpApi(AcmeApi)
+export const openApiDocument = OpenApi.fromApi(httpApi)
+export const apiReference = createApiReference(httpApi)
 
 // Repositories, services, capability ports, provider adapters, and Effect
 // layers are assembled here. Transport routes remain thin projections over

@@ -28,13 +28,14 @@ Open <http://localhost:3002>. Useful endpoints:
 
 - `GET /health` — process health
 - `GET /api/description` — serializable description of `AcmeApi`
-- `GET /api/openapi` — generated OpenAPI 3.1 contract
+- `GET /api/openapi` — runtime-derived OpenAPI 3.1 contract
 - `GET /api/docs` — generated Scalar API reference
 
 ## Current state
 
 The Console is a static operating-model shell. The server exposes health, contract description,
-OpenAPI, and Scalar routes; the latter two are compiled from `AcmeApi` through Effect v4 `HttpApi`.
+OpenAPI, and Scalar routes; the latter two derive from the same Effect v4 `HttpApi` created from
+`AcmeApi`.
 They currently describe the intended contract rather than live CRUD/action handlers.
 Authentication, persistence, endpoint handlers, and Effect services are the next implementation
 work.

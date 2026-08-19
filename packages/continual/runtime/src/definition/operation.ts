@@ -19,6 +19,10 @@ export interface Page<TItem> {
   readonly nextPageToken: PageToken | ""
 }
 
+export interface Batch<TItem> {
+  readonly items: ReadonlyArray<TItem>
+}
+
 export interface MutationOptions {
   readonly idempotencyKey?: IdempotencyKey
 }

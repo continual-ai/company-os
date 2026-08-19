@@ -12,8 +12,9 @@ platform.
 
 > **Current state:** the package boundaries, three TanStack Start apps, portable CRM objects,
 > standard operations and record conventions, custom actions, semantic field types, serializable
-> API description, Effect Schema and Effect `HttpApi` projections, generated OpenAPI 3.1, and a
-> Scalar API browser work. Persistence, authorization, endpoint handlers, and typed clients do not
+> API description, Effect Schema and Effect `HttpApi` projections, runtime-derived OpenAPI 3.1, and a
+> Scalar API browser work. A browser-safe client is inferred directly from the same definition and
+> groups methods by object collection. Persistence, authorization, and endpoint handlers do not
 > exist yet.
 
 ## Mental model
@@ -34,6 +35,23 @@ The API contract is not a second backend. It is the browser-safe description of 
 eventually, its actions, queries, and policies. The Company OS app supplies the private
 implementation. HTTP, clients, OpenAPI, and MCP should be projections of that same contract, not
 parallel sources of business logic.
+
+Company OS is API-first, not OpenAPI-first. `AcmeApi` is the portable semantic source; OpenAPI is
+one generated protocol description of it.
+
+```ts
+import { AcmeApi } from "@acme/api"
+import { createClient } from "@continual/runtime/client"
+
+const client = createClient(AcmeApi, { baseUrl: "/api/v1" })
+
+await client.companies.list()
+await client.leads.qualify(leadId)
+```
+
+The inferred client is object-scoped but not module-scoped: `companies` is a globally unique
+collection, while `crm` remains source and navigation organization. No generated source artifact
+is required.
 
 ## Repository
 

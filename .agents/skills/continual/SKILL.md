@@ -49,6 +49,8 @@ Read both references when introducing a new platform dependency.
 - The company owns its source, data, operating model, apps, documents, skills, and integration
   logic.
 - Keep the standalone path useful unless a concrete requirement makes hosted operation mandatory.
+- A Project operates source, infrastructure, apps, and deployments around a source-owned semantic
+  API; it is not the API definition itself.
 - Do not let platform interfaces, agents, work queues, or caches become a second business authority.
 - Express a platform dependency through a narrow boundary only when that boundary is genuinely
   useful; do not manufacture pluggability.

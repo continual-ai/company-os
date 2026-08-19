@@ -43,14 +43,20 @@ For a new end-to-end business capability, read both references.
 ## Durable starting points
 
 - Keep source and business data customer-owned and locally operable.
-- Keep one company API contract behind public software, customer portals, internal operations, and
+- Keep one semantic API contract behind public software, customer portals, internal operations, and
   agents.
 - Put company-specific nouns and behavior in `@acme/api` or `apps/*`; keep
   `@continual/runtime` reusable.
-- Keep company API definitions portable and Effect-independent. Compile the same definitions to
-  Effect Schema, Effect `HttpApi`, and protocol documents at the private server/runtime boundary.
+- Keep semantic API definitions portable and Effect-independent. Create Effect Schema and Effect
+  `HttpApi` runtime values from the same definitions at the private server boundary; use Effect's
+  own protocol projections directly when they already express the required result.
+- Be API-first, not OpenAPI-first. `defineApi` creates the authoritative portable contract;
+  OpenAPI, HTTP, clients, MCP, forms, and other interfaces are projections of that value. A hosted
+  Continual Project may operate the API, but it is not the API definition.
 - Keep object and action identity globally flat. Modules are lightweight source, documentation, and
   default-UI groupings rather than client namespaces, permission boundaries, or service boundaries.
+  Typed clients group inferred methods once by globally unique object collection and are constructed
+  directly from the live semantic definition rather than requiring generated source.
 - Treat create, get, list, update, delete, and batch-get as conventional object operations. Reserve
   actions for custom business commands and give real domain failures stable codes plus semantic
   categories; do not redeclare standard transport failures per object.

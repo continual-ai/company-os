@@ -1,5 +1,5 @@
 import {
-  describeCompany,
+  createApiDescription,
   type ActionError,
   type ActionInput,
   type ActionOutput,
@@ -11,10 +11,13 @@ import { AcmeApi, QualifyLead } from "./index"
 
 describe("Acme CRM contract", () => {
   it("publishes a serializable closed-world description", () => {
-    const description = describeCompany(AcmeApi)
+    const description = createApiDescription(AcmeApi)
     const crm = description.modules.find((module) => module.id === "crm")
 
-    expect(description.version).toBe("0.6")
+    expect(description).toMatchObject({
+      api: { id: "acme", name: "Acme" },
+      version: "0.7",
+    })
     expect(crm?.objects.map((object) => object.id)).toEqual([
       "company",
       "contact",

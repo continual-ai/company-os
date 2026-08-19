@@ -1,4 +1,4 @@
-import { defineCompany } from "@continual/runtime"
+import { defineApi } from "@continual/runtime"
 
 import { CRM } from "./modules/crm/crm"
 
@@ -9,7 +9,7 @@ export { Deal } from "./modules/crm/deal"
 export { Lead } from "./modules/crm/lead"
 export { QualifyLead } from "./modules/crm/qualify-lead"
 
-export const AcmeApi = defineCompany({
+export const AcmeApi = defineApi({
   id: "acme",
   name: "Acme",
   modules: [CRM],

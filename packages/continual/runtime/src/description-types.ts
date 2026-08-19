@@ -1,14 +1,14 @@
 import type { DefinedAction } from "./definition/action"
 import type { FieldDefinition } from "./definition/field"
 
-export const COMPANY_DESCRIPTION_VERSION = "0.6" as const
+export const API_DESCRIPTION_VERSION = "0.7" as const
 
 /**
- * Serializable, public description derived from a company contract. Companies
+ * Serializable, public description derived from an API contract. Consumers
  * never maintain this projection by hand.
  */
-export interface CompanyDescription {
-  company: { id: string; name: string }
+export interface ApiDescription {
+  api: { id: string; name: string }
   modules: Array<{
     actions: Array<DefinedAction>
     id: string
@@ -36,5 +36,5 @@ export interface CompanyDescription {
       pluralName: string
     }>
   }>
-  version: typeof COMPANY_DESCRIPTION_VERSION
+  version: typeof API_DESCRIPTION_VERSION
 }

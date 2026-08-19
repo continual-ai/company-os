@@ -2,24 +2,24 @@ import { definitionId } from "./identity"
 import type { DefinedModule } from "./module"
 import { objectOperationNames } from "./object"
 
-export interface DefinedCompany<
+export interface DefinedApi<
   TId extends string = string,
   TModules extends ReadonlyArray<DefinedModule> = ReadonlyArray<DefinedModule>,
 > {
   id: TId
-  kind: "company"
+  kind: "api"
   modules: TModules
   name: string
 }
 
-export function defineCompany<
+export function defineApi<
   const TId extends string,
   const TModules extends ReadonlyArray<DefinedModule>,
 >(definition: {
   id: TId
   modules: TModules
   name: string
-}): DefinedCompany<TId, TModules> {
+}): DefinedApi<TId, TModules> {
   const moduleIds = definition.modules.map((module) => module.id)
   const duplicateModule = moduleIds.find(
     (id, index) => moduleIds.indexOf(id) !== index
@@ -69,7 +69,7 @@ export function defineCompany<
 
   if (unboundAction) {
     throw new Error(
-      `Action '${unboundAction.id}' targets object '${unboundAction.subjectId}', which is not registered in company '${definition.id}'.`
+      `Action '${unboundAction.id}' targets object '${unboundAction.subjectId}', which is not registered in API '${definition.id}'.`
     )
   }
 
@@ -82,7 +82,7 @@ export function defineCompany<
 
   if (duplicateMethod) {
     throw new Error(
-      `Action verb '${duplicateMethod}' is registered more than once in company '${definition.id}'.`
+      `Action verb '${duplicateMethod}' is registered more than once in API '${definition.id}'.`
     )
   }
 
@@ -97,7 +97,7 @@ export function defineCompany<
   }
 
   return {
-    kind: "company",
+    kind: "api",
     ...definition,
     id: definitionId(definition.id),
   }

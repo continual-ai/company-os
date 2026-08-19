@@ -39,14 +39,19 @@ or external effects justify a boundary.
 
 ## Source and API
 
-Keep the company API explicit and closed-world: only definitions composed by
+Keep the semantic API explicit and closed-world: only definitions composed by
 `packages/acme/api/src/index.ts` belong to it. Do not discover modules or capabilities from
-filenames. The API contract contains business semantics, not an inventory of repository apps.
+filenames. `defineApi` creates the authoritative portable contract. The API contains business
+semantics, not an inventory of repository apps, and OpenAPI is one protocol projection rather than
+its source.
 
-Object IDs, collection names, and object-scoped action verbs form one flat company-wide namespace.
+Object IDs, collection names, and object-scoped action verbs form one flat API-wide namespace.
 Modules organize source, documentation, and default Console navigation; they do not appear in client
 paths or prohibit cross-module references and actions. Validate global identity, action subjects,
-and method collisions when composing the company.
+and method collisions when composing the API. Typed clients use the globally unique collection
+as their one useful grouping boundary, such as `client.companies.list()` and
+`client.leads.qualify()`. Construct that ordinary client object directly from the closed semantic
+definition; no generated source artifact or module-level namespace is required.
 
 Create, get, list, update, delete, and batch-get are standard object operations rather than authored
 actions. Lists use bounded page sizes and opaque continuation tokens, returning an empty next-page
@@ -55,12 +60,13 @@ key convention. Custom object actions use
 their declared verb in client methods and project to an AIP-style route such as
 `POST /api/v1/leads/{leadId}:qualify`. The subject ID comes from the route; it is not repeated in the
 JSON payload. Keep these rules in the reusable HTTP projection rather than writing transport details
-into company definitions.
+into semantic definitions.
 
-The current Effect v4 projection lives at `@continual/runtime/effect/http`. It compiles the closed
-company definition to one `HttpApi`, derives OpenAPI 3.1 from that value, and provides the
-Fetch-compatible Scalar handler mounted by `apps/company-os`. The documented operations are a
-contract preview until the Company OS composition root supplies real handlers.
+The current Effect v4 projection lives at `@continual/runtime/effect/http`. It creates one `HttpApi`
+from the closed semantic API and provides the Fetch-compatible Scalar handler mounted by
+`apps/company-os`. The private composition root uses Effect's `OpenApi.fromApi` directly rather
+than wrapping it. The documented operations are a contract preview until the Company OS
+composition root supplies real handlers.
 
 Use explicit imports inside a package. Do not create internal barrel files, wildcard exports, or
 re-export chains. A package may keep one deliberate public facade at its top-level `src/index.ts`;
@@ -73,7 +79,7 @@ eventual protocol projections. The runtime contract stays compatible with ordina
 same backend can run locally or behind different hosts.
 
 Company source uses the portable schema and field vocabulary exported by `@continual/runtime`;
-it does not import Effect Schema. Server code compiles those definitions through
+it does not import Effect Schema. Server code projects those definitions through
 `@continual/runtime/effect`. This keeps Effect v4 available for validation and execution without
 making it the durable Company API format.
 

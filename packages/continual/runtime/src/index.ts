@@ -6,8 +6,8 @@ export type {
   ActionSubjectId,
   DefinedAction,
 } from "./definition/action"
-export { defineCompany } from "./definition/company"
-export type { DefinedCompany } from "./definition/company"
+export { defineApi } from "./definition/api"
+export type { DefinedApi } from "./definition/api"
 export { defineError, errorCategories } from "./definition/error"
 export type { ApiError, DefinedError, ErrorCategory } from "./definition/error"
 export { field } from "./definition/field"
@@ -46,6 +46,7 @@ export {
   MAX_PAGE_SIZE,
 } from "./definition/operation"
 export type {
+  Batch,
   IdempotencyKey,
   ListRequest,
   MutationOptions,
@@ -79,6 +80,6 @@ export {
   UnauthenticatedError,
   ValidationError,
 } from "./definition/standard-error"
-export { describeCompany } from "./description"
-export { COMPANY_DESCRIPTION_VERSION } from "./description-types"
-export type { CompanyDescription } from "./description-types"
+export { createApiDescription } from "./description"
+export { API_DESCRIPTION_VERSION } from "./description-types"
+export type { ApiDescription } from "./description-types"

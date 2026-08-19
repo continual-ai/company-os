@@ -10,7 +10,7 @@ import {
 } from "effect/unstable/httpapi"
 
 import type { DefinedAction } from "./definition/action"
-import type { DefinedCompany } from "./definition/company"
+import type { DefinedApi } from "./definition/api"
 import type { DefinedError, ErrorCategory } from "./definition/error"
 import type { DefinedObject, ObjectOperation } from "./definition/object"
 import {
@@ -33,12 +33,12 @@ import {
   toEffectSchema,
 } from "./effect-schema"
 
-export interface CompanyHttpApiOptions {
+export interface HttpApiOptions {
   readonly basePath?: `/${string}`
   readonly version?: string
 }
 
-export interface CompanyApiReference {
+export interface ApiReference {
   readonly dispose: () => Promise<void>
   readonly handler: (request: Request) => Promise<Response>
 }
@@ -48,7 +48,7 @@ type DynamicGroup = HttpApiGroup.HttpApiGroup<
   HttpApiEndpoint.Constraint,
   boolean
 >
-type DynamicApi = HttpApi.HttpApi<string, HttpApiGroup.Constraint>
+type DynamicHttpApi = HttpApi.HttpApi<string, HttpApiGroup.Constraint>
 
 const defaultBasePath = "/api/v1" as const
 
@@ -380,28 +380,28 @@ const restoreActionPaths: (typeof OpenApi.Transform)["Service"] = (
   }
 }
 
-/** Compiles portable company definitions into the Effect v4 HTTP contract. */
-export function compileCompanyHttpApi(
-  company: DefinedCompany,
-  options: CompanyHttpApiOptions = {}
-): DynamicApi {
+/** Compiles a portable semantic API into the Effect v4 HTTP contract. */
+export function createHttpApi(
+  definition: DefinedApi,
+  options: HttpApiOptions = {}
+): DynamicHttpApi {
   const basePath = options.basePath ?? defaultBasePath
-  const actions = company.modules.flatMap((module) => module.actions)
-  const initialApi = HttpApi.make(company.id).annotateMerge(
+  const actions = definition.modules.flatMap((module) => module.actions)
+  const initialApi = HttpApi.make(definition.id).annotateMerge(
     OpenApi.annotations({
-      description: `Generated HTTP API for ${company.name}.`,
-      title: `${company.name} API`,
+      description: `Generated HTTP API for ${definition.name}.`,
+      title: `${definition.name} API`,
       version: options.version ?? "1.0.0",
       servers: [{ url: "/" }],
       transform: restoreActionPaths,
     })
   )
   // SAFETY: Effect's group union is phantom state; widening it lets this
-  // data-driven compiler add the closed company's groups incrementally.
+  // data-driven compiler add the closed API's groups incrementally.
   // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion
-  let api = initialApi as unknown as DynamicApi
+  let httpApi = initialApi as unknown as DynamicHttpApi
 
-  for (const module of company.modules) {
+  for (const module of definition.modules) {
     for (const object of module.objects) {
       const initialGroup = HttpApiGroup.make(object.id).annotateMerge(
         OpenApi.annotations({
@@ -421,25 +421,20 @@ export function compileCompanyHttpApi(
         group = addActionEndpoint(group, object, action, basePath)
       }
 
-      api = api.add(group)
+      httpApi = httpApi.add(group)
     }
   }
 
-  return api
-}
-
-/** Generates an OpenAPI 3.1 document from a compiled Effect HTTP contract. */
-export function toOpenApiDocument(api: DynamicApi): OpenApi.OpenAPISpec {
-  return OpenApi.fromApi(api)
+  return httpApi
 }
 
 /** Builds the Fetch handler used to serve Effect's Scalar reference. */
-export function makeCompanyApiReference(
-  api: DynamicApi,
+export function createApiReference(
+  httpApi: DynamicHttpApi,
   path: `/${string}` = "/api/docs"
-): CompanyApiReference {
+): ApiReference {
   const reference = HttpRouter.toWebHandler(
-    HttpApiScalar.layerCdn(api, {
+    HttpApiScalar.layerCdn(httpApi, {
       path,
       version: "1.43.5",
       scalar: {

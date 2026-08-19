@@ -1,7 +1,7 @@
 import { describe, expect, expectTypeOf, it } from "vitest"
 
 import { defineAction } from "./action"
-import { defineCompany } from "./company"
+import { defineApi } from "./api"
 import { defineError } from "./error"
 import { field } from "./field"
 import { defineModule } from "./module"
@@ -38,7 +38,7 @@ function action(id: string, method: string, subject: DefinedObject = Contact) {
   })
 }
 
-describe("company-wide registration", () => {
+describe("API-wide registration", () => {
   it("rejects duplicate module identities", () => {
     const CRM = defineModule({
       id: "crm",
@@ -52,7 +52,7 @@ describe("company-wide registration", () => {
     })
 
     expect(() =>
-      defineCompany({
+      defineApi({
         id: "acme",
         name: "Acme",
         modules: [CRM, DuplicateCRM],
@@ -74,11 +74,11 @@ describe("company-wide registration", () => {
     })
 
     expect(() =>
-      defineCompany({ id: "acme", name: "Acme", modules: [CRM, Marketing] })
+      defineApi({ id: "acme", name: "Acme", modules: [CRM, Marketing] })
     ).not.toThrow()
   })
 
-  it("rejects action subjects that are absent from the company", () => {
+  it("rejects action subjects that are absent from the API", () => {
     const ExternalContact = defineObject({
       id: "externalContact",
       collection: "externalContacts",
@@ -95,8 +95,8 @@ describe("company-wide registration", () => {
     })
 
     expect(() =>
-      defineCompany({ id: "acme", name: "Acme", modules: [Marketing] })
-    ).toThrow(/not registered in company/)
+      defineApi({ id: "acme", name: "Acme", modules: [Marketing] })
+    ).toThrow(/not registered in API/)
   })
 
   it("rejects duplicate client methods across modules", () => {
@@ -114,7 +114,7 @@ describe("company-wide registration", () => {
     })
 
     expect(() =>
-      defineCompany({ id: "acme", name: "Acme", modules: [CRM, Marketing] })
+      defineApi({ id: "acme", name: "Acme", modules: [CRM, Marketing] })
     ).toThrow(/contact\.enroll/)
   })
 
@@ -127,7 +127,7 @@ describe("company-wide registration", () => {
     })
 
     expect(() =>
-      defineCompany({ id: "acme", name: "Acme", modules: [CRM] })
+      defineApi({ id: "acme", name: "Acme", modules: [CRM] })
     ).toThrow(/reserved object method 'create'/)
   })
 })

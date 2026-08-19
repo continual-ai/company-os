@@ -1,17 +1,14 @@
+import { OpenApi } from "effect/unstable/httpapi"
 import { afterAll, describe, expect, it } from "vitest"
 
 import { defineAction } from "./definition/action"
-import { defineCompany } from "./definition/company"
+import { defineApi } from "./definition/api"
 import { defineError } from "./definition/error"
 import { field } from "./definition/field"
 import { defineModule } from "./definition/module"
 import { defineObject } from "./definition/object"
 import { schema } from "./definition/schema"
-import {
-  compileCompanyHttpApi,
-  makeCompanyApiReference,
-  toOpenApiDocument,
-} from "./effect-http"
+import { createApiReference, createHttpApi } from "./effect-http"
 
 const Account = defineObject({
   id: "account",
@@ -53,7 +50,7 @@ const ArchiveAccount = defineAction({
   errors: [ArchiveFailed],
 })
 
-const Example = defineCompany({
+const Example = defineApi({
   id: "example",
   name: "Example",
   modules: [
@@ -66,9 +63,9 @@ const Example = defineCompany({
   ],
 })
 
-const api = compileCompanyHttpApi(Example)
-const document = toOpenApiDocument(api)
-const reference = makeCompanyApiReference(api)
+const httpApi = createHttpApi(Example)
+const document = OpenApi.fromApi(httpApi)
+const reference = createApiReference(httpApi)
 
 afterAll(() => reference.dispose())
 

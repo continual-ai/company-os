@@ -20,12 +20,13 @@ all supported agents share one copy.
 - `@acme/*` and `apps/*` are source-owned by the example company. Business nouns and behavior
   belong here.
 - `@continual/*` is reusable framework code. It must never import `@acme/*`.
-- `@acme/api` owns the browser-safe semantic company API contract. It may depend on
+- `@acme/api` owns Acme's browser-safe semantic API contract. It may depend on
   `@continual/runtime`, but not on Effect, UI, handlers, persistence, or provider code. Define
   portable Continual schemas here; compile them to Effect Schema only at the server boundary.
-- Keep object/action identity and client paths flat across the company. Modules may group source and
+- Keep object/action identity and client paths flat across the API. Modules may group source and
   default UI navigation, but they are not package, persistence, authorization, or deployment
-  boundaries.
+  boundaries. Typed clients group methods once by globally unique object collection, such as
+  `client.leads.qualify()`, without a module namespace or generated source artifact.
 - Objects expose conventional create, get, list, update, delete, and batch-get operations by
   default, with explicit opt-outs. Reserve actions for custom business commands; project
   object-scoped actions to AIP-style `POST /api/v1/{collection}/{recordId}:{verb}` routes.
@@ -49,7 +50,7 @@ all supported agents share one copy.
 - Use Effect v4 conventions for new runtime and backend code. Verify APIs against the installed v4
   version; do not copy Effect v3 patterns or introduce an abstraction only to imitate an Effect
   package name.
-- Keep Effect behind `@continual/runtime/effect` and private server modules. Company API
+- Keep Effect behind `@continual/runtime/effect` and private server modules. Semantic API
   definitions must remain serializable and useful to non-Effect clients and projections.
 - Use the source-owned shadcn components and Tailwind CSS v4 tokens in `@acme/ui`.
 - Use `pnpm` and Turborepo. Do not add another frontend framework or component library.

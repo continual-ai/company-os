@@ -8,6 +8,12 @@ and protocol surfaces without inventing another business model.
 
 ```ts
 import { AcmeApi } from "@acme/api"
+import { createClient } from "@continual/runtime/client"
+
+const client = createClient(AcmeApi)
+
+await client.companies.list()
+await client.leads.qualify(leadId)
 ```
 
 ## Belongs here
@@ -24,7 +30,8 @@ import { AcmeApi } from "@acme/api"
 
 The only runtime dependency is the portable root API of `@continual/runtime`. Acme definitions do
 not import Effect; private implementations and Effect projections are composed in the server
-boundary of `apps/company-os`.
+boundary of `apps/company-os`. Consumers can infer their collection-scoped client directly from
+`AcmeApi`; modules do not become client namespaces.
 
 ## Current state
 

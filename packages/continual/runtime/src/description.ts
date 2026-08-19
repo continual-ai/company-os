@@ -1,20 +1,20 @@
-import type { DefinedCompany } from "./definition/company"
+import type { DefinedApi } from "./definition/api"
 import {
-  COMPANY_DESCRIPTION_VERSION,
-  type CompanyDescription,
+  API_DESCRIPTION_VERSION,
+  type ApiDescription,
 } from "./description-types"
 
-/** Derives transport- and UI-safe metadata from the live company contract. */
-export function describeCompany(company: DefinedCompany): CompanyDescription {
+/** Derives transport- and UI-safe metadata from the live semantic API. */
+export function createApiDescription(api: DefinedApi): ApiDescription {
   return {
-    version: COMPANY_DESCRIPTION_VERSION,
-    company: { id: company.id, name: company.name },
-    modules: company.modules.map((module) => ({
+    version: API_DESCRIPTION_VERSION,
+    api: { id: api.id, name: api.name },
+    modules: api.modules.map((module) => ({
       id: module.id,
       name: module.name,
       actions: module.actions.map((action) => ({ ...action })),
       objects: module.objects.map((object) => {
-        const description: CompanyDescription["modules"][number]["objects"][number] =
+        const description: ApiDescription["modules"][number]["objects"][number] =
           {
             id: object.id,
             collection: object.collection,

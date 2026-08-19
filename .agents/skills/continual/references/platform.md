@@ -32,8 +32,9 @@ customer backend.
 
 - **Workspace:** the tenant for people, access, and commercial administration.
 - **Project:** the platform namespace connecting one customer backend to its source, database,
-  apps, connections, delivery state, and work history. Do not confuse it with a company-defined
-  business object also named Project.
+  semantic API, apps, connections, delivery state, and work history. A Project operates and deploys
+  that API but is not its definition. Do not confuse it with a company-defined business object also
+  named Project.
 - **Connection:** an installed, authorized relationship with an external system, including its
   configuration and lifecycle.
 - **Thread or conversation:** interaction and execution context for people and agents, not a store

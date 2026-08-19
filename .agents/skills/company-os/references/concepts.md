@@ -29,7 +29,7 @@ should be introduced through real vertical slices rather than speculative framew
 
 | Concept                    | Meaning                                                                                                     | Status                     |
 | -------------------------- | ----------------------------------------------------------------------------------------------------------- | -------------------------- |
-| Company API                | The explicit closed-world contract of business modules and capabilities                                    | Current, objects/actions   |
+| Semantic API               | The explicit closed-world contract of business modules and capabilities                                    | Current, objects/actions   |
 | Module                     | A lightweight source and default-UI grouping for a cohesive business capability                             | Current, objects/actions   |
 | Object                     | A durable business type such as Company or Contact                                                          | Current                    |
 | Record                     | One stored instance with runtime-owned identity, audit fields, annotations, and concurrency token            | Current, base shape        |
@@ -84,7 +84,7 @@ and validation shapes; they are not redefined for each object. Validation detail
 field violations from global violations so interfaces do not parse prose. Declared company errors
 are reserved for meaningful domain failures and use a stable company-facing code, a human-facing
 message, typed details, and a standard semantic category. Protocol projections map categories to
-their own status representation; company definitions do not contain HTTP status codes.
+their own status representation; semantic API definitions do not contain HTTP status codes.
 
 ## Data-model vision
 
