@@ -1,37 +1,12 @@
 import { OpenApi } from "effect/unstable/httpapi"
 import { afterAll, describe, expect, it } from "vitest"
 
-import { defineAction } from "./definition/action"
-import { defineApi } from "./definition/api"
 import { defineError } from "./definition/error"
-import { field } from "./definition/field"
-import { defineModule } from "./definition/module"
+import { defineModel } from "./definition/model"
 import { defineObject } from "./definition/object"
+import { Root } from "./definition/root"
 import { schema } from "./definition/schema"
 import { createApiReference, createHttpApi } from "./effect-http"
-
-const Account = defineObject({
-  id: "account",
-  collection: "accounts",
-  name: "Account",
-  pluralName: "Accounts",
-  fields: {
-    email: field.email(),
-    externalId: field.text({ immutable: true, required: true }),
-    logo: field.image({ nullable: true }),
-    name: field.text({ required: true }),
-    searchLabel: field.text({ outputOnly: true }),
-    status: field.select({
-      defaultValue: "active",
-      options: [
-        { value: "active", label: "Active" },
-        { value: "inactive", label: "Inactive" },
-      ],
-    }),
-  },
-  display: { title: "name" },
-  operations: { delete: false },
-})
 
 const ArchiveFailed = defineError({
   code: "archiveFailed",
@@ -40,27 +15,46 @@ const ArchiveFailed = defineError({
   details: schema.object({ reason: schema.string() }),
 })
 
-const ArchiveAccount = defineAction({
-  id: "archiveAccount",
-  verb: "archive",
-  name: "Archive account",
-  subject: Account,
-  input: schema.object({ note: schema.optional(schema.string()) }),
-  output: schema.object({ accountId: schema.recordId(Account) }),
-  errors: [ArchiveFailed],
+const Account = defineObject({
+  id: "account",
+  collection: "accounts",
+  name: "Account",
+  parent: Root,
+  pluralName: "Accounts",
+  properties: {
+    email: schema.email(),
+    externalId: schema.string({ immutable: true, required: true }),
+    logo: schema.image({ nullable: true }),
+    name: schema.string({ required: true }),
+    searchLabel: schema.string({ outputOnly: true }),
+    status: schema.select({
+      defaultValue: "active",
+      options: [
+        { value: "active", label: "Active" },
+        { value: "inactive", label: "Inactive" },
+      ],
+    }),
+  },
+  display: { title: "name" },
+  actions: {
+    delete: false,
+    archive: {
+      scope: "object",
+      name: "Archive account",
+      description: "Archives an account.",
+      input: { note: schema.optional(schema.string()) },
+      output: { archived: schema.boolean() },
+      errors: [ArchiveFailed],
+      http: { path: "/accounts/{id}:archive" },
+    },
+  },
 })
 
-const Example = defineApi({
+const Example = defineModel({
   id: "example",
   name: "Example",
-  modules: [
-    defineModule({
-      id: "crm",
-      name: "CRM",
-      objects: [Account],
-      actions: [ArchiveAccount],
-    }),
-  ],
+  objects: [Account],
+  links: [],
 })
 
 const httpApi = createHttpApi(Example)
@@ -70,7 +64,7 @@ const reference = createApiReference(httpApi)
 afterAll(() => reference.dispose())
 
 describe("Effect HTTP projection", () => {
-  it("derives conventional object operations and honors opt-outs", () => {
+  it("projects object reads and actions while honoring action opt-outs", () => {
     expect(document.openapi).toBe("3.1.0")
     expect(document.info).toMatchObject({
       title: "Example API",
@@ -83,13 +77,11 @@ describe("Effect HTTP projection", () => {
     expect(document.paths["/api/v1/accounts:batchGet"]).toMatchObject({
       post: { operationId: "batchGetAccounts" },
     })
-    expect(document.paths["/api/v1/accounts/{accountId}"]).toMatchObject({
+    expect(document.paths["/api/v1/accounts/{id}"]).toMatchObject({
       get: { operationId: "getAccount" },
       patch: { operationId: "updateAccount" },
     })
-    expect(
-      document.paths["/api/v1/accounts/{accountId}"]?.delete
-    ).toBeUndefined()
+    expect(document.paths["/api/v1/accounts/{id}"]?.delete).toBeUndefined()
     expect(document.paths["/api/v1/accounts"]?.post?.parameters).toContainEqual(
       expect.objectContaining({ in: "header", name: "idempotency-key" })
     )
@@ -139,6 +131,7 @@ describe("Effect HTTP projection", () => {
     expect(createSchema).toHaveProperty("properties.email")
     expect(createSchema).toHaveProperty("properties.logo")
     expect(createSchema).toHaveProperty("properties.externalId")
+    expect(createSchema).not.toHaveProperty("properties.parentId")
     expect(createSchema).not.toHaveProperty("properties.searchLabel")
     expect(JSON.stringify(createSchema)).not.toContain('"writeOnly":true')
     expect(updateSchema).toHaveProperty("properties.email")
@@ -148,8 +141,8 @@ describe("Effect HTTP projection", () => {
     expect(updateSchema).not.toHaveProperty("properties.searchLabel")
   })
 
-  it("projects custom actions to AIP-style paths and declared errors", () => {
-    const action = document.paths["/api/v1/accounts/{accountId}:archive"]?.post
+  it("projects business actions to AIP-style paths and declared errors", () => {
+    const action = document.paths["/api/v1/accounts/{id}:archive"]?.post
 
     expect(action).toMatchObject({
       operationId: "archiveAccount",
@@ -164,7 +157,7 @@ describe("Effect HTTP projection", () => {
       },
     })
     expect(action?.parameters).toContainEqual(
-      expect.objectContaining({ in: "path", name: "accountId", required: true })
+      expect.objectContaining({ in: "path", name: "id", required: true })
     )
   })
 

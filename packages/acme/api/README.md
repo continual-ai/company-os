@@ -1,46 +1,32 @@
 # @acme/api
 
-Acme's source-owned, browser-safe semantic API contract.
+Acme's source-owned, browser-safe business contract.
 
-This package names the business concepts shared by the Console, customer software, integrations,
-and agents. Define a concept once here so the runtime can derive consistent descriptions, clients,
-and protocol surfaces without inventing another business model.
+This package gives Acme's interfaces a shared description of business concepts and capabilities.
+It is contract source, not a backend implementation and not an inventory of repository apps.
 
 ```ts
-import { AcmeApi } from "@acme/api"
-import { createClient } from "@continual/runtime/client"
-
-const client = createClient(AcmeApi)
-
-await client.companies.list()
-await client.leads.qualify(leadId)
+import { AcmeModel } from "@acme/api"
 ```
+
+The example model composes Company, Contact, Lead, and Deal objects; explicit Contact–Company and
+Deal–Company links; conventional object reads and CRUD actions; and the Lead object’s `qualify`
+action. Object definitions live under `src/objects`, relationship definitions under `src/links`,
+and `AcmeModel` indexes them publicly as objects, links, and actions. Every object declares its
+canonical parent type independently of its business links; the initial CRM objects live directly
+under the built-in Root.
 
 ## Belongs here
 
-- Objects and their typed fields, relationships, and display metadata
-- Explicit actions, queries, results, errors, and policies as real slices introduce them
-- The closed-world `AcmeApi` composition
+- Company-specific objects, properties, links, and public action contracts
+- The deliberate composition of the contract Acme exposes
+- Metadata that multiple consumers genuinely need to interpret the same business meaning
 
 ## Does not belong here
 
 - Handlers, repositories, database clients, secrets, or provider SDKs
-- TanStack routes, React components, or app inventory
-- Transport-specific business logic
+- React components, TanStack routes, or application inventory
+- Effect-specific or transport-specific behavior that would make the contract unusable by ordinary
+  browser consumers
 
-The only runtime dependency is the portable root API of `@continual/runtime`. Acme definitions do
-not import Effect; private implementations and Effect projections are composed in the server
-boundary of `apps/company-os`. Consumers can infer their collection-scoped client directly from
-`AcmeApi`; modules do not become client namespaces.
-
-## Current state
-
-`AcmeApi` contains a CRM module with Company, Contact, Lead, and Deal objects plus a typed
-`qualifyLead` custom action contract. The objects expose create, get, list, update, delete, and
-batch-get operations by default. `qualifyLead` declares only the custom, idempotent `qualify` verb;
-deal creation remains the standard create operation on deals. Company logos and contact photos use
-portable image references, while email, domain, URL, money, and date fields retain their semantic
-types. Record shapes are total and non-nullable by default: textual fields use their empty zero
-value, while images, references, money, and dates opt into nullability where absence is meaningful.
-Queries, policies, handlers, persistence, asset delivery, and generalized associations have not
-been defined yet.
+Use public, portable `@continual/runtime` definitions where they help.

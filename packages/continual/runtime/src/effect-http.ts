@@ -9,15 +9,18 @@ import {
   OpenApi,
 } from "effect/unstable/httpapi"
 
-import type { DefinedAction } from "./definition/action"
-import type { DefinedApi } from "./definition/api"
-import type { DefinedError, ErrorCategory } from "./definition/error"
-import type { DefinedObject, ObjectOperation } from "./definition/object"
+import type { Action } from "./definition/action"
+import type { ErrorCategory, ErrorType } from "./definition/error"
+import { type ModelCatalog, modelObjects } from "./definition/model"
+import type { ObjectType } from "./definition/object"
 import {
   DEFAULT_PAGE_SIZE,
+  IdempotencyKey,
   MAX_BATCH_GET_SIZE,
   MAX_PAGE_SIZE,
-} from "./definition/operation"
+  PageToken,
+} from "./definition/request"
+import { RecordId, schema } from "./definition/schema"
 import {
   ConflictError,
   NotFoundError,
@@ -79,7 +82,7 @@ function pascalCase(value: string): string {
     .replace(/[^a-zA-Z0-9]/g, "")
 }
 
-function endpointId(operation: ObjectOperation, object: DefinedObject): string {
+function endpointId(operation: string, object: ObjectType): string {
   const target =
     operation === "list" || operation === "batchGet"
       ? object.pluralName
@@ -87,12 +90,14 @@ function endpointId(operation: ObjectOperation, object: DefinedObject): string {
   return `${operation}${pascalCase(target)}`
 }
 
-function pathParameter(object: DefinedObject) {
-  const name = `${object.id}Id`
+function pathParameter(object: ObjectType) {
+  const name = "id"
   return {
     name,
     schema: Schema.Struct({
-      [name]: Schema.String.check(Schema.isNonEmpty()).annotate({
+      [name]: Schema.String.pipe(
+        Schema.fromBrand(`RecordId:${object.id}`, RecordId(object.id))
+      ).annotate({
         title: `${object.name} ID`,
       }),
     }),
@@ -101,17 +106,23 @@ function pathParameter(object: DefinedObject) {
 
 const mutationHeaders = {
   "idempotency-key": Schema.optionalKey(
-    Schema.String.check(Schema.isNonEmpty(), Schema.isMaxLength(200)).annotate({
-      description:
-        "A caller-generated key used to make retries of this mutation safe.",
-      title: "Idempotency key",
-    })
+    Schema.String.check(Schema.isMaxLength(200))
+      .pipe(Schema.fromBrand("IdempotencyKey", IdempotencyKey))
+      .annotate({
+        description:
+          "A caller-generated key used to make retries of this mutation safe.",
+        title: "Idempotency key",
+      })
   ),
 }
 
-const compiledErrorSchemas = new WeakMap<DefinedError, Schema.Top>()
+const pageTokenSchema = Schema.String.pipe(
+  Schema.fromBrand("PageToken", PageToken)
+)
 
-function errorSchemas(errors: ReadonlyArray<DefinedError>) {
+const compiledErrorSchemas = new WeakMap<ErrorType, Schema.Top>()
+
+function errorSchemas(errors: ReadonlyArray<ErrorType>) {
   return errors.map((error) => {
     const cached = compiledErrorSchemas.get(error)
     if (cached !== undefined) return cached
@@ -135,9 +146,9 @@ function endpointAnnotations(options: {
   return OpenApi.annotations(options)
 }
 
-function addStandardEndpoints(
+function addDefaultEndpoints(
   group: DynamicGroup,
-  object: DefinedObject,
+  object: ObjectType,
   basePath: `/${string}`
 ): DynamicGroup {
   const collectionPath = `${basePath}/${object.collection}` as const
@@ -152,89 +163,87 @@ function addStandardEndpoints(
   const recordWriteErrors = errorSchemas([...mutationErrors, NotFoundError])
   let result = group
 
-  if (object.operations.list) {
-    const listResponse = Schema.Struct({
-      items: Schema.Array(record),
-      nextPageToken: Schema.String.annotate({
+  const listResponse = Schema.Struct({
+    items: Schema.Array(record),
+    nextPageToken: Schema.Union([
+      Schema.Literal(""),
+      pageTokenSchema.annotate({
         description:
           "Opaque continuation token; empty when there is no next page.",
       }),
-    }).annotate({
-      identifier: `${pascalCase(object.id)}List`,
-      title: object.pluralName,
+    ]),
+  }).annotate({
+    identifier: `${pascalCase(object.id)}List`,
+    title: object.pluralName,
+  })
+  const listEndpoint = HttpApiEndpoint.get(
+    endpointId("list", object),
+    collectionPath,
+    {
+      query: {
+        pageSize: Schema.optionalKey(
+          Schema.Number.check(
+            Schema.isInt(),
+            Schema.isGreaterThanOrEqualTo(1),
+            Schema.isLessThanOrEqualTo(MAX_PAGE_SIZE)
+          ).annotate({
+            default: DEFAULT_PAGE_SIZE,
+            description: `Maximum number of records to return. Defaults to ${DEFAULT_PAGE_SIZE}; capped at ${MAX_PAGE_SIZE}.`,
+          })
+        ),
+        pageToken: Schema.optionalKey(
+          pageTokenSchema.annotate({
+            description:
+              "Opaque token returned by the previous page. Other request arguments must remain unchanged.",
+          })
+        ),
+      },
+      success: listResponse,
+      error: readErrors,
+    }
+  ).annotateMerge(
+    endpointAnnotations({
+      identifier: endpointId("list", object),
+      summary: `List ${object.pluralName.toLowerCase()}`,
     })
-    const endpoint = HttpApiEndpoint.get(
-      endpointId("list", object),
-      collectionPath,
-      {
-        query: {
-          pageSize: Schema.optionalKey(
-            Schema.Number.check(
-              Schema.isInt(),
-              Schema.isGreaterThanOrEqualTo(1),
-              Schema.isLessThanOrEqualTo(MAX_PAGE_SIZE)
-            ).annotate({
-              default: DEFAULT_PAGE_SIZE,
-              description: `Maximum number of records to return. Defaults to ${DEFAULT_PAGE_SIZE}; capped at ${MAX_PAGE_SIZE}.`,
-            })
-          ),
-          pageToken: Schema.optionalKey(
-            Schema.String.annotate({
-              description:
-                "Opaque token returned by the previous page. Other request arguments must remain unchanged.",
-            })
-          ),
-        },
-        success: listResponse,
-        error: readErrors,
-      }
-    ).annotateMerge(
-      endpointAnnotations({
-        identifier: endpointId("list", object),
-        summary: `List ${object.pluralName.toLowerCase()}`,
-      })
-    )
-    result = result.add(endpoint)
-  }
+  )
+  result = result.add(listEndpoint)
 
-  if (object.operations.batchGet) {
-    const batchResponse = Schema.Struct({
-      items: Schema.Array(record),
-    }).annotate({
-      identifier: `${pascalCase(object.id)}Batch`,
-      title: `${object.pluralName} batch`,
+  const batchResponse = Schema.Struct({
+    items: Schema.Array(record),
+  }).annotate({
+    identifier: `${pascalCase(object.id)}Batch`,
+    title: `${object.pluralName} batch`,
+  })
+  const batchEndpoint = HttpApiEndpoint.post(
+    endpointId("batchGet", object),
+    `${collectionPath}::batchGet`,
+    {
+      payload: Schema.Struct({
+        ids: Schema.Array(
+          Schema.String.pipe(
+            Schema.fromBrand(`RecordId:${object.id}`, RecordId(object.id))
+          ).annotate({
+            title: `${object.name} ID`,
+          })
+        ).check(Schema.isMinLength(1), Schema.isMaxLength(MAX_BATCH_GET_SIZE)),
+      }).annotate({
+        identifier: `${pascalCase(object.id)}BatchGetInput`,
+        title: `Batch get ${object.pluralName.toLowerCase()}`,
+      }),
+      success: batchResponse,
+      error: notFoundErrors,
+    }
+  ).annotateMerge(
+    endpointAnnotations({
+      description: `Returns records in the same order as the requested IDs. The request fails if any ID cannot be resolved.`,
+      identifier: endpointId("batchGet", object),
+      summary: `Batch get ${object.pluralName.toLowerCase()}`,
     })
-    const endpoint = HttpApiEndpoint.post(
-      endpointId("batchGet", object),
-      `${collectionPath}::batchGet`,
-      {
-        payload: Schema.Struct({
-          ids: Schema.Array(
-            Schema.String.check(Schema.isNonEmpty()).annotate({
-              title: `${object.name} ID`,
-            })
-          ).check(
-            Schema.isMinLength(1),
-            Schema.isMaxLength(MAX_BATCH_GET_SIZE)
-          ),
-        }).annotate({
-          identifier: `${pascalCase(object.id)}BatchGetInput`,
-          title: `Batch get ${object.pluralName.toLowerCase()}`,
-        }),
-        success: batchResponse,
-        error: notFoundErrors,
-      }
-    ).annotateMerge(
-      endpointAnnotations({
-        description: `Returns records in the same order as the requested IDs. The request fails if any ID cannot be resolved.`,
-        identifier: endpointId("batchGet", object),
-        summary: `Batch get ${object.pluralName.toLowerCase()}`,
-      })
-    )
-    result = result.add(endpoint)
-  }
+  )
+  result = result.add(batchEndpoint)
 
-  if (object.operations.create) {
+  if (object.defaultActions.create) {
     const createdRecord = record
       .pipe(HttpApiSchema.status(201))
       .annotate({ identifier: `Created${pascalCase(object.id)}` })
@@ -256,25 +265,23 @@ function addStandardEndpoints(
     result = result.add(endpoint)
   }
 
-  if (object.operations.get) {
-    const endpoint = HttpApiEndpoint.get(
-      endpointId("get", object),
-      recordPath,
-      {
-        params: parameter.schema,
-        success: record,
-        error: notFoundErrors,
-      }
-    ).annotateMerge(
-      endpointAnnotations({
-        identifier: endpointId("get", object),
-        summary: `Get ${object.name.toLowerCase()}`,
-      })
-    )
-    result = result.add(endpoint)
-  }
+  const getEndpoint = HttpApiEndpoint.get(
+    endpointId("get", object),
+    recordPath,
+    {
+      params: parameter.schema,
+      success: record,
+      error: notFoundErrors,
+    }
+  ).annotateMerge(
+    endpointAnnotations({
+      identifier: endpointId("get", object),
+      summary: `Get ${object.name.toLowerCase()}`,
+    })
+  )
+  result = result.add(getEndpoint)
 
-  if (object.operations.update) {
+  if (object.defaultActions.update) {
     const endpoint = HttpApiEndpoint.patch(
       endpointId("update", object),
       recordPath,
@@ -294,7 +301,7 @@ function addStandardEndpoints(
     result = result.add(endpoint)
   }
 
-  if (object.operations.delete) {
+  if (object.defaultActions.delete) {
     const endpoint = HttpApiEndpoint.delete(
       endpointId("delete", object),
       recordPath,
@@ -318,45 +325,69 @@ function addStandardEndpoints(
 
 function addActionEndpoint(
   group: DynamicGroup,
-  object: DefinedObject,
-  action: DefinedAction,
+  object: ObjectType,
+  action: Action,
   basePath: `/${string}`
 ): DynamicGroup {
-  const parameter = pathParameter(object)
-  // Effect's router uses `::` to escape a literal colon. The API-level
-  // OpenAPI transform below restores the AIP spelling in the document.
-  const path =
-    `${basePath}/${object.collection}/:${parameter.name}::${action.verb}` as const
+  const identifier = endpointId(action.id, object)
+  const placeholders = [...action.http.path.matchAll(/\{([^}/]+)\}/g)].map(
+    (match) => match[1] ?? ""
+  )
+  const pathProperties = Object.fromEntries(
+    placeholders.map((name) => [name, action.input.properties[name]!])
+  )
+  const bodyProperties = Object.fromEntries(
+    Object.entries(action.input.properties).filter(
+      ([name]) => !placeholders.includes(name)
+    )
+  )
+  const hasBody = Object.keys(bodyProperties).length > 0
+  // Effect uses :name for parameters and :: for a literal colon.
+  const route = action.http.path
+    .replaceAll(":", "::")
+    .replace(/\{([^}/]+)\}/g, ":$1")
+  // SAFETY: basePath and authored action paths both begin with a slash.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  const path = `${basePath}${route}` as `/${string}`
   const error = errorSchemas([
     ...mutationErrors,
-    NotFoundError,
+    ...(action.scope === "object" ? [NotFoundError] : []),
     ...action.errors,
   ])
+  const payload = toEffectSchema(schema.object(bodyProperties)).annotate({
+    identifier: `${pascalCase(identifier)}Input`,
+    title: `${action.name} input`,
+  })
+  const params = toEffectSchema(schema.object(pathProperties))
+  const transport =
+    placeholders.length === 0
+      ? hasBody
+        ? { payload }
+        : undefined
+      : hasBody
+        ? { params, payload }
+        : { params }
   const options = {
     headers: mutationHeaders,
-    params: parameter.schema,
-    payload: toEffectSchema(action.input).annotate({
-      identifier: `${pascalCase(action.id)}Input`,
-      title: `${action.name} input`,
-    }),
     success: toEffectSchema(action.output).annotate({
-      identifier: `${pascalCase(action.id)}Output`,
+      identifier: `${pascalCase(identifier)}Output`,
       title: `${action.name} output`,
     }),
   }
-  const endpoint = HttpApiEndpoint.post(action.id, path, {
-    ...options,
-    error,
-  }).annotateMerge(
-    endpointAnnotations(
-      action.description === undefined
-        ? { identifier: action.id, summary: action.name }
-        : {
-            description: action.description,
-            identifier: action.id,
-            summary: action.name,
-          }
-    )
+  const endpointOptions =
+    transport === undefined
+      ? { ...options, error }
+      : { ...options, ...transport, error }
+  const endpoint = HttpApiEndpoint.post(
+    identifier,
+    path,
+    endpointOptions
+  ).annotateMerge(
+    endpointAnnotations({
+      description: action.description,
+      identifier,
+      summary: action.name,
+    })
   )
 
   return group.add(endpoint)
@@ -380,17 +411,16 @@ const restoreActionPaths: (typeof OpenApi.Transform)["Service"] = (
   }
 }
 
-/** Compiles a portable semantic API into the Effect v4 HTTP contract. */
+/** Compiles a portable company model into the Effect v4 HTTP contract. */
 export function createHttpApi(
-  definition: DefinedApi,
+  model: ModelCatalog,
   options: HttpApiOptions = {}
 ): DynamicHttpApi {
   const basePath = options.basePath ?? defaultBasePath
-  const actions = definition.modules.flatMap((module) => module.actions)
-  const initialApi = HttpApi.make(definition.id).annotateMerge(
+  const initialApi = HttpApi.make(model.id).annotateMerge(
     OpenApi.annotations({
-      description: `Generated HTTP API for ${definition.name}.`,
-      title: `${definition.name} API`,
+      description: `Generated HTTP API for ${model.name}.`,
+      title: `${model.name} API`,
       version: options.version ?? "1.0.0",
       servers: [{ url: "/" }],
       transform: restoreActionPaths,
@@ -401,28 +431,24 @@ export function createHttpApi(
   // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion
   let httpApi = initialApi as unknown as DynamicHttpApi
 
-  for (const module of definition.modules) {
-    for (const object of module.objects) {
-      const initialGroup = HttpApiGroup.make(object.id).annotateMerge(
-        OpenApi.annotations({
-          description: object.description,
-          title: object.pluralName,
-        })
-      )
-      // SAFETY: Effect's endpoint union is phantom state; the runtime group
-      // value is unchanged while declared endpoints are added below.
-      // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion
-      let group = initialGroup as unknown as DynamicGroup
-      group = addStandardEndpoints(group, object, basePath)
+  for (const object of modelObjects(model)) {
+    const initialGroup = HttpApiGroup.make(object.id).annotateMerge(
+      OpenApi.annotations({
+        description: object.description,
+        title: object.pluralName,
+      })
+    )
+    // SAFETY: Effect's endpoint union is phantom state; the runtime group
+    // value is unchanged while declared endpoints are added below.
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion
+    let group = initialGroup as unknown as DynamicGroup
+    group = addDefaultEndpoints(group, object, basePath)
 
-      for (const action of actions.filter(
-        (candidate) => candidate.subjectId === object.id
-      )) {
-        group = addActionEndpoint(group, object, action, basePath)
-      }
-
-      httpApi = httpApi.add(group)
+    for (const action of Object.values(object.actions)) {
+      group = addActionEndpoint(group, object, action, basePath)
     }
+
+    httpApi = httpApi.add(group)
   }
 
   return httpApi
@@ -431,7 +457,8 @@ export function createHttpApi(
 /** Builds the Fetch handler used to serve Effect's Scalar reference. */
 export function createApiReference(
   httpApi: DynamicHttpApi,
-  path: `/${string}` = "/api/docs"
+  path: `/${string}` = "/api/docs",
+  scalar: HttpApiScalar.ScalarConfig = {}
 ): ApiReference {
   const reference = HttpRouter.toWebHandler(
     HttpApiScalar.layerCdn(httpApi, {
@@ -442,6 +469,7 @@ export function createApiReference(
         hideTestRequestButton: true,
         showOperationId: true,
         showSidebar: true,
+        ...scalar,
       },
     }),
     { disableLogger: true }

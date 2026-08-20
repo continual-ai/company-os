@@ -1,14 +1,15 @@
 import { Schema } from "effect"
 import { describe, expect, expectTypeOf, it } from "vitest"
 
-import { field } from "./definition/field"
 import {
   defineObject,
   type ObjectCreateInput,
   type ObjectRecord,
   type ObjectUpdateInput,
 } from "./definition/object"
+import { Root } from "./definition/root"
 import {
+  RecordId,
   schema,
   type EmailAddress,
   type InferSchema,
@@ -20,18 +21,21 @@ import {
   toEffectSchema,
 } from "./effect-schema"
 
+const AccountId = RecordId("account")
+
 const Account = defineObject({
   id: "account",
   collection: "accounts",
   name: "Account",
+  parent: Root,
   pluralName: "Accounts",
-  fields: {
-    logo: field.image({ aspectRatio: 1, nullable: true }),
-    externalId: field.text({ immutable: true, required: true }),
-    name: field.text({ required: true, minLength: 1 }),
-    email: field.email(),
-    searchLabel: field.text({ outputOnly: true }),
-    status: field.select({
+  properties: {
+    logo: schema.image({ aspectRatio: 1, nullable: true }),
+    externalId: schema.string({ immutable: true, required: true }),
+    name: schema.string({ required: true, minLength: 1 }),
+    email: schema.email(),
+    searchLabel: schema.string({ outputOnly: true }),
+    status: schema.select({
       defaultValue: "active",
       options: [
         { value: "active", label: "Active" },
@@ -51,6 +55,7 @@ describe("Effect Schema projection", () => {
       createdAt: "2026-08-18T12:00:00Z",
       createdById: "user_1",
       etag: "v1",
+      parentId: "root_1",
       updatedAt: "2026-08-18T13:00:00.123Z",
       updatedById: "user_1",
     }
@@ -121,7 +126,7 @@ describe("Effect Schema projection", () => {
     ).toThrow()
   })
 
-  it("derives create and update inputs from object fields", () => {
+  it("derives create and update inputs from object properties", () => {
     type AccountRecord = ObjectRecord<typeof Account>
     type Create = ObjectCreateInput<typeof Account>
     type Update = ObjectUpdateInput<typeof Account>
@@ -152,6 +157,8 @@ describe("Effect Schema projection", () => {
     expectTypeOf<Create["annotations"]>().toEqualTypeOf<
       Readonly<Record<string, string>> | undefined
     >()
+    expectTypeOf<Create["parentId"]>().toEqualTypeOf<undefined>()
+    expectTypeOf<AccountRecord["parentId"]>().toEqualTypeOf<RecordId<"root">>()
     expectTypeOf<Update["email"]>().toEqualTypeOf<
       EmailAddress | "" | undefined
     >()
@@ -185,7 +192,10 @@ describe("Effect Schema projection", () => {
         name: "Acme",
         searchLabel: "not accepted",
       })
-    ).toEqual({ externalId: "external_1", name: "Acme" })
+    ).toEqual({
+      externalId: "external_1",
+      name: "Acme",
+    })
     expect(decodeUpdate({ name: "Renamed" })).toEqual({ name: "Renamed" })
     expect(decodeUpdate({ email: "" })).toEqual({ email: "" })
     expect(() => decodeUpdate({ email: null })).toThrow()
@@ -194,6 +204,30 @@ describe("Effect Schema projection", () => {
       externalId: "external_1",
     })
     expect(decodeUpdate({})).toEqual({})
+
+    const Membership = defineObject({
+      id: "membership",
+      collection: "memberships",
+      name: "Membership",
+      parent: Account,
+      pluralName: "Memberships",
+      properties: { role: schema.string({ required: true }) },
+      display: { title: "role" },
+    })
+    type MembershipCreate = ObjectCreateInput<typeof Membership>
+    const membership = {
+      parentId: AccountId("account_1"),
+      role: "owner",
+    } satisfies MembershipCreate
+    expectTypeOf(membership.parentId).toEqualTypeOf<RecordId<"account">>()
+    const decodeMembership = Schema.decodeUnknownSync(
+      toEffectObjectCreateSchema(Membership)
+    )
+    expect(decodeMembership(membership)).toEqual({
+      parentId: "account_1",
+      role: "owner",
+    })
+    expect(() => decodeMembership({ role: "owner" })).toThrow()
   })
 
   it("preserves action input inference while keeping Effect out of definitions", () => {
@@ -204,7 +238,7 @@ describe("Effect Schema projection", () => {
     type Input = InferSchema<typeof input>
 
     expectTypeOf<Input>().toEqualTypeOf<{
-      readonly accountId: string & { readonly _ObjectId: "account" }
+      readonly accountId: RecordId<"account">
       readonly notify?: boolean
     }>()
 

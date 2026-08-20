@@ -1,28 +1,32 @@
-import { defineObject, field } from "@continual/runtime"
+import { Root, defineObject, schema } from "@continual/runtime"
+
+import { Company } from "./company"
+import { Contact } from "./contact"
 
 export const Lead = defineObject({
   id: "lead",
   collection: "leads",
   name: "Lead",
+  parent: Root,
   pluralName: "Leads",
   description:
     "An unqualified person or organization that may become a customer.",
-  fields: {
-    name: field.text({
+  properties: {
+    name: schema.string({
       label: "Name",
       required: true,
       minLength: 1,
       maxLength: 200,
     }),
-    companyName: field.text({
+    companyName: schema.string({
       label: "Company",
       required: true,
       minLength: 1,
       maxLength: 200,
     }),
-    email: field.email({ label: "Email", maxLength: 320 }),
-    phone: field.phone({ label: "Phone", maxLength: 50 }),
-    source: field.select({
+    email: schema.email({ label: "Email", maxLength: 320 }),
+    phone: schema.phone({ label: "Phone", maxLength: 50 }),
+    source: schema.select({
       label: "Source",
       defaultValue: "unknown",
       options: [
@@ -33,7 +37,7 @@ export const Lead = defineObject({
         { value: "other", label: "Other" },
       ],
     }),
-    status: field.select({
+    status: schema.select({
       label: "Status",
       defaultValue: "new",
       options: [
@@ -48,5 +52,21 @@ export const Lead = defineObject({
     title: "name",
     subtitle: "companyName",
     status: "status",
+  },
+  actions: {
+    qualify: {
+      scope: "object",
+      name: "Qualify lead",
+      description:
+        "Idempotently qualifies a lead and creates its company and contact records. Repeating the action returns the existing result.",
+      output: {
+        companyId: schema.recordId(Company),
+        contactId: schema.recordId(Contact),
+      },
+      idempotent: true,
+      http: {
+        path: "/leads/{id}:qualify",
+      },
+    },
   },
 })

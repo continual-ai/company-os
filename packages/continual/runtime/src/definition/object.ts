@@ -1,74 +1,89 @@
-import type {
-  FieldDefinition,
-  Fields,
-  InferField,
-  InferFields,
-  OutputFieldKeys,
-} from "./field"
+import { Brand } from "effect"
+
+import {
+  type ActionDefinitions,
+  type Action,
+  type ActionSettings,
+  type BoundActions,
+  type NormalizedActionSettings,
+  bindActions,
+} from "./action"
 import { definitionId } from "./identity"
-import type { EnumSchema, ImageSchema, RecordId, Timestamp } from "./schema"
+import {
+  type InferProperties,
+  type InferProperty,
+  type NormalizeProperties,
+  type Properties,
+  normalizeProperties,
+} from "./property"
+import { Root, type RootType } from "./root"
+import type {
+  AnySchema,
+  EnumSchema,
+  ImageSchema,
+  RecordId,
+  Timestamp,
+} from "./schema"
 
-export const objectOperationNames = [
-  "batchGet",
-  "create",
-  "get",
-  "list",
-  "update",
-  "delete",
-] as const
-
-export type ObjectOperation = (typeof objectOperationNames)[number]
-export type ObjectOperations = Readonly<Record<ObjectOperation, boolean>>
-export type ObjectOperationOptions = Partial<ObjectOperations>
-
-interface NormalizedObjectOperations<
-  TOperations extends ObjectOperationOptions,
-> {
-  readonly batchGet: TOperations["batchGet"] extends false ? false : true
-  readonly create: TOperations["create"] extends false ? false : true
-  readonly delete: TOperations["delete"] extends false ? false : true
-  readonly get: TOperations["get"] extends false ? false : true
-  readonly list: TOperations["list"] extends false ? false : true
-  readonly update: TOperations["update"] extends false ? false : true
+export interface ObjectParent<TObjectId extends string = string> {
+  readonly kind: "object" | "root"
+  readonly objectId: TObjectId
 }
 
-export interface BaseRecord<TObjectId extends string = string> {
+export interface BaseRecord<
+  TObjectId extends string = string,
+  TParentObjectId extends string = string,
+> {
   readonly annotations: Readonly<Record<string, string>>
   readonly createdAt: Timestamp
   readonly createdById: ActorId
   readonly etag: Etag
   readonly id: RecordId<TObjectId>
+  readonly parentId: RecordId<TParentObjectId>
   readonly updatedAt: Timestamp
   readonly updatedById: ActorId
 }
 
-export type ActorId = string & { readonly _ActorId: true }
-export type Etag = string & { readonly _Etag: true }
+export type ActorId = string & Brand.Brand<"ActorId">
+export const ActorId = Brand.make<ActorId>(
+  (value) => value.length > 0 || "Expected a non-empty actor ID"
+)
 
-export interface ObjectDisplay<TFields extends Fields> {
+export type Etag = string & Brand.Brand<"Etag">
+export const Etag = Brand.make<Etag>(
+  (value) => value.length > 0 || "Expected a non-empty etag"
+)
+
+export interface ObjectDisplay<TProperties extends Properties> {
   image?: {
-    [
-      TKey in OutputFieldKeys<TFields>
-    ]: TFields[TKey] extends FieldDefinition<ImageSchema> ? TKey : never
-  }[OutputFieldKeys<TFields>] &
+    [TKey in keyof TProperties]: TProperties[TKey] extends ImageSchema
+      ? TKey
+      : never
+  }[keyof TProperties] &
     string
   status?: {
-    [
-      TKey in OutputFieldKeys<TFields>
-    ]: TFields[TKey] extends FieldDefinition<EnumSchema> ? TKey : never
-  }[OutputFieldKeys<TFields>] &
+    [TKey in keyof TProperties]: TProperties[TKey] extends EnumSchema
+      ? TKey
+      : never
+  }[keyof TProperties] &
     string
-  subtitle?: OutputFieldKeys<TFields> & string
-  title: OutputFieldKeys<TFields> & string
+  subtitle?: keyof TProperties & string
+  title: keyof TProperties & string
 }
 
-export interface DefinedObject<
+export interface ObjectType<
   TId extends string = string,
   TCollection extends string = string,
-  TFields extends Fields = Fields,
-  TOperations extends ObjectOperations = ObjectOperations,
+  TProperties extends Properties = Properties,
+  TActions extends Readonly<Record<string, Action>> = Readonly<
+    Record<string, Action>
+  >,
+  TActionSettings extends ActionSettings = ActionSettings,
+  TParentObjectId extends string = string,
 > {
+  actions: TActions
   collection: TCollection
+  defaultActions: TActionSettings
   description?: string
   display: {
     image?: string
@@ -76,165 +91,180 @@ export interface DefinedObject<
     subtitle?: string
     title: string
   }
-  fields: TFields
   id: TId
   kind: "object"
   name: string
-  operations: TOperations
+  parent: ObjectParent<TParentObjectId>
   pluralName: string
+  properties: TProperties
 }
 
-export type ObjectRecord<TObject extends DefinedObject> = BaseRecord<
-  TObject["id"]
+export type ObjectRecord<TObject extends ObjectType> = BaseRecord<
+  TObject["id"],
+  TObject["parent"]["objectId"]
 > &
-  InferFields<TObject["fields"]>
+  InferProperties<TObject["properties"]>
 
-type FieldRequired<TField extends FieldDefinition> = TField["required"]
+type PropertyValue<TProperty extends Properties[string]> =
+  InferProperty<TProperty>
 
-type FieldValue<TField extends FieldDefinition> =
-  TField["nullable"] extends true
-    ? InferField<TField> | null
-    : InferField<TField>
-
-type CreateFieldKeys<TFields extends Fields> = {
-  [TKey in keyof TFields]: TFields[TKey]["outputOnly"] extends true
+type CreatePropertyKeys<TProperties extends Properties> = {
+  [TKey in keyof TProperties]: TProperties[TKey]["outputOnly"] extends true
     ? never
     : TKey
-}[keyof TFields]
+}[keyof TProperties]
 
-type RequiredCreateFieldKeys<TFields extends Fields> = {
-  [TKey in CreateFieldKeys<TFields>]: FieldRequired<TFields[TKey]> extends true
-    ? TKey
-    : never
-}[CreateFieldKeys<TFields>]
+type RequiredCreatePropertyKeys<TProperties extends Properties> = {
+  [
+    TKey in CreatePropertyKeys<TProperties>
+  ]: TProperties[TKey]["required"] extends true ? TKey : never
+}[CreatePropertyKeys<TProperties>]
 
-type OptionalCreateFieldKeys<TFields extends Fields> = Exclude<
-  CreateFieldKeys<TFields>,
-  RequiredCreateFieldKeys<TFields>
+type OptionalCreatePropertyKeys<TProperties extends Properties> = Exclude<
+  CreatePropertyKeys<TProperties>,
+  RequiredCreatePropertyKeys<TProperties>
 >
 
-type UpdateFieldKeys<TFields extends Fields> = {
-  [TKey in keyof TFields]: TFields[TKey]["outputOnly"] extends true
+type UpdatePropertyKeys<TProperties extends Properties> = {
+  [TKey in keyof TProperties]: TProperties[TKey]["outputOnly"] extends true
     ? never
     : TKey
-}[keyof TFields]
+}[keyof TProperties]
 
 type Simplify<TValue> = { [TKey in keyof TValue]: TValue[TKey] } & {}
 
-interface BaseWriteFields {
+interface BaseWriteProperties {
   readonly annotations?: Readonly<Record<string, string>>
 }
 
-export type ObjectCreateInput<TObject extends DefinedObject> = Simplify<
-  BaseWriteFields & {
-    readonly [TKey in RequiredCreateFieldKeys<TObject["fields"]>]: FieldValue<
-      TObject["fields"][TKey]
-    >
-  } & {
-    readonly [TKey in OptionalCreateFieldKeys<TObject["fields"]>]?: FieldValue<
-      TObject["fields"][TKey]
-    >
+type CreateParent<TObject extends ObjectType> =
+  TObject["parent"]["objectId"] extends RootType["id"]
+    ? { readonly parentId?: never }
+    : Pick<ObjectRecord<TObject>, "parentId">
+
+export type ObjectCreateInput<TObject extends ObjectType> = Simplify<
+  BaseWriteProperties &
+    CreateParent<TObject> & {
+      readonly [
+        TKey in RequiredCreatePropertyKeys<TObject["properties"]>
+      ]: PropertyValue<TObject["properties"][TKey]>
+    } & {
+      readonly [
+        TKey in OptionalCreatePropertyKeys<TObject["properties"]>
+      ]?: PropertyValue<TObject["properties"][TKey]>
+    }
+>
+
+export type ObjectUpdateInput<TObject extends ObjectType> = Simplify<
+  BaseWriteProperties & {
+    readonly [
+      TKey in UpdatePropertyKeys<TObject["properties"]>
+    ]?: PropertyValue<TObject["properties"][TKey]>
   }
 >
 
-export type ObjectUpdateInput<TObject extends DefinedObject> = Simplify<
-  BaseWriteFields & {
-    readonly [TKey in UpdateFieldKeys<TObject["fields"]>]?: FieldValue<
-      TObject["fields"][TKey]
-    >
-  }
+export type ObjectGetInput<TObject extends ObjectType> = {
+  readonly id: RecordId<TObject["id"]>
+}
+
+export type ObjectDeleteInput<TObject extends ObjectType> =
+  ObjectGetInput<TObject>
+
+export type ObjectUpdateRequest<TObject extends ObjectType> = Simplify<
+  ObjectGetInput<TObject> & ObjectUpdateInput<TObject>
 >
 
-const reservedFieldIds = new Set([
+const reservedPropertyIds = new Set([
   "annotations",
   "createdAt",
   "createdById",
   "etag",
   "id",
+  "parentId",
   "updatedAt",
   "updatedById",
 ])
 
-function operationEnabled<
-  const TOperations extends ObjectOperationOptions,
-  const TOperation extends ObjectOperation,
->(
-  operations: TOperations | undefined,
-  operation: TOperation
-): NormalizedObjectOperations<TOperations>[TOperation]
-function operationEnabled(
-  operations: ObjectOperationOptions | undefined,
-  operation: ObjectOperation
-): boolean {
-  return operations?.[operation] !== false
-}
-
-function normalizeOperations<const TOperations extends ObjectOperationOptions>(
-  operations: TOperations | undefined
-): NormalizedObjectOperations<TOperations> {
-  return {
-    batchGet: operationEnabled(operations, "batchGet"),
-    create: operationEnabled(operations, "create"),
-    get: operationEnabled(operations, "get"),
-    list: operationEnabled(operations, "list"),
-    update: operationEnabled(operations, "update"),
-    delete: operationEnabled(operations, "delete"),
-  }
-}
+type ParentDefinition = RootType | ObjectType
 
 export function defineObject<
   const TId extends string,
   const TCollection extends string,
-  const TFields extends Fields,
-  const TOperations extends ObjectOperationOptions = {},
+  const TProperties extends Readonly<Record<string, AnySchema>>,
+  const TActionDefinitions extends ActionDefinitions = {},
+  const TParent extends ParentDefinition = ParentDefinition,
 >(definition: {
+  actions?: TActionDefinitions
   collection: TCollection
   description?: string
-  display: ObjectDisplay<TFields>
-  fields: TFields
+  display: ObjectDisplay<NormalizeProperties<TProperties>>
   id: TId
   name: string
-  operations?: TOperations
+  parent: TParent
   pluralName: string
-}): DefinedObject<
+  properties: TProperties
+}): ObjectType<
   TId,
   TCollection,
-  TFields,
-  NormalizedObjectOperations<TOperations>
+  NormalizeProperties<TProperties>,
+  BoundActions<TId, TActionDefinitions>,
+  NormalizedActionSettings<TActionDefinitions>,
+  TParent["id"]
 > {
-  for (const fieldId of Object.keys(definition.fields)) {
-    definitionId(fieldId)
-    if (reservedFieldIds.has(fieldId)) {
+  if (definition.id === Root.id) {
+    throw new Error(`Object id '${Root.id}' is reserved for the built-in Root.`)
+  }
+  for (const propertyId of Object.keys(definition.properties)) {
+    definitionId(propertyId)
+    if (reservedPropertyIds.has(propertyId)) {
       throw new Error(
-        `Object '${definition.id}' cannot redefine base record field '${fieldId}'.`
+        `Object '${definition.id}' cannot redefine base property '${propertyId}'.`
       )
     }
   }
 
-  for (const [role, fieldId] of Object.entries(definition.display)) {
-    const displayField = definition.fields[fieldId]
-    if (displayField === undefined) {
+  const properties = normalizeProperties(definition.properties)
+  for (const [role, propertyId] of Object.entries(definition.display)) {
+    const property = properties[propertyId]
+    if (property === undefined) {
       throw new Error(
-        `Object '${definition.id}' display ${role} references unknown field '${fieldId}'.`
+        `Object '${definition.id}' display ${role} references unknown property '${propertyId}'.`
       )
     }
-    if (role === "image" && displayField.kind !== "image") {
+    if (role === "image" && property.kind !== "image") {
       throw new Error(
-        `Object '${definition.id}' display image must reference an image field.`
+        `Object '${definition.id}' display image must reference an image property.`
       )
     }
-    if (role === "status" && displayField.kind !== "select") {
+    if (role === "status" && property.kind !== "enum") {
       throw new Error(
-        `Object '${definition.id}' display status must reference a select field.`
+        `Object '${definition.id}' display status must reference an enum property.`
       )
     }
   }
 
-  return {
-    kind: "object",
-    ...definition,
-    collection: definitionId(definition.collection),
+  const identity = {
     id: definitionId(definition.id),
-    operations: normalizeOperations(definition.operations),
+    collection: definitionId(definition.collection),
   }
+  const bound = bindActions(identity, definition.actions)
+  const object = {
+    kind: "object" as const,
+    id: identity.id,
+    collection: identity.collection,
+    name: definition.name,
+    parent: {
+      kind: definition.parent.kind,
+      objectId: definition.parent.id,
+    },
+    pluralName: definition.pluralName,
+    display: definition.display,
+    properties,
+    actions: bound.actions,
+    defaultActions: bound.defaults,
+  }
+  if (definition.description !== undefined) {
+    return { ...object, description: definition.description }
+  }
+  return object
 }

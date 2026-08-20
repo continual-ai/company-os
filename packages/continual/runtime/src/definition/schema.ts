@@ -1,27 +1,102 @@
+import { Brand } from "effect"
+
 import { definitionId } from "./identity"
-import type { DefinedObject } from "./object"
 
 export type LiteralValue = boolean | null | number | string
 
-export type CalendarDate = string & { readonly _CalendarDate: true }
-export type CurrencyCode = string & { readonly _CurrencyCode: true }
-export type Decimal = string & { readonly _Decimal: true }
-export type DomainName = string & { readonly _DomainName: true }
-export type EmailAddress = string & { readonly _EmailAddress: true }
-export type PhoneNumber = string & { readonly _PhoneNumber: true }
-export type Timestamp = string & { readonly _Timestamp: true }
-export type WebUrl = string & { readonly _WebUrl: true }
+const datePattern = /^\d{4}-\d{2}-\d{2}$/
+const domainPattern = /^(?!-)(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$/
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const phonePattern = /^\+?[0-9().\-\s]{7,}$/
+const timestampPattern =
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/
+const urlPattern = /^https?:\/\/[^\s]+$/
+const currencyPattern = /^[A-Z]{3}$/
+const decimalPattern = /^-?(?:0|[1-9]\d*)(?:\.\d+)?$/
 
-/** A portable value contract. Runtime integrations compile this to their native schema type. */
-export interface SchemaDefinition<T = unknown> {
-  readonly _Type?: T
-  readonly kind: string
+export type CalendarDate = string & Brand.Brand<"CalendarDate">
+export const CalendarDate = Brand.make<CalendarDate>(
+  (value) =>
+    datePattern.test(value) || `Expected '${value}' to be an ISO calendar date`
+)
+
+export type CurrencyCode = string & Brand.Brand<"CurrencyCode">
+export const CurrencyCode = Brand.make<CurrencyCode>(
+  (value) =>
+    currencyPattern.test(value) ||
+    `Expected '${value}' to be an ISO 4217 currency code`
+)
+
+export type Decimal = string & Brand.Brand<"Decimal">
+export const Decimal = Brand.make<Decimal>(
+  (value) =>
+    decimalPattern.test(value) || `Expected '${value}' to be a decimal amount`
+)
+
+export type DomainName = string & Brand.Brand<"DomainName">
+export const DomainName = Brand.make<DomainName>(
+  (value) =>
+    domainPattern.test(value) || `Expected '${value}' to be a domain name`
+)
+
+export type EmailAddress = string & Brand.Brand<"EmailAddress">
+export const EmailAddress = Brand.make<EmailAddress>(
+  (value) =>
+    emailPattern.test(value) || `Expected '${value}' to be an email address`
+)
+
+export type PhoneNumber = string & Brand.Brand<"PhoneNumber">
+export const PhoneNumber = Brand.make<PhoneNumber>(
+  (value) =>
+    phonePattern.test(value) || `Expected '${value}' to be a phone number`
+)
+
+export type Timestamp = string & Brand.Brand<"Timestamp">
+export const Timestamp = Brand.make<Timestamp>(
+  (value) =>
+    timestampPattern.test(value) ||
+    `Expected '${value}' to be an RFC 3339 timestamp`
+)
+
+export type WebUrl = string & Brand.Brand<"WebUrl">
+export const WebUrl = Brand.make<WebUrl>(
+  (value) =>
+    urlPattern.test(value) || `Expected '${value}' to be an HTTP or HTTPS URL`
+)
+
+/** Metadata shared by object properties, action inputs, forms, and protocols. */
+export interface SchemaAnnotations<TValue = unknown> {
+  defaultValue?: TValue
+  description?: string
+  immutable?: boolean
+  label?: string
+  nullable?: boolean
+  outputOnly?: boolean
+  required?: boolean
 }
 
-export type InferSchema<TSchema extends AnySchema> = Exclude<
+/** A portable value contract. Runtime integrations compile it to native schemas. */
+export interface SchemaDefinition<T = unknown> {
+  readonly _Type?: T
+  defaultValue?: T
+  description?: string
+  immutable?: boolean
+  kind: string
+  label?: string
+  nullable?: boolean
+  outputOnly?: boolean
+  required?: boolean
+}
+
+type SchemaValue<TSchema extends SchemaDefinition> = Exclude<
   TSchema["_Type"],
   undefined
 >
+
+export type InferSchema<TSchema extends AnySchema> =
+  TSchema["nullable"] extends true
+    ? SchemaValue<TSchema> | null
+    : SchemaValue<TSchema>
 
 interface ArraySchema<
   TItem extends AnySchema = AnySchema,
@@ -38,8 +113,10 @@ export interface FileRef {
   assetId: string
 }
 
-export interface FileSchema extends SchemaDefinition<FileRef> {
+interface FileSchema extends SchemaDefinition<FileRef> {
+  accept?: ReadonlyArray<string>
   kind: "file"
+  maxBytes?: number
 }
 
 export interface ImageRef extends FileRef {
@@ -47,7 +124,10 @@ export interface ImageRef extends FileRef {
 }
 
 export interface ImageSchema extends SchemaDefinition<ImageRef> {
+  accept?: ReadonlyArray<string>
+  aspectRatio?: number
   kind: "image"
+  maxBytes?: number
 }
 
 interface LiteralSchema<
@@ -66,10 +146,16 @@ interface MoneySchema extends SchemaDefinition<Money> {
   kind: "money"
 }
 
+export interface Choice<TValue extends string = string> {
+  label: string
+  value: TValue
+}
+
 export interface EnumSchema<
   TValue extends string = string,
 > extends SchemaDefinition<TValue> {
   kind: "enum"
+  options?: ReadonlyArray<Choice<TValue>>
   values: ReadonlyArray<TValue>
 }
 
@@ -87,11 +173,18 @@ interface OptionalSchema<
   value: TValue
 }
 
-export type RecordId<TObjectId extends string = string> = string & {
-  readonly _ObjectId: TObjectId
+export type RecordId<TObjectId extends string = string> = string &
+  Brand.Brand<`RecordId:${TObjectId}`>
+
+export function RecordId<const TObjectId extends string>(
+  objectId: TObjectId
+): Brand.Constructor<RecordId<TObjectId>> {
+  return Brand.make<RecordId<TObjectId>>(
+    (value) => value.length > 0 || `Expected a non-empty ${objectId} record ID`
+  )
 }
 
-export interface RecordIdSchema<
+interface RecordIdSchema<
   TObjectId extends string = string,
 > extends SchemaDefinition<RecordId<TObjectId>> {
   kind: "recordId"
@@ -107,13 +200,51 @@ export interface StringSchema<
   minLength?: number
 }
 
-type SchemaFields = Readonly<Record<string, AnySchema>>
+export type SchemaProperties = Readonly<Record<string, AnySchema>>
 
 interface MapSchema<
   TValue extends AnySchema = AnySchema,
 > extends SchemaDefinition<Readonly<Record<string, InferSchema<TValue>>>> {
   kind: "map"
   values: TValue
+}
+
+type OptionalKeys<TProperties extends SchemaProperties> = {
+  [TKey in keyof TProperties]: TProperties[TKey] extends OptionalSchema
+    ? TKey
+    : never
+}[keyof TProperties]
+
+type RequiredKeys<TProperties extends SchemaProperties> = Exclude<
+  keyof TProperties,
+  OptionalKeys<TProperties>
+>
+
+type Simplify<TValue> = { [TKey in keyof TValue]: TValue[TKey] } & {}
+
+type InferStruct<TProperties extends SchemaProperties> = Simplify<
+  {
+    readonly [TKey in RequiredKeys<TProperties>]: InferSchema<TProperties[TKey]>
+  } & {
+    readonly [TKey in OptionalKeys<TProperties>]?: Exclude<
+      InferSchema<TProperties[TKey]>,
+      undefined
+    >
+  }
+>
+
+export interface StructSchema<
+  TProperties extends SchemaProperties = SchemaProperties,
+> extends SchemaDefinition<InferStruct<TProperties>> {
+  kind: "struct"
+  properties: TProperties
+}
+
+interface UnionSchema<
+  TMembers extends ReadonlyArray<AnySchema> = ReadonlyArray<AnySchema>,
+> extends SchemaDefinition<InferSchema<TMembers[number]>> {
+  kind: "union"
+  members: TMembers
 }
 
 export type AnySchema =
@@ -132,51 +263,32 @@ export type AnySchema =
   | StructSchema
   | UnionSchema
 
-type OptionalKeys<TFields extends SchemaFields> = {
-  [TKey in keyof TFields]: TFields[TKey] extends OptionalSchema ? TKey : never
-}[keyof TFields]
-
-type RequiredKeys<TFields extends SchemaFields> = Exclude<
-  keyof TFields,
-  OptionalKeys<TFields>
->
-
-type Simplify<TValue> = { [TKey in keyof TValue]: TValue[TKey] } & {}
-
-type InferStruct<TFields extends SchemaFields> = Simplify<
-  {
-    readonly [TKey in RequiredKeys<TFields>]: InferSchema<TFields[TKey]>
-  } & {
-    readonly [TKey in OptionalKeys<TFields>]?: Exclude<
-      InferSchema<TFields[TKey]>,
-      undefined
-    >
-  }
->
-
-interface StructSchema<
-  TFields extends SchemaFields = SchemaFields,
-> extends SchemaDefinition<InferStruct<TFields>> {
-  fields: TFields
-  kind: "struct"
-}
-
-interface UnionSchema<
-  TMembers extends ReadonlyArray<AnySchema> = ReadonlyArray<AnySchema>,
-> extends SchemaDefinition<InferSchema<TMembers[number]>> {
-  kind: "union"
-  members: TMembers
-}
-
-interface StringSchemaOptions {
+export interface StringSchemaOptions extends SchemaAnnotations<string> {
   maxLength?: number
   minLength?: number
 }
 
-interface NumberSchemaOptions {
+type SemanticStringOptions<TValue extends string> = Omit<
+  StringSchemaOptions,
+  "defaultValue"
+> &
+  SchemaAnnotations<TValue>
+
+export interface NumberSchemaOptions extends SchemaAnnotations<number> {
   integer?: boolean
   maximum?: number
   minimum?: number
+}
+
+interface FileSchemaOptions extends SchemaAnnotations<FileRef> {
+  accept?: ReadonlyArray<string>
+  maxBytes?: number
+}
+
+interface ImageSchemaOptions extends SchemaAnnotations<ImageRef> {
+  accept?: ReadonlyArray<string>
+  aspectRatio?: number
+  maxBytes?: number
 }
 
 function assertRange(
@@ -189,12 +301,27 @@ function assertRange(
   }
 }
 
-function array<TItem extends AnySchema>(items: TItem): ArraySchema<TItem> {
-  return { kind: "array", items }
+function configured<TOptions extends object>(
+  options: TOptions | undefined
+): TOptions {
+  if (options !== undefined) return options
+  // SAFETY: callers constrain TOptions to option bags whose properties are all optional.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  return {} as TOptions
 }
 
-function boolean(): BooleanSchema {
-  return { kind: "boolean" }
+function array<
+  TItem extends AnySchema,
+  const TOptions extends SchemaAnnotations<ReadonlyArray<InferSchema<TItem>>> =
+    {},
+>(items: TItem, options?: TOptions): ArraySchema<TItem> & TOptions {
+  return { kind: "array", items, ...configured(options) }
+}
+
+function boolean<const TOptions extends SchemaAnnotations<boolean> = {}>(
+  options?: TOptions
+): BooleanSchema & TOptions {
+  return { kind: "boolean", ...configured(options) }
 }
 
 function literal<const TValue extends LiteralValue>(
@@ -203,56 +330,107 @@ function literal<const TValue extends LiteralValue>(
   return { kind: "literal", value }
 }
 
-function file(): FileSchema {
-  return { kind: "file" }
-}
-
-function image(): ImageSchema {
-  return { kind: "image" }
-}
-
-function enumeration<TValue extends string>(
-  values: ReadonlyArray<TValue>
-): EnumSchema<TValue> {
-  if (values.length === 0) {
-    throw new Error("Enums require at least one value.")
+function file<const TOptions extends FileSchemaOptions = {}>(
+  options?: TOptions
+): FileSchema & TOptions {
+  if (options?.maxBytes !== undefined && options.maxBytes <= 0) {
+    throw new Error("A file maximum size must be greater than zero.")
   }
+  return { kind: "file", ...configured(options) }
+}
 
+function image<const TOptions extends ImageSchemaOptions = {}>(
+  options?: TOptions
+): ImageSchema & TOptions {
+  if (options?.aspectRatio !== undefined && options.aspectRatio <= 0) {
+    throw new Error("An image aspect ratio must be greater than zero.")
+  }
+  if (options?.maxBytes !== undefined && options.maxBytes <= 0) {
+    throw new Error("An image maximum size must be greater than zero.")
+  }
+  return { kind: "image", ...configured(options) }
+}
+
+function enumeration<
+  const TValue extends string,
+  const TOptions extends SchemaAnnotations<TValue> = {},
+>(
+  values: ReadonlyArray<TValue>,
+  options?: TOptions
+): EnumSchema<TValue> & TOptions {
+  if (values.length === 0) throw new Error("Enums require at least one value.")
   const duplicate = values.find(
     (value, index) => values.indexOf(value) !== index
   )
   if (duplicate) {
     throw new Error(`Enum value '${duplicate}' is registered more than once.`)
   }
-
-  return { kind: "enum", values }
-}
-
-function money(): MoneySchema {
-  return { kind: "money" }
-}
-
-function map<TValue extends AnySchema>(values: TValue): MapSchema<TValue> {
-  return { kind: "map", values }
-}
-
-function number(options: NumberSchemaOptions = {}): NumberSchema {
-  assertRange("Number", options.minimum, options.maximum)
-  const definition: NumberSchema = { kind: "number" }
-  if (options.integer !== undefined) definition.integer = options.integer
-  if (options.maximum !== undefined) definition.maximum = options.maximum
-  if (options.minimum !== undefined) definition.minimum = options.minimum
-  return definition
-}
-
-function object<const TFields extends SchemaFields>(
-  fields: TFields
-): StructSchema<TFields> {
-  for (const fieldId of Object.keys(fields)) {
-    definitionId(fieldId)
+  if (
+    options?.defaultValue !== undefined &&
+    !values.includes(options.defaultValue)
+  ) {
+    throw new Error("An enum default must match one of its values.")
   }
+  return { kind: "enum", values, ...configured(options) }
+}
 
-  return { kind: "struct", fields }
+interface SelectOptions<
+  TChoices extends ReadonlyArray<Choice>,
+> extends SchemaAnnotations<TChoices[number]["value"]> {
+  options: TChoices
+}
+
+function select<const TChoices extends ReadonlyArray<Choice>>(
+  options: SelectOptions<TChoices>
+): EnumSchema<TChoices[number]["value"]> & SelectOptions<TChoices> {
+  const values = options.options.map((option) => option.value)
+  const definition = enumeration(values, options)
+  return { ...definition, options: options.options }
+}
+
+function money<const TOptions extends SchemaAnnotations<Money> = {}>(
+  options?: TOptions
+): MoneySchema & TOptions {
+  return { kind: "money", ...configured(options) }
+}
+
+function map<
+  TValue extends AnySchema,
+  const TOptions extends SchemaAnnotations<
+    Readonly<Record<string, InferSchema<TValue>>>
+  > = {},
+>(values: TValue, options?: TOptions): MapSchema<TValue> & TOptions {
+  return { kind: "map", values, ...configured(options) }
+}
+
+function number<const TOptions extends NumberSchemaOptions = {}>(
+  options?: TOptions
+): NumberSchema & TOptions {
+  const values = configured(options)
+  assertRange("Number", values.minimum, values.maximum)
+  if (
+    values.defaultValue !== undefined &&
+    ((values.minimum !== undefined && values.defaultValue < values.minimum) ||
+      (values.maximum !== undefined && values.defaultValue > values.maximum))
+  ) {
+    throw new Error("A number default must satisfy its range.")
+  }
+  return { kind: "number", ...values }
+}
+
+function object<
+  const TProperties extends SchemaProperties,
+  const TOptions extends SchemaAnnotations<InferStruct<TProperties>> = {},
+>(
+  properties: TProperties,
+  options?: TOptions
+): StructSchema<TProperties> & TOptions {
+  for (const propertyId of Object.keys(properties)) definitionId(propertyId)
+  return {
+    kind: "struct",
+    properties,
+    ...configured(options),
+  }
 }
 
 function optional<TValue extends AnySchema>(
@@ -261,52 +439,73 @@ function optional<TValue extends AnySchema>(
   return { kind: "optional", value }
 }
 
-function recordId<const TObject extends DefinedObject>(
-  recordObject: TObject
-): RecordIdSchema<TObject["id"]> {
-  return { kind: "recordId", objectId: recordObject.id }
+function recordId<
+  const TObject extends { readonly id: string },
+  const TOptions extends SchemaAnnotations<RecordId<TObject["id"]>> = {},
+>(
+  recordObject: TObject,
+  options?: TOptions
+): RecordIdSchema<TObject["id"]> & TOptions {
+  return {
+    kind: "recordId",
+    objectId: recordObject.id,
+    ...configured(options),
+  }
 }
 
-function string(options: StringSchemaOptions = {}): StringSchema {
-  assertRange("String length", options.minLength, options.maxLength)
-  const definition: StringSchema = { kind: "string" }
-  if (options.maxLength !== undefined) definition.maxLength = options.maxLength
-  if (options.minLength !== undefined) definition.minLength = options.minLength
-  return definition
+function string<const TOptions extends StringSchemaOptions = {}>(
+  options?: TOptions
+): StringSchema & TOptions {
+  const values = configured(options)
+  assertRange("String length", values.minLength, values.maxLength)
+  return { kind: "string", ...values }
 }
 
-function semanticString<TValue extends string>(
+function semanticString<
+  TValue extends string,
+  const TOptions extends SemanticStringOptions<TValue> = {},
+>(
   format: NonNullable<StringSchema["format"]>,
-  options: StringSchemaOptions = {}
-): StringSchema<TValue> {
-  assertRange("String length", options.minLength, options.maxLength)
-  const definition: StringSchema<TValue> = { kind: "string", format }
-  if (options.maxLength !== undefined) definition.maxLength = options.maxLength
-  if (options.minLength !== undefined) definition.minLength = options.minLength
-  return definition
+  options?: TOptions
+): StringSchema<TValue> & TOptions {
+  const values = configured(options)
+  assertRange("String length", values.minLength, values.maxLength)
+  return { kind: "string", format, ...values }
 }
 
-function date(options: StringSchemaOptions = {}): StringSchema<CalendarDate> {
+function date<const TOptions extends SemanticStringOptions<CalendarDate> = {}>(
+  options?: TOptions
+): StringSchema<CalendarDate> & TOptions {
   return semanticString("date", options)
 }
 
-function domain(options: StringSchemaOptions = {}): StringSchema<DomainName> {
+function domain<const TOptions extends SemanticStringOptions<DomainName> = {}>(
+  options?: TOptions
+): StringSchema<DomainName> & TOptions {
   return semanticString("domain", options)
 }
 
-function email(options: StringSchemaOptions = {}): StringSchema<EmailAddress> {
+function email<const TOptions extends SemanticStringOptions<EmailAddress> = {}>(
+  options?: TOptions
+): StringSchema<EmailAddress> & TOptions {
   return semanticString("email", options)
 }
 
-function phone(options: StringSchemaOptions = {}): StringSchema<PhoneNumber> {
+function phone<const TOptions extends SemanticStringOptions<PhoneNumber> = {}>(
+  options?: TOptions
+): StringSchema<PhoneNumber> & TOptions {
   return semanticString("phone", options)
 }
 
-function timestamp(): StringSchema<Timestamp> {
-  return semanticString("timestamp")
+function timestamp<const TOptions extends SchemaAnnotations<Timestamp> = {}>(
+  options?: TOptions
+): StringSchema<Timestamp> & TOptions {
+  return semanticString("timestamp", options)
 }
 
-function url(options: StringSchemaOptions = {}): StringSchema<WebUrl> {
+function url<const TOptions extends SemanticStringOptions<WebUrl> = {}>(
+  options?: TOptions
+): StringSchema<WebUrl> & TOptions {
   return semanticString("url", options)
 }
 
@@ -333,6 +532,7 @@ export const schema = {
   optional,
   phone,
   recordId,
+  select,
   string,
   timestamp,
   union,

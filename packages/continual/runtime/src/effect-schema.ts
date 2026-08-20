@@ -1,30 +1,34 @@
 import { Schema } from "effect"
 
-import type { DefinedError } from "./definition/error"
-import type { FieldDefinition } from "./definition/field"
-import type {
-  DefinedObject,
-  ObjectCreateInput,
-  ObjectRecord,
-  ObjectUpdateInput,
+import type { ErrorType } from "./definition/error"
+import {
+  ActorId,
+  Etag,
+  type ObjectCreateInput,
+  type ObjectRecord,
+  type ObjectType,
+  type ObjectUpdateInput,
 } from "./definition/object"
+import type { PropertyDefinition } from "./definition/property"
+import { Root } from "./definition/root"
 import type {
   AnySchema,
   InferSchema,
   NumberSchema,
+  SchemaDefinition,
   StringSchema,
 } from "./definition/schema"
-import { schema } from "./definition/schema"
-
-const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-const domainPattern = /^(?!-)(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$/
-const phonePattern = /^\+?[0-9().\-\s]{7,}$/
-const urlPattern = /^https?:\/\/[^\s]+$/
-const datePattern = /^\d{4}-\d{2}-\d{2}$/
-const timestampPattern =
-  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/
-const currencyPattern = /^[A-Z]{3}$/
-const decimalPattern = /^-?(?:0|[1-9]\d*)(?:\.\d+)?$/
+import {
+  CalendarDate,
+  CurrencyCode,
+  Decimal,
+  DomainName,
+  EmailAddress,
+  PhoneNumber,
+  RecordId,
+  Timestamp,
+  WebUrl,
+} from "./definition/schema"
 
 const fileRefSchema = Schema.Struct({
   assetId: Schema.String.check(Schema.isNonEmpty()),
@@ -36,16 +40,13 @@ const imageRefSchema = Schema.Struct({
 }).annotate({ identifier: "ImageRef", title: "Image reference" })
 
 const moneySchema = Schema.Struct({
-  amount: Schema.String.check(
-    Schema.isPattern(decimalPattern, {
-      expected: "a decimal amount",
-    })
-  ).annotate({ format: "decimal", title: "Amount" }),
-  currency: Schema.String.check(
-    Schema.isPattern(currencyPattern, {
-      expected: "an ISO 4217 currency code",
-    })
-  ).annotate({ title: "Currency code" }),
+  amount: Schema.String.annotate({
+    format: "decimal",
+    title: "Amount",
+  }).pipe(Schema.fromBrand("Decimal", Decimal)),
+  currency: Schema.String.annotate({ title: "Currency code" }).pipe(
+    Schema.fromBrand("CurrencyCode", CurrencyCode)
+  ),
 }).annotate({ identifier: "Money", title: "Money" })
 
 const annotationsSchema = Schema.Record(Schema.String, Schema.String).annotate({
@@ -78,36 +79,28 @@ function compileString(definition: StringSchema): Schema.Codec<string> {
   switch (definition.format) {
     case "date":
       return value
-        .check(
-          Schema.isPattern(datePattern, { expected: "an ISO calendar date" })
-        )
         .annotate({ format: "date" })
+        .pipe(Schema.fromBrand("CalendarDate", CalendarDate))
     case "domain":
       return value
-        .check(Schema.isPattern(domainPattern, { expected: "a domain name" }))
         .annotate({ format: "hostname" })
+        .pipe(Schema.fromBrand("DomainName", DomainName))
     case "email":
       return value
-        .check(Schema.isPattern(emailPattern, { expected: "an email address" }))
         .annotate({ format: "email" })
+        .pipe(Schema.fromBrand("EmailAddress", EmailAddress))
     case "phone":
       return value
-        .check(Schema.isPattern(phonePattern, { expected: "a phone number" }))
         .annotate({ format: "tel" })
+        .pipe(Schema.fromBrand("PhoneNumber", PhoneNumber))
     case "timestamp":
       return value
-        .check(
-          Schema.isPattern(timestampPattern, {
-            expected: "an RFC 3339 timestamp",
-          })
-        )
         .annotate({ format: "date-time" })
+        .pipe(Schema.fromBrand("Timestamp", Timestamp))
     case "url":
       return value
-        .check(
-          Schema.isPattern(urlPattern, { expected: "an HTTP or HTTPS URL" })
-        )
         .annotate({ format: "uri" })
+        .pipe(Schema.fromBrand("WebUrl", WebUrl))
   }
 
   return value
@@ -129,7 +122,7 @@ function compileNumber(definition: NumberSchema): Schema.Codec<number> {
   return value
 }
 
-function compile(definition: AnySchema): Schema.Codec<unknown, unknown> {
+function compileBase(definition: AnySchema): Schema.Codec<unknown, unknown> {
   switch (definition.kind) {
     case "array":
       return Schema.Array(compile(definition.items))
@@ -154,14 +147,17 @@ function compile(definition: AnySchema): Schema.Codec<unknown, unknown> {
     case "optional":
       return Schema.optionalKey(compile(definition.value))
     case "recordId":
-      return Schema.String.check(Schema.isNonEmpty()).annotate({
-        expected: `a ${definition.objectId} record id`,
-      })
+      return Schema.String.pipe(
+        Schema.fromBrand(
+          `RecordId:${definition.objectId}`,
+          RecordId(definition.objectId)
+        )
+      )
     case "string":
       return compileString(definition)
     case "struct": {
       const fields: CompiledSchemaFields = Object.fromEntries(
-        Object.entries(definition.fields).map(([id, member]) =>
+        Object.entries(definition.properties).map(([id, member]) =>
           entry(id, compile(member))
         )
       )
@@ -174,6 +170,27 @@ function compile(definition: AnySchema): Schema.Codec<unknown, unknown> {
   throw new Error("Unsupported schema kind.")
 }
 
+function compile(definition: AnySchema): Schema.Codec<unknown, unknown> {
+  let value = compileBase(definition)
+  const metadata: SchemaDefinition = definition
+  if (metadata.nullable === true) {
+    value = Schema.NullOr(value)
+  }
+  if (definition.label !== undefined) {
+    value = value.annotate({ title: definition.label })
+  }
+  if (definition.description !== undefined) {
+    value = value.annotate({ description: definition.description })
+  }
+  if (definition.defaultValue !== undefined) {
+    value = value.annotate({ default: definition.defaultValue })
+  }
+  if (definition.outputOnly === true) {
+    value = value.annotate({ readOnly: true })
+  }
+  return value
+}
+
 export function toEffectSchema<TSchema extends AnySchema>(
   definition: TSchema
 ): Schema.Codec<InferSchema<TSchema>, unknown>
@@ -183,106 +200,96 @@ export function toEffectSchema(
   return compile(definition)
 }
 
-const compiledFieldSchemas = new WeakMap<
-  FieldDefinition,
+const compiledPropertySchemas = new WeakMap<
+  PropertyDefinition,
   Map<string, Schema.Codec<unknown, unknown>>
 >()
 
-function compileFieldValue(
-  object: DefinedObject,
-  fieldId: string,
-  field: FieldDefinition
+function compilePropertyValue(
+  object: ObjectType,
+  propertyId: string,
+  property: PropertyDefinition
 ): Schema.Codec<unknown, unknown> {
-  const identifier = `${pascalCase(object.id)}${pascalCase(fieldId)}`
-  const cached = compiledFieldSchemas.get(field)?.get(identifier)
+  const identifier = `${pascalCase(object.id)}${pascalCase(propertyId)}`
+  const cached = compiledPropertySchemas.get(property)?.get(identifier)
   if (cached !== undefined) return cached
 
-  let value = compile(field.schema)
+  let value = compile(property)
   const acceptsEmptyString =
-    !field.required &&
-    !field.nullable &&
-    field.schema.kind === "string" &&
-    field.kind !== "date" &&
-    field.kind !== "timestamp"
+    !property.required &&
+    !property.nullable &&
+    property.kind === "string" &&
+    property.format !== "date" &&
+    property.format !== "timestamp"
   if (acceptsEmptyString) {
     value = Schema.Union([Schema.Literal(""), value])
   }
-  if (field.nullable) {
-    value = Schema.NullOr(value)
-  }
   if (
     acceptsEmptyString ||
-    field.nullable ||
-    field.kind === "file" ||
-    field.kind === "image" ||
-    field.kind === "select"
+    property.nullable ||
+    property.kind === "file" ||
+    property.kind === "image" ||
+    property.kind === "enum"
   ) {
     value = value.annotate({ identifier })
   }
-  if (field.label !== undefined) {
-    value = value.annotate({ title: field.label })
-  }
-  const description = field.immutable
+  const description = property.immutable
     ? [
-        field.description,
+        property.description,
         "Immutable after creation. Updates may repeat the current value but cannot change it.",
       ]
         .filter((part) => part !== undefined)
         .join(" ")
-    : field.description
+    : property.description
   if (description !== undefined) {
     value = value.annotate({ description })
   }
-  if (field.defaultValue !== undefined) {
-    value = value.annotate({ default: field.defaultValue })
-  }
-  if (field.outputOnly) {
-    value = value.annotate({ readOnly: true })
-  }
-  const objectCache = compiledFieldSchemas.get(field) ?? new Map()
+  const objectCache = compiledPropertySchemas.get(property) ?? new Map()
   objectCache.set(identifier, value)
-  compiledFieldSchemas.set(field, objectCache)
+  compiledPropertySchemas.set(property, objectCache)
   return value
 }
 
-function compileObjectFields(object: DefinedObject): CompiledSchemaFields {
+function compileObjectProperties(object: ObjectType): CompiledSchemaFields {
   return Object.fromEntries(
-    Object.entries(object.fields).map(([fieldId, field]) =>
-      entry(fieldId, compileFieldValue(object, fieldId, field))
+    Object.entries(object.properties).map(([propertyId, property]) =>
+      entry(propertyId, compilePropertyValue(object, propertyId, property))
     )
   )
 }
 
-function compileCreateFields(object: DefinedObject): CompiledSchemaFields {
+function compileCreateProperties(object: ObjectType): CompiledSchemaFields {
   return Object.fromEntries(
-    Object.entries(object.fields)
-      .filter(([, field]) => !field.outputOnly)
-      .map(([fieldId, field]) =>
+    Object.entries(object.properties)
+      .filter(([, property]) => !property.outputOnly)
+      .map(([propertyId, property]) =>
         entry(
-          fieldId,
-          field.required
-            ? compileFieldValue(object, fieldId, field)
-            : Schema.optionalKey(compileFieldValue(object, fieldId, field))
+          propertyId,
+          property.required
+            ? compilePropertyValue(object, propertyId, property)
+            : Schema.optionalKey(
+                compilePropertyValue(object, propertyId, property)
+              )
         )
       )
   )
 }
 
-function compileUpdateFields(object: DefinedObject): CompiledSchemaFields {
+function compileUpdateProperties(object: ObjectType): CompiledSchemaFields {
   return Object.fromEntries(
-    Object.entries(object.fields)
-      .filter(([, field]) => !field.outputOnly)
-      .map(([fieldId, field]) =>
+    Object.entries(object.properties)
+      .filter(([, property]) => !property.outputOnly)
+      .map(([propertyId, property]) =>
         entry(
-          fieldId,
-          Schema.optionalKey(compileFieldValue(object, fieldId, field))
+          propertyId,
+          Schema.optionalKey(compilePropertyValue(object, propertyId, property))
         )
       )
   )
 }
 
 function annotateObjectSchema(
-  object: DefinedObject,
+  object: ObjectType,
   value: Schema.Codec<unknown, unknown>,
   title: string,
   identifier: string
@@ -302,28 +309,29 @@ function pascalCase(value: string): string {
     .replace(/[^a-zA-Z0-9]/g, "")
 }
 
-export function toEffectObjectSchema<TObject extends DefinedObject>(
+export function toEffectObjectSchema<TObject extends ObjectType>(
   object: TObject
 ): Schema.Codec<ObjectRecord<TObject>, unknown>
 export function toEffectObjectSchema(
-  object: DefinedObject
+  object: ObjectType
 ): Schema.Codec<unknown, unknown> {
-  const id = Schema.String.check(Schema.isNonEmpty()).annotate({
+  const id = Schema.String.annotate({
     readOnly: true,
     title: `${object.name} ID`,
-  })
-  const createdAt = compile(schema.timestamp()).annotate({
+  }).pipe(Schema.fromBrand(`RecordId:${object.id}`, RecordId(object.id)))
+  const createdAt = Schema.String.annotate({
+    format: "date-time",
     readOnly: true,
     title: "Created at",
-  })
-  const updatedAt = compile(schema.timestamp()).annotate({
+  }).pipe(Schema.fromBrand("Timestamp", Timestamp))
+  const updatedAt = Schema.String.annotate({
+    format: "date-time",
     readOnly: true,
     title: "Updated at",
-  })
-  const actorId = Schema.String.check(Schema.isNonEmpty()).annotate({
-    expected: "an actor id",
-    readOnly: true,
-  })
+  }).pipe(Schema.fromBrand("Timestamp", Timestamp))
+  const actorId = Schema.String.annotate({ readOnly: true }).pipe(
+    Schema.fromBrand("ActorId", ActorId)
+  )
   const fields: CompiledSchemaFields = Object.fromEntries([
     entry("id", id),
     entry("annotations", annotationsSchema),
@@ -331,11 +339,22 @@ export function toEffectObjectSchema(
     entry("createdById", actorId),
     entry(
       "etag",
-      Schema.String.check(Schema.isNonEmpty()).annotate({ readOnly: true })
+      Schema.String.annotate({ readOnly: true }).pipe(
+        Schema.fromBrand("Etag", Etag)
+      )
+    ),
+    entry(
+      "parentId",
+      Schema.String.annotate({ title: "Parent ID" }).pipe(
+        Schema.fromBrand(
+          `RecordId:${object.parent.objectId}`,
+          RecordId(object.parent.objectId)
+        )
+      )
     ),
     entry("updatedAt", updatedAt),
     entry("updatedById", actorId),
-    ...Object.entries(compileObjectFields(object)),
+    ...Object.entries(compileObjectProperties(object)),
   ])
   return annotateObjectSchema(
     object,
@@ -345,15 +364,23 @@ export function toEffectObjectSchema(
   )
 }
 
-export function toEffectObjectCreateSchema<TObject extends DefinedObject>(
+export function toEffectObjectCreateSchema<TObject extends ObjectType>(
   object: TObject
 ): Schema.Codec<ObjectCreateInput<TObject>, unknown>
 export function toEffectObjectCreateSchema(
-  object: DefinedObject
+  object: ObjectType
 ): Schema.Codec<unknown, unknown> {
   const fields: CompiledSchemaFields = {
     annotations: Schema.optionalKey(annotationsSchema),
-    ...compileCreateFields(object),
+    ...compileCreateProperties(object),
+  }
+  if (object.parent.objectId !== Root.id) {
+    fields.parentId = Schema.String.annotate({ title: "Parent ID" }).pipe(
+      Schema.fromBrand(
+        `RecordId:${object.parent.objectId}`,
+        RecordId(object.parent.objectId)
+      )
+    )
   }
   return annotateObjectSchema(
     object,
@@ -363,15 +390,15 @@ export function toEffectObjectCreateSchema(
   )
 }
 
-export function toEffectObjectUpdateSchema<TObject extends DefinedObject>(
+export function toEffectObjectUpdateSchema<TObject extends ObjectType>(
   object: TObject
 ): Schema.Codec<ObjectUpdateInput<TObject>, unknown>
 export function toEffectObjectUpdateSchema(
-  object: DefinedObject
+  object: ObjectType
 ): Schema.Codec<unknown, unknown> {
   const fields: CompiledSchemaFields = {
     annotations: Schema.optionalKey(annotationsSchema),
-    ...compileUpdateFields(object),
+    ...compileUpdateProperties(object),
   }
   return annotateObjectSchema(
     object,
@@ -381,7 +408,7 @@ export function toEffectObjectUpdateSchema(
   )
 }
 
-export function toEffectErrorSchema<TError extends DefinedError>(
+export function toEffectErrorSchema<TError extends ErrorType>(
   error: TError
 ): Schema.Codec<
   {
@@ -393,7 +420,7 @@ export function toEffectErrorSchema<TError extends DefinedError>(
   unknown
 >
 export function toEffectErrorSchema(
-  error: DefinedError
+  error: ErrorType
 ): Schema.Codec<unknown, unknown> {
   let value = Schema.Struct({
     category: Schema.Literal(error.category),

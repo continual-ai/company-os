@@ -1,16 +1,15 @@
-import { defineApi } from "@continual/runtime"
+import { defineModel } from "@continual/runtime"
 
-import { CRM } from "./modules/crm/crm"
+import { ContactPrimaryCompany } from "./links/contact-primary-company"
+import { DealCompany } from "./links/deal-company"
+import { Company } from "./objects/company"
+import { Contact } from "./objects/contact"
+import { Deal } from "./objects/deal"
+import { Lead } from "./objects/lead"
 
-export { Company } from "./modules/crm/company"
-export { Contact } from "./modules/crm/contact"
-export { CRM } from "./modules/crm/crm"
-export { Deal } from "./modules/crm/deal"
-export { Lead } from "./modules/crm/lead"
-export { QualifyLead } from "./modules/crm/qualify-lead"
-
-export const AcmeApi = defineApi({
+export const AcmeModel = defineModel({
   id: "acme",
   name: "Acme",
-  modules: [CRM],
+  objects: [Company, Contact, Lead, Deal],
+  links: [ContactPrimaryCompany, DealCompany],
 })

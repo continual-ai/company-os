@@ -23,7 +23,7 @@ export const errorCategories = [
 
 export type ErrorCategory = (typeof errorCategories)[number]
 
-export interface DefinedError<
+export interface ErrorType<
   TCode extends string = string,
   TCategory extends ErrorCategory = ErrorCategory,
   TDetails extends AnySchema = AnySchema,
@@ -37,8 +37,8 @@ export interface DefinedError<
 }
 
 /** The portable value exposed to clients when a declared API error occurs. */
-export type ApiError<TError extends DefinedError = DefinedError> =
-  TError extends DefinedError
+export type ApiError<TError extends ErrorType = ErrorType> =
+  TError extends ErrorType
     ? {
         readonly category: TError["category"]
         readonly code: TError["code"]
@@ -57,7 +57,7 @@ export function defineError<
   description?: string
   details: TDetails
   name: string
-}): DefinedError<TCode, TCategory, TDetails> {
+}): ErrorType<TCode, TCategory, TDetails> {
   return {
     kind: "error",
     ...definition,

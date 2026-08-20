@@ -1,15 +1,16 @@
+import type { Action, ActionInput, ActionOutput } from "./definition/action"
+import {
+  type ModelObject,
+  type ModelCatalog,
+  modelObjects,
+} from "./definition/model"
 import type {
-  ActionInput,
-  ActionOutput,
-  ActionSubjectId,
-  DefinedAction,
-} from "./definition/action"
-import type { DefinedApi } from "./definition/api"
-import type {
-  DefinedObject,
+  ObjectDeleteInput,
+  ObjectGetInput,
+  ObjectType,
   ObjectCreateInput,
   ObjectRecord,
-  ObjectUpdateInput,
+  ObjectUpdateRequest,
 } from "./definition/object"
 import type {
   Batch,
@@ -17,7 +18,7 @@ import type {
   ListRequest,
   MutationOptions,
   Page,
-} from "./definition/operation"
+} from "./definition/request"
 import type { RecordId } from "./definition/schema"
 
 export interface ApiClientOptions {
@@ -31,7 +32,7 @@ export interface ApiClientOptions {
   readonly headers?: HeadersInit
 }
 
-export interface BatchGetRequest<TObject extends DefinedObject> {
+export interface BatchGetRequest<TObject extends ObjectType> {
   readonly ids: ReadonlyArray<RecordId<TObject["id"]>>
 }
 
@@ -47,99 +48,66 @@ export class ApiClientResponseError extends Error {
   }
 }
 
-type ApiModule<TApi extends DefinedApi> = TApi["modules"][number]
+type ActionsForObject<TObject extends ObjectType> =
+  TObject["actions"][keyof TObject["actions"]]
 
-type ApiObject<TApi extends DefinedApi> = ApiModule<TApi>["objects"][number]
-
-type ApiAction<TApi extends DefinedApi> = ApiModule<TApi>["actions"][number]
-
-type ActionsForObject<
-  TApi extends DefinedApi,
-  TObject extends DefinedObject,
-> = Extract<ApiAction<TApi>, { subjectId: TObject["id"] }>
-
-type EnabledMethod<TEnabled extends boolean, TMethod> = TEnabled extends true
+type DefaultMethod<TEnabled extends boolean, TMethod> = TEnabled extends true
   ? TMethod
   : object
 
-type StandardObjectClient<TObject extends DefinedObject> = EnabledMethod<
-  TObject["operations"]["batchGet"],
+type DefaultObjectClient<TObject extends ObjectType> = {
+  readonly batchGet: (
+    request: BatchGetRequest<TObject>
+  ) => Promise<Batch<ObjectRecord<TObject>>>
+  readonly get: (
+    input: ObjectGetInput<TObject>
+  ) => Promise<ObjectRecord<TObject>>
+  readonly list: (request?: ListRequest) => Promise<Page<ObjectRecord<TObject>>>
+} & DefaultMethod<
+  TObject["defaultActions"]["create"],
   {
-    readonly batchGet: (
-      request: BatchGetRequest<TObject>
-    ) => Promise<Batch<ObjectRecord<TObject>>>
+    readonly create: (
+      input: ObjectCreateInput<TObject>,
+      options?: MutationOptions
+    ) => Promise<ObjectRecord<TObject>>
   }
 > &
-  EnabledMethod<
-    TObject["operations"]["create"],
-    {
-      readonly create: (
-        input: ObjectCreateInput<TObject>,
-        options?: MutationOptions
-      ) => Promise<ObjectRecord<TObject>>
-    }
-  > &
-  EnabledMethod<
-    TObject["operations"]["delete"],
+  DefaultMethod<
+    TObject["defaultActions"]["delete"],
     {
       readonly delete: (
-        id: RecordId<TObject["id"]>,
+        input: ObjectDeleteInput<TObject>,
         options?: MutationOptions
       ) => Promise<void>
     }
   > &
-  EnabledMethod<
-    TObject["operations"]["get"],
-    {
-      readonly get: (
-        id: RecordId<TObject["id"]>
-      ) => Promise<ObjectRecord<TObject>>
-    }
-  > &
-  EnabledMethod<
-    TObject["operations"]["list"],
-    {
-      readonly list: (
-        request?: ListRequest
-      ) => Promise<Page<ObjectRecord<TObject>>>
-    }
-  > &
-  EnabledMethod<
-    TObject["operations"]["update"],
+  DefaultMethod<
+    TObject["defaultActions"]["update"],
     {
       readonly update: (
-        id: RecordId<TObject["id"]>,
-        input: ObjectUpdateInput<TObject>,
+        input: ObjectUpdateRequest<TObject>,
         options?: MutationOptions
       ) => Promise<ObjectRecord<TObject>>
     }
   >
 
-type ActionMethod<TAction extends DefinedAction> =
-  keyof ActionInput<TAction> extends never
-    ? (
-        subjectId: ActionSubjectId<TAction>,
-        options?: MutationOptions
-      ) => Promise<ActionOutput<TAction>>
-    : (
-        subjectId: ActionSubjectId<TAction>,
-        input: ActionInput<TAction>,
-        options?: MutationOptions
-      ) => Promise<ActionOutput<TAction>>
+type ActionMethod<TAction extends Action> = (
+  input: ActionInput<TAction>,
+  options?: MutationOptions
+) => Promise<ActionOutput<TAction>>
 
 type ObjectClient<
-  TObject extends DefinedObject,
-  TActions extends DefinedAction,
-> = StandardObjectClient<TObject> & {
-  readonly [TAction in TActions as TAction["verb"]]: ActionMethod<TAction>
+  TObject extends ObjectType,
+  TActions extends Action,
+> = DefaultObjectClient<TObject> & {
+  readonly [TAction in TActions as TAction["id"]]: ActionMethod<TAction>
 }
 
 /** An inferred client grouped by the globally unique collection of each object. */
-export type ApiClient<TApi extends DefinedApi> = {
-  readonly [TObject in ApiObject<TApi> as TObject["collection"]]: ObjectClient<
-    TObject,
-    ActionsForObject<TApi, TObject>
-  >
+export type ApiClient<TModel extends ModelCatalog> = {
+  readonly [
+    TObject in ModelObject<TModel> as TObject["collection"]
+  ]: ObjectClient<TObject, ActionsForObject<TObject>>
 }
 
 interface RequestOptions {
@@ -172,18 +140,14 @@ function mutationOptions(options: MutationOptions | undefined) {
     : { idempotencyKey: options.idempotencyKey }
 }
 
-function encodeRecordId(id: string): string {
-  return encodeURIComponent(id)
-}
-
 /**
  * Constructs a browser-safe client directly from a live semantic contract.
  * No generated source file or module namespace is involved.
  */
-export function createClient<const TApi extends DefinedApi>(
-  api: TApi,
+export function createClient<const TModel extends ModelCatalog>(
+  model: TModel,
   options: ApiClientOptions = {}
-): ApiClient<TApi> {
+): ApiClient<TModel> {
   const baseUrl = normalizeBaseUrl(options.baseUrl ?? "/api/v1")
   const fetchRequest = options.fetch ?? globalThis.fetch
 
@@ -227,39 +191,33 @@ export function createClient<const TApi extends DefinedApi>(
   }
 
   const resources = new Map<string, object>()
-  const objects = api.modules.flatMap((module) => module.objects)
-  const actions = api.modules.flatMap((module) => module.actions)
-
+  const objects = modelObjects(model)
   for (const object of objects) {
     const collectionPath = `/${object.collection}`
     const methods = new Map<string, object>()
 
-    if (object.operations.list) {
-      methods.set("list", (listRequest: ListRequest = {}) => {
-        const query = new URLSearchParams()
-        if (listRequest.pageSize !== undefined) {
-          query.set("pageSize", String(listRequest.pageSize))
-        }
-        if (listRequest.pageToken !== undefined) {
-          query.set("pageToken", listRequest.pageToken)
-        }
-        return request({ method: "GET", path: collectionPath, query })
-      })
-    }
+    methods.set("list", (listRequest: ListRequest = {}) => {
+      const query = new URLSearchParams()
+      if (listRequest.pageSize !== undefined) {
+        query.set("pageSize", String(listRequest.pageSize))
+      }
+      if (listRequest.pageToken !== undefined) {
+        query.set("pageToken", listRequest.pageToken)
+      }
+      return request({ method: "GET", path: collectionPath, query })
+    })
 
-    if (object.operations.batchGet) {
-      methods.set(
-        "batchGet",
-        (batchRequest: { readonly ids: readonly string[] }) =>
-          request({
-            body: { ids: batchRequest.ids },
-            method: "POST",
-            path: `${collectionPath}:batchGet`,
-          })
-      )
-    }
+    methods.set(
+      "batchGet",
+      (batchRequest: { readonly ids: readonly string[] }) =>
+        request({
+          body: { ids: batchRequest.ids },
+          method: "POST",
+          path: `${collectionPath}:batchGet`,
+        })
+    )
 
-    if (object.operations.create) {
+    if (object.defaultActions.create) {
       methods.set(
         "create",
         (input: JsonValue, mutation: MutationOptions | undefined) =>
@@ -272,82 +230,84 @@ export function createClient<const TApi extends DefinedApi>(
       )
     }
 
-    if (object.operations.get) {
-      methods.set("get", (id: string) =>
-        request({
-          method: "GET",
-          path: `${collectionPath}/${encodeRecordId(id)}`,
-        })
-      )
-    }
+    methods.set("get", ({ id }: { readonly id: string }) =>
+      request({
+        method: "GET",
+        path: `${collectionPath}/${encodeURIComponent(id)}`,
+      })
+    )
 
-    if (object.operations.update) {
+    if (object.defaultActions.update) {
       methods.set(
         "update",
-        (id: string, input: JsonValue, mutation: MutationOptions | undefined) =>
-          request({
-            body: input,
+        (
+          input: JsonObject & { readonly id: string },
+          mutation: MutationOptions | undefined
+        ) => {
+          const { id, ...body } = input
+          return request({
+            body,
             method: "PATCH",
-            path: `${collectionPath}/${encodeRecordId(id)}`,
+            path: `${collectionPath}/${encodeURIComponent(id)}`,
             ...mutationOptions(mutation),
           })
+        }
       )
     }
 
-    if (object.operations.delete) {
+    if (object.defaultActions.delete) {
       methods.set(
         "delete",
-        (id: string, mutation: MutationOptions | undefined) =>
+        (
+          { id }: { readonly id: string },
+          mutation: MutationOptions | undefined
+        ) =>
           request({
             method: "DELETE",
-            path: `${collectionPath}/${encodeRecordId(id)}`,
+            path: `${collectionPath}/${encodeURIComponent(id)}`,
             ...mutationOptions(mutation),
           })
       )
     }
 
-    for (const action of actions.filter(
-      (candidate) => candidate.subjectId === object.id
-    )) {
-      const emptyInput =
-        action.input.kind === "struct" &&
-        Object.keys(action.input.fields).length === 0
-
-      if (emptyInput) {
-        methods.set(
-          action.verb,
-          (id: string, mutation: MutationOptions | undefined) =>
-            request({
-              body: {},
-              method: "POST",
-              path: `${collectionPath}/${encodeRecordId(id)}:${action.verb}`,
-              ...mutationOptions(mutation),
-            })
-        )
-      } else {
-        methods.set(
-          action.verb,
-          (
-            id: string,
-            input: JsonValue,
-            mutation: MutationOptions | undefined
-          ) =>
-            request({
-              body: input,
-              method: "POST",
-              path: `${collectionPath}/${encodeRecordId(id)}:${action.verb}`,
-              ...mutationOptions(mutation),
-            })
-        )
-      }
+    for (const action of Object.values(object.actions)) {
+      methods.set(
+        action.id,
+        (input: JsonObject, mutation: MutationOptions | undefined) => {
+          const body = { ...input }
+          const path = action.http.path.replace(
+            /\{([^}/]+)\}/g,
+            (_placeholder, property: string) => {
+              const value = body[property]
+              if (value === undefined) {
+                throw new TypeError(
+                  `Action '${object.id}.${action.id}' requires path property '${property}'.`
+                )
+              }
+              delete body[property]
+              // SAFETY: action binding validation permits only string-valued path schemas.
+              // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+              return encodeURIComponent(value as string)
+            }
+          )
+          const actionRequest = {
+            method: action.http.method,
+            path,
+            ...mutationOptions(mutation),
+          }
+          return Object.keys(body).length === 0
+            ? request(actionRequest)
+            : request({ ...actionRequest, body })
+        }
+      )
     }
 
     resources.set(object.collection, Object.fromEntries(methods))
   }
 
-  // SAFETY: defineApi validates collection and method uniqueness, and the
-  // loops above materialize exactly the operations represented by
-  // ApiClient<TApi> from that same immutable definition.
+  // SAFETY: defineModel validates collection and method uniqueness, and the
+  // loops above materialize exactly the reads and actions represented by
+  // ApiClient<TModel> from that same immutable definition.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  return Object.fromEntries(resources) as ApiClient<TApi>
+  return Object.fromEntries(resources) as ApiClient<TModel>
 }

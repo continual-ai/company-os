@@ -1,76 +1,78 @@
-export { defineAction } from "./definition/action"
 export type {
+  Action,
+  ActionDefinition,
+  ActionDefinitions,
   ActionError,
+  ActionHttpBinding,
   ActionInput,
   ActionOutput,
-  ActionSubjectId,
-  DefinedAction,
+  ActionScope,
 } from "./definition/action"
-export { defineApi } from "./definition/api"
-export type { DefinedApi } from "./definition/api"
 export { defineError, errorCategories } from "./definition/error"
-export type { ApiError, DefinedError, ErrorCategory } from "./definition/error"
-export { field } from "./definition/field"
+export type { ApiError, ErrorType, ErrorCategory } from "./definition/error"
 export type {
-  Choice,
-  FieldDefinition,
-  FieldOptions,
-  FileFieldOptions,
-  Fields,
-  InferField,
-  InferFields,
-  ImageFieldOptions,
-  NumberFieldOptions,
-  OutputFieldKeys,
-  TextFieldOptions,
-} from "./definition/field"
-export { defineModule } from "./definition/module"
-export type { DefinedModule } from "./definition/module"
-export { defineObject, objectOperationNames } from "./definition/object"
+  InferProperties,
+  InferProperty,
+  Properties,
+  PropertyDefinition,
+} from "./definition/property"
+export { defineModel } from "./definition/model"
+export type { Model } from "./definition/model"
+export { defineLink, linkCardinalities } from "./definition/link"
+export type { LinkType, LinkCardinality, LinkSide } from "./definition/link"
+export { ActorId, defineObject, Etag } from "./definition/object"
 export type {
-  ActorId,
   BaseRecord,
-  DefinedObject,
+  ObjectDeleteInput,
+  ObjectGetInput,
+  ObjectType,
   ObjectCreateInput,
   ObjectDisplay,
-  ObjectOperation,
-  ObjectOperationOptions,
-  ObjectOperations,
+  ObjectParent,
   ObjectRecord,
   ObjectUpdateInput,
-  Etag,
+  ObjectUpdateRequest,
 } from "./definition/object"
+export { Root } from "./definition/root"
+export type { RootType } from "./definition/root"
 export {
   DEFAULT_PAGE_SIZE,
+  IdempotencyKey,
   MAX_BATCH_GET_SIZE,
   MAX_PAGE_SIZE,
-} from "./definition/operation"
+  PageToken,
+} from "./definition/request"
 export type {
   Batch,
-  IdempotencyKey,
   ListRequest,
   MutationOptions,
   Page,
-  PageToken,
-} from "./definition/operation"
-export { schema } from "./definition/schema"
-export type {
-  AnySchema,
+} from "./definition/request"
+export {
   CalendarDate,
   CurrencyCode,
   Decimal,
   DomainName,
   EmailAddress,
+  PhoneNumber,
+  RecordId,
+  schema,
+  Timestamp,
+  WebUrl,
+} from "./definition/schema"
+export type {
+  AnySchema,
+  Choice,
   FileRef,
   ImageRef,
   InferSchema,
   LiteralValue,
   Money,
-  PhoneNumber,
-  RecordId,
+  NumberSchemaOptions,
   SchemaDefinition,
-  Timestamp,
-  WebUrl,
+  SchemaAnnotations,
+  SchemaProperties,
+  StringSchemaOptions,
 } from "./definition/schema"
 export {
   ConflictError,

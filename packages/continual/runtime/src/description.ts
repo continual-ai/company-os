@@ -1,34 +1,40 @@
-import type { DefinedApi } from "./definition/api"
+import {
+  type ModelCatalog,
+  modelActions,
+  modelLinks,
+  modelObjects,
+} from "./definition/model"
 import {
   API_DESCRIPTION_VERSION,
   type ApiDescription,
 } from "./description-types"
 
-/** Derives transport- and UI-safe metadata from the live semantic API. */
-export function createApiDescription(api: DefinedApi): ApiDescription {
+/** Derives transport- and UI-safe API metadata from the company model. */
+export function createApiDescription(model: ModelCatalog): ApiDescription {
   return {
     version: API_DESCRIPTION_VERSION,
-    api: { id: api.id, name: api.name },
-    modules: api.modules.map((module) => ({
-      id: module.id,
-      name: module.name,
-      actions: module.actions.map((action) => ({ ...action })),
-      objects: module.objects.map((object) => {
-        const description: ApiDescription["modules"][number]["objects"][number] =
-          {
-            id: object.id,
-            collection: object.collection,
-            name: object.name,
-            pluralName: object.pluralName,
-            operations: { ...object.operations },
-            fields: { ...object.fields },
-            display: { ...object.display },
-          }
-        if (object.description !== undefined) {
-          description.description = object.description
-        }
-        return description
-      }),
+    actions: modelActions(model).map((action) => ({ ...action })),
+    api: { id: model.id, name: model.name },
+    links: modelLinks(model).map((link) => ({
+      ...link,
+      from: { ...link.from },
+      to: { ...link.to },
     })),
+    root: { ...model.root },
+    objects: modelObjects(model).map((object) => {
+      const description: ApiDescription["objects"][number] = {
+        id: object.id,
+        collection: object.collection,
+        name: object.name,
+        parent: { ...object.parent },
+        pluralName: object.pluralName,
+        properties: { ...object.properties },
+        display: { ...object.display },
+      }
+      if (object.description !== undefined) {
+        description.description = object.description
+      }
+      return description
+    }),
   }
 }

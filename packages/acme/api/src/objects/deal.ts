@@ -1,4 +1,4 @@
-import { defineObject, field } from "@continual/runtime"
+import { Root, defineObject, schema } from "@continual/runtime"
 
 import { Company } from "./company"
 
@@ -6,21 +6,21 @@ export const Deal = defineObject({
   id: "deal",
   collection: "deals",
   name: "Deal",
+  parent: Root,
   pluralName: "Deals",
   description: "A potential commercial agreement with a company.",
-  fields: {
-    companyId: field.reference({
-      object: Company,
+  properties: {
+    companyId: schema.recordId(Company, {
       label: "Company",
       required: true,
     }),
-    name: field.text({
+    name: schema.string({
       label: "Name",
       required: true,
       minLength: 1,
       maxLength: 200,
     }),
-    stage: field.select({
+    stage: schema.select({
       label: "Stage",
       defaultValue: "discovery",
       options: [
@@ -32,12 +32,12 @@ export const Deal = defineObject({
         { value: "lost", label: "Lost" },
       ],
     }),
-    amount: field.money({
+    amount: schema.money({
       label: "Amount",
       nullable: true,
       description: "Expected or agreed deal value.",
     }),
-    expectedCloseDate: field.date({
+    expectedCloseDate: schema.date({
       label: "Expected close date",
       nullable: true,
     }),

@@ -9,7 +9,9 @@
     ".": "./src/index.ts",
     "./client": "./src/client.ts",
     "./effect": "./src/effect-schema.ts",
-    "./effect/http": "./src/effect-http.ts"
+    "./effect/http": "./src/effect-http.ts",
+    "./effect/object-repository": "./src/effect-object-repository.ts",
+    "./effect/object-service": "./src/effect-object-service.ts"
   },
   "scripts": {
     "test": "vitest run",

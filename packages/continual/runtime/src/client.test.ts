@@ -1,46 +1,51 @@
 import { describe, expect, expectTypeOf, it } from "vitest"
 
 import { ApiClientResponseError, createClient, type ApiClient } from "./client"
-import { defineAction } from "./definition/action"
-import { defineApi } from "./definition/api"
-import { field } from "./definition/field"
-import { defineModule } from "./definition/module"
+import { defineModel } from "./definition/model"
 import { defineObject } from "./definition/object"
+import { Root } from "./definition/root"
 import { schema, type RecordId } from "./definition/schema"
 
 const Account = defineObject({
   id: "account",
   collection: "accounts",
   name: "Account",
+  parent: Root,
   pluralName: "Accounts",
-  fields: {
-    name: field.text({ required: true }),
+  properties: {
+    name: schema.string({ required: true }),
   },
   display: { title: "name" },
-  operations: { delete: false },
+  actions: {
+    delete: false,
+    archive: {
+      scope: "object",
+      name: "Archive account",
+      description: "Archives an account.",
+      input: {
+        note: schema.optional(schema.string()),
+      },
+      output: {
+        archived: schema.boolean(),
+      },
+      http: { path: "/accounts/{id}:archive" },
+    },
+    archiveAll: {
+      scope: "collection",
+      name: "Archive old accounts",
+      description: "Archives accounts matching a filter.",
+      input: { filter: schema.string() },
+      output: { archivedCount: schema.number({ integer: true }) },
+      http: { path: "/accounts:archiveAll" },
+    },
+  },
 })
 
-const ArchiveAccount = defineAction({
-  id: "archiveAccount",
-  verb: "archive",
-  name: "Archive account",
-  subject: Account,
-  input: schema.object({}),
-  output: schema.object({ accountId: schema.recordId(Account) }),
-  errors: [],
-})
-
-const Example = defineApi({
+const Example = defineModel({
   id: "example",
   name: "Example",
-  modules: [
-    defineModule({
-      id: "crm",
-      name: "CRM",
-      objects: [Account],
-      actions: [ArchiveAccount],
-    }),
-  ],
+  objects: [Account],
+  links: [],
 })
 
 const accountRecord = {
@@ -50,17 +55,15 @@ const accountRecord = {
   etag: "etag-1",
   id: "account/1",
   name: "Acme",
+  parentId: "root_1",
   updatedAt: "2026-08-18T18:00:00Z",
   updatedById: "user-1",
 }
 
 function responseBody(url: string) {
-  if (url.endsWith(":archive")) {
-    return { accountId: accountRecord.id }
-  }
-  if (url.endsWith(":batchGet")) {
-    return { items: [accountRecord] }
-  }
+  if (url.endsWith(":archiveAll")) return { archivedCount: 3 }
+  if (url.endsWith(":archive")) return { archived: true }
+  if (url.endsWith(":batchGet")) return { items: [accountRecord] }
   if (url.includes("?")) {
     return { items: [accountRecord], nextPageToken: "" }
   }
@@ -68,12 +71,11 @@ function responseBody(url: string) {
 }
 
 describe("inferred API client", () => {
-  it("groups inferred methods by object collection without module namespaces", async () => {
+  it("uses one input object for every object method", async () => {
     const calls: Array<{ init: RequestInit; url: string }> = []
     const fetchRequest: typeof globalThis.fetch = async (input, init) => {
       const url = new Request(input).url
       calls.push({ init: init ?? {}, url })
-
       return new Response(JSON.stringify(responseBody(url)), {
         headers: { "content-type": "application/json" },
       })
@@ -91,13 +93,20 @@ describe("inferred API client", () => {
       "get",
       "update",
       "archive",
+      "archiveAll",
     ])
 
     const created = await client.accounts.create({ name: "Acme" })
-    await client.accounts.get(created.id)
+    await client.accounts.get({ id: created.id })
     const page = await client.accounts.list({ pageSize: 25 })
     const batch = await client.accounts.batchGet({ ids: [created.id] })
-    const archived = await client.accounts.archive(created.id)
+    const archived = await client.accounts.archive({
+      id: created.id,
+      note: "No longer active",
+    })
+    const archiveBatch = await client.accounts.archiveAll({
+      filter: "updatedAt < 2025-01-01",
+    })
 
     expect(calls.map((call) => call.url)).toEqual([
       "https://company.example/api/v1/accounts",
@@ -105,21 +114,29 @@ describe("inferred API client", () => {
       "https://company.example/api/v1/accounts?pageSize=25",
       "https://company.example/api/v1/accounts:batchGet",
       "https://company.example/api/v1/accounts/account%2F1:archive",
+      "https://company.example/api/v1/accounts:archiveAll",
     ])
-    expect(calls[0]?.init.method).toBe("POST")
-    expect(calls[3]?.init.body).toBe('{"ids":["account/1"]}')
+    expect(calls[4]?.init.body).toBe('{"note":"No longer active"}')
+    expect(calls[5]?.init.body).toBe('{"filter":"updatedAt < 2025-01-01"}')
     expect(page.nextPageToken).toBe("")
     expect(batch.items[0]?.id).toBe(created.id)
-    expect(archived.accountId).toBe(created.id)
+    expect(archived.archived).toBe(true)
+    expect(archiveBatch.archivedCount).toBe(3)
 
     type ClientKeys = keyof typeof client
     type AccountMethods = keyof (typeof client)["accounts"]
     expectTypeOf<ClientKeys>().toEqualTypeOf<"accounts">()
     expectTypeOf<AccountMethods>().toEqualTypeOf<
-      "archive" | "batchGet" | "create" | "get" | "list" | "update"
+      | "archive"
+      | "archiveAll"
+      | "batchGet"
+      | "create"
+      | "get"
+      | "list"
+      | "update"
     >()
     expectTypeOf(client).toEqualTypeOf<ApiClient<typeof Example>>()
-    expectTypeOf(archived.accountId).toEqualTypeOf<RecordId<"account">>()
+    expectTypeOf(created.id).toEqualTypeOf<RecordId<"account">>()
   })
 
   it("preserves non-success response details", async () => {
