@@ -58,6 +58,7 @@
     "anti-slop/require-safety-comment-for-type-assertion": "error",
     "company-os/filename-case": "error",
     "company-os/no-internal-reexports": "error",
+    "company-os/no-unsafe-sql": "error",
     "company-os/package-boundaries": "error",
     "eqeqeq": "error",
     "import/no-relative-parent-imports": "error",

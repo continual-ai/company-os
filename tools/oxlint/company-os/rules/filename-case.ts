@@ -2,6 +2,8 @@ import { defineRule } from "@oxlint/plugins"
 
 const ALLOWED_FRAMEWORK_FILENAMES = new Set(["__root"])
 const KEBAB_CASE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
+const NUMBERED_MIGRATION =
+  /[\\/]migrations[\\/]\d+_[a-z0-9]+(?:-[a-z0-9]+)*\.[cm]?tsx?$/
 
 function sourceName(filename: string): string {
   const basename = filename.split(/[\\/]/).at(-1) ?? filename
@@ -25,7 +27,11 @@ export const filenameCaseRule = defineRule({
     return {
       Program(node) {
         const name = sourceName(context.filename)
-        if (ALLOWED_FRAMEWORK_FILENAMES.has(name) || KEBAB_CASE.test(name))
+        if (
+          ALLOWED_FRAMEWORK_FILENAMES.has(name) ||
+          KEBAB_CASE.test(name) ||
+          NUMBERED_MIGRATION.test(context.filename)
+        )
           return
 
         context.report({

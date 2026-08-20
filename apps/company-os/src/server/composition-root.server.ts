@@ -1,16 +1,60 @@
-import { AcmeApi } from "@acme/api"
+import { AcmeModel } from "@acme/api"
 import { createApiDescription } from "@continual/runtime"
 import {
   createApiReference,
   createHttpApi,
 } from "@continual/runtime/effect/http"
+import { Layer } from "effect"
 import { OpenApi } from "effect/unstable/httpapi"
 
-export const apiDescription = createApiDescription(AcmeApi)
-const httpApi = createHttpApi(AcmeApi)
-export const openApiDocument = OpenApi.fromApi(httpApi)
-export const apiReference = createApiReference(httpApi)
+import { Database } from "./database/drizzle.server"
+import * as Postgres from "./database/postgres.server"
+import { CompanyRepository } from "./objects/company-repository.server"
+import { CompanyService } from "./objects/company-service.server"
+import { ContactRepository } from "./objects/contact-repository.server"
+import { ContactService } from "./objects/contact-service.server"
+import { DealRepository } from "./objects/deal-repository.server"
+import { DealService } from "./objects/deal-service.server"
+import { LeadRepository } from "./objects/lead-repository.server"
+import { LeadService } from "./objects/lead-service.server"
+
+const objectRepositoriesLayer = Layer.mergeAll(
+  CompanyRepository.layer,
+  ContactRepository.layer,
+  DealRepository.layer,
+  LeadRepository.layer
+).pipe(Layer.provide(Database.layer), Layer.provide(Postgres.layer))
+
+const applicationLayer = Layer.mergeAll(
+  CompanyService.layer,
+  ContactService.layer,
+  DealService.layer,
+  LeadService.layer
+).pipe(Layer.provide(objectRepositoriesLayer))
+
+const apiDescription = createApiDescription(AcmeModel)
+const httpApi = createHttpApi(AcmeModel)
+const openApiDocument = OpenApi.fromApi(httpApi)
+const apiReference = createApiReference(httpApi, "/api/docs", {
+  customCss: `
+    .api-reference-toolbar {
+      display: none !important;
+    }
+  `,
+  hideDarkModeToggle: true,
+  showSidebar: false,
+})
+
+export const companyOs = {
+  api: {
+    description: apiDescription,
+    document: openApiDocument,
+    reference: apiReference,
+  },
+  /** Supplied with Acme's authorization Layer before execution. */
+  layer: applicationLayer,
+}
 
 // Repositories, services, capability ports, provider adapters, and Effect
 // layers are assembled here. Transport routes remain thin projections over
-// the same governed company capabilities used by the Console.
+// the same governed company capabilities used by the application.
