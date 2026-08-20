@@ -26,7 +26,4 @@ VITE_CLIENT_PORTAL_URL=https://portal.example.com
 VITE_COMPANY_OS_URL=https://os.example.com
 ```
 
-## Current state
-
-The homepage and cross-app links work. The content is example Acme material, not a finished company
-site.
+The content is example Acme material.

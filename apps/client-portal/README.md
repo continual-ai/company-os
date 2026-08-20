@@ -2,7 +2,7 @@
 
 Acme's customer-facing workspace, built with TanStack Start.
 
-The portal presents the subset of Company OS data and operations that Acme deliberately exposes to
+The portal presents the subset of Company OS data and capabilities that Acme deliberately exposes to
 a customer. It is a separate deployment and interface, not a separate business authority.
 
 ## Boundaries
@@ -21,8 +21,3 @@ pnpm --filter client-portal dev
 ```
 
 Open <http://localhost:3001>.
-
-## Current state
-
-The app is a static portal shell with sample projects. Authentication and backend reads have not
-been connected yet.
