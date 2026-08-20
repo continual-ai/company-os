@@ -1,83 +1,57 @@
-# Continual integration patterns
+# Continual integration context
 
-> Draft integration guidance. Use only what helps the concrete capability, reject unnecessary
-> layering, and update this reference as real integrations reveal better boundaries.
+Use this reference to choose an integration boundary, not to impose ports and adapters on every
+hosted dependency.
 
-## Default posture
+## Start with the capability
 
-Keep the core Company OS locally operable. Add a Continual dependency at a boundary where the
-platform provides a concrete capability, and preserve a direct-provider, local, or in-memory path
-when it is meaningful.
+Compare the simplest credible local, direct-provider, and Continual-operated designs. For each,
+make ownership of business policy, credentials, installation lifecycle, retries, repair, and
+operator control explicit.
 
-Bind hosted implementations in `apps/company-os/src/server/composition-root.server.ts`. Keep
-Continual API or SDK types inside the adapter. Company services consume semantic company-owned
-contracts.
+Integrate directly when provider-native behavior is the honest contract. Introduce a company-owned
+boundary when it isolates meaningful policy or protects the business from unstable provider types.
+Use a richer connector only when installation and ongoing lifecycle are themselves product-visible
+responsibilities.
 
-## Capability ports and adapters
-
-Name a port after the capability the company consumes and an adapter after the provider:
-
-```text
-agent-execution-port.ts       ContinualAgentExecutionAdapter
-identity-provider-port.ts     ContinualIdentityProviderAdapter
-deployment-port.ts            ContinualDeploymentAdapter
-```
-
-Create a port only when all are true:
-
-- it hides provider-specific types or lifecycle;
-- its contract is smaller and more stable than the provider API;
-- at least one meaningful alternate implementation exists;
-- the company owns the capability semantics expressed by the port.
-
-Do not wrap every external dependency. If business code legitimately consumes a provider-native
-abstraction and no stable smaller contract exists, keep it explicit at the edge until experience
-reveals the boundary.
-
-## Connectors
-
-Use a richer Connector when the integration owns product-visible installation lifecycle such as
-OAuth, configuration, credential rotation, webhooks, polling, synchronization, settings,
-maintenance, and uninstall. Compose it from narrow capabilities where useful.
-
-Keep connector lifecycle separate from business integration logic. For example, installing a CRM
-connection may be platform work, while deciding how an imported account becomes a Customer remains
-company-owned logic.
+Do not require multiple implementations merely to claim portability. An alternate implementation
+is valuable when it supports local development, testing, recovery, customer choice, or a credible
+provider change.
 
 ## Identity and authorization
 
-Let the platform authenticate and establish a verified principal. Map that principal into the
-backend invocation context, then evaluate company roles, policy, row scope, approvals, and
-constraints inside the backend.
+A platform may establish an authenticated principal. The company backend should still decide
+business roles, row scope, approvals, and action constraints unless a different authority is
+explicitly chosen.
 
-Do not trust actor IDs or permissions supplied by a browser or agent. Do not duplicate company
-authorization rules in the platform console or an adapter.
+Do not accept browser- or agent-supplied identity claims without verification. Avoid maintaining
+the same company policy independently in a platform UI and the backend.
 
-## Agent access
+## Agent and tool access
 
-Give the Continual agent and authorized external agents the same governed backend capabilities used
-by apps. Prefer a project-scoped MCP or equivalent typed contract with permission-filtered
-discovery. Never give an agent raw database access or agent-only bypass tools.
+Prefer governed business capabilities over raw database credentials or privileged agent-only
+bypasses. Changing the conversational or channel surface should not silently change the actor's
+business authority.
 
-Changing between conversation, a connected channel, or another agent changes delivery, not the
-actor's project identity, permissions, or business capabilities.
+The appropriate protocol—ordinary HTTP, MCP, or something else—is an access choice. It does not by
+itself provide policy, approval, idempotency, provenance, or audit.
 
 ## Source and deployment
 
-Keep the runtime compatible with ordinary Fetch. A deployment adapter may package, publish, and
-observe a versioned backend or app without changing the domain contract. Record which source
-revision and artifact are running so changes remain attributable and reversible.
+Keep source, schema, migrations, and business definitions attributable to the customer project.
+When the platform builds or deploys them, record enough revision and artifact identity to explain
+and reverse what is running.
 
-Treat environment, release, deployment, and running app state as platform concerns. Treat schema,
-migrations, business definitions, and app source as customer concerns.
+Do not assume one deployment topology. Preserve a conventional runtime boundary where practical so
+local and hosted operation remain design options.
 
-## Failure behavior
+## Failure questions
 
-- Make webhook, command, scheduled, and repair paths converge on one idempotent operation.
-- Treat external delivery as at least once unless the verified platform contract proves otherwise.
-- Keep platform unavailability from corrupting committed business state. Queue retryable effects
-  after commit or fail before the transaction begins.
-- Preserve provenance across the adapter: actor, project, source revision, invocation, and external
-  correlation IDs where applicable.
-- Test the port contract with a local or in-memory implementation and add a focused adapter test
-  against current platform behavior when credentials and a safe environment are available.
+- Does platform failure occur before the company transaction, or after durable intent is committed?
+- Which calls may be delivered more than once, and where is idempotency enforced?
+- How are webhooks, scheduled work, manual repair, and ordinary commands reconciled?
+- Which provenance must cross the boundary for support and audit?
+- Can derived platform state be rebuilt from authoritative records?
+
+Test the business-facing contract locally when that test adds confidence. Test the hosted adapter
+against current platform behavior when credentials and a safe environment are available.

@@ -1,77 +1,59 @@
 ---
 name: company-os
 description:
-  Draft, evolving Company OS product and architecture context for this repository. Use when
-  reasoning about or changing business objects, modules, tools, loops, metrics, documents, skills,
-  apps, data-model semantics, runtime contracts, authorization, persistence, API or MCP surfaces,
-  package boundaries, or code under packages/acme, packages/continual, and apps.
+  Evolving product and ownership context for Company OS decisions that the repository cannot answer
+  from code alone. Use for business-model semantics, customer ownership, package responsibility,
+  API boundaries, persistence, authorization, and architecture direction; not for routine code
+  navigation or inventories of current exports.
 ---
 
 # Company OS
 
-## Status: working draft
+Use this skill as decision context, not as a specification. Company OS is still being designed.
+Examples in the repository demonstrate possibilities; they do not make every current name, type,
+route, package, or abstraction permanent.
 
-Treat this skill and its references as concise working context, not a specification. The product,
-vocabulary, layers, and architecture are actively evolving and are not locked. Inspect the code and
-reason independently before accepting an existing design.
+## How to use it
 
-## Reason from first principles
+1. Inspect the relevant code, tests, package manifests, `AGENTS.md`, and nearby README first.
+2. Identify what remains unanswered: product intent, ownership, authority, or a real tradeoff.
+3. Read only the reference that addresses that question.
+4. Compare plausible designs and recommend the strongest one for the concrete slice, including a
+   design that differs from current code or these notes.
+5. Label claims as **Current**, **Direction**, or **Vision** when the distinction matters.
 
-- Start from the customer or company outcome, real operation, constraints, and failure modes.
-- Identify the minimum concepts and boundaries required; do not preserve a layer or abstraction
-  merely because it appears here.
-- Compare credible alternatives and recommend the strongest design, including one that contradicts
-  current thinking.
-- Separate **Current** implementation, **Direction** under consideration, and longer-term **Vision**.
-  Never present Direction or Vision as shipped.
-- Prefer evidence from working vertical slices, code, tests, and actual use over architectural
-  elegance or internal terminology.
-
-Inspect `README.md`, `AGENTS.md`, the affected package manifests, and the implementation before
-making claims. Code and explicit user decisions outrank this skill.
+Explicit user decisions and verified behavior outrank this skill. Repository instructions govern
+how to change the code; this skill explains why a boundary may matter.
 
 ## Read selectively
 
-| Task                                                                                          | Read                                                     |
-| --------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
-| Business vocabulary, data-model design, modules, tools, loops, metrics, or knowledge          | [references/concepts.md](references/concepts.md)         |
-| Package ownership, app/backend boundaries, persistence, governance, or architecture evolution | [references/architecture.md](references/architecture.md) |
-| Hosted identity, agents, connections, deployment, environments, or audit                      | Use `$continual`                                         |
+| Question | Read |
+| --- | --- |
+| Product meaning, business vocabulary, or future concepts | [references/concepts.md](references/concepts.md) |
+| Ownership, authority, data, package, or runtime boundaries | [references/architecture.md](references/architecture.md) |
+| Optional hosted-platform responsibility | Use `$continual` |
 
-For a new end-to-end business capability, read both references.
+Read both references only for a genuinely cross-cutting design decision.
 
-## Durable starting points
+## Context not obvious from code
 
-- Keep source and business data customer-owned and locally operable.
-- Keep one semantic API contract behind public software, customer portals, internal operations, and
-  agents.
-- Put company-specific nouns and behavior in `@acme/api` or `apps/*`; keep
-  `@continual/runtime` reusable.
-- Keep semantic API definitions portable and Effect-independent. Create Effect Schema and Effect
-  `HttpApi` runtime values from the same definitions at the private server boundary; use Effect's
-  own protocol projections directly when they already express the required result.
-- Be API-first, not OpenAPI-first. `defineApi` creates the authoritative portable contract;
-  OpenAPI, HTTP, clients, MCP, forms, and other interfaces are projections of that value. A hosted
-  Continual Project may operate the API, but it is not the API definition.
-- Keep object and action identity globally flat. Modules are lightweight source, documentation, and
-  default-UI groupings rather than client namespaces, permission boundaries, or service boundaries.
-  Typed clients group inferred methods once by globally unique object collection and are constructed
-  directly from the live semantic definition rather than requiring generated source.
-- Treat create, get, list, update, delete, and batch-get as conventional object operations. Reserve
-  actions for custom business commands and give real domain failures stable codes plus semantic
-  categories; do not redeclare standard transport failures per object.
-- Keep record outputs total and fields non-nullable by default. Omitted optional input resolves to
-  an explicit default or an honest kind-level zero value; require `nullable: true` when absence is
-  meaningful and no zero value should represent it.
-- Keep the server boundary of `apps/company-os` as the private composition root. Pass dependencies
-  explicitly at real external boundaries.
-- Treat a modular monolith, ordinary Postgres, and one transaction boundary as economical defaults,
-  not permanent laws.
-- Earn abstractions from concrete slices. Keep vendor types at the edge and business policy in the
-  backend.
+- A central product hypothesis is that public software, internal operations, integrations, and
+  agents should share business meaning and governed capabilities instead of becoming independent
+  authorities. The exact contract and interface shapes remain open.
+- Local operation, ordinary infrastructure, and a modular monolith are economical starting points,
+  not product doctrine.
 
-## Improve this skill
+## Avoid biasing the design
 
-When implementation evidence or an accepted decision changes the architecture, update this skill
-and the relevant reference. Keep only durable, decision-relevant context; remove stale assumptions,
-temporary migration state, repeated explanation, and ideas that were merely explored.
+- Do not turn a current implementation detail into a requirement unless tests, repository
+  instructions, or an explicit decision establish it as one.
+- Do not use future vocabulary to justify empty framework surface.
+- Do not restate exports, schemas, routes, field lists, or unfinished-feature inventories here;
+  inspect their authoritative code instead.
+- Prefer evidence from a working vertical slice over consistency with these notes.
+
+## Maintenance
+
+Update this skill only when a decision adds non-obvious, durable context. Remove guidance once code,
+tests, or repository instructions communicate it adequately, and remove proposals that were merely
+explored.

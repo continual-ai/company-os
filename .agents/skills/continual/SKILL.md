@@ -1,64 +1,60 @@
 ---
 name: continual
 description:
-  Draft, evolving Continual platform context for the standalone Company OS. Use when reasoning
-  about or changing hosted identity, workspaces or projects, agent execution, conversations, work
-  queues, connections, managed databases, source and deployment, environments, MCP gateways,
-  approvals, audit, or boundaries between source-owned code and platform-operated services.
+  Evolving context for deciding whether and how an optional hosted Continual platform should
+  interact with the standalone Company OS. Use for hosted identity, agent execution, connections,
+  infrastructure, deployment, controls, audit, and platform ownership questions; not for ordinary
+  local runtime implementation.
 ---
 
 # Continual
 
-## Status: working draft
+Use this skill to reason about an optional hosted-platform boundary. It is not a catalog of shipped
+features or a commitment to a particular platform design.
 
-Treat this skill and its references as a compact hypothesis about the platform boundary, not a
-locked platform design. Continual and Company OS are evolving together. Verify current code and
-platform behavior, reason independently, and recommend a better boundary when one exists.
+## How to use it
 
-## Reason from first principles
+1. Inspect the Company OS code and any current hosted-platform evidence relevant to the request.
+2. Define the capability and the outcome before choosing local, direct-provider, or
+   Continual-operated ownership.
+3. Read only the relevant reference below.
+4. Compare alternatives and state who owns truth, policy, credentials, lifecycle, recovery, and
+   operator control.
+5. Distinguish verified **Current** behavior from proposed **Direction** and **Vision**.
 
-This repository uses `@continual/*` for reusable, local framework packages. That does not mean the
-hosted Continual platform is required. Keep these concerns separate:
-
-- **Framework:** the reusable `@continual/runtime` kernel and any concrete platform packages earned
-  by implementation in this repo.
-- **Platform:** optional surrounding services such as identity, agent execution, connections,
-  managed infrastructure, deployment, controls, and audit.
-
-- Start from the capability and outcome the company needs, then compare local, direct-provider, and
-  Continual-operated designs.
-- Decide explicitly who owns business truth, policy, credentials, lifecycle, failure recovery, and
-  operator control.
-- Recommend the simplest strong design even when it conflicts with this draft or the current
-  platform shape.
-- Distinguish current capability from proposed Direction and longer-term Vision. Verify live
-  contracts before relying on availability, payloads, limits, or deployment behavior.
+Never infer hosted availability or contract details from `@continual/*` package names in this
+repository. Verify live APIs, authentication, limits, and failure semantics before integration.
 
 ## Read selectively
 
-| Task                                                                                       | Read                                                   |
-| ------------------------------------------------------------------------------------------ | ------------------------------------------------------ |
-| Ownership split, platform concepts, Project meaning, or hosted-versus-standalone reasoning | [references/platform.md](references/platform.md)       |
-| Ports, adapters, connectors, backend access, identity, agents, or deployment integration   | [references/integration.md](references/integration.md) |
-| Customer-side business model or source architecture                                        | Use `$company-os`                                      |
+| Question | Read |
+| --- | --- |
+| Product ownership, hosted-versus-standalone responsibility, or platform vocabulary | [references/platform.md](references/platform.md) |
+| Identity, agents, connections, deployment, credentials, or failure boundaries | [references/integration.md](references/integration.md) |
+| Customer-side business model and source architecture | Use `$company-os` |
 
-Read both references when introducing a new platform dependency.
+Read both references only when introducing or materially changing a platform dependency.
 
-## Durable starting points
+## Context not obvious from code
 
-- The company owns its source, data, operating model, apps, documents, skills, and integration
-  logic.
-- Keep the standalone path useful unless a concrete requirement makes hosted operation mandatory.
-- A Project operates source, infrastructure, apps, and deployments around a source-owned semantic
-  API; it is not the API definition itself.
-- Do not let platform interfaces, agents, work queues, or caches become a second business authority.
-- Express a platform dependency through a narrow boundary only when that boundary is genuinely
-  useful; do not manufacture pluggability.
-- Treat MCP and other protocols as access mechanisms, not substitutes for policy, approvals,
-  idempotency, or audit.
+- Continual is being explored as an optional operator around a customer-owned Company OS, not as
+  the necessary owner of its business model.
+- Local `@continual/*` packages are reusable framework code and do not prove that the hosted
+  platform is required.
+- A hosted capability should be justified by concrete operational value, not by a desire to route
+  everything through Continual.
+- Platform interfaces, conversations, queues, caches, and audit views should not silently become a
+  parallel business authority.
 
-## Improve this skill
+## Avoid biasing the design
 
-When implementation evidence or an accepted decision changes the platform boundary, update this
-skill and the relevant reference. Preserve only durable, useful context; remove stale platform
-assumptions, implementation inventories, migration notes, and unaccepted proposals.
+- Do not require a platform adapter, local fallback, or provider abstraction when the concrete
+  capability does not benefit from one.
+- Do not reserve packages or interfaces for hypothetical hosted features.
+- Do not encode an explored platform concept as customer-facing framework doctrine.
+- Recommend a direct or standalone design when it is stronger for the actual requirement.
+
+## Maintenance
+
+Keep only non-obvious and durable platform context. Remove implementation inventories, stale
+capability claims, migration notes, and proposals that have not been accepted or proven.

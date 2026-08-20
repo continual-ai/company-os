@@ -1,67 +1,52 @@
-# Continual platform boundary
+# Continual platform context
 
-> Draft working boundary, not a promise of current platform behavior. Challenge it from first
-> principles and update it when a better design is accepted or proven.
+This reference frames ownership questions for a platform that may build, run, or govern a
+customer-owned Company OS. It does not describe guaranteed product capability.
 
-## Relationship to Company OS
+## Working hypothesis
 
-Continual is an optional platform for building, running, and governing a customer-owned Company OS.
-The Company OS remains the software and data the customer owns. The platform surrounds that system
-with shared access, infrastructure, execution, and delivery services.
+Continual may provide shared operational capabilities around a Company OS while the customer keeps
+its business source and data. The useful boundary could include some combination of identity,
+agents, connections, infrastructure, delivery, controls, and audit, but that scope is unsettled and
+must be earned capability by capability.
 
-This standalone repository must remain useful without the hosted platform. The local
-`@continual/*` packages are reusable framework code, not proof of a platform dependency.
+The standalone repository must remain coherent without hosted Continual. A hosted service may be
+the best implementation for a requirement without becoming part of the semantic business model.
 
-## Ownership split
+## Ownership questions
 
-| Customer-owned Company OS    | Continual-operated platform                        |
-| ---------------------------- | -------------------------------------------------- |
-| Business objects and records | Workspace and project tenancy                      |
-| Rules, policy, and approvals | Authentication and principal establishment         |
-| Tools and integration logic  | Agent execution and conversations                  |
-| Documents and agent skills   | Connection installation and credential custody     |
-| Metrics and operating loops  | Managed databases and infrastructure lifecycle     |
-| Company apps and UI          | Builds, releases, deployments, and environments    |
-| Business data and migrations | Platform controls, logs, usage, and audit delivery |
+For each proposed platform responsibility, decide:
 
-The platform may provision and operate a project database, but it must not interpret customer
-tables or become a privileged business-data path. Business reads and writes still go through the
-customer backend.
+- Is this business truth, company policy, control-plane state, or derived observability?
+- Must the customer be able to inspect, export, repair, or operate it independently?
+- Does the platform need business-data access, or only a narrow governed capability?
+- Which credentials and lifecycle events does the platform own?
+- What happens to committed company work when the platform is unavailable?
+- Can the dependency be removed or replaced without reconstructing the business model?
 
-## Platform concepts
+Avoid fixed customer/platform ownership tables until real operations establish the split.
 
-- **Workspace:** the tenant for people, access, and commercial administration.
-- **Project:** the platform namespace connecting one customer backend to its source, database,
-  semantic API, apps, connections, delivery state, and work history. A Project operates and deploys
-  that API but is not its definition. Do not confuse it with a company-defined business object also
-  named Project.
-- **Connection:** an installed, authorized relationship with an external system, including its
-  configuration and lifecycle.
-- **Thread or conversation:** interaction and execution context for people and agents, not a store
-  of business truth.
-- **Work queue:** review, exception, and approval coordination that refers back to governed backend
-  records and invocations.
-- **Environment and deployment:** platform-owned running state derived from a versioned source
-  revision and artifacts.
+## Tentative vocabulary
 
-Platform resources are control-plane entities with platform identity, hierarchy, lifecycle, and
-authorization. Customer business objects are a separate data model. Never move a business noun
-into the platform resource model merely because the platform needs to display or reference it.
+Terms such as workspace, project, connection, conversation, work queue, environment, and deployment
+may be useful control-plane concepts. Their exact hierarchy and semantics are not settled here.
 
-## Source and delivery
+In particular, a platform Project is a possible operational context around source and running
+artifacts; it should not be assumed to define the company's API or to equal a company business
+object with the same name.
 
-One source revision should identify the compatible backend and app artifacts for a release. The
-platform may build and deploy them independently against the same versioned contract. Upstream
-starter or framework improvements should arrive as proposed source changes; they must not mutate a
-customer project silently.
+## Guardrails
 
-A platform gateway may authenticate an actor, filter discovery, route calls, and record
-invocations. It should federate only narrow platform capabilities with the customer backend and
-must not copy business logic or business data into a second authority.
+- Do not copy business rules into a platform console, gateway, queue, or agent implementation.
+- Do not make silent upstream changes to customer source or running behavior.
+- Keep platform state distinguishable from authoritative company records.
+- Preserve attribution between source revision, deployed artifact, actor, and invocation when the
+  capability requires it.
+- Treat portability and local operation as decision criteria, not absolute requirements that force
+  unused fallback implementations.
 
-## Accuracy rules
+## Accuracy
 
-This document captures durable product and architecture direction distilled into this standalone
-repository. It is not an inventory of currently available hosted features. Before implementing a
-platform integration, verify the live API or SDK contract, authentication model, availability,
-limits, deployment behavior, and failure semantics from current platform evidence.
+Before implementing against hosted Continual, inspect current platform code or authoritative live
+contracts. Verify authentication, authorization assumptions, availability, payloads, limits,
+deployment behavior, data access, and failure recovery. Label anything else as a proposal.
