@@ -12,9 +12,9 @@ export const companies = pgTable(
       .references(() => objects.id, { onDelete: "cascade" }),
     logo: jsonb().$type<unknown>(),
     name: text().notNull(),
-    domain: text().notNull().default(""),
-    website: text().notNull().default(""),
-    industry: text().notNull().default(""),
+    domain: text(),
+    website: text(),
+    industry: text(),
     lifecycleStage: text()
       .$type<"customer" | "inactive" | "prospect">()
       .notNull()
@@ -27,6 +27,6 @@ export const companies = pgTable(
     ),
     index("companies_domain_idx")
       .on(sql`lower(${table.domain})`)
-      .where(sql`${table.domain} <> ''`),
+      .where(sql`${table.domain} is not null`),
   ]
 )

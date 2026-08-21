@@ -12,8 +12,8 @@ export const leads = pgTable(
       .references(() => objects.id, { onDelete: "cascade" }),
     name: text().notNull(),
     companyName: text().notNull(),
-    email: text().notNull().default(""),
-    phone: text().notNull().default(""),
+    email: text(),
+    phone: text(),
     source: text()
       .$type<"inbound" | "other" | "outbound" | "referral" | "unknown">()
       .notNull()
@@ -34,6 +34,6 @@ export const leads = pgTable(
     ),
     index("leads_email_idx")
       .on(sql`lower(${table.email})`)
-      .where(sql`${table.email} <> ''`),
+      .where(sql`${table.email} is not null`),
   ]
 )

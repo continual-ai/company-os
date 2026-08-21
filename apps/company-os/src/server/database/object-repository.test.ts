@@ -7,8 +7,10 @@ import {
   EmailAddress,
   Etag,
   RecordId,
+  Timestamp,
 } from "@continual/runtime"
 import {
+  InvalidListRequest,
   ObjectNotFound,
   ObjectParentTypeMismatch,
   ObjectWriteConflict,
@@ -20,12 +22,14 @@ import { migrate } from "drizzle-orm/effect-pglite/migrator"
 import { Effect } from "effect"
 import { describe, expect, it } from "vitest"
 
+import { InteractionRepository } from "@/server/objects/interaction-repository.server"
 import { LeadRepository } from "@/server/objects/lead-repository.server"
 
 import { Database } from "./drizzle.server"
 import * as ObjectRepository from "./object-repository.server"
 import { companies } from "./schema/companies"
 import { objects } from "./schema/objects"
+import { parties } from "./schema/parties"
 import { roots } from "./schema/roots"
 
 const migrationsFolder = fileURLToPath(new URL("./migrations", import.meta.url))
@@ -80,7 +84,8 @@ describe("Drizzle object repository", () => {
         const db = asDatabase(database)
         const repository = yield* ObjectRepository.make(
           AcmeModel.objects.company,
-          companies
+          companies,
+          { interfaceTables: [parties] }
         ).pipe(Effect.provideService(Database, db))
         const service = ObjectService.make(
           AcmeModel.objects.company,
@@ -110,6 +115,38 @@ describe("Drizzle object repository", () => {
           pageSize: 1,
           pageToken: firstPage.nextPageToken,
         })
+        const filtered = yield* service.list({
+          filter: { field: "name", operator: "contains", value: "acme" },
+          sort: [{ direction: "asc", field: "name" }],
+        })
+        const sortedFirstPage = yield* service.list({
+          pageSize: 1,
+          sort: [{ direction: "desc", field: "name" }],
+        })
+        if (sortedFirstPage.nextPageToken === "") {
+          return yield* Effect.die("Expected another sorted page")
+        }
+        const sortedSecondPage = yield* service.list({
+          pageSize: 1,
+          pageToken: sortedFirstPage.nextPageToken,
+          sort: [{ direction: "desc", field: "name" }],
+        })
+        const mismatchedCursor = yield* service
+          .list({
+            pageSize: 1,
+            pageToken: sortedFirstPage.nextPageToken,
+            sort: [{ direction: "asc", field: "name" }],
+          })
+          .pipe(Effect.flip)
+        const invalidFilter = {
+          field: "name",
+          operator: "eq",
+          value: 42,
+        } as const
+        const invalidFilterValue = yield* service
+          // @ts-expect-error Runtime input is validated even when it bypasses TypeScript.
+          .list({ filter: invalidFilter })
+          .pipe(Effect.flip)
         const staleWrite = yield* repository
           .update(first.id, { name: "Stale" }, first.etag, {
             etag: Etag("stale_etag"),
@@ -154,6 +191,33 @@ describe("Drizzle object repository", () => {
           name: "Ada",
         })
         const leads = yield* leadRepository.findByEmail("lead@acme.example")
+
+        const interactionRepository = yield* InteractionRepository.make.pipe(
+          Effect.provideService(Database, db)
+        )
+        const interactionService = ObjectService.make(
+          AcmeModel.objects.interaction,
+          interactionRepository,
+          {
+            authorize: () => Effect.succeed(context),
+            generateEtag: () => "interaction_etag",
+            generateId: () => "interaction_1",
+          }
+        )
+        yield* interactionService.create({
+          occurredAt: Timestamp("2026-08-20T12:00:00Z"),
+          subjectId: RecordId("party")(first.id),
+          summary: "Introductory call",
+        })
+        const partyInteractions = yield* interactionService.list({
+          filter: {
+            field: "subjectId",
+            operator: "eq",
+            value: RecordId("party")(first.id),
+          },
+          sort: [{ direction: "desc", field: "occurredAt" }],
+        })
+        const partyRows = yield* database.select().from(parties)
         const columns = yield* database.$client<{
           columnName: string
           tableName: string
@@ -171,10 +235,17 @@ describe("Drizzle object repository", () => {
           columns,
           first,
           firstPage,
+          filtered,
+          invalidFilterValue,
           leads,
+          mismatchedCursor,
+          partyInteractions,
+          partyRows,
           rolledBack,
           second,
           secondPage,
+          sortedFirstPage,
+          sortedSecondPage,
           staleWrite,
           updated,
           wrongParent,
@@ -201,11 +272,27 @@ describe("Drizzle object repository", () => {
     expect(result.firstPage.nextPageToken).not.toBe("")
     expect(result.secondPage.items).toHaveLength(1)
     expect(result.secondPage.nextPageToken).toBe("")
+    expect(result.filtered.items.map(({ id }) => id)).toEqual([result.first.id])
+    expect(result.sortedFirstPage.items[0]?.name).toBe("Bravo")
+    expect(result.sortedSecondPage.items[0]?.name).toBe("Acme Corporation")
+    expect(result.mismatchedCursor).toBeInstanceOf(InvalidListRequest)
+    expect(result.invalidFilterValue).toBeInstanceOf(InvalidListRequest)
     expect(result.staleWrite).toBeInstanceOf(ObjectWriteConflict)
     expect(result.wrongParent).toBeInstanceOf(ObjectParentTypeMismatch)
     expect(result.rolledBack).toBeInstanceOf(ObjectNotFound)
     expect(result.leads).toHaveLength(1)
     expect(result.leads[0]).toMatchObject({ email: "Lead@Acme.Example" })
+    expect(result.partyRows.map(({ id }) => id)).toEqual([
+      result.first.id,
+      result.second.id,
+    ])
+    expect(result.partyInteractions.items).toEqual([
+      expect.objectContaining({
+        kind: "note",
+        subjectId: result.first.id,
+        summary: "Introductory call",
+      }),
+    ])
     for (const object of Object.values(AcmeModel.objects)) {
       expect(
         new Set(

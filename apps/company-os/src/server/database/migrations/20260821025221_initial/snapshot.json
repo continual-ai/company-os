@@ -1,7 +1,7 @@
 {
   "version": "8",
   "dialect": "postgres",
-  "id": "2dba51c3-b759-4a6f-b413-7504bf9ef094",
+  "id": "aa6e3fb3-dac0-46d0-aef8-cbdd5dd6313c",
   "prevIds": ["00000000-0000-0000-0000-000000000000"],
   "ddl": [
     {
@@ -24,6 +24,12 @@
     },
     {
       "isRlsEnabled": false,
+      "name": "interactions",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
       "name": "leads",
       "entityType": "tables",
       "schema": "public"
@@ -31,6 +37,12 @@
     {
       "isRlsEnabled": false,
       "name": "objects",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "parties",
       "entityType": "tables",
       "schema": "public"
     },
@@ -82,9 +94,9 @@
     {
       "type": "text",
       "typeSchema": null,
-      "notNull": true,
+      "notNull": false,
       "dimensions": 0,
-      "default": "''",
+      "default": null,
       "generated": null,
       "identity": null,
       "name": "domain",
@@ -95,9 +107,9 @@
     {
       "type": "text",
       "typeSchema": null,
-      "notNull": true,
+      "notNull": false,
       "dimensions": 0,
-      "default": "''",
+      "default": null,
       "generated": null,
       "identity": null,
       "name": "website",
@@ -108,9 +120,9 @@
     {
       "type": "text",
       "typeSchema": null,
-      "notNull": true,
+      "notNull": false,
       "dimensions": 0,
-      "default": "''",
+      "default": null,
       "generated": null,
       "identity": null,
       "name": "industry",
@@ -201,7 +213,23 @@
       "typeSchema": null,
       "notNull": true,
       "dimensions": 0,
-      "default": "''",
+      "default": null,
+      "generated": {
+        "as": "trim(first_name || ' ' || last_name)",
+        "type": "stored"
+      },
+      "identity": null,
+      "name": "name",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "contacts"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
       "generated": null,
       "identity": null,
       "name": "job_title",
@@ -212,9 +240,9 @@
     {
       "type": "text",
       "typeSchema": null,
-      "notNull": true,
+      "notNull": false,
       "dimensions": 0,
-      "default": "''",
+      "default": null,
       "generated": null,
       "identity": null,
       "name": "email",
@@ -225,9 +253,9 @@
     {
       "type": "text",
       "typeSchema": null,
-      "notNull": true,
+      "notNull": false,
       "dimensions": 0,
-      "default": "''",
+      "default": null,
       "generated": null,
       "identity": null,
       "name": "phone",
@@ -324,6 +352,84 @@
       "name": "id",
       "entityType": "columns",
       "schema": "public",
+      "table": "interactions"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "subject_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "interactions"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'note'",
+      "generated": null,
+      "identity": null,
+      "name": "kind",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "interactions"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "occurred_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "interactions"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "summary",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "interactions"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "details",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "interactions"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
       "table": "leads"
     },
     {
@@ -355,9 +461,9 @@
     {
       "type": "text",
       "typeSchema": null,
-      "notNull": true,
+      "notNull": false,
       "dimensions": 0,
-      "default": "''",
+      "default": null,
       "generated": null,
       "identity": null,
       "name": "email",
@@ -368,9 +474,9 @@
     {
       "type": "text",
       "typeSchema": null,
-      "notNull": true,
+      "notNull": false,
       "dimensions": 0,
-      "default": "''",
+      "default": null,
       "generated": null,
       "identity": null,
       "name": "phone",
@@ -545,6 +651,19 @@
       "name": "id",
       "entityType": "columns",
       "schema": "public",
+      "table": "parties"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
       "table": "roots"
     },
     {
@@ -559,7 +678,7 @@
         }
       ],
       "isUnique": false,
-      "where": "\"domain\" <> ''",
+      "where": "\"domain\" is not null",
       "with": "",
       "method": "btree",
       "concurrently": false,
@@ -601,7 +720,7 @@
         }
       ],
       "isUnique": false,
-      "where": "\"email\" <> ''",
+      "where": "\"email\" is not null",
       "with": "",
       "method": "btree",
       "concurrently": false,
@@ -635,6 +754,48 @@
       "nameExplicit": true,
       "columns": [
         {
+          "value": "subject_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "interactions_subject_id_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "interactions"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "occurred_at",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "interactions_occurred_at_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "interactions"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
           "value": "lower(\"email\")",
           "isExpression": true,
           "asc": true,
@@ -643,7 +804,7 @@
         }
       ],
       "isUnique": false,
-      "where": "\"email\" <> ''",
+      "where": "\"email\" is not null",
       "with": "",
       "method": "btree",
       "concurrently": false,
@@ -788,6 +949,32 @@
       "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
+      "name": "interactions_id_objects_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "interactions"
+    },
+    {
+      "nameExplicit": false,
+      "columns": ["subject_id"],
+      "schemaTo": "public",
+      "tableTo": "parties",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "interactions_subject_id_parties_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "interactions"
+    },
+    {
+      "nameExplicit": false,
+      "columns": ["id"],
+      "schemaTo": "public",
+      "tableTo": "objects",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
       "name": "leads_id_objects_id_fkey",
       "entityType": "fks",
       "schema": "public",
@@ -805,6 +992,19 @@
       "entityType": "fks",
       "schema": "public",
       "table": "objects"
+    },
+    {
+      "nameExplicit": false,
+      "columns": ["id"],
+      "schemaTo": "public",
+      "tableTo": "objects",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "parties_id_objects_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "parties"
     },
     {
       "nameExplicit": false,
@@ -846,6 +1046,14 @@
     {
       "columns": ["id"],
       "nameExplicit": false,
+      "name": "interactions_pkey",
+      "schema": "public",
+      "table": "interactions",
+      "entityType": "pks"
+    },
+    {
+      "columns": ["id"],
+      "nameExplicit": false,
       "name": "leads_pkey",
       "schema": "public",
       "table": "leads",
@@ -857,6 +1065,14 @@
       "name": "objects_pkey",
       "schema": "public",
       "table": "objects",
+      "entityType": "pks"
+    },
+    {
+      "columns": ["id"],
+      "nameExplicit": false,
+      "name": "parties_pkey",
+      "schema": "public",
+      "table": "parties",
       "entityType": "pks"
     },
     {
@@ -882,6 +1098,13 @@
       "table": "deals"
     },
     {
+      "value": "\"kind\" in ('note', 'email', 'call', 'meeting')",
+      "name": "interactions_kind_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "interactions"
+    },
+    {
       "value": "\"source\" in ('unknown', 'inbound', 'outbound', 'referral', 'other')",
       "name": "leads_source_check",
       "entityType": "checks",
@@ -896,7 +1119,7 @@
       "table": "leads"
     },
     {
-      "value": "\"kind\" in ('root', 'company', 'contact', 'deal', 'lead')",
+      "value": "\"kind\" in ('root', 'company', 'contact', 'deal', 'lead', 'interaction')",
       "name": "objects_kind_check",
       "entityType": "checks",
       "schema": "public",

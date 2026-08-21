@@ -17,14 +17,17 @@ export const contacts = pgTable(
     }),
     firstName: text().notNull(),
     lastName: text().notNull(),
-    jobTitle: text().notNull().default(""),
-    email: text().notNull().default(""),
-    phone: text().notNull().default(""),
+    name: text()
+      .notNull()
+      .generatedAlwaysAs(sql`trim(first_name || ' ' || last_name)`),
+    jobTitle: text(),
+    email: text(),
+    phone: text(),
   },
   (table) => [
     index("contacts_primary_company_id_idx").on(table.primaryCompanyId),
     index("contacts_email_idx")
       .on(sql`lower(${table.email})`)
-      .where(sql`${table.email} <> ''`),
+      .where(sql`${table.email} is not null`),
   ]
 )

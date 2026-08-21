@@ -15,6 +15,8 @@ import { ContactRepository } from "./objects/contact-repository.server"
 import { ContactService } from "./objects/contact-service.server"
 import { DealRepository } from "./objects/deal-repository.server"
 import { DealService } from "./objects/deal-service.server"
+import { InteractionRepository } from "./objects/interaction-repository.server"
+import { InteractionService } from "./objects/interaction-service.server"
 import { LeadRepository } from "./objects/lead-repository.server"
 import { LeadService } from "./objects/lead-service.server"
 
@@ -22,6 +24,7 @@ const objectRepositoriesLayer = Layer.mergeAll(
   CompanyRepository.layer,
   ContactRepository.layer,
   DealRepository.layer,
+  InteractionRepository.layer,
   LeadRepository.layer
 ).pipe(Layer.provide(Database.layer), Layer.provide(Postgres.layer))
 
@@ -29,6 +32,7 @@ const applicationLayer = Layer.mergeAll(
   CompanyService.layer,
   ContactService.layer,
   DealService.layer,
+  InteractionService.layer,
   LeadService.layer
 ).pipe(Layer.provide(objectRepositoriesLayer))
 

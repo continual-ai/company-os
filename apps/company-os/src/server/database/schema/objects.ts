@@ -14,7 +14,7 @@ export const objects = pgTable(
   {
     id: text().primaryKey(),
     kind: text()
-      .$type<"company" | "contact" | "deal" | "lead" | "root">()
+      .$type<"company" | "contact" | "deal" | "interaction" | "lead" | "root">()
       .notNull(),
     parentId: text().references((): AnyPgColumn => objects.id, {
       onDelete: "restrict",
@@ -36,7 +36,7 @@ export const objects = pgTable(
   (table) => [
     check(
       "objects_kind_check",
-      sql`${table.kind} in ('root', 'company', 'contact', 'deal', 'lead')`
+      sql`${table.kind} in ('root', 'company', 'contact', 'deal', 'lead', 'interaction')`
     ),
     check(
       "objects_parent_required",
