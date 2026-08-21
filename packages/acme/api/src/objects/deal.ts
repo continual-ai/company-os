@@ -12,17 +12,15 @@ export const Deal = defineObject({
   properties: {
     companyId: schema.recordId(Company, {
       label: "Company",
-      required: true,
     }),
     name: schema.string({
       label: "Name",
-      required: true,
       minLength: 1,
       maxLength: 200,
     }),
     stage: schema.select({
       label: "Stage",
-      defaultValue: "discovery",
+      default: "discovery",
       options: [
         { value: "discovery", label: "Discovery" },
         { value: "qualified", label: "Qualified" },
@@ -43,6 +41,7 @@ export const Deal = defineObject({
     }),
   },
   display: {
+    icon: "handshake",
     title: "name",
     subtitle: "companyId",
     status: "stage",

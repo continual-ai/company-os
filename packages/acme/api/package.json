@@ -6,6 +6,7 @@
   "type": "module",
   "sideEffects": false,
   "imports": {
+    "#interfaces/*": "./src/interfaces/*.ts",
     "#objects/*": "./src/objects/*.ts"
   },
   "exports": {

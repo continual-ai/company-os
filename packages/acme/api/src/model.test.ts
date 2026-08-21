@@ -19,13 +19,20 @@ describe("Acme model contract", () => {
     expect(description).toMatchObject({
       api: { id: "acme", name: "Acme" },
       root: { id: "root", kind: "root", name: "Root" },
-      version: "0.15",
+      version: "0.16",
     })
     expect(description.objects.map((object) => object.id)).toEqual([
       "company",
       "contact",
       "lead",
       "deal",
+      "interaction",
+    ])
+    expect(description.interfaces).toEqual([
+      expect.objectContaining({
+        id: "party",
+        display: { icon: "party", image: "image", title: "name" },
+      }),
     ])
     expect(description.actions).toContainEqual(
       expect.objectContaining({
@@ -46,30 +53,62 @@ describe("Acme model contract", () => {
         from: {
           cardinality: "zeroOrOne",
           name: "primaryCompany",
-          objectId: "contact",
-          property: "primaryCompanyId",
+          typeId: "contact",
         },
-        to: { cardinality: "many", name: "contacts", objectId: "company" },
+        to: { cardinality: "many", name: "contacts", typeId: "company" },
       }),
       expect.objectContaining({
         id: "dealCompany",
         from: {
           cardinality: "one",
           name: "company",
-          objectId: "deal",
-          property: "companyId",
+          typeId: "deal",
         },
-        to: { cardinality: "many", name: "deals", objectId: "company" },
+        to: { cardinality: "many", name: "deals", typeId: "company" },
+      }),
+      expect.objectContaining({
+        id: "interactionSubject",
+        from: {
+          cardinality: "one",
+          name: "subject",
+          typeId: "interaction",
+        },
+        to: {
+          cardinality: "many",
+          name: "interactions",
+          typeId: "party",
+        },
       }),
     ])
     expect(
       description.objects.find((object) => object.id === "lead")?.properties
         .email
-    ).toMatchObject({ kind: "string", format: "email", defaultValue: "" })
+    ).toMatchObject({
+      kind: "string",
+      format: "email",
+      nullable: true,
+      requiredOnCreate: false,
+    })
+    expect(
+      description.objects.find((object) => object.id === "company")?.properties
+        .name
+    ).toMatchObject({ requiredOnCreate: true })
     expect(
       description.objects.find((object) => object.id === "company")?.properties
         .logo
     ).toMatchObject({ kind: "image", nullable: true })
+    expect(
+      description.objects.find((object) => object.id === "company")?.interfaces
+    ).toEqual({
+      party: {
+        interfaceId: "party",
+        properties: { image: "logo", name: "name" },
+      },
+    })
+    expect(
+      description.objects.find((object) => object.id === "interaction")
+        ?.properties.subjectId
+    ).toMatchObject({ kind: "recordId", objectId: "party" })
     expect(description.objects).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -101,9 +140,6 @@ describe("Acme model contract", () => {
     expectTypeOf(
       ContactPrimaryCompany.from.name
     ).toEqualTypeOf<"primaryCompany">()
-    expectTypeOf(
-      ContactPrimaryCompany.from.property
-    ).toEqualTypeOf<"primaryCompanyId">()
     expectTypeOf(ContactPrimaryCompany.to.name).toEqualTypeOf<"contacts">()
   })
 })

@@ -14,21 +14,19 @@ export const Lead = defineObject({
   properties: {
     name: schema.string({
       label: "Name",
-      required: true,
       minLength: 1,
       maxLength: 200,
     }),
     companyName: schema.string({
       label: "Company",
-      required: true,
       minLength: 1,
       maxLength: 200,
     }),
-    email: schema.email({ label: "Email", maxLength: 320 }),
-    phone: schema.phone({ label: "Phone", maxLength: 50 }),
+    email: schema.email({ label: "Email", maxLength: 320, nullable: true }),
+    phone: schema.phone({ label: "Phone", maxLength: 50, nullable: true }),
     source: schema.select({
       label: "Source",
-      defaultValue: "unknown",
+      default: "unknown",
       options: [
         { value: "unknown", label: "Unknown" },
         { value: "inbound", label: "Inbound" },
@@ -39,7 +37,7 @@ export const Lead = defineObject({
     }),
     status: schema.select({
       label: "Status",
-      defaultValue: "new",
+      default: "new",
       options: [
         { value: "new", label: "New" },
         { value: "working", label: "Working" },
@@ -49,6 +47,7 @@ export const Lead = defineObject({
     }),
   },
   display: {
+    icon: "lead",
     title: "name",
     subtitle: "companyName",
     status: "status",

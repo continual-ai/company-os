@@ -1,5 +1,7 @@
 import { Root, defineObject, schema } from "@continual/runtime"
 
+import { Party } from "#interfaces/party"
+
 import { Company } from "./company"
 
 export const Contact = defineObject({
@@ -9,6 +11,12 @@ export const Contact = defineObject({
   parent: Root,
   pluralName: "Contacts",
   description: "A person Acme communicates or does business with.",
+  implements: [
+    {
+      interface: Party,
+      properties: { image: "photo", name: "name" },
+    },
+  ],
   properties: {
     photo: schema.image({ label: "Photo", aspectRatio: 1, nullable: true }),
     primaryCompanyId: schema.recordId(Company, {
@@ -19,23 +27,31 @@ export const Contact = defineObject({
     }),
     firstName: schema.string({
       label: "First name",
-      required: true,
       minLength: 1,
       maxLength: 100,
     }),
     lastName: schema.string({
       label: "Last name",
-      required: true,
       minLength: 1,
       maxLength: 100,
     }),
-    jobTitle: schema.string({ label: "Job title", maxLength: 150 }),
-    email: schema.email({ label: "Email", maxLength: 320 }),
-    phone: schema.phone({ label: "Phone", maxLength: 50 }),
+    name: schema.string({
+      label: "Name",
+      outputOnly: true,
+      description: "The contact's generated full display name.",
+    }),
+    jobTitle: schema.string({
+      label: "Job title",
+      maxLength: 150,
+      nullable: true,
+    }),
+    email: schema.email({ label: "Email", maxLength: 320, nullable: true }),
+    phone: schema.phone({ label: "Phone", maxLength: 50, nullable: true }),
   },
   display: {
+    icon: "person",
     image: "photo",
-    title: "lastName",
+    title: "name",
     subtitle: "email",
   },
 })
