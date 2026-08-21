@@ -16,6 +16,12 @@ export type {
   Properties,
   PropertyDefinition,
 } from "./definition/property"
+export { defineInterface } from "./definition/interface"
+export type {
+  InterfaceDisplay,
+  InterfaceImplementation,
+  InterfaceType,
+} from "./definition/interface"
 export { defineModel } from "./definition/model"
 export type { Model } from "./definition/model"
 export { defineLink, linkCardinalities } from "./definition/link"
@@ -37,16 +43,24 @@ export { Root } from "./definition/root"
 export type { RootType } from "./definition/root"
 export {
   DEFAULT_PAGE_SIZE,
+  filterOperators,
   IdempotencyKey,
   MAX_BATCH_GET_SIZE,
   MAX_PAGE_SIZE,
+  nullPlacements,
   PageToken,
+  sortDirections,
 } from "./definition/request"
 export type {
   Batch,
+  FilterOperator,
   ListRequest,
   MutationOptions,
+  NullPlacement,
+  ObjectFilter,
+  ObjectSort,
   Page,
+  SortDirection,
 } from "./definition/request"
 export {
   CalendarDate,
@@ -63,11 +77,17 @@ export {
 export type {
   AnySchema,
   Choice,
+  DecimalSchema,
+  DecimalSchemaOptions,
   FileRef,
+  GeoPoint,
+  GeoPointSchema,
   ImageRef,
   InferSchema,
   LiteralValue,
   Money,
+  MediaRef,
+  MediaSchema,
   NumberSchemaOptions,
   SchemaDefinition,
   SchemaAnnotations,

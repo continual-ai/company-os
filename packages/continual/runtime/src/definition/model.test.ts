@@ -1,6 +1,7 @@
 import { describe, expect, expectTypeOf, it } from "vitest"
 
 import { defineError } from "./error"
+import { defineInterface } from "./interface"
 import { defineLink } from "./link"
 import { defineModel } from "./model"
 import { defineObject } from "./object"
@@ -21,7 +22,7 @@ const Contact = defineObject({
   parent: Root,
   pluralName: "Contacts",
   properties: {
-    name: schema.string({ required: true }),
+    name: schema.string(),
   },
   display: { title: "name" },
   actions: {
@@ -58,7 +59,7 @@ function objectWithAction(path: `/${string}`, scope: "collection" | "object") {
       name: "Contact",
       parent: Root,
       pluralName: "Contacts",
-      properties: { name: schema.string({ required: true }) },
+      properties: { name: schema.string() },
       display: { title: "name" },
       actions: {
         enroll: {
@@ -104,7 +105,7 @@ describe("model definitions", () => {
       http: { method: "POST", path: "/contacts" },
       input: {
         properties: {
-          name: { kind: "string", required: true },
+          name: { kind: "string", requiredOnCreate: true },
         },
       },
       output: { properties: { id: { kind: "recordId" } } },
@@ -129,7 +130,7 @@ describe("model definitions", () => {
       name: "Other contact",
       parent: Root,
       pluralName: "Other contacts",
-      properties: { name: schema.string({ required: true }) },
+      properties: { name: schema.string() },
       display: { title: "name" },
     })
     expect(() =>
@@ -147,7 +148,7 @@ describe("model definitions", () => {
       name: "Person",
       parent: Root,
       pluralName: "People",
-      properties: { name: schema.string({ required: true }) },
+      properties: { name: schema.string() },
       display: { title: "name" },
     })
     expect(() =>
@@ -167,7 +168,7 @@ describe("model definitions", () => {
       name: "Account",
       parent: Root,
       pluralName: "Accounts",
-      properties: { name: schema.string({ required: true }) },
+      properties: { name: schema.string() },
       display: { title: "name" },
     })
     const Membership = defineObject({
@@ -177,7 +178,7 @@ describe("model definitions", () => {
       parent: Account,
       pluralName: "Memberships",
       properties: {
-        accountId: schema.recordId(Account, { required: true }),
+        accountId: schema.recordId(Account),
       },
       display: { title: "accountId" },
     })
@@ -212,7 +213,7 @@ describe("model definitions", () => {
       name: "Company",
       parent: Root,
       pluralName: "Companies",
-      properties: { name: schema.string({ required: true }) },
+      properties: { name: schema.string() },
       display: { title: "name" },
     })
     const CompanyContact = defineObject({
@@ -222,7 +223,7 @@ describe("model definitions", () => {
       parent: Root,
       pluralName: "Company contacts",
       properties: {
-        companyId: schema.recordId(Company, { required: true }),
+        companyId: schema.recordId(Company),
       },
       display: { title: "companyId" },
     })
@@ -230,12 +231,11 @@ describe("model definitions", () => {
       id: "companyContacts",
       name: "Company contacts",
       from: {
-        object: CompanyContact,
+        type: CompanyContact,
         name: "company",
         cardinality: "one",
-        property: "companyId",
       },
-      to: { object: Company, name: "contacts", cardinality: "many" },
+      to: { type: Company, name: "contacts", cardinality: "many" },
     })
 
     const model = defineModel({
@@ -248,12 +248,102 @@ describe("model definitions", () => {
     expect(model.links.companyContacts.from).toEqual({
       cardinality: "one",
       name: "company",
-      objectId: "companyContact",
-      property: "companyId",
+      typeId: "companyContact",
     })
     expectTypeOf(
       model.links.companyContacts.to.name
     ).toEqualTypeOf<"contacts">()
+  })
+
+  it("registers portable interfaces and validates exact object mappings", () => {
+    const Party = defineInterface({
+      id: "party",
+      name: "Party",
+      pluralName: "Parties",
+      properties: {
+        image: schema.image({ nullable: true }),
+        name: schema.string(),
+      },
+      display: { icon: "party", image: "image", title: "name" },
+    })
+    const Company = defineObject({
+      id: "company",
+      collection: "companies",
+      name: "Company",
+      parent: Root,
+      pluralName: "Companies",
+      properties: {
+        logo: schema.image({ nullable: true }),
+        legalName: schema.string(),
+      },
+      display: { icon: "building", image: "logo", title: "legalName" },
+      implements: [
+        {
+          interface: Party,
+          properties: { image: "logo", name: "legalName" },
+        },
+      ],
+    })
+
+    const model = defineModel({
+      id: "acme",
+      name: "Acme",
+      interfaces: [Party],
+      objects: [Company],
+      links: [],
+    })
+
+    expect(model.interfaces.party.display.icon).toBe("party")
+    expect(model.objects.company.interfaces.party).toEqual({
+      interfaceId: "party",
+      properties: { image: "logo", name: "legalName" },
+    })
+    expectTypeOf(
+      model.objects.company.interfaces.party.interfaceId
+    ).toEqualTypeOf<"party">()
+
+    expect(() =>
+      defineObject({
+        id: "person",
+        collection: "people",
+        name: "Person",
+        parent: Root,
+        pluralName: "People",
+        properties: { name: schema.string() },
+        display: { title: "name" },
+        implements: [
+          {
+            interface: Party,
+            properties: { name: "name" },
+          },
+        ],
+      })
+    ).toThrow(/must map exactly/)
+
+    expect(() =>
+      defineObject({
+        id: "duplicateParty",
+        collection: "duplicateParties",
+        name: "Duplicate party",
+        parent: Root,
+        pluralName: "Duplicate parties",
+        properties: {
+          image: schema.image({ nullable: true }),
+          name: schema.string(),
+        },
+        display: { title: "name" },
+        implements: [
+          {
+            interface: Party,
+            properties: { image: "image", name: "name" },
+          },
+          {
+            interface: Party,
+            properties: { image: "image", name: "name" },
+          },
+        ],
+      })
+    ).toThrow(/implements interface 'party' more than once/)
   })
 })
 
@@ -266,7 +356,7 @@ describe("object properties", () => {
         name: "Another root",
         parent: Root,
         pluralName: "Other roots",
-        properties: { name: schema.string({ required: true }) },
+        properties: { name: schema.string() },
         display: { title: "name" },
       })
     ).toThrow(/reserved for the built-in Root/)
@@ -281,42 +371,37 @@ describe("object properties", () => {
       pluralName: "Examples",
       properties: {
         title: schema.string(),
-        count: schema.number(),
+        count: schema.number({ default: 0 }),
         dueOn: schema.date({ nullable: true }),
+        note: schema.string({ default: "", nullable: true }),
       },
       display: { title: "title" },
     })
 
     expect(Example.properties.title).toMatchObject({
       kind: "string",
-      defaultValue: "",
       nullable: false,
-      required: false,
+      requiredOnCreate: true,
     })
-    expect(Example.properties.count).toMatchObject({ defaultValue: 0 })
-    expect(Example.properties.dueOn).toMatchObject({ nullable: true })
+    expect(Example.properties.count).toMatchObject({
+      default: 0,
+      requiredOnCreate: false,
+    })
+    expect(Example.properties.dueOn).toMatchObject({
+      nullable: true,
+      requiredOnCreate: false,
+    })
+    expect(Example.properties.note).toMatchObject({
+      default: "",
+      nullable: true,
+      requiredOnCreate: false,
+    })
   })
 
   it("rejects contradictory property annotations", () => {
     expect(
-      invalidProperty(schema.string({ outputOnly: true, required: true }))
-    ).toThrow(/cannot be required as input/)
-    expect(
-      invalidProperty(
-        schema.string({ defaultValue: "generated", required: true })
-      )
-    ).toThrow(/both required input and server-defaulted/)
-    expect(() =>
-      defineObject({
-        id: "example",
-        collection: "examples",
-        name: "Example",
-        parent: Root,
-        pluralName: "Examples",
-        properties: { image: schema.image({}) },
-        display: { title: "image" },
-      })
-    ).toThrow(/has no zero value/)
+      invalidProperty(schema.string({ default: "generated", outputOnly: true }))
+    ).toThrow(/output-only property cannot declare an input default/)
   })
 })
 

@@ -1,6 +1,7 @@
 import {
   type ModelCatalog,
   modelActions,
+  modelInterfaces,
   modelLinks,
   modelObjects,
 } from "./definition/model"
@@ -15,6 +16,11 @@ export function createApiDescription(model: ModelCatalog): ApiDescription {
     version: API_DESCRIPTION_VERSION,
     actions: modelActions(model).map((action) => ({ ...action })),
     api: { id: model.id, name: model.name },
+    interfaces: modelInterfaces(model).map((item) => ({
+      ...item,
+      display: { ...item.display },
+      properties: { ...item.properties },
+    })),
     links: modelLinks(model).map((link) => ({
       ...link,
       from: { ...link.from },
@@ -26,6 +32,7 @@ export function createApiDescription(model: ModelCatalog): ApiDescription {
         id: object.id,
         collection: object.collection,
         name: object.name,
+        interfaces: { ...object.interfaces },
         parent: { ...object.parent },
         pluralName: object.pluralName,
         properties: { ...object.properties },

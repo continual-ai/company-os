@@ -31,12 +31,12 @@ const Account = defineObject({
   pluralName: "Accounts",
   properties: {
     logo: schema.image({ aspectRatio: 1, nullable: true }),
-    externalId: schema.string({ immutable: true, required: true }),
-    name: schema.string({ required: true, minLength: 1 }),
-    email: schema.email(),
+    externalId: schema.string({ immutable: true }),
+    name: schema.string({ minLength: 1 }),
+    email: schema.email({ nullable: true }),
     searchLabel: schema.string({ outputOnly: true }),
     status: schema.select({
-      defaultValue: "active",
+      default: "active",
       options: [
         { value: "active", label: "Active" },
         { value: "inactive", label: "Inactive" },
@@ -63,7 +63,7 @@ describe("Effect Schema projection", () => {
     expect(
       decode({
         ...base,
-        email: "",
+        email: "hello@example.com",
         externalId: "external_1",
         logo: { assetId: "asset_1", alt: "Acme logo" },
         name: "Acme",
@@ -72,7 +72,7 @@ describe("Effect Schema projection", () => {
       })
     ).toEqual({
       ...base,
-      email: "",
+      email: "hello@example.com",
       externalId: "external_1",
       logo: { assetId: "asset_1", alt: "Acme logo" },
       name: "Acme",
@@ -82,7 +82,7 @@ describe("Effect Schema projection", () => {
     expect(() =>
       decode({
         ...base,
-        email: "",
+        email: null,
         externalId: "external_1",
         logo: null,
         name: "",
@@ -106,7 +106,7 @@ describe("Effect Schema projection", () => {
         ...base,
         externalId: "external_1",
         logo: { assetId: "" },
-        email: "",
+        email: null,
         name: "Acme",
         searchLabel: "",
         status: "active",
@@ -117,7 +117,7 @@ describe("Effect Schema projection", () => {
         ...base,
         externalId: "external_1",
         createdAt: "yesterday",
-        email: "",
+        email: null,
         logo: null,
         name: "Acme",
         searchLabel: "",
@@ -140,13 +140,13 @@ describe("Effect Schema projection", () => {
     expect(typedCreate.logo.assetId).toBe("asset_1")
     expect(typedUpdate.logo).toBeNull()
 
-    expectTypeOf<AccountRecord["email"]>().toEqualTypeOf<EmailAddress | "">()
+    expectTypeOf<AccountRecord["email"]>().toEqualTypeOf<EmailAddress | null>()
     expectTypeOf<AccountRecord["logo"]>().toEqualTypeOf<{
       assetId: string
       alt?: string
     } | null>()
     expectTypeOf<Create["email"]>().toEqualTypeOf<
-      EmailAddress | "" | undefined
+      EmailAddress | null | undefined
     >()
     expectTypeOf<Create["status"]>().toEqualTypeOf<
       "active" | "inactive" | undefined
@@ -160,7 +160,7 @@ describe("Effect Schema projection", () => {
     expectTypeOf<Create["parentId"]>().toEqualTypeOf<undefined>()
     expectTypeOf<AccountRecord["parentId"]>().toEqualTypeOf<RecordId<"root">>()
     expectTypeOf<Update["email"]>().toEqualTypeOf<
-      EmailAddress | "" | undefined
+      EmailAddress | null | undefined
     >()
     expectTypeOf<Update["externalId"]>().toEqualTypeOf<string | undefined>()
     expectTypeOf<Update["status"]>().toEqualTypeOf<
@@ -197,8 +197,8 @@ describe("Effect Schema projection", () => {
       name: "Acme",
     })
     expect(decodeUpdate({ name: "Renamed" })).toEqual({ name: "Renamed" })
-    expect(decodeUpdate({ email: "" })).toEqual({ email: "" })
-    expect(() => decodeUpdate({ email: null })).toThrow()
+    expect(decodeUpdate({ email: null })).toEqual({ email: null })
+    expect(() => decodeUpdate({ email: "" })).toThrow()
     expect(decodeUpdate({ annotations: {} })).toEqual({ annotations: {} })
     expect(decodeUpdate({ externalId: "external_1" })).toEqual({
       externalId: "external_1",
@@ -211,7 +211,7 @@ describe("Effect Schema projection", () => {
       name: "Membership",
       parent: Account,
       pluralName: "Memberships",
-      properties: { role: schema.string({ required: true }) },
+      properties: { role: schema.string() },
       display: { title: "role" },
     })
     type MembershipCreate = ObjectCreateInput<typeof Membership>
@@ -270,5 +270,29 @@ describe("Effect Schema projection", () => {
     expect(decode({ assetId: "asset_1" })).toEqual({ assetId: "asset_1" })
     expect(() => decode({ assetId: "" })).toThrow()
     expect(() => decode({ url: "https://example.com/file.pdf" })).toThrow()
+  })
+
+  it("validates decimals, geographic points, and media references", () => {
+    const decodeDecimal = Schema.decodeUnknownSync(
+      toEffectSchema(schema.decimal({ precision: 5, scale: 2 }))
+    )
+    const decodePoint = Schema.decodeUnknownSync(
+      toEffectSchema(schema.geoPoint())
+    )
+    const decodeMedia = Schema.decodeUnknownSync(toEffectSchema(schema.media()))
+
+    expect(decodeDecimal("123.45")).toBe("123.45")
+    expect(() => decodeDecimal("1234.56")).toThrow()
+    expect(() => decodeDecimal("1.234")).toThrow()
+    expect(decodePoint({ latitude: 37.7749, longitude: -122.4194 })).toEqual({
+      latitude: 37.7749,
+      longitude: -122.4194,
+    })
+    expect(() => decodePoint({ latitude: 91, longitude: 0 })).toThrow()
+    expect(decodeMedia({ assetId: "asset_1", alt: "Demo recording" })).toEqual({
+      assetId: "asset_1",
+      alt: "Demo recording",
+    })
+    expect(() => decodeMedia({ assetId: "" })).toThrow()
   })
 })

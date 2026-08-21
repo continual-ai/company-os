@@ -15,10 +15,13 @@ import { type ModelCatalog, modelObjects } from "./definition/model"
 import type { ObjectType } from "./definition/object"
 import {
   DEFAULT_PAGE_SIZE,
+  filterOperators,
   IdempotencyKey,
   MAX_BATCH_GET_SIZE,
   MAX_PAGE_SIZE,
+  nullPlacements,
   PageToken,
+  sortDirections,
 } from "./definition/request"
 import { RecordId, schema } from "./definition/schema"
 import {
@@ -84,7 +87,7 @@ function pascalCase(value: string): string {
 
 function endpointId(operation: string, object: ObjectType): string {
   const target =
-    operation === "list" || operation === "batchGet"
+    operation === "list" || operation === "search" || operation === "batchGet"
       ? object.pluralName
       : object.name
   return `${operation}${pascalCase(target)}`
@@ -208,6 +211,92 @@ function addDefaultEndpoints(
     })
   )
   result = result.add(listEndpoint)
+
+  const filterFields = [
+    "createdAt",
+    "createdById",
+    "id",
+    "parentId",
+    "updatedAt",
+    "updatedById",
+    ...Object.keys(object.properties),
+  ]
+  const fieldSchema = Schema.Literals(filterFields).annotate({
+    description: `A declared ${object.name.toLowerCase()} property or standard record field.`,
+    identifier: `${pascalCase(object.id)}FilterField`,
+  })
+  const filterOperatorSchema = Schema.Literals(filterOperators).annotate({
+    identifier: `${pascalCase(object.id)}FilterOperator`,
+  })
+  const sortDirectionSchema = Schema.Literals(sortDirections).annotate({
+    identifier: "SortDirection",
+  })
+  const nullPlacementSchema = Schema.Literals(nullPlacements).annotate({
+    identifier: "NullPlacement",
+  })
+  let filterSchema: Schema.Codec<unknown, unknown>
+  filterSchema = Schema.suspend(() =>
+    Schema.Union([
+      Schema.Struct({ and: Schema.Array(filterSchema) }).annotate({
+        identifier: `${pascalCase(object.id)}AndFilter`,
+      }),
+      Schema.Struct({ not: filterSchema }).annotate({
+        identifier: `${pascalCase(object.id)}NotFilter`,
+      }),
+      Schema.Struct({ or: Schema.Array(filterSchema) }).annotate({
+        identifier: `${pascalCase(object.id)}OrFilter`,
+      }),
+      Schema.Struct({
+        field: fieldSchema,
+        operator: filterOperatorSchema,
+        value: Schema.optionalKey(Schema.Unknown),
+      }).annotate({
+        identifier: `${pascalCase(object.id)}PropertyFilter`,
+      }),
+    ]).annotate({ identifier: `${pascalCase(object.id)}FilterExpression` })
+  ).annotate({
+    identifier: `${pascalCase(object.id)}Filter`,
+    title: `${object.name} filter`,
+  })
+  const searchEndpoint = HttpApiEndpoint.post(
+    endpointId("search", object),
+    `${collectionPath}/search`,
+    {
+      payload: Schema.Struct({
+        filter: Schema.optionalKey(filterSchema),
+        pageSize: Schema.optionalKey(
+          Schema.Number.check(
+            Schema.isInt(),
+            Schema.isGreaterThanOrEqualTo(1),
+            Schema.isLessThanOrEqualTo(MAX_PAGE_SIZE)
+          )
+        ),
+        pageToken: Schema.optionalKey(pageTokenSchema),
+        sort: Schema.optionalKey(
+          Schema.Array(
+            Schema.Struct({
+              direction: sortDirectionSchema,
+              field: fieldSchema,
+              nulls: Schema.optionalKey(nullPlacementSchema),
+            })
+          )
+        ),
+      }).annotate({
+        identifier: `${pascalCase(object.id)}SearchInput`,
+        title: `Search ${object.pluralName.toLowerCase()}`,
+      }),
+      success: listResponse,
+      error: readErrors,
+    }
+  ).annotateMerge(
+    endpointAnnotations({
+      description:
+        "Standard object search with nested boolean filters, type-aware comparison operators, deterministic multi-property sorting, and cursor pagination.",
+      identifier: endpointId("search", object),
+      summary: `Search ${object.pluralName.toLowerCase()}`,
+    })
+  )
+  result = result.add(searchEndpoint)
 
   const batchResponse = Schema.Struct({
     items: Schema.Array(record),

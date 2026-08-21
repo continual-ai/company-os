@@ -23,12 +23,12 @@ const Account = defineObject({
   pluralName: "Accounts",
   properties: {
     email: schema.email(),
-    externalId: schema.string({ immutable: true, required: true }),
+    externalId: schema.string({ immutable: true }),
     logo: schema.image({ nullable: true }),
-    name: schema.string({ required: true }),
+    name: schema.string(),
     searchLabel: schema.string({ outputOnly: true }),
     status: schema.select({
-      defaultValue: "active",
+      default: "active",
       options: [
         { value: "active", label: "Active" },
         { value: "inactive", label: "Inactive" },
@@ -77,6 +77,9 @@ describe("Effect HTTP projection", () => {
     expect(document.paths["/api/v1/accounts:batchGet"]).toMatchObject({
       post: { operationId: "batchGetAccounts" },
     })
+    expect(document.paths["/api/v1/accounts/search"]).toMatchObject({
+      post: { operationId: "searchAccounts" },
+    })
     expect(document.paths["/api/v1/accounts/{id}"]).toMatchObject({
       get: { operationId: "getAccount" },
       patch: { operationId: "updateAccount" },
@@ -109,10 +112,10 @@ describe("Effect HTTP projection", () => {
     ).toEqual(["NotFoundError"])
     expect(document.components?.schemas).not.toHaveProperty("Account_1")
     expect(
-      Object.keys(document.components?.schemas ?? {}).some((name) =>
+      Object.keys(document.components?.schemas ?? {}).filter((name) =>
         /^(Objects_|Union_)/.test(name)
       )
-    ).toBe(false)
+    ).toEqual([])
 
     const recordSchema = document.components?.schemas.Account
     const createSchema = document.components?.schemas.AccountCreateInput

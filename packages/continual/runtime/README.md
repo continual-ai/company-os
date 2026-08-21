@@ -8,6 +8,7 @@ runtime assumptions.
 
 ```ts
 import {
+  defineInterface,
   defineLink,
   defineModel,
   defineObject,
@@ -31,6 +32,11 @@ Objects are readable through `get`, `list`, and `batchGet` by convention. They p
 additional actions for business behavior. `defineModel` indexes the objects, links, root, and
 complete action catalog, and REST, clients, and descriptions are projections of that same contract.
 
+Interfaces describe a shared semantic shape such as `Party`; objects explicitly map their
+properties when they implement one. Links connect object or interface types but do not expose a
+foreign-key or join-table choice. Those are portable business semantics; the company backend owns
+their relational projection and referential actions.
+
 Object properties and operation values use the same portable schema vocabulary. Custom actions
 are declared beside their primary object; their key supplies the action ID, their scope supplies a
 canonical object ID when needed, and `http` explicitly binds the public route:
@@ -43,7 +49,7 @@ const Lead = defineObject({
   parent: Root,
   pluralName: "Leads",
   properties: {
-    name: schema.string({ label: "Name", required: true }),
+    name: schema.string({ label: "Name" }),
   },
   display: { title: "name" },
   actions: {
@@ -60,6 +66,38 @@ const Lead = defineObject({
 await client.leads.create({ name: "New lead" })
 await client.leads.qualify({ id: leadId })
 ```
+
+`list` is the one standard collection query. Simple pagination uses `GET /leads`; filters or
+sorting use the equivalent `POST /leads/search` projection so the transport does not constrain the
+portable request. Filters are typed by property kind, compose with `and`, `or`, and `not`, and
+sorting is ordered and deterministic:
+
+```ts
+await client.leads.list({
+  filter: {
+    and: [
+      { field: "status", operator: "eq", value: "new" },
+      { field: "email", operator: "contains", value: "@example.com" },
+    ],
+  },
+  sort: [
+    { field: "createdAt", direction: "desc" },
+    { field: "name", direction: "asc" },
+  ],
+  pageSize: 50,
+})
+```
+
+The backend resolves fields through the declared object schema, validates values by semantic type,
+uses parameterized predicates, appends an ID tie-breaker, and binds opaque page tokens to the exact
+filter and sort. Add a custom action only for business behavior that standard object reads and
+writes cannot express.
+
+A writable property is required on create unless it is `nullable` or declares a `default`.
+Nullable properties omitted on create become `null`; defaulted properties receive their declared
+value. Output-only properties are supplied by the implementation and are never accepted as input.
+This keeps nullability, persisted values, and create-time optionality distinct without a separate
+configurable `required` flag.
 
 The normalized action input includes `id`; REST binds it from `{id}`, while RPC and MCP expose the
 same complete input object. OpenAPI is generated from the HTTP contract rather than authored as a

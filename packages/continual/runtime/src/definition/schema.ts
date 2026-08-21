@@ -66,26 +66,24 @@ export const WebUrl = Brand.make<WebUrl>(
 
 /** Metadata shared by object properties, action inputs, forms, and protocols. */
 export interface SchemaAnnotations<TValue = unknown> {
-  defaultValue?: TValue
+  default?: TValue
   description?: string
   immutable?: boolean
   label?: string
   nullable?: boolean
   outputOnly?: boolean
-  required?: boolean
 }
 
 /** A portable value contract. Runtime integrations compile it to native schemas. */
 export interface SchemaDefinition<T = unknown> {
   readonly _Type?: T
-  defaultValue?: T
+  default?: T
   description?: string
   immutable?: boolean
   kind: string
   label?: string
   nullable?: boolean
   outputOnly?: boolean
-  required?: boolean
 }
 
 type SchemaValue<TSchema extends SchemaDefinition> = Exclude<
@@ -113,15 +111,17 @@ export interface FileRef {
   assetId: string
 }
 
+export interface MediaRef extends FileRef {
+  alt?: string
+}
+
 interface FileSchema extends SchemaDefinition<FileRef> {
   accept?: ReadonlyArray<string>
   kind: "file"
   maxBytes?: number
 }
 
-export interface ImageRef extends FileRef {
-  alt?: string
-}
+export interface ImageRef extends MediaRef {}
 
 export interface ImageSchema extends SchemaDefinition<ImageRef> {
   accept?: ReadonlyArray<string>
@@ -144,6 +144,27 @@ export interface Money {
 
 interface MoneySchema extends SchemaDefinition<Money> {
   kind: "money"
+}
+
+export interface DecimalSchema extends SchemaDefinition<Decimal> {
+  kind: "decimal"
+  precision?: number
+  scale?: number
+}
+
+export interface GeoPoint {
+  latitude: number
+  longitude: number
+}
+
+export interface GeoPointSchema extends SchemaDefinition<GeoPoint> {
+  kind: "geoPoint"
+}
+
+export interface MediaSchema extends SchemaDefinition<MediaRef> {
+  accept?: ReadonlyArray<string>
+  kind: "media"
+  maxBytes?: number
 }
 
 export interface Choice<TValue extends string = string> {
@@ -250,11 +271,14 @@ interface UnionSchema<
 export type AnySchema =
   | ArraySchema
   | BooleanSchema
+  | DecimalSchema
   | EnumSchema
   | FileSchema
+  | GeoPointSchema
   | ImageSchema
   | LiteralSchema
   | MapSchema
+  | MediaSchema
   | MoneySchema
   | NumberSchema
   | OptionalSchema
@@ -270,7 +294,7 @@ export interface StringSchemaOptions extends SchemaAnnotations<string> {
 
 type SemanticStringOptions<TValue extends string> = Omit<
   StringSchemaOptions,
-  "defaultValue"
+  "default"
 > &
   SchemaAnnotations<TValue>
 
@@ -278,6 +302,11 @@ export interface NumberSchemaOptions extends SchemaAnnotations<number> {
   integer?: boolean
   maximum?: number
   minimum?: number
+}
+
+export interface DecimalSchemaOptions extends SchemaAnnotations<Decimal> {
+  precision?: number
+  scale?: number
 }
 
 interface FileSchemaOptions extends SchemaAnnotations<FileRef> {
@@ -288,6 +317,11 @@ interface FileSchemaOptions extends SchemaAnnotations<FileRef> {
 interface ImageSchemaOptions extends SchemaAnnotations<ImageRef> {
   accept?: ReadonlyArray<string>
   aspectRatio?: number
+  maxBytes?: number
+}
+
+interface MediaSchemaOptions extends SchemaAnnotations<MediaRef> {
+  accept?: ReadonlyArray<string>
   maxBytes?: number
 }
 
@@ -324,6 +358,32 @@ function boolean<const TOptions extends SchemaAnnotations<boolean> = {}>(
   return { kind: "boolean", ...configured(options) }
 }
 
+function decimal<const TOptions extends DecimalSchemaOptions = {}>(
+  options?: TOptions
+): DecimalSchema & TOptions {
+  const values = configured(options)
+  if (
+    values.precision !== undefined &&
+    (!Number.isInteger(values.precision) || values.precision <= 0)
+  ) {
+    throw new Error("Decimal precision must be a positive integer.")
+  }
+  if (
+    values.scale !== undefined &&
+    (!Number.isInteger(values.scale) || values.scale < 0)
+  ) {
+    throw new Error("Decimal scale must be a non-negative integer.")
+  }
+  if (
+    values.precision !== undefined &&
+    values.scale !== undefined &&
+    values.scale > values.precision
+  ) {
+    throw new Error("Decimal scale cannot exceed its precision.")
+  }
+  return { kind: "decimal", ...values }
+}
+
 function literal<const TValue extends LiteralValue>(
   value: TValue
 ): LiteralSchema<TValue> {
@@ -351,6 +411,21 @@ function image<const TOptions extends ImageSchemaOptions = {}>(
   return { kind: "image", ...configured(options) }
 }
 
+function geoPoint<const TOptions extends SchemaAnnotations<GeoPoint> = {}>(
+  options?: TOptions
+): GeoPointSchema & TOptions {
+  return { kind: "geoPoint", ...configured(options) }
+}
+
+function media<const TOptions extends MediaSchemaOptions = {}>(
+  options?: TOptions
+): MediaSchema & TOptions {
+  if (options?.maxBytes !== undefined && options.maxBytes <= 0) {
+    throw new Error("A media maximum size must be greater than zero.")
+  }
+  return { kind: "media", ...configured(options) }
+}
+
 function enumeration<
   const TValue extends string,
   const TOptions extends SchemaAnnotations<TValue> = {},
@@ -365,10 +440,7 @@ function enumeration<
   if (duplicate) {
     throw new Error(`Enum value '${duplicate}' is registered more than once.`)
   }
-  if (
-    options?.defaultValue !== undefined &&
-    !values.includes(options.defaultValue)
-  ) {
+  if (options?.default !== undefined && !values.includes(options.default)) {
     throw new Error("An enum default must match one of its values.")
   }
   return { kind: "enum", values, ...configured(options) }
@@ -380,9 +452,9 @@ interface SelectOptions<
   options: TChoices
 }
 
-function select<const TChoices extends ReadonlyArray<Choice>>(
-  options: SelectOptions<TChoices>
-): EnumSchema<TChoices[number]["value"]> & SelectOptions<TChoices> {
+function select<const TOptions extends SelectOptions<ReadonlyArray<Choice>>>(
+  options: TOptions
+): EnumSchema<TOptions["options"][number]["value"]> & TOptions {
   const values = options.options.map((option) => option.value)
   const definition = enumeration(values, options)
   return { ...definition, options: options.options }
@@ -409,9 +481,9 @@ function number<const TOptions extends NumberSchemaOptions = {}>(
   const values = configured(options)
   assertRange("Number", values.minimum, values.maximum)
   if (
-    values.defaultValue !== undefined &&
-    ((values.minimum !== undefined && values.defaultValue < values.minimum) ||
-      (values.maximum !== undefined && values.defaultValue > values.maximum))
+    values.default !== undefined &&
+    ((values.minimum !== undefined && values.default < values.minimum) ||
+      (values.maximum !== undefined && values.default > values.maximum))
   ) {
     throw new Error("A number default must satisfy its range.")
   }
@@ -519,13 +591,16 @@ export const schema = {
   array,
   boolean,
   date,
+  decimal,
   domain,
   email,
   enumeration,
   file,
+  geoPoint,
   image,
   literal,
   map,
+  media,
   money,
   number,
   object,

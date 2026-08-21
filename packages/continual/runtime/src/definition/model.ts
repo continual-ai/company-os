@@ -1,5 +1,6 @@
 import { type Action, actionKey, standardActions } from "./action"
 import { definitionId } from "./identity"
+import type { InterfaceType } from "./interface"
 import type { LinkType } from "./link"
 import type { ObjectType } from "./object"
 import { Root, type RootType } from "./root"
@@ -11,6 +12,10 @@ type ObjectRegistry<TObjects extends ReadonlyArray<ObjectType>> = {
 
 type LinkRegistry<TLinks extends ReadonlyArray<LinkType>> = {
   readonly [TLink in TLinks[number] as TLink["id"]]: TLink
+}
+
+type InterfaceRegistry<TInterfaces extends ReadonlyArray<InterfaceType>> = {
+  readonly [TInterface in TInterfaces[number] as TInterface["id"]]: TInterface
 }
 
 type ObjectActionUnion<TObject extends ObjectType> =
@@ -36,10 +41,12 @@ declare const modelTypes: unique symbol
 export interface ModelCatalog {
   readonly [modelTypes]?: {
     readonly links: ReadonlyArray<LinkType>
+    readonly interfaces: ReadonlyArray<InterfaceType>
     readonly objects: ReadonlyArray<ObjectType>
   }
   actions: object
   id: string
+  interfaces: object
   kind: "model"
   links: object
   name: string
@@ -51,13 +58,17 @@ export interface Model<
   TId extends string = string,
   TObjects extends ReadonlyArray<ObjectType> = ReadonlyArray<ObjectType>,
   TLinks extends ReadonlyArray<LinkType> = ReadonlyArray<LinkType>,
+  TInterfaces extends ReadonlyArray<InterfaceType> =
+    ReadonlyArray<InterfaceType>,
 > {
   readonly [modelTypes]?: {
     readonly links: TLinks
+    readonly interfaces: TInterfaces
     readonly objects: TObjects
   }
   actions: ActionRegistry<TObjects>
   id: TId
+  interfaces: InterfaceRegistry<TInterfaces>
   kind: "model"
   links: LinkRegistry<TLinks>
   name: string
@@ -111,12 +122,14 @@ export function defineModel<
   const TId extends string,
   const TObjects extends ReadonlyArray<ObjectType>,
   const TLinks extends ReadonlyArray<LinkType>,
+  const TInterfaces extends ReadonlyArray<InterfaceType> = [],
 >(definition: {
   id: TId
+  interfaces?: TInterfaces
   links: TLinks
   name: string
   objects: TObjects
-}): Model<TId, TObjects, TLinks> {
+}): Model<TId, TObjects, TLinks, TInterfaces> {
   const objectIds = definition.objects.map((object) => object.id)
   const duplicateObject = duplicateValue(objectIds)
   if (duplicateObject !== undefined) {
@@ -139,7 +152,23 @@ export function defineModel<
     throw new Error(`Link id '${duplicateLink}' is registered more than once.`)
   }
 
+  const interfaceDefinitions = definition.interfaces ?? []
+  const interfaceIds = interfaceDefinitions.map((item) => item.id)
+  const duplicateInterface = duplicateValue(interfaceIds)
+  if (duplicateInterface !== undefined) {
+    throw new Error(
+      `Interface id '${duplicateInterface}' is registered more than once.`
+    )
+  }
+  const typeCollision = interfaceIds.find((id) => objectIds.includes(id))
+  if (typeCollision !== undefined) {
+    throw new Error(
+      `Type id '${typeCollision}' is shared by an object and interface.`
+    )
+  }
+
   const registeredObjectIds = new Set(objectIds)
+  const registeredTypeIds = new Set([...objectIds, ...interfaceIds])
   for (const object of definition.objects) {
     if (
       object.parent.objectId !== Root.id &&
@@ -153,9 +182,16 @@ export function defineModel<
       assertReferencesRegistered(
         `Object '${object.id}' property '${propertyId}'`,
         [property],
-        registeredObjectIds,
+        registeredTypeIds,
         definition.id
       )
+    }
+    for (const implementation of Object.values(object.interfaces)) {
+      if (!interfaceIds.includes(implementation.interfaceId)) {
+        throw new Error(
+          `Object '${object.id}' implements interface '${implementation.interfaceId}', which is not registered in model '${definition.id}'.`
+        )
+      }
     }
     for (const action of Object.values(object.actions)) {
       assertReferencesRegistered(
@@ -188,17 +224,17 @@ export function defineModel<
 
   for (const link of definition.links) {
     for (const side of [link.from, link.to]) {
-      if (!registeredObjectIds.has(side.objectId)) {
+      if (!registeredTypeIds.has(side.typeId)) {
         throw new Error(
-          `Link '${link.id}' references object '${side.objectId}', which is not registered in model '${definition.id}'.`
+          `Link '${link.id}' references type '${side.typeId}', which is not registered in model '${definition.id}'.`
         )
       }
     }
   }
 
   const linkMethods = definition.links.flatMap((link) => [
-    `${link.from.objectId}.${link.from.name}`,
-    `${link.to.objectId}.${link.to.name}`,
+    `${link.from.typeId}.${link.from.name}`,
+    `${link.to.typeId}.${link.to.name}`,
   ])
   const duplicateLinkMethod = duplicateValue(linkMethods)
   if (duplicateLinkMethod !== undefined) {
@@ -222,6 +258,9 @@ export function defineModel<
   const links = Object.fromEntries(
     definition.links.map((link) => [link.id, link])
   )
+  const interfaces = Object.fromEntries(
+    interfaceDefinitions.map((item) => [item.id, item])
+  )
   const actions = Object.fromEntries(
     definition.objects.map((object) => [
       object.id,
@@ -238,12 +277,13 @@ export function defineModel<
   return {
     actions,
     id: definitionId(definition.id),
+    interfaces,
     kind: "model",
     links,
     name: definition.name,
     objects,
     root: Root,
-  } as unknown as Model<TId, TObjects, TLinks>
+  } as unknown as Model<TId, TObjects, TLinks, TInterfaces>
 }
 
 export function modelActions(model: ModelCatalog): ReadonlyArray<Action> {
@@ -260,6 +300,15 @@ export function modelLinks(model: ModelCatalog): ReadonlyArray<LinkType> {
   // SAFETY: defineModel exclusively builds this registry from validated links.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   return links as ReadonlyArray<LinkType>
+}
+
+export function modelInterfaces(
+  model: ModelCatalog
+): ReadonlyArray<InterfaceType> {
+  const interfaces = Object.values(model.interfaces)
+  // SAFETY: defineModel exclusively builds this registry from validated interfaces.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  return interfaces as ReadonlyArray<InterfaceType>
 }
 
 export function modelObjects(model: ModelCatalog): ReadonlyArray<ObjectType> {

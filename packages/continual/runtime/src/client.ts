@@ -62,7 +62,9 @@ type DefaultObjectClient<TObject extends ObjectType> = {
   readonly get: (
     input: ObjectGetInput<TObject>
   ) => Promise<ObjectRecord<TObject>>
-  readonly list: (request?: ListRequest) => Promise<Page<ObjectRecord<TObject>>>
+  readonly list: (
+    request?: ListRequest<TObject>
+  ) => Promise<Page<ObjectRecord<TObject>>>
 } & DefaultMethod<
   TObject["defaultActions"]["create"],
   {
@@ -111,7 +113,7 @@ export type ApiClient<TModel extends ModelCatalog> = {
 }
 
 interface RequestOptions {
-  readonly body?: JsonValue
+  readonly body?: unknown
   readonly idempotencyKey?: IdempotencyKey
   readonly method: "DELETE" | "GET" | "PATCH" | "POST"
   readonly path: string
@@ -197,6 +199,13 @@ export function createClient<const TModel extends ModelCatalog>(
     const methods = new Map<string, object>()
 
     methods.set("list", (listRequest: ListRequest = {}) => {
+      if (listRequest.filter !== undefined || listRequest.sort !== undefined) {
+        return request({
+          body: listRequest,
+          method: "POST",
+          path: `${collectionPath}/search`,
+        })
+      }
       const query = new URLSearchParams()
       if (listRequest.pageSize !== undefined) {
         query.set("pageSize", String(listRequest.pageSize))

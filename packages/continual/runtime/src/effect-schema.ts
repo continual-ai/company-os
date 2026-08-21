@@ -14,6 +14,7 @@ import { Root } from "./definition/root"
 import type {
   AnySchema,
   InferSchema,
+  DecimalSchema,
   NumberSchema,
   SchemaDefinition,
   StringSchema,
@@ -38,6 +39,24 @@ const imageRefSchema = Schema.Struct({
   assetId: Schema.String.check(Schema.isNonEmpty()),
   alt: Schema.optionalKey(Schema.String),
 }).annotate({ identifier: "ImageRef", title: "Image reference" })
+
+const mediaRefSchema = Schema.Struct({
+  assetId: Schema.String.check(Schema.isNonEmpty()),
+  alt: Schema.optionalKey(Schema.String),
+}).annotate({ identifier: "MediaRef", title: "Media reference" })
+
+const geoPointSchema = Schema.Struct({
+  latitude: Schema.Number.check(
+    Schema.isFinite(),
+    Schema.isGreaterThanOrEqualTo(-90),
+    Schema.isLessThanOrEqualTo(90)
+  ),
+  longitude: Schema.Number.check(
+    Schema.isFinite(),
+    Schema.isGreaterThanOrEqualTo(-180),
+    Schema.isLessThanOrEqualTo(180)
+  ),
+}).annotate({ identifier: "GeoPoint", title: "Geographic point" })
 
 const moneySchema = Schema.Struct({
   amount: Schema.String.annotate({
@@ -122,16 +141,46 @@ function compileNumber(definition: NumberSchema): Schema.Codec<number> {
   return value
 }
 
+function compileDecimal(definition: DecimalSchema): Schema.Codec<string> {
+  let value = Schema.String.annotate({ format: "decimal" }).pipe(
+    Schema.fromBrand("Decimal", Decimal)
+  )
+  if (definition.precision !== undefined || definition.scale !== undefined) {
+    const precision = definition.precision
+    const scale = definition.scale
+    value = value.check(
+      Schema.makeFilter(
+        (decimal) => {
+          const [integer = "", fraction = ""] = decimal
+            .replace("-", "")
+            .split(".")
+          return (
+            (precision === undefined ||
+              integer.length + fraction.length <= precision) &&
+            (scale === undefined || fraction.length <= scale)
+          )
+        },
+        { expected: "a decimal within the declared precision and scale" }
+      )
+    )
+  }
+  return value
+}
+
 function compileBase(definition: AnySchema): Schema.Codec<unknown, unknown> {
   switch (definition.kind) {
     case "array":
       return Schema.Array(compile(definition.items))
     case "boolean":
       return Schema.Boolean
+    case "decimal":
+      return compileDecimal(definition)
     case "enum":
       return Schema.Literals(definition.values)
     case "file":
       return fileRefSchema
+    case "geoPoint":
+      return geoPointSchema
     case "image":
       return imageRefSchema
     case "literal":
@@ -140,6 +189,8 @@ function compileBase(definition: AnySchema): Schema.Codec<unknown, unknown> {
         : Schema.Literal(definition.value)
     case "map":
       return Schema.Record(Schema.String, compile(definition.values))
+    case "media":
+      return mediaRefSchema
     case "money":
       return moneySchema
     case "number":
@@ -182,8 +233,8 @@ function compile(definition: AnySchema): Schema.Codec<unknown, unknown> {
   if (definition.description !== undefined) {
     value = value.annotate({ description: definition.description })
   }
-  if (definition.defaultValue !== undefined) {
-    value = value.annotate({ default: definition.defaultValue })
+  if (definition.default !== undefined) {
+    value = value.annotate({ default: definition.default })
   }
   if (definition.outputOnly === true) {
     value = value.annotate({ readOnly: true })
@@ -215,21 +266,14 @@ function compilePropertyValue(
   if (cached !== undefined) return cached
 
   let value = compile(property)
-  const acceptsEmptyString =
-    !property.required &&
-    !property.nullable &&
-    property.kind === "string" &&
-    property.format !== "date" &&
-    property.format !== "timestamp"
-  if (acceptsEmptyString) {
-    value = Schema.Union([Schema.Literal(""), value])
-  }
   if (
-    acceptsEmptyString ||
     property.nullable ||
     property.kind === "file" ||
+    property.kind === "geoPoint" ||
     property.kind === "image" ||
-    property.kind === "enum"
+    property.kind === "media" ||
+    property.kind === "enum" ||
+    (property.kind === "string" && property.format !== undefined)
   ) {
     value = value.annotate({ identifier })
   }
@@ -265,7 +309,7 @@ function compileCreateProperties(object: ObjectType): CompiledSchemaFields {
       .map(([propertyId, property]) =>
         entry(
           propertyId,
-          property.required
+          property.requiredOnCreate
             ? compilePropertyValue(object, propertyId, property)
             : Schema.optionalKey(
                 compilePropertyValue(object, propertyId, property)

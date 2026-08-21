@@ -76,7 +76,7 @@ export interface Service<
     input: ObjectGetInput<TObject>
   ) => Effect.Effect<ObjectRecord<TObject>, TError, TRequirements>
   readonly list: (
-    request?: ListRequest
+    request?: ListRequest<TObject>
   ) => Effect.Effect<Page<ObjectRecord<TObject>>, TError, TRequirements>
   readonly update: (
     input: ObjectUpdateRequest<TObject>
@@ -122,18 +122,10 @@ function normalizeCreateInput<TObject extends ObjectType>(
   for (const [propertyId, property] of Object.entries(object.properties)) {
     if (property.outputOnly || propertyId in normalized) continue
 
-    if (property.defaultValue !== undefined) {
-      Object.assign(normalized, { [propertyId]: property.defaultValue })
+    if (Object.hasOwn(property, "default")) {
+      Object.assign(normalized, { [propertyId]: property.default })
     } else if (property.nullable) {
       Object.assign(normalized, { [propertyId]: null })
-    } else if (
-      property.kind === "string" &&
-      property.format !== "date" &&
-      property.format !== "timestamp"
-    ) {
-      Object.assign(normalized, { [propertyId]: "" })
-    } else if (property.kind === "number") {
-      Object.assign(normalized, { [propertyId]: 0 })
     }
   }
 
@@ -225,7 +217,7 @@ export function make<
   })
 
   const list = Effect.fn(`${object.id}.list`)(function* (
-    request?: ListRequest
+    request?: ListRequest<TObject>
   ) {
     yield* authorize("list")
     return yield* repository.list(request)
@@ -243,7 +235,7 @@ export function make<
   const create = Effect.fn(`${object.id}.create`)(function* (
     input: ObjectCreateInput<TObject>
   ) {
-    const validated = yield* decodeCreate(input)
+    const validated = yield* decodeCreate(normalizeCreateInput(object, input))
     const context = yield* authorize(
       "create",
       validated.parentId === undefined ? {} : { parentId: validated.parentId }
@@ -255,7 +247,7 @@ export function make<
       new Date(yield* Clock.currentTimeMillis).toISOString()
     )
     return yield* repository.insert({
-      ...normalizeCreateInput(object, validated),
+      ...validated,
       annotations: validated.annotations ?? {},
       createdAt: now,
       createdById: context.actorId,

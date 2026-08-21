@@ -13,7 +13,7 @@ const Account = defineObject({
   parent: Root,
   pluralName: "Accounts",
   properties: {
-    name: schema.string({ required: true }),
+    name: schema.string(),
   },
   display: { title: "name" },
   actions: {
@@ -64,6 +64,9 @@ function responseBody(url: string) {
   if (url.endsWith(":archiveAll")) return { archivedCount: 3 }
   if (url.endsWith(":archive")) return { archived: true }
   if (url.endsWith(":batchGet")) return { items: [accountRecord] }
+  if (url.endsWith("/search")) {
+    return { items: [accountRecord], nextPageToken: "" }
+  }
   if (url.includes("?")) {
     return { items: [accountRecord], nextPageToken: "" }
   }
@@ -99,6 +102,15 @@ describe("inferred API client", () => {
     const created = await client.accounts.create({ name: "Acme" })
     await client.accounts.get({ id: created.id })
     const page = await client.accounts.list({ pageSize: 25 })
+    const search = await client.accounts.list({
+      filter: {
+        and: [
+          { field: "name", operator: "contains", value: "acme" },
+          { field: "name", operator: "startsWith", value: "A" },
+        ],
+      },
+      sort: [{ direction: "desc", field: "name", nulls: "last" }],
+    })
     const batch = await client.accounts.batchGet({ ids: [created.id] })
     const archived = await client.accounts.archive({
       id: created.id,
@@ -112,13 +124,18 @@ describe("inferred API client", () => {
       "https://company.example/api/v1/accounts",
       "https://company.example/api/v1/accounts/account%2F1",
       "https://company.example/api/v1/accounts?pageSize=25",
+      "https://company.example/api/v1/accounts/search",
       "https://company.example/api/v1/accounts:batchGet",
       "https://company.example/api/v1/accounts/account%2F1:archive",
       "https://company.example/api/v1/accounts:archiveAll",
     ])
-    expect(calls[4]?.init.body).toBe('{"note":"No longer active"}')
-    expect(calls[5]?.init.body).toBe('{"filter":"updatedAt < 2025-01-01"}')
+    expect(calls[3]?.init.body).toBe(
+      '{"filter":{"and":[{"field":"name","operator":"contains","value":"acme"},{"field":"name","operator":"startsWith","value":"A"}]},"sort":[{"direction":"desc","field":"name","nulls":"last"}]}'
+    )
+    expect(calls[5]?.init.body).toBe('{"note":"No longer active"}')
+    expect(calls[6]?.init.body).toBe('{"filter":"updatedAt < 2025-01-01"}')
     expect(page.nextPageToken).toBe("")
+    expect(search.items[0]?.id).toBe(created.id)
     expect(batch.items[0]?.id).toBe(created.id)
     expect(archived.archived).toBe(true)
     expect(archiveBatch.archivedCount).toBe(3)

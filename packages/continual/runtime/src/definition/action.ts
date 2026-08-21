@@ -281,7 +281,7 @@ export function bindActions<
 }
 
 function writablePropertySchema(property: PropertyDefinition) {
-  return property.required ? property : schema.optional(property)
+  return property.requiredOnCreate ? property : schema.optional(property)
 }
 
 function objectRecordSchema(object: {

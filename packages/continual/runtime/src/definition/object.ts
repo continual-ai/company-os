@@ -10,6 +10,12 @@ import {
 } from "./action"
 import { definitionId } from "./identity"
 import {
+  type BoundInterfaceImplementations,
+  type InterfaceImplementation,
+  type InterfaceImplementationDefinitions,
+  bindInterfaceImplementations,
+} from "./interface"
+import {
   type InferProperties,
   type InferProperty,
   type NormalizeProperties,
@@ -55,6 +61,7 @@ export const Etag = Brand.make<Etag>(
 )
 
 export interface ObjectDisplay<TProperties extends Properties> {
+  icon?: string
   image?: {
     [TKey in keyof TProperties]: TProperties[TKey] extends ImageSchema
       ? TKey
@@ -80,18 +87,22 @@ export interface ObjectType<
   >,
   TActionSettings extends ActionSettings = ActionSettings,
   TParentObjectId extends string = string,
+  TInterfaces extends Readonly<Record<string, InterfaceImplementation>> =
+    Readonly<Record<string, InterfaceImplementation>>,
 > {
   actions: TActions
   collection: TCollection
   defaultActions: TActionSettings
   description?: string
   display: {
+    icon?: string
     image?: string
     status?: string
     subtitle?: string
     title: string
   }
   id: TId
+  interfaces: TInterfaces
   kind: "object"
   name: string
   parent: ObjectParent<TParentObjectId>
@@ -117,7 +128,7 @@ type CreatePropertyKeys<TProperties extends Properties> = {
 type RequiredCreatePropertyKeys<TProperties extends Properties> = {
   [
     TKey in CreatePropertyKeys<TProperties>
-  ]: TProperties[TKey]["required"] extends true ? TKey : never
+  ]: TProperties[TKey]["requiredOnCreate"] extends true ? TKey : never
 }[CreatePropertyKeys<TProperties>]
 
 type OptionalCreatePropertyKeys<TProperties extends Properties> = Exclude<
@@ -193,12 +204,15 @@ export function defineObject<
   const TProperties extends Readonly<Record<string, AnySchema>>,
   const TActionDefinitions extends ActionDefinitions = {},
   const TParent extends ParentDefinition = ParentDefinition,
+  const TImplementations extends
+    InterfaceImplementationDefinitions<TProperties> = [],
 >(definition: {
   actions?: TActionDefinitions
   collection: TCollection
   description?: string
   display: ObjectDisplay<NormalizeProperties<TProperties>>
   id: TId
+  implements?: TImplementations
   name: string
   parent: TParent
   pluralName: string
@@ -209,7 +223,8 @@ export function defineObject<
   NormalizeProperties<TProperties>,
   BoundActions<TId, TActionDefinitions>,
   NormalizedActionSettings<TActionDefinitions>,
-  TParent["id"]
+  TParent["id"],
+  BoundInterfaceImplementations<TImplementations>
 > {
   if (definition.id === Root.id) {
     throw new Error(`Object id '${Root.id}' is reserved for the built-in Root.`)
@@ -224,7 +239,16 @@ export function defineObject<
   }
 
   const properties = normalizeProperties(definition.properties)
+  const interfaces = bindInterfaceImplementations(
+    definition.id,
+    properties,
+    definition.implements ?? []
+  )
   for (const [role, propertyId] of Object.entries(definition.display)) {
+    if (role === "icon") {
+      definitionId(propertyId)
+      continue
+    }
     const property = properties[propertyId]
     if (property === undefined) {
       throw new Error(
@@ -253,6 +277,7 @@ export function defineObject<
     id: identity.id,
     collection: identity.collection,
     name: definition.name,
+    interfaces,
     parent: {
       kind: definition.parent.kind,
       objectId: definition.parent.id,

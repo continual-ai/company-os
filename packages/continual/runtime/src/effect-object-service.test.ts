@@ -21,11 +21,11 @@ const Account = defineObject({
   parent: Root,
   pluralName: "Accounts",
   properties: {
-    email: schema.email(),
-    name: schema.string({ required: true, minLength: 1 }),
-    slug: schema.string({ immutable: true, required: true }),
+    email: schema.email({ nullable: true }),
+    name: schema.string({ minLength: 1 }),
+    slug: schema.string({ immutable: true }),
     status: schema.select({
-      defaultValue: "active",
+      default: "active",
       options: [
         { label: "Active", value: "active" },
         { label: "Inactive", value: "inactive" },
@@ -75,7 +75,7 @@ function makeRepository(): Repository<typeof Account, RepositoryError> {
       Effect.sync(() => {
         const hydrated: AccountRecord = {
           ...record,
-          email: record.email ?? "",
+          email: record.email ?? null,
           status: record.status ?? "active",
         }
         records.set(record.id, hydrated)
@@ -186,7 +186,7 @@ describe("ObjectService", () => {
     )
 
     expect(result.first).toMatchObject({
-      email: "",
+      email: null,
       id: "account_1",
       name: "Acme",
       parentId: "root_1",

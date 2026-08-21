@@ -40,6 +40,11 @@ export class ObjectParentTypeMismatch extends Data.TaggedError(
   readonly parentId: string
 }> {}
 
+export class InvalidListRequest extends Data.TaggedError("InvalidListRequest")<{
+  readonly message: string
+  readonly objectId: string
+}> {}
+
 /** Values supplied by the object service for a newly inserted record. */
 export type ObjectInsert<TObject extends ObjectType> = BaseRecord<
   TObject["id"],
@@ -83,7 +88,7 @@ export interface Repository<
     record: ObjectInsert<TObject>
   ) => Effect.Effect<ObjectRecord<TObject>, TError, TRequirements>
   readonly list: (
-    request?: ListRequest
+    request?: ListRequest<TObject>
   ) => Effect.Effect<Page<ObjectRecord<TObject>>, TError, TRequirements>
   readonly update: (
     id: RecordId<TObject["id"]>,
