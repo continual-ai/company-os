@@ -25,6 +25,7 @@ import { cn } from "@acme/ui/lib/utils"
 import { Link, useMatchRoute } from "@tanstack/react-router"
 import {
   BarChart3Icon,
+  ActivityIcon,
   BookOpenIcon,
   BracesIcon,
   Building2Icon,
@@ -57,10 +58,11 @@ const operateNavigation = [
 ] as const
 
 const objectIcons = {
-  company: Building2Icon,
-  contact: ContactRoundIcon,
-  deal: HandshakeIcon,
+  building: Building2Icon,
+  handshake: HandshakeIcon,
+  interaction: ActivityIcon,
   lead: UserRoundSearchIcon,
+  person: ContactRoundIcon,
 } as const
 
 const objectPaths = {
@@ -70,12 +72,32 @@ const objectPaths = {
   lead: "/leads",
 } as const
 
-const operateObjects = Object.values(AcmeModel.objects).map((object) => ({
-  icon: objectIcons[object.id],
-  id: object.id,
-  label: object.pluralName,
-  to: objectPaths[object.id],
-}))
+function objectIcon(name: string | undefined) {
+  return (
+    Object.entries(objectIcons).find(([iconName]) => iconName === name)?.[1] ??
+    BoxesIcon
+  )
+}
+
+function objectPath(id: string) {
+  return Object.entries(objectPaths).find(([objectId]) => objectId === id)?.[1]
+}
+
+const operateObjects = Object.values(AcmeModel.objects).flatMap((object) => {
+  const to = objectPath(object.id)
+  return to === undefined
+    ? []
+    : [
+        {
+          icon: objectIcon(
+            "icon" in object.display ? object.display.icon : undefined
+          ),
+          id: object.id,
+          label: object.pluralName,
+          to,
+        },
+      ]
+})
 
 const learnNavigation = [
   { label: "Knowledge", to: "/learn", icon: BookOpenIcon },

@@ -50,15 +50,15 @@ function modelActions(model: CompanyModel) {
 
 function displayRole(object: ModelObject, propertyId: string) {
   return Object.entries(object.display).find(
-    ([, value]) => value === propertyId
+    ([role, value]) => role !== "icon" && value === propertyId
   )?.[0]
 }
 
 function relationshipForObject(link: ModelLink, objectId: ModelObjectId) {
-  if (link.from.objectId === objectId) {
+  if (link.from.typeId === objectId) {
     return { current: link.from, related: link.to }
   }
-  if (link.to.objectId === objectId) {
+  if (link.to.typeId === objectId) {
     return { current: link.to, related: link.from }
   }
   return undefined
@@ -66,7 +66,7 @@ function relationshipForObject(link: ModelLink, objectId: ModelObjectId) {
 
 function relationshipCount(links: ReadonlyArray<ModelLink>, objectId: string) {
   return links.filter(
-    (link) => link.from.objectId === objectId || link.to.objectId === objectId
+    (link) => link.from.typeId === objectId || link.to.typeId === objectId
   ).length
 }
 
@@ -103,18 +103,26 @@ function propertyDetails(
     }
     if (property.integer) details.push("integer")
   }
-  if (property.defaultValue !== undefined) {
+  if (property.kind === "decimal") {
+    if (property.precision !== undefined) {
+      details.push(`precision ${property.precision}`)
+    }
+    if (property.scale !== undefined) {
+      details.push(`scale ${property.scale}`)
+    }
+  }
+  if (Object.hasOwn(property, "default")) {
     const defaultOption =
       property.kind === "enum"
         ? property.options?.find(
-            (option: Choice) => option.value === property.defaultValue
+            (option: Choice) => option.value === property.default
           )
         : undefined
     if (defaultOption) {
       details.push(`default ${defaultOption.label}`)
-    } else if (property.defaultValue === "") {
+    } else if (property.default === "") {
       details.push("default empty")
-    } else if (property.defaultValue === 0) {
+    } else if (property.default === 0) {
       details.push("default 0")
     } else {
       details.push("has default")
@@ -133,6 +141,10 @@ function pointStyle(point: Point) {
 
 export function ModelExplorer({ model }: { model: CompanyModel }) {
   const objects = useMemo(() => Object.values(model.objects), [model.objects])
+  const interfaces = useMemo(
+    () => Object.values(model.interfaces),
+    [model.interfaces]
+  )
   const links = useMemo(() => Object.values(model.links), [model.links])
   const actions = useMemo(() => modelActions(model), [model])
   const [selectedId, setSelectedId] = useState<ModelObjectId>(
@@ -157,8 +169,15 @@ export function ModelExplorer({ model }: { model: CompanyModel }) {
           orbitPoints[index % orbitPoints.length] ?? centerPoint
         )
       })
+    interfaces.forEach((item, index) => {
+      result.set(
+        item.id,
+        orbitPoints[(objects.length - 1 + index) % orbitPoints.length] ??
+          centerPoint
+      )
+    })
     return result
-  }, [objects, selectedId])
+  }, [interfaces, objects, selectedId])
 
   return (
     <section className="mt-10 overflow-hidden border bg-background">
@@ -178,6 +197,9 @@ export function ModelExplorer({ model }: { model: CompanyModel }) {
             {objects.length} object types
           </span>
           <span className="border bg-muted/30 px-2 py-1">
+            {interfaces.length} interfaces
+          </span>
+          <span className="border bg-muted/30 px-2 py-1">
             {links.length} link types
           </span>
           <span className="border bg-muted/30 px-2 py-1">
@@ -195,11 +217,11 @@ export function ModelExplorer({ model }: { model: CompanyModel }) {
               viewBox={`0 0 ${canvas.width} ${canvas.height}`}
             >
               {links.map((link) => {
-                const from = positions.get(link.from.objectId) ?? centerPoint
-                const to = positions.get(link.to.objectId) ?? centerPoint
+                const from = positions.get(link.from.typeId) ?? centerPoint
+                const to = positions.get(link.to.typeId) ?? centerPoint
                 const active =
-                  link.from.objectId === selectedId ||
-                  link.to.objectId === selectedId
+                  link.from.typeId === selectedId ||
+                  link.to.typeId === selectedId
                 return (
                   <g
                     key={link.id}
@@ -231,7 +253,7 @@ export function ModelExplorer({ model }: { model: CompanyModel }) {
               const connected =
                 selected ||
                 selectedRelationships.some(
-                  ({ related }) => related.objectId === object.id
+                  ({ related }) => related.typeId === object.id
                 )
 
               return (
@@ -276,6 +298,24 @@ export function ModelExplorer({ model }: { model: CompanyModel }) {
                 </button>
               )
             })}
+
+            {interfaces.map((item) => (
+              <div
+                key={item.id}
+                className="absolute z-10 w-32 -translate-x-1/2 -translate-y-1/2 border border-dashed bg-background p-3 text-left shadow-sm"
+                style={pointStyle(positions.get(item.id) ?? centerPoint)}
+              >
+                <span className="block text-[10px] font-medium text-muted-foreground">
+                  Interface
+                </span>
+                <span className="mt-2 block text-sm font-medium">
+                  {item.name}
+                </span>
+                <span className="mt-1 block font-mono text-[10px] text-muted-foreground">
+                  {item.id}
+                </span>
+              </div>
+            ))}
           </div>
 
           <div className="grid grid-cols-2 gap-px bg-border md:hidden">
@@ -367,7 +407,9 @@ export function ModelExplorer({ model }: { model: CompanyModel }) {
                         </span>
                       </div>
                       <div className="mt-2 flex flex-wrap gap-1.5 text-[10px] text-muted-foreground">
-                        {property.required && <span>required</span>}
+                        {property.requiredOnCreate && (
+                          <span>required on create</span>
+                        )}
                         {property.nullable && <span>nullable</span>}
                         {property.immutable && <span>immutable</span>}
                         {property.outputOnly && <span>output only</span>}
@@ -404,13 +446,23 @@ export function ModelExplorer({ model }: { model: CompanyModel }) {
             {selectedRelationships.length > 0 ? (
               <div className="space-y-2">
                 {selectedRelationships.map(({ current, link, related }) => {
-                  const relatedObject = model.objects[related.objectId]
+                  const relatedObject = objects.find(
+                    (object) => object.id === related.typeId
+                  )
+                  const relatedInterface = interfaces.find(
+                    (item) => item.id === related.typeId
+                  )
                   return (
                     <Button
                       key={link.id}
                       variant="outline"
                       className="h-auto w-full justify-between px-3 py-2.5 text-left whitespace-normal"
-                      onClick={() => setSelectedId(related.objectId)}
+                      disabled={relatedObject === undefined}
+                      onClick={() => {
+                        if (relatedObject !== undefined) {
+                          setSelectedId(relatedObject.id)
+                        }
+                      }}
                     >
                       <span className="min-w-0">
                         <span className="block text-xs font-medium">
@@ -421,7 +473,7 @@ export function ModelExplorer({ model }: { model: CompanyModel }) {
                         </span>
                       </span>
                       <span className="flex shrink-0 items-center gap-1.5 text-xs">
-                        {relatedObject.name}
+                        {relatedObject?.name ?? relatedInterface?.name}
                         <ArrowRightIcon className="size-3" />
                       </span>
                     </Button>
@@ -431,6 +483,25 @@ export function ModelExplorer({ model }: { model: CompanyModel }) {
             ) : (
               <EmptyInspectorRow>No declared link types</EmptyInspectorRow>
             )}
+          </InspectorSection>
+
+          <InspectorSection
+            icon={<BoxesIcon />}
+            title="Interfaces"
+            count={Object.keys(selectedObject.interfaces).length}
+          >
+            {Object.values(selectedObject.interfaces).map((implementation) => (
+              <div
+                key={implementation.interfaceId}
+                className="border px-3 py-2.5"
+              >
+                <span className="text-xs font-medium">
+                  {interfaces.find(
+                    (item) => item.id === implementation.interfaceId
+                  )?.name ?? implementation.interfaceId}
+                </span>
+              </div>
+            ))}
           </InspectorSection>
 
           <InspectorSection
