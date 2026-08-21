@@ -62,6 +62,25 @@ function DesignSystemNavigation() {
         </div>
       </div>
 
+      <div>
+        <p className="text-xs font-medium text-muted-foreground">
+          Product patterns
+        </p>
+        <div className="mt-2 grid gap-0.5">
+          <DesignSystemLink
+            active={Boolean(
+              matchRoute({
+                to: "/develop/design-system/patterns/object-table",
+                fuzzy: false,
+              })
+            )}
+            to="/develop/design-system/patterns/object-table"
+          >
+            Object table
+          </DesignSystemLink>
+        </div>
+      </div>
+
       {componentGroups.map((group) => (
         <div key={group.label}>
           <p className="text-xs font-medium text-muted-foreground">
@@ -108,7 +127,10 @@ function DesignSystemLink({
 }: {
   active: boolean
   children: React.ReactNode
-  to: "/develop/design-system" | "/develop/design-system/foundations"
+  to:
+    | "/develop/design-system"
+    | "/develop/design-system/foundations"
+    | "/develop/design-system/patterns/object-table"
 }) {
   return (
     <Link

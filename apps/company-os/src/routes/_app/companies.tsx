@@ -1,7 +1,13 @@
 import { AcmeModel } from "@acme/api"
 import { createFileRoute } from "@tanstack/react-router"
+import { useCallback, useState } from "react"
 
-import { ObjectBrowser } from "@/components/object-browser"
+import { ObjectTable } from "@/components/object-table/object-table"
+import type {
+  ObjectTableRecord,
+  ObjectTableValue,
+} from "@/components/object-table/object-table-config"
+import { exampleCompanyRecords } from "@/components/object-table/object-table-example-data"
 import { pageOptions } from "@/route-metadata"
 
 const page = {
@@ -13,5 +19,56 @@ const page = {
 
 export const Route = createFileRoute("/_app/companies")({
   ...pageOptions(page),
-  component: () => <ObjectBrowser object={AcmeModel.objects.company} />,
+  component: CompaniesPage,
 })
+
+function CompaniesPage() {
+  const [companies, setCompanies] = useState<ObjectTableRecord[]>(
+    exampleCompanyRecords
+  )
+
+  const updateCompany = useCallback(
+    async (recordId: string, propertyId: string, value: ObjectTableValue) => {
+      await new Promise((resolve) => window.setTimeout(resolve, 180))
+      setCompanies((current) =>
+        current.map((company) =>
+          company.id === recordId
+            ? { ...company, [propertyId]: value }
+            : company
+        )
+      )
+    },
+    []
+  )
+
+  const createCompany = useCallback(() => {
+    setCompanies((current) => [
+      {
+        id: crypto.randomUUID(),
+        logo: null,
+        name: "Untitled company",
+        lifecycleStage: "prospect",
+        domain: "",
+        website: "",
+        industry: "",
+      },
+      ...current,
+    ])
+  }, [])
+
+  return (
+    <ObjectTable
+      object={AcmeModel.objects.company}
+      records={companies}
+      visiblePropertyIds={[
+        "name",
+        "lifecycleStage",
+        "domain",
+        "industry",
+        "website",
+      ]}
+      onCellCommit={updateCompany}
+      onCreateRecord={createCompany}
+    />
+  )
+}

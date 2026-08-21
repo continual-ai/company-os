@@ -35,6 +35,7 @@ import { Route as AppDevelopApiRouteImport } from './routes/_app/develop/api'
 import { Route as AppDevelopDesignSystemRouteRouteImport } from './routes/_app/develop/design-system/route'
 import { Route as AppDevelopDesignSystemIndexRouteImport } from './routes/_app/develop/design-system/index'
 import { Route as AppDevelopDesignSystemFoundationsRouteImport } from './routes/_app/develop/design-system/foundations'
+import { Route as AppDevelopDesignSystemPatternsObjectTableRouteImport } from './routes/_app/develop/design-system/patterns/object-table'
 import { Route as AppDevelopDesignSystemComponentsComponentIdRouteRouteImport } from './routes/_app/develop/design-system/components/$componentId/route'
 
 const HealthRoute = HealthRouteImport.update({
@@ -169,6 +170,12 @@ const AppDevelopDesignSystemFoundationsRoute =
     path: '/foundations',
     getParentRoute: () => AppDevelopDesignSystemRouteRoute,
   } as any)
+const AppDevelopDesignSystemPatternsObjectTableRoute =
+  AppDevelopDesignSystemPatternsObjectTableRouteImport.update({
+    id: '/patterns/object-table',
+    path: '/patterns/object-table',
+    getParentRoute: () => AppDevelopDesignSystemRouteRoute,
+  } as any)
 const AppDevelopDesignSystemComponentsComponentIdRouteRoute =
   AppDevelopDesignSystemComponentsComponentIdRouteRouteImport.update({
     id: '/components/$componentId',
@@ -203,6 +210,7 @@ export interface FileRoutesByFullPath {
   '/develop/design-system/foundations': typeof AppDevelopDesignSystemFoundationsRoute
   '/develop/design-system/': typeof AppDevelopDesignSystemIndexRoute
   '/develop/design-system/components/$componentId': typeof AppDevelopDesignSystemComponentsComponentIdRouteRoute
+  '/develop/design-system/patterns/object-table': typeof AppDevelopDesignSystemPatternsObjectTableRoute
 }
 export interface FileRoutesByTo {
   '/health': typeof HealthRoute
@@ -228,6 +236,7 @@ export interface FileRoutesByTo {
   '/develop/design-system/foundations': typeof AppDevelopDesignSystemFoundationsRoute
   '/develop/design-system': typeof AppDevelopDesignSystemIndexRoute
   '/develop/design-system/components/$componentId': typeof AppDevelopDesignSystemComponentsComponentIdRouteRoute
+  '/develop/design-system/patterns/object-table': typeof AppDevelopDesignSystemPatternsObjectTableRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -258,6 +267,7 @@ export interface FileRoutesById {
   '/_app/develop/design-system/foundations': typeof AppDevelopDesignSystemFoundationsRoute
   '/_app/develop/design-system/': typeof AppDevelopDesignSystemIndexRoute
   '/_app/develop/design-system/components/$componentId': typeof AppDevelopDesignSystemComponentsComponentIdRouteRoute
+  '/_app/develop/design-system/patterns/object-table': typeof AppDevelopDesignSystemPatternsObjectTableRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -288,6 +298,7 @@ export interface FileRouteTypes {
     | '/develop/design-system/foundations'
     | '/develop/design-system/'
     | '/develop/design-system/components/$componentId'
+    | '/develop/design-system/patterns/object-table'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/health'
@@ -313,6 +324,7 @@ export interface FileRouteTypes {
     | '/develop/design-system/foundations'
     | '/develop/design-system'
     | '/develop/design-system/components/$componentId'
+    | '/develop/design-system/patterns/object-table'
   id:
     | '__root__'
     | '/_app'
@@ -342,6 +354,7 @@ export interface FileRouteTypes {
     | '/_app/develop/design-system/foundations'
     | '/_app/develop/design-system/'
     | '/_app/develop/design-system/components/$componentId'
+    | '/_app/develop/design-system/patterns/object-table'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -536,6 +549,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDevelopDesignSystemFoundationsRouteImport
       parentRoute: typeof AppDevelopDesignSystemRouteRoute
     }
+    '/_app/develop/design-system/patterns/object-table': {
+      id: '/_app/develop/design-system/patterns/object-table'
+      path: '/patterns/object-table'
+      fullPath: '/develop/design-system/patterns/object-table'
+      preLoaderRoute: typeof AppDevelopDesignSystemPatternsObjectTableRouteImport
+      parentRoute: typeof AppDevelopDesignSystemRouteRoute
+    }
     '/_app/develop/design-system/components/$componentId': {
       id: '/_app/develop/design-system/components/$componentId'
       path: '/components/$componentId'
@@ -550,6 +570,7 @@ interface AppDevelopDesignSystemRouteRouteChildren {
   AppDevelopDesignSystemFoundationsRoute: typeof AppDevelopDesignSystemFoundationsRoute
   AppDevelopDesignSystemIndexRoute: typeof AppDevelopDesignSystemIndexRoute
   AppDevelopDesignSystemComponentsComponentIdRouteRoute: typeof AppDevelopDesignSystemComponentsComponentIdRouteRoute
+  AppDevelopDesignSystemPatternsObjectTableRoute: typeof AppDevelopDesignSystemPatternsObjectTableRoute
 }
 
 const AppDevelopDesignSystemRouteRouteChildren: AppDevelopDesignSystemRouteRouteChildren =
@@ -559,6 +580,8 @@ const AppDevelopDesignSystemRouteRouteChildren: AppDevelopDesignSystemRouteRoute
     AppDevelopDesignSystemIndexRoute: AppDevelopDesignSystemIndexRoute,
     AppDevelopDesignSystemComponentsComponentIdRouteRoute:
       AppDevelopDesignSystemComponentsComponentIdRouteRoute,
+    AppDevelopDesignSystemPatternsObjectTableRoute:
+      AppDevelopDesignSystemPatternsObjectTableRoute,
   }
 
 const AppDevelopDesignSystemRouteRouteWithChildren =

@@ -235,6 +235,9 @@ catalogs:
     '@tanstack/react-start':
       specifier: 1.168.26
       version: 1.168.26
+    '@tanstack/react-table':
+      specifier: 9.1.2
+      version: 9.1.2
     '@types/node':
       specifier: 22.19.19
       version: 22.19.19
@@ -397,6 +400,9 @@ importers:
       '@tanstack/react-start':
         specifier: 'catalog:'
         version: 1.168.26(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite@8.0.16(@types/node@22.19.19)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0))
+      '@tanstack/react-table':
+        specifier: 'catalog:'
+        version: 9.1.2(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       drizzle-orm:
         specifier: 'catalog:'
         version: 1.0.0-rc.5-ab785fc(@effect/sql-pg@4.0.0-beta.107(effect@4.0.0-beta.107))(@effect/sql-pglite@4.0.0-beta.107(effect@4.0.0-beta.107))(@electric-sql/pglite@0.5.5)(effect@4.0.0-beta.107)(pg@8.23.0)(zod@4.4.3)
@@ -2335,6 +2341,12 @@ packages:
       react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
       react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
+  '@tanstack/react-table@9.1.2':
+    resolution: {integrity: sha512-YQPZFJ1nIi/bjjwsPZVouABgahDcl7Gdm33CdTStUJBn0DjEVJ2uhSTVmIoWt9MVKdQziXGAsXipSzy949Hygg==}
+    engines: {node: '>=20'}
+    peerDependencies:
+      react: '>=18'
+
   '@tanstack/router-core@1.171.13':
     resolution: {integrity: sha512-+NOwEj1kO/6IGmpHRIZHasYxYWpyBQGNIZAST9aNrk9Q3YlU9SgqVnl1pbLa9qAKfeNdXQIRve0RQb/0kyDeDA==}
     engines: {node: '>=20.19'}
@@ -2401,6 +2413,10 @@ packages:
 
   '@tanstack/store@0.9.3':
     resolution: {integrity: sha512-8reSzl/qGWGGVKhBoxXPMWzATSbZLZFWhwBAFO9NAyp0TxzfBP0mIrGb8CP8KrQTmvzXlR/vFPPUrHTLBGyFyw==}
+
+  '@tanstack/table-core@9.1.2':
+    resolution: {integrity: sha512-ONpWQeass1sfg80CWF1NSwQ8r3GiqxA2lT/EdqIcrDEPZ0Z+0mM94eQoFYLPN0Kztzj8TQVb2+PrSZSItqA61g==}
+    engines: {node: '>=20'}
 
   '@tanstack/virtual-file-routes@1.162.0':
     resolution: {integrity: sha512-uhOeFyxLcU41HzvrxsGpiWdcMbScY1EDgbZ5K7DVRMYInbLYWAC0EA/kx9wXAoSM8q82bUG2hRl8+EAjE6XAbA==}
@@ -5761,6 +5777,14 @@ snapshots:
       react-dom: 19.2.6(react@19.2.6)
       use-sync-external-store: 1.6.0(react@19.2.6)
 
+  '@tanstack/react-table@9.1.2(react-dom@19.2.6(react@19.2.6))(react@19.2.6)':
+    dependencies:
+      '@tanstack/react-store': 0.11.1(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+      '@tanstack/table-core': 9.1.2
+      react: 19.2.6
+    transitivePeerDependencies:
+      - react-dom
+
   '@tanstack/router-core@1.171.13':
     dependencies:
       '@tanstack/history': 1.162.0
@@ -5870,6 +5894,10 @@ snapshots:
   '@tanstack/store@0.11.1': {}
 
   '@tanstack/store@0.9.3': {}
+
+  '@tanstack/table-core@9.1.2':
+    dependencies:
+      '@tanstack/store': 0.11.1
 
   '@tanstack/virtual-file-routes@1.162.0': {}
 

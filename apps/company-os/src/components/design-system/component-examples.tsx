@@ -803,8 +803,8 @@ function ComponentPreview({ slug }: { slug: ComponentSlug }) {
               <span className="sr-only">Company actions</span>
             </DropdownMenuTrigger>
             <DropdownMenuContent>
-              <DropdownMenuLabel>Company actions</DropdownMenuLabel>
               <DropdownMenuGroup>
+                <DropdownMenuLabel>Company actions</DropdownMenuLabel>
                 <DropdownMenuItem>
                   <SettingsIcon />
                   Edit company
