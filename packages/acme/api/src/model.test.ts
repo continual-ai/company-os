@@ -1,8 +1,6 @@
 import {
   createApiDescription,
-  type ActionError,
-  type ActionInput,
-  type ActionOutput,
+  type ModelObjectRef,
   type RecordId,
 } from "@continual/runtime"
 import { describe, expect, expectTypeOf, it } from "vitest"
@@ -10,7 +8,6 @@ import { describe, expect, expectTypeOf, it } from "vitest"
 import { AcmeModel } from "./index"
 
 const ContactPrimaryCompany = AcmeModel.links.contactPrimaryCompany
-const QualifyLead = AcmeModel.actions.lead.qualify
 
 describe("Acme model contract", () => {
   it("publishes a serializable closed-world description", () => {
@@ -19,13 +16,14 @@ describe("Acme model contract", () => {
     expect(description).toMatchObject({
       api: { id: "acme", name: "Acme" },
       root: { id: "root", kind: "root", name: "Root" },
-      version: "0.16",
+      version: "0.19",
     })
     expect(description.objects.map((object) => object.id)).toEqual([
       "company",
       "contact",
       "lead",
       "deal",
+      "lineItem",
       "interaction",
     ])
     expect(description.interfaces).toEqual([
@@ -34,50 +32,58 @@ describe("Acme model contract", () => {
         display: { icon: "party", image: "image", title: "name" },
       }),
     ])
-    expect(description.actions).toContainEqual(
-      expect.objectContaining({
-        id: "qualify",
-        objectId: "lead",
-        scope: "object",
-        http: { method: "POST", path: "/leads/{id}:qualify" },
-      })
-    )
     expect(
       description.actions
-        .filter((action) => action.objectId === "lead")
+        .filter((action) => action.objectType === "lead")
         .map((action) => action.id)
-    ).toEqual(["create", "update", "delete", "qualify"])
+    ).toEqual(["create", "update", "delete", "batchDelete"])
     expect(description.links).toEqual([
       expect.objectContaining({
         id: "contactPrimaryCompany",
-        from: {
+        from: expect.objectContaining({
           cardinality: "zeroOrOne",
-          name: "primaryCompany",
+          description: "The contact's primary company.",
+          key: "primaryCompany",
+          label: "Primary company",
           typeId: "contact",
-        },
-        to: { cardinality: "many", name: "contacts", typeId: "company" },
+        }),
+        to: expect.objectContaining({
+          cardinality: "many",
+          key: "contacts",
+          label: "Contacts",
+          typeId: "company",
+        }),
       }),
       expect.objectContaining({
         id: "dealCompany",
-        from: {
+        from: expect.objectContaining({
           cardinality: "one",
-          name: "company",
+          key: "company",
+          label: "Company",
           typeId: "deal",
-        },
-        to: { cardinality: "many", name: "deals", typeId: "company" },
+        }),
+        to: expect.objectContaining({
+          cardinality: "many",
+          key: "deals",
+          label: "Deals",
+          typeId: "company",
+        }),
       }),
       expect.objectContaining({
         id: "interactionSubject",
-        from: {
+        from: expect.objectContaining({
           cardinality: "one",
-          name: "subject",
+          key: "subject",
+          label: "Subject",
           typeId: "interaction",
-        },
-        to: {
+        }),
+        to: expect.objectContaining({
           cardinality: "many",
-          name: "interactions",
+          description: "Interactions involving this party.",
+          key: "interactions",
+          label: "Interactions",
           typeId: "party",
-        },
+        }),
       }),
     ])
     expect(
@@ -108,38 +114,44 @@ describe("Acme model contract", () => {
     expect(
       description.objects.find((object) => object.id === "interaction")
         ?.properties.subjectId
-    ).toMatchObject({ kind: "recordId", objectId: "party" })
+    ).toMatchObject({ kind: "recordId", typeId: "party" })
     expect(description.objects).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           id: "company",
-          parent: { kind: "root", objectId: "root" },
+          parent: { objectType: "root" },
+        }),
+        expect.objectContaining({
+          id: "lineItem",
+          parent: { objectType: "deal" },
         }),
       ])
     )
     expect(() => JSON.stringify(description)).not.toThrow()
   })
 
-  it("infers complete object-notation action inputs", () => {
-    type Input = ActionInput<typeof QualifyLead>
-    type Error = ActionError<typeof QualifyLead>
-    type Output = ActionOutput<typeof QualifyLead>
-
-    expectTypeOf<Input>().toEqualTypeOf<{
-      readonly id: RecordId<"lead">
-    }>()
-    expectTypeOf<Output>().toEqualTypeOf<{
-      readonly companyId: RecordId<"company">
-      readonly contactId: RecordId<"contact">
-    }>()
-    expectTypeOf<Error>().toEqualTypeOf<never>()
-    expectTypeOf(QualifyLead.id).toEqualTypeOf<"qualify">()
+  it("preserves model and link literal types", () => {
     expectTypeOf(
       AcmeModel.objects.company.collection
     ).toEqualTypeOf<"companies">()
     expectTypeOf(
-      ContactPrimaryCompany.from.name
+      ContactPrimaryCompany.from.key
     ).toEqualTypeOf<"primaryCompany">()
-    expectTypeOf(ContactPrimaryCompany.to.name).toEqualTypeOf<"contacts">()
+    expectTypeOf(ContactPrimaryCompany.to.key).toEqualTypeOf<"contacts">()
+    expectTypeOf(
+      AcmeModel.objects.contact.properties.primaryCompanyId.typeId
+    ).toEqualTypeOf<"company">()
+    expectTypeOf(
+      AcmeModel.objects.deal.properties.companyId.typeId
+    ).toEqualTypeOf<"company">()
+  })
+
+  it("keeps heterogeneous object references discriminated", () => {
+    type Ref = ModelObjectRef<typeof AcmeModel>
+    type CompanyRef = Extract<Ref, { readonly objectType: "company" }>
+    type ContactRef = Extract<Ref, { readonly objectType: "contact" }>
+
+    expectTypeOf<CompanyRef["id"]>().toEqualTypeOf<RecordId<"company">>()
+    expectTypeOf<ContactRef["id"]>().toEqualTypeOf<RecordId<"contact">>()
   })
 })

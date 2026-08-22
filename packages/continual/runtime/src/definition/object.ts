@@ -3,10 +3,9 @@ import { Brand } from "effect"
 import {
   type ActionDefinitions,
   type Action,
-  type ActionSettings,
-  type BoundActions,
-  type NormalizedActionSettings,
+  type NormalizedActions,
   bindActions,
+  standardActions,
 } from "./action"
 import { definitionId } from "./identity"
 import {
@@ -27,25 +26,35 @@ import type {
   AnySchema,
   EnumSchema,
   ImageSchema,
+  ObjectAlias,
   RecordId,
   Timestamp,
 } from "./schema"
 
-export interface ObjectParent<TObjectId extends string = string> {
-  readonly kind: "object" | "root"
-  readonly objectId: TObjectId
+export interface ObjectParent<TObjectType extends string = string> {
+  readonly objectType: TObjectType
 }
 
+/** A typed reference used when records from multiple object types can appear. */
+export type ObjectRef<TObjectType extends string = string> =
+  TObjectType extends string
+    ? {
+        readonly id: RecordId<TObjectType>
+        readonly objectType: TObjectType
+      }
+    : never
+
 export interface BaseRecord<
-  TObjectId extends string = string,
-  TParentObjectId extends string = string,
+  TObjectType extends string = string,
+  TParentObjectType extends string = string,
 > {
+  readonly aliases: ReadonlyArray<ObjectAlias>
   readonly annotations: Readonly<Record<string, string>>
   readonly createdAt: Timestamp
   readonly createdById: ActorId
   readonly etag: Etag
-  readonly id: RecordId<TObjectId>
-  readonly parentId: RecordId<TParentObjectId>
+  readonly id: RecordId<TObjectType>
+  readonly parentId: RecordId<TParentObjectType>
   readonly updatedAt: Timestamp
   readonly updatedById: ActorId
 }
@@ -59,6 +68,14 @@ export type Etag = string & Brand.Brand<"Etag">
 export const Etag = Brand.make<Etag>(
   (value) => value.length > 0 || "Expected a non-empty etag"
 )
+
+export interface ObjectAliasDelta {
+  readonly add?: ReadonlyArray<ObjectAlias>
+  readonly remove?: ReadonlyArray<ObjectAlias>
+}
+
+/** An array replaces the complete set; an object applies an atomic delta. */
+export type ObjectAliasUpdate = ObjectAliasDelta | ReadonlyArray<ObjectAlias>
 
 export interface ObjectDisplay<TProperties extends Properties> {
   icon?: string
@@ -85,14 +102,12 @@ export interface ObjectType<
   TActions extends Readonly<Record<string, Action>> = Readonly<
     Record<string, Action>
   >,
-  TActionSettings extends ActionSettings = ActionSettings,
-  TParentObjectId extends string = string,
+  TParentObjectType extends string = string,
   TInterfaces extends Readonly<Record<string, InterfaceImplementation>> =
     Readonly<Record<string, InterfaceImplementation>>,
 > {
   actions: TActions
   collection: TCollection
-  defaultActions: TActionSettings
   description?: string
   display: {
     icon?: string
@@ -105,14 +120,14 @@ export interface ObjectType<
   interfaces: TInterfaces
   kind: "object"
   name: string
-  parent: ObjectParent<TParentObjectId>
+  parent: ObjectParent<TParentObjectType>
   pluralName: string
   properties: TProperties
 }
 
 export type ObjectRecord<TObject extends ObjectType> = BaseRecord<
   TObject["id"],
-  TObject["parent"]["objectId"]
+  TObject["parent"]["objectType"]
 > &
   InferProperties<TObject["properties"]>
 
@@ -144,17 +159,23 @@ type UpdatePropertyKeys<TProperties extends Properties> = {
 
 type Simplify<TValue> = { [TKey in keyof TValue]: TValue[TKey] } & {}
 
-interface BaseWriteProperties {
+interface BaseCreateProperties {
+  readonly aliases?: ReadonlyArray<ObjectAlias>
+  readonly annotations?: Readonly<Record<string, string>>
+}
+
+interface BaseUpdateProperties {
+  readonly aliases?: ObjectAliasUpdate
   readonly annotations?: Readonly<Record<string, string>>
 }
 
 type CreateParent<TObject extends ObjectType> =
-  TObject["parent"]["objectId"] extends RootType["id"]
+  TObject["parent"]["objectType"] extends RootType["id"]
     ? { readonly parentId?: never }
     : Pick<ObjectRecord<TObject>, "parentId">
 
 export type ObjectCreateInput<TObject extends ObjectType> = Simplify<
-  BaseWriteProperties &
+  BaseCreateProperties &
     CreateParent<TObject> & {
       readonly [
         TKey in RequiredCreatePropertyKeys<TObject["properties"]>
@@ -167,7 +188,7 @@ export type ObjectCreateInput<TObject extends ObjectType> = Simplify<
 >
 
 export type ObjectUpdateInput<TObject extends ObjectType> = Simplify<
-  BaseWriteProperties & {
+  BaseUpdateProperties & {
     readonly [
       TKey in UpdatePropertyKeys<TObject["properties"]>
     ]?: PropertyValue<TObject["properties"][TKey]>
@@ -181,11 +202,16 @@ export type ObjectGetInput<TObject extends ObjectType> = {
 export type ObjectDeleteInput<TObject extends ObjectType> =
   ObjectGetInput<TObject>
 
+export interface ObjectBatchDeleteInput<TObject extends ObjectType> {
+  readonly ids: ReadonlyArray<RecordId<TObject["id"]>>
+}
+
 export type ObjectUpdateRequest<TObject extends ObjectType> = Simplify<
   ObjectGetInput<TObject> & ObjectUpdateInput<TObject>
 >
 
 const reservedPropertyIds = new Set([
+  "aliases",
   "annotations",
   "createdAt",
   "createdById",
@@ -221,13 +247,18 @@ export function defineObject<
   TId,
   TCollection,
   NormalizeProperties<TProperties>,
-  BoundActions<TId, TActionDefinitions>,
-  NormalizedActionSettings<TActionDefinitions>,
+  NormalizedActions<TId, TActionDefinitions>,
   TParent["id"],
   BoundInterfaceImplementations<TImplementations>
 > {
   if (definition.id === Root.id) {
     throw new Error(`Object id '${Root.id}' is reserved for the built-in Root.`)
+  }
+  const semanticParentPropertyId = `${definition.parent.id}Id`
+  if (Object.hasOwn(definition.properties, semanticParentPropertyId)) {
+    throw new Error(
+      `Object '${definition.id}' cannot redefine its '${definition.parent.id}' parent as property '${semanticParentPropertyId}'; use the standard 'parentId'.`
+    )
   }
   for (const propertyId of Object.keys(definition.properties)) {
     definitionId(propertyId)
@@ -272,22 +303,40 @@ export function defineObject<
     collection: definitionId(definition.collection),
   }
   const bound = bindActions(identity, definition.actions)
-  const object = {
+  const metadata = {
     kind: "object" as const,
     id: identity.id,
     collection: identity.collection,
     name: definition.name,
     interfaces,
-    parent: {
-      kind: definition.parent.kind,
-      objectId: definition.parent.id,
-    },
+    parent: { objectType: definition.parent.id },
     pluralName: definition.pluralName,
     display: definition.display,
     properties,
-    actions: bound.actions,
-    defaultActions: bound.defaults,
   }
+  const actions = {
+    ...Object.fromEntries(
+      standardActions(metadata, bound.standard).map((action) => [
+        action.id,
+        action,
+      ])
+    ),
+    ...bound.actions,
+  }
+  // SAFETY: bindActions rejects authored standard IDs and standardActions
+  // materializes exactly the actions enabled by the inferred settings.
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion
+  const object = {
+    ...metadata,
+    actions,
+  } as unknown as ObjectType<
+    TId,
+    TCollection,
+    NormalizeProperties<TProperties>,
+    NormalizedActions<TId, TActionDefinitions>,
+    TParent["id"],
+    BoundInterfaceImplementations<TImplementations>
+  >
   if (definition.description !== undefined) {
     return { ...object, description: definition.description }
   }

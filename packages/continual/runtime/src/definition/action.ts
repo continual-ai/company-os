@@ -2,13 +2,17 @@ import type { ApiError, ErrorType } from "./error"
 import { definitionId } from "./identity"
 import type { Properties, PropertyDefinition } from "./property"
 import { Root } from "./root"
-import { schema } from "./schema"
+import { MAX_OBJECT_ALIAS_LENGTH, schema } from "./schema"
 import type { InferSchema, SchemaProperties, StructSchema } from "./schema"
 
-const defaultActionIds = ["create", "update", "delete"] as const
+const standardActionIds = ["create", "update", "delete", "batchDelete"] as const
 
-type DefaultActionId = (typeof defaultActionIds)[number]
+export type StandardActionId = (typeof standardActionIds)[number]
 export type ActionScope = "collection" | "object"
+
+export function isStandardActionId(id: string): id is StandardActionId {
+  return standardActionIds.some((standardId) => standardId === id)
+}
 
 export interface ActionHttpBinding {
   method: "DELETE" | "PATCH" | "POST"
@@ -40,21 +44,28 @@ export type ActionDefinitions = Readonly<
   Record<string, false | ActionDefinition>
 >
 
-export interface ActionSettings {
+export interface StandardActionSettings {
+  readonly batchDelete: boolean
   readonly create: boolean
   readonly delete: boolean
   readonly update: boolean
 }
 
-export type NormalizedActionSettings<TDefinitions extends ActionDefinitions> = {
-  readonly create: TDefinitions["create"] extends false ? false : true
-  readonly delete: TDefinitions["delete"] extends false ? false : true
-  readonly update: TDefinitions["update"] extends false ? false : true
-}
+type NormalizedStandardActionSettings<TDefinitions extends ActionDefinitions> =
+  {
+    readonly batchDelete: TDefinitions["delete"] extends false
+      ? false
+      : TDefinitions["batchDelete"] extends false
+        ? false
+        : true
+    readonly create: TDefinitions["create"] extends false ? false : true
+    readonly delete: TDefinitions["delete"] extends false ? false : true
+    readonly update: TDefinitions["update"] extends false ? false : true
+  }
 
 export interface Action<
   TId extends string = string,
-  TObjectId extends string = string,
+  TObjectType extends string = string,
   TScope extends ActionScope = ActionScope,
   TInput extends StructSchema = StructSchema,
   TOutput extends StructSchema = StructSchema,
@@ -69,31 +80,31 @@ export interface Action<
   input: TInput
   kind: "action"
   name: string
-  objectId: TObjectId
+  objectType: TObjectType
   output: TOutput
   scope: TScope
 }
 
 type InputProperties<
-  TObjectId extends string,
+  TObjectType extends string,
   TDefinition extends ActionDefinition,
 > = TDefinition["scope"] extends "object"
   ? {
       readonly id: ReturnType<
-        typeof schema.recordId<{ readonly id: TObjectId }>
+        typeof schema.recordId<{ readonly id: TObjectType }>
       >
     } & NonNullable<TDefinition["input"]>
   : NonNullable<TDefinition["input"]>
 
 type BindAction<
   TId extends string,
-  TObjectId extends string,
+  TObjectType extends string,
   TDefinition extends ActionDefinition,
 > = Action<
   TId,
-  TObjectId,
+  TObjectType,
   TDefinition["scope"],
-  StructSchema<InputProperties<TObjectId, TDefinition>>,
+  StructSchema<InputProperties<TObjectType, TDefinition>>,
   StructSchema<
     TDefinition["output"] extends SchemaProperties ? TDefinition["output"] : {}
   >,
@@ -102,27 +113,49 @@ type BindAction<
     : readonly []
 >
 
-export type BoundActions<
-  TObjectId extends string,
+type BoundActions<
+  TObjectType extends string,
   TDefinitions extends ActionDefinitions,
 > = {
   readonly [
-    TId in keyof TDefinitions as TId extends DefaultActionId
+    TId in keyof TDefinitions as TId extends StandardActionId
       ? never
       : TDefinitions[TId] extends ActionDefinition
         ? TId
         : never
   ]: TDefinitions[TId] extends ActionDefinition
-    ? BindAction<TId & string, TObjectId, TDefinitions[TId]>
+    ? BindAction<TId & string, TObjectType, TDefinitions[TId]>
     : never
 }
 
+type StandardActions<
+  TObjectType extends string,
+  TSettings extends StandardActionSettings,
+> = (TSettings["batchDelete"] extends true
+  ? { readonly batchDelete: Action<"batchDelete", TObjectType> }
+  : object) &
+  (TSettings["create"] extends true
+    ? { readonly create: Action<"create", TObjectType> }
+    : object) &
+  (TSettings["delete"] extends true
+    ? { readonly delete: Action<"delete", TObjectType> }
+    : object) &
+  (TSettings["update"] extends true
+    ? { readonly update: Action<"update", TObjectType> }
+    : object)
+
+export type NormalizedActions<
+  TObjectType extends string,
+  TDefinitions extends ActionDefinitions,
+> = BoundActions<TObjectType, TDefinitions> &
+  StandardActions<TObjectType, NormalizedStandardActionSettings<TDefinitions>>
+
 export interface BoundActionSet<
-  TObjectId extends string,
+  TObjectType extends string,
   TDefinitions extends ActionDefinitions,
 > {
-  readonly actions: BoundActions<TObjectId, TDefinitions>
-  readonly defaults: NormalizedActionSettings<TDefinitions>
+  readonly actions: BoundActions<TObjectType, TDefinitions>
+  readonly standard: NormalizedStandardActionSettings<TDefinitions>
 }
 
 export type ActionInput<TAction extends Action> = InferSchema<TAction["input"]>
@@ -134,7 +167,7 @@ export type ActionError<TAction extends Action> = ApiError<
 >
 
 export function actionKey(action: Action): string {
-  return `${action.objectId}.${action.id}`
+  return `${action.objectType}.${action.id}`
 }
 
 function placeholderNames(path: string): ReadonlyArray<string> {
@@ -142,13 +175,13 @@ function placeholderNames(path: string): ReadonlyArray<string> {
 }
 
 function validateHttpBinding(
-  objectId: string,
+  objectType: string,
   collection: string,
   actionId: string,
   definition: ActionDefinition,
   input: StructSchema
 ): void {
-  const owner = `Action '${objectId}.${actionId}'`
+  const owner = `Action '${objectType}.${actionId}'`
   const prefix = `/${collection}`
   const path = definition.http.path
   if (
@@ -183,27 +216,27 @@ function validateHttpBinding(
   }
 }
 
-function defaultEnabled(
+function standardEnabled(
   definitions: ActionDefinitions | undefined,
-  id: DefaultActionId
+  id: StandardActionId
 ): boolean {
   return definitions?.[id] !== false
 }
 
 export function bindActions<
-  const TObjectId extends string,
+  const TObjectType extends string,
   const TDefinitions extends ActionDefinitions,
 >(
-  object: { readonly collection: string; readonly id: TObjectId },
+  object: { readonly collection: string; readonly id: TObjectType },
   definitions?: TDefinitions
-): BoundActionSet<TObjectId, TDefinitions> {
+): BoundActionSet<TObjectType, TDefinitions> {
   const actions: Record<string, Action> = {}
 
   for (const [id, definition] of Object.entries(definitions ?? {})) {
-    if (defaultActionIds.some((defaultId) => defaultId === id)) {
+    if (isStandardActionId(id)) {
       if (definition !== false) {
         throw new Error(
-          `Object '${object.id}' default action '${id}' may only be disabled with false.`
+          `Object '${object.id}' standard action '${id}' may only be disabled with false.`
         )
       }
       continue
@@ -253,7 +286,7 @@ export function bindActions<
     actions[actionId] = {
       kind: "action",
       id: actionId,
-      objectId: object.id,
+      objectType: object.id,
       name: definition.name,
       description: definition.description,
       destructive: definition.destructive === true,
@@ -267,16 +300,19 @@ export function bindActions<
   }
 
   return {
-    // SAFETY: every non-default definition is normalized under its validated key.
+    // SAFETY: every authored definition is normalized under its validated key.
     // oxlint-disable-next-line anti-slop/no-known-value-widening, typescript/no-unsafe-type-assertion
-    actions: actions as BoundActions<TObjectId, TDefinitions>,
-    // SAFETY: defaultEnabled implements the same false-only conditional encoded by this type.
+    actions: actions as BoundActions<TObjectType, TDefinitions>,
+    // SAFETY: standardEnabled implements the same false-only conditional encoded by this type.
     // oxlint-disable-next-line anti-slop/no-known-value-widening, typescript/no-unsafe-type-assertion
-    defaults: {
-      create: defaultEnabled(definitions, "create"),
-      delete: defaultEnabled(definitions, "delete"),
-      update: defaultEnabled(definitions, "update"),
-    } as NormalizedActionSettings<TDefinitions>,
+    standard: {
+      batchDelete:
+        standardEnabled(definitions, "delete") &&
+        standardEnabled(definitions, "batchDelete"),
+      create: standardEnabled(definitions, "create"),
+      delete: standardEnabled(definitions, "delete"),
+      update: standardEnabled(definitions, "update"),
+    } as NormalizedStandardActionSettings<TDefinitions>,
   }
 }
 
@@ -284,32 +320,52 @@ function writablePropertySchema(property: PropertyDefinition) {
   return property.requiredOnCreate ? property : schema.optional(property)
 }
 
+function aliasesSchema() {
+  return schema.array(
+    schema.string({ minLength: 1, maxLength: MAX_OBJECT_ALIAS_LENGTH })
+  )
+}
+
+function aliasUpdateSchema() {
+  return schema.union([
+    aliasesSchema(),
+    schema.object({
+      add: schema.optional(aliasesSchema()),
+      remove: schema.optional(aliasesSchema()),
+    }),
+  ])
+}
+
 function objectRecordSchema(object: {
   readonly id: string
-  readonly parent: { readonly objectId: string }
+  readonly parent: { readonly objectType: string }
   readonly properties: Properties
 }) {
   return schema.object({
     id: schema.recordId(object),
+    aliases: aliasesSchema(),
     annotations: schema.map(schema.string()),
     createdAt: schema.timestamp({ outputOnly: true }),
     createdById: schema.string({ outputOnly: true }),
     etag: schema.string({ outputOnly: true }),
-    parentId: schema.recordId({ id: object.parent.objectId }),
+    parentId: schema.recordId({ id: object.parent.objectType }),
     updatedAt: schema.timestamp({ outputOnly: true }),
     updatedById: schema.string({ outputOnly: true }),
     ...object.properties,
   })
 }
 
-export function standardActions(object: {
-  readonly collection: string
-  readonly defaultActions: ActionSettings
-  readonly id: string
-  readonly name: string
-  readonly parent: { readonly objectId: string }
-  readonly properties: Properties
-}): ReadonlyArray<Action> {
+export function standardActions(
+  object: {
+    readonly collection: string
+    readonly id: string
+    readonly name: string
+    readonly parent: { readonly objectType: string }
+    readonly pluralName: string
+    readonly properties: Properties
+  },
+  settings: StandardActionSettings
+): ReadonlyArray<Action> {
   const actions: Array<Action> = []
   const record = objectRecordSchema(object)
   const writableProperties = Object.fromEntries(
@@ -322,15 +378,15 @@ export function standardActions(object: {
       .filter(([, property]) => !property.outputOnly)
       .map(([id, property]) => [id, schema.optional(property)])
   )
-  if (object.defaultActions.create) {
+  if (settings.create) {
     const parentInput =
-      object.parent.objectId === Root.id
+      object.parent.objectType === Root.id
         ? {}
-        : { parentId: schema.recordId({ id: object.parent.objectId }) }
+        : { parentId: schema.recordId({ id: object.parent.objectType }) }
     actions.push({
       kind: "action",
       id: "create",
-      objectId: object.id,
+      objectType: object.id,
       scope: "collection",
       name: `Create ${object.name.toLowerCase()}`,
       description: `Creates a ${object.name.toLowerCase()}.`,
@@ -338,6 +394,7 @@ export function standardActions(object: {
       idempotent: false,
       http: { method: "POST", path: `/${object.collection}` },
       input: schema.object({
+        aliases: schema.optional(aliasesSchema()),
         annotations: schema.optional(schema.map(schema.string())),
         ...parentInput,
         ...writableProperties,
@@ -346,11 +403,11 @@ export function standardActions(object: {
       errors: [],
     })
   }
-  if (object.defaultActions.update) {
+  if (settings.update) {
     actions.push({
       kind: "action",
       id: "update",
-      objectId: object.id,
+      objectType: object.id,
       scope: "object",
       name: `Update ${object.name.toLowerCase()}`,
       description: `Updates a ${object.name.toLowerCase()}.`,
@@ -359,6 +416,7 @@ export function standardActions(object: {
       http: { method: "PATCH", path: `/${object.collection}/{id}` },
       input: schema.object({
         id: schema.recordId(object),
+        aliases: schema.optional(aliasUpdateSchema()),
         annotations: schema.optional(schema.map(schema.string())),
         ...updateProperties,
       }),
@@ -366,11 +424,11 @@ export function standardActions(object: {
       errors: [],
     })
   }
-  if (object.defaultActions.delete) {
+  if (settings.delete) {
     actions.push({
       kind: "action",
       id: "delete",
-      objectId: object.id,
+      objectType: object.id,
       scope: "object",
       name: `Delete ${object.name.toLowerCase()}`,
       description: `Deletes a ${object.name.toLowerCase()}.`,
@@ -378,6 +436,22 @@ export function standardActions(object: {
       idempotent: true,
       http: { method: "DELETE", path: `/${object.collection}/{id}` },
       input: schema.object({ id: schema.recordId(object) }),
+      output: schema.object({}),
+      errors: [],
+    })
+  }
+  if (settings.batchDelete) {
+    actions.push({
+      kind: "action",
+      id: "batchDelete",
+      objectType: object.id,
+      scope: "collection",
+      name: `Batch delete ${object.pluralName.toLowerCase()}`,
+      description: `Deletes multiple ${object.pluralName.toLowerCase()} atomically.`,
+      destructive: true,
+      idempotent: true,
+      http: { method: "POST", path: `/${object.collection}:batchDelete` },
+      input: schema.object({ ids: schema.array(schema.recordId(object)) }),
       output: schema.object({}),
       errors: [],
     })

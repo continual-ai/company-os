@@ -4,15 +4,18 @@ import { describe, expect, expectTypeOf, it } from "vitest"
 import {
   defineObject,
   type ObjectCreateInput,
+  type ObjectAliasUpdate,
   type ObjectRecord,
   type ObjectUpdateInput,
 } from "./definition/object"
 import { Root } from "./definition/root"
 import {
+  ObjectAlias,
   RecordId,
   schema,
   type EmailAddress,
   type InferSchema,
+  type ObjectAlias as ObjectAliasType,
 } from "./definition/schema"
 import {
   toEffectObjectCreateSchema,
@@ -50,6 +53,7 @@ describe("Effect Schema projection", () => {
   it("decodes records from portable object definitions", () => {
     const decode = Schema.decodeUnknownSync(toEffectObjectSchema(Account))
     const base = {
+      aliases: ["hubspot:portal_1:company:account_1"],
       annotations: {},
       id: "account_1",
       createdAt: "2026-08-18T12:00:00Z",
@@ -157,12 +161,18 @@ describe("Effect Schema projection", () => {
     expectTypeOf<Create["annotations"]>().toEqualTypeOf<
       Readonly<Record<string, string>> | undefined
     >()
+    expectTypeOf<Create["aliases"]>().toEqualTypeOf<
+      ReadonlyArray<ObjectAliasType> | undefined
+    >()
     expectTypeOf<Create["parentId"]>().toEqualTypeOf<undefined>()
     expectTypeOf<AccountRecord["parentId"]>().toEqualTypeOf<RecordId<"root">>()
     expectTypeOf<Update["email"]>().toEqualTypeOf<
       EmailAddress | null | undefined
     >()
     expectTypeOf<Update["externalId"]>().toEqualTypeOf<string | undefined>()
+    expectTypeOf<Update["aliases"]>().toEqualTypeOf<
+      ObjectAliasUpdate | undefined
+    >()
     expectTypeOf<Update["status"]>().toEqualTypeOf<
       "active" | "inactive" | undefined
     >()
@@ -173,14 +183,18 @@ describe("Effect Schema projection", () => {
     const decodeUpdate = Schema.decodeUnknownSync(
       toEffectObjectUpdateSchema(Account)
     )
+    const hubspotAlias = ObjectAlias("hubspot:portal_1:company:account_1")
+    const salesforceAlias = ObjectAlias("salesforce:org_1:account:account_1")
 
     expect(
       decodeCreate({
+        aliases: [hubspotAlias],
         annotations: { source: "import" },
         externalId: "external_1",
         name: "Acme",
       })
     ).toEqual({
+      aliases: [hubspotAlias],
       annotations: { source: "import" },
       externalId: "external_1",
       name: "Acme",
@@ -200,6 +214,24 @@ describe("Effect Schema projection", () => {
     expect(decodeUpdate({ email: null })).toEqual({ email: null })
     expect(() => decodeUpdate({ email: "" })).toThrow()
     expect(decodeUpdate({ annotations: {} })).toEqual({ annotations: {} })
+    expect(decodeUpdate({ aliases: [hubspotAlias] })).toEqual({
+      aliases: [hubspotAlias],
+    })
+    expect(
+      decodeUpdate({
+        aliases: { add: [salesforceAlias], remove: [hubspotAlias] },
+      })
+    ).toEqual({
+      aliases: { add: [salesforceAlias], remove: [hubspotAlias] },
+    })
+    expect(() =>
+      decodeUpdate({ aliases: [hubspotAlias, hubspotAlias] })
+    ).toThrow()
+    expect(() =>
+      decodeUpdate({
+        aliases: { add: [hubspotAlias], remove: [hubspotAlias] },
+      })
+    ).toThrow()
     expect(decodeUpdate({ externalId: "external_1" })).toEqual({
       externalId: "external_1",
     })

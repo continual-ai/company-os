@@ -1,8 +1,5 @@
 import { Root, defineObject, schema } from "@continual/runtime"
 
-import { Company } from "./company"
-import { Contact } from "./contact"
-
 export const Lead = defineObject({
   id: "lead",
   collection: "leads",
@@ -51,21 +48,5 @@ export const Lead = defineObject({
     title: "name",
     subtitle: "companyName",
     status: "status",
-  },
-  actions: {
-    qualify: {
-      scope: "object",
-      name: "Qualify lead",
-      description:
-        "Idempotently qualifies a lead and creates its company and contact records. Repeating the action returns the existing result.",
-      output: {
-        companyId: schema.recordId(Company),
-        contactId: schema.recordId(Contact),
-      },
-      idempotent: true,
-      http: {
-        path: "/leads/{id}:qualify",
-      },
-    },
   },
 })

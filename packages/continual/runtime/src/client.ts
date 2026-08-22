@@ -1,10 +1,17 @@
-import type { Action, ActionInput, ActionOutput } from "./definition/action"
+import {
+  isStandardActionId,
+  type Action,
+  type ActionInput,
+  type ActionOutput,
+  type StandardActionId,
+} from "./definition/action"
 import {
   type ModelObject,
   type ModelCatalog,
   modelObjects,
 } from "./definition/model"
 import type {
+  ObjectBatchDeleteInput,
   ObjectDeleteInput,
   ObjectGetInput,
   ObjectType,
@@ -51,9 +58,11 @@ export class ApiClientResponseError extends Error {
 type ActionsForObject<TObject extends ObjectType> =
   TObject["actions"][keyof TObject["actions"]]
 
-type DefaultMethod<TEnabled extends boolean, TMethod> = TEnabled extends true
-  ? TMethod
-  : object
+type StandardMethod<
+  TObject extends ObjectType,
+  TActionId extends StandardActionId,
+  TMethod,
+> = TActionId extends keyof TObject["actions"] ? TMethod : object
 
 type DefaultObjectClient<TObject extends ObjectType> = {
   readonly batchGet: (
@@ -65,17 +74,29 @@ type DefaultObjectClient<TObject extends ObjectType> = {
   readonly list: (
     request?: ListRequest<TObject>
   ) => Promise<Page<ObjectRecord<TObject>>>
-} & DefaultMethod<
-  TObject["defaultActions"]["create"],
+} & StandardMethod<
+  TObject,
+  "batchDelete",
   {
-    readonly create: (
-      input: ObjectCreateInput<TObject>,
+    readonly batchDelete: (
+      input: ObjectBatchDeleteInput<TObject>,
       options?: MutationOptions
-    ) => Promise<ObjectRecord<TObject>>
+    ) => Promise<void>
   }
 > &
-  DefaultMethod<
-    TObject["defaultActions"]["delete"],
+  StandardMethod<
+    TObject,
+    "create",
+    {
+      readonly create: (
+        input: ObjectCreateInput<TObject>,
+        options?: MutationOptions
+      ) => Promise<ObjectRecord<TObject>>
+    }
+  > &
+  StandardMethod<
+    TObject,
+    "delete",
     {
       readonly delete: (
         input: ObjectDeleteInput<TObject>,
@@ -83,8 +104,9 @@ type DefaultObjectClient<TObject extends ObjectType> = {
       ) => Promise<void>
     }
   > &
-  DefaultMethod<
-    TObject["defaultActions"]["update"],
+  StandardMethod<
+    TObject,
+    "update",
     {
       readonly update: (
         input: ObjectUpdateRequest<TObject>,
@@ -98,18 +120,23 @@ type ActionMethod<TAction extends Action> = (
   options?: MutationOptions
 ) => Promise<ActionOutput<TAction>>
 
-type ObjectClient<
-  TObject extends ObjectType,
-  TActions extends Action,
-> = DefaultObjectClient<TObject> & {
-  readonly [TAction in TActions as TAction["id"]]: ActionMethod<TAction>
+type AuthoredAction<TAction extends Action> = TAction extends Action
+  ? TAction["id"] extends StandardActionId
+    ? never
+    : TAction
+  : never
+
+type ObjectClient<TObject extends ObjectType> = DefaultObjectClient<TObject> & {
+  readonly [
+    TAction in AuthoredAction<ActionsForObject<TObject>> as TAction["id"]
+  ]: ActionMethod<TAction>
 }
 
 /** An inferred client grouped by the globally unique collection of each object. */
 export type ApiClient<TModel extends ModelCatalog> = {
   readonly [
     TObject in ModelObject<TModel> as TObject["collection"]
-  ]: ObjectClient<TObject, ActionsForObject<TObject>>
+  ]: ObjectClient<TObject>
 }
 
 interface RequestOptions {
@@ -226,7 +253,23 @@ export function createClient<const TModel extends ModelCatalog>(
         })
     )
 
-    if (object.defaultActions.create) {
+    if (object.actions.batchDelete !== undefined) {
+      methods.set(
+        "batchDelete",
+        (
+          input: { readonly ids: readonly string[] },
+          mutation: MutationOptions | undefined
+        ) =>
+          request({
+            body: input,
+            method: "POST",
+            path: `${collectionPath}:batchDelete`,
+            ...mutationOptions(mutation),
+          })
+      )
+    }
+
+    if (object.actions.create !== undefined) {
       methods.set(
         "create",
         (input: JsonValue, mutation: MutationOptions | undefined) =>
@@ -246,7 +289,7 @@ export function createClient<const TModel extends ModelCatalog>(
       })
     )
 
-    if (object.defaultActions.update) {
+    if (object.actions.update !== undefined) {
       methods.set(
         "update",
         (
@@ -264,7 +307,7 @@ export function createClient<const TModel extends ModelCatalog>(
       )
     }
 
-    if (object.defaultActions.delete) {
+    if (object.actions.delete !== undefined) {
       methods.set(
         "delete",
         (
@@ -280,6 +323,7 @@ export function createClient<const TModel extends ModelCatalog>(
     }
 
     for (const action of Object.values(object.actions)) {
+      if (isStandardActionId(action.id)) continue
       methods.set(
         action.id,
         (input: JsonObject, mutation: MutationOptions | undefined) => {

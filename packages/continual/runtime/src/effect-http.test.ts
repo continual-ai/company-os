@@ -47,6 +47,13 @@ const Account = defineObject({
       errors: [ArchiveFailed],
       http: { path: "/accounts/{id}:archive" },
     },
+    archiveAll: {
+      scope: "collection",
+      name: "Archive all accounts",
+      description: "Archives every eligible account.",
+      output: { archivedCount: schema.number({ integer: true }) },
+      http: { path: "/accounts:archiveAll" },
+    },
   },
 })
 
@@ -77,6 +84,10 @@ describe("Effect HTTP projection", () => {
     expect(document.paths["/api/v1/accounts:batchGet"]).toMatchObject({
       post: { operationId: "batchGetAccounts" },
     })
+    expect(document.paths["/api/v1/accounts:batchDelete"]).toBeUndefined()
+    expect(document.paths["/api/v1/accounts:archiveAll"]).toMatchObject({
+      post: { operationId: "archiveAllAccounts" },
+    })
     expect(document.paths["/api/v1/accounts/search"]).toMatchObject({
       post: { operationId: "searchAccounts" },
     })
@@ -102,6 +113,7 @@ describe("Effect HTTP projection", () => {
     expect(document.components?.schemas).toHaveProperty("AccountLogo")
     expect(document.components?.schemas).toHaveProperty("Annotations")
     expect(document.components?.schemas).toHaveProperty("ImageRef")
+    expect(document.components?.schemas).toHaveProperty("ObjectAliases")
     expect(document.components?.schemas).not.toHaveProperty(
       "AccountRecordNotFoundError"
     )
@@ -121,27 +133,68 @@ describe("Effect HTTP projection", () => {
     const createSchema = document.components?.schemas.AccountCreateInput
     const updateSchema = document.components?.schemas.AccountUpdateInput
     expect(recordSchema).toHaveProperty("properties.email")
+    expect(recordSchema).toHaveProperty("properties.aliases")
     expect(recordSchema).toHaveProperty("properties.logo")
     expect(recordSchema).toHaveProperty("properties.searchLabel")
     expect(recordSchema).toHaveProperty(
       "required",
-      expect.arrayContaining(["email", "logo", "searchLabel"])
+      expect.arrayContaining(["aliases", "email", "logo", "searchLabel"])
     )
     expect(JSON.stringify(document.components?.schemas.AccountLogo)).toContain(
       '"type":"null"'
     )
     expect(JSON.stringify(recordSchema)).toContain('"readOnly":true')
     expect(createSchema).toHaveProperty("properties.email")
+    expect(createSchema).toHaveProperty("properties.aliases")
     expect(createSchema).toHaveProperty("properties.logo")
     expect(createSchema).toHaveProperty("properties.externalId")
     expect(createSchema).not.toHaveProperty("properties.parentId")
     expect(createSchema).not.toHaveProperty("properties.searchLabel")
     expect(JSON.stringify(createSchema)).not.toContain('"writeOnly":true')
     expect(updateSchema).toHaveProperty("properties.email")
+    expect(updateSchema).toHaveProperty("properties.aliases")
     expect(updateSchema).toHaveProperty("properties.logo")
     expect(updateSchema).toHaveProperty("properties.externalId")
     expect(JSON.stringify(updateSchema)).toContain("Immutable after creation")
+    expect(JSON.stringify(updateSchema)).toContain('"add"')
+    expect(JSON.stringify(updateSchema)).toContain('"remove"')
     expect(updateSchema).not.toHaveProperty("properties.searchLabel")
+  })
+
+  it("projects atomic batch delete when standard deletion is enabled", () => {
+    const Deletable = defineObject({
+      id: "deletable",
+      collection: "deletables",
+      name: "Deletable",
+      parent: Root,
+      pluralName: "Deletables",
+      properties: { name: schema.string() },
+      display: { title: "name" },
+    })
+    const model = defineModel({
+      id: "batchDeleteExample",
+      name: "Batch delete example",
+      objects: [Deletable],
+      links: [],
+    })
+    const batchDocument = OpenApi.fromApi(createHttpApi(model))
+
+    expect(batchDocument.paths["/api/v1/deletables:batchDelete"]).toMatchObject(
+      {
+        post: {
+          operationId: "batchDeleteDeletables",
+          responses: { "204": expect.any(Object) },
+        },
+      }
+    )
+    expect(
+      batchDocument.components?.schemas.DeletableBatchDeleteInput
+    ).toMatchObject({
+      properties: {
+        ids: { type: "array" },
+      },
+      required: ["ids"],
+    })
   })
 
   it("projects business actions to AIP-style paths and declared errors", () => {

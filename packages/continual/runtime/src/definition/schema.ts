@@ -14,6 +14,8 @@ const urlPattern = /^https?:\/\/[^\s]+$/
 const currencyPattern = /^[A-Z]{3}$/
 const decimalPattern = /^-?(?:0|[1-9]\d*)(?:\.\d+)?$/
 
+export const MAX_OBJECT_ALIAS_LENGTH = 500 as const
+
 export type CalendarDate = string & Brand.Brand<"CalendarDate">
 export const CalendarDate = Brand.make<CalendarDate>(
   (value) =>
@@ -49,6 +51,15 @@ export type PhoneNumber = string & Brand.Brand<"PhoneNumber">
 export const PhoneNumber = Brand.make<PhoneNumber>(
   (value) =>
     phonePattern.test(value) || `Expected '${value}' to be a phone number`
+)
+
+/** Opaque, globally qualified alternate key for an object. */
+export type ObjectAlias = string & Brand.Brand<"ObjectAlias">
+export const ObjectAlias = Brand.make<ObjectAlias>((value) =>
+  value.length === 0
+    ? "Expected a non-empty object alias"
+    : value.length <= MAX_OBJECT_ALIAS_LENGTH ||
+      `Expected an object alias no longer than ${MAX_OBJECT_ALIAS_LENGTH} characters`
 )
 
 export type Timestamp = string & Brand.Brand<"Timestamp">
@@ -167,7 +178,25 @@ export interface MediaSchema extends SchemaDefinition<MediaRef> {
   maxBytes?: number
 }
 
+export type ChoiceColor =
+  | "blue"
+  | "cyan"
+  | "gray"
+  | "green"
+  | "indigo"
+  | "lime"
+  | "orange"
+  | "pink"
+  | "purple"
+  | "red"
+  | "teal"
+  | "violet"
+  | "yellow"
+
 export interface Choice<TValue extends string = string> {
+  /** Portable semantic presentation; interfaces decide how to render it. */
+  color?: ChoiceColor
+  icon?: string
   label: string
   value: TValue
 }
@@ -194,22 +223,22 @@ interface OptionalSchema<
   value: TValue
 }
 
-export type RecordId<TObjectId extends string = string> = string &
-  Brand.Brand<`RecordId:${TObjectId}`>
+export type RecordId<TTypeId extends string = string> = string &
+  Brand.Brand<`RecordId:${TTypeId}`>
 
-export function RecordId<const TObjectId extends string>(
-  objectId: TObjectId
-): Brand.Constructor<RecordId<TObjectId>> {
-  return Brand.make<RecordId<TObjectId>>(
-    (value) => value.length > 0 || `Expected a non-empty ${objectId} record ID`
+export function RecordId<const TTypeId extends string>(
+  typeId: TTypeId
+): Brand.Constructor<RecordId<TTypeId>> {
+  return Brand.make<RecordId<TTypeId>>(
+    (value) => value.length > 0 || `Expected a non-empty ${typeId} record ID`
   )
 }
 
-interface RecordIdSchema<
-  TObjectId extends string = string,
-> extends SchemaDefinition<RecordId<TObjectId>> {
+export interface RecordIdSchema<
+  TTypeId extends string = string,
+> extends SchemaDefinition<RecordId<TTypeId>> {
   kind: "recordId"
-  objectId: TObjectId
+  typeId: TTypeId
 }
 
 export interface StringSchema<
@@ -512,15 +541,15 @@ function optional<TValue extends AnySchema>(
 }
 
 function recordId<
-  const TObject extends { readonly id: string },
-  const TOptions extends SchemaAnnotations<RecordId<TObject["id"]>> = {},
+  const TType extends { readonly id: string },
+  const TOptions extends SchemaAnnotations<RecordId<TType["id"]>> = {},
 >(
-  recordObject: TObject,
+  targetType: TType,
   options?: TOptions
-): RecordIdSchema<TObject["id"]> & TOptions {
+): RecordIdSchema<TType["id"]> & TOptions {
   return {
     kind: "recordId",
-    objectId: recordObject.id,
+    typeId: targetType.id,
     ...configured(options),
   }
 }

@@ -3,6 +3,7 @@ import { Clock, Context, Data, Effect, Schema } from "effect"
 import {
   Etag,
   type ActorId,
+  type ObjectBatchDeleteInput,
   type ObjectCreateInput,
   type ObjectDeleteInput,
   type ObjectGetInput,
@@ -11,7 +12,12 @@ import {
   type ObjectUpdateInput,
   type ObjectUpdateRequest,
 } from "./definition/object"
-import type { Batch, ListRequest, Page } from "./definition/request"
+import {
+  MAX_BATCH_DELETE_SIZE,
+  type Batch,
+  type ListRequest,
+  type Page,
+} from "./definition/request"
 import type { RootType } from "./definition/root"
 import { RecordId, Timestamp } from "./definition/schema"
 import type { Repository } from "./effect-object-repository"
@@ -24,8 +30,15 @@ export class ImmutablePropertyError extends Data.TaggedError(
   "ImmutablePropertyError"
 )<{
   readonly property: string
-  readonly objectId: string
+  readonly objectType: string
   readonly recordId: string
+}> {}
+
+export class InvalidBatchDeleteRequest extends Data.TaggedError(
+  "InvalidBatchDeleteRequest"
+)<{
+  readonly message: string
+  readonly objectType: string
 }> {}
 
 export interface InvocationContext {
@@ -40,6 +53,7 @@ export class CurrentActor extends Context.Service<
 >()("@continual/runtime/CurrentActor") {}
 
 export type ObjectOperation =
+  | "batchDelete"
   | "batchGet"
   | "create"
   | "delete"
@@ -48,7 +62,7 @@ export type ObjectOperation =
   | "update"
 
 export interface AuthorizationRequest {
-  readonly objectId: string
+  readonly objectType: string
   readonly operation: ObjectOperation
   readonly parentId?: string
   readonly recordIds?: ReadonlyArray<string>
@@ -59,6 +73,9 @@ export interface Service<
   TError = never,
   TRequirements = never,
 > {
+  readonly batchDelete: (
+    input: ObjectBatchDeleteInput<TObject>
+  ) => Effect.Effect<void, InvalidBatchDeleteRequest | TError, TRequirements>
   readonly batchGet: (input: {
     readonly ids: ReadonlyArray<RecordId<TObject["id"]>>
   }) => Effect.Effect<Batch<ObjectRecord<TObject>>, TError, TRequirements>
@@ -88,7 +105,7 @@ export interface Service<
 }
 
 export interface MakeOptions {
-  readonly generateId?: (objectId: string) => string
+  readonly generateId?: (objectType: string) => string
   readonly generateEtag?: () => string
 }
 
@@ -105,8 +122,8 @@ export interface AuthorizedMakeOptions<
   >
 }
 
-function defaultId(objectId: string): string {
-  return `${objectId}_${globalThis.crypto.randomUUID()}`
+function defaultId(objectType: string): string {
+  return `${objectType}_${globalThis.crypto.randomUUID()}`
 }
 
 function defaultEtag(): string {
@@ -152,7 +169,7 @@ function assertImmutableFields<TObject extends ObjectType>(
       return Effect.fail(
         new ImmutablePropertyError({
           property: propertyId,
-          objectId: object.id,
+          objectType: object.id,
           recordId: current.id,
         })
       )
@@ -202,7 +219,7 @@ export function make<
     } = {}
   ) => {
     const request: AuthorizationRequest = {
-      objectId: object.id,
+      objectType: object.id,
       operation,
       ...target,
     }
@@ -232,6 +249,42 @@ export function make<
     return { items: yield* repository.batchGet(ids) }
   })
 
+  const batchDelete = Effect.fn(`${object.id}.batchDelete`)(function* ({
+    ids,
+  }: ObjectBatchDeleteInput<TObject>) {
+    if (ids.length === 0) {
+      return yield* Effect.fail(
+        new InvalidBatchDeleteRequest({
+          message: "At least one ID is required.",
+          objectType: object.id,
+        })
+      )
+    }
+    if (ids.length > MAX_BATCH_DELETE_SIZE) {
+      return yield* Effect.fail(
+        new InvalidBatchDeleteRequest({
+          message: `At most ${MAX_BATCH_DELETE_SIZE} IDs may be deleted at once.`,
+          objectType: object.id,
+        })
+      )
+    }
+    if (new Set(ids).size !== ids.length) {
+      return yield* Effect.fail(
+        new InvalidBatchDeleteRequest({
+          message: "IDs must not contain duplicates.",
+          objectType: object.id,
+        })
+      )
+    }
+
+    yield* authorize("batchDelete", { recordIds: ids })
+    const records = yield* repository.batchGet(ids)
+    yield* repository.batchDelete(
+      records.map(({ etag, id }) => ({ expectedEtag: etag, id }))
+    )
+    return undefined
+  })
+
   const create = Effect.fn(`${object.id}.create`)(function* (
     input: ObjectCreateInput<TObject>
   ) {
@@ -240,7 +293,7 @@ export function make<
       "create",
       validated.parentId === undefined ? {} : { parentId: validated.parentId }
     )
-    const parentId = RecordId(object.parent.objectId)(
+    const parentId = RecordId(object.parent.objectType)(
       validated.parentId ?? context.rootId
     )
     const now = Timestamp(
@@ -248,6 +301,7 @@ export function make<
     )
     return yield* repository.insert({
       ...validated,
+      aliases: validated.aliases ?? [],
       annotations: validated.annotations ?? {},
       createdAt: now,
       createdById: context.actorId,
@@ -285,6 +339,7 @@ export function make<
   })
 
   return {
+    batchDelete,
     batchGet,
     create,
     delete: deleteObject,

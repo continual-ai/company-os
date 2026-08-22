@@ -9,7 +9,7 @@ import {
   OpenApi,
 } from "effect/unstable/httpapi"
 
-import type { Action } from "./definition/action"
+import { isStandardActionId, type Action } from "./definition/action"
 import type { ErrorCategory, ErrorType } from "./definition/error"
 import { type ModelCatalog, modelObjects } from "./definition/model"
 import type { ObjectType } from "./definition/object"
@@ -17,6 +17,7 @@ import {
   DEFAULT_PAGE_SIZE,
   filterOperators,
   IdempotencyKey,
+  MAX_BATCH_DELETE_SIZE,
   MAX_BATCH_GET_SIZE,
   MAX_PAGE_SIZE,
   nullPlacements,
@@ -85,9 +86,17 @@ function pascalCase(value: string): string {
     .replace(/[^a-zA-Z0-9]/g, "")
 }
 
-function endpointId(operation: string, object: ObjectType): string {
+function endpointId(
+  operation: string,
+  object: ObjectType,
+  scope?: "collection" | "object"
+): string {
   const target =
-    operation === "list" || operation === "search" || operation === "batchGet"
+    scope === "collection" ||
+    operation === "list" ||
+    operation === "search" ||
+    operation === "batchGet" ||
+    operation === "batchDelete"
       ? object.pluralName
       : object.name
   return `${operation}${pascalCase(target)}`
@@ -105,6 +114,23 @@ function pathParameter(object: ObjectType) {
       }),
     }),
   }
+}
+
+/**
+ * Effect's router can escape one literal colon with `::`, but its OpenAPI
+ * projection then treats the second colon as a path parameter. A constant
+ * regex parameter preserves the public `:verb` route while also giving each
+ * collection action a distinct internal route shape.
+ */
+function effectActionRoute(path: `/${string}`): `/${string}` {
+  const constantVerbs = path.replace(
+    /:([a-zA-Z][a-zA-Z0-9]*)(?=\/|$)/g,
+    ":$1($1)"
+  )
+  // SAFETY: replacing placeholders and annotating constant verbs preserves the
+  // leading slash required by Effect's route type.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  return constantVerbs.replace(/\{([^}/]+)\}/g, ":$1") as `/${string}`
 }
 
 const mutationHeaders = {
@@ -306,7 +332,7 @@ function addDefaultEndpoints(
   })
   const batchEndpoint = HttpApiEndpoint.post(
     endpointId("batchGet", object),
-    `${collectionPath}::batchGet`,
+    effectActionRoute(`${collectionPath}:batchGet`),
     {
       payload: Schema.Struct({
         ids: Schema.Array(
@@ -332,7 +358,43 @@ function addDefaultEndpoints(
   )
   result = result.add(batchEndpoint)
 
-  if (object.defaultActions.create) {
+  if (object.actions.batchDelete !== undefined) {
+    const endpoint = HttpApiEndpoint.post(
+      endpointId("batchDelete", object),
+      effectActionRoute(`${collectionPath}:batchDelete`),
+      {
+        headers: mutationHeaders,
+        payload: Schema.Struct({
+          ids: Schema.Array(
+            Schema.String.pipe(
+              Schema.fromBrand(`RecordId:${object.id}`, RecordId(object.id))
+            ).annotate({ title: `${object.name} ID` })
+          )
+            .check(
+              Schema.isMinLength(1),
+              Schema.isMaxLength(MAX_BATCH_DELETE_SIZE)
+            )
+            .annotate({
+              description: `One to ${MAX_BATCH_DELETE_SIZE} unique ${object.name.toLowerCase()} IDs.`,
+            }),
+        }).annotate({
+          identifier: `${pascalCase(object.id)}BatchDeleteInput`,
+          title: `Batch delete ${object.pluralName.toLowerCase()}`,
+        }),
+        success: HttpApiSchema.NoContent,
+        error: recordWriteErrors,
+      }
+    ).annotateMerge(
+      endpointAnnotations({
+        description: `Deletes every requested ${object.name.toLowerCase()} in one atomic transaction. IDs must be unique; if any record cannot be deleted, none are deleted.`,
+        identifier: endpointId("batchDelete", object),
+        summary: `Batch delete ${object.pluralName.toLowerCase()}`,
+      })
+    )
+    result = result.add(endpoint)
+  }
+
+  if (object.actions.create !== undefined) {
     const createdRecord = record
       .pipe(HttpApiSchema.status(201))
       .annotate({ identifier: `Created${pascalCase(object.id)}` })
@@ -370,7 +432,7 @@ function addDefaultEndpoints(
   )
   result = result.add(getEndpoint)
 
-  if (object.defaultActions.update) {
+  if (object.actions.update !== undefined) {
     const endpoint = HttpApiEndpoint.patch(
       endpointId("update", object),
       recordPath,
@@ -390,7 +452,7 @@ function addDefaultEndpoints(
     result = result.add(endpoint)
   }
 
-  if (object.defaultActions.delete) {
+  if (object.actions.delete !== undefined) {
     const endpoint = HttpApiEndpoint.delete(
       endpointId("delete", object),
       recordPath,
@@ -418,7 +480,7 @@ function addActionEndpoint(
   action: Action,
   basePath: `/${string}`
 ): DynamicGroup {
-  const identifier = endpointId(action.id, object)
+  const identifier = endpointId(action.id, object, action.scope)
   const placeholders = [...action.http.path.matchAll(/\{([^}/]+)\}/g)].map(
     (match) => match[1] ?? ""
   )
@@ -431,10 +493,7 @@ function addActionEndpoint(
     )
   )
   const hasBody = Object.keys(bodyProperties).length > 0
-  // Effect uses :name for parameters and :: for a literal colon.
-  const route = action.http.path
-    .replaceAll(":", "::")
-    .replace(/\{([^}/]+)\}/g, ":$1")
+  const route = effectActionRoute(action.http.path)
   // SAFETY: basePath and authored action paths both begin with a slash.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const path = `${basePath}${route}` as `/${string}`
@@ -493,7 +552,9 @@ const restoreActionPaths: (typeof OpenApi.Transform)["Service"] = (
     ...openApi,
     paths: Object.fromEntries(
       Object.entries(openApi.paths).map(([path, operation]) => [
-        path.replace(/:\{([^}/]+)\}$/g, ":$1"),
+        path
+          .replace(/\{([^}/]+)\}\(\1\)/g, ":$1")
+          .replace(/:\{([^}/]+)\}$/g, ":$1"),
         operation,
       ])
     ),
@@ -534,6 +595,7 @@ export function createHttpApi(
     group = addDefaultEndpoints(group, object, basePath)
 
     for (const action of Object.values(object.actions)) {
+      if (isStandardActionId(action.id)) continue
       group = addActionEndpoint(group, object, action, basePath)
     }
 

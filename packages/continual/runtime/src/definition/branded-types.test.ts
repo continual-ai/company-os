@@ -8,6 +8,8 @@ import {
   Decimal,
   DomainName,
   EmailAddress,
+  MAX_OBJECT_ALIAS_LENGTH,
+  ObjectAlias,
   PhoneNumber,
   RecordId,
   Timestamp,
@@ -30,6 +32,9 @@ it("constructs nominally distinct standard values through validated brands", () 
   expect(DomainName("acme.example")).toBe("acme.example")
   expect(EmailAddress("ada@acme.example")).toBe("ada@acme.example")
   expect(PhoneNumber("+1 415 555 0100")).toBe("+1 415 555 0100")
+  expect(ObjectAlias("hubspot:portal_1:company:123")).toBe(
+    "hubspot:portal_1:company:123"
+  )
   expect(Timestamp("2026-08-20T12:00:00Z")).toBe("2026-08-20T12:00:00Z")
   expect(WebUrl("https://acme.example")).toBe("https://acme.example")
 })
@@ -46,6 +51,8 @@ it("rejects invalid values before branding them", () => {
   expect(() => DomainName("not a domain")).toThrow()
   expect(() => EmailAddress("not an email")).toThrow()
   expect(() => PhoneNumber("123")).toThrow()
+  expect(() => ObjectAlias("")).toThrow()
+  expect(() => ObjectAlias("a".repeat(MAX_OBJECT_ALIAS_LENGTH + 1))).toThrow()
   expect(() => Timestamp("yesterday")).toThrow()
   expect(() => WebUrl("ftp://acme.example")).toThrow()
 })

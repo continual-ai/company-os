@@ -84,19 +84,17 @@ describe("model definitions", () => {
 
     expect(Object.keys(model.objects)).toEqual(["contact"])
     expect(model.root).toEqual(Root)
-    expect(model.objects.contact.parent).toEqual({
-      kind: "root",
-      objectId: "root",
-    })
+    expect(model.objects.contact.parent).toEqual({ objectType: "root" })
     expect(Object.keys(model.actions.contact)).toEqual([
       "create",
       "update",
       "delete",
+      "batchDelete",
       "enroll",
     ])
     expect(model.actions.contact.enroll).toMatchObject({
       id: "enroll",
-      objectId: "contact",
+      objectType: "contact",
       scope: "object",
       http: { method: "POST", path: "/contacts/{id}:enroll" },
     })
@@ -110,17 +108,60 @@ describe("model definitions", () => {
       },
       output: { properties: { id: { kind: "recordId" } } },
     })
+    expect(model.actions.contact.create.input.properties.aliases).toMatchObject(
+      { kind: "optional", value: { kind: "array" } }
+    )
+    expect(
+      model.actions.contact.create.output.properties.aliases
+    ).toMatchObject({ kind: "array" })
     expect(model.actions.contact.update).toMatchObject({
       http: { method: "PATCH", path: "/contacts/{id}" },
       input: { properties: { name: { kind: "optional" } } },
     })
+    expect(model.actions.contact.update.input.properties.aliases).toMatchObject(
+      { kind: "optional", value: { kind: "union" } }
+    )
     expect(model.actions.contact.delete.http).toEqual({
       method: "DELETE",
       path: "/contacts/{id}",
     })
+    expect(model.actions.contact.batchDelete).toMatchObject({
+      http: { method: "POST", path: "/contacts:batchDelete" },
+      input: { properties: { ids: { kind: "array" } } },
+      scope: "collection",
+    })
     expectTypeOf(model.objects.contact.collection).toEqualTypeOf<"contacts">()
-    expectTypeOf(model.objects.contact.parent.objectId).toEqualTypeOf<"root">()
+    expectTypeOf(
+      model.objects.contact.parent.objectType
+    ).toEqualTypeOf<"root">()
     expectTypeOf(model.actions.contact.enroll.id).toEqualTypeOf<"enroll">()
+    expect(model.actions.contact).toBe(model.objects.contact.actions)
+  })
+
+  it("allows batch deletion to be disabled independently of deletion", () => {
+    const WithoutBatchDelete = defineObject({
+      id: "withoutBatchDelete",
+      collection: "withoutBatchDeletes",
+      name: "Without batch delete",
+      parent: Root,
+      pluralName: "Without batch deletes",
+      properties: { name: schema.string() },
+      display: { title: "name" },
+      actions: { batchDelete: false },
+    })
+    const model = defineModel({
+      id: "withoutBatchDeleteModel",
+      name: "Without batch delete model",
+      objects: [WithoutBatchDelete],
+      links: [],
+    })
+
+    expect(Object.keys(WithoutBatchDelete.actions)).toContain("delete")
+    expect(Object.keys(WithoutBatchDelete.actions)).not.toContain("batchDelete")
+    expect(Object.keys(model.actions.withoutBatchDelete)).toContain("delete")
+    expect(Object.keys(model.actions.withoutBatchDelete)).not.toContain(
+      "batchDelete"
+    )
   })
 
   it("rejects duplicate object identities and collections", () => {
@@ -171,19 +212,29 @@ describe("model definitions", () => {
       properties: { name: schema.string() },
       display: { title: "name" },
     })
+    expect(() =>
+      defineObject({
+        id: "membership",
+        collection: "memberships",
+        name: "Membership",
+        parent: Account,
+        pluralName: "Memberships",
+        properties: { accountId: schema.recordId(Account) },
+        display: { title: "accountId" },
+      })
+    ).toThrow(/use the standard 'parentId'/)
+
     const Membership = defineObject({
       id: "membership",
       collection: "memberships",
       name: "Membership",
       parent: Account,
       pluralName: "Memberships",
-      properties: {
-        accountId: schema.recordId(Account),
-      },
-      display: { title: "accountId" },
+      properties: { name: schema.string() },
+      display: { title: "name" },
     })
 
-    expectTypeOf(Membership.parent.objectId).toEqualTypeOf<"account">()
+    expectTypeOf(Membership.parent.objectType).toEqualTypeOf<"account">()
     const completeModel = defineModel({
       id: "complete",
       name: "Complete",
@@ -192,7 +243,7 @@ describe("model definitions", () => {
     })
     expect(completeModel.actions.membership.create.input).toMatchObject({
       properties: {
-        parentId: { kind: "recordId", objectId: "account" },
+        parentId: { kind: "recordId", typeId: "account" },
       },
     })
 
@@ -222,20 +273,24 @@ describe("model definitions", () => {
       name: "Company contact",
       parent: Root,
       pluralName: "Company contacts",
-      properties: {
-        companyId: schema.recordId(Company),
-      },
-      display: { title: "companyId" },
+      properties: { name: schema.string() },
+      display: { title: "name" },
     })
     const Contacts = defineLink({
       id: "companyContacts",
       name: "Company contacts",
       from: {
         type: CompanyContact,
-        name: "company",
+        key: "company",
         cardinality: "one",
+        label: "Company",
       },
-      to: { type: Company, name: "contacts", cardinality: "many" },
+      to: {
+        type: Company,
+        key: "contacts",
+        cardinality: "many",
+        label: "Contacts",
+      },
     })
 
     const model = defineModel({
@@ -247,12 +302,102 @@ describe("model definitions", () => {
 
     expect(model.links.companyContacts.from).toEqual({
       cardinality: "one",
-      name: "company",
+      key: "company",
+      label: "Company",
       typeId: "companyContact",
     })
-    expectTypeOf(
-      model.links.companyContacts.to.name
-    ).toEqualTypeOf<"contacts">()
+    expectTypeOf(model.links.companyContacts.to.key).toEqualTypeOf<"contacts">()
+    expect(model.objects.companyContact.properties.companyId).toMatchObject({
+      kind: "recordId",
+      label: "Company",
+      requiredOnCreate: true,
+      typeId: "company",
+    })
+  })
+
+  it("requires singular reference ownership on the from side", () => {
+    const Company = defineObject({
+      id: "company",
+      collection: "companies",
+      name: "Company",
+      parent: Root,
+      pluralName: "Companies",
+      properties: { name: schema.string() },
+      display: { title: "name" },
+    })
+    const Employee = defineObject({
+      id: "employee",
+      collection: "employees",
+      name: "Employee",
+      parent: Root,
+      pluralName: "Employees",
+      properties: { name: schema.string() },
+      display: { title: "name" },
+    })
+
+    expect(() =>
+      defineLink({
+        id: "companyContacts",
+        name: "Company contacts",
+        from: {
+          type: Company,
+          key: "contacts",
+          cardinality: "many",
+          label: "Contacts",
+        },
+        to: {
+          type: Employee,
+          key: "company",
+          cardinality: "one",
+          label: "Company",
+        },
+      })
+    ).toThrow(/singular reference-bearing side in 'from'/)
+  })
+
+  it("requires the singular storage side of a link to be an object", () => {
+    const Party = defineInterface({
+      id: "party",
+      name: "Party",
+      pluralName: "Parties",
+      properties: { name: schema.string() },
+      display: { title: "name" },
+    })
+    const Activity = defineObject({
+      id: "activity",
+      collection: "activities",
+      name: "Activity",
+      parent: Root,
+      pluralName: "Activities",
+      properties: { name: schema.string() },
+      display: { title: "name" },
+    })
+    const InvalidOwner = defineLink({
+      id: "invalidOwner",
+      name: "Invalid owner",
+      from: {
+        type: Party,
+        key: "activity",
+        cardinality: "zeroOrOne",
+        label: "Activity",
+      },
+      to: {
+        type: Activity,
+        key: "party",
+        cardinality: "one",
+        label: "Party",
+      },
+    })
+
+    expect(() =>
+      defineModel({
+        id: "test",
+        interfaces: [Party],
+        links: [InvalidOwner],
+        name: "Test",
+        objects: [Activity],
+      })
+    ).toThrow(/singular link ownership must be on an object/)
   })
 
   it("registers portable interfaces and validates exact object mappings", () => {

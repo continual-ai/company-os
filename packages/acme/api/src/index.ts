@@ -9,11 +9,12 @@ import { Contact } from "./objects/contact"
 import { Deal } from "./objects/deal"
 import { Interaction } from "./objects/interaction"
 import { Lead } from "./objects/lead"
+import { LineItem } from "./objects/line-item"
 
 export const AcmeModel = defineModel({
   id: "acme",
   name: "Acme",
   interfaces: [Party],
-  objects: [Company, Contact, Lead, Deal, Interaction],
+  objects: [Company, Contact, Lead, Deal, LineItem, Interaction],
   links: [ContactPrimaryCompany, DealCompany, InteractionSubject],
 })

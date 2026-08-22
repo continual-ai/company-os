@@ -2,8 +2,6 @@ import { Root, defineObject, schema } from "@continual/runtime"
 
 import { Party } from "#interfaces/party"
 
-import { Company } from "./company"
-
 export const Contact = defineObject({
   id: "contact",
   collection: "contacts",
@@ -19,12 +17,6 @@ export const Contact = defineObject({
   ],
   properties: {
     photo: schema.image({ label: "Photo", aspectRatio: 1, nullable: true }),
-    primaryCompanyId: schema.recordId(Company, {
-      label: "Primary company",
-      nullable: true,
-      description:
-        "The contact's primary company. Broader company associations are intentionally deferred.",
-    }),
     firstName: schema.string({
       label: "First name",
       minLength: 1,

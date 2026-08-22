@@ -1,7 +1,5 @@
 import { Root, defineObject, schema } from "@continual/runtime"
 
-import { Company } from "./company"
-
 export const Deal = defineObject({
   id: "deal",
   collection: "deals",
@@ -10,9 +8,6 @@ export const Deal = defineObject({
   pluralName: "Deals",
   description: "A potential commercial agreement with a company.",
   properties: {
-    companyId: schema.recordId(Company, {
-      label: "Company",
-    }),
     name: schema.string({
       label: "Name",
       minLength: 1,
@@ -43,7 +38,6 @@ export const Deal = defineObject({
   display: {
     icon: "handshake",
     title: "name",
-    subtitle: "companyId",
     status: "stage",
   },
 })

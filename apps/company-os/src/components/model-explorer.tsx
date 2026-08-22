@@ -54,19 +54,22 @@ function displayRole(object: ModelObject, propertyId: string) {
   )?.[0]
 }
 
-function relationshipForObject(link: ModelLink, objectId: ModelObjectId) {
-  if (link.from.typeId === objectId) {
+function relationshipForObject(link: ModelLink, objectType: ModelObjectId) {
+  if (link.from.typeId === objectType) {
     return { current: link.from, related: link.to }
   }
-  if (link.to.typeId === objectId) {
+  if (link.to.typeId === objectType) {
     return { current: link.to, related: link.from }
   }
   return undefined
 }
 
-function relationshipCount(links: ReadonlyArray<ModelLink>, objectId: string) {
+function relationshipCount(
+  links: ReadonlyArray<ModelLink>,
+  objectType: string
+) {
   return links.filter(
-    (link) => link.from.typeId === objectId || link.to.typeId === objectId
+    (link) => link.from.typeId === objectType || link.to.typeId === objectType
   ).length
 }
 
@@ -82,9 +85,9 @@ function propertyDetails(
 
   if (property.kind === "recordId") {
     const referencedObject = objects.find(
-      (object) => object.id === property.objectId
+      (object) => object.id === property.typeId
     )
-    details.push(`references ${referencedObject?.name ?? property.objectId}`)
+    details.push(`references ${referencedObject?.name ?? property.typeId}`)
   }
   if (property.kind === "string") {
     if (property.minLength !== undefined) {
@@ -156,7 +159,7 @@ export function ModelExplorer({ model }: { model: CompanyModel }) {
     return relationship ? [{ link, ...relationship }] : []
   })
   const selectedActions = actions.filter(
-    (action) => action.objectId === selectedObject.id
+    (action) => action.objectType === selectedObject.id
   )
 
   const positions = useMemo(() => {
@@ -246,7 +249,7 @@ export function ModelExplorer({ model }: { model: CompanyModel }) {
             {objects.map((object) => {
               const selected = object.id === selectedId
               const objectActions = actions.filter(
-                (action) => action.objectId === object.id
+                (action) => action.objectType === object.id
               )
               const objectLinks = relationshipCount(links, object.id)
               const point = positions.get(object.id) ?? centerPoint
@@ -466,7 +469,7 @@ export function ModelExplorer({ model }: { model: CompanyModel }) {
                     >
                       <span className="min-w-0">
                         <span className="block text-xs font-medium">
-                          {current.name}
+                          {current.label}
                         </span>
                         <span className="mt-0.5 block text-[10px] text-muted-foreground">
                           {cardinalityLabels[current.cardinality]} · {link.name}

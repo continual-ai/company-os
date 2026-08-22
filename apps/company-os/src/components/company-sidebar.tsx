@@ -80,7 +80,9 @@ function objectIcon(name: string | undefined) {
 }
 
 function objectPath(id: string) {
-  return Object.entries(objectPaths).find(([objectId]) => objectId === id)?.[1]
+  return Object.entries(objectPaths).find(
+    ([objectType]) => objectType === id
+  )?.[1]
 }
 
 const operateObjects = Object.values(AcmeModel.objects).flatMap((object) => {

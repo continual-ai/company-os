@@ -9,12 +9,16 @@ export const InteractionSubject = defineLink({
   description: "Connects an interaction to its company or contact subject.",
   from: {
     type: Interaction,
-    name: "subject",
+    key: "subject",
     cardinality: "one",
+    label: "Subject",
+    description: "The company or contact involved in the interaction.",
   },
   to: {
     type: Party,
-    name: "interactions",
+    key: "interactions",
     cardinality: "many",
+    label: "Interactions",
+    description: "Interactions involving this party.",
   },
 })

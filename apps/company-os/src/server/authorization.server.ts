@@ -6,7 +6,7 @@ import type {
 import { Context, Data, type Effect } from "effect"
 
 class PermissionDenied extends Data.TaggedError("PermissionDenied")<{
-  readonly objectId: string
+  readonly objectType: string
   readonly operation: AuthorizationRequest["operation"]
 }> {}
 

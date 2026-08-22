@@ -23,18 +23,22 @@ export type {
   InterfaceType,
 } from "./definition/interface"
 export { defineModel } from "./definition/model"
-export type { Model } from "./definition/model"
+export type { Model, ModelObjectRef } from "./definition/model"
 export { defineLink, linkCardinalities } from "./definition/link"
 export type { LinkType, LinkCardinality, LinkSide } from "./definition/link"
 export { ActorId, defineObject, Etag } from "./definition/object"
 export type {
   BaseRecord,
+  ObjectAliasDelta,
+  ObjectAliasUpdate,
+  ObjectBatchDeleteInput,
   ObjectDeleteInput,
   ObjectGetInput,
   ObjectType,
   ObjectCreateInput,
   ObjectDisplay,
   ObjectParent,
+  ObjectRef,
   ObjectRecord,
   ObjectUpdateInput,
   ObjectUpdateRequest,
@@ -45,6 +49,7 @@ export {
   DEFAULT_PAGE_SIZE,
   filterOperators,
   IdempotencyKey,
+  MAX_BATCH_DELETE_SIZE,
   MAX_BATCH_GET_SIZE,
   MAX_PAGE_SIZE,
   nullPlacements,
@@ -68,6 +73,8 @@ export {
   Decimal,
   DomainName,
   EmailAddress,
+  MAX_OBJECT_ALIAS_LENGTH,
+  ObjectAlias,
   PhoneNumber,
   RecordId,
   schema,
@@ -77,6 +84,7 @@ export {
 export type {
   AnySchema,
   Choice,
+  ChoiceColor,
   DecimalSchema,
   DecimalSchemaOptions,
   FileRef,

@@ -1,5 +1,6 @@
 import {
   type ModelCatalog,
+  type ModelObject,
   modelActions,
   modelInterfaces,
   modelLinks,
@@ -8,7 +9,22 @@ import {
 import {
   API_DESCRIPTION_VERSION,
   type ApiDescription,
+  type ObjectDescription,
 } from "./description-types"
+
+function describeObject({
+  actions: _actions,
+  kind: _kind,
+  ...description
+}: ModelObject<ModelCatalog>): ObjectDescription {
+  return {
+    ...description,
+    display: { ...description.display },
+    interfaces: { ...description.interfaces },
+    parent: { ...description.parent },
+    properties: { ...description.properties },
+  }
+}
 
 /** Derives transport- and UI-safe API metadata from the company model. */
 export function createApiDescription(model: ModelCatalog): ApiDescription {
@@ -27,21 +43,6 @@ export function createApiDescription(model: ModelCatalog): ApiDescription {
       to: { ...link.to },
     })),
     root: { ...model.root },
-    objects: modelObjects(model).map((object) => {
-      const description: ApiDescription["objects"][number] = {
-        id: object.id,
-        collection: object.collection,
-        name: object.name,
-        interfaces: { ...object.interfaces },
-        parent: { ...object.parent },
-        pluralName: object.pluralName,
-        properties: { ...object.properties },
-        display: { ...object.display },
-      }
-      if (object.description !== undefined) {
-        description.description = object.description
-      }
-      return description
-    }),
+    objects: modelObjects(model).map(describeObject),
   }
 }

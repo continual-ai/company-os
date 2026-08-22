@@ -28,18 +28,39 @@ Every object definition declares its parent type. Root-level creates inherit the
 authority's Root; nested creates supply a typed `parentId`. This parent is the canonical
 authorization and administrative containment edge; ordinary business relationships remain links.
 Objects are readable through `get`, `list`, and `batchGet` by convention. They provide `create`,
-`update`, and `delete` actions by default; set a write to `false` to disable it, and declare
-additional actions for business behavior. `defineModel` indexes the objects, links, root, and
-complete action catalog, and REST, clients, and descriptions are projections of that same contract.
+`update`, `delete`, and atomic `batchDelete` actions by default; set a write to `false` to disable
+it, and declare additional actions for business behavior. Disabling `delete` also disables
+`batchDelete`; it may be disabled independently when single-record deletion should remain.
+Each normalized object's `actions` map contains its complete standard-plus-authored action catalog.
+`defineModel` indexes those same maps alongside objects, links, interfaces, and Root; REST, clients,
+and descriptions are projections of that contract rather than separate action definitions.
+
+Definition metadata follows one naming rule: `kind` discriminates the category of a definition or
+schema node, while `id` names that definition. Mixed-object runtime values use `objectType`; generic
+targets that may name either an object or interface use `typeId`. Typed records do not repeat their
+already-known type. SQL and other physical projections should preserve the distinction rather than
+overloading a business property's name.
+
+Every record has one canonical `id` and a set of opaque, globally qualified `aliases`, such as
+`hubspot:portal_1:company:123`. Create accepts an alias array. On update, an array replaces the
+complete set, while `{ add, remove }` applies an atomic delta; omission leaves aliases unchanged.
+Aliases are alternate lookup keys, not company-defined object properties or a substitute for
+canonical IDs.
 
 Interfaces describe a shared semantic shape such as `Party`; objects explicitly map their
-properties when they implement one. Links connect object or interface types but do not expose a
-foreign-key or join-table choice. Those are portable business semantics; the company backend owns
-their relational projection and referential actions.
+properties when they implement one. A link gives both traversals a stable key, label, cardinality,
+and target. For an FK-shaped link, `from` is always the singular reference-bearing side;
+many-to-many is the only link shape with `many` on `from`. `defineModel` derives a typed
+`${from.key}Id` property, so standard object creates, updates, filters, and reads use the same
+reference without authors repeating it. Many traversals remain link collections rather than
+embedded record fields. Links may target an interface for polymorphic lookup, but the singular
+`from` side that owns a reference must be an object.
+The portable contract does not expose whether a backend uses a foreign key or join table; the
+company backend owns that projection and its referential actions.
 
 Object properties and operation values use the same portable schema vocabulary. Custom actions
 are declared beside their primary object; their key supplies the action ID, their scope supplies a
-canonical object ID when needed, and `http` explicitly binds the public route:
+canonical record `id` when needed, and `http` explicitly binds the public route:
 
 ```ts
 const Lead = defineObject({
@@ -133,10 +154,15 @@ export class CompanyService extends Context.Service<CompanyService>()(
 }
 ```
 
-The runtime does not impose an ORM, table layout, or migration system. A repository implementation
-must preserve its own atomicity and hierarchy invariants. A company can use a shared object row and
-a same-ID kind row, add typed object-specific queries, and extend storage with interface tables
-without making those physical choices part of the portable semantic model.
+The runtime does not impose an ORM, table layout, or migration system. A repository adapter must
+preserve its own atomicity and hierarchy invariants. In particular, `batchDelete` must delete every
+supplied record version in one transaction or leave all of them unchanged. `@continual/postgres`
+provides the optional shared PostgreSQL implementation; company backends still own their adapter
+choice, physical overrides, migrations, credentials, and service composition. These physical
+choices never become part of the portable semantic model.
+Repositories must also claim aliases atomically with the object write, enforce global uniqueness,
+release removed aliases, and return aliases in deterministic order. A normalized alias table is the
+expected relational projection; the public array is a record view, not a storage prescription.
 
 The object service owns definition-derived validation, defaults, record metadata, immutable
 properties, create-under-parent authorization context, and optimistic writes. Company services

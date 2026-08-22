@@ -1,13 +1,106 @@
-import { type Action, actionKey, standardActions } from "./action"
+import {
+  type Action,
+  actionKey,
+  isStandardActionId,
+  standardActions,
+} from "./action"
 import { definitionId } from "./identity"
 import type { InterfaceType } from "./interface"
-import type { LinkType } from "./link"
-import type { ObjectType } from "./object"
+import type { LinkCardinality, LinkSide, LinkType } from "./link"
+import type { ObjectRef, ObjectType } from "./object"
+import { normalizeProperties, type Properties } from "./property"
 import { Root, type RootType } from "./root"
-import type { AnySchema } from "./schema"
+import { schema, type AnySchema, type RecordIdSchema } from "./schema"
 
-type ObjectRegistry<TObjects extends ReadonlyArray<ObjectType>> = {
-  readonly [TObject in TObjects[number] as TObject["id"]]: TObject
+type Simplify<TValue> = { [TKey in keyof TValue]: TValue[TKey] } & {}
+
+type LinkReferenceProperty<
+  TTargetTypeId extends string,
+  TCardinality extends Exclude<LinkCardinality, "many">,
+> = RecordIdSchema<TTargetTypeId> & {
+  immutable: false
+  nullable: TCardinality extends "zeroOrOne" ? true : false
+  outputOnly: false
+  requiredOnCreate: TCardinality extends "one" ? true : false
+}
+
+type LinkPropertyFor<TObjectType extends string, TLink extends LinkType> =
+  TLink extends LinkType<string, infer TFrom, infer TTo>
+    ? TFrom["cardinality"] extends "many"
+      ? TTo["cardinality"] extends "many"
+        ? object
+        : TTo["typeId"] extends TObjectType
+          ? {
+              readonly [TKey in `${TTo["key"]}Id`]: LinkReferenceProperty<
+                TFrom["typeId"],
+                Exclude<TTo["cardinality"], "many">
+              >
+            }
+          : object
+      : TFrom["typeId"] extends TObjectType
+        ? {
+            readonly [TKey in `${TFrom["key"]}Id`]: LinkReferenceProperty<
+              TTo["typeId"],
+              Exclude<TFrom["cardinality"], "many">
+            >
+          }
+        : object
+    : object
+
+type UnionToIntersection<TValue> = (
+  TValue extends unknown ? (value: TValue) => void : never
+) extends (value: infer TIntersection) => void
+  ? TIntersection
+  : never
+
+type LinkPropertiesFor<
+  TObjectType extends string,
+  TLinks extends ReadonlyArray<LinkType>,
+> = [TLinks[number]] extends [never]
+  ? object
+  : Simplify<UnionToIntersection<LinkPropertyFor<TObjectType, TLinks[number]>>>
+
+type BoundProperties<
+  TObjectType extends string,
+  TObjectProperties extends Properties,
+  TLinks extends ReadonlyArray<LinkType>,
+> =
+  Simplify<
+    TObjectProperties & LinkPropertiesFor<TObjectType, TLinks>
+  > extends infer TResult extends Properties
+    ? TResult
+    : never
+
+type BoundObject<
+  TObject extends ObjectType,
+  TLinks extends ReadonlyArray<LinkType>,
+> =
+  TObject extends ObjectType<
+    infer TId,
+    infer TCollection,
+    infer TProperties,
+    infer TActions,
+    infer TParentObjectType,
+    infer TInterfaces
+  >
+    ? ObjectType<
+        TId,
+        TCollection,
+        BoundProperties<TId, TProperties, TLinks>,
+        TActions,
+        TParentObjectType,
+        TInterfaces
+      >
+    : never
+
+type ObjectRegistry<
+  TObjects extends ReadonlyArray<ObjectType>,
+  TLinks extends ReadonlyArray<LinkType>,
+> = {
+  readonly [TObject in TObjects[number] as TObject["id"]]: BoundObject<
+    TObject,
+    TLinks
+  >
 }
 
 type LinkRegistry<TLinks extends ReadonlyArray<LinkType>> = {
@@ -18,22 +111,8 @@ type InterfaceRegistry<TInterfaces extends ReadonlyArray<InterfaceType>> = {
   readonly [TInterface in TInterfaces[number] as TInterface["id"]]: TInterface
 }
 
-type ObjectActionUnion<TObject extends ObjectType> =
-  | TObject["actions"][keyof TObject["actions"]]
-  | (TObject["defaultActions"]["create"] extends true
-      ? Action<"create", TObject["id"]>
-      : never)
-  | (TObject["defaultActions"]["delete"] extends true
-      ? Action<"delete", TObject["id"]>
-      : never)
-  | (TObject["defaultActions"]["update"] extends true
-      ? Action<"update", TObject["id"]>
-      : never)
-
 type ActionRegistry<TObjects extends ReadonlyArray<ObjectType>> = {
-  readonly [TObject in TObjects[number] as TObject["id"]]: {
-    readonly [TAction in ObjectActionUnion<TObject> as TAction["id"]]: TAction
-  }
+  readonly [TObject in TObjects[number] as TObject["id"]]: TObject["actions"]
 }
 
 declare const modelTypes: unique symbol
@@ -44,13 +123,13 @@ export interface ModelCatalog {
     readonly interfaces: ReadonlyArray<InterfaceType>
     readonly objects: ReadonlyArray<ObjectType>
   }
-  actions: object
+  actions: Readonly<Record<string, Readonly<Record<string, Action>>>>
   id: string
-  interfaces: object
+  interfaces: Readonly<Record<string, InterfaceType>>
   kind: "model"
-  links: object
+  links: Readonly<Record<string, LinkType>>
   name: string
-  objects: object
+  objects: Readonly<Record<string, ObjectType>>
   root: RootType
 }
 
@@ -64,7 +143,7 @@ export interface Model<
   readonly [modelTypes]?: {
     readonly links: TLinks
     readonly interfaces: TInterfaces
-    readonly objects: TObjects
+    readonly objects: ReadonlyArray<BoundObject<TObjects[number], TLinks>>
   }
   actions: ActionRegistry<TObjects>
   id: TId
@@ -72,7 +151,7 @@ export interface Model<
   kind: "model"
   links: LinkRegistry<TLinks>
   name: string
-  objects: ObjectRegistry<TObjects>
+  objects: ObjectRegistry<TObjects, TLinks>
   root: RootType
 }
 
@@ -80,20 +159,25 @@ export type ModelObject<TModel extends ModelCatalog> = NonNullable<
   TModel[typeof modelTypes]
 >["objects"][number]
 
-function referencedObjectIds(definition: AnySchema): ReadonlyArray<string> {
+/** A discriminated record reference for any object registered in a model. */
+export type ModelObjectRef<TModel extends ModelCatalog> = ObjectRef<
+  ModelObject<TModel>["id"]
+>
+
+function referencedTypeIds(definition: AnySchema): ReadonlyArray<string> {
   switch (definition.kind) {
     case "array":
-      return referencedObjectIds(definition.items)
+      return referencedTypeIds(definition.items)
     case "map":
-      return referencedObjectIds(definition.values)
+      return referencedTypeIds(definition.values)
     case "optional":
-      return referencedObjectIds(definition.value)
+      return referencedTypeIds(definition.value)
     case "recordId":
-      return [definition.objectId]
+      return [definition.typeId]
     case "struct":
-      return Object.values(definition.properties).flatMap(referencedObjectIds)
+      return Object.values(definition.properties).flatMap(referencedTypeIds)
     case "union":
-      return definition.members.flatMap(referencedObjectIds)
+      return definition.members.flatMap(referencedTypeIds)
     default:
       return []
   }
@@ -102,13 +186,13 @@ function referencedObjectIds(definition: AnySchema): ReadonlyArray<string> {
 function assertReferencesRegistered(
   owner: string,
   schemas: ReadonlyArray<AnySchema>,
-  objectIds: ReadonlySet<string>,
+  registeredTypeIds: ReadonlySet<string>,
   modelId: string
 ): void {
-  for (const referencedId of schemas.flatMap(referencedObjectIds)) {
-    if (!objectIds.has(referencedId)) {
+  for (const referencedId of schemas.flatMap(referencedTypeIds)) {
+    if (!registeredTypeIds.has(referencedId)) {
       throw new Error(
-        `${owner} references object '${referencedId}', which is not registered in model '${modelId}'.`
+        `${owner} references type '${referencedId}', which is not registered in model '${modelId}'.`
       )
     }
   }
@@ -116,6 +200,70 @@ function assertReferencesRegistered(
 
 function duplicateValue(values: ReadonlyArray<string>): string | undefined {
   return values.find((value, index) => values.indexOf(value) !== index)
+}
+
+function storedLinkSide(
+  link: LinkType
+): { readonly side: LinkSide; readonly targetTypeId: string } | undefined {
+  return link.from.cardinality === "many"
+    ? undefined
+    : { side: link.from, targetTypeId: link.to.typeId }
+}
+
+interface LinkReferenceOptions {
+  description?: string
+  label: string
+  nullable?: true
+}
+
+function bindLinkProperties(
+  object: ObjectType,
+  links: ReadonlyArray<LinkType>
+): ObjectType {
+  const generated = Object.fromEntries(
+    links.flatMap((link) => {
+      const stored = storedLinkSide(link)
+      if (stored === undefined || stored.side.typeId !== object.id) return []
+
+      const propertyId = `${stored.side.key}Id`
+      if (Object.hasOwn(object.properties, propertyId)) {
+        throw new Error(
+          `Object '${object.id}' property '${propertyId}' duplicates link '${link.id}'; the model derives singular link ID properties automatically.`
+        )
+      }
+      const options: LinkReferenceOptions = { label: stored.side.label }
+      if (stored.side.description !== undefined) {
+        options.description = stored.side.description
+      }
+      if (stored.side.cardinality === "zeroOrOne") options.nullable = true
+      return [
+        [
+          propertyId,
+          schema.recordId({ id: stored.targetTypeId }, options),
+        ] as const,
+      ]
+    })
+  )
+  const properties = {
+    ...object.properties,
+    ...normalizeProperties(generated),
+  }
+  const standardSettings = {
+    batchDelete: Object.hasOwn(object.actions, "batchDelete"),
+    create: Object.hasOwn(object.actions, "create"),
+    delete: Object.hasOwn(object.actions, "delete"),
+    update: Object.hasOwn(object.actions, "update"),
+  }
+  const customActions = Object.values(object.actions).filter(
+    (action) => !isStandardActionId(action.id)
+  )
+  const actions = Object.fromEntries(
+    [
+      ...standardActions({ ...object, properties }, standardSettings),
+      ...customActions,
+    ].map((action) => [action.id, action])
+  )
+  return { ...object, actions, properties }
 }
 
 export function defineModel<
@@ -130,8 +278,8 @@ export function defineModel<
   name: string
   objects: TObjects
 }): Model<TId, TObjects, TLinks, TInterfaces> {
-  const objectIds = definition.objects.map((object) => object.id)
-  const duplicateObject = duplicateValue(objectIds)
+  const objectTypeIds = definition.objects.map((object) => object.id)
+  const duplicateObject = duplicateValue(objectTypeIds)
   if (duplicateObject !== undefined) {
     throw new Error(
       `Object id '${duplicateObject}' is registered more than once.`
@@ -160,22 +308,26 @@ export function defineModel<
       `Interface id '${duplicateInterface}' is registered more than once.`
     )
   }
-  const typeCollision = interfaceIds.find((id) => objectIds.includes(id))
+  const typeCollision = interfaceIds.find((id) => objectTypeIds.includes(id))
   if (typeCollision !== undefined) {
     throw new Error(
       `Type id '${typeCollision}' is shared by an object and interface.`
     )
   }
 
-  const registeredObjectIds = new Set(objectIds)
-  const registeredTypeIds = new Set([...objectIds, ...interfaceIds])
+  const registeredObjectTypeIds = new Set(objectTypeIds)
+  const registeredTypeIds = new Set([
+    Root.id,
+    ...objectTypeIds,
+    ...interfaceIds,
+  ])
   for (const object of definition.objects) {
     if (
-      object.parent.objectId !== Root.id &&
-      !registeredObjectIds.has(object.parent.objectId)
+      object.parent.objectType !== Root.id &&
+      !registeredObjectTypeIds.has(object.parent.objectType)
     ) {
       throw new Error(
-        `Object '${object.id}' parent references object '${object.parent.objectId}', which is not registered in model '${definition.id}'.`
+        `Object '${object.id}' parent references object '${object.parent.objectType}', which is not registered in model '${definition.id}'.`
       )
     }
     for (const [propertyId, property] of Object.entries(object.properties)) {
@@ -197,7 +349,7 @@ export function defineModel<
       assertReferencesRegistered(
         `Action '${actionKey(action)}'`,
         [action.input, action.output],
-        registeredObjectIds,
+        registeredTypeIds,
         definition.id
       )
     }
@@ -208,33 +360,64 @@ export function defineModel<
   )
   for (const object of definition.objects) {
     const ancestry = new Set([object.id])
-    let parentId = object.parent.objectId
-    while (parentId !== Root.id) {
-      if (ancestry.has(parentId)) {
+    let parentObjectType = object.parent.objectType
+    while (parentObjectType !== Root.id) {
+      if (ancestry.has(parentObjectType)) {
         throw new Error(
           `Object '${object.id}' has a cyclic parent hierarchy in model '${definition.id}'.`
         )
       }
-      ancestry.add(parentId)
-      const parent = objectsById.get(parentId)
+      ancestry.add(parentObjectType)
+      const parent = objectsById.get(parentObjectType)
       if (parent === undefined) break
-      parentId = parent.parent.objectId
+      parentObjectType = parent.parent.objectType
     }
   }
 
   for (const link of definition.links) {
+    if (link.from.cardinality === "many" && link.to.cardinality !== "many") {
+      throw new Error(
+        `Link '${link.id}' must put its singular reference-bearing side in 'from'; swap the link sides.`
+      )
+    }
+    const stored = storedLinkSide(link)
+    if (
+      stored !== undefined &&
+      !registeredObjectTypeIds.has(stored.side.typeId)
+    ) {
+      throw new Error(
+        `Link '${link.id}' stores its singular '${stored.side.key}' side on interface '${stored.side.typeId}'; singular link ownership must be on an object.`
+      )
+    }
     for (const side of [link.from, link.to]) {
       if (!registeredTypeIds.has(side.typeId)) {
         throw new Error(
           `Link '${link.id}' references type '${side.typeId}', which is not registered in model '${definition.id}'.`
         )
       }
+      const object = objectsById.get(side.typeId)
+      if (object !== undefined && Object.hasOwn(object.properties, side.key)) {
+        throw new Error(
+          `Link '${link.id}' traversal '${side.typeId}.${side.key}' conflicts with an object property.`
+        )
+      }
+      const interfaceType = interfaceDefinitions.find(
+        (item) => item.id === side.typeId
+      )
+      if (
+        interfaceType !== undefined &&
+        Object.hasOwn(interfaceType.properties, side.key)
+      ) {
+        throw new Error(
+          `Link '${link.id}' traversal '${side.typeId}.${side.key}' conflicts with an interface property.`
+        )
+      }
     }
   }
 
   const linkMethods = definition.links.flatMap((link) => [
-    `${link.from.typeId}.${link.from.name}`,
-    `${link.to.typeId}.${link.to.name}`,
+    `${link.from.typeId}.${link.from.key}`,
+    `${link.to.typeId}.${link.to.key}`,
   ])
   const duplicateLinkMethod = duplicateValue(linkMethods)
   if (duplicateLinkMethod !== undefined) {
@@ -243,17 +426,11 @@ export function defineModel<
     )
   }
 
-  const allActions = definition.objects.flatMap((object) => [
-    ...standardActions(object),
-    ...Object.values(object.actions),
-  ])
-  const duplicateAction = duplicateValue(allActions.map(actionKey))
-  if (duplicateAction !== undefined) {
-    throw new Error(`Action '${duplicateAction}' is registered more than once.`)
-  }
-
   const objects = Object.fromEntries(
-    definition.objects.map((object) => [object.id, object])
+    definition.objects.map((object) => [
+      object.id,
+      bindLinkProperties(object, definition.links),
+    ])
   )
   const links = Object.fromEntries(
     definition.links.map((link) => [link.id, link])
@@ -262,14 +439,7 @@ export function defineModel<
     interfaceDefinitions.map((item) => [item.id, item])
   )
   const actions = Object.fromEntries(
-    definition.objects.map((object) => [
-      object.id,
-      Object.fromEntries(
-        allActions
-          .filter((action) => action.objectId === object.id)
-          .map((action) => [action.id, action])
-      ),
-    ])
+    Object.values(objects).map((object) => [object.id, object.actions])
   )
 
   // SAFETY: duplicate identifiers were rejected before building the registries.
@@ -287,33 +457,19 @@ export function defineModel<
 }
 
 export function modelActions(model: ModelCatalog): ReadonlyArray<Action> {
-  const actions = Object.values(model.actions).flatMap((group) =>
-    Object.values(group)
-  )
-  // SAFETY: defineModel exclusively builds each group from normalized actions.
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  return actions as ReadonlyArray<Action>
+  return Object.values(model.actions).flatMap((group) => Object.values(group))
 }
 
 export function modelLinks(model: ModelCatalog): ReadonlyArray<LinkType> {
-  const links = Object.values(model.links)
-  // SAFETY: defineModel exclusively builds this registry from validated links.
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  return links as ReadonlyArray<LinkType>
+  return Object.values(model.links)
 }
 
 export function modelInterfaces(
   model: ModelCatalog
 ): ReadonlyArray<InterfaceType> {
-  const interfaces = Object.values(model.interfaces)
-  // SAFETY: defineModel exclusively builds this registry from validated interfaces.
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  return interfaces as ReadonlyArray<InterfaceType>
+  return Object.values(model.interfaces)
 }
 
 export function modelObjects(model: ModelCatalog): ReadonlyArray<ObjectType> {
-  const objects = Object.values(model.objects)
-  // SAFETY: defineModel exclusively builds this registry from validated objects.
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  return objects as ReadonlyArray<ObjectType>
+  return Object.values(model.objects)
 }

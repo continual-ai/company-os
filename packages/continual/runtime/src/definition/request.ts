@@ -6,6 +6,7 @@ import type { InferProperty, PropertyDefinition } from "./property"
 export const DEFAULT_PAGE_SIZE = 50 as const
 export const MAX_PAGE_SIZE = 100 as const
 export const MAX_BATCH_GET_SIZE = 100 as const
+export const MAX_BATCH_DELETE_SIZE = 100 as const
 
 export const filterOperators = [
   "contains",

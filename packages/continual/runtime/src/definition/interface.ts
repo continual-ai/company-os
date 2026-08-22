@@ -107,7 +107,7 @@ function compatibleProperty(
   if (
     interfaceProperty.kind === "recordId" &&
     objectProperty.kind === "recordId" &&
-    interfaceProperty.objectId !== objectProperty.objectId
+    interfaceProperty.typeId !== objectProperty.typeId
   ) {
     return false
   }
@@ -117,7 +117,7 @@ function compatibleProperty(
 export function bindInterfaceImplementations<
   const TDefinitions extends InterfaceImplementationDefinitions<Properties>,
 >(
-  objectId: string,
+  objectType: string,
   objectProperties: Properties,
   definitions: TDefinitions
 ): BoundInterfaceImplementations<TDefinitions> {
@@ -127,7 +127,7 @@ export function bindInterfaceImplementations<
   )
   if (duplicateInterfaceId !== undefined) {
     throw new Error(
-      `Object '${objectId}' implements interface '${duplicateInterfaceId}' more than once.`
+      `Object '${objectType}' implements interface '${duplicateInterfaceId}' more than once.`
     )
   }
   const implementations = Object.fromEntries(
@@ -140,7 +140,7 @@ export function bindInterfaceImplementations<
       const extra = mapped.find((propertyId) => !expected.includes(propertyId))
       if (missing !== undefined || extra !== undefined) {
         throw new Error(
-          `Object '${objectId}' must map exactly the properties of interface '${definition.interface.id}'.`
+          `Object '${objectType}' must map exactly the properties of interface '${definition.interface.id}'.`
         )
       }
       for (const [interfacePropertyId, objectPropertyId] of Object.entries(
@@ -155,7 +155,7 @@ export function bindInterfaceImplementations<
           !compatibleProperty(interfaceProperty, objectProperty)
         ) {
           throw new Error(
-            `Object '${objectId}' property '${objectPropertyId}' is not compatible with interface '${definition.interface.id}.${interfacePropertyId}'.`
+            `Object '${objectType}' property '${objectPropertyId}' is not compatible with interface '${definition.interface.id}.${interfacePropertyId}'.`
           )
         }
       }

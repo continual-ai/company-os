@@ -4,7 +4,7 @@ import { ApiClientResponseError, createClient, type ApiClient } from "./client"
 import { defineModel } from "./definition/model"
 import { defineObject } from "./definition/object"
 import { Root } from "./definition/root"
-import { schema, type RecordId } from "./definition/schema"
+import { ObjectAlias, schema, type RecordId } from "./definition/schema"
 
 const Account = defineObject({
   id: "account",
@@ -17,7 +17,6 @@ const Account = defineObject({
   },
   display: { title: "name" },
   actions: {
-    delete: false,
     archive: {
       scope: "object",
       name: "Archive account",
@@ -49,6 +48,7 @@ const Example = defineModel({
 })
 
 const accountRecord = {
+  aliases: [],
   annotations: {},
   createdAt: "2026-08-18T18:00:00Z",
   createdById: "user-1",
@@ -92,15 +92,26 @@ describe("inferred API client", () => {
     expect(Object.keys(client.accounts)).toEqual([
       "list",
       "batchGet",
+      "batchDelete",
       "create",
       "get",
       "update",
+      "delete",
       "archive",
       "archiveAll",
     ])
 
-    const created = await client.accounts.create({ name: "Acme" })
+    const hubspotAlias = ObjectAlias("hubspot:portal_1:company:account_1")
+    const salesforceAlias = ObjectAlias("salesforce:org_1:account:account_1")
+    const created = await client.accounts.create({
+      aliases: [hubspotAlias],
+      name: "Acme",
+    })
     await client.accounts.get({ id: created.id })
+    await client.accounts.update({
+      aliases: { add: [salesforceAlias], remove: [hubspotAlias] },
+      id: created.id,
+    })
     const page = await client.accounts.list({ pageSize: 25 })
     const search = await client.accounts.list({
       filter: {
@@ -112,6 +123,7 @@ describe("inferred API client", () => {
       sort: [{ direction: "desc", field: "name", nulls: "last" }],
     })
     const batch = await client.accounts.batchGet({ ids: [created.id] })
+    await client.accounts.batchDelete({ ids: [created.id] })
     const archived = await client.accounts.archive({
       id: created.id,
       note: "No longer active",
@@ -123,17 +135,26 @@ describe("inferred API client", () => {
     expect(calls.map((call) => call.url)).toEqual([
       "https://company.example/api/v1/accounts",
       "https://company.example/api/v1/accounts/account%2F1",
+      "https://company.example/api/v1/accounts/account%2F1",
       "https://company.example/api/v1/accounts?pageSize=25",
       "https://company.example/api/v1/accounts/search",
       "https://company.example/api/v1/accounts:batchGet",
+      "https://company.example/api/v1/accounts:batchDelete",
       "https://company.example/api/v1/accounts/account%2F1:archive",
       "https://company.example/api/v1/accounts:archiveAll",
     ])
-    expect(calls[3]?.init.body).toBe(
+    expect(calls[0]?.init.body).toBe(
+      '{"aliases":["hubspot:portal_1:company:account_1"],"name":"Acme"}'
+    )
+    expect(calls[2]?.init.body).toBe(
+      '{"aliases":{"add":["salesforce:org_1:account:account_1"],"remove":["hubspot:portal_1:company:account_1"]}}'
+    )
+    expect(calls[4]?.init.body).toBe(
       '{"filter":{"and":[{"field":"name","operator":"contains","value":"acme"},{"field":"name","operator":"startsWith","value":"A"}]},"sort":[{"direction":"desc","field":"name","nulls":"last"}]}'
     )
-    expect(calls[5]?.init.body).toBe('{"note":"No longer active"}')
-    expect(calls[6]?.init.body).toBe('{"filter":"updatedAt < 2025-01-01"}')
+    expect(calls[6]?.init.body).toBe('{"ids":["account/1"]}')
+    expect(calls[7]?.init.body).toBe('{"note":"No longer active"}')
+    expect(calls[8]?.init.body).toBe('{"filter":"updatedAt < 2025-01-01"}')
     expect(page.nextPageToken).toBe("")
     expect(search.items[0]?.id).toBe(created.id)
     expect(batch.items[0]?.id).toBe(created.id)
@@ -146,8 +167,10 @@ describe("inferred API client", () => {
     expectTypeOf<AccountMethods>().toEqualTypeOf<
       | "archive"
       | "archiveAll"
+      | "batchDelete"
       | "batchGet"
       | "create"
+      | "delete"
       | "get"
       | "list"
       | "update"

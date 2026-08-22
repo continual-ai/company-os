@@ -25,6 +25,7 @@ import {
   Decimal,
   DomainName,
   EmailAddress,
+  ObjectAlias,
   PhoneNumber,
   RecordId,
   Timestamp,
@@ -73,6 +74,33 @@ const annotationsSchema = Schema.Record(Schema.String, Schema.String).annotate({
   identifier: "Annotations",
   title: "Annotations",
 })
+
+const objectAliasSchema = Schema.String.pipe(
+  Schema.fromBrand("ObjectAlias", ObjectAlias)
+).annotate({ title: "Object alias" })
+
+const objectAliasesSchema = Schema.Array(objectAliasSchema)
+  .check(Schema.isUnique())
+  .annotate({ identifier: "ObjectAliases", title: "Object aliases" })
+
+const objectAliasDeltaSchema = Schema.Struct({
+  add: Schema.optionalKey(
+    Schema.Array(objectAliasSchema).check(Schema.isUnique())
+  ),
+  remove: Schema.optionalKey(
+    Schema.Array(objectAliasSchema).check(Schema.isUnique())
+  ),
+}).check(
+  Schema.makeFilter(
+    ({ add = [], remove = [] }) => !add.some((alias) => remove.includes(alias)),
+    { expected: "alias additions and removals that do not overlap" }
+  )
+)
+
+const objectAliasUpdateSchema = Schema.Union([
+  objectAliasesSchema,
+  objectAliasDeltaSchema,
+])
 
 interface CompiledSchemaFields {
   [fieldId: PropertyKey]: Schema.Codec<unknown, unknown>
@@ -200,8 +228,8 @@ function compileBase(definition: AnySchema): Schema.Codec<unknown, unknown> {
     case "recordId":
       return Schema.String.pipe(
         Schema.fromBrand(
-          `RecordId:${definition.objectId}`,
-          RecordId(definition.objectId)
+          `RecordId:${definition.typeId}`,
+          RecordId(definition.typeId)
         )
       )
     case "string":
@@ -378,6 +406,7 @@ export function toEffectObjectSchema(
   )
   const fields: CompiledSchemaFields = Object.fromEntries([
     entry("id", id),
+    entry("aliases", objectAliasesSchema),
     entry("annotations", annotationsSchema),
     entry("createdAt", createdAt),
     entry("createdById", actorId),
@@ -391,8 +420,8 @@ export function toEffectObjectSchema(
       "parentId",
       Schema.String.annotate({ title: "Parent ID" }).pipe(
         Schema.fromBrand(
-          `RecordId:${object.parent.objectId}`,
-          RecordId(object.parent.objectId)
+          `RecordId:${object.parent.objectType}`,
+          RecordId(object.parent.objectType)
         )
       )
     ),
@@ -415,14 +444,15 @@ export function toEffectObjectCreateSchema(
   object: ObjectType
 ): Schema.Codec<unknown, unknown> {
   const fields: CompiledSchemaFields = {
+    aliases: Schema.optionalKey(objectAliasesSchema),
     annotations: Schema.optionalKey(annotationsSchema),
     ...compileCreateProperties(object),
   }
-  if (object.parent.objectId !== Root.id) {
+  if (object.parent.objectType !== Root.id) {
     fields.parentId = Schema.String.annotate({ title: "Parent ID" }).pipe(
       Schema.fromBrand(
-        `RecordId:${object.parent.objectId}`,
-        RecordId(object.parent.objectId)
+        `RecordId:${object.parent.objectType}`,
+        RecordId(object.parent.objectType)
       )
     )
   }
@@ -441,6 +471,7 @@ export function toEffectObjectUpdateSchema(
   object: ObjectType
 ): Schema.Codec<unknown, unknown> {
   const fields: CompiledSchemaFields = {
+    aliases: Schema.optionalKey(objectAliasUpdateSchema),
     annotations: Schema.optionalKey(annotationsSchema),
     ...compileUpdateProperties(object),
   }

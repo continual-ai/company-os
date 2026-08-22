@@ -1,7 +1,5 @@
 import { Root, defineObject, schema } from "@continual/runtime"
 
-import { Party } from "#interfaces/party"
-
 export const Interaction = defineObject({
   id: "interaction",
   collection: "interactions",
@@ -10,7 +8,6 @@ export const Interaction = defineObject({
   pluralName: "Interactions",
   description: "A call, email, meeting, or note involving a business party.",
   properties: {
-    subjectId: schema.recordId(Party, { label: "Subject" }),
     kind: schema.select({
       label: "Kind",
       default: "note",
