@@ -5,6 +5,7 @@ import {
   columnSizingFeature,
   columnVisibilityFeature,
   constructFilterFn,
+  constructSortFn,
   createFilteredRowModel,
   createSortedRowModel,
   rowSelectionFeature,
@@ -64,6 +65,15 @@ export function objectTableValueText(
   }
 }
 
+export function objectTableSortText(
+  value: ObjectTableValue | undefined
+): string {
+  if (value === true) return "1"
+  if (value === false) return "0"
+
+  return objectTableValueText(value).trim().toLowerCase()
+}
+
 export type ObjectTableFilterOperator =
   | "after"
   | "atLeast"
@@ -89,13 +99,6 @@ export interface ObjectTableFilterValue {
 export interface ObjectTableColumnMeta {
   essential?: boolean
   label: string
-  onCellCommit?:
-    | ((
-        recordId: string,
-        propertyId: string,
-        value: ObjectTableValue
-      ) => Promise<void> | void)
-    | undefined
   property?: PropertyDefinition
   propertyId?: string
 }
@@ -222,6 +225,11 @@ const objectPropertyFilter = constructFilterFn({
   },
 })
 
+const objectPropertySort = constructSortFn({
+  ...sortFn_alphanumeric,
+  resolveDataValue: objectTableSortText,
+})
+
 export const objectTableFeatures = tableFeatures({
   // SAFETY: every ObjectTable column creates metadata matching this local
   // contract before the definition is passed to TanStack Table.
@@ -235,7 +243,7 @@ export const objectTableFeatures = tableFeatures({
   columnVisibilityFeature,
   rowSelectionFeature,
   rowSortingFeature,
-  sortFns: { alphanumeric: sortFn_alphanumeric },
+  sortFns: { objectProperty: objectPropertySort },
   sortedRowModel: createSortedRowModel(),
 })
 

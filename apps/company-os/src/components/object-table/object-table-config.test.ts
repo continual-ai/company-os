@@ -1,6 +1,24 @@
 import { describe, expect, it } from "vitest"
 
-import { matchesObjectTableFilter } from "./object-table-config"
+import {
+  matchesObjectTableFilter,
+  objectTableSortText,
+} from "./object-table-config"
+
+describe("objectTableSortText", () => {
+  it("maps booleans to their numeric sorting values", () => {
+    expect(objectTableSortText(false)).toBe("0")
+    expect(objectTableSortText(true)).toBe("1")
+  })
+
+  it("normalizes the other object-table values for natural sorting", () => {
+    expect(objectTableSortText(["Customer", "Enterprise"])).toBe(
+      "customer, enterprise"
+    )
+    expect(objectTableSortText({ assetId: "LOGO-2" })).toBe("logo-2")
+    expect(objectTableSortText(12_480)).toBe("12480")
+  })
+})
 
 describe("matchesObjectTableFilter", () => {
   it("matches text operators without case sensitivity", () => {

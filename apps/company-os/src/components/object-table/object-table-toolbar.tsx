@@ -27,9 +27,10 @@ import {
 import { useMemo, useState } from "react"
 
 import {
-  type ObjectTableColumnMeta,
-  type ObjectTableInstance,
-} from "./object-table-config"
+  objectTableColumnMeta,
+  objectTablePropertyColumns,
+} from "./object-table-columns"
+import { type ObjectTableInstance } from "./object-table-config"
 import { ObjectTableFilters } from "./object-table-filter"
 import { ObjectTableProperty } from "./object-table-property"
 
@@ -37,18 +38,6 @@ interface ObjectTableToolbarProps {
   object: ObjectType
   onCreateRecord?: (() => Promise<void> | void) | undefined
   table: ObjectTableInstance
-}
-
-function columnMeta(column: {
-  columnDef: { meta?: ObjectTableColumnMeta }
-}): ObjectTableColumnMeta | undefined {
-  return column.columnDef.meta
-}
-
-function propertyColumns(table: ObjectTableInstance) {
-  return table
-    .getAllLeafColumns()
-    .filter((column) => columnMeta(column)?.property !== undefined)
 }
 
 function ObjectTableSortMenu({ table }: { table: ObjectTableInstance }) {
@@ -74,8 +63,8 @@ function ObjectTableSortMenu({ table }: { table: ObjectTableInstance }) {
       <DropdownMenuContent className="w-56">
         <DropdownMenuGroup>
           <DropdownMenuLabel>Sort by property</DropdownMenuLabel>
-          {propertyColumns(table).map((column) => {
-            const meta = columnMeta(column)
+          {objectTablePropertyColumns(table).map((column) => {
+            const meta = objectTableColumnMeta(column)
             const direction = column.getIsSorted()
             if (meta?.property === undefined) return null
 
@@ -123,8 +112,8 @@ export function ObjectTableColumnMenu({
   const [query, setQuery] = useState("")
   const columns = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase()
-    return propertyColumns(table).filter((column) => {
-      const meta = columnMeta(column)
+    return objectTablePropertyColumns(table).filter((column) => {
+      const meta = objectTableColumnMeta(column)
       return (
         normalizedQuery.length === 0 ||
         meta?.label.toLowerCase().includes(normalizedQuery)
@@ -159,7 +148,7 @@ export function ObjectTableColumnMenu({
         />
         <div className="max-h-64 overflow-y-auto py-0.5">
           {columns.map((column) => {
-            const meta = columnMeta(column)
+            const meta = objectTableColumnMeta(column)
             if (meta?.property === undefined) return null
             return (
               <Button

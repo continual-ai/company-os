@@ -31,10 +31,12 @@ import {
 } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
 
+import { objectTablePropertySchema } from "./object-table-cell-types"
 import {
-  objectTableCellType,
-  objectTablePropertySchema,
-} from "./object-table-cell-types"
+  objectTableColumnMeta,
+  objectTablePropertyColumns,
+  type ObjectTableColumn,
+} from "./object-table-columns"
 import {
   defaultFilterOperator,
   filterInputType,
@@ -42,34 +44,14 @@ import {
   filterOperatorsForProperty,
   hasFilterInput,
   readFilterValue,
-  type ObjectTableColumnMeta,
   type ObjectTableFilterValue,
   type ObjectTableInstance,
 } from "./object-table-config"
 import { ObjectTableProperty } from "./object-table-property"
 
-type ObjectTableColumn = ReturnType<
-  ObjectTableInstance["getAllLeafColumns"]
->[number]
-
 interface FilterOption {
   label: string
   value: string
-}
-
-function columnMeta(
-  column: ObjectTableColumn
-): ObjectTableColumnMeta | undefined {
-  return column.columnDef.meta
-}
-
-function propertyColumns(table: ObjectTableInstance): ObjectTableColumn[] {
-  return table.getAllLeafColumns().filter((column) => {
-    const property = columnMeta(column)?.property
-    return (
-      property !== undefined && objectTableCellType(property) !== "readonly"
-    )
-  })
 }
 
 function filterOptions(
@@ -108,7 +90,7 @@ function optionCounts(
 }
 
 function propertyLabel(column: ObjectTableColumn): string {
-  return columnMeta(column)?.label ?? column.id
+  return objectTableColumnMeta(column)?.label ?? column.id
 }
 
 function applyFilter(
@@ -133,7 +115,7 @@ function InitialFilterValue({
   onComplete: () => void
   table: ObjectTableInstance
 }) {
-  const meta = columnMeta(column)
+  const meta = objectTableColumnMeta(column)
   const property = meta?.property
   const [draft, setDraft] = useState("")
   const inputRef = useRef<HTMLInputElement>(null)
@@ -226,9 +208,9 @@ function ObjectTableFilterPicker({
 }) {
   const [open, setOpen] = useState(false)
   const [selectedColumnId, setSelectedColumnId] = useState<string | null>(null)
-  const availableColumns = propertyColumns(table).filter(
-    (column) => !column.getIsFiltered()
-  )
+  const availableColumns = objectTablePropertyColumns(table, {
+    includeReadonly: false,
+  }).filter((column) => !column.getIsFiltered())
   const selectedColumn =
     selectedColumnId === null ? undefined : table.getColumn(selectedColumnId)
 
@@ -262,7 +244,7 @@ function ObjectTableFilterPicker({
               <CommandEmpty>No more matching properties</CommandEmpty>
               <CommandGroup>
                 {availableColumns.map((column) => {
-                  const meta = columnMeta(column)
+                  const meta = objectTableColumnMeta(column)
                   if (meta?.property === undefined) return null
                   return (
                     <CommandItem
@@ -304,7 +286,7 @@ function FilterOperator({
   column: ObjectTableColumn
   filter: ObjectTableFilterValue
 }) {
-  const property = columnMeta(column)?.property
+  const property = objectTableColumnMeta(column)?.property
   if (property === undefined) return null
 
   return (
@@ -452,7 +434,7 @@ function FilterValue({
   filter: ObjectTableFilterValue
   table: ObjectTableInstance
 }) {
-  const property = columnMeta(column)?.property
+  const property = objectTableColumnMeta(column)?.property
   if (property === undefined || !hasFilterInput(filter.operator)) return null
   const options = filterOptions(property)
 
@@ -501,7 +483,7 @@ function ObjectTableFilterItem({
   filter: ObjectTableFilterValue
   table: ObjectTableInstance
 }) {
-  const meta = columnMeta(column)
+  const meta = objectTableColumnMeta(column)
   if (meta?.property === undefined) return null
 
   return (

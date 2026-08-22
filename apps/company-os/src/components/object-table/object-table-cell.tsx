@@ -33,16 +33,24 @@ import type {
   PropertyDefinition,
 } from "@continual/runtime"
 import {
-  CheckIcon,
-  CircleAlertIcon,
   FactoryIcon,
   ImageIcon,
-  LoaderCircleIcon,
   ShoppingBagIcon,
   TruckIcon,
 } from "lucide-react"
 import { type ComponentType, useEffect, useRef, useState } from "react"
 
+import {
+  formatObjectTableCellText,
+  objectTableCellInputValue,
+  useObjectTableCellCommit,
+  type ObjectTableCellCommit,
+  type ObjectTableCellEditingChange,
+} from "./object-table-cell-state"
+import {
+  ObjectTableCellSurface,
+  ObjectTableCellValidationMessage,
+} from "./object-table-cell-surface"
 import {
   objectTableCellType,
   objectTableInputType,
@@ -54,28 +62,11 @@ import {
 } from "./object-table-cell-types"
 import {
   objectTableImageValue,
-  objectTableValueText,
   type ObjectTableImageResolver,
   type ObjectTableRecord,
   type ObjectTableValue,
 } from "./object-table-config"
 import { ObjectTableIdentity } from "./object-table-identity"
-
-type SaveStatus = "error" | "idle" | "saved" | "saving"
-
-const numberFormatter = new Intl.NumberFormat("en-US")
-const dateFormatter = new Intl.DateTimeFormat("en-US", {
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-})
-const timestampFormatter = new Intl.DateTimeFormat("en-US", {
-  day: "numeric",
-  hour: "numeric",
-  minute: "2-digit",
-  month: "short",
-  year: "numeric",
-})
 
 const tagColorClasses = {
   blue: "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300",
@@ -116,156 +107,12 @@ interface ObjectTableCellProps {
       }
     | undefined
   initialEditValue?: string | undefined
-  onCommit?: ((value: ObjectTableValue) => Promise<void> | void) | undefined
-  onEditingChange: (editing: boolean) => void
+  onCommit?: ObjectTableCellCommit | undefined
+  onCancelEditing: () => void
+  onEditingChange: ObjectTableCellEditingChange
   property: PropertyDefinition
   resolveImageSrc?: ObjectTableImageResolver | undefined
   value: ObjectTableValue
-}
-
-function displayValue(value: ObjectTableValue): string {
-  if (value === null || value === undefined || value === "") return ""
-  if (Array.isArray(value)) return value.join(", ")
-  if (value === true) return "Yes"
-  if (value === false) return "No"
-  return objectTableValueText(value)
-}
-
-function formattedTextValue(
-  type: ObjectTableCellType,
-  fallback: string
-): string {
-  if (type === "number" && fallback.length > 0) {
-    const number = Number(fallback)
-    if (Number.isFinite(number)) {
-      return numberFormatter.format(number)
-    }
-  }
-  if (type === "date" && fallback.length > 0) {
-    const date = new Date(`${fallback}T00:00:00`)
-    if (!Number.isNaN(date.getTime())) {
-      return dateFormatter.format(date)
-    }
-  }
-  if (type === "timestamp" && fallback.length > 0) {
-    const date = new Date(fallback)
-    if (!Number.isNaN(date.getTime())) {
-      return timestampFormatter.format(date)
-    }
-  }
-  return fallback
-}
-
-function CellSaveStatus({ status }: { status: SaveStatus }) {
-  if (status === "idle") return null
-
-  return (
-    <output
-      aria-live="polite"
-      className="pointer-events-none absolute inset-y-0 right-1.5 flex items-center bg-transparent"
-    >
-      {status === "saving" ? (
-        <>
-          <LoaderCircleIcon
-            aria-hidden="true"
-            className="size-3 animate-spin text-muted-foreground"
-          />
-          <span className="sr-only">Saving</span>
-        </>
-      ) : null}
-      {status === "saved" ? (
-        <>
-          <CheckIcon aria-hidden="true" className="size-3 text-foreground" />
-          <span className="sr-only">Saved</span>
-        </>
-      ) : null}
-      {status === "error" ? (
-        <>
-          <CircleAlertIcon
-            aria-hidden="true"
-            className="size-3 text-destructive"
-          />
-          <span className="sr-only">Save failed</span>
-        </>
-      ) : null}
-    </output>
-  )
-}
-
-function useCellCommit(
-  onCommit: ObjectTableCellProps["onCommit"],
-  onEditingChange: ObjectTableCellProps["onEditingChange"]
-) {
-  const [status, setStatus] = useState<SaveStatus>("idle")
-  const version = useRef(0)
-  const timer = useRef<number | null>(null)
-
-  useEffect(() => {
-    return () => {
-      version.current += 1
-      if (timer.current !== null) window.clearTimeout(timer.current)
-    }
-  }, [])
-
-  const clearStatus = () => {
-    version.current += 1
-    if (timer.current !== null) window.clearTimeout(timer.current)
-    setStatus("idle")
-  }
-
-  const commit = async (value: ObjectTableValue, closeEditor = true) => {
-    if (closeEditor) onEditingChange(false)
-    if (onCommit === undefined) return
-
-    const commitVersion = version.current + 1
-    version.current = commitVersion
-    setStatus("saving")
-    try {
-      await onCommit(value)
-      if (version.current !== commitVersion) return
-      setStatus("saved")
-      timer.current = window.setTimeout(() => setStatus("idle"), 900)
-    } catch {
-      if (version.current === commitVersion) setStatus("error")
-    }
-  }
-
-  return { clearStatus, commit, status }
-}
-
-function CellSurface({
-  active,
-  children,
-  className,
-  compactActive = false,
-  expandActive,
-  status,
-}: {
-  active: boolean
-  children: React.ReactNode
-  className?: string | undefined
-  compactActive?: boolean
-  expandActive: boolean
-  status: SaveStatus
-}) {
-  return (
-    <div
-      className={cn(
-        "relative flex min-w-0 items-center pl-2",
-        active && expandActive
-          ? "absolute top-0 left-0 z-30 box-border h-auto max-h-48 min-h-7 w-max max-w-[min(24rem,calc(100vw-2rem))] min-w-full items-start overflow-auto bg-selection py-1 pr-2 shadow-sm ring-1 ring-interactive ring-inset"
-          : active
-            ? compactActive
-              ? "z-20 h-7 w-full max-w-full overflow-hidden bg-selection ring-1 ring-interactive ring-inset"
-              : "z-20 h-7 w-max max-w-[32rem] min-w-full overflow-hidden bg-selection ring-1 ring-interactive ring-inset"
-            : "h-7 w-full overflow-hidden bg-transparent",
-        className
-      )}
-    >
-      {children}
-      <CellSaveStatus status={status} />
-    </div>
-  )
 }
 
 function TextCell({
@@ -275,21 +122,20 @@ function TextCell({
   initialEditValue,
   identity,
   onCommit,
+  onCancelEditing,
   onEditingChange,
   property,
   resolveImageSrc,
   type,
   value,
 }: ObjectTableCellProps & { type: ObjectTableCellType }) {
-  const externalValue = displayValue(value)
+  const { clearStatus, commit, renderedValue, status } =
+    useObjectTableCellCommit(value, onCommit, onEditingChange)
+  const externalValue = objectTableCellInputValue(renderedValue)
   const [draft, setDraft] = useState(externalValue)
   const [validationError, setValidationError] = useState<string | null>(null)
-  const cancelBlur = useRef(false)
+  const cancelingRef = useRef(false)
   const inputRef = useRef<HTMLInputElement>(null)
-  const { clearStatus, commit, status } = useCellCommit(
-    onCommit,
-    onEditingChange
-  )
 
   useEffect(() => {
     if (!editing) {
@@ -320,9 +166,8 @@ function TextCell({
 
   if (editing) {
     return (
-      <CellSurface
+      <ObjectTableCellSurface
         active={active}
-        compactActive
         expandActive={expandActive}
         status={status}
         className="overflow-visible p-0"
@@ -341,10 +186,8 @@ function TextCell({
               setDraft(event.target.value)
             }}
             onBlur={() => {
-              if (cancelBlur.current) {
-                cancelBlur.current = false
-                setDraft(externalValue)
-                onEditingChange(false)
+              if (cancelingRef.current) {
+                cancelingRef.current = false
                 return
               }
               if (draft === externalValue) {
@@ -360,33 +203,31 @@ function TextCell({
               void commit(result.value)
             }}
             onKeyDown={(event) => {
-              event.stopPropagation()
               if (event.key === "Enter") event.currentTarget.blur()
               if (event.key === "Escape") {
-                cancelBlur.current = true
-                event.currentTarget.blur()
+                event.preventDefault()
+                event.stopPropagation()
+                cancelingRef.current = true
+                onCancelEditing()
               }
             }}
           />
           {validationError !== null ? (
-            <p
-              role="alert"
-              className="absolute top-full left-0 z-50 w-max max-w-64 border border-destructive/30 bg-popover px-2 py-1 text-xs text-destructive shadow-sm"
-            >
+            <ObjectTableCellValidationMessage>
               {validationError}
-            </p>
+            </ObjectTableCellValidationMessage>
           ) : null}
         </div>
-      </CellSurface>
+      </ObjectTableCellSurface>
     )
   }
 
   const href = objectTableLinkHref(type, externalValue)
   const opensNewWindow = type === "url"
-  const formattedValue = formattedTextValue(type, externalValue)
+  const formattedValue = formatObjectTableCellText(type, externalValue)
 
   return (
-    <CellSurface
+    <ObjectTableCellSurface
       active={active}
       expandActive={expandActive}
       status={status}
@@ -432,7 +273,7 @@ function TextCell({
           )}
         </span>
       )}
-    </CellSurface>
+    </ObjectTableCellSurface>
   )
 }
 
@@ -448,10 +289,9 @@ function ImageCell({
   const label = image?.alt ?? property.label ?? "Image"
 
   return (
-    <CellSurface
+    <ObjectTableCellSurface
       active={active}
       expandActive={expandActive}
-      status="idle"
       className="gap-1.5"
     >
       {image === null ? (
@@ -487,7 +327,7 @@ function ImageCell({
           </PreviewCardContent>
         </PreviewCard>
       )}
-    </CellSurface>
+    </ObjectTableCellSurface>
   )
 }
 
@@ -496,6 +336,7 @@ function EnumSelectCell({
   editing,
   expandActive,
   onCommit,
+  onCancelEditing,
   onEditingChange,
   property,
   value,
@@ -503,11 +344,9 @@ function EnumSelectCell({
   property: Extract<PropertyDefinition, { kind: "enum" }>
 }) {
   const triggerRef = useRef<HTMLButtonElement>(null)
-  const { clearStatus, commit, status } = useCellCommit(
-    onCommit,
-    onEditingChange
-  )
-  const currentValue = displayValue(value)
+  const { clearStatus, commit, renderedValue, status } =
+    useObjectTableCellCommit(value, onCommit, onEditingChange)
+  const currentValue = objectTableCellInputValue(renderedValue)
   const choices =
     property.options ??
     property.values.map((option) => ({ label: option, value: option }))
@@ -521,7 +360,7 @@ function EnumSelectCell({
 
   if (!editing) {
     return (
-      <CellSurface
+      <ObjectTableCellSurface
         active={active}
         expandActive={expandActive}
         status={status}
@@ -534,14 +373,13 @@ function EnumSelectCell({
         ) : (
           <span className="text-muted-foreground/60">Empty</span>
         )}
-      </CellSurface>
+      </ObjectTableCellSurface>
     )
   }
 
   return (
-    <CellSurface
+    <ObjectTableCellSurface
       active={active}
-      compactActive
       expandActive={expandActive}
       status={status}
       className="p-0"
@@ -563,6 +401,9 @@ function EnumSelectCell({
             ref={triggerRef}
             size="sm"
             className="h-7 w-full border-0 bg-transparent px-2 shadow-none focus-visible:border-0 focus-visible:ring-0"
+            onKeyDown={(event) => {
+              if (event.key === "Escape") onCancelEditing()
+            }}
           >
             <SelectValue placeholder="Choose value…" />
           </SelectTrigger>
@@ -575,7 +416,7 @@ function EnumSelectCell({
           </SelectContent>
         </Select>
       </div>
-    </CellSurface>
+    </ObjectTableCellSurface>
   )
 }
 
@@ -589,20 +430,25 @@ function BooleanCell({
   editing,
   expandActive,
   onCommit,
+  onCancelEditing,
   onEditingChange,
   property,
   value,
 }: ObjectTableCellProps) {
-  const checked = value === true
   const checkboxRef = useRef<HTMLButtonElement>(null)
-  const { commit, status } = useCellCommit(onCommit, onEditingChange)
+  const { commit, renderedValue, status } = useObjectTableCellCommit(
+    value,
+    onCommit,
+    onEditingChange
+  )
+  const checked = renderedValue === true
 
   useEffect(() => {
     if (editing) checkboxRef.current?.focus()
   }, [editing])
 
   return (
-    <CellSurface
+    <ObjectTableCellSurface
       active={active}
       expandActive={expandActive}
       status={status}
@@ -618,10 +464,12 @@ function BooleanCell({
           if (editing) onEditingChange(false)
         }}
         onCheckedChange={(nextChecked) => void commit(nextChecked)}
-        onKeyDown={(event) => event.stopPropagation()}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") onCancelEditing()
+        }}
       />
       <span className="sr-only">{checked ? "Yes" : "No"}</span>
-    </CellSurface>
+    </ObjectTableCellSurface>
   )
 }
 
@@ -671,14 +519,19 @@ function TagsCell({
   editing,
   expandActive,
   onCommit,
+  onCancelEditing,
   onEditingChange,
   property,
   value,
 }: ObjectTableCellProps) {
-  const values = Array.isArray(value) ? value : []
-  const [draft, setDraft] = useState(values)
   const searchRef = useRef<HTMLInputElement>(null)
-  const { commit, status } = useCellCommit(onCommit, onEditingChange)
+  const { commit, renderedValue, status } = useObjectTableCellCommit(
+    value,
+    onCommit,
+    onEditingChange
+  )
+  const values = Array.isArray(renderedValue) ? renderedValue : []
+  const [draft, setDraft] = useState(values)
   const declaredChoices = objectTableTagChoices(property)
   const choices = [
     ...declaredChoices,
@@ -705,9 +558,8 @@ function TagsCell({
     : 0
 
   const display = (
-    <CellSurface
+    <ObjectTableCellSurface
       active={active}
-      compactActive={editing}
       expandActive={expandActive}
       status={status}
       className={active && expandActive ? "content-start" : undefined}
@@ -745,7 +597,7 @@ function TagsCell({
           <span className="text-muted-foreground/60">Empty</span>
         )}
       </div>
-    </CellSurface>
+    </ObjectTableCellSurface>
   )
 
   return (
@@ -765,7 +617,10 @@ function TagsCell({
         align="start"
         sideOffset={0}
         className="w-72 gap-0 overflow-hidden p-0"
-        onKeyDown={(event) => event.stopPropagation()}
+        onKeyDown={(event) => {
+          event.stopPropagation()
+          if (event.key === "Escape") onCancelEditing()
+        }}
       >
         <Command>
           <CommandInput ref={searchRef} placeholder="Search options…" />
