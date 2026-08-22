@@ -23,6 +23,7 @@
     "./components/input-group": "./src/components/input-group.tsx",
     "./components/label": "./src/components/label.tsx",
     "./components/popover": "./src/components/popover.tsx",
+    "./components/preview-card": "./src/components/preview-card.tsx",
     "./components/progress": "./src/components/progress.tsx",
     "./components/radio-group": "./src/components/radio-group.tsx",
     "./components/select": "./src/components/select.tsx",

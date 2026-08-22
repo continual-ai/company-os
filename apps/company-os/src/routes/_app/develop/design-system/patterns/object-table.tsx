@@ -1,4 +1,3 @@
-import { AcmeModel } from "@acme/api"
 import { createFileRoute } from "@tanstack/react-router"
 import { useCallback, useState } from "react"
 
@@ -7,7 +6,14 @@ import type {
   ObjectTableRecord,
   ObjectTableValue,
 } from "@/components/object-table/object-table-config"
-import { exampleCompanyRecords } from "@/components/object-table/object-table-example-data"
+import {
+  exampleCompanyRecords,
+  resolveExampleCompanyImage,
+} from "@/components/object-table/object-table-example-data"
+import {
+  objectTableExampleVisiblePropertyIds,
+  ObjectTableExampleCompany,
+} from "@/components/object-table/object-table-example-object"
 import { pageOptions } from "@/route-metadata"
 
 const page = {
@@ -50,7 +56,16 @@ function ObjectTablePatternPage() {
         logo: null,
         name: "Untitled company",
         lifecycleStage: "prospect",
+        categories: [],
+        contactEmail: "",
+        contactPhone: "",
+        description: "",
         domain: "",
+        employeeCount: null,
+        foundedOn: null,
+        lastReviewedAt: null,
+        linkedIn: "",
+        strategic: false,
         website: "",
         industry: "",
       },
@@ -69,21 +84,18 @@ function ObjectTablePatternPage() {
         </h1>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
           A dense, keyboard-operable view over company-owned object metadata.
-          Select a cell and use the arrow keys to move; press Enter to edit.
+          Select a cell and use the arrow keys to move; type, press Enter, or
+          double-click to edit. Active multi-value and long-text cells expand
+          above the grid without changing row geometry.
         </p>
       </header>
 
       <div className="mt-8 h-[34rem] min-w-0 overflow-hidden border xl:h-[40rem]">
         <ObjectTable
-          object={AcmeModel.objects.company}
+          object={ObjectTableExampleCompany}
           records={companies}
-          visiblePropertyIds={[
-            "name",
-            "lifecycleStage",
-            "domain",
-            "industry",
-            "website",
-          ]}
+          resolveImageSrc={resolveExampleCompanyImage}
+          visiblePropertyIds={objectTableExampleVisiblePropertyIds}
           onCellCommit={updateCompany}
           onCreateRecord={createCompany}
         />
@@ -104,6 +116,35 @@ function ObjectTablePatternPage() {
             <p className="mt-2 text-xs leading-5 text-muted-foreground">
               Routes still own queries, persistence, actions, visible columns,
               and any workflow-specific composition around the grid.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section className="mt-12 grid gap-8 border-t pt-6 lg:grid-cols-[12rem_minmax(0,1fr)]">
+        <p className="text-xs font-medium text-muted-foreground">
+          Cell adapter
+        </p>
+        <div className="grid gap-px border bg-border sm:grid-cols-3">
+          <div className="bg-background p-5">
+            <h2 className="text-sm font-medium">Type</h2>
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">
+              A semantic cell type normalizes the property schema into one
+              stable adapter name.
+            </p>
+          </div>
+          <div className="bg-background p-5">
+            <h2 className="text-sm font-medium">Behavior</h2>
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">
+              The behavior registry declares editing, input, filtering, and
+              overflow policy without React.
+            </p>
+          </div>
+          <div className="bg-background p-5">
+            <h2 className="text-sm font-medium">Renderer</h2>
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">
+              The renderer registry owns display, hover previews, and the
+              type-specific editor.
             </p>
           </div>
         </div>

@@ -1,41 +1,87 @@
+import type { ImageRef } from "@continual/runtime"
+
 import type { ObjectTableRecord } from "./object-table-config"
+
+export function resolveExampleCompanyImage(image: ImageRef): string | null {
+  return image.assetId === "acme-app-icon" ? "/icon-192.png" : null
+}
 
 export const exampleCompanyRecords: ObjectTableRecord[] = [
   {
     id: "northwind",
-    logo: null,
+    logo: { assetId: "acme-app-icon", alt: "Northwind Traders logo" },
     name: "Northwind Traders",
     lifecycleStage: "customer",
     domain: "northwind.example",
     website: "https://northwind.example",
     industry: "Distribution",
+    categories: ["B2B", "Distribution", "Logistics", "Enterprise"],
+    linkedIn: "https://linkedin.com/company/northwind-traders",
+    description:
+      "Northwind Traders coordinates a global network of specialty food suppliers, distributors, and regional customers from one shared operating model.",
+    employeeCount: 12_480,
+    foundedOn: "1994-04-12",
+    lastReviewedAt: "2026-08-21T16:42:00.000Z",
+    strategic: true,
+    contactEmail: "partnerships@northwind.example",
+    contactPhone: "+1 206 555 0142",
   },
   {
     id: "contoso",
-    logo: null,
+    logo: { assetId: "acme-app-icon", alt: "Contoso logo" },
     name: "Contoso",
     lifecycleStage: "customer",
     domain: "contoso.example",
     website: "https://contoso.example",
     industry: "Manufacturing",
+    categories: ["B2B", "Manufacturing"],
+    linkedIn: "https://linkedin.com/company/contoso",
+    description:
+      "Contoso manufactures and distributes consumer electronics through international retail and partner channels.",
+    employeeCount: 4_064,
+    foundedOn: "2001-09-18",
+    lastReviewedAt: "2026-08-18T20:15:00.000Z",
+    strategic: false,
+    contactEmail: "hello@contoso.example",
+    contactPhone: "+1 425 555 0188",
   },
   {
     id: "fabrikam",
-    logo: null,
+    logo: { assetId: "missing-logo", alt: "Fabrikam logo" },
     name: "Fabrikam",
     lifecycleStage: "prospect",
     domain: "fabrikam.example",
     website: "https://fabrikam.example",
     industry: "Industrial technology",
+    categories: ["B2B", "Industrial technology", "Enterprise"],
+    linkedIn: "https://linkedin.com/company/fabrikam",
+    description:
+      "Fabrikam develops industrial automation systems for complex manufacturing environments.",
+    employeeCount: 256,
+    foundedOn: "2012-02-29",
+    lastReviewedAt: "2026-08-03T09:30:00.000Z",
+    strategic: true,
+    contactEmail: "sales@fabrikam.example",
+    contactPhone: "+1 312 555 0164",
   },
   {
     id: "adventure-works",
-    logo: null,
+    logo: { assetId: "acme-app-icon", alt: "Adventure Works logo" },
     name: "Adventure Works",
     lifecycleStage: "customer",
     domain: "adventure-works.example",
     website: "https://adventure-works.example",
     industry: "Consumer goods",
+    categories: ["B2C", "Consumer goods", "Retail"],
+    linkedIn: "https://linkedin.com/company/adventure-works",
+    description:
+      "Adventure Works designs outdoor equipment and serves customers through stores, distributors, and direct commerce.",
+    employeeCount: 1_704,
+    foundedOn: "1998-06-05",
+    lastReviewedAt: "2026-07-29T18:05:00.000Z",
+    strategic: false,
+    contactEmail: "team@adventure-works.example",
+    contactPhone: "+1 303 555 0196",
   },
   {
     id: "tailspin-toys",

@@ -1,3 +1,4 @@
+import { cn } from "@acme/ui/lib/utils"
 import type { PropertyDefinition } from "@continual/runtime"
 import {
   AtSignIcon,
@@ -14,33 +15,60 @@ import {
   TagsIcon,
   TextIcon,
 } from "lucide-react"
+import type { ComponentProps, ReactNode } from "react"
 
-export function ObjectTablePropertyIcon({
+import { objectTablePropertySchema } from "./object-table-cell-types"
+
+function ObjectTablePropertyIcon({
   property,
 }: {
   property: PropertyDefinition
 }) {
-  if (property.kind === "enum") return <TagsIcon aria-hidden="true" />
-  if (property.kind === "number") return <HashIcon aria-hidden="true" />
-  if (property.kind === "boolean") return <CheckSquareIcon aria-hidden="true" />
-  if (property.kind === "money") {
-    return <CircleDollarSignIcon aria-hidden="true" />
-  }
-  if (property.kind === "image") return <ImageIcon aria-hidden="true" />
-  if (property.kind === "file") return <FileIcon aria-hidden="true" />
-  if (property.kind === "recordId") return <LinkIcon aria-hidden="true" />
-  if (property.kind === "array") return <ListIcon aria-hidden="true" />
+  const schema = objectTablePropertySchema(property)
+  const iconProps = {
+    "aria-hidden": true,
+    className: "size-3 shrink-0",
+  } as const
 
-  if (property.kind === "string") {
-    if (property.format === "domain" || property.format === "url") {
-      return <Globe2Icon aria-hidden="true" />
+  if (schema.kind === "enum") return <TagsIcon {...iconProps} />
+  if (schema.kind === "number") return <HashIcon {...iconProps} />
+  if (schema.kind === "boolean") return <CheckSquareIcon {...iconProps} />
+  if (schema.kind === "money") return <CircleDollarSignIcon {...iconProps} />
+  if (schema.kind === "image") return <ImageIcon {...iconProps} />
+  if (schema.kind === "file") return <FileIcon {...iconProps} />
+  if (schema.kind === "recordId") return <LinkIcon {...iconProps} />
+  if (schema.kind === "array") return <ListIcon {...iconProps} />
+
+  if (schema.kind === "string") {
+    if (schema.format === "domain" || schema.format === "url") {
+      return <Globe2Icon {...iconProps} />
     }
-    if (property.format === "email") return <AtSignIcon aria-hidden="true" />
-    if (property.format === "phone") return <PhoneIcon aria-hidden="true" />
-    if (property.format === "date" || property.format === "timestamp") {
-      return <CalendarDaysIcon aria-hidden="true" />
+    if (schema.format === "email") return <AtSignIcon {...iconProps} />
+    if (schema.format === "phone") return <PhoneIcon {...iconProps} />
+    if (schema.format === "date" || schema.format === "timestamp") {
+      return <CalendarDaysIcon {...iconProps} />
     }
   }
 
-  return <TextIcon aria-hidden="true" />
+  return <TextIcon {...iconProps} />
+}
+
+export function ObjectTableProperty({
+  className,
+  label,
+  property,
+  ...props
+}: Omit<ComponentProps<"span">, "property"> & {
+  label: ReactNode
+  property: PropertyDefinition
+}) {
+  return (
+    <span
+      className={cn("inline-flex min-w-0 items-center gap-1.5", className)}
+      {...props}
+    >
+      <ObjectTablePropertyIcon property={property} />
+      <span className="truncate">{label}</span>
+    </span>
+  )
 }

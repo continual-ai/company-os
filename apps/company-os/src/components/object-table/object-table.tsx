@@ -20,13 +20,18 @@ import { ArrowDownIcon, ArrowUpIcon, GripVerticalIcon } from "lucide-react"
 import { useCallback, useMemo, useRef, useState } from "react"
 
 import { ObjectTableCell as EditableObjectTableCell } from "./object-table-cell"
-import { isObjectTableCellEditable } from "./object-table-cell-types"
+import {
+  isObjectTableCellEditable,
+  objectTableCellShouldExpand,
+} from "./object-table-cell-types"
 import {
   objectTableFeatures,
+  objectTableValueText,
+  type ObjectTableImageResolver,
   type ObjectTableRecord,
   type ObjectTableValue,
 } from "./object-table-config"
-import { ObjectTablePropertyIcon } from "./object-table-property"
+import { ObjectTableProperty } from "./object-table-property"
 import {
   ObjectTableColumnMenu,
   ObjectTableToolbar,
@@ -43,6 +48,7 @@ interface ObjectTableProps {
     | undefined
   onCreateRecord?: (() => Promise<void> | void) | undefined
   records: ObjectTableRecord[]
+  resolveImageSrc?: ObjectTableImageResolver | undefined
   visiblePropertyIds?: ReadonlyArray<string>
 }
 
@@ -98,6 +104,10 @@ interface CellAddress {
   rowId: string
 }
 
+interface CellEditState extends CellAddress {
+  initialValue?: string | undefined
+}
+
 function cellKey({ columnId, rowId }: CellAddress): string {
   return `${rowId}\u0000${columnId}`
 }
@@ -114,12 +124,23 @@ export function ObjectTable({
   onCellCommit,
   onCreateRecord,
   records,
+  resolveImageSrc,
   visiblePropertyIds,
 }: ObjectTableProps) {
-  const properties = useMemo(
-    () => Object.entries(object.properties),
-    [object.properties]
-  )
+  const properties = useMemo(() => {
+    const entries = Object.entries(object.properties)
+    const titleEntry = entries.find(
+      ([propertyId]) => propertyId === object.display.title
+    )
+    return titleEntry === undefined
+      ? entries
+      : [
+          titleEntry,
+          ...entries.filter(
+            ([propertyId]) => propertyId !== object.display.title
+          ),
+        ]
+  }, [object.display.title, object.properties])
   const columns = useMemo(() => {
     return columnHelper.columns([
       columnHelper.display({
@@ -134,8 +155,11 @@ export function ObjectTable({
         cell: SelectionCell,
         meta: { essential: true, label: "Select" },
       }),
-      ...properties.map(([propertyId, property]) =>
-        columnHelper.accessor((record) => record[propertyId], {
+      ...properties.map(([propertyId, property]) => {
+        const isIdentity = propertyId === object.display.title
+        const label = isIdentity ? object.name : (property.label ?? propertyId)
+
+        return columnHelper.accessor((record) => record[propertyId], {
           id: propertyId,
           enableColumnFilter: true,
           enableHiding: propertyId !== object.display.title,
@@ -151,16 +175,16 @@ export function ObjectTable({
           ),
           minSize: propertyId === object.display.title ? 176 : 120,
           maxSize: 560,
-          header: property.label ?? propertyId,
+          header: label,
           meta: {
-            essential: propertyId === object.display.title,
-            label: property.label ?? propertyId,
+            essential: isIdentity,
+            label,
             onCellCommit,
             property,
             propertyId,
           },
         })
-      ),
+      }),
     ])
   }, [object, onCellCommit, properties])
 
@@ -202,7 +226,7 @@ export function ObjectTable({
     (column) => column.columnDef.meta?.property !== undefined
   )
   const [activeCell, setActiveCell] = useState<CellAddress | null>(null)
-  const [editingCell, setEditingCell] = useState<CellAddress | null>(null)
+  const [editingCell, setEditingCell] = useState<CellEditState | null>(null)
   const cellElements = useRef(new Map<string, HTMLTableCellElement>())
   const renderedTableWidth = table.getTotalSize() + 136
 
@@ -238,9 +262,9 @@ export function ObjectTable({
   )
 
   const setCellEditing = useCallback(
-    (address: CellAddress, editing: boolean) => {
+    (address: CellAddress, editing: boolean, initialValue?: string) => {
       setActiveCell(address)
-      setEditingCell(editing ? address : null)
+      setEditingCell(editing ? { ...address, initialValue } : null)
       if (!editing) {
         window.requestAnimationFrame(() => {
           if (document.activeElement === document.body) focusCell(address)
@@ -269,6 +293,19 @@ export function ObjectTable({
       address: CellAddress
     ) => {
       if (editingCell !== null) return
+      if (event.target !== event.currentTarget) return
+
+      if (
+        editable &&
+        event.key.length === 1 &&
+        !event.altKey &&
+        !event.ctrlKey &&
+        !event.metaKey
+      ) {
+        event.preventDefault()
+        setCellEditing(address, true, event.key)
+        return
+      }
 
       const lastRow = visibleRows.length - 1
       const lastColumn = navigableColumns.length - 1
@@ -381,8 +418,10 @@ export function ObjectTable({
                         className="h-8 w-full justify-start overflow-hidden px-2 font-medium hover:bg-muted"
                         onClick={header.column.getToggleSortingHandler()}
                       >
-                        <ObjectTablePropertyIcon property={meta.property} />
-                        <span className="truncate">{meta.label}</span>
+                        <ObjectTableProperty
+                          label={meta.label}
+                          property={meta.property}
+                        />
                         {direction === "asc" ? (
                           <ArrowDownIcon className="ml-auto" />
                         ) : null}
@@ -456,8 +495,18 @@ export function ObjectTable({
                     columnId: cell.column.id,
                   }
                   const propertyId = meta.propertyId
+                  const cellValue = row.original[propertyId] ?? null
                   const active = isSameCell(resolvedActiveCell, address)
                   const editing = isSameCell(editingCell, address)
+                  const expandActive =
+                    active &&
+                    !editing &&
+                    objectTableCellShouldExpand(meta.property, {
+                      displayLength: objectTableValueText(cellValue).length,
+                      valueCount: Array.isArray(cellValue)
+                        ? cellValue.length
+                        : 0,
+                    })
                   const columnIndex = navigableColumns.findIndex(
                     (column) => column.id === cell.column.id
                   )
@@ -465,8 +514,8 @@ export function ObjectTable({
                     onCellCommit === undefined ||
                     !isObjectTableCellEditable(meta.property)
                       ? undefined
-                      : (value: ObjectTableValue) =>
-                          onCellCommit(row.original.id, propertyId, value)
+                      : (nextValue: ObjectTableValue) =>
+                          onCellCommit(row.original.id, propertyId, nextValue)
                   const editable = commitCell !== undefined
 
                   return (
@@ -481,17 +530,22 @@ export function ObjectTable({
                       tabIndex={active ? 0 : -1}
                       className={cn(
                         "relative h-8 border-r p-0 outline-none",
-                        active
-                          ? "z-10 overflow-visible outline outline-2 -outline-offset-2 outline-ring"
-                          : "overflow-hidden"
+                        active ? "z-30 overflow-visible" : "overflow-hidden"
                       )}
                       style={{ width: cell.column.getSize() }}
-                      onClick={() => {
+                      onClick={(event) => {
                         if (editing) return
+                        if (event.detail > 1 && editable) {
+                          event.preventDefault()
+                          setCellEditing(address, true)
+                          return
+                        }
                         activateCell(address, true)
                       }}
-                      onDoubleClick={() => {
-                        if (editable) setCellEditing(address, true)
+                      onDoubleClick={(event) => {
+                        if (!editable) return
+                        event.preventDefault()
+                        setCellEditing(address, true)
                       }}
                       onFocus={(event) => {
                         if (event.target === event.currentTarget) {
@@ -511,8 +565,18 @@ export function ObjectTable({
                       <EditableObjectTableCell
                         active={active}
                         editing={editing}
+                        expandActive={expandActive}
+                        initialEditValue={
+                          editing ? editingCell?.initialValue : undefined
+                        }
+                        identity={
+                          meta.propertyId === object.display.title
+                            ? { object, record: row.original }
+                            : undefined
+                        }
                         property={meta.property}
-                        value={row.original[meta.propertyId] ?? null}
+                        resolveImageSrc={resolveImageSrc}
+                        value={cellValue}
                         onEditingChange={(nextEditing) =>
                           setCellEditing(address, nextEditing)
                         }
@@ -535,7 +599,7 @@ export function ObjectTable({
             : `${visibleRows.length} of ${records.length} ${object.pluralName.toLowerCase()}`}
         </span>
         <span className="ml-auto hidden sm:inline">
-          Arrow keys move · Enter edits
+          Arrows move · Type, Enter, or double-click to edit
         </span>
       </footer>
     </section>

@@ -1,4 +1,4 @@
-import type { PropertyDefinition } from "@continual/runtime"
+import type { ImageRef, PropertyDefinition } from "@continual/runtime"
 import {
   columnFilteringFeature,
   columnResizingFeature,
@@ -14,8 +14,11 @@ import {
   type ReactTable,
 } from "@tanstack/react-table"
 
+import { objectTableCellBehavior } from "./object-table-cell-types"
+
 export type ObjectTableValue =
   | boolean
+  | ImageRef
   | null
   | number
   | ReadonlyArray<string>
@@ -26,17 +29,61 @@ export type ObjectTableRecord = { id: string } & Record<
   ObjectTableValue
 >
 
+export type ObjectTableImageResolver = (
+  image: ImageRef
+) => string | null | undefined
+
+export function objectTableImageValue(
+  value: ObjectTableValue | undefined
+): ImageRef | null {
+  if (value === null || value === undefined) return null
+  // This is the parsed ObjectTableValue boundary; its only object member is ImageRef.
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof
+  return typeof value === "object" && "assetId" in value ? value : null
+}
+
+export function objectTableValueText(
+  value: ObjectTableValue | undefined
+): string {
+  if (value === null || value === undefined) return ""
+  if (Array.isArray(value)) return value.join(", ")
+  const image = objectTableImageValue(value)
+  if (image !== null) return image.assetId
+
+  // ObjectTableValue is already parsed; this exhausts its scalar members.
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof
+  switch (typeof value) {
+    case "boolean":
+      return value ? "true" : "false"
+    case "number":
+      return value.toString()
+    case "string":
+      return value
+    default:
+      return ""
+  }
+}
+
 export type ObjectTableFilterOperator =
+  | "after"
+  | "atLeast"
+  | "atMost"
+  | "before"
   | "contains"
+  | "doesNotContain"
   | "empty"
   | "equals"
+  | "greaterThan"
+  | "lessThan"
   | "notEmpty"
   | "notEquals"
+  | "onOrAfter"
+  | "onOrBefore"
   | "startsWith"
 
 export interface ObjectTableFilterValue {
   operator: ObjectTableFilterOperator
-  value: string
+  values: ReadonlyArray<string>
 }
 
 export interface ObjectTableColumnMeta {
@@ -54,11 +101,20 @@ export interface ObjectTableColumnMeta {
 }
 
 const operatorLabels = {
+  after: "is after",
+  atLeast: "is at least",
+  atMost: "is at most",
+  before: "is before",
   contains: "contains",
+  doesNotContain: "does not contain",
   empty: "is empty",
   equals: "is",
+  greaterThan: "is greater than",
+  lessThan: "is less than",
   notEmpty: "is not empty",
   notEquals: "is not",
+  onOrAfter: "is on or after",
+  onOrBefore: "is on or before",
   startsWith: "starts with",
 } satisfies Record<ObjectTableFilterOperator, string>
 
@@ -71,7 +127,7 @@ function isFilterValue(value: unknown): value is ObjectTableFilterValue {
     typeof value !== "object" ||
     value === null ||
     !("operator" in value) ||
-    !("value" in value)
+    !("values" in value)
   ) {
     return false
   }
@@ -80,17 +136,77 @@ function isFilterValue(value: unknown): value is ObjectTableFilterValue {
     // oxlint-disable-next-line anti-slop/no-runtime-typeof
     typeof value.operator === "string" &&
     value.operator in operatorLabels &&
-    // oxlint-disable-next-line anti-slop/no-runtime-typeof
-    typeof value.value === "string"
+    Array.isArray(value.values) &&
+    value.values.every(
+      // oxlint-disable-next-line anti-slop/no-runtime-typeof
+      (filterValue) => typeof filterValue === "string"
+    )
   )
 }
 
 function normalizedText(value: ObjectTableValue): string {
-  if (Array.isArray(value)) return value.join(" ").toLowerCase()
-  if (value === null) return ""
-  if (value === true) return "true"
-  if (value === false) return "false"
-  return value.toString().trim().toLowerCase()
+  return objectTableValueText(value).trim().toLowerCase()
+}
+
+function isEmptyValue(value: ObjectTableValue): boolean {
+  return (
+    value === null ||
+    value === "" ||
+    (Array.isArray(value) && value.length === 0)
+  )
+}
+
+export function matchesObjectTableFilter(
+  dataValue: ObjectTableValue,
+  filterValue: ObjectTableFilterValue
+): boolean {
+  if (filterValue.operator === "empty") return isEmptyValue(dataValue)
+  if (filterValue.operator === "notEmpty") return !isEmptyValue(dataValue)
+
+  const dataText = normalizedText(dataValue)
+  const filterTexts = filterValue.values.map((value) => normalizedText(value))
+  const firstFilterText = filterTexts[0] ?? ""
+
+  if (filterTexts.length === 0 || firstFilterText.length === 0) return true
+
+  switch (filterValue.operator) {
+    case "contains":
+      return dataText.includes(firstFilterText)
+    case "doesNotContain":
+      return !dataText.includes(firstFilterText)
+    case "equals":
+      return filterTexts.includes(dataText)
+    case "notEquals":
+      return !filterTexts.includes(dataText)
+    case "startsWith":
+      return dataText.startsWith(firstFilterText)
+    case "greaterThan":
+    case "atLeast":
+    case "lessThan":
+    case "atMost": {
+      const dataNumber = Number(dataText)
+      const filterNumber = Number(firstFilterText)
+      if (!Number.isFinite(dataNumber) || !Number.isFinite(filterNumber)) {
+        return false
+      }
+      if (filterValue.operator === "greaterThan") {
+        return dataNumber > filterNumber
+      }
+      if (filterValue.operator === "atLeast") return dataNumber >= filterNumber
+      if (filterValue.operator === "lessThan") return dataNumber < filterNumber
+      return dataNumber <= filterNumber
+    }
+    case "after":
+      return dataText > firstFilterText
+    case "before":
+      return dataText < firstFilterText
+    case "onOrAfter":
+      return dataText >= firstFilterText
+    case "onOrBefore":
+      return dataText <= firstFilterText
+    default:
+      return true
+  }
 }
 
 const objectPropertyFilter = constructFilterFn({
@@ -102,25 +218,7 @@ const objectPropertyFilter = constructFilterFn({
   filter: (dataValue: ObjectTableValue, filterValue: unknown) => {
     if (!isFilterValue(filterValue)) return true
 
-    const dataText = normalizedText(dataValue)
-    const filterText = normalizedText(filterValue.value)
-
-    switch (filterValue.operator) {
-      case "contains":
-        return filterText.length === 0 || dataText.includes(filterText)
-      case "empty":
-        return dataText.length === 0
-      case "equals":
-        return filterText.length === 0 || dataText === filterText
-      case "notEmpty":
-        return dataText.length > 0
-      case "notEquals":
-        return filterText.length === 0 || dataText !== filterText
-      case "startsWith":
-        return filterText.length === 0 || dataText.startsWith(filterText)
-      default:
-        return true
-    }
+    return matchesObjectTableFilter(dataValue, filterValue)
   },
 })
 
@@ -155,21 +253,67 @@ export function filterOperatorLabel(
 export function filterOperatorsForProperty(
   property: PropertyDefinition
 ): ReadonlyArray<ObjectTableFilterOperator> {
-  if (property.kind === "enum" || property.kind === "boolean") {
+  const filterFamily = objectTableCellBehavior(property).filterFamily
+
+  if (filterFamily === "boolean") {
     return ["equals", "notEquals", "empty", "notEmpty"]
   }
-  if (property.kind === "number" || property.kind === "recordId") {
+  if (filterFamily === "number") {
+    return [
+      "equals",
+      "notEquals",
+      "greaterThan",
+      "atLeast",
+      "lessThan",
+      "atMost",
+      "empty",
+      "notEmpty",
+    ]
+  }
+  if (filterFamily === "date") {
+    return [
+      "equals",
+      "notEquals",
+      "before",
+      "onOrBefore",
+      "after",
+      "onOrAfter",
+      "empty",
+      "notEmpty",
+    ]
+  }
+  if (filterFamily === "recordId") {
     return ["equals", "notEquals", "empty", "notEmpty"]
   }
-  return ["contains", "startsWith", "equals", "notEquals", "empty", "notEmpty"]
+  return [
+    "contains",
+    "doesNotContain",
+    "startsWith",
+    "equals",
+    "notEquals",
+    "empty",
+    "notEmpty",
+  ]
 }
 
 export function defaultFilterOperator(
   property: PropertyDefinition
 ): ObjectTableFilterOperator {
-  return property.kind === "enum" || property.kind === "boolean"
+  const filterFamily = objectTableCellBehavior(property).filterFamily
+  return filterFamily === "boolean" || filterFamily === "number"
     ? "equals"
-    : "contains"
+    : filterFamily === "date"
+      ? "equals"
+      : "contains"
+}
+
+export function filterInputType(
+  property: PropertyDefinition
+): "date" | "number" | "text" {
+  const filterFamily = objectTableCellBehavior(property).filterFamily
+  if (filterFamily === "date") return "date"
+  if (filterFamily === "number") return "number"
+  return "text"
 }
 
 export function hasFilterInput(operator: ObjectTableFilterOperator): boolean {
@@ -180,5 +324,5 @@ export function hasFilterInput(operator: ObjectTableFilterOperator): boolean {
 // parser supplies a safe local default for invalid external values.
 // oxlint-disable-next-line anti-slop/no-unknown-parameters
 export function readFilterValue(value: unknown): ObjectTableFilterValue {
-  return isFilterValue(value) ? value : { operator: "contains", value: "" }
+  return isFilterValue(value) ? value : { operator: "contains", values: [] }
 }

@@ -7,7 +7,14 @@ import type {
   ObjectTableRecord,
   ObjectTableValue,
 } from "@/components/object-table/object-table-config"
-import { exampleCompanyRecords } from "@/components/object-table/object-table-example-data"
+import {
+  exampleCompanyRecords,
+  resolveExampleCompanyImage,
+} from "@/components/object-table/object-table-example-data"
+import {
+  objectTableExampleVisiblePropertyIds,
+  ObjectTableExampleCompany,
+} from "@/components/object-table/object-table-example-object"
 import { pageOptions } from "@/route-metadata"
 
 const page = {
@@ -48,7 +55,16 @@ function CompaniesPage() {
         logo: null,
         name: "Untitled company",
         lifecycleStage: "prospect",
+        categories: [],
+        contactEmail: "",
+        contactPhone: "",
+        description: "",
         domain: "",
+        employeeCount: null,
+        foundedOn: null,
+        lastReviewedAt: null,
+        linkedIn: "",
+        strategic: false,
         website: "",
         industry: "",
       },
@@ -58,15 +74,10 @@ function CompaniesPage() {
 
   return (
     <ObjectTable
-      object={AcmeModel.objects.company}
+      object={ObjectTableExampleCompany}
       records={companies}
-      visiblePropertyIds={[
-        "name",
-        "lifecycleStage",
-        "domain",
-        "industry",
-        "website",
-      ]}
+      resolveImageSrc={resolveExampleCompanyImage}
+      visiblePropertyIds={objectTableExampleVisiblePropertyIds}
       onCellCommit={updateCompany}
       onCreateRecord={createCompany}
     />
