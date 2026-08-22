@@ -1,6 +1,6 @@
 # Licensing Company OS
 
-Company OS is source-available under the [Elastic License 2.0](LICENSE). We want you to have as much
+Company OS is source-available under the [Elastic License 2.0](LICENSE.md). We want you to have as much
 freedom as possible to make it yours. If you are using Company OS to build or run software for your
 own organization, you are good.
 
@@ -28,5 +28,5 @@ There are only three restrictions:
 The simple test: using Company OS to run your company—even in applications your customers use—is
 allowed. Selling access to Company OS, or to a software product built substantially from it, is not.
 
-The [license](LICENSE) contains the legal terms and controls if there is a conflict. Third-party
+The [license](LICENSE.md) contains the legal terms and controls if there is a conflict. Third-party
 software keeps its own license.
