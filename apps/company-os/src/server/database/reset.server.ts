@@ -6,7 +6,7 @@ import { PgClient } from "@effect/sql-pg"
 import { migrate } from "drizzle-orm/effect-postgres/migrator"
 import { Config, Effect, Redacted } from "effect"
 
-import { Database } from "./drizzle.server"
+import { Database } from "./database.server"
 import * as Postgres from "./postgres.server"
 import { localDatabaseTarget } from "./reset-target"
 

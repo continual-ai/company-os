@@ -3,6 +3,7 @@ import type { ESTree } from "@oxlint/plugins"
 
 const PUBLIC_PACKAGE_ENTRYPOINTS = [
   "packages/acme/api/src/index.ts",
+  "packages/continual/postgres/src/index.ts",
   "packages/continual/runtime/src/index.ts",
 ] as const
 

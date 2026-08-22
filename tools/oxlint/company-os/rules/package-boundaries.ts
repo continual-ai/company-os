@@ -24,11 +24,16 @@ function isPackage(specifier: string, packageName: string): boolean {
   return specifier === packageName || specifier.startsWith(`${packageName}/`)
 }
 
-function isAnyPackage(specifier: string, packageNames: string[]): boolean {
-  return packageNames.some((packageName) => isPackage(specifier, packageName))
+function isServerSourceFile(filename: string): boolean {
+  const normalizedFilename = filename.replaceAll("\\", "/")
+  return (
+    normalizedFilename.includes("/src/server/") ||
+    /\.server\.[cm]?[jt]sx?$/.test(normalizedFilename)
+  )
 }
 
 function forbiddenReason(
+  filename: string,
   packageName: string,
   specifier: string
 ): string | null {
@@ -54,12 +59,21 @@ function forbiddenReason(
 
   if (
     packageName === "@acme/ui" &&
-    (isAnyPackage(specifier, ["@acme/api", "@continual/runtime"]) ||
+    (isPackage(specifier, "@acme/api") ||
+      specifier.startsWith("@continual/") ||
       APPLICATION_PACKAGE_NAMES.some((appName) =>
         isPackage(specifier, appName)
       ))
   ) {
     return "@acme/ui owns presentation primitives and cannot depend on business definitions, execution, or applications."
+  }
+
+  if (
+    packageName.startsWith("app:") &&
+    isPackage(specifier, "@continual/postgres") &&
+    !isServerSourceFile(filename)
+  ) {
+    return "@continual/postgres is server-only and must be imported behind an app server module."
   }
 
   if (
@@ -89,7 +103,7 @@ export const packageBoundariesRule = defineRule({
     function checkSpecifier(node: ESTree.Node, specifier: string): void {
       const packageName = packageNameForFile(context.filename)
       if (!packageName) return
-      const reason = forbiddenReason(packageName, specifier)
+      const reason = forbiddenReason(context.filename, packageName, specifier)
       if (!reason) return
 
       context.report({

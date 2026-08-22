@@ -4,6 +4,11 @@ import {
   ActorId,
   DEFAULT_PAGE_SIZE,
   MAX_PAGE_SIZE,
+  RecordId,
+  type ObjectAlias,
+  type ObjectAliasUpdate,
+  type Model,
+  type ModelObjectRef,
   PageToken,
   Timestamp,
   type Etag,
@@ -14,15 +19,18 @@ import {
   type ObjectType,
   type ObjectUpdateInput,
   type Page,
-  type RecordId,
+  type ObjectRef,
 } from "@continual/runtime"
 import { toEffectObjectSchema, toEffectSchema } from "@continual/runtime/effect"
 import {
   ObjectNotFound,
+  ObjectAliasConflict,
+  ObjectAliasNotFound,
   ObjectParentNotFound,
   ObjectParentTypeMismatch,
   ObjectWriteConflict,
   InvalidListRequest,
+  type ObjectDeleteTarget,
   type ObjectInsert,
   type ObjectUpdateMetadata,
   type Repository,
@@ -42,12 +50,15 @@ import {
   lt,
   lte,
   not,
+  notInArray,
   or,
   sql,
   type Column,
+  type AnyRelations,
   type SQL,
 } from "drizzle-orm"
 import type { EffectDrizzleQueryError } from "drizzle-orm/effect-core/errors"
+import type { EffectPgDatabase } from "drizzle-orm/effect-postgres"
 import type {
   AnyPgTable,
   PgInsertValue,
@@ -56,12 +67,12 @@ import type {
 import { Effect, Schema } from "effect"
 import type { SqlError } from "effect/unstable/sql/SqlError"
 
-import { Database } from "./drizzle.server"
-import { objects } from "./schema/objects"
+import type { PostgresStorage } from "./schema"
 
-type RepositoryError =
+export type PostgresRepositoryError =
   | EffectDrizzleQueryError
   | InvalidListRequest
+  | ObjectAliasConflict
   | ObjectNotFound
   | ObjectParentNotFound
   | ObjectParentTypeMismatch
@@ -69,22 +80,9 @@ type RepositoryError =
   | Schema.SchemaError
   | SqlError
 
-type StoredObjectId = (typeof objects.$inferInsert)["kind"]
-
-interface ObjectRepository<TObject extends ObjectType> extends Repository<
-  TObject,
-  RepositoryError
-> {
-  /** Runs a typed, kind-table predicate through the standard object hydration. */
-  readonly findManyWhere: (
-    where: SQL
-  ) => Effect.Effect<ReadonlyArray<ObjectRecord<TObject>>, RepositoryError>
-}
-
-export interface MakeOptions {
-  /** ID-only tables that enforce this object's declared interface membership. */
-  readonly interfaceTables?: ReadonlyArray<AnyPgTable>
-}
+export type PostgresAliasResolutionError =
+  | EffectDrizzleQueryError
+  | ObjectAliasNotFound
 
 interface CursorPayload {
   readonly fingerprint: string
@@ -170,7 +168,7 @@ function recordValue<TObject extends ObjectType>(
 }
 
 function invalidListRequest(object: ObjectType, message: string) {
-  return new InvalidListRequest({ message, objectId: object.id })
+  return new InvalidListRequest({ message, objectType: object.id })
 }
 
 function escapeLike(value: string): string {
@@ -218,11 +216,65 @@ function decodeCursor(
 }
 
 function notFound(object: ObjectType, id: string) {
-  return new ObjectNotFound({ objectId: object.id, recordId: id })
+  return new ObjectNotFound({ objectType: object.id, recordId: id })
 }
 
 function conflict(object: ObjectType, id: string) {
-  return new ObjectWriteConflict({ objectId: object.id, recordId: id })
+  return new ObjectWriteConflict({ objectType: object.id, recordId: id })
+}
+
+function isAliasReplacement(
+  update: ObjectAliasUpdate
+): update is ReadonlyArray<ObjectAlias> {
+  return Array.isArray(update)
+}
+
+function makeObjectRef<const TObjectType extends string>(
+  objectType: TObjectType,
+  id: string
+): ObjectRef<TObjectType> {
+  const dynamicObjectType: string = objectType
+  const reference = { id: RecordId(dynamicObjectType)(id), objectType }
+  // SAFETY: ObjectRef distributes over object-type unions; this helper keeps
+  // the validated branded ID paired with its object-type discriminator.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  return reference as ObjectRef<TObjectType>
+}
+
+/** Resolves a globally unique alias without requiring its object type. */
+export function resolveObjectAlias<
+  const TModel extends Model,
+  const TRelations extends AnyRelations,
+>(
+  storage: PostgresStorage<TModel>,
+  db: EffectPgDatabase<TRelations>,
+  alias: ObjectAlias
+): Effect.Effect<ModelObjectRef<TModel>, PostgresAliasResolutionError> {
+  const { objectAliases, objects } = storage.core
+  return Effect.gen(function* () {
+    const rows = yield* db
+      .select({ id: objects.id, objectType: objects.objectType })
+      .from(objectAliases)
+      .innerJoin(objects, eq(objectAliases.objectId, objects.id))
+      .where(eq(objectAliases.alias, alias))
+      .limit(1)
+    const resolved = rows[0]
+    if (resolved === undefined) {
+      return yield* Effect.fail(new ObjectAliasNotFound({ alias }))
+    }
+    if (resolved.objectType === "root") {
+      return yield* Effect.die(
+        `Root object '${resolved.id}' cannot own an object alias.`
+      )
+    }
+    if (!Object.hasOwn(storage.model.objects, resolved.objectType)) {
+      return yield* Effect.die(
+        `Alias '${alias}' resolved to unknown object type '${resolved.objectType}'.`
+      )
+    }
+    const reference = makeObjectRef(resolved.objectType, resolved.id)
+    return reference
+  })
 }
 
 /**
@@ -230,24 +282,66 @@ function conflict(object: ObjectType, id: string) {
  * storage table. Company-specific repositories may add typed queries to the
  * returned capability without bypassing its hydration and write invariants.
  */
-export function make<const TObject extends ObjectType<StoredObjectId>>(
+export function makeObjectRepository<
+  const TModel extends Model,
+  const TObject extends TModel["objects"][keyof TModel["objects"] & string],
+  const TRelations extends AnyRelations,
+>(
+  storage: PostgresStorage<TModel>,
   object: TObject,
-  table: AnyPgTable,
-  options: MakeOptions = {}
-): Effect.Effect<ObjectRepository<TObject>, never, Database> {
+  db: EffectPgDatabase<TRelations>
+): Effect.Effect<Repository<TObject, PostgresRepositoryError>> {
   return Effect.gen(function* () {
-    const db = yield* Database
-    const columns = getTableColumns(table)
-    const idColumn = columns.id
+    const { objectAliases, objects } = storage.core
+    const table = Object.entries(storage.objects).find(
+      ([objectType]) => objectType === object.id
+    )?.[1]
+    if (table === undefined) {
+      return yield* Effect.die(
+        `Object '${object.id}' does not have a PostgreSQL storage table.`
+      )
+    }
+    const parentColumn = `${object.parent.objectType}Id`
+    const interfaceTables: ReadonlyArray<AnyPgTable> = Object.values(
+      object.interfaces
+    ).map((implementation) => {
+      const interfaceTable = Object.entries(storage.interfaces).find(
+        ([interfaceId]) => interfaceId === implementation.interfaceId
+      )?.[1]
+      if (interfaceTable === undefined) {
+        throw new Error(
+          `Interface '${implementation.interfaceId}' does not have a PostgreSQL storage table.`
+        )
+      }
+      return interfaceTable
+    })
+    const storageColumns = getTableColumns(table)
+    const idColumn = storageColumns.id
     if (idColumn === undefined) {
       return yield* Effect.die(
         `Storage table for object '${object.id}' must declare an id column.`
       )
     }
+    if (storageColumns[parentColumn] === undefined) {
+      return yield* Effect.die(
+        `Storage table for object '${object.id}' must declare semantic parent column '${parentColumn}'.`
+      )
+    }
+    const columns = Object.fromEntries(
+      Object.entries(storageColumns).filter(
+        ([columnId]) => columnId !== parentColumn
+      )
+    )
     const RecordSchema = toEffectObjectSchema(object)
     const RecordsSchema = Schema.Array(RecordSchema)
     const selection = {
       ...columns,
+      aliases: sql<ReadonlyArray<ObjectAlias>>`array(
+        select ${objectAliases.alias}
+        from ${objectAliases}
+        where ${objectAliases.objectId} = ${objects.id}
+        order by ${objectAliases.alias}
+      )`,
       annotations: objects.annotations,
       createdAt: objects.createdAt,
       createdById: objects.createdById,
@@ -550,7 +644,7 @@ export function make<const TObject extends ObjectType<StoredObjectId>>(
 
     const list = Effect.fn(`${object.id}.repository.list`)(function* (
       request: ListRequest<TObject> = {}
-    ): Effect.fn.Return<Page<ObjectRecord<TObject>>, RepositoryError> {
+    ): Effect.fn.Return<Page<ObjectRecord<TObject>>, PostgresRepositoryError> {
       const size = Math.min(
         MAX_PAGE_SIZE,
         Math.max(1, request.pageSize ?? DEFAULT_PAGE_SIZE)
@@ -620,16 +714,11 @@ export function make<const TObject extends ObjectType<StoredObjectId>>(
       }
     })
 
-    const findManyWhere = Effect.fn(`${object.id}.repository.findManyWhere`)(
-      function* (where: SQL) {
-        return yield* select(where).pipe(Effect.flatMap(decodeRecords))
-      }
-    )
-
     const insert = Effect.fn(`${object.id}.repository.insert`)(function* (
       record: ObjectInsert<TObject>
     ) {
       const {
+        aliases,
         annotations,
         createdAt,
         createdById,
@@ -644,7 +733,10 @@ export function make<const TObject extends ObjectType<StoredObjectId>>(
       yield* db.transaction((tx) =>
         Effect.gen(function* () {
           const parentRows = yield* tx
-            .select({ ancestorIds: objects.ancestorIds, kind: objects.kind })
+            .select({
+              ancestorIds: objects.ancestorIds,
+              objectType: objects.objectType,
+            })
             .from(objects)
             .where(eq(objects.id, parentId))
             .limit(1)
@@ -652,17 +744,17 @@ export function make<const TObject extends ObjectType<StoredObjectId>>(
           if (parent === undefined) {
             return yield* Effect.fail(
               new ObjectParentNotFound({
-                objectId: object.id,
+                objectType: object.id,
                 parentId,
               })
             )
           }
-          if (parent.kind !== object.parent.objectId) {
+          if (parent.objectType !== object.parent.objectType) {
             return yield* Effect.fail(
               new ObjectParentTypeMismatch({
-                actualParentObjectId: parent.kind,
-                expectedParentObjectId: object.parent.objectId,
-                objectId: object.id,
+                actualParentObjectType: parent.objectType,
+                expectedParentObjectType: object.parent.objectType,
+                objectType: object.id,
                 parentId,
               })
             )
@@ -675,20 +767,42 @@ export function make<const TObject extends ObjectType<StoredObjectId>>(
             createdById,
             etag,
             id,
-            kind: object.id,
+            objectType: object.id,
             parentId,
             updatedAt,
             updatedById,
           })
+          if (aliases.length > 0) {
+            yield* tx
+              .insert(objectAliases)
+              .values(aliases.map((alias) => ({ alias, objectId: id })))
+              .onConflictDoNothing()
+            const owners = yield* tx
+              .select({
+                alias: objectAliases.alias,
+                objectId: objectAliases.objectId,
+              })
+              .from(objectAliases)
+              .where(inArray(objectAliases.alias, [...aliases]))
+            const conflictOwner = owners.find((owner) => owner.objectId !== id)
+            if (conflictOwner !== undefined) {
+              return yield* Effect.fail(
+                new ObjectAliasConflict({
+                  alias: conflictOwner.alias,
+                  conflictingRecordId: conflictOwner.objectId,
+                  recordId: id,
+                })
+              )
+            }
+          }
+          const objectValues = { id, ...properties }
+          Object.assign(objectValues, { [parentColumn]: parentId })
           // SAFETY: the portable object schema validates the property values,
-          // while this factory is explicitly paired with that object's table.
+          // while the model-derived storage projection supplies this table.
           // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-          const kindRow = {
-            id,
-            ...properties,
-          } as PgInsertValue<typeof table>
-          yield* tx.insert(table).values(kindRow)
-          for (const interfaceTable of options.interfaceTables ?? []) {
+          const objectRow = objectValues as PgInsertValue<typeof table>
+          yield* tx.insert(table).values(objectRow)
+          for (const interfaceTable of interfaceTables) {
             // SAFETY: interface storage tables are ID-only projections whose
             // rows are transactionally derived from declared implementations.
             // oxlint-disable-next-line typescript/no-unsafe-type-assertion
@@ -708,7 +822,7 @@ export function make<const TObject extends ObjectType<StoredObjectId>>(
       expectedEtag: Etag,
       metadata: ObjectUpdateMetadata
     ) {
-      const { annotations, ...properties } = input
+      const { aliases, annotations, ...properties } = input
       yield* db.transaction((tx) =>
         Effect.gen(function* () {
           const updated = yield* tx
@@ -721,13 +835,68 @@ export function make<const TObject extends ObjectType<StoredObjectId>>(
             .where(
               and(
                 eq(objects.id, id),
-                eq(objects.kind, object.id),
+                eq(objects.objectType, object.id),
                 eq(objects.etag, expectedEtag)
               )
             )
             .returning({ id: objects.id })
           if (updated.length === 0)
             return yield* Effect.fail(conflict(object, id))
+
+          const aliasesToAdd =
+            aliases === undefined
+              ? []
+              : isAliasReplacement(aliases)
+                ? aliases
+                : (aliases.add ?? [])
+          if (aliasesToAdd.length > 0) {
+            yield* tx
+              .insert(objectAliases)
+              .values(aliasesToAdd.map((alias) => ({ alias, objectId: id })))
+              .onConflictDoNothing()
+            const owners = yield* tx
+              .select({
+                alias: objectAliases.alias,
+                objectId: objectAliases.objectId,
+              })
+              .from(objectAliases)
+              .where(inArray(objectAliases.alias, [...aliasesToAdd]))
+            const conflictOwner = owners.find((owner) => owner.objectId !== id)
+            if (conflictOwner !== undefined) {
+              return yield* Effect.fail(
+                new ObjectAliasConflict({
+                  alias: conflictOwner.alias,
+                  conflictingRecordId: conflictOwner.objectId,
+                  recordId: id,
+                })
+              )
+            }
+          }
+
+          if (aliases !== undefined) {
+            if (isAliasReplacement(aliases)) {
+              const replacementCondition =
+                aliases.length === 0
+                  ? eq(objectAliases.objectId, id)
+                  : and(
+                      eq(objectAliases.objectId, id),
+                      notInArray(objectAliases.alias, [...aliases])
+                    )
+              yield* tx.delete(objectAliases).where(replacementCondition)
+            } else {
+              const aliasesToRemove = aliases.remove ?? []
+              if (aliasesToRemove.length > 0) {
+                yield* tx
+                  .delete(objectAliases)
+                  .where(
+                    and(
+                      eq(objectAliases.objectId, id),
+                      inArray(objectAliases.alias, [...aliasesToRemove])
+                    )
+                  )
+              }
+            }
+          }
 
           if (Object.keys(properties).length > 0) {
             // SAFETY: the portable object update schema validates the values,
@@ -754,7 +923,7 @@ export function make<const TObject extends ObjectType<StoredObjectId>>(
         .where(
           and(
             eq(objects.id, id),
-            eq(objects.kind, object.id),
+            eq(objects.objectType, object.id),
             eq(objects.etag, expectedEtag)
           )
         )
@@ -763,10 +932,37 @@ export function make<const TObject extends ObjectType<StoredObjectId>>(
       return undefined
     })
 
+    const batchDelete = Effect.fn(`${object.id}.repository.batchDelete`)(
+      function* (targets: ReadonlyArray<ObjectDeleteTarget<TObject>>) {
+        if (targets.length === 0) return undefined
+
+        yield* db.transaction((tx) =>
+          Effect.gen(function* () {
+            const targetCondition = or(
+              ...targets.map(({ expectedEtag, id }) =>
+                and(eq(objects.id, id), eq(objects.etag, expectedEtag))
+              )
+            )
+            const deleted = yield* tx
+              .delete(objects)
+              .where(and(eq(objects.objectType, object.id), targetCondition))
+              .returning({ id: objects.id })
+            const deletedIds = new Set(deleted.map(({ id }) => id))
+            const conflictTarget = targets.find(({ id }) => !deletedIds.has(id))
+            if (conflictTarget !== undefined) {
+              return yield* Effect.fail(conflict(object, conflictTarget.id))
+            }
+            return undefined
+          })
+        )
+        return undefined
+      }
+    )
+
     return {
+      batchDelete,
       batchGet,
       delete: deleteObject,
-      findManyWhere,
       get,
       insert,
       list,

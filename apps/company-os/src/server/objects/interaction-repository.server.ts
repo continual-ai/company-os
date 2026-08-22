@@ -1,12 +1,11 @@
 import { AcmeModel } from "@acme/api"
 import { Context, Layer } from "effect"
 
-import * as ObjectRepository from "@/server/database/object-repository.server"
-import { interactions } from "@/server/database/schema/interactions"
+import { makeObjectRepository } from "@/server/database/model-storage.server"
 
 export class InteractionRepository extends Context.Service<InteractionRepository>()(
   "@acme/InteractionRepository",
-  { make: ObjectRepository.make(AcmeModel.objects.interaction, interactions) }
+  { make: makeObjectRepository(AcmeModel.objects.interaction) }
 ) {
   static readonly layer = Layer.effect(this, this.make)
 }

@@ -20,6 +20,8 @@ capture only product and ownership context that cannot be recovered from code.
     +
 @continual/runtime         reusable definition and projection machinery
     |
+@continual/postgres        reusable PostgreSQL storage adapter
+    |
 apps/company-os            Acme's private backend and management application
     |
     +-- client portal, marketing site, integrations, and agents
@@ -46,6 +48,7 @@ packages/
     api/            Acme's browser-safe contract source
     ui/             Acme's shared components and design tokens
   continual/
+    postgres/       Reusable PostgreSQL storage adapter
     runtime/        Reusable definitions and projections
 ```
 
@@ -56,6 +59,7 @@ Each boundary has a focused README:
 - [`apps/marketing-site`](apps/marketing-site/README.md)
 - [`packages/acme/api`](packages/acme/api/README.md)
 - [`packages/acme/ui`](packages/acme/ui/README.md)
+- [`packages/continual/postgres`](packages/continual/postgres/README.md)
 - [`packages/continual/runtime`](packages/continual/runtime/README.md)
 
 Repository-wide constraints live in [`AGENTS.md`](AGENTS.md). The `$company-os` and `$continual`

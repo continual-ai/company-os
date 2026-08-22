@@ -3,9 +3,9 @@ import { Context, Layer } from "effect"
 
 import { makeObjectRepository } from "@/server/database/model-storage.server"
 
-export class DealRepository extends Context.Service<DealRepository>()(
-  "@acme/DealRepository",
-  { make: makeObjectRepository(AcmeModel.objects.deal) }
+export class LineItemRepository extends Context.Service<LineItemRepository>()(
+  "@acme/LineItemRepository",
+  { make: makeObjectRepository(AcmeModel.objects.lineItem) }
 ) {
   static readonly layer = Layer.effect(this, this.make)
 }

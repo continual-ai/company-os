@@ -2,10 +2,12 @@
 
 Acme's backend and company management application in one TanStack Start deployment.
 
-This app is the repository's private composition root. It turns the semantic contract from
-`@acme/api` into working software by binding business services, repositories, capability ports,
-provider adapters, and infrastructure. Its operating, development, and learning surfaces and
-external transports should call the same governed capabilities.
+This app is the repository's private composition root. It currently projects the semantic contract
+from `@acme/api` into Drizzle storage, API descriptions, OpenAPI, and assembled Effect repository
+and service layers. The executable external routes are the health and contract/documentation
+endpoints listed below; object CRUD and custom-action handlers have not yet been bound. As those
+transports are added, the operating application, agents, and external interfaces should call the
+same governed company capabilities.
 
 ## Owns
 
@@ -22,7 +24,8 @@ server-only code under `src/server` or in clearly named `.server.ts` modules.
 ## Server organization
 
 The server mirrors the ontology without creating aggregate runtime services for navigation areas.
-Each object has one replaceable repository capability and one governed service capability:
+Each implemented object has one replaceable repository capability and one governed service
+capability. The intended request path is:
 
 ```text
 HTTP / MCP / agents
@@ -40,25 +43,43 @@ Drizzle schema and queries
 Effect PostgreSQL client
 ```
 
-- Handlers call the service method corresponding to the declared object action.
+- A custom action belongs in the public model only when a corresponding service implementation and
+  transport binding exist.
+- Handlers call the governed service method corresponding to the declared object operation.
 - Cross-object service methods coordinate governed object services and own their transaction.
 - Object services apply authorization, validation, metadata, and object-level behavior.
-- Repositories atomically maintain the shared object row and same-ID kind row, and implement custom
-  persistence queries; only repository implementations access the database.
+- Repositories atomically maintain the shared object row, same-ID object-specific row, and declared
+  interface membership rows, implement all-or-nothing batch writes, and own custom persistence
+  queries; only repository implementations access the database.
 
-The portable repository contract and standard service behavior come from `@continual/runtime`.
-Acme's private Drizzle repository factory implements standard storage behavior against the typed
-table passed by each explicit object repository. Files under `src/server/objects` keep each
-object's service beside its repository, including typed custom queries. The composition root wires
-Layers to infrastructure; it does not become another business service.
+The portable repository contract and standard service behavior come from `@continual/runtime`;
+`@continual/postgres` supplies the reusable Drizzle schema compiler and repository implementation.
+Acme owns the concrete storage projection, physical overrides, migrations, and typed `Database`
+service in this app. Interface membership uses internal tables named from immutable interface IDs
+rather than display metadata. Every object-specific table mirrors the standard `parentId` under
+its semantic name—such as `rootId`, `workspaceId`, or `dealId`—while a composite foreign key
+ensures it remains identical to the generic parent on the shared object row. The shared row also
+stores complete ancestry.
+Globally unique opaque aliases live in normalized `object_aliases` rows and are hydrated as the
+standard `aliases` set on every public object record. Repository transactions claim and release
+those rows with the corresponding object write; the model-storage resolver can therefore locate an
+object by alias without first knowing its object type. Authorization still happens in the governed
+service or handler after resolution.
+Files under `src/server/objects` keep each object's service beside its repository. Add an
+object-specific repository query only when the standard object query language cannot express the
+required persistence operation. The composition root wires Layers to infrastructure; it does not
+become another business service.
 
 ## Database workflow
 
-Drizzle is Acme's private typed persistence layer and uses the Effect PostgreSQL driver. The
-portable `AcmeModel` remains storage-agnostic. Drizzle schema files under
-`src/server/database/schema` describe the complete physical schema, and Drizzle Kit generates an
-explicit, immutable SQL history under `src/server/database/migrations`. Deployments run migrations
-separately before serving the corresponding application revision.
+The app uses `@continual/postgres` with the Effect PostgreSQL driver. The portable `AcmeModel` is
+the source of truth for objects, properties, interfaces, ownership, and links.
+`src/server/database/schema.server.ts` instantiates the reusable compiler and contains only
+deliberate Acme-specific physical overrides such as generated columns and indexes. There is no
+generated TypeScript schema and no handwritten second copy of the model. Drizzle Kit reads the
+projection and generates an explicit, immutable SQL history under
+`src/server/database/migrations`. Deployments run migrations separately before serving the
+corresponding application revision.
 
 ### Local setup
 
@@ -76,7 +97,9 @@ run repeatedly.
 
 ### Change the schema
 
-1. Edit the Drizzle schema under `src/server/database/schema`.
+1. Edit the source contract in `packages/acme/api`. Change
+   `src/server/database/schema.server.ts` only when the physical projection needs a deliberate
+   database-specific override.
 2. Generate a named migration from the repository root:
 
    ```sh
@@ -152,7 +175,7 @@ or production environment.
 - Run non-transactional PostgreSQL operations, including concurrent index creation, through a
   deliberately separate migration path when the first concrete need arises.
 - Rebuild an empty database from the full history in CI. Repository integration tests run the same
-  history against PGlite before exercising object and custom query behavior.
+  history against PGlite before exercising object behavior.
 
 ## Develop
 

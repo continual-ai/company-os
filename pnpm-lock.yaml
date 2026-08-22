@@ -379,6 +379,9 @@ importers:
       '@acme/ui':
         specifier: workspace:*
         version: link:../../packages/acme/ui
+      '@continual/postgres':
+        specifier: workspace:*
+        version: link:../../packages/continual/postgres
       '@continual/runtime':
         specifier: workspace:*
         version: link:../../packages/continual/runtime
@@ -563,6 +566,31 @@ importers:
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
+
+  packages/continual/postgres:
+    dependencies:
+      '@continual/runtime':
+        specifier: workspace:*
+        version: link:../runtime
+      '@effect/sql-pg':
+        specifier: 'catalog:'
+        version: 4.0.0-beta.107(effect@4.0.0-beta.107)
+      drizzle-orm:
+        specifier: 'catalog:'
+        version: 1.0.0-rc.5-ab785fc(@effect/sql-pg@4.0.0-beta.107(effect@4.0.0-beta.107))(@effect/sql-pglite@4.0.0-beta.107(effect@4.0.0-beta.107))(@electric-sql/pglite@0.5.5)(effect@4.0.0-beta.107)(pg@8.23.0)(zod@4.4.3)
+      effect:
+        specifier: 'catalog:'
+        version: 4.0.0-beta.107
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 22.19.19
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.3
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.11(@types/node@22.19.19)(vite@8.0.16(@types/node@22.19.19)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0))
 
   packages/continual/runtime:
     dependencies:

@@ -2,9 +2,11 @@ import * as PgDrizzle from "drizzle-orm/effect-postgres"
 import { Context, Effect, Layer } from "effect"
 import type { SqlError } from "effect/unstable/sql/SqlError"
 
-const make = PgDrizzle.makeWithDefaults()
+import { relations } from "./schema.server"
 
-/** Acme's typed physical database, backed by the configured Effect PostgreSQL client. */
+const make = PgDrizzle.makeWithDefaults({ relations })
+
+/** Acme's typed database, backed by the configured Effect PostgreSQL client. */
 export class Database extends Context.Service<Database>()("@acme/Database", {
   make,
 }) {

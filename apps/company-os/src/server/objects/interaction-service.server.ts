@@ -15,6 +15,7 @@ const make = Effect.gen(function* () {
   })
 })
 
+/** Governed operations for Acme interaction objects. */
 export class InteractionService extends Context.Service<InteractionService>()(
   "@acme/InteractionService",
   { make }

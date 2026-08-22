@@ -4,20 +4,20 @@ import { Context, Effect, Layer } from "effect"
 
 import { Authorization } from "@/server/authorization.server"
 
-import { LeadRepository } from "./lead-repository.server"
+import { LineItemRepository } from "./line-item-repository.server"
 
 const make = Effect.gen(function* () {
   const authorization = yield* Authorization
-  const repository = yield* LeadRepository
+  const repository = yield* LineItemRepository
 
-  return ObjectService.make(AcmeModel.objects.lead, repository, {
+  return ObjectService.make(AcmeModel.objects.lineItem, repository, {
     authorize: authorization.require,
   })
 })
 
-/** Governed operations for Acme lead objects. */
-export class LeadService extends Context.Service<LeadService>()(
-  "@acme/LeadService",
+/** Governed operations for Acme deal line items. */
+export class LineItemService extends Context.Service<LineItemService>()(
+  "@acme/LineItemService",
   { make }
 ) {
   static readonly layer = Layer.effect(this, this.make)

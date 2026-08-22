@@ -39,6 +39,9 @@ Direction, and Vision distinct. The canonical skills live in `.agents/skills`; `
   only after a concrete company slice establishes common semantics.
 - `@acme/api` is browser-safe company contract source. It may depend on the portable
   `@continual/runtime` surface, but not on UI, handlers, persistence, providers, or Effect.
+- `@continual/postgres` is the reusable server-only PostgreSQL adapter. It implements runtime
+  repository contracts but does not own company schema overrides, migrations, credentials, or
+  Effect service identities.
 - Browser applications may use public browser-safe package exports. They must not import another
   app or private Company OS server modules.
 - `apps/company-os` is the private server composition boundary. Keep company policy and writes

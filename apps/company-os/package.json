@@ -18,6 +18,7 @@
   "dependencies": {
     "@acme/api": "workspace:*",
     "@acme/ui": "workspace:*",
+    "@continual/postgres": "workspace:*",
     "@continual/runtime": "workspace:*",
     "@effect/platform-node": "catalog:",
     "@effect/sql-pg": "catalog:",

@@ -1,7 +1,7 @@
 {
   "version": "8",
   "dialect": "postgres",
-  "id": "aa6e3fb3-dac0-46d0-aef8-cbdd5dd6313c",
+  "id": "8db3a2d9-d285-49e1-95a5-f5bdd425b1f7",
   "prevIds": ["00000000-0000-0000-0000-000000000000"],
   "ddl": [
     {
@@ -36,13 +36,25 @@
     },
     {
       "isRlsEnabled": false,
+      "name": "line_items",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "object_aliases",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
       "name": "objects",
       "entityType": "tables",
       "schema": "public"
     },
     {
       "isRlsEnabled": false,
-      "name": "parties",
+      "name": "interface_party",
       "entityType": "tables",
       "schema": "public"
     },
@@ -61,6 +73,19 @@
       "generated": null,
       "identity": null,
       "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "companies"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "root_id",
       "entityType": "columns",
       "schema": "public",
       "table": "companies"
@@ -157,6 +182,19 @@
       "table": "contacts"
     },
     {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "root_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "contacts"
+    },
+    {
       "type": "jsonb",
       "typeSchema": null,
       "notNull": false,
@@ -165,19 +203,6 @@
       "generated": null,
       "identity": null,
       "name": "photo",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "contacts"
-    },
-    {
-      "type": "text",
-      "typeSchema": null,
-      "notNull": false,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "primary_company_id",
       "entityType": "columns",
       "schema": "public",
       "table": "contacts"
@@ -266,6 +291,19 @@
     {
       "type": "text",
       "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "primary_company_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "contacts"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
       "notNull": true,
       "dimensions": 0,
       "default": null,
@@ -284,7 +322,7 @@
       "default": null,
       "generated": null,
       "identity": null,
-      "name": "company_id",
+      "name": "root_id",
       "entityType": "columns",
       "schema": "public",
       "table": "deals"
@@ -329,7 +367,7 @@
       "table": "deals"
     },
     {
-      "type": "text",
+      "type": "date",
       "typeSchema": null,
       "notNull": false,
       "dimensions": 0,
@@ -337,6 +375,19 @@
       "generated": null,
       "identity": null,
       "name": "expected_close_date",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "deals"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "company_id",
       "entityType": "columns",
       "schema": "public",
       "table": "deals"
@@ -362,7 +413,7 @@
       "default": null,
       "generated": null,
       "identity": null,
-      "name": "subject_id",
+      "name": "root_id",
       "entityType": "columns",
       "schema": "public",
       "table": "interactions"
@@ -381,7 +432,7 @@
       "table": "interactions"
     },
     {
-      "type": "text",
+      "type": "timestamp with time zone",
       "typeSchema": null,
       "notNull": true,
       "dimensions": 0,
@@ -427,7 +478,33 @@
       "default": null,
       "generated": null,
       "identity": null,
+      "name": "subject_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "interactions"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
       "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "leads"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "root_id",
       "entityType": "columns",
       "schema": "public",
       "table": "leads"
@@ -521,6 +598,97 @@
       "name": "id",
       "entityType": "columns",
       "schema": "public",
+      "table": "line_items"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "deal_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "line_items"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "name",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "line_items"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "1",
+      "generated": null,
+      "identity": null,
+      "name": "quantity",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "line_items"
+    },
+    {
+      "type": "jsonb",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "unit_price",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "line_items"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "alias",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "object_aliases"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "object_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "object_aliases"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
       "table": "objects"
     },
     {
@@ -531,7 +699,7 @@
       "default": null,
       "generated": null,
       "identity": null,
-      "name": "kind",
+      "name": "object_type",
       "entityType": "columns",
       "schema": "public",
       "table": "objects"
@@ -589,7 +757,7 @@
       "table": "objects"
     },
     {
-      "type": "text",
+      "type": "timestamp with time zone",
       "typeSchema": null,
       "notNull": true,
       "dimensions": 0,
@@ -615,7 +783,7 @@
       "table": "objects"
     },
     {
-      "type": "text",
+      "type": "timestamp with time zone",
       "typeSchema": null,
       "notNull": true,
       "dimensions": 0,
@@ -651,7 +819,7 @@
       "name": "id",
       "entityType": "columns",
       "schema": "public",
-      "table": "parties"
+      "table": "interface_party"
     },
     {
       "type": "text",
@@ -665,6 +833,27 @@
       "entityType": "columns",
       "schema": "public",
       "table": "roots"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "root_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "companies_root_id_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "companies"
     },
     {
       "nameExplicit": true,
@@ -686,6 +875,27 @@
       "entityType": "indexes",
       "schema": "public",
       "table": "companies"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "root_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "contacts_root_id_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "contacts"
     },
     {
       "nameExplicit": true,
@@ -733,6 +943,27 @@
       "nameExplicit": true,
       "columns": [
         {
+          "value": "root_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "deals_root_id_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "deals"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
           "value": "company_id",
           "isExpression": false,
           "asc": true,
@@ -749,6 +980,27 @@
       "entityType": "indexes",
       "schema": "public",
       "table": "deals"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "root_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "interactions_root_id_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "interactions"
     },
     {
       "nameExplicit": true,
@@ -796,6 +1048,27 @@
       "nameExplicit": true,
       "columns": [
         {
+          "value": "root_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "leads_root_id_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "leads"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
           "value": "lower(\"email\")",
           "isExpression": true,
           "asc": true,
@@ -817,7 +1090,7 @@
       "nameExplicit": true,
       "columns": [
         {
-          "value": "kind",
+          "value": "deal_id",
           "isExpression": false,
           "asc": true,
           "nullsFirst": false,
@@ -829,7 +1102,49 @@
       "with": "",
       "method": "btree",
       "concurrently": false,
-      "name": "objects_kind_idx",
+      "name": "line_items_deal_id_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "line_items"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "object_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "object_aliases_object_id_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "object_aliases"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "object_type",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "objects_object_type_idx",
       "entityType": "indexes",
       "schema": "public",
       "table": "objects"
@@ -877,6 +1192,34 @@
       "table": "objects"
     },
     {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "parent_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "objects_id_parent_id_unique",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "objects"
+    },
+    {
       "nameExplicit": false,
       "columns": ["id"],
       "schemaTo": "public",
@@ -885,6 +1228,32 @@
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "name": "companies_id_objects_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "companies"
+    },
+    {
+      "nameExplicit": false,
+      "columns": ["root_id"],
+      "schemaTo": "public",
+      "tableTo": "roots",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "companies_root_id_roots_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "companies"
+    },
+    {
+      "nameExplicit": true,
+      "columns": ["id", "root_id"],
+      "schemaTo": "public",
+      "tableTo": "objects",
+      "columnsTo": ["id", "parent_id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "companies_object_parent_fk",
       "entityType": "fks",
       "schema": "public",
       "table": "companies"
@@ -904,6 +1273,19 @@
     },
     {
       "nameExplicit": false,
+      "columns": ["root_id"],
+      "schemaTo": "public",
+      "tableTo": "roots",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "contacts_root_id_roots_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "contacts"
+    },
+    {
+      "nameExplicit": false,
       "columns": ["primary_company_id"],
       "schemaTo": "public",
       "tableTo": "companies",
@@ -911,6 +1293,19 @@
       "onUpdate": "NO ACTION",
       "onDelete": "RESTRICT",
       "name": "contacts_primary_company_id_companies_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "contacts"
+    },
+    {
+      "nameExplicit": true,
+      "columns": ["id", "root_id"],
+      "schemaTo": "public",
+      "tableTo": "objects",
+      "columnsTo": ["id", "parent_id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "contacts_object_parent_fk",
       "entityType": "fks",
       "schema": "public",
       "table": "contacts"
@@ -930,6 +1325,19 @@
     },
     {
       "nameExplicit": false,
+      "columns": ["root_id"],
+      "schemaTo": "public",
+      "tableTo": "roots",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "deals_root_id_roots_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "deals"
+    },
+    {
+      "nameExplicit": false,
       "columns": ["company_id"],
       "schemaTo": "public",
       "tableTo": "companies",
@@ -937,6 +1345,19 @@
       "onUpdate": "NO ACTION",
       "onDelete": "RESTRICT",
       "name": "deals_company_id_companies_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "deals"
+    },
+    {
+      "nameExplicit": true,
+      "columns": ["id", "root_id"],
+      "schemaTo": "public",
+      "tableTo": "objects",
+      "columnsTo": ["id", "parent_id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "deals_object_parent_fk",
       "entityType": "fks",
       "schema": "public",
       "table": "deals"
@@ -956,13 +1377,39 @@
     },
     {
       "nameExplicit": false,
-      "columns": ["subject_id"],
+      "columns": ["root_id"],
       "schemaTo": "public",
-      "tableTo": "parties",
+      "tableTo": "roots",
       "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "RESTRICT",
-      "name": "interactions_subject_id_parties_id_fkey",
+      "name": "interactions_root_id_roots_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "interactions"
+    },
+    {
+      "nameExplicit": false,
+      "columns": ["subject_id"],
+      "schemaTo": "public",
+      "tableTo": "interface_party",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "interactions_subject_id_interface_party_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "interactions"
+    },
+    {
+      "nameExplicit": true,
+      "columns": ["id", "root_id"],
+      "schemaTo": "public",
+      "tableTo": "objects",
+      "columnsTo": ["id", "parent_id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "interactions_object_parent_fk",
       "entityType": "fks",
       "schema": "public",
       "table": "interactions"
@@ -979,6 +1426,84 @@
       "entityType": "fks",
       "schema": "public",
       "table": "leads"
+    },
+    {
+      "nameExplicit": false,
+      "columns": ["root_id"],
+      "schemaTo": "public",
+      "tableTo": "roots",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "leads_root_id_roots_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "leads"
+    },
+    {
+      "nameExplicit": true,
+      "columns": ["id", "root_id"],
+      "schemaTo": "public",
+      "tableTo": "objects",
+      "columnsTo": ["id", "parent_id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "leads_object_parent_fk",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "leads"
+    },
+    {
+      "nameExplicit": false,
+      "columns": ["id"],
+      "schemaTo": "public",
+      "tableTo": "objects",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "line_items_id_objects_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "line_items"
+    },
+    {
+      "nameExplicit": false,
+      "columns": ["deal_id"],
+      "schemaTo": "public",
+      "tableTo": "deals",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "line_items_deal_id_deals_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "line_items"
+    },
+    {
+      "nameExplicit": true,
+      "columns": ["id", "deal_id"],
+      "schemaTo": "public",
+      "tableTo": "objects",
+      "columnsTo": ["id", "parent_id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "line_items_object_parent_fk",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "line_items"
+    },
+    {
+      "nameExplicit": false,
+      "columns": ["object_id"],
+      "schemaTo": "public",
+      "tableTo": "objects",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "object_aliases_object_id_objects_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "object_aliases"
     },
     {
       "nameExplicit": false,
@@ -1001,10 +1526,10 @@
       "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
-      "name": "parties_id_objects_id_fkey",
+      "name": "interface_party_id_objects_id_fkey",
       "entityType": "fks",
       "schema": "public",
-      "table": "parties"
+      "table": "interface_party"
     },
     {
       "nameExplicit": false,
@@ -1062,6 +1587,22 @@
     {
       "columns": ["id"],
       "nameExplicit": false,
+      "name": "line_items_pkey",
+      "schema": "public",
+      "table": "line_items",
+      "entityType": "pks"
+    },
+    {
+      "columns": ["alias"],
+      "nameExplicit": false,
+      "name": "object_aliases_pkey",
+      "schema": "public",
+      "table": "object_aliases",
+      "entityType": "pks"
+    },
+    {
+      "columns": ["id"],
+      "nameExplicit": false,
       "name": "objects_pkey",
       "schema": "public",
       "table": "objects",
@@ -1070,9 +1611,9 @@
     {
       "columns": ["id"],
       "nameExplicit": false,
-      "name": "parties_pkey",
+      "name": "interface_party_pkey",
       "schema": "public",
-      "table": "parties",
+      "table": "interface_party",
       "entityType": "pks"
     },
     {
@@ -1084,6 +1625,34 @@
       "entityType": "pks"
     },
     {
+      "value": "char_length(\"name\") >= 1 and char_length(\"name\") <= 200",
+      "name": "companies_name_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "companies"
+    },
+    {
+      "value": "char_length(\"domain\") <= 253",
+      "name": "companies_domain_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "companies"
+    },
+    {
+      "value": "char_length(\"website\") <= 2048",
+      "name": "companies_website_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "companies"
+    },
+    {
+      "value": "char_length(\"industry\") <= 100",
+      "name": "companies_industry_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "companies"
+    },
+    {
       "value": "\"lifecycle_stage\" in ('prospect', 'customer', 'inactive')",
       "name": "companies_lifecycle_stage_check",
       "entityType": "checks",
@@ -1091,7 +1660,49 @@
       "table": "companies"
     },
     {
-      "value": "\"stage\" in (\n        'discovery',\n        'qualified',\n        'proposal',\n        'negotiation',\n        'won',\n        'lost'\n      )",
+      "value": "char_length(\"first_name\") >= 1 and char_length(\"first_name\") <= 100",
+      "name": "contacts_first_name_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "contacts"
+    },
+    {
+      "value": "char_length(\"last_name\") >= 1 and char_length(\"last_name\") <= 100",
+      "name": "contacts_last_name_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "contacts"
+    },
+    {
+      "value": "char_length(\"job_title\") <= 150",
+      "name": "contacts_job_title_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "contacts"
+    },
+    {
+      "value": "char_length(\"email\") <= 320",
+      "name": "contacts_email_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "contacts"
+    },
+    {
+      "value": "char_length(\"phone\") <= 50",
+      "name": "contacts_phone_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "contacts"
+    },
+    {
+      "value": "char_length(\"name\") >= 1 and char_length(\"name\") <= 200",
+      "name": "deals_name_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "deals"
+    },
+    {
+      "value": "\"stage\" in ('discovery', 'qualified', 'proposal', 'negotiation', 'won', 'lost')",
       "name": "deals_stage_check",
       "entityType": "checks",
       "schema": "public",
@@ -1103,6 +1714,41 @@
       "entityType": "checks",
       "schema": "public",
       "table": "interactions"
+    },
+    {
+      "value": "char_length(\"summary\") >= 1 and char_length(\"summary\") <= 500",
+      "name": "interactions_summary_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "interactions"
+    },
+    {
+      "value": "char_length(\"name\") >= 1 and char_length(\"name\") <= 200",
+      "name": "leads_name_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "leads"
+    },
+    {
+      "value": "char_length(\"company_name\") >= 1 and char_length(\"company_name\") <= 200",
+      "name": "leads_company_name_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "leads"
+    },
+    {
+      "value": "char_length(\"email\") <= 320",
+      "name": "leads_email_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "leads"
+    },
+    {
+      "value": "char_length(\"phone\") <= 50",
+      "name": "leads_phone_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "leads"
     },
     {
       "value": "\"source\" in ('unknown', 'inbound', 'outbound', 'referral', 'other')",
@@ -1119,14 +1765,35 @@
       "table": "leads"
     },
     {
-      "value": "\"kind\" in ('root', 'company', 'contact', 'deal', 'lead', 'interaction')",
-      "name": "objects_kind_check",
+      "value": "char_length(\"name\") >= 1 and char_length(\"name\") <= 200",
+      "name": "line_items_name_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "line_items"
+    },
+    {
+      "value": "\"quantity\" >= 1",
+      "name": "line_items_quantity_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "line_items"
+    },
+    {
+      "value": "char_length(\"alias\") between 1 and 500",
+      "name": "object_aliases_alias_length_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "object_aliases"
+    },
+    {
+      "value": "\"object_type\" in ('root', 'company', 'contact', 'lead', 'deal', 'lineItem', 'interaction')",
+      "name": "objects_object_type_check",
       "entityType": "checks",
       "schema": "public",
       "table": "objects"
     },
     {
-      "value": "(\"kind\" = 'root' and \"parent_id\" is null)\n        or (\"kind\" <> 'root' and \"parent_id\" is not null)",
+      "value": "(\"object_type\" = 'root' and \"parent_id\" is null)\n          or (\"object_type\" <> 'root' and \"parent_id\" is not null)",
       "name": "objects_parent_required",
       "entityType": "checks",
       "schema": "public",

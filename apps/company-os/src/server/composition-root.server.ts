@@ -7,7 +7,7 @@ import {
 import { Layer } from "effect"
 import { OpenApi } from "effect/unstable/httpapi"
 
-import { Database } from "./database/drizzle.server"
+import { Database } from "./database/database.server"
 import * as Postgres from "./database/postgres.server"
 import { CompanyRepository } from "./objects/company-repository.server"
 import { CompanyService } from "./objects/company-service.server"
@@ -19,13 +19,16 @@ import { InteractionRepository } from "./objects/interaction-repository.server"
 import { InteractionService } from "./objects/interaction-service.server"
 import { LeadRepository } from "./objects/lead-repository.server"
 import { LeadService } from "./objects/lead-service.server"
+import { LineItemRepository } from "./objects/line-item-repository.server"
+import { LineItemService } from "./objects/line-item-service.server"
 
 const objectRepositoriesLayer = Layer.mergeAll(
   CompanyRepository.layer,
   ContactRepository.layer,
   DealRepository.layer,
   InteractionRepository.layer,
-  LeadRepository.layer
+  LeadRepository.layer,
+  LineItemRepository.layer
 ).pipe(Layer.provide(Database.layer), Layer.provide(Postgres.layer))
 
 const applicationLayer = Layer.mergeAll(
@@ -33,7 +36,8 @@ const applicationLayer = Layer.mergeAll(
   ContactService.layer,
   DealService.layer,
   InteractionService.layer,
-  LeadService.layer
+  LeadService.layer,
+  LineItemService.layer
 ).pipe(Layer.provide(objectRepositoriesLayer))
 
 const apiDescription = createApiDescription(AcmeModel)
@@ -60,5 +64,5 @@ export const companyOs = {
 }
 
 // Repositories, services, capability ports, provider adapters, and Effect
-// layers are assembled here. Transport routes remain thin projections over
-// the same governed company capabilities used by the application.
+// layers are assembled here. Future object transports bind to these governed
+// capabilities rather than implementing business behavior in route modules.
