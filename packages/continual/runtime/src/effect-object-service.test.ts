@@ -265,6 +265,9 @@ describe("ObjectService", () => {
         const hubspotBravo = ObjectAlias("hubspot:portal_1:company:bravo")
         const salesforceAcme = ObjectAlias("salesforce:org_1:account:acme")
         const legacyAcme = ObjectAlias("legacy:company:acme")
+        const invalidCreate = yield* service
+          .create({ name: "", slug: "invalid" })
+          .pipe(Effect.flip)
         const first = yield* service.create({
           aliases: [hubspotAcme],
           name: "Acme",
@@ -279,6 +282,9 @@ describe("ObjectService", () => {
           id: first.id,
           name: "Acme Corporation",
         })
+        const invalidUpdate = yield* service
+          .update({ id: first.id, name: "" })
+          .pipe(Effect.flip)
         const batch = yield* service.batchGet({ ids: [second.id, first.id] })
         const firstPage = yield* service.list({ pageSize: 1 })
         if (firstPage.nextPageToken === "") {
@@ -353,6 +359,8 @@ describe("ObjectService", () => {
           emptyBatchDelete,
           first,
           firstPage,
+          invalidCreate,
+          invalidUpdate,
           immutableWrite,
           oversizedBatchDelete,
           overlappingAliasUpdate,
@@ -378,6 +386,8 @@ describe("ObjectService", () => {
       name: "Acme Corporation",
       slug: "acme",
     })
+    expect(result.invalidCreate).toBeInstanceOf(Schema.SchemaError)
+    expect(result.invalidUpdate).toBeInstanceOf(Schema.SchemaError)
     expect(result.aliasDelta.aliases).toEqual(["salesforce:org_1:account:acme"])
     expect(result.aliasReplacement.aliases).toEqual(["legacy:company:acme"])
     expect(result.aliasConflict).toBeInstanceOf(ObjectAliasConflict)

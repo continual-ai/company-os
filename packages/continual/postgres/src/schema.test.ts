@@ -6,6 +6,7 @@ import {
   schema,
 } from "@continual/runtime"
 import { getTableColumns, getTableName } from "drizzle-orm"
+import { getTableConfig } from "drizzle-orm/pg-core"
 import { describe, expect, it } from "vitest"
 
 import { makePostgresSchema } from "./schema"
@@ -89,5 +90,42 @@ describe("makePostgresSchema", () => {
     expect(() => makePostgresSchema(model)).toThrow(
       /table 'objects' is required by both core objects and object 'collision'/
     )
+  })
+
+  it("keeps portable property validation out of the storage schema", () => {
+    const ValidatedRecord = defineObject({
+      id: "validatedRecord",
+      collection: "validatedRecords",
+      name: "Validated record",
+      parent: Root,
+      pluralName: "Validated records",
+      properties: {
+        count: schema.number({ maximum: 10, minimum: 1 }),
+        name: schema.string({ maxLength: 100, minLength: 1 }),
+        status: schema.select({
+          options: [
+            { label: "Active", value: "active" },
+            { label: "Inactive", value: "inactive" },
+          ],
+        }),
+      },
+      display: { title: "name" },
+    })
+    const model = defineModel({
+      id: "test",
+      name: "Test",
+      objects: [ValidatedRecord],
+      links: [],
+    })
+
+    const storage = makePostgresSchema(model)
+
+    expect(getTableConfig(storage.objects.validatedRecord).checks).toEqual([])
+    expect(
+      getTableConfig(storage.core.objects).checks.map(({ name }) => name)
+    ).toEqual(["objects_object_type_check", "objects_parent_required"])
+    expect(
+      getTableConfig(storage.core.objectAliases).checks.map(({ name }) => name)
+    ).toEqual(["object_aliases_alias_length_check"])
   })
 })

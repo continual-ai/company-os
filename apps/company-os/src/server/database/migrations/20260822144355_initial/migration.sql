@@ -6,12 +6,7 @@ CREATE TABLE "companies" (
 	"domain" text,
 	"website" text,
 	"industry" text,
-	"lifecycle_stage" text DEFAULT 'prospect' NOT NULL,
-	CONSTRAINT "companies_name_check" CHECK (char_length("name") >= 1 and char_length("name") <= 200),
-	CONSTRAINT "companies_domain_check" CHECK (char_length("domain") <= 253),
-	CONSTRAINT "companies_website_check" CHECK (char_length("website") <= 2048),
-	CONSTRAINT "companies_industry_check" CHECK (char_length("industry") <= 100),
-	CONSTRAINT "companies_lifecycle_stage_check" CHECK ("lifecycle_stage" in ('prospect', 'customer', 'inactive'))
+	"lifecycle_stage" text DEFAULT 'prospect' NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "contacts" (
@@ -24,12 +19,7 @@ CREATE TABLE "contacts" (
 	"job_title" text,
 	"email" text,
 	"phone" text,
-	"primary_company_id" text,
-	CONSTRAINT "contacts_first_name_check" CHECK (char_length("first_name") >= 1 and char_length("first_name") <= 100),
-	CONSTRAINT "contacts_last_name_check" CHECK (char_length("last_name") >= 1 and char_length("last_name") <= 100),
-	CONSTRAINT "contacts_job_title_check" CHECK (char_length("job_title") <= 150),
-	CONSTRAINT "contacts_email_check" CHECK (char_length("email") <= 320),
-	CONSTRAINT "contacts_phone_check" CHECK (char_length("phone") <= 50)
+	"primary_company_id" text
 );
 --> statement-breakpoint
 CREATE TABLE "deals" (
@@ -39,9 +29,7 @@ CREATE TABLE "deals" (
 	"stage" text DEFAULT 'discovery' NOT NULL,
 	"amount" jsonb,
 	"expected_close_date" date,
-	"company_id" text NOT NULL,
-	CONSTRAINT "deals_name_check" CHECK (char_length("name") >= 1 and char_length("name") <= 200),
-	CONSTRAINT "deals_stage_check" CHECK ("stage" in ('discovery', 'qualified', 'proposal', 'negotiation', 'won', 'lost'))
+	"company_id" text NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "interactions" (
@@ -51,9 +39,7 @@ CREATE TABLE "interactions" (
 	"occurred_at" timestamp with time zone NOT NULL,
 	"summary" text NOT NULL,
 	"details" text,
-	"subject_id" text NOT NULL,
-	CONSTRAINT "interactions_kind_check" CHECK ("kind" in ('note', 'email', 'call', 'meeting')),
-	CONSTRAINT "interactions_summary_check" CHECK (char_length("summary") >= 1 and char_length("summary") <= 500)
+	"subject_id" text NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "leads" (
@@ -64,13 +50,7 @@ CREATE TABLE "leads" (
 	"email" text,
 	"phone" text,
 	"source" text DEFAULT 'unknown' NOT NULL,
-	"status" text DEFAULT 'new' NOT NULL,
-	CONSTRAINT "leads_name_check" CHECK (char_length("name") >= 1 and char_length("name") <= 200),
-	CONSTRAINT "leads_company_name_check" CHECK (char_length("company_name") >= 1 and char_length("company_name") <= 200),
-	CONSTRAINT "leads_email_check" CHECK (char_length("email") <= 320),
-	CONSTRAINT "leads_phone_check" CHECK (char_length("phone") <= 50),
-	CONSTRAINT "leads_source_check" CHECK ("source" in ('unknown', 'inbound', 'outbound', 'referral', 'other')),
-	CONSTRAINT "leads_status_check" CHECK ("status" in ('new', 'working', 'qualified', 'disqualified'))
+	"status" text DEFAULT 'new' NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "line_items" (
@@ -78,9 +58,7 @@ CREATE TABLE "line_items" (
 	"deal_id" text NOT NULL,
 	"name" text NOT NULL,
 	"quantity" integer DEFAULT 1 NOT NULL,
-	"unit_price" jsonb,
-	CONSTRAINT "line_items_name_check" CHECK (char_length("name") >= 1 and char_length("name") <= 200),
-	CONSTRAINT "line_items_quantity_check" CHECK ("quantity" >= 1)
+	"unit_price" jsonb
 );
 --> statement-breakpoint
 CREATE TABLE "object_aliases" (

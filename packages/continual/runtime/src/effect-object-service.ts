@@ -317,8 +317,8 @@ export function make<
     input: ObjectUpdateRequest<TObject>
   ) {
     const { id, ...changes } = input
-    const context = yield* authorize("update", { recordIds: [id] })
     const validated = yield* decodeUpdate(changes)
+    const context = yield* authorize("update", { recordIds: [id] })
     const current = yield* repository.get(id)
     yield* assertImmutableFields(object, current, validated)
     return yield* repository.update(id, validated, current.etag, {

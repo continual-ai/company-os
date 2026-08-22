@@ -396,55 +396,6 @@ function configuredColumn(
   return column
 }
 
-function propertyChecks(
-  tableName: string,
-  propertyId: string,
-  property: AnySchema,
-  column: ExtraConfigColumn
-): ReadonlyArray<PgTableExtraConfigValue> {
-  const name = `${tableName}_${snakeCase(propertyId)}_check`
-  switch (property.kind) {
-    case "enum":
-      return [
-        check(
-          name,
-          sql`${column} in (${sql.join(
-            property.values.map((value) => sql`${value}`),
-            sql`, `
-          )})`
-        ),
-      ]
-    case "number": {
-      const conditions = [
-        property.minimum === undefined
-          ? undefined
-          : sql`${column} >= ${property.minimum}`,
-        property.maximum === undefined
-          ? undefined
-          : sql`${column} <= ${property.maximum}`,
-      ].filter((value): value is SQL => value !== undefined)
-      return conditions.length === 0
-        ? []
-        : [check(name, sql.join(conditions, sql` and `))]
-    }
-    case "string": {
-      const conditions = [
-        property.minLength === undefined
-          ? undefined
-          : sql`char_length(${column}) >= ${property.minLength}`,
-        property.maxLength === undefined
-          ? undefined
-          : sql`char_length(${column}) <= ${property.maxLength}`,
-      ].filter((value): value is SQL => value !== undefined)
-      return conditions.length === 0
-        ? []
-        : [check(name, sql.join(conditions, sql` and `))]
-    }
-    default:
-      return []
-  }
-}
-
 type DynamicRelationsBuilder = RelationsBuilder<
   Readonly<Record<string, SchemaEntry>>
 >
@@ -686,9 +637,6 @@ export function makePostgresSchema<const TModel extends Model>(
       for (const [propertyId, property] of Object.entries(object.properties)) {
         const column = table[propertyId]
         if (column === undefined) continue
-        constraints.push(
-          ...propertyChecks(tableName, propertyId, property, column)
-        )
         if (property.kind === "recordId") {
           constraints.push(
             index(`${tableName}_${snakeCase(propertyId)}_idx`).on(column)
