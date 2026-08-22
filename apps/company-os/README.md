@@ -47,10 +47,13 @@ Effect PostgreSQL client
   transport binding exist.
 - Handlers call the governed service method corresponding to the declared object operation.
 - Cross-object service methods coordinate governed object services and own their transaction.
-- Object services apply authorization, validation, metadata, and object-level behavior.
+- Object services are the authoritative boundary for authorization, portable schema validation,
+  metadata, and object-level behavior, regardless of whether the caller is HTTP, MCP, an agent, a
+  job, or another service.
 - Repositories atomically maintain the shared object row, same-ID object-specific row, and declared
   interface membership rows, implement all-or-nothing batch writes, and own custom persistence
-  queries; only repository implementations access the database.
+  queries; only repository implementations access the database, and they do not duplicate portable
+  property validation as SQL checks.
 
 The portable repository contract and standard service behavior come from `@continual/runtime`;
 `@continual/postgres` supplies the reusable Drizzle schema compiler and repository implementation.

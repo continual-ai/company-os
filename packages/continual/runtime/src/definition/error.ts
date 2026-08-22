@@ -47,6 +47,7 @@ export type ApiError<TError extends ErrorType = ErrorType> =
       }
     : never
 
+/** Defines a transport-independent error contract that actions may declare. */
 export function defineError<
   const TCode extends string,
   const TCategory extends ErrorCategory,

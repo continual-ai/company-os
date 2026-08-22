@@ -20,6 +20,15 @@ Do not copy inventories of exports, fields, routes, or unfinished features into 
 repository instructions. Avoid roadmap sections in package READMEs; use current code or an explicit
 planning artifact instead.
 
+## Documentation and comments
+
+- Prefer clear names, types, small modules, and tests over comments that narrate the code.
+- Add concise TSDoc to deliberate public exports when callers need a non-obvious contract,
+  invariant, default, or ownership boundary. Do not restate the TypeScript signature.
+- Use implementation comments only to explain why something is necessary, especially safety
+  arguments, external constraints, and transaction or failure invariants.
+- Update or remove documentation in the same change that makes it inaccurate.
+
 ## Context skills
 
 - Use `$company-os` when product intent, business semantics, ownership, or architecture tradeoffs

@@ -266,6 +266,10 @@ function bindLinkProperties(
   return { ...object, actions, properties }
 }
 
+/**
+ * Closes and validates a portable company model, then indexes its objects,
+ * links, interfaces, and derived actions for downstream projections.
+ */
 export function defineModel<
   const TId extends string,
   const TObjects extends ReadonlyArray<ObjectType>,

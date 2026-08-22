@@ -35,6 +35,25 @@ The current example model separates typed objects, bidirectional links, and gove
 Objects are readable by convention, CRUD actions are available by default, and additional actions
 express business behavior that can change several objects and links together.
 
+## Follow one company object
+
+The Lead example shows how the current boundaries build on one source-owned definition without
+redeclaring its business shape:
+
+1. [`Lead`](packages/acme/api/src/objects/lead.ts) defines the portable business object.
+2. [`AcmeModel`](packages/acme/api/src/index.ts) closes and validates the company contract.
+3. [`AcmeStorage`](apps/company-os/src/server/database/schema.server.ts) compiles that contract into
+   company-owned PostgreSQL storage and physical overrides.
+4. [`LeadRepository`](apps/company-os/src/server/objects/lead-repository.server.ts) binds the shared
+   PostgreSQL adapter to the Lead object.
+5. [`LeadService`](apps/company-os/src/server/objects/lead-service.server.ts) adds Acme's
+   authorization to the standard object behavior.
+6. The [composition root](apps/company-os/src/server/composition-root.server.ts) assembles the
+   repositories and services and derives the API description and HTTP contract from `AcmeModel`.
+
+This is a guide to the working slice, not a requirement that every future capability add the same
+layers. Each boundary should continue to earn its place through a concrete responsibility.
+
 ## Repository
 
 ```text

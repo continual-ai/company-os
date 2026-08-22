@@ -23,6 +23,10 @@ interface CustomActionHttpBinding {
   path: `/${string}`
 }
 
+/**
+ * Portable business action authored beside its primary object definition.
+ * Object-scoped actions receive a typed record ID when the action is bound.
+ */
 export interface ActionDefinition<
   TScope extends ActionScope = ActionScope,
   TInput extends SchemaProperties = SchemaProperties,

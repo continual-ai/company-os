@@ -47,14 +47,14 @@ complete set, while `{ add, remove }` applies an atomic delta; omission leaves a
 Aliases are alternate lookup keys, not company-defined object properties or a substitute for
 canonical IDs.
 
-Interfaces describe a shared semantic shape such as `Party`; objects explicitly map their
+Interfaces name polymorphic object roles such as `Party`, so links and other contracts can target
+the role without choosing one concrete object type. Objects explicitly map any shared interface
 properties when they implement one. A link gives both traversals a stable key, label, cardinality,
 and target. For an FK-shaped link, `from` is always the singular reference-bearing side;
 many-to-many is the only link shape with `many` on `from`. `defineModel` derives a typed
 `${from.key}Id` property, so standard object creates, updates, filters, and reads use the same
 reference without authors repeating it. Many traversals remain link collections rather than
-embedded record fields. Links may target an interface for polymorphic lookup, but the singular
-`from` side that owns a reference must be an object.
+embedded record fields. The singular `from` side that owns a reference must be an object.
 The portable contract does not expose whether a backend uses a foreign key or join table; the
 company backend owns that projection and its referential actions.
 
@@ -164,10 +164,14 @@ Repositories must also claim aliases atomically with the object write, enforce g
 release removed aliases, and return aliases in deterministic order. A normalized alias table is the
 expected relational projection; the public array is a record view, not a storage prescription.
 
-The object service owns definition-derived validation, defaults, record metadata, immutable
-properties, create-under-parent authorization context, and optimistic writes. Company services
-must add authorization and business behavior before a transport is bound. Custom actions coordinate
-object services rather than reaching through them to repositories.
+The object service is the authoritative write boundary for definition-derived validation, defaults,
+record metadata, immutable properties, create-under-parent authorization context, and optimistic
+writes. This applies equally to calls from HTTP, MCP, agents, jobs, tests, and other services;
+transport decoding is an additional protocol boundary, not the only validation layer. Company
+services must add authorization and business behavior before a transport is bound. Repositories
+receive validated values and own persistence translation, concurrency, and atomicity rather than
+reimplementing semantic validation. Custom actions coordinate object services rather than reaching
+through them to repositories.
 
 ## Owns
 

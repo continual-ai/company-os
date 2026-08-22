@@ -1,6 +1,6 @@
 import { defineInterface, schema } from "@continual/runtime"
 
-/** A company or person that can participate in Acme's business activity. */
+/** Polymorphic link target for companies and contacts participating in Acme's business activity. */
 export const Party = defineInterface({
   id: "party",
   name: "Party",

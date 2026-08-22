@@ -7,6 +7,11 @@ tables and provides the standard PostgreSQL object repository implementation. It
 storage behavior shared by company backends: object hierarchy, interface membership, links,
 aliases, filtering, pagination, optimistic writes, and transactional invariants.
 
+The compiler maps persisted shape into native columns, defaults, nullability, foreign keys,
+uniqueness, indexes, and structural checks. It deliberately does not duplicate portable property
+rules such as string lengths, numeric ranges, select membership, or formats as SQL constraints;
+governed object services validate those rules for every caller before a repository write.
+
 ```ts
 import { AcmeModel } from "@acme/api"
 import { makePostgresSchema } from "@continual/postgres"

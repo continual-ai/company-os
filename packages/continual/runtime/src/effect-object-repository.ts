@@ -82,8 +82,9 @@ export interface ObjectDeleteTarget<TObject extends ObjectType> {
 /**
  * Persistence contract consumed by the standard object service.
  *
- * Repositories know storage and atomicity. They do not authorize callers or
- * implement business actions.
+ * Repositories receive values validated by a governed service and own storage
+ * translation, concurrency, and atomicity. They do not authorize callers,
+ * reimplement portable property validation, or implement business actions.
  */
 export interface Repository<
   TObject extends ObjectType,

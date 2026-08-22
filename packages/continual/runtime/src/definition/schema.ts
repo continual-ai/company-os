@@ -616,6 +616,7 @@ function union<
   return { kind: "union", members }
 }
 
+/** Portable schema builders shared by object properties and action values. */
 export const schema = {
   array,
   boolean,

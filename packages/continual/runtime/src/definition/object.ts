@@ -224,6 +224,11 @@ const reservedPropertyIds = new Set([
 
 type ParentDefinition = RootType | ObjectType
 
+/**
+ * Defines a portable company object and derives its enabled standard actions.
+ * `parent` is the canonical ownership hierarchy; ordinary business
+ * relationships belong in links.
+ */
 export function defineObject<
   const TId extends string,
   const TCollection extends string,

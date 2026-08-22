@@ -33,6 +33,11 @@ export interface LinkType<
   to: TTo
 }
 
+/**
+ * Defines both traversals of a portable business relationship. For a
+ * reference-shaped link, `from` is the singular side that owns the reference;
+ * many-to-many links may use `many` on both sides.
+ */
 export function defineLink<
   const TId extends string,
   const TFromType extends LinkTarget,

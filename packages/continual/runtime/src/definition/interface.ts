@@ -173,6 +173,12 @@ export function bindInterfaceImplementations<
   return implementations as BoundInterfaceImplementations<TDefinitions>
 }
 
+/**
+ * Defines a polymorphic object role that links and other contracts can target
+ * without naming one concrete object type. Implementing objects map the
+ * interface's shared properties explicitly; object-specific defaults and write
+ * behavior stay on the object.
+ */
 export function defineInterface<
   const TId extends string,
   const TProperties extends Readonly<Record<string, AnySchema>>,
