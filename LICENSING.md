@@ -17,12 +17,11 @@ You can:
 - Hire contractors to install, customize, and support it.
 - Keep using and modifying it even if you stop being a Continual customer.
 
-There are only three restrictions:
+The practical restrictions for Company OS today are:
 
 - Do not offer Company OS itself, or embed a substantial set of its functionality in another hosted
   or managed software product for other companies. This includes an app builder or horizontal or
   vertical SaaS built substantially from Company OS.
-- Do not circumvent license-key functionality.
 - Do not remove licensing or copyright notices.
 
 The simple test: using Company OS to run your company—even in applications your customers use—is
