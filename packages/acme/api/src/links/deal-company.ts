@@ -7,15 +7,17 @@ export const DealCompany = defineLink({
   id: "dealCompany",
   name: "Deal company",
   description: "Connects a deal to the company pursuing it.",
-  from: {
-    type: Deal,
+  forward: {
+    from: Deal,
+    to: Company,
     key: "company",
     cardinality: "one",
     label: "Company",
     description: "The company associated with the deal.",
   },
-  to: {
-    type: Company,
+  reverse: {
+    from: Company,
+    to: Deal,
     key: "deals",
     cardinality: "many",
     label: "Deals",

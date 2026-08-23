@@ -22,6 +22,8 @@ import { LeadService } from "./objects/lead-service.server"
 import { LineItemRepository } from "./objects/line-item-repository.server"
 import { LineItemService } from "./objects/line-item-service.server"
 
+const databaseLayer = Database.layer.pipe(Layer.provide(Postgres.layer))
+
 const objectRepositoriesLayer = Layer.mergeAll(
   CompanyRepository.layer,
   ContactRepository.layer,
@@ -29,7 +31,7 @@ const objectRepositoriesLayer = Layer.mergeAll(
   InteractionRepository.layer,
   LeadRepository.layer,
   LineItemRepository.layer
-).pipe(Layer.provide(Database.layer), Layer.provide(Postgres.layer))
+).pipe(Layer.provide(databaseLayer))
 
 const applicationLayer = Layer.mergeAll(
   CompanyService.layer,
@@ -38,7 +40,7 @@ const applicationLayer = Layer.mergeAll(
   InteractionService.layer,
   LeadService.layer,
   LineItemService.layer
-).pipe(Layer.provide(objectRepositoriesLayer))
+).pipe(Layer.provide(objectRepositoriesLayer), Layer.provide(databaseLayer))
 
 const apiDescription = createApiDescription(AcmeModel)
 const httpApi = createHttpApi(AcmeModel)

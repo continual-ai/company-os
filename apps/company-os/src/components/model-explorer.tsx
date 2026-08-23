@@ -55,11 +55,11 @@ function displayRole(object: ModelObject, propertyId: string) {
 }
 
 function relationshipForObject(link: ModelLink, objectType: ModelObjectId) {
-  if (link.from.typeId === objectType) {
-    return { current: link.from, related: link.to }
+  if (link.forward.from.typeId === objectType) {
+    return { current: link.forward, related: link.forward.to }
   }
-  if (link.to.typeId === objectType) {
-    return { current: link.to, related: link.from }
+  if (link.reverse.from.typeId === objectType) {
+    return { current: link.reverse, related: link.reverse.to }
   }
   return undefined
 }
@@ -69,7 +69,9 @@ function relationshipCount(
   objectType: string
 ) {
   return links.filter(
-    (link) => link.from.typeId === objectType || link.to.typeId === objectType
+    (link) =>
+      link.forward.from.typeId === objectType ||
+      link.reverse.from.typeId === objectType
   ).length
 }
 
@@ -220,11 +222,12 @@ export function ModelExplorer({ model }: { model: CompanyModel }) {
               viewBox={`0 0 ${canvas.width} ${canvas.height}`}
             >
               {links.map((link) => {
-                const from = positions.get(link.from.typeId) ?? centerPoint
-                const to = positions.get(link.to.typeId) ?? centerPoint
+                const from =
+                  positions.get(link.forward.from.typeId) ?? centerPoint
+                const to = positions.get(link.forward.to.typeId) ?? centerPoint
                 const active =
-                  link.from.typeId === selectedId ||
-                  link.to.typeId === selectedId
+                  link.forward.from.typeId === selectedId ||
+                  link.reverse.from.typeId === selectedId
                 return (
                   <g
                     key={link.id}

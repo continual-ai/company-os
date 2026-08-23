@@ -1,9 +1,13 @@
 import type { ApiError, ErrorType } from "./error"
 import { definitionId } from "./identity"
 import type { Properties, PropertyDefinition } from "./property"
-import { Root } from "./root"
-import { MAX_OBJECT_ALIAS_LENGTH, schema } from "./schema"
-import type { InferSchema, SchemaProperties, StructSchema } from "./schema"
+import { MAX_RECORD_ALIAS_LENGTH, schema } from "./schema"
+import type {
+  InferInputSchema,
+  InferSchema,
+  SchemaProperties,
+  StructSchema,
+} from "./schema"
 
 const standardActionIds = ["create", "update", "delete", "batchDelete"] as const
 
@@ -25,7 +29,7 @@ interface CustomActionHttpBinding {
 
 /**
  * Portable business action authored beside its primary object definition.
- * Object-scoped actions receive a typed record ID when the action is bound.
+ * Object-scoped actions receive a typed record identifier when the action is bound.
  */
 export interface ActionDefinition<
   TScope extends ActionScope = ActionScope,
@@ -162,7 +166,9 @@ export interface BoundActionSet<
   readonly standard: NormalizedStandardActionSettings<TDefinitions>
 }
 
-export type ActionInput<TAction extends Action> = InferSchema<TAction["input"]>
+export type ActionInput<TAction extends Action> = InferInputSchema<
+  TAction["input"]
+>
 export type ActionOutput<TAction extends Action> = InferSchema<
   TAction["output"]
 >
@@ -326,7 +332,7 @@ function writablePropertySchema(property: PropertyDefinition) {
 
 function aliasesSchema() {
   return schema.array(
-    schema.string({ minLength: 1, maxLength: MAX_OBJECT_ALIAS_LENGTH })
+    schema.string({ minLength: 1, maxLength: MAX_RECORD_ALIAS_LENGTH })
   )
 }
 
@@ -364,7 +370,7 @@ export function standardActions(
     readonly collection: string
     readonly id: string
     readonly name: string
-    readonly parent: { readonly objectType: string }
+    readonly parent: { readonly objectType: string; readonly root: boolean }
     readonly pluralName: string
     readonly properties: Properties
   },
@@ -383,10 +389,9 @@ export function standardActions(
       .map(([id, property]) => [id, schema.optional(property)])
   )
   if (settings.create) {
-    const parentInput =
-      object.parent.objectType === Root.id
-        ? {}
-        : { parentId: schema.recordId({ id: object.parent.objectType }) }
+    const parentInput = object.parent.root
+      ? {}
+      : { parentId: schema.recordId({ id: object.parent.objectType }) }
     actions.push({
       kind: "action",
       id: "create",

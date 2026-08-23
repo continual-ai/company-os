@@ -1,21 +1,15 @@
 import { AcmeModel } from "@acme/api"
-import * as ObjectService from "@continual/runtime/effect/object-service"
 import { Context, Effect, Layer } from "effect"
 
-import { Authorization } from "@/server/authorization.server"
-
 import { LeadRepository } from "./lead-repository.server"
+import { makeObjectService } from "./object-service.server"
 
 const make = Effect.gen(function* () {
-  const authorization = yield* Authorization
   const repository = yield* LeadRepository
-
-  return ObjectService.make(AcmeModel.objects.lead, repository, {
-    authorize: authorization.require,
-  })
+  return yield* makeObjectService(AcmeModel.objects.lead, repository)
 })
 
-/** Governed operations for Acme lead objects. */
+/** Governed queries and actions for Acme lead objects. */
 export class LeadService extends Context.Service<LeadService>()(
   "@acme/LeadService",
   { make }

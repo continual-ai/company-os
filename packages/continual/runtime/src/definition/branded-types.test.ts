@@ -8,8 +8,9 @@ import {
   Decimal,
   DomainName,
   EmailAddress,
-  MAX_OBJECT_ALIAS_LENGTH,
-  ObjectAlias,
+  MAX_RECORD_ALIAS_LENGTH,
+  RecordAlias,
+  type RecordIdentifier,
   PhoneNumber,
   RecordId,
   Timestamp,
@@ -21,6 +22,9 @@ it("constructs nominally distinct standard values through validated brands", () 
   const accountId = AccountId("account_1")
 
   expectTypeOf(accountId).toEqualTypeOf<RecordId<"account">>()
+  expectTypeOf<RecordId<"account"> | RecordAlias>().toEqualTypeOf<
+    RecordIdentifier<"account">
+  >()
   expect(accountId).toBe("account_1")
   expect(ActorId("user_1")).toBe("user_1")
   expect(Etag("etag_1")).toBe("etag_1")
@@ -32,7 +36,7 @@ it("constructs nominally distinct standard values through validated brands", () 
   expect(DomainName("acme.example")).toBe("acme.example")
   expect(EmailAddress("ada@acme.example")).toBe("ada@acme.example")
   expect(PhoneNumber("+1 415 555 0100")).toBe("+1 415 555 0100")
-  expect(ObjectAlias("hubspot:portal_1:company:123")).toBe(
+  expect(RecordAlias("hubspot:portal_1:company:123")).toBe(
     "hubspot:portal_1:company:123"
   )
   expect(Timestamp("2026-08-20T12:00:00Z")).toBe("2026-08-20T12:00:00Z")
@@ -45,14 +49,18 @@ it("rejects invalid values before branding them", () => {
   expect(() => PageToken("")).toThrow()
   expect(() => IdempotencyKey("")).toThrow()
   expect(() => RecordId("account")("")).toThrow()
+  expect(() => RecordId("account")("legacy:account:1")).toThrow()
   expect(() => CalendarDate("08/20/2026")).toThrow()
   expect(() => CurrencyCode("usd")).toThrow()
   expect(() => Decimal("01")).toThrow()
   expect(() => DomainName("not a domain")).toThrow()
   expect(() => EmailAddress("not an email")).toThrow()
   expect(() => PhoneNumber("123")).toThrow()
-  expect(() => ObjectAlias("")).toThrow()
-  expect(() => ObjectAlias("a".repeat(MAX_OBJECT_ALIAS_LENGTH + 1))).toThrow()
+  expect(() => RecordAlias("")).toThrow()
+  expect(() => RecordAlias("unqualified")).toThrow()
+  expect(() =>
+    RecordAlias(`system:${"a".repeat(MAX_RECORD_ALIAS_LENGTH)}`)
+  ).toThrow()
   expect(() => Timestamp("yesterday")).toThrow()
   expect(() => WebUrl("ftp://acme.example")).toThrow()
 })

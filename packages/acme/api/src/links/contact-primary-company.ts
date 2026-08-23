@@ -7,15 +7,17 @@ export const ContactPrimaryCompany = defineLink({
   id: "contactPrimaryCompany",
   name: "Contact primary company",
   description: "Connects a contact to their primary company.",
-  from: {
-    type: Contact,
+  forward: {
+    from: Contact,
+    to: Company,
     key: "primaryCompany",
     cardinality: "zeroOrOne",
     label: "Primary company",
     description: "The contact's primary company.",
   },
-  to: {
-    type: Company,
+  reverse: {
+    from: Company,
+    to: Contact,
     key: "contacts",
     cardinality: "many",
     label: "Contacts",

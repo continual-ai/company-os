@@ -43,8 +43,8 @@ export const AcmeStorage = makePostgresSchema(AcmeModel, {
 // Drizzle Kit currently discovers top-level exported table instances. These
 // aliases expose the generated projection without duplicating its definition.
 export const objects = AcmeStorage.core.objects
-export const objectAliases = AcmeStorage.core.objectAliases
-export const roots = AcmeStorage.core.roots
+export const recordAliases = AcmeStorage.core.recordAliases
+export const platforms = AcmeStorage.core.roots
 export const parties = AcmeStorage.interfaces.party
 export const companies = AcmeStorage.objects.company
 export const contacts = AcmeStorage.objects.contact

@@ -11,7 +11,7 @@ describe("Acme PostgreSQL schema", () => {
   it("projects object properties, link references, and relation metadata", () => {
     expect(Object.keys(getTableColumns(AcmeStorage.objects.contact))).toEqual([
       "id",
-      "rootId",
+      "platformId",
       "photo",
       "firstName",
       "lastName",

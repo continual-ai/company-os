@@ -1,10 +1,12 @@
-import { Root, defineObject, schema } from "@continual/runtime"
+import { defineObject, defineRoot, schema } from "@continual/runtime"
+
+const Platform = defineRoot({ id: "platform", name: "Platform" })
 
 export const ObjectTableExampleCompany = defineObject({
   id: "objectTableExampleCompany",
   collection: "objectTableExampleCompanies",
   name: "Company",
-  parent: Root,
+  parent: Platform,
   pluralName: "Companies",
   properties: {
     logo: schema.image({ label: "Logo", aspectRatio: 1, nullable: true }),

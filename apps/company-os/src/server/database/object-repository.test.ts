@@ -6,14 +6,14 @@ import {
   DomainName,
   EmailAddress,
   Etag,
-  ObjectAlias,
+  RecordAlias,
   RecordId,
   Timestamp,
 } from "@continual/runtime"
 import {
   InvalidListRequest,
-  ObjectAliasConflict,
-  ObjectAliasNotFound,
+  RecordAliasConflict,
+  RecordAliasNotFound,
   ObjectNotFound,
   ObjectParentTypeMismatch,
   ObjectWriteConflict,
@@ -33,22 +33,24 @@ import { LineItemRepository } from "@/server/objects/line-item-repository.server
 
 import { Database } from "./database.server"
 import {
+  makeRecordAliasResolver,
   makeObjectRepository,
-  resolveObjectAlias,
+  RecordAliasTypeMismatch,
+  resolveRecordAlias,
 } from "./model-storage.server"
 import {
   lineItems,
-  objectAliases,
+  recordAliases,
   objects,
   parties,
   relations,
-  roots,
+  platforms,
 } from "./schema.server"
 
 const migrationsFolder = fileURLToPath(new URL("./migrations", import.meta.url))
 const TestDatabase = PgliteClient.layer()
 const CompanyId = RecordId("company")
-const RootId = RecordId("root")
+const PlatformId = RecordId("platform")
 
 function snakeCase(value: string): string {
   return value.replaceAll(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase()
@@ -72,7 +74,7 @@ function run<A, E>(effect: Effect.Effect<A, E, PgliteClient.PgliteClient>) {
 }
 
 describe("Drizzle object repository", () => {
-  it("migrates and preserves object invariants across standard operations", async () => {
+  it("migrates and preserves object invariants across standard methods", async () => {
     let nextId = 0
     let nextInteractionId = 0
     const result = await run(
@@ -81,23 +83,26 @@ describe("Drizzle object repository", () => {
         yield* migrate(database, { migrationsFolder })
         yield* migrate(database, { migrationsFolder })
 
-        const root = RootId("root_1")
+        const platform = PlatformId("platform_1")
         yield* database.insert(objects).values({
-          id: root,
-          objectType: "root",
+          id: platform,
+          objectType: "platform",
           parentId: null,
           ancestorIds: [],
           annotations: {},
-          etag: "root_etag",
+          etag: "platform_etag",
           createdAt: "2026-08-20T00:00:00.000Z",
           createdById: "system",
           updatedAt: "2026-08-20T00:00:00.000Z",
           updatedById: "system",
         })
-        yield* database.insert(roots).values({ id: root })
+        yield* database.insert(platforms).values({ id: platform })
 
-        const context = { actorId: ActorId("user_1"), rootId: root }
+        const context = { actorId: ActorId("user_1"), rootId: platform }
         const db = asDatabase(database)
+        const resolveTypedRecordAlias = yield* makeRecordAliasResolver.pipe(
+          Effect.provideService(Database, db)
+        )
         const repository = yield* makeObjectRepository(
           AcmeModel.objects.company
         ).pipe(Effect.provideService(Database, db))
@@ -107,14 +112,15 @@ describe("Drizzle object repository", () => {
           {
             authorize: () => Effect.succeed(context),
             generateEtag: () => `etag_${nextId}`,
-            generateId: () => `company_${++nextId}`,
+            generateRecordId: () => `company_${++nextId}`,
+            resolveRecordAlias: resolveTypedRecordAlias,
           }
         )
 
-        const hubspotAcme = ObjectAlias("hubspot:portal_1:company:acme")
-        const hubspotBravo = ObjectAlias("hubspot:portal_1:company:bravo")
-        const legacyAcme = ObjectAlias("legacy:company:acme")
-        const salesforceAcme = ObjectAlias("salesforce:org_1:account:acme")
+        const hubspotAcme = RecordAlias("hubspot:portal_1:company:acme")
+        const hubspotBravo = RecordAlias("hubspot:portal_1:company:bravo")
+        const legacyAcme = RecordAlias("legacy:company:acme")
+        const salesforceAcme = RecordAlias("salesforce:org_1:account:acme")
         const first = yield* service.create({
           aliases: [hubspotAcme],
           domain: DomainName("acme.example"),
@@ -143,10 +149,11 @@ describe("Drizzle object repository", () => {
           })
           .pipe(Effect.flip)
         const secondAfterConflict = yield* service.get({ id: second.id })
-        const resolvedAlias = yield* resolveObjectAlias(legacyAcme).pipe(
+        const resolvedAlias = yield* resolveRecordAlias(legacyAcme).pipe(
           Effect.provideService(Database, db)
         )
-        const removedAlias = yield* resolveObjectAlias(hubspotAcme).pipe(
+        const foundByAlias = yield* service.get({ id: legacyAcme })
+        const removedAlias = yield* resolveRecordAlias(hubspotAcme).pipe(
           Effect.flip,
           Effect.provideService(Database, db)
         )
@@ -154,11 +161,11 @@ describe("Drizzle object repository", () => {
           aliases: [],
           id: second.id,
         })
-        const clearedAlias = yield* resolveObjectAlias(hubspotBravo).pipe(
+        const clearedAlias = yield* resolveRecordAlias(hubspotBravo).pipe(
           Effect.flip,
           Effect.provideService(Database, db)
         )
-        const batch = yield* service.batchGet({ ids: [second.id, first.id] })
+        const batch = yield* service.batchGet({ ids: [second.id, legacyAcme] })
         const firstPage = yield* service.list({ pageSize: 1 })
         if (firstPage.nextPageToken === "") {
           return yield* Effect.die("Expected another page")
@@ -170,6 +177,9 @@ describe("Drizzle object repository", () => {
         const filtered = yield* service.list({
           filter: { field: "name", operator: "contains", value: "acme" },
           sort: [{ direction: "asc", field: "name" }],
+        })
+        const filteredByAlias = yield* service.list({
+          filter: { field: "id", operator: "eq", value: legacyAcme },
         })
         const sortedFirstPage = yield* service.list({
           pageSize: 1,
@@ -210,7 +220,7 @@ describe("Drizzle object repository", () => {
           .insert({
             ...first,
             id: CompanyId("company_3"),
-            parentId: RootId(first.id),
+            parentId: PlatformId(first.id),
           })
           .pipe(Effect.flip)
         const rollbackId = CompanyId("company_rollback")
@@ -234,7 +244,8 @@ describe("Drizzle object repository", () => {
           {
             authorize: () => Effect.succeed(context),
             generateEtag: () => "lead_etag",
-            generateId: () => "lead_1",
+            generateRecordId: () => "lead_1",
+            resolveRecordAlias: resolveTypedRecordAlias,
           }
         )
         yield* leadService.create({
@@ -249,6 +260,9 @@ describe("Drizzle object repository", () => {
             value: EmailAddress("Lead@Acme.Example"),
           },
         })
+        const wrongTypeAlias = yield* leadService
+          .get({ id: legacyAcme })
+          .pipe(Effect.flip)
 
         const interactionRepository = yield* InteractionRepository.make.pipe(
           Effect.provideService(Database, db)
@@ -259,12 +273,13 @@ describe("Drizzle object repository", () => {
           {
             authorize: () => Effect.succeed(context),
             generateEtag: () => "interaction_etag",
-            generateId: () => `interaction_${++nextInteractionId}`,
+            generateRecordId: () => `interaction_${++nextInteractionId}`,
+            resolveRecordAlias: resolveTypedRecordAlias,
           }
         )
         yield* interactionService.create({
           occurredAt: Timestamp("2026-08-20T12:00:00Z"),
-          subjectId: RecordId("party")(first.id),
+          subjectId: legacyAcme,
           summary: "Introductory call",
         })
         yield* interactionService.create({
@@ -276,7 +291,7 @@ describe("Drizzle object repository", () => {
           filter: {
             field: "subjectId",
             operator: "eq",
-            value: RecordId("party")(first.id),
+            value: legacyAcme,
           },
           sort: [{ direction: "desc", field: "occurredAt" }],
         })
@@ -290,11 +305,12 @@ describe("Drizzle object repository", () => {
           {
             authorize: () => Effect.succeed(context),
             generateEtag: () => "deal_etag",
-            generateId: () => "deal_1",
+            generateRecordId: () => "deal_1",
+            resolveRecordAlias: resolveTypedRecordAlias,
           }
         )
         const deal = yield* dealService.create({
-          companyId: first.id,
+          companyId: legacyAcme,
           name: "Expansion",
         })
         const dealsWithCompanies = yield* database.query.deal.findMany({
@@ -313,7 +329,8 @@ describe("Drizzle object repository", () => {
           {
             authorize: () => Effect.succeed(context),
             generateEtag: () => "line_item_etag",
-            generateId: () => "line_item_1",
+            generateRecordId: () => "line_item_1",
+            resolveRecordAlias: resolveTypedRecordAlias,
           }
         )
         const lineItem = yield* lineItemService.create({
@@ -322,7 +339,7 @@ describe("Drizzle object repository", () => {
         })
         const inconsistentParent = yield* database
           .update(objects)
-          .set({ parentId: root })
+          .set({ parentId: platform })
           .where(eq(objects.id, lineItem.id))
           .pipe(Effect.flip)
         const batchDeleteFailure = yield* service
@@ -333,7 +350,7 @@ describe("Drizzle object repository", () => {
         })
         const lineItemKindRows = yield* database.select().from(lineItems)
         const lineItemObjectRows = yield* database.select().from(objects)
-        const aliasRows = yield* database.select().from(objectAliases)
+        const aliasRows = yield* database.select().from(recordAliases)
         const partyRows = yield* database.select().from(parties)
         const columns = yield* database.$client<{
           columnName: string
@@ -360,6 +377,8 @@ describe("Drizzle object repository", () => {
           dealsWithCompanies,
           first,
           firstPage,
+          filteredByAlias,
+          foundByAlias,
           filtered,
           inconsistentParent,
           invalidFilterValue,
@@ -382,6 +401,7 @@ describe("Drizzle object repository", () => {
           staleWrite,
           updated,
           wrongParent,
+          wrongTypeAlias,
         }
       })
     )
@@ -392,7 +412,7 @@ describe("Drizzle object repository", () => {
       id: "company_1",
       lifecycleStage: "prospect",
       name: "Acme",
-      parentId: "root_1",
+      parentId: "platform_1",
     })
     expect(result.updated).toMatchObject({
       id: result.first.id,
@@ -400,7 +420,7 @@ describe("Drizzle object repository", () => {
     })
     expect(result.aliasDelta.aliases).toEqual(["salesforce:org_1:account:acme"])
     expect(result.aliasReplacement.aliases).toEqual(["legacy:company:acme"])
-    expect(result.aliasConflict).toBeInstanceOf(ObjectAliasConflict)
+    expect(result.aliasConflict).toBeInstanceOf(RecordAliasConflict)
     expect(result.secondAfterConflict.aliases).toEqual([
       "hubspot:portal_1:company:bravo",
     ])
@@ -408,9 +428,10 @@ describe("Drizzle object repository", () => {
       id: result.first.id,
       objectType: "company",
     })
-    expect(result.removedAlias).toBeInstanceOf(ObjectAliasNotFound)
+    expect(result.foundByAlias.id).toBe(result.first.id)
+    expect(result.removedAlias).toBeInstanceOf(RecordAliasNotFound)
     expect(result.clearedSecond.aliases).toEqual([])
-    expect(result.clearedAlias).toBeInstanceOf(ObjectAliasNotFound)
+    expect(result.clearedAlias).toBeInstanceOf(RecordAliasNotFound)
     expect(result.aliasRows).toEqual([
       { alias: "legacy:company:acme", objectId: result.first.id },
     ])
@@ -428,12 +449,16 @@ describe("Drizzle object repository", () => {
     expect(result.secondPage.items).toHaveLength(1)
     expect(result.secondPage.nextPageToken).toBe("")
     expect(result.filtered.items.map(({ id }) => id)).toEqual([result.first.id])
+    expect(result.filteredByAlias.items.map(({ id }) => id)).toEqual([
+      result.first.id,
+    ])
     expect(result.sortedFirstPage.items[0]?.name).toBe("Bravo")
     expect(result.sortedSecondPage.items[0]?.name).toBe("Acme Corporation")
     expect(result.mismatchedCursor).toBeInstanceOf(InvalidListRequest)
     expect(result.invalidFilterValue).toBeInstanceOf(InvalidListRequest)
     expect(result.staleWrite).toBeInstanceOf(ObjectWriteConflict)
     expect(result.wrongParent).toBeInstanceOf(ObjectParentTypeMismatch)
+    expect(result.wrongTypeAlias).toBeInstanceOf(RecordAliasTypeMismatch)
     expect(result.rolledBack).toBeInstanceOf(ObjectNotFound)
     expect(result.leads.items).toHaveLength(1)
     expect(result.leads.items[0]).toMatchObject({ email: "Lead@Acme.Example" })
@@ -475,7 +500,7 @@ describe("Drizzle object repository", () => {
     ])
     expect(
       result.lineItemObjectRows.find(({ id }) => id === result.lineItem.id)
-    ).toMatchObject({ ancestorIds: ["deal_1", "root_1"] })
+    ).toMatchObject({ ancestorIds: ["deal_1", "platform_1"] })
     for (const object of Object.values(AcmeModel.objects)) {
       expect(
         new Set(

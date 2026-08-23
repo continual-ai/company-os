@@ -1,10 +1,12 @@
-import { Root, defineObject, schema } from "@continual/runtime"
+import { defineObject, schema } from "@continual/runtime"
+
+import { Platform } from "#platform"
 
 export const Lead = defineObject({
   id: "lead",
   collection: "leads",
   name: "Lead",
-  parent: Root,
+  parent: Platform,
   pluralName: "Leads",
   description:
     "An unqualified person or organization that may become a customer.",

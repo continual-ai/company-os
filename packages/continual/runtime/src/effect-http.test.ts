@@ -4,7 +4,7 @@ import { afterAll, describe, expect, it } from "vitest"
 import { defineError } from "./definition/error"
 import { defineModel } from "./definition/model"
 import { defineObject } from "./definition/object"
-import { Root } from "./definition/root"
+import { defineRoot } from "./definition/root"
 import { schema } from "./definition/schema"
 import { createApiReference, createHttpApi } from "./effect-http"
 
@@ -15,11 +15,13 @@ const ArchiveFailed = defineError({
   details: schema.object({ reason: schema.string() }),
 })
 
+const Platform = defineRoot({ id: "platform", name: "Platform" })
+
 const Account = defineObject({
   id: "account",
   collection: "accounts",
   name: "Account",
-  parent: Root,
+  parent: Platform,
   pluralName: "Accounts",
   properties: {
     email: schema.email(),
@@ -62,6 +64,7 @@ const Example = defineModel({
   name: "Example",
   objects: [Account],
   links: [],
+  root: Platform,
 })
 
 const httpApi = createHttpApi(Example)
@@ -113,7 +116,7 @@ describe("Effect HTTP projection", () => {
     expect(document.components?.schemas).toHaveProperty("AccountLogo")
     expect(document.components?.schemas).toHaveProperty("Annotations")
     expect(document.components?.schemas).toHaveProperty("ImageRef")
-    expect(document.components?.schemas).toHaveProperty("ObjectAliases")
+    expect(document.components?.schemas).toHaveProperty("RecordAliases")
     expect(document.components?.schemas).not.toHaveProperty(
       "AccountRecordNotFoundError"
     )
@@ -166,7 +169,7 @@ describe("Effect HTTP projection", () => {
       id: "deletable",
       collection: "deletables",
       name: "Deletable",
-      parent: Root,
+      parent: Platform,
       pluralName: "Deletables",
       properties: { name: schema.string() },
       display: { title: "name" },
@@ -176,6 +179,7 @@ describe("Effect HTTP projection", () => {
       name: "Batch delete example",
       objects: [Deletable],
       links: [],
+      root: Platform,
     })
     const batchDocument = OpenApi.fromApi(createHttpApi(model))
 

@@ -14,7 +14,7 @@ const urlPattern = /^https?:\/\/[^\s]+$/
 const currencyPattern = /^[A-Z]{3}$/
 const decimalPattern = /^-?(?:0|[1-9]\d*)(?:\.\d+)?$/
 
-export const MAX_OBJECT_ALIAS_LENGTH = 500 as const
+export const MAX_RECORD_ALIAS_LENGTH = 500 as const
 
 export type CalendarDate = string & Brand.Brand<"CalendarDate">
 export const CalendarDate = Brand.make<CalendarDate>(
@@ -53,14 +53,20 @@ export const PhoneNumber = Brand.make<PhoneNumber>(
     phonePattern.test(value) || `Expected '${value}' to be a phone number`
 )
 
-/** Opaque, globally qualified alternate key for an object. */
-export type ObjectAlias = string & Brand.Brand<"ObjectAlias">
-export const ObjectAlias = Brand.make<ObjectAlias>((value) =>
-  value.length === 0
-    ? "Expected a non-empty object alias"
-    : value.length <= MAX_OBJECT_ALIAS_LENGTH ||
-      `Expected an object alias no longer than ${MAX_OBJECT_ALIAS_LENGTH} characters`
+const recordAliasPattern = /^[a-z][a-z0-9_-]*:\S+$/
+
+/** Opaque, globally qualified alternate identifier for a record. */
+export type RecordAlias = string & Brand.Brand<"RecordAlias">
+export const RecordAlias = Brand.make<RecordAlias>((value) =>
+  !recordAliasPattern.test(value)
+    ? `Expected '${value}' to be a qualified record alias such as 'system:default-agent'`
+    : value.length <= MAX_RECORD_ALIAS_LENGTH ||
+      `Expected a record alias no longer than ${MAX_RECORD_ALIAS_LENGTH} characters`
 )
+
+export function isRecordAlias(value: string): value is RecordAlias {
+  return value.includes(":")
+}
 
 export type Timestamp = string & Brand.Brand<"Timestamp">
 export const Timestamp = Brand.make<Timestamp>(
@@ -86,15 +92,9 @@ export interface SchemaAnnotations<TValue = unknown> {
 }
 
 /** A portable value contract. Runtime integrations compile it to native schemas. */
-export interface SchemaDefinition<T = unknown> {
+export interface SchemaDefinition<T = unknown> extends SchemaAnnotations<T> {
   readonly _Type?: T
-  default?: T
-  description?: string
-  immutable?: boolean
   kind: string
-  label?: string
-  nullable?: boolean
-  outputOnly?: boolean
 }
 
 type SchemaValue<TSchema extends SchemaDefinition> = Exclude<
@@ -230,15 +230,27 @@ export function RecordId<const TTypeId extends string>(
   typeId: TTypeId
 ): Brand.Constructor<RecordId<TTypeId>> {
   return Brand.make<RecordId<TTypeId>>(
-    (value) => value.length > 0 || `Expected a non-empty ${typeId} record ID`
+    (value) =>
+      (value.length > 0 && !value.includes(":")) ||
+      `Expected a non-empty ${typeId} record ID without ':'`
   )
 }
 
+type RecordIds<TTypeId extends string> = TTypeId extends string
+  ? RecordId<TTypeId>
+  : never
+
+/** Canonical ID or globally qualified alias accepted at public input boundaries. */
+export type RecordIdentifier<TTypeId extends string = string> =
+  | RecordIds<TTypeId>
+  | RecordAlias
+
 export interface RecordIdSchema<
-  TTypeId extends string = string,
-> extends SchemaDefinition<RecordId<TTypeId>> {
+  TTargetTypeId extends string = string,
+  TRecordTypeId extends string = TTargetTypeId,
+> extends SchemaDefinition<RecordIds<TRecordTypeId>> {
   kind: "recordId"
-  typeId: TTypeId
+  typeId: TTargetTypeId
 }
 
 export interface StringSchema<
@@ -315,6 +327,37 @@ export type AnySchema =
   | StringSchema
   | StructSchema
   | UnionSchema
+
+type InputSchemaValue<TSchema extends AnySchema> =
+  TSchema extends RecordIdSchema<string, infer TRecordTypeId>
+    ? RecordIdentifier<TRecordTypeId>
+    : TSchema extends ArraySchema<infer TItem>
+      ? ReadonlyArray<InferInputSchema<TItem>>
+      : TSchema extends MapSchema<infer TValue>
+        ? Readonly<Record<string, InferInputSchema<TValue>>>
+        : TSchema extends OptionalSchema<infer TValue>
+          ? InferInputSchema<TValue>
+          : TSchema extends StructSchema<infer TProperties>
+            ? Simplify<
+                {
+                  readonly [
+                    TKey in RequiredKeys<TProperties>
+                  ]: InferInputSchema<TProperties[TKey]>
+                } & {
+                  readonly [
+                    TKey in OptionalKeys<TProperties>
+                  ]?: InferInputSchema<TProperties[TKey]>
+                }
+              >
+            : TSchema extends UnionSchema<infer TMembers>
+              ? InferInputSchema<TMembers[number]>
+              : SchemaValue<TSchema>
+
+/** Input value inferred from a schema, widening record IDs to aliases. */
+export type InferInputSchema<TSchema extends AnySchema> =
+  TSchema["nullable"] extends true
+    ? InputSchemaValue<TSchema> | null
+    : InputSchemaValue<TSchema>
 
 export interface StringSchemaOptions extends SchemaAnnotations<string> {
   maxLength?: number
@@ -542,7 +585,7 @@ function optional<TValue extends AnySchema>(
 
 function recordId<
   const TType extends { readonly id: string },
-  const TOptions extends SchemaAnnotations<RecordId<TType["id"]>> = {},
+  const TOptions extends SchemaAnnotations<RecordIds<TType["id"]>> = {},
 >(
   targetType: TType,
   options?: TOptions

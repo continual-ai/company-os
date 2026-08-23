@@ -1,23 +1,97 @@
 import {
-  Root,
   defineLink,
+  defineInterface,
   defineModel,
   defineObject,
+  defineRoot,
+  type RecordId,
   schema,
 } from "@continual/runtime"
 import { getTableColumns, getTableName } from "drizzle-orm"
 import { getTableConfig } from "drizzle-orm/pg-core"
-import { describe, expect, it } from "vitest"
+import { describe, expect, expectTypeOf, it } from "vitest"
 
 import { makePostgresSchema } from "./schema"
 
+const Platform = defineRoot({ id: "platform", name: "Platform" })
+
 describe("makePostgresSchema", () => {
+  it("projects marker memberships for root and object implementers", () => {
+    const AuthorizationScope = defineInterface({
+      id: "authorizationScope",
+      name: "Authorization scope",
+      pluralName: "Authorization scopes",
+    })
+    const ScopedPlatform = defineRoot({
+      id: "platform",
+      implements: [{ interface: AuthorizationScope }],
+      name: "Platform",
+    })
+    const Workspace = defineObject({
+      id: "workspace",
+      collection: "workspaces",
+      display: { title: "name" },
+      implements: [{ interface: AuthorizationScope }],
+      name: "Workspace",
+      parent: ScopedPlatform,
+      pluralName: "Workspaces",
+      properties: { name: schema.string() },
+    })
+    const Permission = defineObject({
+      id: "permission",
+      collection: "permissions",
+      display: { title: "name" },
+      name: "Permission",
+      parent: ScopedPlatform,
+      pluralName: "Permissions",
+      properties: { name: schema.string() },
+    })
+    const PermissionScope = defineLink({
+      id: "permissionScope",
+      forward: {
+        cardinality: "one",
+        from: Permission,
+        key: "scope",
+        label: "Scope",
+        to: AuthorizationScope,
+      },
+      name: "Permission scope",
+      reverse: {
+        cardinality: "many",
+        from: AuthorizationScope,
+        key: "permissions",
+        label: "Permissions",
+        to: Permission,
+      },
+    })
+    const model = defineModel({
+      id: "scopes",
+      interfaces: [AuthorizationScope],
+      links: [PermissionScope],
+      name: "Scopes",
+      objects: [Workspace, Permission],
+      root: ScopedPlatform,
+    })
+
+    const storage = makePostgresSchema(model)
+
+    expect(getTableName(storage.interfaces.authorizationScope)).toBe(
+      "interface_authorization_scope"
+    )
+    expectTypeOf<
+      typeof storage.interfaces.authorizationScope.$inferSelect.id
+    >().toEqualTypeOf<RecordId<"platform"> | RecordId<"workspace">>()
+    expectTypeOf<
+      typeof storage.objects.permission.$inferSelect.scopeId
+    >().toEqualTypeOf<RecordId<"platform"> | RecordId<"workspace">>()
+  })
+
   it("projects many-to-many links through one generated junction table", () => {
     const Person = defineObject({
       id: "person",
       collection: "people",
       name: "Person",
-      parent: Root,
+      parent: Platform,
       pluralName: "People",
       properties: { name: schema.string() },
       display: { title: "name" },
@@ -26,7 +100,7 @@ describe("makePostgresSchema", () => {
       id: "team",
       collection: "teams",
       name: "Team",
-      parent: Root,
+      parent: Platform,
       pluralName: "Teams",
       properties: { name: schema.string() },
       display: { title: "name" },
@@ -34,14 +108,16 @@ describe("makePostgresSchema", () => {
     const TeamMembership = defineLink({
       id: "teamMembership",
       name: "Team membership",
-      from: {
-        type: Person,
+      forward: {
+        from: Person,
+        to: Team,
         key: "teams",
         cardinality: "many",
         label: "Teams",
       },
-      to: {
-        type: Team,
+      reverse: {
+        from: Team,
+        to: Person,
         key: "members",
         cardinality: "many",
         label: "Members",
@@ -52,6 +128,7 @@ describe("makePostgresSchema", () => {
       name: "Test",
       objects: [Person, Team],
       links: [TeamMembership],
+      root: Platform,
     })
 
     const storage = makePostgresSchema(model)
@@ -75,7 +152,7 @@ describe("makePostgresSchema", () => {
       id: "collision",
       collection: "objects",
       name: "Collision",
-      parent: Root,
+      parent: Platform,
       pluralName: "Collisions",
       properties: { name: schema.string() },
       display: { title: "name" },
@@ -85,6 +162,7 @@ describe("makePostgresSchema", () => {
       name: "Test",
       objects: [Collision],
       links: [],
+      root: Platform,
     })
 
     expect(() => makePostgresSchema(model)).toThrow(
@@ -97,7 +175,7 @@ describe("makePostgresSchema", () => {
       id: "validatedRecord",
       collection: "validatedRecords",
       name: "Validated record",
-      parent: Root,
+      parent: Platform,
       pluralName: "Validated records",
       properties: {
         count: schema.number({ maximum: 10, minimum: 1 }),
@@ -116,6 +194,7 @@ describe("makePostgresSchema", () => {
       name: "Test",
       objects: [ValidatedRecord],
       links: [],
+      root: Platform,
     })
 
     const storage = makePostgresSchema(model)
@@ -125,7 +204,7 @@ describe("makePostgresSchema", () => {
       getTableConfig(storage.core.objects).checks.map(({ name }) => name)
     ).toEqual(["objects_object_type_check", "objects_parent_required"])
     expect(
-      getTableConfig(storage.core.objectAliases).checks.map(({ name }) => name)
-    ).toEqual(["object_aliases_alias_length_check"])
+      getTableConfig(storage.core.recordAliases).checks.map(({ name }) => name)
+    ).toEqual([])
   })
 })

@@ -5,27 +5,24 @@ import {
   DEFAULT_PAGE_SIZE,
   MAX_PAGE_SIZE,
   RecordId,
-  type ObjectAlias,
-  type ObjectAliasUpdate,
+  type RecordAlias,
+  type RecordAliasUpdate,
   type Model,
   type ModelObjectRef,
   PageToken,
   Timestamp,
   type Etag,
-  type ObjectFilter,
-  type ListRequest,
   type ObjectRecord,
   type ObjectSort,
   type ObjectType,
-  type ObjectUpdateInput,
   type Page,
   type ObjectRef,
 } from "@continual/runtime"
 import { toEffectObjectSchema, toEffectSchema } from "@continual/runtime/effect"
 import {
   ObjectNotFound,
-  ObjectAliasConflict,
-  ObjectAliasNotFound,
+  RecordAliasConflict,
+  RecordAliasNotFound,
   ObjectParentNotFound,
   ObjectParentTypeMismatch,
   ObjectWriteConflict,
@@ -33,6 +30,9 @@ import {
   type ObjectDeleteTarget,
   type ObjectInsert,
   type ObjectUpdateMetadata,
+  type ObjectRepositoryUpdate,
+  type RepositoryListRequest,
+  type RepositoryFilter,
   type Repository,
 } from "@continual/runtime/effect/object-repository"
 import {
@@ -72,7 +72,7 @@ import type { PostgresStorage } from "./schema"
 export type PostgresRepositoryError =
   | EffectDrizzleQueryError
   | InvalidListRequest
-  | ObjectAliasConflict
+  | RecordAliasConflict
   | ObjectNotFound
   | ObjectParentNotFound
   | ObjectParentTypeMismatch
@@ -80,9 +80,9 @@ export type PostgresRepositoryError =
   | Schema.SchemaError
   | SqlError
 
-export type PostgresAliasResolutionError =
+export type PostgresRecordAliasResolutionError =
   | EffectDrizzleQueryError
-  | ObjectAliasNotFound
+  | RecordAliasNotFound
 
 interface CursorPayload {
   readonly fingerprint: string
@@ -179,7 +179,7 @@ function escapeLike(value: string): string {
 }
 
 function cursorFingerprint<TObject extends ObjectType>(
-  request: ListRequest<TObject>,
+  request: RepositoryListRequest<TObject>,
   sort: ReadonlyArray<CursorSort>
 ): string {
   return JSON.stringify({ filter: request.filter ?? null, sort })
@@ -224,8 +224,8 @@ function conflict(object: ObjectType, id: string) {
 }
 
 function isAliasReplacement(
-  update: ObjectAliasUpdate
-): update is ReadonlyArray<ObjectAlias> {
+  update: RecordAliasUpdate
+): update is ReadonlyArray<RecordAlias> {
   return Array.isArray(update)
 }
 
@@ -242,29 +242,29 @@ function makeObjectRef<const TObjectType extends string>(
 }
 
 /** Resolves a globally unique alias without requiring its object type. */
-export function resolveObjectAlias<
+export function resolveRecordAlias<
   const TModel extends Model,
   const TRelations extends AnyRelations,
 >(
   storage: PostgresStorage<TModel>,
   db: EffectPgDatabase<TRelations>,
-  alias: ObjectAlias
-): Effect.Effect<ModelObjectRef<TModel>, PostgresAliasResolutionError> {
-  const { objectAliases, objects } = storage.core
+  alias: RecordAlias
+): Effect.Effect<ModelObjectRef<TModel>, PostgresRecordAliasResolutionError> {
+  const { recordAliases, objects } = storage.core
   return Effect.gen(function* () {
     const rows = yield* db
       .select({ id: objects.id, objectType: objects.objectType })
-      .from(objectAliases)
-      .innerJoin(objects, eq(objectAliases.objectId, objects.id))
-      .where(eq(objectAliases.alias, alias))
+      .from(recordAliases)
+      .innerJoin(objects, eq(recordAliases.objectId, objects.id))
+      .where(eq(recordAliases.alias, alias))
       .limit(1)
     const resolved = rows[0]
     if (resolved === undefined) {
-      return yield* Effect.fail(new ObjectAliasNotFound({ alias }))
+      return yield* Effect.fail(new RecordAliasNotFound({ alias }))
     }
-    if (resolved.objectType === "root") {
+    if (resolved.objectType === storage.model.root.id) {
       return yield* Effect.die(
-        `Root object '${resolved.id}' cannot own an object alias.`
+        `Model root '${resolved.id}' cannot own a record alias.`
       )
     }
     if (!Object.hasOwn(storage.model.objects, resolved.objectType)) {
@@ -292,7 +292,7 @@ export function makeObjectRepository<
   db: EffectPgDatabase<TRelations>
 ): Effect.Effect<Repository<TObject, PostgresRepositoryError>> {
   return Effect.gen(function* () {
-    const { objectAliases, objects } = storage.core
+    const { recordAliases, objects } = storage.core
     const table = Object.entries(storage.objects).find(
       ([objectType]) => objectType === object.id
     )?.[1]
@@ -336,11 +336,11 @@ export function makeObjectRepository<
     const RecordsSchema = Schema.Array(RecordSchema)
     const selection = {
       ...columns,
-      aliases: sql<ReadonlyArray<ObjectAlias>>`array(
-        select ${objectAliases.alias}
-        from ${objectAliases}
-        where ${objectAliases.objectId} = ${objects.id}
-        order by ${objectAliases.alias}
+      aliases: sql<ReadonlyArray<RecordAlias>>`array(
+        select ${recordAliases.alias}
+        from ${recordAliases}
+        where ${recordAliases.objectId} = ${objects.id}
+        order by ${recordAliases.alias}
       )`,
       annotations: objects.annotations,
       createdAt: objects.createdAt,
@@ -368,7 +368,7 @@ export function makeObjectRepository<
       if (column === undefined) {
         throw invalidListRequest(
           object,
-          `Property '${field}' cannot be filtered or sorted.`
+          `Field '${field}' cannot be filtered or sorted.`
         )
       }
       return column
@@ -458,7 +458,7 @@ export function makeObjectRepository<
     const decodeStringFilterValue = (field: string, value: string): string =>
       Schema.decodeUnknownSync(Schema.String)(decodeFilterValue(field, value))
 
-    const compileFilter = (filter: ObjectFilter<TObject>): SQL => {
+    const compileFilter = (filter: RepositoryFilter<TObject>): SQL => {
       if ("and" in filter) {
         if (filter.and.length === 0) {
           throw invalidListRequest(object, "An 'and' filter cannot be empty.")
@@ -556,7 +556,7 @@ export function makeObjectRepository<
     }
 
     const resolveSort = (
-      request: ListRequest<TObject>
+      request: RepositoryListRequest<TObject>
     ): ReadonlyArray<ResolvedSort> => {
       const requested: Array<ObjectSort<TObject>> = [...(request.sort ?? [])]
       const duplicate = requested.find(
@@ -643,7 +643,7 @@ export function makeObjectRepository<
     })
 
     const list = Effect.fn(`${object.id}.repository.list`)(function* (
-      request: ListRequest<TObject> = {}
+      request: RepositoryListRequest<TObject> = {}
     ): Effect.fn.Return<Page<ObjectRecord<TObject>>, PostgresRepositoryError> {
       const size = Math.min(
         MAX_PAGE_SIZE,
@@ -774,20 +774,20 @@ export function makeObjectRepository<
           })
           if (aliases.length > 0) {
             yield* tx
-              .insert(objectAliases)
+              .insert(recordAliases)
               .values(aliases.map((alias) => ({ alias, objectId: id })))
               .onConflictDoNothing()
             const owners = yield* tx
               .select({
-                alias: objectAliases.alias,
-                objectId: objectAliases.objectId,
+                alias: recordAliases.alias,
+                objectId: recordAliases.objectId,
               })
-              .from(objectAliases)
-              .where(inArray(objectAliases.alias, [...aliases]))
+              .from(recordAliases)
+              .where(inArray(recordAliases.alias, [...aliases]))
             const conflictOwner = owners.find((owner) => owner.objectId !== id)
             if (conflictOwner !== undefined) {
               return yield* Effect.fail(
-                new ObjectAliasConflict({
+                new RecordAliasConflict({
                   alias: conflictOwner.alias,
                   conflictingRecordId: conflictOwner.objectId,
                   recordId: id,
@@ -818,7 +818,7 @@ export function makeObjectRepository<
 
     const update = Effect.fn(`${object.id}.repository.update`)(function* (
       id: RecordId<TObject["id"]>,
-      input: ObjectUpdateInput<TObject>,
+      input: ObjectRepositoryUpdate<TObject>,
       expectedEtag: Etag,
       metadata: ObjectUpdateMetadata
     ) {
@@ -851,20 +851,20 @@ export function makeObjectRepository<
                 : (aliases.add ?? [])
           if (aliasesToAdd.length > 0) {
             yield* tx
-              .insert(objectAliases)
+              .insert(recordAliases)
               .values(aliasesToAdd.map((alias) => ({ alias, objectId: id })))
               .onConflictDoNothing()
             const owners = yield* tx
               .select({
-                alias: objectAliases.alias,
-                objectId: objectAliases.objectId,
+                alias: recordAliases.alias,
+                objectId: recordAliases.objectId,
               })
-              .from(objectAliases)
-              .where(inArray(objectAliases.alias, [...aliasesToAdd]))
+              .from(recordAliases)
+              .where(inArray(recordAliases.alias, [...aliasesToAdd]))
             const conflictOwner = owners.find((owner) => owner.objectId !== id)
             if (conflictOwner !== undefined) {
               return yield* Effect.fail(
-                new ObjectAliasConflict({
+                new RecordAliasConflict({
                   alias: conflictOwner.alias,
                   conflictingRecordId: conflictOwner.objectId,
                   recordId: id,
@@ -877,21 +877,21 @@ export function makeObjectRepository<
             if (isAliasReplacement(aliases)) {
               const replacementCondition =
                 aliases.length === 0
-                  ? eq(objectAliases.objectId, id)
+                  ? eq(recordAliases.objectId, id)
                   : and(
-                      eq(objectAliases.objectId, id),
-                      notInArray(objectAliases.alias, [...aliases])
+                      eq(recordAliases.objectId, id),
+                      notInArray(recordAliases.alias, [...aliases])
                     )
-              yield* tx.delete(objectAliases).where(replacementCondition)
+              yield* tx.delete(recordAliases).where(replacementCondition)
             } else {
               const aliasesToRemove = aliases.remove ?? []
               if (aliasesToRemove.length > 0) {
                 yield* tx
-                  .delete(objectAliases)
+                  .delete(recordAliases)
                   .where(
                     and(
-                      eq(objectAliases.objectId, id),
-                      inArray(objectAliases.alias, [...aliasesToRemove])
+                      eq(recordAliases.objectId, id),
+                      inArray(recordAliases.alias, [...aliasesToRemove])
                     )
                   )
               }

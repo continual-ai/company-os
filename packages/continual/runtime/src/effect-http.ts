@@ -24,7 +24,7 @@ import {
   PageToken,
   sortDirections,
 } from "./definition/request"
-import { RecordId, schema } from "./definition/schema"
+import { schema } from "./definition/schema"
 import {
   ConflictError,
   NotFoundError,
@@ -34,9 +34,11 @@ import {
 } from "./definition/standard-error"
 import {
   toEffectErrorSchema,
+  toEffectInputSchema,
   toEffectObjectCreateSchema,
   toEffectObjectSchema,
   toEffectObjectUpdateSchema,
+  toEffectRecordIdentifierSchema,
   toEffectSchema,
 } from "./effect-schema"
 
@@ -107,10 +109,8 @@ function pathParameter(object: ObjectType) {
   return {
     name,
     schema: Schema.Struct({
-      [name]: Schema.String.pipe(
-        Schema.fromBrand(`RecordId:${object.id}`, RecordId(object.id))
-      ).annotate({
-        title: `${object.name} ID`,
+      [name]: toEffectRecordIdentifierSchema(object.id).annotate({
+        title: `${object.name} ID or alias`,
       }),
     }),
   }
@@ -277,7 +277,7 @@ function addDefaultEndpoints(
         operator: filterOperatorSchema,
         value: Schema.optionalKey(Schema.Unknown),
       }).annotate({
-        identifier: `${pascalCase(object.id)}PropertyFilter`,
+        identifier: `${pascalCase(object.id)}FieldFilter`,
       }),
     ]).annotate({ identifier: `${pascalCase(object.id)}FilterExpression` })
   ).annotate({
@@ -336,10 +336,8 @@ function addDefaultEndpoints(
     {
       payload: Schema.Struct({
         ids: Schema.Array(
-          Schema.String.pipe(
-            Schema.fromBrand(`RecordId:${object.id}`, RecordId(object.id))
-          ).annotate({
-            title: `${object.name} ID`,
+          toEffectRecordIdentifierSchema(object.id).annotate({
+            title: `${object.name} ID or alias`,
           })
         ).check(Schema.isMinLength(1), Schema.isMaxLength(MAX_BATCH_GET_SIZE)),
       }).annotate({
@@ -351,7 +349,7 @@ function addDefaultEndpoints(
     }
   ).annotateMerge(
     endpointAnnotations({
-      description: `Returns records in the same order as the requested IDs. The request fails if any ID cannot be resolved.`,
+      description: `Returns records in the same order as the requested identifiers. The request fails if any identifier cannot be resolved.`,
       identifier: endpointId("batchGet", object),
       summary: `Batch get ${object.pluralName.toLowerCase()}`,
     })
@@ -366,16 +364,16 @@ function addDefaultEndpoints(
         headers: mutationHeaders,
         payload: Schema.Struct({
           ids: Schema.Array(
-            Schema.String.pipe(
-              Schema.fromBrand(`RecordId:${object.id}`, RecordId(object.id))
-            ).annotate({ title: `${object.name} ID` })
+            toEffectRecordIdentifierSchema(object.id).annotate({
+              title: `${object.name} ID or alias`,
+            })
           )
             .check(
               Schema.isMinLength(1),
               Schema.isMaxLength(MAX_BATCH_DELETE_SIZE)
             )
             .annotate({
-              description: `One to ${MAX_BATCH_DELETE_SIZE} unique ${object.name.toLowerCase()} IDs.`,
+              description: `One to ${MAX_BATCH_DELETE_SIZE} unique ${object.name.toLowerCase()} IDs or aliases.`,
             }),
         }).annotate({
           identifier: `${pascalCase(object.id)}BatchDeleteInput`,
@@ -386,7 +384,7 @@ function addDefaultEndpoints(
       }
     ).annotateMerge(
       endpointAnnotations({
-        description: `Deletes every requested ${object.name.toLowerCase()} in one atomic transaction. IDs must be unique; if any record cannot be deleted, none are deleted.`,
+        description: `Deletes every requested ${object.name.toLowerCase()} in one atomic transaction. Identifiers must resolve to unique records; if any record cannot be deleted, none are deleted.`,
         identifier: endpointId("batchDelete", object),
         summary: `Batch delete ${object.pluralName.toLowerCase()}`,
       })
@@ -502,11 +500,11 @@ function addActionEndpoint(
     ...(action.scope === "object" ? [NotFoundError] : []),
     ...action.errors,
   ])
-  const payload = toEffectSchema(schema.object(bodyProperties)).annotate({
+  const payload = toEffectInputSchema(schema.object(bodyProperties)).annotate({
     identifier: `${pascalCase(identifier)}Input`,
     title: `${action.name} input`,
   })
-  const params = toEffectSchema(schema.object(pathProperties))
+  const params = toEffectInputSchema(schema.object(pathProperties))
   const transport =
     placeholders.length === 0
       ? hasBody

@@ -1,18 +1,19 @@
-import { Root, defineObject, schema } from "@continual/runtime"
+import { defineObject, schema } from "@continual/runtime"
 
 import { Party } from "#interfaces/party"
+import { Platform } from "#platform"
 
 export const Company = defineObject({
   id: "company",
   collection: "companies",
   name: "Company",
-  parent: Root,
+  parent: Platform,
   pluralName: "Companies",
   description: "An organization Acme sells to, serves, or partners with.",
   implements: [
     {
       interface: Party,
-      properties: { image: "logo", name: "name" },
+      propertyMapping: { image: "logo", name: "name" },
     },
   ],
   properties: {

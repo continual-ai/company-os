@@ -1,7 +1,7 @@
 {
   "version": "8",
   "dialect": "postgres",
-  "id": "8b770682-3200-4e65-95cb-44535c3e64ac",
+  "id": "38ad87e9-df63-4f3a-b7be-b5ae9c9995fa",
   "prevIds": ["00000000-0000-0000-0000-000000000000"],
   "ddl": [
     {
@@ -42,12 +42,6 @@
     },
     {
       "isRlsEnabled": false,
-      "name": "object_aliases",
-      "entityType": "tables",
-      "schema": "public"
-    },
-    {
-      "isRlsEnabled": false,
       "name": "objects",
       "entityType": "tables",
       "schema": "public"
@@ -61,6 +55,12 @@
     {
       "isRlsEnabled": false,
       "name": "roots",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "record_aliases",
       "entityType": "tables",
       "schema": "public"
     },
@@ -85,7 +85,7 @@
       "default": null,
       "generated": null,
       "identity": null,
-      "name": "root_id",
+      "name": "platform_id",
       "entityType": "columns",
       "schema": "public",
       "table": "companies"
@@ -189,7 +189,7 @@
       "default": null,
       "generated": null,
       "identity": null,
-      "name": "root_id",
+      "name": "platform_id",
       "entityType": "columns",
       "schema": "public",
       "table": "contacts"
@@ -322,7 +322,7 @@
       "default": null,
       "generated": null,
       "identity": null,
-      "name": "root_id",
+      "name": "platform_id",
       "entityType": "columns",
       "schema": "public",
       "table": "deals"
@@ -413,7 +413,7 @@
       "default": null,
       "generated": null,
       "identity": null,
-      "name": "root_id",
+      "name": "platform_id",
       "entityType": "columns",
       "schema": "public",
       "table": "interactions"
@@ -504,7 +504,7 @@
       "default": null,
       "generated": null,
       "identity": null,
-      "name": "root_id",
+      "name": "platform_id",
       "entityType": "columns",
       "schema": "public",
       "table": "leads"
@@ -651,32 +651,6 @@
       "entityType": "columns",
       "schema": "public",
       "table": "line_items"
-    },
-    {
-      "type": "text",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "alias",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "object_aliases"
-    },
-    {
-      "type": "text",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "object_id",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "object_aliases"
     },
     {
       "type": "text",
@@ -835,10 +809,36 @@
       "table": "roots"
     },
     {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "alias",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "record_aliases"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "object_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "record_aliases"
+    },
+    {
       "nameExplicit": true,
       "columns": [
         {
-          "value": "root_id",
+          "value": "platform_id",
           "isExpression": false,
           "asc": true,
           "nullsFirst": false,
@@ -850,7 +850,7 @@
       "with": "",
       "method": "btree",
       "concurrently": false,
-      "name": "companies_root_id_idx",
+      "name": "companies_platform_id_idx",
       "entityType": "indexes",
       "schema": "public",
       "table": "companies"
@@ -880,7 +880,7 @@
       "nameExplicit": true,
       "columns": [
         {
-          "value": "root_id",
+          "value": "platform_id",
           "isExpression": false,
           "asc": true,
           "nullsFirst": false,
@@ -892,7 +892,7 @@
       "with": "",
       "method": "btree",
       "concurrently": false,
-      "name": "contacts_root_id_idx",
+      "name": "contacts_platform_id_idx",
       "entityType": "indexes",
       "schema": "public",
       "table": "contacts"
@@ -943,7 +943,7 @@
       "nameExplicit": true,
       "columns": [
         {
-          "value": "root_id",
+          "value": "platform_id",
           "isExpression": false,
           "asc": true,
           "nullsFirst": false,
@@ -955,7 +955,7 @@
       "with": "",
       "method": "btree",
       "concurrently": false,
-      "name": "deals_root_id_idx",
+      "name": "deals_platform_id_idx",
       "entityType": "indexes",
       "schema": "public",
       "table": "deals"
@@ -985,7 +985,7 @@
       "nameExplicit": true,
       "columns": [
         {
-          "value": "root_id",
+          "value": "platform_id",
           "isExpression": false,
           "asc": true,
           "nullsFirst": false,
@@ -997,7 +997,7 @@
       "with": "",
       "method": "btree",
       "concurrently": false,
-      "name": "interactions_root_id_idx",
+      "name": "interactions_platform_id_idx",
       "entityType": "indexes",
       "schema": "public",
       "table": "interactions"
@@ -1048,7 +1048,7 @@
       "nameExplicit": true,
       "columns": [
         {
-          "value": "root_id",
+          "value": "platform_id",
           "isExpression": false,
           "asc": true,
           "nullsFirst": false,
@@ -1060,7 +1060,7 @@
       "with": "",
       "method": "btree",
       "concurrently": false,
-      "name": "leads_root_id_idx",
+      "name": "leads_platform_id_idx",
       "entityType": "indexes",
       "schema": "public",
       "table": "leads"
@@ -1106,27 +1106,6 @@
       "entityType": "indexes",
       "schema": "public",
       "table": "line_items"
-    },
-    {
-      "nameExplicit": true,
-      "columns": [
-        {
-          "value": "object_id",
-          "isExpression": false,
-          "asc": true,
-          "nullsFirst": false,
-          "opclass": null
-        }
-      ],
-      "isUnique": false,
-      "where": null,
-      "with": "",
-      "method": "btree",
-      "concurrently": false,
-      "name": "object_aliases_object_id_idx",
-      "entityType": "indexes",
-      "schema": "public",
-      "table": "object_aliases"
     },
     {
       "nameExplicit": true,
@@ -1220,6 +1199,27 @@
       "table": "objects"
     },
     {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "object_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "record_aliases_object_id_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "record_aliases"
+    },
+    {
       "nameExplicit": false,
       "columns": ["id"],
       "schemaTo": "public",
@@ -1234,20 +1234,20 @@
     },
     {
       "nameExplicit": false,
-      "columns": ["root_id"],
+      "columns": ["platform_id"],
       "schemaTo": "public",
       "tableTo": "roots",
       "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "RESTRICT",
-      "name": "companies_root_id_roots_id_fkey",
+      "name": "companies_platform_id_roots_id_fkey",
       "entityType": "fks",
       "schema": "public",
       "table": "companies"
     },
     {
       "nameExplicit": true,
-      "columns": ["id", "root_id"],
+      "columns": ["id", "platform_id"],
       "schemaTo": "public",
       "tableTo": "objects",
       "columnsTo": ["id", "parent_id"],
@@ -1273,13 +1273,13 @@
     },
     {
       "nameExplicit": false,
-      "columns": ["root_id"],
+      "columns": ["platform_id"],
       "schemaTo": "public",
       "tableTo": "roots",
       "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "RESTRICT",
-      "name": "contacts_root_id_roots_id_fkey",
+      "name": "contacts_platform_id_roots_id_fkey",
       "entityType": "fks",
       "schema": "public",
       "table": "contacts"
@@ -1299,7 +1299,7 @@
     },
     {
       "nameExplicit": true,
-      "columns": ["id", "root_id"],
+      "columns": ["id", "platform_id"],
       "schemaTo": "public",
       "tableTo": "objects",
       "columnsTo": ["id", "parent_id"],
@@ -1325,13 +1325,13 @@
     },
     {
       "nameExplicit": false,
-      "columns": ["root_id"],
+      "columns": ["platform_id"],
       "schemaTo": "public",
       "tableTo": "roots",
       "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "RESTRICT",
-      "name": "deals_root_id_roots_id_fkey",
+      "name": "deals_platform_id_roots_id_fkey",
       "entityType": "fks",
       "schema": "public",
       "table": "deals"
@@ -1351,7 +1351,7 @@
     },
     {
       "nameExplicit": true,
-      "columns": ["id", "root_id"],
+      "columns": ["id", "platform_id"],
       "schemaTo": "public",
       "tableTo": "objects",
       "columnsTo": ["id", "parent_id"],
@@ -1377,13 +1377,13 @@
     },
     {
       "nameExplicit": false,
-      "columns": ["root_id"],
+      "columns": ["platform_id"],
       "schemaTo": "public",
       "tableTo": "roots",
       "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "RESTRICT",
-      "name": "interactions_root_id_roots_id_fkey",
+      "name": "interactions_platform_id_roots_id_fkey",
       "entityType": "fks",
       "schema": "public",
       "table": "interactions"
@@ -1403,7 +1403,7 @@
     },
     {
       "nameExplicit": true,
-      "columns": ["id", "root_id"],
+      "columns": ["id", "platform_id"],
       "schemaTo": "public",
       "tableTo": "objects",
       "columnsTo": ["id", "parent_id"],
@@ -1429,20 +1429,20 @@
     },
     {
       "nameExplicit": false,
-      "columns": ["root_id"],
+      "columns": ["platform_id"],
       "schemaTo": "public",
       "tableTo": "roots",
       "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "RESTRICT",
-      "name": "leads_root_id_roots_id_fkey",
+      "name": "leads_platform_id_roots_id_fkey",
       "entityType": "fks",
       "schema": "public",
       "table": "leads"
     },
     {
       "nameExplicit": true,
-      "columns": ["id", "root_id"],
+      "columns": ["id", "platform_id"],
       "schemaTo": "public",
       "tableTo": "objects",
       "columnsTo": ["id", "parent_id"],
@@ -1494,19 +1494,6 @@
     },
     {
       "nameExplicit": false,
-      "columns": ["object_id"],
-      "schemaTo": "public",
-      "tableTo": "objects",
-      "columnsTo": ["id"],
-      "onUpdate": "NO ACTION",
-      "onDelete": "CASCADE",
-      "name": "object_aliases_object_id_objects_id_fkey",
-      "entityType": "fks",
-      "schema": "public",
-      "table": "object_aliases"
-    },
-    {
-      "nameExplicit": false,
       "columns": ["parent_id"],
       "schemaTo": "public",
       "tableTo": "objects",
@@ -1543,6 +1530,19 @@
       "entityType": "fks",
       "schema": "public",
       "table": "roots"
+    },
+    {
+      "nameExplicit": false,
+      "columns": ["object_id"],
+      "schemaTo": "public",
+      "tableTo": "objects",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "record_aliases_object_id_objects_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "record_aliases"
     },
     {
       "columns": ["id"],
@@ -1593,14 +1593,6 @@
       "entityType": "pks"
     },
     {
-      "columns": ["alias"],
-      "nameExplicit": false,
-      "name": "object_aliases_pkey",
-      "schema": "public",
-      "table": "object_aliases",
-      "entityType": "pks"
-    },
-    {
       "columns": ["id"],
       "nameExplicit": false,
       "name": "objects_pkey",
@@ -1625,21 +1617,22 @@
       "entityType": "pks"
     },
     {
-      "value": "char_length(\"alias\") between 1 and 500",
-      "name": "object_aliases_alias_length_check",
-      "entityType": "checks",
+      "columns": ["alias"],
+      "nameExplicit": false,
+      "name": "record_aliases_pkey",
       "schema": "public",
-      "table": "object_aliases"
+      "table": "record_aliases",
+      "entityType": "pks"
     },
     {
-      "value": "\"object_type\" in ('root', 'company', 'contact', 'lead', 'deal', 'lineItem', 'interaction')",
+      "value": "\"object_type\" in ('platform', 'company', 'contact', 'lead', 'deal', 'lineItem', 'interaction')",
       "name": "objects_object_type_check",
       "entityType": "checks",
       "schema": "public",
       "table": "objects"
     },
     {
-      "value": "(\"object_type\" = 'root' and \"parent_id\" is null)\n          or (\"object_type\" <> 'root' and \"parent_id\" is not null)",
+      "value": "(\"object_type\" = 'platform' and \"parent_id\" is null)\n          or (\"object_type\" <> 'platform' and \"parent_id\" is not null)",
       "name": "objects_parent_required",
       "entityType": "checks",
       "schema": "public",

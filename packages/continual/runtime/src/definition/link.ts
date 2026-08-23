@@ -8,102 +8,169 @@ export const linkCardinalities = ["one", "zeroOrOne", "many"] as const
 
 export type LinkCardinality = (typeof linkCardinalities)[number]
 
-export interface LinkSide<
+export interface LinkEndpoint<
   TTypeId extends string = string,
+  TKind extends LinkTarget["kind"] = LinkTarget["kind"],
+> {
+  kind: TKind
+  typeId: TTypeId
+}
+
+export interface LinkTraversal<
+  TFrom extends LinkEndpoint = LinkEndpoint,
+  TTo extends LinkEndpoint = LinkEndpoint,
   TKey extends string = string,
   TCardinality extends LinkCardinality = LinkCardinality,
 > {
   cardinality: TCardinality
   description?: string
+  from: TFrom
   key: TKey
   label: string
-  typeId: TTypeId
+  to: TTo
 }
 
 export interface LinkType<
   TId extends string = string,
-  TFrom extends LinkSide = LinkSide,
-  TTo extends LinkSide = LinkSide,
+  TForward extends LinkTraversal = LinkTraversal,
+  TReverse extends LinkTraversal = LinkTraversal,
 > {
   description?: string
-  from: TFrom
+  forward: TForward
   id: TId
   kind: "link"
   name: string
-  to: TTo
+  reverse: TReverse
+}
+
+export interface LinkReferenceTraversals {
+  readonly source: LinkTraversal
+  readonly target: LinkTraversal
 }
 
 /**
- * Defines both traversals of a portable business relationship. For a
- * reference-shaped link, `from` is the singular side that owns the reference;
- * many-to-many links may use `many` on both sides.
+ * Returns the singular traversal represented by a derived `${key}Id`
+ * property and its target. Many-to-many links have no reference traversal.
+ */
+export function linkReferenceTraversals(
+  link: LinkType
+): LinkReferenceTraversals | undefined {
+  const { forward, reverse } = link
+  if (forward.cardinality === "many") {
+    return reverse.cardinality === "many"
+      ? undefined
+      : { source: reverse, target: forward }
+  }
+  if (reverse.cardinality === "many") {
+    return { source: forward, target: reverse }
+  }
+  return forward.from.kind === "object"
+    ? { source: forward, target: reverse }
+    : { source: reverse, target: forward }
+}
+
+/**
+ * Defines both named traversals of a portable business relationship. The
+ * contract leaves storage unspecified and derives its reference-bearing
+ * traversal from cardinalities rather than authoring order.
  */
 export function defineLink<
   const TId extends string,
-  const TFromType extends LinkTarget,
-  const TFromKey extends string,
-  const TFromCardinality extends LinkCardinality,
-  const TToType extends LinkTarget,
-  const TToKey extends string,
-  const TToCardinality extends LinkCardinality,
+  const TForwardFrom extends LinkTarget,
+  const TForwardTo extends LinkTarget,
+  const TForwardKey extends string,
+  const TForwardCardinality extends LinkCardinality,
+  const TReverseKey extends string,
+  const TReverseCardinality extends LinkCardinality,
 >(definition: {
   description?: string
-  from: {
-    cardinality: TFromCardinality
+  forward: {
+    cardinality: TForwardCardinality
     description?: string
-    key: TFromKey
+    from: TForwardFrom
+    key: TForwardKey
     label: string
-    type: TFromType
+    to: TForwardTo
   }
   id: TId
   name: string
-  to: {
-    cardinality: TToCardinality
+  reverse: {
+    cardinality: TReverseCardinality
     description?: string
-    key: TToKey
+    from: TForwardTo
+    key: TReverseKey
     label: string
-    type: TToType
+    to: TForwardFrom
   }
 }): LinkType<
   TId,
-  LinkSide<TFromType["id"], TFromKey, TFromCardinality>,
-  LinkSide<TToType["id"], TToKey, TToCardinality>
+  LinkTraversal<
+    LinkEndpoint<TForwardFrom["id"], TForwardFrom["kind"]>,
+    LinkEndpoint<TForwardTo["id"], TForwardTo["kind"]>,
+    TForwardKey,
+    TForwardCardinality
+  >,
+  LinkTraversal<
+    LinkEndpoint<TForwardTo["id"], TForwardTo["kind"]>,
+    LinkEndpoint<TForwardFrom["id"], TForwardFrom["kind"]>,
+    TReverseKey,
+    TReverseCardinality
+  >
 > {
-  const { from, to } = definition
+  const { forward, reverse } = definition
 
-  definitionId(from.key)
-  definitionId(to.key)
-  if (from.cardinality === "many" && to.cardinality !== "many") {
+  definitionId(forward.key)
+  definitionId(reverse.key)
+  if (
+    forward.from.id !== reverse.to.id ||
+    forward.from.kind !== reverse.to.kind ||
+    forward.to.id !== reverse.from.id ||
+    forward.to.kind !== reverse.from.kind
+  ) {
     throw new Error(
-      `Link '${definition.id}' must put its singular reference-bearing side in 'from'; swap the link sides.`
+      `Link '${definition.id}' reverse traversal must mirror its forward endpoints.`
     )
   }
 
   const link: LinkType<
     TId,
-    LinkSide<TFromType["id"], TFromKey, TFromCardinality>,
-    LinkSide<TToType["id"], TToKey, TToCardinality>
+    LinkTraversal<
+      LinkEndpoint<TForwardFrom["id"], TForwardFrom["kind"]>,
+      LinkEndpoint<TForwardTo["id"], TForwardTo["kind"]>,
+      TForwardKey,
+      TForwardCardinality
+    >,
+    LinkTraversal<
+      LinkEndpoint<TForwardTo["id"], TForwardTo["kind"]>,
+      LinkEndpoint<TForwardFrom["id"], TForwardFrom["kind"]>,
+      TReverseKey,
+      TReverseCardinality
+    >
   > = {
     kind: "link",
     id: definitionId(definition.id),
     name: definition.name,
-    from: {
-      cardinality: from.cardinality,
-      key: from.key,
-      label: from.label,
-      typeId: from.type.id,
+    forward: {
+      cardinality: forward.cardinality,
+      from: { kind: forward.from.kind, typeId: forward.from.id },
+      key: forward.key,
+      label: forward.label,
+      to: { kind: forward.to.kind, typeId: forward.to.id },
     },
-    to: {
-      cardinality: to.cardinality,
-      key: to.key,
-      label: to.label,
-      typeId: to.type.id,
+    reverse: {
+      cardinality: reverse.cardinality,
+      from: { kind: reverse.from.kind, typeId: reverse.from.id },
+      key: reverse.key,
+      label: reverse.label,
+      to: { kind: reverse.to.kind, typeId: reverse.to.id },
     },
   }
-  if (from.description !== undefined) {
-    link.from.description = from.description
+  if (forward.description !== undefined) {
+    link.forward.description = forward.description
   }
-  if (to.description !== undefined) link.to.description = to.description
+  if (reverse.description !== undefined) {
+    link.reverse.description = reverse.description
+  }
   if (definition.description !== undefined) {
     link.description = definition.description
   }

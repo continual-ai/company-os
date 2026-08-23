@@ -4,20 +4,23 @@ import { describe, expect, expectTypeOf, it } from "vitest"
 import {
   defineObject,
   type ObjectCreateInput,
-  type ObjectAliasUpdate,
+  type RecordAliasUpdate,
   type ObjectRecord,
   type ObjectUpdateInput,
 } from "./definition/object"
-import { Root } from "./definition/root"
+import { defineRoot } from "./definition/root"
 import {
-  ObjectAlias,
+  RecordAlias,
   RecordId,
   schema,
   type EmailAddress,
+  type InferInputSchema,
   type InferSchema,
-  type ObjectAlias as ObjectAliasType,
+  type RecordAlias as RecordAliasType,
+  type RecordIdentifier,
 } from "./definition/schema"
 import {
+  toEffectInputSchema,
   toEffectObjectCreateSchema,
   toEffectObjectSchema,
   toEffectObjectUpdateSchema,
@@ -25,12 +28,13 @@ import {
 } from "./effect-schema"
 
 const AccountId = RecordId("account")
+const Platform = defineRoot({ id: "platform", name: "Platform" })
 
 const Account = defineObject({
   id: "account",
   collection: "accounts",
   name: "Account",
-  parent: Root,
+  parent: Platform,
   pluralName: "Accounts",
   properties: {
     logo: schema.image({ aspectRatio: 1, nullable: true }),
@@ -59,7 +63,7 @@ describe("Effect Schema projection", () => {
       createdAt: "2026-08-18T12:00:00Z",
       createdById: "user_1",
       etag: "v1",
-      parentId: "root_1",
+      parentId: "platform_1",
       updatedAt: "2026-08-18T13:00:00.123Z",
       updatedById: "user_1",
     }
@@ -140,7 +144,10 @@ describe("Effect Schema projection", () => {
       logo: { assetId: "asset_1" },
       name: "Acme",
     } satisfies Create
-    const typedUpdate = { logo: null } satisfies Update
+    const typedUpdate = {
+      id: AccountId("account_1"),
+      logo: null,
+    } satisfies Update
     expect(typedCreate.logo.assetId).toBe("asset_1")
     expect(typedUpdate.logo).toBeNull()
 
@@ -162,16 +169,19 @@ describe("Effect Schema projection", () => {
       Readonly<Record<string, string>> | undefined
     >()
     expectTypeOf<Create["aliases"]>().toEqualTypeOf<
-      ReadonlyArray<ObjectAliasType> | undefined
+      ReadonlyArray<RecordAliasType> | undefined
     >()
     expectTypeOf<Create["parentId"]>().toEqualTypeOf<undefined>()
-    expectTypeOf<AccountRecord["parentId"]>().toEqualTypeOf<RecordId<"root">>()
+    expectTypeOf<AccountRecord["parentId"]>().toEqualTypeOf<
+      RecordId<"platform">
+    >()
     expectTypeOf<Update["email"]>().toEqualTypeOf<
       EmailAddress | null | undefined
     >()
+    expectTypeOf<Update["id"]>().toEqualTypeOf<RecordIdentifier<"account">>()
     expectTypeOf<Update["externalId"]>().toEqualTypeOf<string | undefined>()
     expectTypeOf<Update["aliases"]>().toEqualTypeOf<
-      ObjectAliasUpdate | undefined
+      RecordAliasUpdate | undefined
     >()
     expectTypeOf<Update["status"]>().toEqualTypeOf<
       "active" | "inactive" | undefined
@@ -183,8 +193,8 @@ describe("Effect Schema projection", () => {
     const decodeUpdate = Schema.decodeUnknownSync(
       toEffectObjectUpdateSchema(Account)
     )
-    const hubspotAlias = ObjectAlias("hubspot:portal_1:company:account_1")
-    const salesforceAlias = ObjectAlias("salesforce:org_1:account:account_1")
+    const hubspotAlias = RecordAlias("hubspot:portal_1:company:account_1")
+    const salesforceAlias = RecordAlias("salesforce:org_1:account:account_1")
 
     expect(
       decodeCreate({
@@ -252,6 +262,9 @@ describe("Effect Schema projection", () => {
       role: "owner",
     } satisfies MembershipCreate
     expectTypeOf(membership.parentId).toEqualTypeOf<RecordId<"account">>()
+    expectTypeOf<MembershipCreate["parentId"]>().toEqualTypeOf<
+      RecordIdentifier<"account">
+    >()
     const decodeMembership = Schema.decodeUnknownSync(
       toEffectObjectCreateSchema(Membership)
     )
@@ -259,6 +272,9 @@ describe("Effect Schema projection", () => {
       parentId: "account_1",
       role: "owner",
     })
+    expect(decodeMembership({ parentId: hubspotAlias, role: "owner" })).toEqual(
+      { parentId: hubspotAlias, role: "owner" }
+    )
     expect(() => decodeMembership({ role: "owner" })).toThrow()
   })
 
@@ -268,9 +284,14 @@ describe("Effect Schema projection", () => {
       notify: schema.optional(schema.boolean()),
     })
     type Input = InferSchema<typeof input>
+    type InputBoundary = InferInputSchema<typeof input>
 
     expectTypeOf<Input>().toEqualTypeOf<{
       readonly accountId: RecordId<"account">
+      readonly notify?: boolean
+    }>()
+    expectTypeOf<InputBoundary>().toEqualTypeOf<{
+      readonly accountId: RecordIdentifier<"account">
       readonly notify?: boolean
     }>()
 
@@ -279,6 +300,11 @@ describe("Effect Schema projection", () => {
       accountId: "account_1",
     })
     expect(() => decode({})).toThrow()
+
+    const decodeInput = Schema.decodeUnknownSync(toEffectInputSchema(input))
+    expect(
+      decodeInput({ accountId: RecordAlias("hubspot:account:account_1") })
+    ).toEqual({ accountId: "hubspot:account:account_1" })
   })
 
   it("validates semantic money values", () => {

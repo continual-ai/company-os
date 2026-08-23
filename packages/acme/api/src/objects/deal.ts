@@ -1,10 +1,12 @@
-import { Root, defineObject, schema } from "@continual/runtime"
+import { defineObject, schema } from "@continual/runtime"
+
+import { Platform } from "#platform"
 
 export const Deal = defineObject({
   id: "deal",
   collection: "deals",
   name: "Deal",
-  parent: Root,
+  parent: Platform,
   pluralName: "Deals",
   description: "A potential commercial agreement with a company.",
   properties: {

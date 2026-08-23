@@ -4,36 +4,38 @@ import { describe, expect, it } from "vitest"
 import {
   ActorId,
   defineObject,
-  type ObjectAliasUpdate,
+  type RecordAliasUpdate,
   type ObjectRecord,
 } from "./definition/object"
 import {
   DEFAULT_PAGE_SIZE,
   MAX_BATCH_DELETE_SIZE,
+  MAX_BATCH_GET_SIZE,
   PageToken,
 } from "./definition/request"
-import { Root } from "./definition/root"
+import { defineRoot } from "./definition/root"
 import {
-  ObjectAlias,
-  type ObjectAlias as ObjectAliasType,
+  RecordAlias,
+  type RecordAlias as RecordAliasType,
   RecordId,
   schema,
 } from "./definition/schema"
 import {
-  ObjectAliasConflict,
+  RecordAliasConflict,
   ObjectNotFound,
   ObjectWriteConflict,
   type Repository,
 } from "./effect-object-repository"
 import * as ObjectService from "./effect-object-service"
 
-const RootId = RecordId("root")
+const Platform = defineRoot({ id: "platform", name: "Platform" })
+const PlatformId = RecordId("platform")
 
 const Account = defineObject({
   id: "account",
   collection: "accounts",
   name: "Account",
-  parent: Root,
+  parent: Platform,
   pluralName: "Accounts",
   properties: {
     email: schema.email({ nullable: true }),
@@ -52,38 +54,39 @@ const Account = defineObject({
 
 type AccountRecord = ObjectRecord<typeof Account>
 type RepositoryError =
-  | ObjectAliasConflict
+  | RecordAliasConflict
   | ObjectNotFound
   | ObjectWriteConflict
 
 function isAliasReplacement(
-  update: ObjectAliasUpdate
-): update is ReadonlyArray<ObjectAliasType> {
+  update: RecordAliasUpdate
+): update is ReadonlyArray<RecordAliasType> {
   return Array.isArray(update)
 }
 
 function sortedAliases(
-  aliases: ReadonlyArray<ObjectAliasType>
-): ReadonlyArray<ObjectAliasType> {
+  aliases: ReadonlyArray<RecordAliasType>
+): ReadonlyArray<RecordAliasType> {
   // This array is a fresh snapshot owned by the in-memory test adapter.
   // oxlint-disable-next-line unicorn/no-array-sort
   return [...aliases].sort()
 }
 
-function makeRepository(): Repository<typeof Account, RepositoryError> {
-  const aliasOwners = new Map<ObjectAliasType, string>()
+function makeRepository(
+  aliasOwners: Map<RecordAliasType, string>
+): Repository<typeof Account, RepositoryError> {
   const records = new Map<string, AccountRecord>()
 
   const claimAliases = (
     id: RecordId<"account">,
-    aliases: ReadonlyArray<ObjectAliasType>
+    aliases: ReadonlyArray<RecordAliasType>
   ) => {
     const conflict = aliases
       .map((alias) => ({ alias, owner: aliasOwners.get(alias) }))
       .find(({ owner }) => owner !== undefined && owner !== id)
     if (conflict?.owner !== undefined) {
       return Effect.fail(
-        new ObjectAliasConflict({
+        new RecordAliasConflict({
           alias: conflict.alias,
           conflictingRecordId: conflict.owner,
           recordId: id,
@@ -97,7 +100,7 @@ function makeRepository(): Repository<typeof Account, RepositoryError> {
 
   const releaseAliases = (
     id: RecordId<"account">,
-    aliases: ReadonlyArray<ObjectAliasType>
+    aliases: ReadonlyArray<RecordAliasType>
   ) => {
     for (const alias of aliases) {
       if (aliasOwners.get(alias) === id) aliasOwners.delete(alias)
@@ -245,10 +248,11 @@ describe("ObjectService", () => {
   it("provides validated CRUD, atomic batching, pagination, and optimistic writes", async () => {
     let nextId = 0
     const authorizationRequests: Array<ObjectService.AuthorizationRequest> = []
-    const repository = makeRepository()
+    const aliasOwners = new Map<RecordAliasType, string>()
+    const repository = makeRepository(aliasOwners)
     const context = {
       actorId: ActorId("user_1"),
-      rootId: RootId("root_1"),
+      rootId: PlatformId("platform_1"),
     }
     const service = ObjectService.make(Account, repository, {
       authorize: (request) => {
@@ -256,15 +260,27 @@ describe("ObjectService", () => {
         return Effect.succeed(context)
       },
       generateEtag: () => `etag_${nextId}`,
-      generateId: () => `account_${++nextId}`,
+      generateRecordId: () => `account_${++nextId}`,
+      resolveRecordAlias: (_expectedType, alias) => {
+        const id = aliasOwners.get(alias)
+        return id === undefined
+          ? Effect.fail(
+              new ObjectNotFound({
+                objectType: Account.id,
+                recordId: alias,
+              })
+            )
+          : Effect.succeed(id)
+      },
     })
 
     const result = await Effect.runPromise(
       Effect.gen(function* () {
-        const hubspotAcme = ObjectAlias("hubspot:portal_1:company:acme")
-        const hubspotBravo = ObjectAlias("hubspot:portal_1:company:bravo")
-        const salesforceAcme = ObjectAlias("salesforce:org_1:account:acme")
-        const legacyAcme = ObjectAlias("legacy:company:acme")
+        const hubspotAcme = RecordAlias("hubspot:portal_1:company:acme")
+        const hubspotBravo = RecordAlias("hubspot:portal_1:company:bravo")
+        const salesforceAcme = RecordAlias("salesforce:org_1:account:acme")
+        const legacyAcme = RecordAlias("legacy:company:acme")
+        const legacyCharlie = RecordAlias("legacy:company:charlie")
         const invalidCreate = yield* service
           .create({ name: "", slug: "invalid" })
           .pipe(Effect.flip)
@@ -286,6 +302,16 @@ describe("ObjectService", () => {
           .update({ id: first.id, name: "" })
           .pipe(Effect.flip)
         const batch = yield* service.batchGet({ ids: [second.id, first.id] })
+        const emptyBatchGet = yield* service
+          .batchGet({ ids: [] })
+          .pipe(Effect.flip)
+        const oversizedBatchGet = yield* service
+          .batchGet({
+            ids: Array.from({ length: MAX_BATCH_GET_SIZE + 1 }, (_, index) =>
+              RecordId(Account.id)(`account_oversized_${index}`)
+            ),
+          })
+          .pipe(Effect.flip)
         const firstPage = yield* service.list({ pageSize: 1 })
         if (firstPage.nextPageToken === "") {
           return yield* Effect.die("Expected another page")
@@ -312,6 +338,14 @@ describe("ObjectService", () => {
           aliases: [legacyAcme],
           id: first.id,
         })
+        const foundByAlias = yield* service.get({ id: legacyAcme })
+        const updatedByAlias = yield* service.update({
+          id: legacyAcme,
+          name: "Acme, Inc.",
+        })
+        const aliasBatch = yield* service.batchGet({
+          ids: [second.id, legacyAcme],
+        })
         const aliasConflict = yield* service
           .update({
             aliases: { add: [legacyAcme] },
@@ -328,12 +362,13 @@ describe("ObjectService", () => {
           })
           .pipe(Effect.flip)
         const third = yield* service.create({
+          aliases: [legacyCharlie],
           name: "Charlie",
           slug: "charlie",
         })
         const fourth = yield* service.create({ name: "Delta", slug: "delta" })
         const duplicateBatchDelete = yield* service
-          .batchDelete({ ids: [third.id, third.id] })
+          .batchDelete({ ids: [third.id, legacyCharlie] })
           .pipe(Effect.flip)
         const emptyBatchDelete = yield* service
           .batchDelete({ ids: [] })
@@ -350,24 +385,29 @@ describe("ObjectService", () => {
 
         return {
           aliasConflict,
+          aliasBatch,
           aliasDelta,
           aliasReplacement,
           batch,
           deleted,
           duplicateBatchDelete,
           duplicateAliasUpdate,
+          emptyBatchGet,
           emptyBatchDelete,
           first,
           firstPage,
+          foundByAlias,
           invalidCreate,
           invalidUpdate,
           immutableWrite,
           oversizedBatchDelete,
+          oversizedBatchGet,
           overlappingAliasUpdate,
           second,
           secondPage,
           staleWrite,
           updated,
+          updatedByAlias,
         }
       })
     )
@@ -377,7 +417,7 @@ describe("ObjectService", () => {
       email: null,
       id: "account_1",
       name: "Acme",
-      parentId: "root_1",
+      parentId: "platform_1",
       slug: "acme",
       status: "active",
     })
@@ -390,10 +430,19 @@ describe("ObjectService", () => {
     expect(result.invalidUpdate).toBeInstanceOf(Schema.SchemaError)
     expect(result.aliasDelta.aliases).toEqual(["salesforce:org_1:account:acme"])
     expect(result.aliasReplacement.aliases).toEqual(["legacy:company:acme"])
-    expect(result.aliasConflict).toBeInstanceOf(ObjectAliasConflict)
+    expect(result.foundByAlias.id).toBe(result.first.id)
+    expect(result.updatedByAlias).toMatchObject({
+      id: result.first.id,
+      name: "Acme, Inc.",
+    })
+    expect(result.aliasConflict).toBeInstanceOf(RecordAliasConflict)
     expect(result.duplicateAliasUpdate).toBeInstanceOf(Schema.SchemaError)
     expect(result.overlappingAliasUpdate).toBeInstanceOf(Schema.SchemaError)
     expect(result.batch.items.map(({ id }) => id)).toEqual([
+      result.second.id,
+      result.first.id,
+    ])
+    expect(result.aliasBatch.items.map(({ id }) => id)).toEqual([
       result.second.id,
       result.first.id,
     ])
@@ -404,13 +453,23 @@ describe("ObjectService", () => {
       ObjectService.ImmutablePropertyError
     )
     expect(result.duplicateBatchDelete).toBeInstanceOf(
-      ObjectService.InvalidBatchDeleteRequest
+      ObjectService.InvalidBatchRequest
     )
+    expect(result.duplicateBatchDelete).toMatchObject({
+      operation: "batchDelete",
+    })
     expect(result.emptyBatchDelete).toBeInstanceOf(
-      ObjectService.InvalidBatchDeleteRequest
+      ObjectService.InvalidBatchRequest
     )
     expect(result.oversizedBatchDelete).toBeInstanceOf(
-      ObjectService.InvalidBatchDeleteRequest
+      ObjectService.InvalidBatchRequest
+    )
+    expect(result.emptyBatchGet).toBeInstanceOf(
+      ObjectService.InvalidBatchRequest
+    )
+    expect(result.emptyBatchGet).toMatchObject({ operation: "batchGet" })
+    expect(result.oversizedBatchGet).toBeInstanceOf(
+      ObjectService.InvalidBatchRequest
     )
     expect(result.deleted).toBeInstanceOf(ObjectNotFound)
     expect(authorizationRequests[0]).toEqual({

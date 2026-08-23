@@ -23,15 +23,30 @@ export type {
   InterfaceType,
 } from "./definition/interface"
 export { defineModel } from "./definition/model"
-export type { Model, ModelObjectRef } from "./definition/model"
-export { defineLink, linkCardinalities } from "./definition/link"
-export type { LinkType, LinkCardinality, LinkSide } from "./definition/link"
+export type {
+  Model,
+  ModelInterfaceRecordId,
+  ModelObjectRef,
+} from "./definition/model"
+export {
+  defineLink,
+  linkCardinalities,
+  linkReferenceTraversals,
+} from "./definition/link"
+export type {
+  LinkType,
+  LinkCardinality,
+  LinkEndpoint,
+  LinkReferenceTraversals,
+  LinkTraversal,
+} from "./definition/link"
 export { ActorId, defineObject, Etag } from "./definition/object"
 export type {
   BaseRecord,
-  ObjectAliasDelta,
-  ObjectAliasUpdate,
+  RecordAliasDelta,
+  RecordAliasUpdate,
   ObjectBatchDeleteInput,
+  ObjectBatchGetInput,
   ObjectDeleteInput,
   ObjectGetInput,
   ObjectType,
@@ -41,9 +56,8 @@ export type {
   ObjectRef,
   ObjectRecord,
   ObjectUpdateInput,
-  ObjectUpdateRequest,
 } from "./definition/object"
-export { Root } from "./definition/root"
+export { defineRoot } from "./definition/root"
 export type { RootType } from "./definition/root"
 export {
   DEFAULT_PAGE_SIZE,
@@ -73,8 +87,9 @@ export {
   Decimal,
   DomainName,
   EmailAddress,
-  MAX_OBJECT_ALIAS_LENGTH,
-  ObjectAlias,
+  isRecordAlias,
+  MAX_RECORD_ALIAS_LENGTH,
+  RecordAlias,
   PhoneNumber,
   RecordId,
   schema,
@@ -91,12 +106,14 @@ export type {
   GeoPoint,
   GeoPointSchema,
   ImageRef,
+  InferInputSchema,
   InferSchema,
   LiteralValue,
   Money,
   MediaRef,
   MediaSchema,
   NumberSchemaOptions,
+  RecordIdentifier,
   SchemaDefinition,
   SchemaAnnotations,
   SchemaProperties,
@@ -110,6 +127,5 @@ export {
   UnauthenticatedError,
   ValidationError,
 } from "./definition/standard-error"
-export { createApiDescription } from "./description"
-export { API_DESCRIPTION_VERSION } from "./description-types"
-export type { ApiDescription } from "./description-types"
+export { API_DESCRIPTION_VERSION, createApiDescription } from "./description"
+export type { ApiDescription } from "./description"

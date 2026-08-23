@@ -4,18 +4,16 @@ import type { ErrorType } from "./definition/error"
 import {
   ActorId,
   Etag,
-  type ObjectCreateInput,
   type ObjectRecord,
   type ObjectType,
-  type ObjectUpdateInput,
 } from "./definition/object"
 import type { PropertyDefinition } from "./definition/property"
-import { Root } from "./definition/root"
 import type {
   AnySchema,
-  InferSchema,
   DecimalSchema,
+  InferSchema,
   NumberSchema,
+  RecordIdentifier,
   SchemaDefinition,
   StringSchema,
 } from "./definition/schema"
@@ -25,7 +23,7 @@ import {
   Decimal,
   DomainName,
   EmailAddress,
-  ObjectAlias,
+  RecordAlias,
   PhoneNumber,
   RecordId,
   Timestamp,
@@ -75,20 +73,20 @@ const annotationsSchema = Schema.Record(Schema.String, Schema.String).annotate({
   title: "Annotations",
 })
 
-const objectAliasSchema = Schema.String.pipe(
-  Schema.fromBrand("ObjectAlias", ObjectAlias)
-).annotate({ title: "Object alias" })
+const recordAliasSchema = Schema.String.pipe(
+  Schema.fromBrand("RecordAlias", RecordAlias)
+).annotate({ title: "Record alias" })
 
-const objectAliasesSchema = Schema.Array(objectAliasSchema)
+const recordAliasesSchema = Schema.Array(recordAliasSchema)
   .check(Schema.isUnique())
-  .annotate({ identifier: "ObjectAliases", title: "Object aliases" })
+  .annotate({ identifier: "RecordAliases", title: "Record aliases" })
 
-const objectAliasDeltaSchema = Schema.Struct({
+const recordAliasDeltaSchema = Schema.Struct({
   add: Schema.optionalKey(
-    Schema.Array(objectAliasSchema).check(Schema.isUnique())
+    Schema.Array(recordAliasSchema).check(Schema.isUnique())
   ),
   remove: Schema.optionalKey(
-    Schema.Array(objectAliasSchema).check(Schema.isUnique())
+    Schema.Array(recordAliasSchema).check(Schema.isUnique())
   ),
 }).check(
   Schema.makeFilter(
@@ -97,9 +95,9 @@ const objectAliasDeltaSchema = Schema.Struct({
   )
 )
 
-const objectAliasUpdateSchema = Schema.Union([
-  objectAliasesSchema,
-  objectAliasDeltaSchema,
+const recordAliasUpdateSchema = Schema.Union([
+  recordAliasesSchema,
+  recordAliasDeltaSchema,
 ])
 
 interface CompiledSchemaFields {
@@ -195,10 +193,31 @@ function compileDecimal(definition: DecimalSchema): Schema.Codec<string> {
   return value
 }
 
-function compileBase(definition: AnySchema): Schema.Codec<unknown, unknown> {
+type CompileMode = "input" | "output"
+
+function recordIdSchema(typeId: string) {
+  return Schema.String.pipe(
+    Schema.fromBrand(`RecordId:${typeId}`, RecordId(typeId))
+  )
+}
+
+/** Schema for a canonical record ID or qualified alias at an input boundary. */
+export function toEffectRecordIdentifierSchema(
+  typeId: string
+): Schema.Codec<RecordIdentifier, unknown> {
+  return Schema.Union([recordIdSchema(typeId), recordAliasSchema]).annotate({
+    description: "A canonical record ID or globally qualified record alias.",
+    title: "Record identifier",
+  })
+}
+
+function compileBase(
+  definition: AnySchema,
+  mode: CompileMode
+): Schema.Codec<unknown, unknown> {
   switch (definition.kind) {
     case "array":
-      return Schema.Array(compile(definition.items))
+      return Schema.Array(compile(definition.items, mode))
     case "boolean":
       return Schema.Boolean
     case "decimal":
@@ -216,7 +235,7 @@ function compileBase(definition: AnySchema): Schema.Codec<unknown, unknown> {
         ? Schema.Null
         : Schema.Literal(definition.value)
     case "map":
-      return Schema.Record(Schema.String, compile(definition.values))
+      return Schema.Record(Schema.String, compile(definition.values, mode))
     case "media":
       return mediaRefSchema
     case "money":
@@ -224,33 +243,35 @@ function compileBase(definition: AnySchema): Schema.Codec<unknown, unknown> {
     case "number":
       return compileNumber(definition)
     case "optional":
-      return Schema.optionalKey(compile(definition.value))
+      return Schema.optionalKey(compile(definition.value, mode))
     case "recordId":
-      return Schema.String.pipe(
-        Schema.fromBrand(
-          `RecordId:${definition.typeId}`,
-          RecordId(definition.typeId)
-        )
-      )
+      return mode === "input"
+        ? toEffectRecordIdentifierSchema(definition.typeId)
+        : recordIdSchema(definition.typeId)
     case "string":
       return compileString(definition)
     case "struct": {
       const fields: CompiledSchemaFields = Object.fromEntries(
         Object.entries(definition.properties).map(([id, member]) =>
-          entry(id, compile(member))
+          entry(id, compile(member, mode))
         )
       )
       return Schema.Struct(fields)
     }
     case "union":
-      return Schema.Union(definition.members.map(compile))
+      return Schema.Union(
+        definition.members.map((member) => compile(member, mode))
+      )
   }
 
   throw new Error("Unsupported schema kind.")
 }
 
-function compile(definition: AnySchema): Schema.Codec<unknown, unknown> {
-  let value = compileBase(definition)
+function compile(
+  definition: AnySchema,
+  mode: CompileMode
+): Schema.Codec<unknown, unknown> {
+  let value = compileBase(definition, mode)
   const metadata: SchemaDefinition = definition
   if (metadata.nullable === true) {
     value = Schema.NullOr(value)
@@ -276,7 +297,13 @@ export function toEffectSchema<TSchema extends AnySchema>(
 export function toEffectSchema(
   definition: AnySchema
 ): Schema.Codec<unknown, unknown> {
-  return compile(definition)
+  return compile(definition, "output")
+}
+
+export function toEffectInputSchema(
+  definition: AnySchema
+): Schema.Codec<unknown, unknown> {
+  return compile(definition, "input")
 }
 
 const compiledPropertySchemas = new WeakMap<
@@ -287,13 +314,15 @@ const compiledPropertySchemas = new WeakMap<
 function compilePropertyValue(
   object: ObjectType,
   propertyId: string,
-  property: PropertyDefinition
+  property: PropertyDefinition,
+  mode: CompileMode
 ): Schema.Codec<unknown, unknown> {
   const identifier = `${pascalCase(object.id)}${pascalCase(propertyId)}`
-  const cached = compiledPropertySchemas.get(property)?.get(identifier)
+  const cacheKey = `${mode}:${identifier}`
+  const cached = compiledPropertySchemas.get(property)?.get(cacheKey)
   if (cached !== undefined) return cached
 
-  let value = compile(property)
+  let value = compile(property, mode)
   if (
     property.nullable ||
     property.kind === "file" ||
@@ -317,7 +346,7 @@ function compilePropertyValue(
     value = value.annotate({ description })
   }
   const objectCache = compiledPropertySchemas.get(property) ?? new Map()
-  objectCache.set(identifier, value)
+  objectCache.set(cacheKey, value)
   compiledPropertySchemas.set(property, objectCache)
   return value
 }
@@ -325,7 +354,10 @@ function compilePropertyValue(
 function compileObjectProperties(object: ObjectType): CompiledSchemaFields {
   return Object.fromEntries(
     Object.entries(object.properties).map(([propertyId, property]) =>
-      entry(propertyId, compilePropertyValue(object, propertyId, property))
+      entry(
+        propertyId,
+        compilePropertyValue(object, propertyId, property, "output")
+      )
     )
   )
 }
@@ -338,9 +370,9 @@ function compileCreateProperties(object: ObjectType): CompiledSchemaFields {
         entry(
           propertyId,
           property.requiredOnCreate
-            ? compilePropertyValue(object, propertyId, property)
+            ? compilePropertyValue(object, propertyId, property, "input")
             : Schema.optionalKey(
-                compilePropertyValue(object, propertyId, property)
+                compilePropertyValue(object, propertyId, property, "input")
               )
         )
       )
@@ -354,7 +386,9 @@ function compileUpdateProperties(object: ObjectType): CompiledSchemaFields {
       .map(([propertyId, property]) =>
         entry(
           propertyId,
-          Schema.optionalKey(compilePropertyValue(object, propertyId, property))
+          Schema.optionalKey(
+            compilePropertyValue(object, propertyId, property, "input")
+          )
         )
       )
   )
@@ -406,7 +440,7 @@ export function toEffectObjectSchema(
   )
   const fields: CompiledSchemaFields = Object.fromEntries([
     entry("id", id),
-    entry("aliases", objectAliasesSchema),
+    entry("aliases", recordAliasesSchema),
     entry("annotations", annotationsSchema),
     entry("createdAt", createdAt),
     entry("createdById", actorId),
@@ -437,24 +471,18 @@ export function toEffectObjectSchema(
   )
 }
 
-export function toEffectObjectCreateSchema<TObject extends ObjectType>(
-  object: TObject
-): Schema.Codec<ObjectCreateInput<TObject>, unknown>
 export function toEffectObjectCreateSchema(
   object: ObjectType
 ): Schema.Codec<unknown, unknown> {
   const fields: CompiledSchemaFields = {
-    aliases: Schema.optionalKey(objectAliasesSchema),
+    aliases: Schema.optionalKey(recordAliasesSchema),
     annotations: Schema.optionalKey(annotationsSchema),
     ...compileCreateProperties(object),
   }
-  if (object.parent.objectType !== Root.id) {
-    fields.parentId = Schema.String.annotate({ title: "Parent ID" }).pipe(
-      Schema.fromBrand(
-        `RecordId:${object.parent.objectType}`,
-        RecordId(object.parent.objectType)
-      )
-    )
+  if (!object.parent.root) {
+    fields.parentId = toEffectRecordIdentifierSchema(
+      object.parent.objectType
+    ).annotate({ title: "Parent ID or alias" })
   }
   return annotateObjectSchema(
     object,
@@ -464,14 +492,11 @@ export function toEffectObjectCreateSchema(
   )
 }
 
-export function toEffectObjectUpdateSchema<TObject extends ObjectType>(
-  object: TObject
-): Schema.Codec<ObjectUpdateInput<TObject>, unknown>
 export function toEffectObjectUpdateSchema(
   object: ObjectType
 ): Schema.Codec<unknown, unknown> {
   const fields: CompiledSchemaFields = {
-    aliases: Schema.optionalKey(objectAliasUpdateSchema),
+    aliases: Schema.optionalKey(recordAliasUpdateSchema),
     annotations: Schema.optionalKey(annotationsSchema),
     ...compileUpdateProperties(object),
   }
@@ -500,7 +525,7 @@ export function toEffectErrorSchema(
   let value = Schema.Struct({
     category: Schema.Literal(error.category),
     code: Schema.Literal(error.code),
-    details: compile(error.details),
+    details: compile(error.details, "output"),
     message: Schema.String.check(Schema.isNonEmpty()),
   }).annotate({
     identifier: `${pascalCase(error.code)}Error`,

@@ -34,7 +34,7 @@ export interface InterfaceType<
   >,
 > {
   description?: string
-  display: {
+  display?: {
     icon?: string
     image?: string
     status?: string
@@ -50,39 +50,66 @@ export interface InterfaceType<
 
 export interface InterfaceImplementation<
   TInterfaceId extends string = string,
-  TProperties extends Readonly<Record<string, string>> = Readonly<
+  TPropertyMapping extends Readonly<Record<string, string>> = Readonly<
     Record<string, string>
   >,
 > {
   interfaceId: TInterfaceId
-  properties: TProperties
+  propertyMapping: TPropertyMapping
 }
 
-type InterfaceImplementationDefinition<
+type InterfaceImplementationConstraint<
   TProperties extends Readonly<Record<string, AnySchema>>,
   TInterface extends InterfaceType = InterfaceType,
-> = {
-  interface: TInterface
-  properties: Readonly<
-    Record<keyof TInterface["properties"] & string, keyof TProperties & string>
-  >
+> = keyof TInterface["properties"] extends never
+  ? {
+      interface: TInterface
+      propertyMapping?: never
+    }
+  : {
+      interface: TInterface
+      propertyMapping: Readonly<
+        Record<
+          keyof TInterface["properties"] & string,
+          keyof TProperties & string
+        >
+      >
+    }
+
+interface InterfaceImplementationInput {
+  interface: InterfaceType
+  propertyMapping?: Readonly<Record<string, string>>
 }
 
-export type InterfaceImplementationDefinitions<
-  TProperties extends Readonly<Record<string, AnySchema>>,
-> = ReadonlyArray<InterfaceImplementationDefinition<TProperties>>
+export type InterfaceImplementationInputs =
+  ReadonlyArray<InterfaceImplementationInput>
 
-export type BoundInterfaceImplementations<
-  TDefinitions extends ReadonlyArray<{
-    interface: InterfaceType
-    properties: Readonly<Record<string, string>>
-  }>,
+export type InterfaceImplementationConstraints<
+  TProperties extends Readonly<Record<string, AnySchema>>,
+  TImplementations extends InterfaceImplementationInputs,
 > = {
   readonly [
-    TDefinition in TDefinitions[number] as TDefinition["interface"]["id"]
+    TIndex in keyof TImplementations
+  ]: TImplementations[TIndex] extends infer TImplementation extends {
+    interface: InterfaceType
+  }
+    ? InterfaceImplementationConstraint<
+        TProperties,
+        TImplementation["interface"]
+      >
+    : never
+}
+
+export type InterfaceImplementationMap<
+  TImplementations extends InterfaceImplementationInputs,
+> = {
+  readonly [
+    TImplementation in TImplementations[number] as TImplementation["interface"]["id"]
   ]: InterfaceImplementation<
-    TDefinition["interface"]["id"],
-    TDefinition["properties"]
+    TImplementation["interface"]["id"],
+    TImplementation["propertyMapping"] extends Readonly<Record<string, string>>
+      ? TImplementation["propertyMapping"]
+      : Readonly<Record<never, never>>
   >
 }
 
@@ -115,13 +142,15 @@ function compatibleProperty(
 }
 
 export function bindInterfaceImplementations<
-  const TDefinitions extends InterfaceImplementationDefinitions<Properties>,
+  const TImplementations extends InterfaceImplementationInputs,
 >(
   objectType: string,
   objectProperties: Properties,
-  definitions: TDefinitions
-): BoundInterfaceImplementations<TDefinitions> {
-  const interfaceIds = definitions.map((definition) => definition.interface.id)
+  implementations: TImplementations
+): InterfaceImplementationMap<TImplementations> {
+  const interfaceIds = implementations.map(
+    (implementation) => implementation.interface.id
+  )
   const duplicateInterfaceId = interfaceIds.find(
     (interfaceId, index) => interfaceIds.indexOf(interfaceId) !== index
   )
@@ -130,24 +159,25 @@ export function bindInterfaceImplementations<
       `Object '${objectType}' implements interface '${duplicateInterfaceId}' more than once.`
     )
   }
-  const implementations = Object.fromEntries(
-    definitions.map((definition) => {
-      const expected = Object.keys(definition.interface.properties)
-      const mapped = Object.keys(definition.properties)
+  const implementationMap = Object.fromEntries(
+    implementations.map((implementation) => {
+      const expected = Object.keys(implementation.interface.properties)
+      const propertyMapping = implementation.propertyMapping ?? {}
+      const mapped = Object.keys(propertyMapping)
       const missing = expected.find(
         (propertyId) => !mapped.includes(propertyId)
       )
       const extra = mapped.find((propertyId) => !expected.includes(propertyId))
       if (missing !== undefined || extra !== undefined) {
         throw new Error(
-          `Object '${objectType}' must map exactly the properties of interface '${definition.interface.id}'.`
+          `Object '${objectType}' must map exactly the properties of interface '${implementation.interface.id}'.`
         )
       }
       for (const [interfacePropertyId, objectPropertyId] of Object.entries(
-        definition.properties
+        propertyMapping
       )) {
         const interfaceProperty =
-          definition.interface.properties[interfacePropertyId]
+          implementation.interface.properties[interfacePropertyId]
         const objectProperty = objectProperties[objectPropertyId]
         if (
           interfaceProperty === undefined ||
@@ -155,43 +185,47 @@ export function bindInterfaceImplementations<
           !compatibleProperty(interfaceProperty, objectProperty)
         ) {
           throw new Error(
-            `Object '${objectType}' property '${objectPropertyId}' is not compatible with interface '${definition.interface.id}.${interfacePropertyId}'.`
+            `Object '${objectType}' property '${objectPropertyId}' is not compatible with interface '${implementation.interface.id}.${interfacePropertyId}'.`
           )
         }
       }
       return [
-        definition.interface.id,
+        implementation.interface.id,
         {
-          interfaceId: definition.interface.id,
-          properties: definition.properties,
+          interfaceId: implementation.interface.id,
+          propertyMapping,
         },
       ]
     })
   )
-  // SAFETY: every definition is preserved by interface ID after its complete mapping is validated.
+  // SAFETY: every implementation is preserved by interface ID after its complete mapping is validated.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  return implementations as BoundInterfaceImplementations<TDefinitions>
+  return implementationMap as InterfaceImplementationMap<TImplementations>
 }
 
 /**
  * Defines a polymorphic object role that links and other contracts can target
- * without naming one concrete object type. Implementing objects map the
- * interface's shared properties explicitly; object-specific defaults and write
- * behavior stay on the object.
+ * without naming one concrete object type. Interfaces without properties are
+ * marker capabilities; shared properties require explicit mappings from each
+ * implementing object. Object-specific defaults and writes stay on the object.
  */
 export function defineInterface<
   const TId extends string,
-  const TProperties extends Readonly<Record<string, AnySchema>>,
+  const TProperties extends Readonly<Record<string, AnySchema>> = {},
 >(definition: {
   description?: string
-  display: InterfaceDisplay<TProperties>
+  display?: InterfaceDisplay<TProperties>
   id: TId
   name: string
   pluralName: string
-  properties: TProperties
+  properties?: TProperties
 }): InterfaceType<TId, TProperties> {
   definitionId(definition.id)
-  for (const [propertyId, property] of Object.entries(definition.properties)) {
+  // SAFETY: omission selects the generic's default empty property map; an
+  // explicitly supplied property map is preserved unchanged.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  const properties = (definition.properties ?? {}) as TProperties
+  for (const [propertyId, property] of Object.entries(properties)) {
     definitionId(propertyId)
     if (
       Object.hasOwn(property, "default") ||
@@ -203,12 +237,12 @@ export function defineInterface<
       )
     }
   }
-  for (const [role, propertyId] of Object.entries(definition.display)) {
+  for (const [role, propertyId] of Object.entries(definition.display ?? {})) {
     if (role === "icon") {
       definitionId(propertyId)
       continue
     }
-    const property = definition.properties[propertyId]
+    const property = properties[propertyId]
     if (property === undefined) {
       throw new Error(
         `Interface '${definition.id}' display ${role} references unknown property '${propertyId}'.`
@@ -226,15 +260,16 @@ export function defineInterface<
     }
   }
 
-  const value = {
-    display: definition.display,
+  const value: InterfaceType<TId, TProperties> = {
     id: definitionId(definition.id),
     kind: "interface" as const,
     name: definition.name,
     pluralName: definition.pluralName,
-    properties: definition.properties,
+    properties,
   }
-  return definition.description === undefined
-    ? value
-    : { ...value, description: definition.description }
+  if (definition.description !== undefined) {
+    value.description = definition.description
+  }
+  if (definition.display !== undefined) value.display = definition.display
+  return value
 }

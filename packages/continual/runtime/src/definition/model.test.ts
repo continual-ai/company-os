@@ -5,8 +5,15 @@ import { defineInterface } from "./interface"
 import { defineLink } from "./link"
 import { defineModel } from "./model"
 import { defineObject } from "./object"
-import { Root } from "./root"
-import { schema, type AnySchema } from "./schema"
+import { defineRoot } from "./root"
+import {
+  schema,
+  type AnySchema,
+  type InferSchema,
+  type RecordId,
+} from "./schema"
+
+const Root = defineRoot({ id: "root", name: "Root" })
 
 const EnrollmentFailed = defineError({
   code: "enrollmentFailed",
@@ -80,11 +87,15 @@ describe("model definitions", () => {
       name: "Acme",
       objects: [Contact],
       links: [],
+      root: Root,
     })
 
     expect(Object.keys(model.objects)).toEqual(["contact"])
     expect(model.root).toEqual(Root)
-    expect(model.objects.contact.parent).toEqual({ objectType: "root" })
+    expect(model.objects.contact.parent).toEqual({
+      objectType: "root",
+      root: true,
+    })
     expect(Object.keys(model.actions.contact)).toEqual([
       "create",
       "update",
@@ -154,6 +165,7 @@ describe("model definitions", () => {
       name: "Without batch delete model",
       objects: [WithoutBatchDelete],
       links: [],
+      root: Root,
     })
 
     expect(Object.keys(WithoutBatchDelete.actions)).toContain("delete")
@@ -180,6 +192,7 @@ describe("model definitions", () => {
         name: "Acme",
         objects: [Contact, OtherContact],
         links: [],
+        root: Root,
       })
     ).toThrow(/Object id 'contact'/)
 
@@ -198,6 +211,7 @@ describe("model definitions", () => {
         name: "Acme",
         objects: [Contact, SameCollection],
         links: [],
+        root: Root,
       })
     ).toThrow(/collection 'contacts'/)
   })
@@ -240,6 +254,7 @@ describe("model definitions", () => {
       name: "Complete",
       objects: [Account, Membership],
       links: [],
+      root: Root,
     })
     expect(completeModel.actions.membership.create.input).toMatchObject({
       properties: {
@@ -253,6 +268,7 @@ describe("model definitions", () => {
         name: "Acme",
         objects: [Membership],
         links: [],
+        root: Root,
       })
     ).toThrow(/parent references object 'account'/)
   })
@@ -279,14 +295,16 @@ describe("model definitions", () => {
     const Contacts = defineLink({
       id: "companyContacts",
       name: "Company contacts",
-      from: {
-        type: CompanyContact,
+      forward: {
+        from: CompanyContact,
+        to: Company,
         key: "company",
         cardinality: "one",
         label: "Company",
       },
-      to: {
-        type: Company,
+      reverse: {
+        from: Company,
+        to: CompanyContact,
         key: "contacts",
         cardinality: "many",
         label: "Contacts",
@@ -298,15 +316,19 @@ describe("model definitions", () => {
       name: "Acme",
       objects: [Company, CompanyContact],
       links: [Contacts],
+      root: Root,
     })
 
-    expect(model.links.companyContacts.from).toEqual({
+    expect(model.links.companyContacts.forward).toEqual({
       cardinality: "one",
+      from: { kind: "object", typeId: "companyContact" },
       key: "company",
       label: "Company",
-      typeId: "companyContact",
+      to: { kind: "object", typeId: "company" },
     })
-    expectTypeOf(model.links.companyContacts.to.key).toEqualTypeOf<"contacts">()
+    expectTypeOf(
+      model.links.companyContacts.reverse.key
+    ).toEqualTypeOf<"contacts">()
     expect(model.objects.companyContact.properties.companyId).toMatchObject({
       kind: "recordId",
       label: "Company",
@@ -315,7 +337,7 @@ describe("model definitions", () => {
     })
   })
 
-  it("requires singular reference ownership on the from side", () => {
+  it("derives singular reference ownership independently of direction", () => {
     const Company = defineObject({
       id: "company",
       collection: "companies",
@@ -335,27 +357,61 @@ describe("model definitions", () => {
       display: { title: "name" },
     })
 
+    const CompanyEmployees = defineLink({
+      id: "companyEmployees",
+      name: "Company employees",
+      forward: {
+        from: Company,
+        to: Employee,
+        key: "employees",
+        cardinality: "many",
+        label: "Employees",
+      },
+      reverse: {
+        from: Employee,
+        to: Company,
+        key: "company",
+        cardinality: "one",
+        label: "Company",
+      },
+    })
+    const model = defineModel({
+      id: "companyEmployees",
+      links: [CompanyEmployees],
+      name: "Company employees",
+      objects: [Company, Employee],
+      root: Root,
+    })
+
+    expect(model.objects.employee.properties.companyId).toMatchObject({
+      kind: "recordId",
+      typeId: "company",
+    })
+
     expect(() =>
       defineLink({
-        id: "companyContacts",
-        name: "Company contacts",
-        from: {
-          type: Company,
-          key: "contacts",
+        id: "invalidReverse",
+        name: "Invalid reverse",
+        forward: {
           cardinality: "many",
-          label: "Contacts",
+          from: Company,
+          key: "employees",
+          label: "Employees",
+          to: Employee,
         },
-        to: {
-          type: Employee,
-          key: "company",
+        reverse: {
           cardinality: "one",
+          // @ts-expect-error The reverse source must equal the forward target.
+          from: Company,
+          key: "company",
           label: "Company",
+          to: Company,
         },
       })
-    ).toThrow(/singular reference-bearing side in 'from'/)
+    ).toThrow(/reverse traversal must mirror/)
   })
 
-  it("requires the singular storage side of a link to be an object", () => {
+  it("requires a singular reference property to belong to an object", () => {
     const Party = defineInterface({
       id: "party",
       name: "Party",
@@ -375,17 +431,19 @@ describe("model definitions", () => {
     const InvalidOwner = defineLink({
       id: "invalidOwner",
       name: "Invalid owner",
-      from: {
-        type: Party,
+      forward: {
+        from: Party,
+        to: Activity,
         key: "activity",
         cardinality: "zeroOrOne",
         label: "Activity",
       },
-      to: {
-        type: Activity,
-        key: "party",
-        cardinality: "one",
-        label: "Party",
+      reverse: {
+        from: Activity,
+        to: Party,
+        key: "parties",
+        cardinality: "many",
+        label: "Parties",
       },
     })
 
@@ -396,8 +454,9 @@ describe("model definitions", () => {
         links: [InvalidOwner],
         name: "Test",
         objects: [Activity],
+        root: Root,
       })
-    ).toThrow(/singular link ownership must be on an object/)
+    ).toThrow(/singular link references must resolve to an object/)
   })
 
   it("registers portable interfaces and validates exact object mappings", () => {
@@ -425,7 +484,7 @@ describe("model definitions", () => {
       implements: [
         {
           interface: Party,
-          properties: { image: "logo", name: "legalName" },
+          propertyMapping: { image: "logo", name: "legalName" },
         },
       ],
     })
@@ -436,16 +495,20 @@ describe("model definitions", () => {
       interfaces: [Party],
       objects: [Company],
       links: [],
+      root: Root,
     })
 
-    expect(model.interfaces.party.display.icon).toBe("party")
+    expect(model.interfaces.party.display?.icon).toBe("party")
     expect(model.objects.company.interfaces.party).toEqual({
       interfaceId: "party",
-      properties: { image: "logo", name: "legalName" },
+      propertyMapping: { image: "logo", name: "legalName" },
     })
     expectTypeOf(
       model.objects.company.interfaces.party.interfaceId
     ).toEqualTypeOf<"party">()
+    expectTypeOf(
+      model.objects.company.interfaces.party.propertyMapping
+    ).toEqualTypeOf<{ readonly image: "logo"; readonly name: "legalName" }>()
 
     expect(() =>
       defineObject({
@@ -459,7 +522,8 @@ describe("model definitions", () => {
         implements: [
           {
             interface: Party,
-            properties: { name: "name" },
+            // @ts-expect-error Every property-bearing interface requires a complete mapping.
+            propertyMapping: { name: "name" },
           },
         ],
       })
@@ -480,11 +544,11 @@ describe("model definitions", () => {
         implements: [
           {
             interface: Party,
-            properties: { image: "image", name: "name" },
+            propertyMapping: { image: "image", name: "name" },
           },
           {
             interface: Party,
-            properties: { image: "image", name: "name" },
+            propertyMapping: { image: "image", name: "name" },
           },
         ],
       })
@@ -492,21 +556,131 @@ describe("model definitions", () => {
   })
 })
 
-describe("object properties", () => {
-  it("reserves Root as the one non-CRUD hierarchy root", () => {
+describe("root definitions", () => {
+  it("supports marker interfaces without property or display boilerplate", () => {
+    const AuthorizationScope = defineInterface({
+      id: "authorizationScope",
+      name: "Authorization scope",
+      pluralName: "Authorization scopes",
+    })
+    const Platform = defineRoot({
+      id: "platform",
+      implements: [{ interface: AuthorizationScope }],
+      name: "Platform",
+    })
+    const Workspace = defineObject({
+      id: "workspace",
+      collection: "workspaces",
+      display: { title: "name" },
+      implements: [{ interface: AuthorizationScope }],
+      name: "Workspace",
+      parent: Platform,
+      pluralName: "Workspaces",
+      properties: { name: schema.string() },
+    })
+    const Permission = defineObject({
+      id: "permission",
+      collection: "permissions",
+      display: { title: "name" },
+      name: "Permission",
+      parent: Platform,
+      pluralName: "Permissions",
+      properties: { name: schema.string() },
+    })
+    const PermissionScope = defineLink({
+      id: "permissionScope",
+      forward: {
+        cardinality: "one",
+        from: Permission,
+        key: "scope",
+        label: "Scope",
+        to: AuthorizationScope,
+      },
+      name: "Permission scope",
+      reverse: {
+        cardinality: "many",
+        from: AuthorizationScope,
+        key: "permissions",
+        label: "Permissions",
+        to: Permission,
+      },
+    })
+    const model = defineModel({
+      id: "platformModel",
+      interfaces: [AuthorizationScope],
+      links: [PermissionScope],
+      name: "Platform model",
+      objects: [Workspace, Permission],
+      root: Platform,
+    })
+
+    expect(model.interfaces.authorizationScope.properties).toEqual({})
+    expect(model.interfaces.authorizationScope.display).toBeUndefined()
+    expect(model.root.interfaces.authorizationScope).toEqual({
+      interfaceId: "authorizationScope",
+      propertyMapping: {},
+    })
+    expectTypeOf<
+      InferSchema<typeof model.objects.permission.properties.scopeId>
+    >().toEqualTypeOf<RecordId<"platform"> | RecordId<"workspace">>()
     expect(() =>
-      defineObject({
-        id: "root",
-        collection: "roots",
-        name: "Another root",
-        parent: Root,
-        pluralName: "Other roots",
-        properties: { name: schema.string() },
-        display: { title: "name" },
+      defineModel({
+        id: "missingScope",
+        links: [],
+        name: "Missing scope",
+        objects: [],
+        root: Platform,
       })
-    ).toThrow(/reserved for the built-in Root/)
+    ).toThrow(/implements interface 'authorizationScope'.*not registered/)
   })
 
+  it("reserves the model-defined root ID within its type registry", () => {
+    const OtherRoot = defineObject({
+      id: "root",
+      collection: "roots",
+      name: "Another root",
+      parent: Root,
+      pluralName: "Other roots",
+      properties: { name: schema.string() },
+      display: { title: "name" },
+    })
+
+    expect(() =>
+      defineModel({
+        id: "rootCollision",
+        links: [],
+        name: "Root collision",
+        objects: [OtherRoot],
+        root: Root,
+      })
+    ).toThrow(/Root id 'root' must be unique/)
+  })
+
+  it("rejects objects defined beneath a different root", () => {
+    const OtherRoot = defineRoot({ id: "otherRoot", name: "Other root" })
+    const OtherObject = defineObject({
+      id: "otherObject",
+      collection: "otherObjects",
+      name: "Other object",
+      parent: OtherRoot,
+      pluralName: "Other objects",
+      properties: { name: schema.string() },
+      display: { title: "name" },
+    })
+
+    expect(() =>
+      defineModel({
+        id: "rootMismatch",
+        links: [],
+        name: "Root mismatch",
+        objects: [OtherObject],
+        root: Root,
+      })
+    ).toThrow(/parent does not match root 'root'/)
+  })
+})
+
+describe("object properties", () => {
   it("uses schemas directly and normalizes object lifecycle behavior", () => {
     const Example = defineObject({
       id: "example",

@@ -11,13 +11,14 @@ import {
   modelObjects,
 } from "./definition/model"
 import type {
+  ObjectBatchGetInput,
   ObjectBatchDeleteInput,
   ObjectDeleteInput,
   ObjectGetInput,
   ObjectType,
   ObjectCreateInput,
   ObjectRecord,
-  ObjectUpdateRequest,
+  ObjectUpdateInput,
 } from "./definition/object"
 import type {
   Batch,
@@ -26,7 +27,6 @@ import type {
   MutationOptions,
   Page,
 } from "./definition/request"
-import type { RecordId } from "./definition/schema"
 
 export interface ApiClientOptions {
   /** Versioned API root. Defaults to the same-origin `/api/v1`. */
@@ -37,10 +37,6 @@ export interface ApiClientOptions {
   readonly getHeaders?: () => HeadersInit | Promise<HeadersInit>
   /** Static headers sent with every request. */
   readonly headers?: HeadersInit
-}
-
-export interface BatchGetRequest<TObject extends ObjectType> {
-  readonly ids: ReadonlyArray<RecordId<TObject["id"]>>
 }
 
 export class ApiClientResponseError extends Error {
@@ -66,7 +62,7 @@ type StandardMethod<
 
 type DefaultObjectClient<TObject extends ObjectType> = {
   readonly batchGet: (
-    request: BatchGetRequest<TObject>
+    request: ObjectBatchGetInput<TObject>
   ) => Promise<Batch<ObjectRecord<TObject>>>
   readonly get: (
     input: ObjectGetInput<TObject>
@@ -109,7 +105,7 @@ type DefaultObjectClient<TObject extends ObjectType> = {
     "update",
     {
       readonly update: (
-        input: ObjectUpdateRequest<TObject>,
+        input: ObjectUpdateInput<TObject>,
         options?: MutationOptions
       ) => Promise<ObjectRecord<TObject>>
     }
@@ -219,7 +215,7 @@ export function createClient<const TModel extends ModelCatalog>(
     return body as TResult
   }
 
-  const resources = new Map<string, object>()
+  const objectClients = new Map<string, object>()
   const objects = modelObjects(model)
   for (const object of objects) {
     const collectionPath = `/${object.collection}`
@@ -355,12 +351,12 @@ export function createClient<const TModel extends ModelCatalog>(
       )
     }
 
-    resources.set(object.collection, Object.fromEntries(methods))
+    objectClients.set(object.collection, Object.fromEntries(methods))
   }
 
   // SAFETY: defineModel validates collection and method uniqueness, and the
   // loops above materialize exactly the reads and actions represented by
   // ApiClient<TModel> from that same immutable definition.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  return Object.fromEntries(resources) as ApiClient<TModel>
+  return Object.fromEntries(objectClients) as ApiClient<TModel>
 }

@@ -1,3 +1,6 @@
+import type { Action } from "./definition/action"
+import type { InterfaceType } from "./definition/interface"
+import type { LinkType } from "./definition/link"
 import {
   type ModelCatalog,
   type ModelObject,
@@ -6,23 +9,53 @@ import {
   modelLinks,
   modelObjects,
 } from "./definition/model"
-import {
-  API_DESCRIPTION_VERSION,
-  type ApiDescription,
-  type ObjectDescription,
-} from "./description-types"
+import type { ObjectType } from "./definition/object"
+import type { RootType } from "./definition/root"
+
+export const API_DESCRIPTION_VERSION = "0.22" as const
+
+type ObjectDescription = Omit<ObjectType, "actions" | "kind" | "parent"> & {
+  parent: { readonly objectType: string }
+}
+
+/**
+ * Serializable, public description derived from an API contract. Consumers
+ * never maintain this projection by hand.
+ */
+export interface ApiDescription {
+  readonly actions: ReadonlyArray<Action>
+  readonly api: { readonly id: string; readonly name: string }
+  readonly interfaces: ReadonlyArray<InterfaceType>
+  readonly links: ReadonlyArray<LinkType>
+  readonly objects: ReadonlyArray<ObjectDescription>
+  readonly root: RootType
+  readonly version: typeof API_DESCRIPTION_VERSION
+}
 
 function describeObject({
   actions: _actions,
   kind: _kind,
   ...description
 }: ModelObject<ModelCatalog>): ObjectDescription {
+  const { root: _root, ...parent } = description.parent
   return {
     ...description,
     display: { ...description.display },
     interfaces: { ...description.interfaces },
-    parent: { ...description.parent },
+    parent,
     properties: { ...description.properties },
+  }
+}
+
+function describeInterface(item: ReturnType<typeof modelInterfaces>[number]) {
+  const { display, ...description } = item
+  if (display === undefined) {
+    return { ...description, properties: { ...item.properties } }
+  }
+  return {
+    ...description,
+    display: { ...display },
+    properties: { ...item.properties },
   }
 }
 
@@ -32,17 +65,21 @@ export function createApiDescription(model: ModelCatalog): ApiDescription {
     version: API_DESCRIPTION_VERSION,
     actions: modelActions(model).map((action) => ({ ...action })),
     api: { id: model.id, name: model.name },
-    interfaces: modelInterfaces(model).map((item) => ({
-      ...item,
-      display: { ...item.display },
-      properties: { ...item.properties },
-    })),
+    interfaces: modelInterfaces(model).map(describeInterface),
     links: modelLinks(model).map((link) => ({
       ...link,
-      from: { ...link.from },
-      to: { ...link.to },
+      forward: {
+        ...link.forward,
+        from: { ...link.forward.from },
+        to: { ...link.forward.to },
+      },
+      reverse: {
+        ...link.reverse,
+        from: { ...link.reverse.from },
+        to: { ...link.reverse.to },
+      },
     })),
-    root: { ...model.root },
+    root: { ...model.root, interfaces: { ...model.root.interfaces } },
     objects: modelObjects(model).map(describeObject),
   }
 }

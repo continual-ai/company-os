@@ -2,6 +2,7 @@ import { Brand } from "effect"
 
 import type { ObjectRecord, ObjectType } from "./object"
 import type { InferProperty, PropertyDefinition } from "./property"
+import type { InferInputSchema, RecordIdentifier } from "./schema"
 
 export const DEFAULT_PAGE_SIZE = 50 as const
 export const MAX_PAGE_SIZE = 100 as const
@@ -82,10 +83,21 @@ type NullableFilter<
 type PropertyFilter<
   TField extends string,
   TProperty extends PropertyDefinition,
+  TAcceptAliases extends boolean,
 > =
   | NullableFilter<TField, TProperty>
   | (TProperty extends { readonly kind: "boolean" | "enum" | "recordId" }
-      ? EqualityFilter<TField, Exclude<InferProperty<TProperty>, null>>
+      ? EqualityFilter<
+          TField,
+          Exclude<
+            TProperty extends { readonly kind: "recordId" }
+              ? TAcceptAliases extends true
+                ? InferInputSchema<TProperty>
+                : InferProperty<TProperty>
+              : InferProperty<TProperty>,
+            null
+          >
+        >
       : TProperty extends { readonly kind: "decimal" | "number" }
         ? OrderedFilter<TField, Exclude<InferProperty<TProperty>, null>>
         : TProperty extends {
@@ -100,14 +112,26 @@ type PropertyFilter<
 type ObjectPropertyFilter<TObject extends ObjectType> = {
   [TField in keyof TObject["properties"] & string]: PropertyFilter<
     TField,
-    TObject["properties"][TField]
+    TObject["properties"][TField],
+    true
+  >
+}[keyof TObject["properties"] & string]
+
+type CanonicalObjectPropertyFilter<TObject extends ObjectType> = {
+  [TField in keyof TObject["properties"] & string]: PropertyFilter<
+    TField,
+    TObject["properties"][TField],
+    false
   >
 }[keyof TObject["properties"] & string]
 
 type BaseObjectFilter<TObject extends ObjectType> =
   | EqualityFilter<"createdById" | "updatedById", string>
-  | EqualityFilter<"id", ObjectRecord<TObject>["id"]>
-  | EqualityFilter<"parentId", ObjectRecord<TObject>["parentId"]>
+  | EqualityFilter<"id", RecordIdentifier<TObject["id"]>>
+  | EqualityFilter<
+      "parentId",
+      RecordIdentifier<TObject["parent"]["objectType"]>
+    >
   | OrderedFilter<"createdAt" | "updatedAt", ObjectRecord<TObject>["createdAt"]>
 
 export type ObjectFilter<TObject extends ObjectType = ObjectType> =
@@ -122,6 +146,19 @@ export type ObjectFilter<TObject extends ObjectType = ObjectType> =
   | {
       readonly or: ReadonlyArray<ObjectFilter<TObject>>
     }
+
+type CanonicalBaseObjectFilter<TObject extends ObjectType> =
+  | EqualityFilter<"createdById" | "updatedById", string>
+  | EqualityFilter<"id", ObjectRecord<TObject>["id"]>
+  | EqualityFilter<"parentId", ObjectRecord<TObject>["parentId"]>
+  | OrderedFilter<"createdAt" | "updatedAt", ObjectRecord<TObject>["createdAt"]>
+
+export type CanonicalObjectFilter<TObject extends ObjectType> =
+  | CanonicalBaseObjectFilter<TObject>
+  | CanonicalObjectPropertyFilter<TObject>
+  | { readonly and: ReadonlyArray<CanonicalObjectFilter<TObject>> }
+  | { readonly not: CanonicalObjectFilter<TObject> }
+  | { readonly or: ReadonlyArray<CanonicalObjectFilter<TObject>> }
 
 type SortablePropertyKeys<TObject extends ObjectType> = {
   [
@@ -155,6 +192,13 @@ export interface ObjectSort<TObject extends ObjectType = ObjectType> {
 
 export interface ListRequest<TObject extends ObjectType = ObjectType> {
   readonly filter?: ObjectFilter<TObject>
+  readonly pageSize?: number
+  readonly pageToken?: PageToken
+  readonly sort?: ReadonlyArray<ObjectSort<TObject>>
+}
+
+export interface CanonicalListRequest<TObject extends ObjectType> {
+  readonly filter?: CanonicalObjectFilter<TObject>
   readonly pageSize?: number
   readonly pageToken?: PageToken
   readonly sort?: ReadonlyArray<ObjectSort<TObject>>

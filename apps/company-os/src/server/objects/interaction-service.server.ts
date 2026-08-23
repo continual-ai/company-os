@@ -1,21 +1,15 @@
 import { AcmeModel } from "@acme/api"
-import * as ObjectService from "@continual/runtime/effect/object-service"
 import { Context, Effect, Layer } from "effect"
 
-import { Authorization } from "@/server/authorization.server"
-
 import { InteractionRepository } from "./interaction-repository.server"
+import { makeObjectService } from "./object-service.server"
 
 const make = Effect.gen(function* () {
-  const authorization = yield* Authorization
   const repository = yield* InteractionRepository
-
-  return ObjectService.make(AcmeModel.objects.interaction, repository, {
-    authorize: authorization.require,
-  })
+  return yield* makeObjectService(AcmeModel.objects.interaction, repository)
 })
 
-/** Governed operations for Acme interaction objects. */
+/** Governed queries and actions for Acme interaction objects. */
 export class InteractionService extends Context.Service<InteractionService>()(
   "@acme/InteractionService",
   { make }

@@ -3,14 +3,16 @@ import { describe, expect, expectTypeOf, it } from "vitest"
 import { ApiClientResponseError, createClient, type ApiClient } from "./client"
 import { defineModel } from "./definition/model"
 import { defineObject } from "./definition/object"
-import { Root } from "./definition/root"
-import { ObjectAlias, schema, type RecordId } from "./definition/schema"
+import { defineRoot } from "./definition/root"
+import { RecordAlias, schema, type RecordId } from "./definition/schema"
+
+const Platform = defineRoot({ id: "platform", name: "Platform" })
 
 const Account = defineObject({
   id: "account",
   collection: "accounts",
   name: "Account",
-  parent: Root,
+  parent: Platform,
   pluralName: "Accounts",
   properties: {
     name: schema.string(),
@@ -45,6 +47,7 @@ const Example = defineModel({
   name: "Example",
   objects: [Account],
   links: [],
+  root: Platform,
 })
 
 const accountRecord = {
@@ -55,7 +58,7 @@ const accountRecord = {
   etag: "etag-1",
   id: "account/1",
   name: "Acme",
-  parentId: "root_1",
+  parentId: "platform_1",
   updatedAt: "2026-08-18T18:00:00Z",
   updatedById: "user-1",
 }
@@ -101,16 +104,16 @@ describe("inferred API client", () => {
       "archiveAll",
     ])
 
-    const hubspotAlias = ObjectAlias("hubspot:portal_1:company:account_1")
-    const salesforceAlias = ObjectAlias("salesforce:org_1:account:account_1")
+    const hubspotAlias = RecordAlias("hubspot:portal_1:company:account_1")
+    const salesforceAlias = RecordAlias("salesforce:org_1:account:account_1")
     const created = await client.accounts.create({
       aliases: [hubspotAlias],
       name: "Acme",
     })
-    await client.accounts.get({ id: created.id })
+    await client.accounts.get({ id: hubspotAlias })
     await client.accounts.update({
       aliases: { add: [salesforceAlias], remove: [hubspotAlias] },
-      id: created.id,
+      id: hubspotAlias,
     })
     const page = await client.accounts.list({ pageSize: 25 })
     const search = await client.accounts.list({
@@ -122,10 +125,10 @@ describe("inferred API client", () => {
       },
       sort: [{ direction: "desc", field: "name", nulls: "last" }],
     })
-    const batch = await client.accounts.batchGet({ ids: [created.id] })
-    await client.accounts.batchDelete({ ids: [created.id] })
+    const batch = await client.accounts.batchGet({ ids: [hubspotAlias] })
+    await client.accounts.batchDelete({ ids: [hubspotAlias] })
     const archived = await client.accounts.archive({
-      id: created.id,
+      id: hubspotAlias,
       note: "No longer active",
     })
     const archiveBatch = await client.accounts.archiveAll({
@@ -134,13 +137,13 @@ describe("inferred API client", () => {
 
     expect(calls.map((call) => call.url)).toEqual([
       "https://company.example/api/v1/accounts",
-      "https://company.example/api/v1/accounts/account%2F1",
-      "https://company.example/api/v1/accounts/account%2F1",
+      "https://company.example/api/v1/accounts/hubspot%3Aportal_1%3Acompany%3Aaccount_1",
+      "https://company.example/api/v1/accounts/hubspot%3Aportal_1%3Acompany%3Aaccount_1",
       "https://company.example/api/v1/accounts?pageSize=25",
       "https://company.example/api/v1/accounts/search",
       "https://company.example/api/v1/accounts:batchGet",
       "https://company.example/api/v1/accounts:batchDelete",
-      "https://company.example/api/v1/accounts/account%2F1:archive",
+      "https://company.example/api/v1/accounts/hubspot%3Aportal_1%3Acompany%3Aaccount_1:archive",
       "https://company.example/api/v1/accounts:archiveAll",
     ])
     expect(calls[0]?.init.body).toBe(
@@ -152,7 +155,12 @@ describe("inferred API client", () => {
     expect(calls[4]?.init.body).toBe(
       '{"filter":{"and":[{"field":"name","operator":"contains","value":"acme"},{"field":"name","operator":"startsWith","value":"A"}]},"sort":[{"direction":"desc","field":"name","nulls":"last"}]}'
     )
-    expect(calls[6]?.init.body).toBe('{"ids":["account/1"]}')
+    expect(calls[5]?.init.body).toBe(
+      '{"ids":["hubspot:portal_1:company:account_1"]}'
+    )
+    expect(calls[6]?.init.body).toBe(
+      '{"ids":["hubspot:portal_1:company:account_1"]}'
+    )
     expect(calls[7]?.init.body).toBe('{"note":"No longer active"}')
     expect(calls[8]?.init.body).toBe('{"filter":"updatedAt < 2025-01-01"}')
     expect(page.nextPageToken).toBe("")

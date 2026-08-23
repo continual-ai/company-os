@@ -1,10 +1,11 @@
 import {
-  MAX_OBJECT_ALIAS_LENGTH,
   type AnySchema,
   type InferSchema,
-  type LinkSide,
+  type LinkTraversal,
   type LinkType,
+  linkReferenceTraversals,
   type Model,
+  type ModelInterfaceRecordId,
   type ObjectType,
   type RecordId,
   type SchemaDefinition,
@@ -87,24 +88,42 @@ type ObjectTables<TModel extends Model> = {
   >
 }
 
+type TraversalRecordId<
+  TModel extends Model,
+  TTraversal extends LinkTraversal,
+> = TTraversal["from"]["kind"] extends "interface"
+  ? ModelInterfaceRecordId<
+      TModel,
+      TTraversal["from"]["typeId"] & keyof TModel["interfaces"]
+    >
+  : RecordId<TTraversal["from"]["typeId"]>
+
 type InterfaceTables<TModel extends Model> = {
   readonly [TInterfaceType in keyof TModel["interfaces"]]: AnyPgTable & {
     readonly id: AnyPgColumn
     readonly $inferSelect: {
-      readonly id: RecordId<TInterfaceType & string>
+      readonly id: ModelInterfaceRecordId<TModel, TInterfaceType & string>
     }
   }
 }
 
-type LinkTable<TLink> =
-  TLink extends LinkType<string, infer TFrom, infer TTo>
+type LinkTable<TModel extends Model, TLink> =
+  TLink extends LinkType<string, infer TForward, infer TReverse>
     ? AnyPgTable & {
-        readonly [TKey in `${TFrom["key"]}Id` | `${TTo["key"]}Id`]: AnyPgColumn
+        readonly [
+          TKey in `${TForward["key"]}Id` | `${TReverse["key"]}Id`
+        ]: AnyPgColumn
       } & {
         readonly $inferSelect: {
-          readonly [TKey in `${TFrom["key"]}Id`]: RecordId<TFrom["typeId"]>
+          readonly [TKey in `${TForward["key"]}Id`]: TraversalRecordId<
+            TModel,
+            TForward
+          >
         } & {
-          readonly [TKey in `${TTo["key"]}Id`]: RecordId<TTo["typeId"]>
+          readonly [TKey in `${TReverse["key"]}Id`]: TraversalRecordId<
+            TModel,
+            TReverse
+          >
         }
       }
     : never
@@ -113,20 +132,20 @@ type LinkTables<TModel extends Model> = {
   readonly [
     TLinkId in keyof TModel["links"] as TModel["links"][TLinkId] extends LinkType<
       string,
-      infer TFrom,
-      infer TTo
+      infer TForward,
+      infer TReverse
     >
-      ? TFrom["cardinality"] extends "many"
-        ? TTo["cardinality"] extends "many"
+      ? TForward["cardinality"] extends "many"
+        ? TReverse["cardinality"] extends "many"
           ? TLinkId
           : never
         : never
       : never
-  ]: LinkTable<TModel["links"][TLinkId]>
+  ]: LinkTable<TModel, TModel["links"][TLinkId]>
 }
 
 type SchemaTables<TModel extends Model> = {
-  readonly __objectAliases: CoreTables<TModel>["objectAliases"]
+  readonly __recordAliases: CoreTables<TModel>["recordAliases"]
   readonly __objects: CoreTables<TModel>["objects"]
   readonly __roots: CoreTables<TModel>["roots"]
 } & InterfaceTables<TModel> &
@@ -139,24 +158,34 @@ type SchemaTables<TModel extends Model> = {
   }
 
 type RelationForSide<
-  TSide extends LinkSide,
-  TTarget extends LinkSide,
+  TSide extends LinkTraversal,
+  TTarget extends LinkTraversal,
 > = TSide["cardinality"] extends "many"
-  ? Many<TTarget["typeId"]>
+  ? Many<TTarget["from"]["typeId"]>
   : One<
-      TTarget["typeId"],
+      TTarget["from"]["typeId"],
       TSide["cardinality"] extends "zeroOrOne" ? true : false
     >
 
 type NoRelations = Readonly<Record<never, never>>
 
 type RelationsForLink<TTypeId extends string, TLink> =
-  TLink extends LinkType<string, infer TFrom, infer TTo>
-    ? (TFrom["typeId"] extends TTypeId
-        ? { readonly [TKey in TFrom["key"]]: RelationForSide<TFrom, TTo> }
+  TLink extends LinkType<string, infer TForward, infer TReverse>
+    ? (TForward["from"]["typeId"] extends TTypeId
+        ? {
+            readonly [TKey in TForward["key"]]: RelationForSide<
+              TForward,
+              TReverse
+            >
+          }
         : NoRelations) &
-        (TTo["typeId"] extends TTypeId
-          ? { readonly [TKey in TTo["key"]]: RelationForSide<TTo, TFrom> }
+        (TReverse["from"]["typeId"] extends TTypeId
+          ? {
+              readonly [TKey in TReverse["key"]]: RelationForSide<
+                TReverse,
+                TForward
+              >
+            }
           : NoRelations)
     : NoRelations
 
@@ -211,8 +240,10 @@ export type PostgresStorageOverrides<TModel extends Model> = {
 }
 
 function makeCoreTables<const TModel extends Model>(model: TModel) {
-  type StoredObjectType = "root" | (keyof TModel["objects"] & string)
-  const storedObjectTypes = ["root", ...Object.keys(model.objects)]
+  type StoredObjectType =
+    | TModel["root"]["id"]
+    | (keyof TModel["objects"] & string)
+  const storedObjectTypes = [model.root.id, ...Object.keys(model.objects)]
   const storedObjectTypeList = sql.join(
     storedObjectTypes.map((objectType) => sql`${objectType}`),
     sql`, `
@@ -246,8 +277,8 @@ function makeCoreTables<const TModel extends Model>(model: TModel) {
       ),
       check(
         "objects_parent_required",
-        sql`(${table.objectType} = 'root' and ${table.parentId} is null)
-          or (${table.objectType} <> 'root' and ${table.parentId} is not null)`
+        sql`(${table.objectType} = ${model.root.id} and ${table.parentId} is null)
+          or (${table.objectType} <> ${model.root.id} and ${table.parentId} is not null)`
       ),
       index("objects_object_type_idx").on(table.objectType),
       index("objects_parent_id_idx").on(table.parentId),
@@ -255,28 +286,22 @@ function makeCoreTables<const TModel extends Model>(model: TModel) {
       uniqueIndex("objects_id_parent_id_unique").on(table.id, table.parentId),
     ]
   )
-  const objectAliases = pgTable(
-    "object_aliases",
+  const recordAliases = pgTable(
+    "record_aliases",
     {
       alias: text().primaryKey(),
       objectId: text()
         .notNull()
         .references(() => objects.id, { onDelete: "cascade" }),
     },
-    (table) => [
-      check(
-        "object_aliases_alias_length_check",
-        sql`char_length(${table.alias}) between 1 and ${MAX_OBJECT_ALIAS_LENGTH}`
-      ),
-      index("object_aliases_object_id_idx").on(table.objectId),
-    ]
+    (table) => [index("record_aliases_object_id_idx").on(table.objectId)]
   )
   const roots = pgTable("roots", {
     id: text()
       .primaryKey()
       .references(() => objects.id, { onDelete: "cascade" }),
   })
-  return { objectAliases, objects, roots }
+  return { recordAliases, objects, roots }
 }
 
 type CoreTables<TModel extends Model> = ReturnType<
@@ -433,13 +458,6 @@ function addRelation(
   config[tableId] = tableConfig
 }
 
-function storedLinkSides(link: {
-  readonly from: LinkSide
-  readonly to: LinkSide
-}): readonly [owner: LinkSide, target: LinkSide] | undefined {
-  return link.from.cardinality === "many" ? undefined : [link.from, link.to]
-}
-
 function makeRelations(
   model: Model,
   schema: Readonly<Record<string, AnyPgTable>>
@@ -448,37 +466,37 @@ function makeRelations(
     const config: Record<string, Record<string, AnyRelation>> = {}
 
     for (const link of Object.values(model.links)) {
-      const storedSides = storedLinkSides(link)
-      if (storedSides !== undefined) {
-        const [owner, target] = storedSides
-        const ownerTable = relationTable(relations, owner.typeId)
-        const targetTable = relationTable(relations, target.typeId)
-        const ownerColumn = relationColumn(ownerTable, `${owner.key}Id`)
+      const reference = linkReferenceTraversals(link)
+      if (reference !== undefined) {
+        const { source, target } = reference
+        const ownerTable = relationTable(relations, source.from.typeId)
+        const targetTable = relationTable(relations, target.from.typeId)
+        const ownerColumn = relationColumn(ownerTable, `${source.key}Id`)
         const targetId = relationColumn(targetTable, "id")
-        const ownerFactory = relations.one[target.typeId]
+        const ownerFactory = relations.one[target.from.typeId]
         if (ownerFactory === undefined) {
           throw new Error(`Link '${link.id}' does not have a valid owner.`)
         }
         addRelation(
           config,
-          owner.typeId,
-          owner.key,
+          source.from.typeId,
+          source.key,
           ownerFactory({
             alias: link.id,
             from: ownerColumn,
-            optional: owner.cardinality === "zeroOrOne",
+            optional: source.cardinality === "zeroOrOne",
             to: targetId,
           })
         )
 
         if (target.cardinality === "many") {
-          const inverseFactory = relations.many[owner.typeId]
+          const inverseFactory = relations.many[source.from.typeId]
           if (inverseFactory === undefined) {
             throw new Error(`Link '${link.id}' does not have a valid inverse.`)
           }
           addRelation(
             config,
-            target.typeId,
+            target.from.typeId,
             target.key,
             inverseFactory({
               alias: link.id,
@@ -487,13 +505,13 @@ function makeRelations(
             })
           )
         } else {
-          const inverseFactory = relations.one[owner.typeId]
+          const inverseFactory = relations.one[source.from.typeId]
           if (inverseFactory === undefined) {
             throw new Error(`Link '${link.id}' does not have a valid inverse.`)
           }
           addRelation(
             config,
-            target.typeId,
+            target.from.typeId,
             target.key,
             inverseFactory({
               alias: link.id,
@@ -506,37 +524,43 @@ function makeRelations(
         continue
       }
 
-      const fromTable = relationTable(relations, link.from.typeId)
-      const toTable = relationTable(relations, link.to.typeId)
+      const forwardTable = relationTable(relations, link.forward.from.typeId)
+      const reverseTable = relationTable(relations, link.reverse.from.typeId)
       const junctionId = `__link_${link.id}`
       const junction = relationTable(relations, junctionId)
-      const fromId = relationColumn(fromTable, "id")
-      const toId = relationColumn(toTable, "id")
-      const fromJunctionColumn = relationColumn(junction, `${link.from.key}Id`)
-      const toJunctionColumn = relationColumn(junction, `${link.to.key}Id`)
-      const fromFactory = relations.many[link.to.typeId]
-      const toFactory = relations.many[link.from.typeId]
-      if (fromFactory === undefined || toFactory === undefined) {
+      const forwardId = relationColumn(forwardTable, "id")
+      const reverseId = relationColumn(reverseTable, "id")
+      const forwardJunctionColumn = relationColumn(
+        junction,
+        `${link.forward.key}Id`
+      )
+      const reverseJunctionColumn = relationColumn(
+        junction,
+        `${link.reverse.key}Id`
+      )
+      const forwardFactory = relations.many[link.reverse.from.typeId]
+      const reverseFactory = relations.many[link.forward.from.typeId]
+      if (forwardFactory === undefined || reverseFactory === undefined) {
         throw new Error(`Many-to-many link '${link.id}' is incomplete.`)
       }
       addRelation(
         config,
-        link.from.typeId,
-        link.from.key,
-        fromFactory({
+        link.forward.from.typeId,
+        link.forward.key,
+        forwardFactory({
           alias: link.id,
-          from: fromId.through(fromJunctionColumn),
-          to: toId.through(toJunctionColumn),
+          from: forwardId.through(forwardJunctionColumn),
+          to: reverseId.through(reverseJunctionColumn),
         })
       )
       addRelation(
         config,
-        link.to.typeId,
-        link.to.key,
-        toFactory({
+        link.reverse.from.typeId,
+        link.reverse.key,
+        reverseFactory({
           alias: link.id,
-          from: toId.through(toJunctionColumn),
-          to: fromId.through(fromJunctionColumn),
+          from: reverseId.through(reverseJunctionColumn),
+          to: forwardId.through(forwardJunctionColumn),
         })
       )
     }
@@ -550,9 +574,9 @@ export function makePostgresSchema<const TModel extends Model>(
   model: TModel,
   overrides: PostgresStorageOverrides<TModel> = {}
 ): PostgresStorage<TModel> {
-  const { objectAliases, objects, roots } = makeCoreTables(model)
+  const { recordAliases, objects, roots } = makeCoreTables(model)
   const tableOwners = new Map([
-    ["object_aliases", "core object aliases"],
+    ["record_aliases", "core record aliases"],
     ["objects", "core objects"],
     ["roots", "core roots"],
   ])
@@ -579,15 +603,20 @@ export function makePostgresSchema<const TModel extends Model>(
 
   const objectTables: Record<string, AnyPgTable> = {}
   const uniqueLinkProperties = new Set(
-    Object.values(model.links)
-      .filter(
-        (link) =>
-          link.from.cardinality !== "many" && link.to.cardinality !== "many"
-      )
-      .map((link) => `${link.from.typeId}.${link.from.key}Id`)
+    Object.values(model.links).flatMap((link) => {
+      const reference = linkReferenceTraversals(link)
+      if (
+        reference !== undefined &&
+        reference.source.cardinality !== "many" &&
+        reference.target.cardinality !== "many"
+      ) {
+        return [`${reference.source.from.typeId}.${reference.source.key}Id`]
+      }
+      return []
+    })
   )
   const tableForType = (typeId: string): AnyPgTable => {
-    if (typeId === "root") return roots
+    if (typeId === model.root.id) return roots
     const table = objectTables[typeId] ?? interfaceTables[typeId]
     if (table === undefined) {
       throw new Error(`Type '${typeId}' does not have a storage table.`)
@@ -668,40 +697,47 @@ export function makePostgresSchema<const TModel extends Model>(
 
   const linkTables: Record<string, AnyPgTable> = {}
   for (const link of Object.values(model.links)) {
-    if (link.from.cardinality !== "many" || link.to.cardinality !== "many") {
+    if (
+      link.forward.cardinality !== "many" ||
+      link.reverse.cardinality !== "many"
+    ) {
       continue
     }
     const tableName = snakeCase(link.id)
     claimTableName(tableName, `link '${link.id}'`)
-    const fromColumn = `${link.from.key}Id`
-    const toColumn = `${link.to.key}Id`
+    const forwardColumn = `${link.forward.key}Id`
+    const reverseColumn = `${link.reverse.key}Id`
     linkTables[link.id] = pgTable(
       tableName,
       {
-        [fromColumn]: text()
+        [forwardColumn]: text()
           .notNull()
-          .references(() => columnId(tableForType(link.from.typeId)), {
+          .references(() => columnId(tableForType(link.forward.from.typeId)), {
             onDelete: "cascade",
           }),
-        [toColumn]: text()
+        [reverseColumn]: text()
           .notNull()
-          .references(() => columnId(tableForType(link.to.typeId)), {
+          .references(() => columnId(tableForType(link.reverse.from.typeId)), {
             onDelete: "cascade",
           }),
       },
       (table) => [
-        primaryKey({ columns: [table[fromColumn]!, table[toColumn]!] }),
-        index(`${tableName}_${snakeCase(fromColumn)}_idx`).on(
-          table[fromColumn]!
+        primaryKey({
+          columns: [table[forwardColumn]!, table[reverseColumn]!],
+        }),
+        index(`${tableName}_${snakeCase(forwardColumn)}_idx`).on(
+          table[forwardColumn]!
         ),
-        index(`${tableName}_${snakeCase(toColumn)}_idx`).on(table[toColumn]!),
+        index(`${tableName}_${snakeCase(reverseColumn)}_idx`).on(
+          table[reverseColumn]!
+        ),
       ]
     )
   }
 
   const schemaEntries: Array<readonly [string, AnyPgTable]> = [
     ["__objects", objects],
-    ["__objectAliases", objectAliases],
+    ["__recordAliases", recordAliases],
     ["__roots", roots],
     ...Object.entries(interfaceTables),
     ...Object.entries(objectTables),
@@ -718,7 +754,7 @@ export function makePostgresSchema<const TModel extends Model>(
   // validated type ID and each table contains the derived physical columns.
   // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion
   return {
-    core: { objectAliases, objects, roots },
+    core: { recordAliases, objects, roots },
     interfaces: interfaceTables,
     linkTables,
     model,

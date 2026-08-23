@@ -1,5 +1,7 @@
 import {
   createApiDescription,
+  type InferSchema,
+  type ModelInterfaceRecordId,
   type ModelObjectRef,
   type RecordId,
 } from "@continual/runtime"
@@ -15,8 +17,8 @@ describe("Acme model contract", () => {
 
     expect(description).toMatchObject({
       api: { id: "acme", name: "Acme" },
-      root: { id: "root", kind: "root", name: "Root" },
-      version: "0.19",
+      root: { id: "platform", kind: "root", name: "Platform" },
+      version: "0.22",
     })
     expect(description.objects.map((object) => object.id)).toEqual([
       "company",
@@ -40,49 +42,55 @@ describe("Acme model contract", () => {
     expect(description.links).toEqual([
       expect.objectContaining({
         id: "contactPrimaryCompany",
-        from: expect.objectContaining({
+        forward: expect.objectContaining({
           cardinality: "zeroOrOne",
           description: "The contact's primary company.",
+          from: { kind: "object", typeId: "contact" },
           key: "primaryCompany",
           label: "Primary company",
-          typeId: "contact",
+          to: { kind: "object", typeId: "company" },
         }),
-        to: expect.objectContaining({
+        reverse: expect.objectContaining({
           cardinality: "many",
+          from: { kind: "object", typeId: "company" },
           key: "contacts",
           label: "Contacts",
-          typeId: "company",
+          to: { kind: "object", typeId: "contact" },
         }),
       }),
       expect.objectContaining({
         id: "dealCompany",
-        from: expect.objectContaining({
+        forward: expect.objectContaining({
           cardinality: "one",
+          from: { kind: "object", typeId: "deal" },
           key: "company",
           label: "Company",
-          typeId: "deal",
+          to: { kind: "object", typeId: "company" },
         }),
-        to: expect.objectContaining({
+        reverse: expect.objectContaining({
           cardinality: "many",
+          from: { kind: "object", typeId: "company" },
           key: "deals",
           label: "Deals",
-          typeId: "company",
+          to: { kind: "object", typeId: "deal" },
         }),
       }),
       expect.objectContaining({
         id: "interactionSubject",
-        from: expect.objectContaining({
+        forward: expect.objectContaining({
           cardinality: "one",
+          from: { kind: "object", typeId: "interaction" },
           key: "subject",
           label: "Subject",
-          typeId: "interaction",
+          to: { kind: "interface", typeId: "party" },
         }),
-        to: expect.objectContaining({
+        reverse: expect.objectContaining({
           cardinality: "many",
           description: "Interactions involving this party.",
+          from: { kind: "interface", typeId: "party" },
           key: "interactions",
           label: "Interactions",
-          typeId: "party",
+          to: { kind: "object", typeId: "interaction" },
         }),
       }),
     ])
@@ -108,7 +116,7 @@ describe("Acme model contract", () => {
     ).toEqual({
       party: {
         interfaceId: "party",
-        properties: { image: "logo", name: "name" },
+        propertyMapping: { image: "logo", name: "name" },
       },
     })
     expect(
@@ -119,7 +127,7 @@ describe("Acme model contract", () => {
       expect.arrayContaining([
         expect.objectContaining({
           id: "company",
-          parent: { objectType: "root" },
+          parent: { objectType: "platform" },
         }),
         expect.objectContaining({
           id: "lineItem",
@@ -135,15 +143,21 @@ describe("Acme model contract", () => {
       AcmeModel.objects.company.collection
     ).toEqualTypeOf<"companies">()
     expectTypeOf(
-      ContactPrimaryCompany.from.key
+      ContactPrimaryCompany.forward.key
     ).toEqualTypeOf<"primaryCompany">()
-    expectTypeOf(ContactPrimaryCompany.to.key).toEqualTypeOf<"contacts">()
+    expectTypeOf(ContactPrimaryCompany.reverse.key).toEqualTypeOf<"contacts">()
     expectTypeOf(
       AcmeModel.objects.contact.properties.primaryCompanyId.typeId
     ).toEqualTypeOf<"company">()
     expectTypeOf(
       AcmeModel.objects.deal.properties.companyId.typeId
     ).toEqualTypeOf<"company">()
+    expectTypeOf<
+      InferSchema<typeof AcmeModel.objects.interaction.properties.subjectId>
+    >().toEqualTypeOf<RecordId<"company"> | RecordId<"contact">>()
+    expectTypeOf<
+      ModelInterfaceRecordId<typeof AcmeModel, "party">
+    >().toEqualTypeOf<RecordId<"company"> | RecordId<"contact">>()
   })
 
   it("keeps heterogeneous object references discriminated", () => {

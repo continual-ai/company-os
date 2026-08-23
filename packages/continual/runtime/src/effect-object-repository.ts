@@ -4,12 +4,16 @@ import type {
   ActorId,
   BaseRecord,
   Etag,
-  ObjectCreateInput,
+  ObjectCreateValues,
   ObjectRecord,
   ObjectType,
-  ObjectUpdateInput,
+  ObjectUpdateValues,
 } from "./definition/object"
-import type { ListRequest, Page } from "./definition/request"
+import type {
+  CanonicalListRequest,
+  CanonicalObjectFilter,
+  Page,
+} from "./definition/request"
 import type { RecordId } from "./definition/schema"
 
 export class ObjectNotFound extends Data.TaggedError("ObjectNotFound")<{
@@ -45,16 +49,16 @@ export class InvalidListRequest extends Data.TaggedError("InvalidListRequest")<{
   readonly objectType: string
 }> {}
 
-export class ObjectAliasConflict extends Data.TaggedError(
-  "ObjectAliasConflict"
+export class RecordAliasConflict extends Data.TaggedError(
+  "RecordAliasConflict"
 )<{
   readonly alias: string
   readonly conflictingRecordId: string
   readonly recordId: string
 }> {}
 
-export class ObjectAliasNotFound extends Data.TaggedError(
-  "ObjectAliasNotFound"
+export class RecordAliasNotFound extends Data.TaggedError(
+  "RecordAliasNotFound"
 )<{
   readonly alias: string
 }> {}
@@ -64,7 +68,7 @@ export type ObjectInsert<TObject extends ObjectType> = BaseRecord<
   TObject["id"],
   TObject["parent"]["objectType"]
 > &
-  Omit<ObjectCreateInput<TObject>, "parentId">
+  Omit<ObjectCreateValues<TObject>, "parentId">
 
 /** Metadata applied atomically with an object update. */
 export interface ObjectUpdateMetadata {
@@ -72,6 +76,18 @@ export interface ObjectUpdateMetadata {
   readonly updatedAt: BaseRecord["updatedAt"]
   readonly updatedById: ActorId
 }
+
+/** Canonical values accepted by a repository update. */
+export type ObjectRepositoryUpdate<TObject extends ObjectType> =
+  ObjectUpdateValues<TObject>
+
+/** Canonical query values accepted by a repository list. */
+export type RepositoryListRequest<TObject extends ObjectType> =
+  CanonicalListRequest<TObject>
+
+/** Canonical query filter accepted by a repository list. */
+export type RepositoryFilter<TObject extends ObjectType> =
+  CanonicalObjectFilter<TObject>
 
 /** Record version that must still exist when an atomic batch delete commits. */
 export interface ObjectDeleteTarget<TObject extends ObjectType> {
@@ -113,11 +129,11 @@ export interface Repository<
     record: ObjectInsert<TObject>
   ) => Effect.Effect<ObjectRecord<TObject>, TError, TRequirements>
   readonly list: (
-    request?: ListRequest<TObject>
+    request?: RepositoryListRequest<TObject>
   ) => Effect.Effect<Page<ObjectRecord<TObject>>, TError, TRequirements>
   readonly update: (
     id: RecordId<TObject["id"]>,
-    input: ObjectUpdateInput<TObject>,
+    input: ObjectRepositoryUpdate<TObject>,
     expectedEtag: Etag,
     metadata: ObjectUpdateMetadata
   ) => Effect.Effect<ObjectRecord<TObject>, TError, TRequirements>
