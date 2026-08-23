@@ -1,6 +1,7 @@
 import type { ImageRef, PropertyDefinition } from "@continual/runtime"
 import {
   columnFilteringFeature,
+  columnPinningFeature,
   columnResizingFeature,
   columnSizingFeature,
   columnVisibilityFeature,
@@ -239,6 +240,7 @@ export const objectTableFeatures = tableFeatures({
   filterFns: { objectProperty: objectPropertyFilter },
   filteredRowModel: createFilteredRowModel(),
   columnSizingFeature,
+  columnPinningFeature,
   columnResizingFeature,
   columnVisibilityFeature,
   rowSelectionFeature,
