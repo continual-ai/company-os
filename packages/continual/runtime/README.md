@@ -12,7 +12,7 @@ import {
   defineLink,
   defineModel,
   defineObject,
-  Root,
+  defineRoot,
   schema,
 } from "@continual/runtime"
 import { createClient } from "@continual/runtime/client"
@@ -23,17 +23,47 @@ import type { Repository } from "@continual/runtime/effect/object-repository"
 import * as ObjectService from "@continual/runtime/effect/object-service"
 ```
 
-Objects define typed records in one explicit ownership hierarchy rooted at the built-in `Root`.
-Every object definition declares its parent type. Root-level creates inherit the authenticated
-authority's Root; nested creates supply a typed `parentId`. This parent is the canonical
-authorization and administrative containment edge; ordinary business relationships remain links.
+Every model defines one semantic root, and its objects form one explicit ownership hierarchy below
+it. For example, a standalone Company OS can name that root `Platform`:
+
+```ts
+const Platform = defineRoot({ id: "platform", name: "Platform" })
+
+const Lead = defineObject({
+  id: "lead",
+  collection: "leads",
+  name: "Lead",
+  parent: Platform,
+  pluralName: "Leads",
+  properties: { name: schema.string({ label: "Name" }) },
+  display: { title: "name" },
+})
+
+const CompanyModel = defineModel({
+  id: "company",
+  name: "Company",
+  root: Platform,
+  objects: [Lead],
+  links: [],
+})
+```
+
+The root is a singleton structural resource rather than an ordinary CRUD object. It may implement
+marker interfaces, such as an authorization scope, but does not acquire configurable properties or
+actions; model-specific configuration belongs in ordinary child objects.
+
+Every object definition declares its parent type. Creates directly beneath the model root inherit
+the authenticated authority's root record; nested creates supply a typed `parentId`. This parent
+is the canonical authorization and administrative containment edge; ordinary business
+relationships remain links.
 Objects are readable through `get`, `list`, and `batchGet` by convention. They provide `create`,
 `update`, `delete`, and atomic `batchDelete` actions by default; set a write to `false` to disable
 it, and declare additional actions for business behavior. Disabling `delete` also disables
 `batchDelete`; it may be disabled independently when single-record deletion should remain.
 Each normalized object's `actions` map contains its complete standard-plus-authored action catalog.
-`defineModel` indexes those same maps alongside objects, links, interfaces, and Root; REST, clients,
-and descriptions are projections of that contract rather than separate action definitions.
+`defineModel` indexes those same maps alongside the model root, objects, links, and interfaces;
+REST, clients, and descriptions are projections of that contract rather than separate action
+definitions.
 
 Definition metadata follows one naming rule: `kind` discriminates the category of a definition or
 schema node, while `id` names that definition. Mixed-object runtime values use `objectType`; generic
@@ -41,33 +71,44 @@ targets that may name either an object or interface use `typeId`. Typed records 
 already-known type. SQL and other physical projections should preserve the distinction rather than
 overloading a business property's name.
 
+The remaining vocabulary is deliberately scoped. A **property** is schema-declared data on an
+object, interface, or structured input. A **field** is a query, sort, or validation selector and may
+name either a property or standard record metadata such as `id` and `createdAt`. A **key** is a local
+programmatic member name, such as a link traversal key; it is not another form of canonical `id`.
+
 Every record has one canonical `id` and a set of opaque, globally qualified `aliases`, such as
 `hubspot:portal_1:company:123`. Create accepts an alias array. On update, an array replaces the
 complete set, while `{ add, remove }` applies an atomic delta; omission leaves aliases unchanged.
-Aliases are alternate lookup keys, not company-defined object properties or a substitute for
-canonical IDs.
+`RecordIdentifier<T>` accepts either the typed canonical `RecordId<T>` or a `RecordAlias` wherever
+a public input locates or references an existing record: `get`, `update`, `delete`, batch methods,
+parents, singular links, and reference filters. Alias values must be qualified with a namespace and
+contain `:`; canonical IDs cannot contain `:`, so transports can carry both as one unambiguous
+string. Services resolve aliases and validate their expected object or interface type before
+authorization. Stored references, repository calls, events, and returned records always use the
+canonical ID.
 
-Interfaces name polymorphic object roles such as `Party`, so links and other contracts can target
-the role without choosing one concrete object type. Objects explicitly map any shared interface
-properties when they implement one. A link gives both traversals a stable key, label, cardinality,
-and target. For an FK-shaped link, `from` is always the singular reference-bearing side;
-many-to-many is the only link shape with `many` on `from`. `defineModel` derives a typed
-`${from.key}Id` property, so standard object creates, updates, filters, and reads use the same
-reference without authors repeating it. Many traversals remain link collections rather than
-embedded record fields. The singular `from` side that owns a reference must be an object.
-The portable contract does not expose whether a backend uses a foreign key or join table; the
-company backend owns that projection and its referential actions.
+Interfaces name polymorphic roles such as `Party`, so links and other contracts can target a role
+without choosing one concrete object type. An interface may be a marker capability with no
+properties or a shared projection whose properties implementing objects map through an explicit
+`propertyMapping`. A link defines complete `forward` and `reverse` traversals, each with its source,
+target, local traversal `key`, label, and cardinality. `defineModel` derives a typed `${key}Id`
+property for the singular traversal, so standard object creates, updates, filters, and reads use the
+same reference without authors repeating it. Many traversals remain link collections rather than
+embedded record fields. The portable contract does not expose which traversal owns a foreign key
+or whether a backend uses a join table; the company backend derives that projection and its
+referential actions.
 
-Object properties and operation values use the same portable schema vocabulary. Custom actions
-are declared beside their primary object; their key supplies the action ID, their scope supplies a
-canonical record `id` when needed, and `http` explicitly binds the public route:
+Object properties and action inputs and outputs use the same portable schema vocabulary. Custom
+actions are declared beside their primary object; each `actions` entry key supplies the action ID,
+its scope supplies a typed record identifier when needed, and `http` explicitly binds the public
+route:
 
 ```ts
 const Lead = defineObject({
   id: "lead",
   collection: "leads",
   name: "Lead",
-  parent: Root,
+  parent: Platform,
   pluralName: "Leads",
   properties: {
     name: schema.string({ label: "Name" }),
@@ -132,7 +173,7 @@ repository and service its stable Effect identity:
 ```ts
 export class CompanyRepository extends Context.Service<CompanyRepository>()(
   "@acme/CompanyRepository",
-  { make: makeCompanyRepository }
+  { make: makeObjectRepository(AcmeModel.objects.company) }
 ) {
   static readonly layer = Layer.effect(this, this.make)
 }
@@ -140,9 +181,11 @@ export class CompanyRepository extends Context.Service<CompanyRepository>()(
 const makeCompanyService = Effect.gen(function* () {
   const authorization = yield* Authorization
   const repository = yield* CompanyRepository
+  const resolveRecordAlias = yield* makeRecordAliasResolver
 
   return ObjectService.make(AcmeModel.objects.company, repository, {
     authorize: authorization.require,
+    resolveRecordAlias,
   })
 })
 
@@ -164,10 +207,11 @@ Repositories must also claim aliases atomically with the object write, enforce g
 release removed aliases, and return aliases in deterministic order. A normalized alias table is the
 expected relational projection; the public array is a record view, not a storage prescription.
 
-The object service is the authoritative write boundary for definition-derived validation, defaults,
-record metadata, immutable properties, create-under-parent authorization context, and optimistic
-writes. This applies equally to calls from HTTP, MCP, agents, jobs, tests, and other services;
-transport decoding is an additional protocol boundary, not the only validation layer. Company
+The object service is the authoritative boundary for record-identifier resolution,
+definition-derived validation, authorization, defaults, record metadata, immutable properties,
+create-under-parent context, and optimistic writes. This applies equally to calls from HTTP, MCP,
+agents, jobs, tests, and other services. Transport decoding is an additional protocol boundary,
+not the only validation layer. Company
 services must add authorization and business behavior before a transport is bound. Repositories
 receive validated values and own persistence translation, concurrency, and atomicity rather than
 reimplementing semantic validation. Custom actions coordinate object services rather than reaching

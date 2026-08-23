@@ -28,6 +28,6 @@ service identities, authorization, or deployment. The company backend binds its 
 to a typed Drizzle `Database` service and exposes one repository capability per object. Migration
 SQL remains explicit, source-owned history beside that backend.
 
-`makePostgresSchema` is a pure compiler, not an Effect service. Runtime resources remain ordinary
+`makePostgresSchema` is a pure compiler, not an Effect service. Runtime capabilities remain ordinary
 Effect services and Layers at the application composition root: PostgreSQL client, typed database,
 object repositories, governed services, then transport handlers.

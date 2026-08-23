@@ -45,7 +45,7 @@ Effect PostgreSQL client
 
 - A custom action belongs in the public model only when a corresponding service implementation and
   transport binding exist.
-- Handlers call the governed service method corresponding to the declared object operation.
+- Handlers call the governed service method corresponding to the declared object query or action.
 - Cross-object service methods coordinate governed object services and own their transaction.
 - Object services are the authoritative boundary for authorization, portable schema validation,
   metadata, and object-level behavior, regardless of whether the caller is HTTP, MCP, an agent, a
@@ -60,18 +60,18 @@ The portable repository contract and standard service behavior come from `@conti
 Acme owns the concrete storage projection, physical overrides, migrations, and typed `Database`
 service in this app. Interface membership uses internal tables named from immutable interface IDs
 rather than display metadata. Every object-specific table mirrors the standard `parentId` under
-its semantic name—such as `rootId`, `workspaceId`, or `dealId`—while a composite foreign key
-ensures it remains identical to the generic parent on the shared object row. The shared row also
-stores complete ancestry.
-Globally unique opaque aliases live in normalized `object_aliases` rows and are hydrated as the
-standard `aliases` set on every public object record. Repository transactions claim and release
-those rows with the corresponding object write; the model-storage resolver can therefore locate an
-object by alias without first knowing its object type. Authorization still happens in the governed
-service or handler after resolution.
-Files under `src/server/objects` keep each object's service beside its repository. Add an
-object-specific repository query only when the standard object query language cannot express the
-required persistence operation. The composition root wires Layers to infrastructure; it does not
-become another business service.
+its semantic name—such as `platformId` or `dealId`—while a composite foreign key ensures it remains
+identical to the generic parent on the shared object row. The shared row also stores complete
+ancestry. Globally unique opaque aliases live in normalized `record_aliases` rows and are hydrated
+as the standard `aliases` set on every public object record. Repository transactions claim and
+release those rows with the corresponding object write; the model-storage resolver can therefore
+locate an object by alias without first knowing its object type. The shared object-service factory
+validates the expected object or interface type, canonicalizes every reference, and then authorizes
+the request. Repositories and stored foreign keys receive canonical IDs only. Files under
+`src/server/objects` keep each object's service beside its repository. Add an object-specific
+repository query only when the standard object query language cannot express the required
+persistence operation. The composition root wires Layers to infrastructure; it does not become
+another business service.
 
 ## Database workflow
 

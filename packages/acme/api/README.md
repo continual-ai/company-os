@@ -9,16 +9,17 @@ It is contract source, not a backend implementation and not an inventory of repo
 import { AcmeModel } from "@acme/api"
 ```
 
-The example model exercises root and nested objects, interface-backed polymorphic links, and
-conventional object reads and CRUD actions. Object definitions live under `src/objects`,
-relationship definitions under `src/links`, and `AcmeModel` indexes them
-publicly as objects, links, interfaces, and actions. Every object declares its canonical parent
-type independently of its business links; for example, a line item is owned by a deal while CRM
-associations remain ordinary links.
+The example model defines `Platform` as the semantic root of its ownership hierarchy and exercises
+both platform-level and nested objects, interface-backed polymorphic links, and conventional object
+reads and CRUD actions. Object definitions live under `src/objects`, relationship definitions under
+`src/links`, and `AcmeModel` indexes them publicly as objects, links, interfaces, and actions. Every
+object declares its canonical parent type independently of its business links; for example, a line
+item is owned by a deal while CRM associations remain ordinary links.
 
-Each link defines both object-facing traversal keys. The closed `AcmeModel` derives singular ID
-properties such as `deal.companyId` and `contact.primaryCompanyId`, keeping object write schemas
-and link semantics aligned without defining the same relationship twice.
+Each link defines complete `forward` and `reverse` traversals. The closed `AcmeModel` verifies that
+their endpoints mirror each other and derives singular ID properties such as `deal.companyId` and
+`contact.primaryCompanyId`, keeping object write schemas and link semantics aligned without making
+storage orientation part of the authoring API.
 
 ## Belongs here
 
