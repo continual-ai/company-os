@@ -89,6 +89,7 @@ skills are optional design context, not implementation specifications.
 Requirements: Node.js 22.12 or newer and pnpm 11.
 
 ```sh
+mise install
 pnpm install
 pnpm check
 pnpm dev
