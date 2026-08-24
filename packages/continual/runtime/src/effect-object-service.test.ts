@@ -2,8 +2,8 @@ import { Effect, Schema } from "effect"
 import { describe, expect, expectTypeOf, it } from "vitest"
 
 import {
-  ActorId,
   defineObject,
+  Etag,
   type RecordAliasUpdate,
   type ObjectRecord,
 } from "./definition/object"
@@ -19,6 +19,7 @@ import {
   type RecordAlias as RecordAliasType,
   RecordId,
   schema,
+  Timestamp,
 } from "./definition/schema"
 import {
   RecordAliasConflict,
@@ -30,6 +31,7 @@ import * as ObjectService from "./effect-object-service"
 
 const Platform = defineRoot({ id: "platform", name: "Platform" })
 const PlatformId = RecordId("platform")
+const UserId = RecordId("user")
 
 const Account = defineObject({
   id: "account",
@@ -92,6 +94,10 @@ function makeRepository(
   aliasOwners: Map<RecordAliasType, string>
 ): Repository<typeof Account, RepositoryError> {
   const records = new Map<string, AccountRecord>()
+  const createdAt = Timestamp("2026-08-23T00:00:00.000Z")
+  const updatedAt = Timestamp("2026-08-23T00:00:01.000Z")
+  let version = 0
+  const nextEtag = () => Etag(`etag_${++version}`)
 
   const claimAliases = (
     id: RecordId<"account">,
@@ -140,7 +146,7 @@ function makeRepository(
       Effect.gen(function* () {
         const current = yield* Effect.forEach(targets, ({ id }) => get(id))
         const conflictIndex = current.findIndex(
-          (record, index) => record.etag !== targets[index]?.expectedEtag
+          (record, index) => record.etag !== targets[index]?.etag
         )
         if (conflictIndex !== -1) {
           return yield* Effect.fail(
@@ -160,10 +166,10 @@ function makeRepository(
         return undefined
       }),
     batchGet: (ids) => Effect.forEach(ids, get),
-    delete: ({ expectedEtag, id }) =>
+    delete: ({ etag, id }) =>
       get(id).pipe(
         Effect.flatMap((record) =>
-          record.etag !== expectedEtag
+          record.etag !== etag
             ? Effect.fail(
                 new ObjectWriteConflict({
                   objectType: Account.id,
@@ -183,8 +189,11 @@ function makeRepository(
         const hydrated: AccountRecord = {
           ...record,
           aliases: sortedAliases(record.aliases),
+          createdAt,
           email: record.email ?? null,
+          etag: nextEtag(),
           status: record.status ?? "active",
+          updatedAt: createdAt,
         }
         records.set(record.id, hydrated)
         return hydrated
@@ -212,11 +221,11 @@ function makeRepository(
           nextPageToken: hasNextPage ? PageToken(items.at(-1)!.id) : "",
         }
       }),
-    update: ({ changes: input, expectedEtag, id, metadata }) =>
+    update: ({ aliases, etag, id, updatedBy, ...changes }) =>
       get(id).pipe(
         Effect.flatMap((record) =>
           Effect.gen(function* () {
-            if (record.etag !== expectedEtag) {
+            if (record.etag !== etag) {
               return yield* Effect.fail(
                 new ObjectWriteConflict({
                   objectType: Account.id,
@@ -224,7 +233,6 @@ function makeRepository(
                 })
               )
             }
-            const { aliases, ...changes } = input
             let updatedAliases = record.aliases
             if (aliases !== undefined) {
               if (isAliasReplacement(aliases)) {
@@ -249,8 +257,10 @@ function makeRepository(
             const updated: AccountRecord = {
               ...record,
               ...changes,
-              ...metadata,
               aliases: updatedAliases,
+              etag: nextEtag(),
+              updatedAt,
+              updatedBy,
             }
             records.set(id, updated)
             return updated
@@ -270,8 +280,11 @@ function makeRepository(
         const hydrated: AccountRecord = {
           ...record,
           aliases: sortedAliases(record.aliases),
+          createdAt: existing?.createdAt ?? createdAt,
           email: record.email ?? null,
+          etag: nextEtag(),
           status: record.status ?? "active",
+          updatedAt,
         }
         records.set(record.id, hydrated)
         return hydrated
@@ -296,6 +309,7 @@ describe("ObjectService", () => {
     const rootId = PlatformId("platform_1")
     const service = ObjectService.make(Account, makeRepository(new Map()), {
       authorize: () => Effect.void,
+      rootId,
       resolveRecordAliases: (_expectedType, aliases) =>
         Effect.fail(
           new ObjectNotFound({
@@ -309,8 +323,7 @@ describe("ObjectService", () => {
     const record = await Effect.runPromise(
       service.create({ name: "Acme", slug: "acme" }).pipe(
         Effect.provideService(ObjectService.CurrentInvocation, {
-          actorId: ActorId("user_1"),
-          rootId,
+          actorId: UserId("user_1"),
         })
       )
     )
@@ -325,16 +338,16 @@ describe("ObjectService", () => {
     const aliasOwners = new Map<RecordAliasType, string>()
     const repository = makeRepository(aliasOwners)
     const context = {
-      actorId: ActorId("user_1"),
-      rootId: PlatformId("platform_1"),
+      actorId: UserId("user_1"),
     }
+    const rootId = PlatformId("platform_1")
     const service = ObjectService.make(Account, repository, {
       authorize: (request) => {
         accessRequests.push(request)
         return Effect.void
       },
-      generateEtag: () => `etag_${nextId}`,
       generateRecordId: () => `account_${++nextId}`,
+      rootId,
       resolveRecordAliases: (_expectedType, aliases) => {
         aliasResolutionRequests.push(aliases)
         return Effect.forEach(aliases, (alias) => {
@@ -349,7 +362,7 @@ describe("ObjectService", () => {
             : Effect.succeed(id)
         })
       },
-      visibleWithin: () => Effect.succeed([context.rootId]),
+      visibleWithin: () => Effect.succeed([rootId]),
     })
 
     const result = await Effect.runPromise(
@@ -400,15 +413,14 @@ describe("ObjectService", () => {
         })
         const staleWrite = yield* repository
           .update({
-            changes: { name: "Stale" },
-            expectedEtag: first.etag,
+            etag: first.etag,
             id: first.id,
-            metadata: {
-              etag: updated.etag,
-              updatedAt: updated.updatedAt,
-              updatedBy: context.actorId,
-            },
+            name: "Stale",
+            updatedBy: context.actorId,
           })
+          .pipe(Effect.flip)
+        const staleServiceWrite = yield* service
+          .update({ etag: first.etag, id: first.id, name: "Also stale" })
           .pipe(Effect.flip)
         const immutableWrite = yield* service
           .update({ id: first.id, slug: "different" })
@@ -489,6 +501,7 @@ describe("ObjectService", () => {
           second,
           secondPage,
           staleWrite,
+          staleServiceWrite,
           updated,
           updatedByAlias,
         }
@@ -537,6 +550,7 @@ describe("ObjectService", () => {
     expect(result.firstPage.nextPageToken).not.toBe("")
     expect(result.secondPage.nextPageToken).toBe("")
     expect(result.staleWrite).toBeInstanceOf(ObjectWriteConflict)
+    expect(result.staleServiceWrite).toBeInstanceOf(ObjectWriteConflict)
     expect(result.immutableWrite).toBeInstanceOf(
       ObjectService.ImmutablePropertyError
     )

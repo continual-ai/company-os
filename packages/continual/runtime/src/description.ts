@@ -27,6 +27,7 @@ type ObjectDescription = Omit<ObjectType, "actions" | "kind" | "parent"> & {
  */
 export interface ApiDescription {
   readonly actions: ReadonlyArray<Action>
+  readonly actor: { readonly typeId: string }
   readonly api: { readonly id: string; readonly name: string }
   readonly interfaces: ReadonlyArray<InterfaceType>
   readonly links: ReadonlyArray<LinkType>
@@ -66,6 +67,7 @@ export function createApiDescription(model: ModelCatalog): ApiDescription {
   return {
     version: API_DESCRIPTION_VERSION,
     actions: modelActions(model).map((action) => ({ ...action })),
+    actor: { typeId: model.actor.id },
     api: { id: model.id, name: model.name },
     interfaces: modelInterfaces(model).map(describeInterface),
     links: modelLinks(model).map((link) => ({

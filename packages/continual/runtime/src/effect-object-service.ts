@@ -1,9 +1,8 @@
-import { Clock, Context, Data, Effect, Option, Schema } from "effect"
+import { Context, Data, Effect, Option, Schema } from "effect"
 import { typeid } from "typeid-js"
 
 import {
-  Etag,
-  type ActorId,
+  type Etag,
   type ObjectBatchDeleteInput,
   type ObjectBatchGetInput,
   type ObjectCreateInput,
@@ -28,7 +27,6 @@ import {
 import {
   isRecordAlias,
   RecordId,
-  Timestamp,
   type AnySchema,
   type RecordAlias,
   type RecordIdentifier,
@@ -57,11 +55,10 @@ export class InvalidBatchRequest extends Data.TaggedError(
 }> {}
 
 export interface InvocationContext {
-  readonly actorId: ActorId
-  readonly rootId: RecordId
+  readonly actorId: RecordId
 }
 
-/** Request-scoped actor and root selected by a trusted invocation boundary. */
+/** Actor selected by a trusted invocation boundary. */
 export class CurrentInvocation extends Context.Service<
   CurrentInvocation,
   InvocationContext
@@ -188,7 +185,7 @@ export interface MakeOptions<
     request: ObjectAccessRequest
   ) => Effect.Effect<void, TAuthorizationError, TAuthorizationRequirements>
   readonly generateRecordId?: (objectType: string) => string
-  readonly generateEtag?: () => string
+  readonly rootId: RecordId
   readonly resolveRecordAliases: RecordAliasResolver<
     TResolverError,
     TResolverRequirements
@@ -207,10 +204,6 @@ function defaultRecordId(objectType: string): string {
     .replaceAll(/([a-z0-9])([A-Z])/g, "$1_$2")
     .toLowerCase()
   return typeid(prefix).toString()
-}
-
-function defaultEtag(): string {
-  return globalThis.crypto.randomUUID()
 }
 
 type DecodedValue =
@@ -564,7 +557,7 @@ function assertImmutableFields<TObject extends ObjectType>(
 }
 
 /**
- * Adds authorization, portable-schema validation, and common record metadata
+ * Adds authorization, portable-schema validation, and common record fields
  * to a repository. Company code supplies the authorization policy; there is no
  * permissive default.
  */
@@ -600,7 +593,6 @@ export function make<
     toEffectObjectUpdateSchema(object)
   )
   const generateRecordId = options.generateRecordId ?? defaultRecordId
-  const generateEtag = options.generateEtag ?? defaultEtag
 
   const authorize = (
     operation: ObjectOperation,
@@ -693,9 +685,7 @@ export function make<
 
     yield* authorize("batchDelete", { recordIds })
     const records = yield* repository.batchGet(recordIds)
-    yield* repository.batchDelete(
-      records.map(({ etag, id }) => ({ expectedEtag: etag, id }))
-    )
+    yield* repository.batchDelete(records.map(({ etag, id }) => ({ etag, id })))
     return undefined
   })
 
@@ -721,7 +711,7 @@ export function make<
     // concrete ID is an implementation of an interface parent before commit.
     // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion
     const parent = RecordId(object.parent.typeId)(
-      requestedParentId ?? context.rootId
+      requestedParentId ?? options.rootId
     ) as unknown as ObjectRecord<TObject>["parent"]
     yield* authorize("create", {
       parentId: parent,
@@ -732,21 +722,19 @@ export function make<
       validated,
       options.resolveRecordAliases
     )
-    const now = Timestamp(
-      new Date(yield* Clock.currentTimeMillis).toISOString()
-    )
+    // SAFETY: the trusted invocation boundary supplies a canonical ID accepted
+    // by this model's actor interface before governed services execute.
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+    const actorId = context.actorId as ObjectRecord<TObject>["createdBy"]
     return yield* repository.insert({
       ...canonical,
       aliases: canonical.aliases ?? [],
-      annotations: canonical.annotations ?? {},
-      createdAt: now,
-      createdBy: context.actorId,
-      etag: Etag(generateEtag()),
+      metadata: canonical.metadata ?? {},
+      createdBy: actorId,
       id: RecordId(object.id)(generateRecordId(object.id)),
       parent,
       systemManaged: false,
-      updatedAt: now,
-      updatedBy: context.actorId,
+      updatedBy: actorId,
     })
   })
 
@@ -763,31 +751,30 @@ export function make<
     // SAFETY: the compiled update schema accepts only portable decoded values
     // and was derived from this exact object definition.
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-    const validated = decoded as DecodedInput
+    const validated = decoded as DecodedInput & { readonly etag?: Etag }
+    const { etag: requestedEtag, ...values } = validated
     const context = yield* CurrentInvocation
+    // SAFETY: see the corresponding create boundary above.
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+    const actorId = context.actorId as ObjectRecord<TObject>["updatedBy"]
     yield* authorize("update", { recordIds: [id] })
     const current = yield* repository.get(id)
     const canonical = yield* resolveUpdateIdentifiers(
       object,
-      validated,
+      values,
       options.resolveRecordAliases
     )
     yield* assertImmutableFields(object, current, canonical)
     return yield* repository.update({
-      changes: canonical,
-      expectedEtag: current.etag,
+      ...canonical,
+      etag: requestedEtag ?? current.etag,
       id,
-      metadata: {
-        etag: Etag(generateEtag()),
-        updatedAt: Timestamp(
-          new Date(yield* Clock.currentTimeMillis).toISOString()
-        ),
-        updatedBy: context.actorId,
-      },
+      updatedBy: actorId,
     })
   })
 
   const deleteObject = Effect.fn(`${object.id}.delete`)(function* ({
+    etag,
     id: identifier,
   }: ObjectDeleteInput<TObject>) {
     const id = yield* resolveIdentifier(
@@ -797,7 +784,7 @@ export function make<
     ).pipe(Effect.map(RecordId(object.id)))
     yield* authorize("delete", { recordIds: [id] })
     const current = yield* repository.get(id)
-    yield* repository.delete({ expectedEtag: current.etag, id })
+    yield* repository.delete({ etag: etag ?? current.etag, id })
   })
 
   type ConstructedService = {

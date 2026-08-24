@@ -26,8 +26,8 @@ export { defineModel, modelTypeAccepts } from "./definition/model"
 export type {
   Model,
   ModelCatalog,
-  ModelInterfaceRecordId,
   ModelObjectRef,
+  RecordIdOf,
 } from "./definition/model"
 export {
   defineLink,
@@ -41,7 +41,7 @@ export type {
   LinkReferenceTraversals,
   LinkTraversal,
 } from "./definition/link"
-export { ActorId, defineObject, Etag } from "./definition/object"
+export { defineObject, Etag } from "./definition/object"
 export type {
   BaseRecord,
   RecordAliasDelta,

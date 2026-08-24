@@ -1,7 +1,7 @@
 import { fileURLToPath } from "node:url"
 
 import { AcmeModel } from "@acme/api"
-import { ActorId, Etag, RecordId, Timestamp } from "@continual/runtime"
+import { Etag, RecordId, Timestamp } from "@continual/runtime"
 import { CurrentInvocation } from "@continual/runtime/effect/object-service"
 import { PgliteClient } from "@effect/sql-pglite"
 import { eq } from "drizzle-orm"
@@ -49,7 +49,7 @@ import {
 import {
   PLATFORM_ADMIN_ROLE_ID,
   PLATFORM_ID,
-  SYSTEM_ACTOR_ID,
+  SYSTEM_SERVICE_ACCOUNT_ID,
   SYSTEM_ROLE_ASSIGNMENT_ID,
 } from "./well-known-authorization.server"
 
@@ -83,13 +83,13 @@ function objectRow(
 ): ObjectInsert {
   return {
     ...input,
-    annotations: {},
+    metadata: {},
     createdAt: now,
-    createdById: SYSTEM_ACTOR_ID,
+    createdById: SYSTEM_SERVICE_ACCOUNT_ID,
     etag: Etag(`etag_${input.id}`),
     systemManaged: false,
     updatedAt: now,
-    updatedById: SYSTEM_ACTOR_ID,
+    updatedById: SYSTEM_SERVICE_ACCOUNT_ID,
   }
 }
 
@@ -228,7 +228,7 @@ describe("Authorization", () => {
           Effect.provideService(Authorization, authorization),
           Effect.provideService(Database, database)
         )
-        const userContext = yield* authenticatedInvocation(ActorId(userId))
+        const userContext = yield* authenticatedInvocation(userId)
         const asUser = <A, E>(effect: Effect.Effect<A, E, CurrentInvocation>) =>
           effect.pipe(Effect.provideService(CurrentInvocation, userContext))
 

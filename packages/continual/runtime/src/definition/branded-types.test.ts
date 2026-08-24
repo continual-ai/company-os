@@ -1,6 +1,6 @@
 import { expect, expectTypeOf, it } from "vitest"
 
-import { ActorId, Etag } from "./object"
+import { Etag } from "./object"
 import { IdempotencyKey, PageToken } from "./request"
 import {
   CalendarDate,
@@ -26,7 +26,6 @@ it("constructs nominally distinct standard values through validated brands", () 
     RecordIdentifier<"account">
   >()
   expect(accountId).toBe("account_1")
-  expect(ActorId("user_1")).toBe("user_1")
   expect(Etag("etag_1")).toBe("etag_1")
   expect(PageToken("account_1")).toBe("account_1")
   expect(IdempotencyKey("request_1")).toBe("request_1")
@@ -44,7 +43,6 @@ it("constructs nominally distinct standard values through validated brands", () 
 })
 
 it("rejects invalid values before branding them", () => {
-  expect(() => ActorId("")).toThrow()
   expect(() => Etag("")).toThrow()
   expect(() => PageToken("")).toThrow()
   expect(() => IdempotencyKey("")).toThrow()

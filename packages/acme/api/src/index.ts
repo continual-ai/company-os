@@ -1,4 +1,4 @@
-import { defineModel } from "@continual/runtime"
+import { defineModel, type RecordIdOf } from "@continual/runtime"
 
 import { AuthorizationScope } from "./interfaces/authorization-scope"
 import { Identity } from "./interfaces/identity"
@@ -53,3 +53,9 @@ export const AcmeModel = defineModel({
   ],
   root: Platform,
 })
+
+/** Canonical ID of a user or service account that may act in Acme. */
+export type IdentityId = RecordIdOf<typeof AcmeModel, typeof Identity>
+
+/** Canonical ID of an identity or group that may receive a role assignment. */
+export type PrincipalId = RecordIdOf<typeof AcmeModel, typeof Principal>

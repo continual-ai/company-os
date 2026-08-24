@@ -1,16 +1,16 @@
 import {
   createApiDescription,
   type InferSchema,
-  type ModelInterfaceRecordId,
   type ModelObjectRef,
   type ObjectCreateInput,
   type ObjectRecord,
   type RecordAlias,
   type RecordId,
+  type RecordIdOf,
 } from "@continual/runtime"
 import { describe, expect, expectTypeOf, it } from "vitest"
 
-import { AcmeModel } from "./index"
+import { AcmeModel, type IdentityId, type PrincipalId } from "./index"
 
 const ContactPrimaryCompany = AcmeModel.links.contactPrimaryCompany
 
@@ -19,6 +19,7 @@ describe("Acme model contract", () => {
     const description = createApiDescription(AcmeModel)
 
     expect(description).toMatchObject({
+      actor: { typeId: "identity" },
       api: { id: "acme", name: "Acme" },
       root: { id: "platform", kind: "root", name: "Platform" },
       version: "0.25",
@@ -194,8 +195,17 @@ describe("Acme model contract", () => {
       InferSchema<typeof AcmeModel.objects.interaction.properties.subject>
     >().toEqualTypeOf<RecordId<"company"> | RecordId<"contact">>()
     expectTypeOf<
-      ModelInterfaceRecordId<typeof AcmeModel, "party">
+      RecordIdOf<typeof AcmeModel, (typeof AcmeModel.interfaces)["party"]>
     >().toEqualTypeOf<RecordId<"company"> | RecordId<"contact">>()
+    expectTypeOf<IdentityId>().toEqualTypeOf<
+      RecordId<"serviceAccount"> | RecordId<"user">
+    >()
+    expectTypeOf<PrincipalId>().toEqualTypeOf<
+      RecordId<"group"> | RecordId<"serviceAccount"> | RecordId<"user">
+    >()
+    expectTypeOf<
+      ObjectRecord<typeof AcmeModel.objects.company>["createdBy"]
+    >().toEqualTypeOf<IdentityId>()
     expectTypeOf<
       ObjectCreateInput<typeof AcmeModel.objects.roleAssignment>["parent"]
     >().toEqualTypeOf<

@@ -13,7 +13,16 @@ import { describe, expect, expectTypeOf, it } from "vitest"
 
 import { makePostgresSchema } from "./schema"
 
-const Platform = defineRoot({ id: "platform", name: "Platform" })
+const Identity = defineInterface({
+  id: "identity",
+  name: "Identity",
+  pluralName: "Identities",
+})
+const Platform = defineRoot({
+  id: "platform",
+  implements: [{ interface: Identity }],
+  name: "Platform",
+})
 
 describe("makePostgresSchema", () => {
   it("projects marker memberships for root and object implementers", () => {
@@ -24,7 +33,7 @@ describe("makePostgresSchema", () => {
     })
     const ScopedPlatform = defineRoot({
       id: "platform",
-      implements: [{ interface: AuthorizationScope }],
+      implements: [{ interface: AuthorizationScope }, { interface: Identity }],
       name: "Platform",
     })
     const Workspace = defineObject({
@@ -65,8 +74,9 @@ describe("makePostgresSchema", () => {
       },
     })
     const model = defineModel({
+      actor: Identity,
       id: "scopes",
-      interfaces: [AuthorizationScope],
+      interfaces: [AuthorizationScope, Identity],
       links: [PermissionScope],
       name: "Scopes",
       objects: [Workspace, Permission],
@@ -124,7 +134,9 @@ describe("makePostgresSchema", () => {
       },
     })
     const model = defineModel({
+      actor: Identity,
       id: "test",
+      interfaces: [Identity],
       name: "Test",
       objects: [Person, Team],
       links: [TeamMembership],
@@ -158,7 +170,9 @@ describe("makePostgresSchema", () => {
       display: { title: "name" },
     })
     const model = defineModel({
+      actor: Identity,
       id: "test",
+      interfaces: [Identity],
       name: "Test",
       objects: [Collision],
       links: [],
@@ -190,7 +204,9 @@ describe("makePostgresSchema", () => {
       display: { title: "name" },
     })
     const model = defineModel({
+      actor: Identity,
       id: "test",
+      interfaces: [Identity],
       name: "Test",
       objects: [ValidatedRecord],
       links: [],

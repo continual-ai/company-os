@@ -1,9 +1,9 @@
 import { Data, type Effect } from "effect"
 
 import type {
-  ActorId,
   BaseRecord,
   Etag,
+  ObjectActorRecordTypeId,
   ObjectCreateValues,
   ObjectRecord,
   ObjectParentRecordTypeId,
@@ -64,27 +64,25 @@ export class RecordAliasNotFound extends Data.TaggedError(
   readonly alias: string
 }> {}
 
-/** Values supplied by the object service for a newly inserted record. */
-export type ObjectInsert<TObject extends ObjectType> = BaseRecord<
-  TObject["id"],
-  ObjectParentRecordTypeId<TObject>
+/** Canonical insert values; persistence supplies the tag and timestamps. */
+export type ObjectInsert<TObject extends ObjectType> = Omit<
+  BaseRecord<
+    TObject["id"],
+    ObjectParentRecordTypeId<TObject>,
+    ObjectActorRecordTypeId<TObject>
+  >,
+  "createdAt" | "etag" | "updatedAt"
 > &
   Omit<ObjectCreateValues<TObject>, "parent">
 
-/** Metadata applied atomically with an object update. */
-export interface ObjectUpdateMetadata {
-  readonly etag: Etag
-  readonly updatedAt: BaseRecord["updatedAt"]
-  readonly updatedBy: ActorId
-}
-
 /** Canonical update command accepted by persistence. */
-export interface ObjectRepositoryUpdate<TObject extends ObjectType> {
-  readonly changes: ObjectUpdateValues<TObject>
-  readonly expectedEtag: Etag
-  readonly id: RecordId<TObject["id"]>
-  readonly metadata: ObjectUpdateMetadata
-}
+export type ObjectRepositoryUpdate<TObject extends ObjectType> =
+  ObjectUpdateValues<TObject> & {
+    /** Record version that must still exist when the write commits. */
+    readonly etag: Etag
+    readonly id: RecordId<TObject["id"]>
+    readonly updatedBy: ObjectRecord<TObject>["updatedBy"]
+  }
 
 /** Canonical query values accepted by a repository list. */
 export type RepositoryListRequest<TObject extends ObjectType> =
@@ -101,7 +99,7 @@ export interface RepositoryListVisibility {
 
 /** Record version that must still exist when an atomic batch delete commits. */
 export interface ObjectDeleteTarget<TObject extends ObjectType> {
-  readonly expectedEtag: Etag
+  readonly etag: Etag
   readonly id: RecordId<TObject["id"]>
 }
 
@@ -109,8 +107,9 @@ export interface ObjectDeleteTarget<TObject extends ObjectType> {
  * Persistence contract consumed by the standard object service.
  *
  * Repositories receive values validated by a governed service and own storage
- * translation, concurrency, and atomicity. They do not authorize callers,
- * reimplement portable property validation, or implement business actions.
+ * translation, record tags, storage timestamps, concurrency, and atomicity.
+ * They do not authorize callers, reimplement portable property validation, or
+ * implement business actions.
  */
 export interface Repository<
   TObject extends ObjectType,

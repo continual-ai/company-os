@@ -226,7 +226,7 @@ export function createClient<const TModel extends ModelCatalog>(
         return request({
           body: listRequest,
           method: "POST",
-          path: `${collectionPath}/search`,
+          path: `${collectionPath}:search`,
         })
       }
       const query = new URLSearchParams()
@@ -307,14 +307,18 @@ export function createClient<const TModel extends ModelCatalog>(
       methods.set(
         "delete",
         (
-          { id }: { readonly id: string },
+          { etag, id }: { readonly etag?: string; readonly id: string },
           mutation: MutationOptions | undefined
-        ) =>
-          request({
+        ) => {
+          const query = new URLSearchParams()
+          if (etag !== undefined) query.set("etag", etag)
+          return request({
             method: "DELETE",
             path: `${collectionPath}/${encodeURIComponent(id)}`,
+            query,
             ...mutationOptions(mutation),
           })
+        }
       )
     }
 

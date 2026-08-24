@@ -13,7 +13,16 @@ import {
   type RecordId,
 } from "./schema"
 
-const Root = defineRoot({ id: "root", name: "Root" })
+const TestActor = defineInterface({
+  id: "testActor",
+  name: "Test actor",
+  pluralName: "Test actors",
+})
+const Root = defineRoot({
+  id: "root",
+  implements: [{ interface: TestActor }],
+  name: "Root",
+})
 
 const EnrollmentFailed = defineError({
   code: "enrollmentFailed",
@@ -83,7 +92,9 @@ function objectWithAction(path: `/${string}`, scope: "collection" | "object") {
 describe("model definitions", () => {
   it("indexes objects and their first-class actions", () => {
     const model = defineModel({
+      actor: TestActor,
       id: "acme",
+      interfaces: [TestActor],
       name: "Acme",
       objects: [Contact],
       links: [],
@@ -159,7 +170,9 @@ describe("model definitions", () => {
       actions: { batchDelete: false },
     })
     const model = defineModel({
+      actor: TestActor,
       id: "withoutBatchDeleteModel",
+      interfaces: [TestActor],
       name: "Without batch delete model",
       objects: [WithoutBatchDelete],
       links: [],
@@ -186,7 +199,9 @@ describe("model definitions", () => {
     })
     expect(() =>
       defineModel({
+        actor: TestActor,
         id: "acme",
+        interfaces: [TestActor],
         name: "Acme",
         objects: [Contact, OtherContact],
         links: [],
@@ -205,7 +220,9 @@ describe("model definitions", () => {
     })
     expect(() =>
       defineModel({
+        actor: TestActor,
         id: "acme",
+        interfaces: [TestActor],
         name: "Acme",
         objects: [Contact, SameCollection],
         links: [],
@@ -224,7 +241,7 @@ describe("model definitions", () => {
       defineModel({
         actor: Identity,
         id: "missingActor",
-        interfaces: [Identity],
+        interfaces: [TestActor, Identity],
         links: [],
         name: "Missing actor",
         objects: [Contact],
@@ -267,7 +284,9 @@ describe("model definitions", () => {
 
     expectTypeOf(Membership.parent.typeId).toEqualTypeOf<"account">()
     const completeModel = defineModel({
+      actor: TestActor,
       id: "complete",
+      interfaces: [TestActor],
       name: "Complete",
       objects: [Account, Membership],
       links: [],
@@ -281,7 +300,9 @@ describe("model definitions", () => {
 
     expect(() =>
       defineModel({
+        actor: TestActor,
         id: "acme",
+        interfaces: [TestActor],
         name: "Acme",
         objects: [Membership],
         links: [],
@@ -374,7 +395,9 @@ describe("model definitions", () => {
     })
 
     const model = defineModel({
+      actor: TestActor,
       id: "acme",
+      interfaces: [TestActor],
       name: "Acme",
       objects: [Company, CompanyContact],
       links: [Contacts],
@@ -438,7 +461,9 @@ describe("model definitions", () => {
       },
     })
     const model = defineModel({
+      actor: TestActor,
       id: "companyEmployees",
+      interfaces: [TestActor],
       links: [CompanyEmployees],
       name: "Company employees",
       objects: [Company, Employee],
@@ -511,8 +536,9 @@ describe("model definitions", () => {
 
     expect(() =>
       defineModel({
+        actor: TestActor,
         id: "test",
-        interfaces: [Party],
+        interfaces: [TestActor, Party],
         links: [InvalidOwner],
         name: "Test",
         objects: [Activity],
@@ -552,9 +578,10 @@ describe("model definitions", () => {
     })
 
     const model = defineModel({
+      actor: TestActor,
       id: "acme",
       name: "Acme",
-      interfaces: [Party],
+      interfaces: [TestActor, Party],
       objects: [Company],
       links: [],
       root: Root,
@@ -627,7 +654,7 @@ describe("root definitions", () => {
     })
     const Platform = defineRoot({
       id: "platform",
-      implements: [{ interface: AuthorizationScope }],
+      implements: [{ interface: AuthorizationScope }, { interface: TestActor }],
       name: "Platform",
     })
     const Workspace = defineObject({
@@ -668,8 +695,9 @@ describe("root definitions", () => {
       },
     })
     const model = defineModel({
+      actor: TestActor,
       id: "platformModel",
-      interfaces: [AuthorizationScope],
+      interfaces: [TestActor, AuthorizationScope],
       links: [PermissionScope],
       name: "Platform model",
       objects: [Workspace, Permission],
@@ -694,7 +722,9 @@ describe("root definitions", () => {
     )
     expect(() =>
       defineModel({
+        actor: TestActor,
         id: "missingScope",
+        interfaces: [TestActor],
         links: [],
         name: "Missing scope",
         objects: [],
@@ -716,7 +746,9 @@ describe("root definitions", () => {
 
     expect(() =>
       defineModel({
+        actor: TestActor,
         id: "rootCollision",
+        interfaces: [TestActor],
         links: [],
         name: "Root collision",
         objects: [OtherRoot],
@@ -739,7 +771,9 @@ describe("root definitions", () => {
 
     expect(() =>
       defineModel({
+        actor: TestActor,
         id: "rootMismatch",
+        interfaces: [TestActor],
         links: [],
         name: "Root mismatch",
         objects: [OtherObject],

@@ -354,7 +354,7 @@ function objectRecordSchema(object: {
   return schema.object({
     id: schema.recordId(object),
     aliases: aliasesSchema(),
-    annotations: schema.map(schema.string()),
+    metadata: schema.map(schema.string()),
     createdAt: schema.timestamp({ outputOnly: true }),
     createdBy: schema.string({ outputOnly: true }),
     etag: schema.string({ outputOnly: true }),
@@ -409,7 +409,7 @@ export function standardActions(
       http: { method: "POST", path: `/${object.collection}` },
       input: schema.object({
         aliases: schema.optional(aliasesSchema()),
-        annotations: schema.optional(schema.map(schema.string())),
+        metadata: schema.optional(schema.map(schema.string())),
         ...parentInput,
         ...writableProperties,
       }),
@@ -431,7 +431,8 @@ export function standardActions(
       input: schema.object({
         id: schema.recordId(object),
         aliases: schema.optional(aliasUpdateSchema()),
-        annotations: schema.optional(schema.map(schema.string())),
+        etag: schema.optional(schema.string()),
+        metadata: schema.optional(schema.map(schema.string())),
         ...updateProperties,
       }),
       output: record,
@@ -449,7 +450,10 @@ export function standardActions(
       destructive: true,
       idempotent: true,
       http: { method: "DELETE", path: `/${object.collection}/{id}` },
-      input: schema.object({ id: schema.recordId(object) }),
+      input: schema.object({
+        id: schema.recordId(object),
+        etag: schema.optional(schema.string()),
+      }),
       output: schema.object({}),
       errors: [],
     })

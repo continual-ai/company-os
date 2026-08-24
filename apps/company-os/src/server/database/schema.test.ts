@@ -34,9 +34,13 @@ describe("Acme PostgreSQL schema", () => {
       (typeof AcmeStorage.objects.deal)["$inferSelect"]["companyId"]
     >().toEqualTypeOf<RecordId<"company">>()
     expect(getTableName(AcmeStorage.interfaces.party)).toBe("interface_party")
-    expect(
-      getTableColumns(AcmeStorage.core.objects).createdAt.getSQLType()
-    ).toBe("timestamp with time zone")
+    const objectColumns = getTableColumns(AcmeStorage.core.objects)
+    expect(objectColumns.createdAt.getSQLType()).toBe(
+      "timestamp with time zone"
+    )
+    expect(objectColumns.createdAt.hasDefault).toBe(true)
+    expect(objectColumns.etag.hasDefault).toBe(true)
+    expect(objectColumns.updatedAt.hasDefault).toBe(true)
     expect(AcmeStorage.objects.interaction.occurredAt.getSQLType()).toBe(
       "timestamp with time zone"
     )

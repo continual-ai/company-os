@@ -4,7 +4,6 @@ import { AcmeModel } from "@acme/api"
 import {
   DomainName,
   EmailAddress,
-  Etag,
   RecordAlias,
   RecordId,
   Timestamp,
@@ -27,7 +26,7 @@ import { describe, expect, expectTypeOf, it } from "vitest"
 
 import {
   PLATFORM_ID,
-  SYSTEM_ACTOR_ID,
+  SYSTEM_SERVICE_ACCOUNT_ID,
 } from "@/server/authorization/well-known-authorization.server"
 import { systemInvocation } from "@/server/invocation-context.server"
 import { DealRepository } from "@/server/objects/deal-repository.server"
@@ -53,6 +52,22 @@ import {
 const migrationsFolder = fileURLToPath(new URL("./migrations", import.meta.url))
 const TestDatabase = PgliteClient.layer()
 const CompanyId = RecordId("company")
+
+function omitStorageFields<
+  TRecord extends {
+    readonly createdAt: unknown
+    readonly etag: unknown
+    readonly updatedAt: unknown
+  },
+>(record: TRecord): Omit<TRecord, "createdAt" | "etag" | "updatedAt"> {
+  const {
+    createdAt: _createdAt,
+    etag: _etag,
+    updatedAt: _updatedAt,
+    ...insert
+  } = record
+  return insert
+}
 const PlatformId = RecordId("platform")
 
 function snakeCase(value: string): string {
@@ -101,8 +116,8 @@ describe("Drizzle object repository", () => {
           repository,
           {
             authorize: () => Effect.void,
-            generateEtag: () => `etag_${nextId}`,
             generateRecordId: () => `company_${++nextId}`,
+            rootId: platform,
             resolveRecordAliases: resolveTypedRecordAliases,
             visibleWithin: () => Effect.succeed([platform]),
           }
@@ -204,19 +219,15 @@ describe("Drizzle object repository", () => {
           .pipe(Effect.flip)
         const staleWrite = yield* repository
           .update({
-            changes: { name: "Stale" },
-            expectedEtag: first.etag,
+            etag: first.etag,
             id: first.id,
-            metadata: {
-              etag: Etag("stale_etag"),
-              updatedAt: updated.updatedAt,
-              updatedBy: SYSTEM_ACTOR_ID,
-            },
+            name: "Stale",
+            updatedBy: SYSTEM_SERVICE_ACCOUNT_ID,
           })
           .pipe(Effect.flip)
         const wrongParent = yield* repository
           .insert({
-            ...first,
+            ...omitStorageFields(first),
             id: CompanyId("company_3"),
             parent: PlatformId(first.id),
           })
@@ -225,8 +236,7 @@ describe("Drizzle object repository", () => {
         yield* Database.transaction(
           repository
             .insert({
-              ...second,
-              etag: Etag("rollback_etag"),
+              ...omitStorageFields(second),
               id: rollbackId,
             })
             .pipe(Effect.andThen(Effect.fail("rollback")))
@@ -241,8 +251,8 @@ describe("Drizzle object repository", () => {
           leadRepository,
           {
             authorize: () => Effect.void,
-            generateEtag: () => "lead_etag",
             generateRecordId: () => "lead_1",
+            rootId: platform,
             resolveRecordAliases: resolveTypedRecordAliases,
             visibleWithin: () => Effect.succeed([platform]),
           }
@@ -271,8 +281,8 @@ describe("Drizzle object repository", () => {
           interactionRepository,
           {
             authorize: () => Effect.void,
-            generateEtag: () => "interaction_etag",
             generateRecordId: () => `interaction_${++nextInteractionId}`,
+            rootId: platform,
             resolveRecordAliases: resolveTypedRecordAliases,
             visibleWithin: () => Effect.succeed([platform]),
           }
@@ -304,8 +314,8 @@ describe("Drizzle object repository", () => {
           dealRepository,
           {
             authorize: () => Effect.void,
-            generateEtag: () => "deal_etag",
             generateRecordId: () => "deal_1",
+            rootId: platform,
             resolveRecordAliases: resolveTypedRecordAliases,
             visibleWithin: () => Effect.succeed([platform]),
           }
@@ -329,8 +339,8 @@ describe("Drizzle object repository", () => {
           lineItemRepository,
           {
             authorize: () => Effect.void,
-            generateEtag: () => "line_item_etag",
             generateRecordId: () => "line_item_1",
+            rootId: platform,
             resolveRecordAliases: resolveTypedRecordAliases,
             visibleWithin: () => Effect.succeed([platform]),
           }
@@ -420,6 +430,10 @@ describe("Drizzle object repository", () => {
       id: result.first.id,
       name: "Acme Corporation",
     })
+    expect(result.updated.createdAt).toBe(result.first.createdAt)
+    expect(result.updated.etag).not.toBe(result.first.etag)
+    expect(Date.parse(result.first.createdAt)).not.toBeNaN()
+    expect(Date.parse(result.updated.updatedAt)).not.toBeNaN()
     expect(result.aliasDelta.aliases).toEqual(["salesforce:org_1:account:acme"])
     expect(result.aliasReplacement.aliases).toEqual(["legacy:company:acme"])
     expect(result.aliasConflict).toBeInstanceOf(RecordAliasConflict)

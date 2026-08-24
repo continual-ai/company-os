@@ -1,7 +1,6 @@
 import { Buffer } from "node:buffer"
 
 import {
-  ActorId,
   DEFAULT_PAGE_SIZE,
   MAX_PAGE_SIZE,
   RecordId,
@@ -82,20 +81,17 @@ type StoragePropertyValues<TObject extends ObjectType> = Partial<
 type ObjectInsertPropertyValues<TObject extends ObjectType> = Omit<
   ObjectInsert<TObject>,
   | "aliases"
-  | "annotations"
-  | "createdAt"
+  | "metadata"
   | "createdBy"
-  | "etag"
   | "id"
   | "parent"
   | "systemManaged"
-  | "updatedAt"
   | "updatedBy"
 >
 
 type ObjectUpdatePropertyValues<TObject extends ObjectType> = Omit<
-  ObjectRepositoryUpdate<TObject>["changes"],
-  "aliases" | "annotations"
+  ObjectRepositoryUpdate<TObject>,
+  "aliases" | "etag" | "id" | "metadata" | "updatedBy"
 >
 
 type CanonicalStoragePropertyValues<TObject extends ObjectType> =
@@ -420,7 +416,7 @@ export function makeObjectRepository<
         where ${recordAliases.objectId} = ${objects.id}
         order by ${recordAliases.alias}
       )`,
-      annotations: objects.annotations,
+      metadata: objects.metadata,
       createdAt: objects.createdAt,
       createdBy: objects.createdById,
       etag: objects.etag,
@@ -531,7 +527,7 @@ export function makeObjectRepository<
         return textValue
       }
       if (field === "createdBy" || field === "updatedBy") {
-        return ActorId(textValue)
+        return RecordId("actor")(textValue)
       }
       if (field === "createdAt" || field === "updatedAt") {
         return Timestamp(textValue)
@@ -816,14 +812,11 @@ export function makeObjectRepository<
     ) {
       const {
         aliases,
-        annotations,
-        createdAt,
+        metadata,
         createdBy,
-        etag,
         id,
         parent: parentId,
         systemManaged,
-        updatedAt,
         updatedBy,
         ...properties
       } = record
@@ -868,15 +861,12 @@ export function makeObjectRepository<
 
           yield* tx.insert(objects).values({
             ancestorIds: [parentId, ...parent.ancestorIds],
-            annotations,
-            createdAt,
+            metadata,
             createdById: createdBy,
-            etag,
             id,
             objectType: object.id,
             parentId,
             systemManaged,
-            updatedAt,
             updatedById: updatedBy,
           })
           if (aliases.length > 0) {
@@ -928,14 +918,11 @@ export function makeObjectRepository<
     ) {
       const {
         aliases,
-        annotations,
-        createdAt,
+        metadata,
         createdBy,
-        etag,
         id,
         parent: parentId,
         systemManaged,
-        updatedAt,
         updatedBy,
         ...properties
       } = record
@@ -996,24 +983,21 @@ export function makeObjectRepository<
             .insert(objects)
             .values({
               ancestorIds: [parentId, ...parent.ancestorIds],
-              annotations,
-              createdAt,
+              metadata,
               createdById: createdBy,
-              etag,
               id,
               objectType: object.id,
               parentId,
               systemManaged,
-              updatedAt,
               updatedById: updatedBy,
             })
             .onConflictDoUpdate({
               target: objects.id,
               set: {
-                annotations,
-                etag,
+                metadata,
+                etag: sql`gen_random_uuid()::text`,
                 systemManaged,
-                updatedAt,
+                updatedAt: sql`now()`,
                 updatedById: updatedBy,
               },
             })
@@ -1092,36 +1076,37 @@ export function makeObjectRepository<
     })
 
     const update = Effect.fn(`${object.id}.repository.update`)(function* ({
-      changes,
-      expectedEtag,
+      aliases,
+      etag,
       id,
       metadata,
+      updatedBy,
+      ...properties
     }: ObjectRepositoryUpdate<TObject>) {
-      const { aliases, annotations, ...properties } = changes
       const storageProperties = toStorageProperties(properties)
       yield* db.transaction((tx) =>
         Effect.gen(function* () {
           const updated = yield* tx
             .update(objects)
             .set(
-              annotations === undefined
+              metadata === undefined
                 ? {
-                    etag: metadata.etag,
-                    updatedAt: metadata.updatedAt,
-                    updatedById: metadata.updatedBy,
+                    etag: sql`gen_random_uuid()::text`,
+                    updatedAt: sql`now()`,
+                    updatedById: updatedBy,
                   }
                 : {
-                    annotations,
-                    etag: metadata.etag,
-                    updatedAt: metadata.updatedAt,
-                    updatedById: metadata.updatedBy,
+                    etag: sql`gen_random_uuid()::text`,
+                    metadata,
+                    updatedAt: sql`now()`,
+                    updatedById: updatedBy,
                   }
             )
             .where(
               and(
                 eq(objects.id, id),
                 eq(objects.objectType, object.id),
-                eq(objects.etag, expectedEtag)
+                eq(objects.etag, etag)
               )
             )
             .returning({ id: objects.id })
@@ -1199,14 +1184,14 @@ export function makeObjectRepository<
     })
 
     const deleteObject = Effect.fn(`${object.id}.repository.delete`)(
-      function* ({ expectedEtag, id }: ObjectDeleteTarget<TObject>) {
+      function* ({ etag, id }: ObjectDeleteTarget<TObject>) {
         const deleted = yield* db
           .delete(objects)
           .where(
             and(
               eq(objects.id, id),
               eq(objects.objectType, object.id),
-              eq(objects.etag, expectedEtag)
+              eq(objects.etag, etag)
             )
           )
           .returning({ id: objects.id })
@@ -1223,8 +1208,8 @@ export function makeObjectRepository<
         yield* db.transaction((tx) =>
           Effect.gen(function* () {
             const targetCondition = or(
-              ...targets.map(({ expectedEtag, id }) =>
-                and(eq(objects.id, id), eq(objects.etag, expectedEtag))
+              ...targets.map(({ etag, id }) =>
+                and(eq(objects.id, id), eq(objects.etag, etag))
               )
             )
             const deleted = yield* tx

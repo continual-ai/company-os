@@ -133,6 +133,7 @@ type BoundObject<
   TLinks extends ReadonlyArray<LinkType>,
   TObjects extends ReadonlyArray<ObjectType>,
   TRoot extends RootType,
+  TActor extends InterfaceType,
 > =
   TObject extends ObjectType<
     infer TId,
@@ -142,7 +143,8 @@ type BoundObject<
     infer TParentTypeId,
     infer TParentKind,
     infer TParentRecordTypeId,
-    infer TInterfaces
+    infer TInterfaces,
+    infer _TActorRecordTypeId
   >
     ? ObjectType<
         TId,
@@ -154,7 +156,8 @@ type BoundObject<
         TParentKind extends "interface"
           ? InterfaceImplementerId<TObjects, TRoot, TParentTypeId>
           : TParentRecordTypeId,
-        TInterfaces
+        TInterfaces,
+        InterfaceImplementerId<TObjects, TRoot, TActor["id"]>
       >
     : never
 
@@ -162,12 +165,14 @@ type ObjectRegistry<
   TObjects extends ReadonlyArray<ObjectType>,
   TLinks extends ReadonlyArray<LinkType>,
   TRoot extends RootType,
+  TActor extends InterfaceType,
 > = {
   readonly [TObject in TObjects[number] as TObject["id"]]: BoundObject<
     TObject,
     TLinks,
     TObjects,
-    TRoot
+    TRoot,
+    TActor
   >
 }
 
@@ -193,7 +198,7 @@ export interface ModelCatalog {
   }
   actions: Readonly<Record<string, Readonly<Record<string, Action>>>>
   /** Interface implemented by records allowed to appear in audit actor fields. */
-  actor: InterfaceType | undefined
+  actor: InterfaceType
   id: string
   interfaces: Readonly<Record<string, InterfaceType>>
   kind: "model"
@@ -210,13 +215,13 @@ export interface Model<
   TLinks extends ReadonlyArray<LinkType> = ReadonlyArray<LinkType>,
   TInterfaces extends ReadonlyArray<InterfaceType> =
     ReadonlyArray<InterfaceType>,
-  TActor extends InterfaceType | undefined = InterfaceType | undefined,
+  TActor extends InterfaceType = InterfaceType,
 > {
   readonly [modelTypes]?: {
     readonly links: TLinks
     readonly interfaces: TInterfaces
     readonly objects: ReadonlyArray<
-      BoundObject<TObjects[number], TLinks, TObjects, TRoot>
+      BoundObject<TObjects[number], TLinks, TObjects, TRoot, TActor>
     >
   }
   actions: ActionRegistry<TObjects>
@@ -226,7 +231,7 @@ export interface Model<
   kind: "model"
   links: LinkRegistry<TLinks>
   name: string
-  objects: ObjectRegistry<TObjects, TLinks, TRoot>
+  objects: ObjectRegistry<TObjects, TLinks, TRoot, TActor>
   root: TRoot
 }
 
@@ -250,8 +255,7 @@ type RecordIds<TTypeId extends string> = TTypeId extends string
   ? RecordId<TTypeId>
   : never
 
-/** Record ID accepted by an interface across its root and object implementers. */
-export type ModelInterfaceRecordId<
+type InterfaceRecordId<
   TModel extends ModelCatalog,
   TInterfaceId extends keyof TModel["interfaces"] & string,
 > = RecordIds<
@@ -260,6 +264,22 @@ export type ModelInterfaceRecordId<
       ? TModel["root"]["id"]
       : never)
 >
+
+/** Canonical record ID represented by an object, interface, or model root. */
+export type RecordIdOf<
+  TModel extends ModelCatalog,
+  TType extends InterfaceType | ObjectType | RootType,
+> = TType["kind"] extends "interface"
+  ? TType["id"] extends keyof TModel["interfaces"] & string
+    ? InterfaceRecordId<TModel, TType["id"]>
+    : never
+  : TType["kind"] extends "object"
+    ? TType["id"] extends keyof TModel["objects"] & string
+      ? RecordId<TType["id"]>
+      : never
+    : TType["id"] extends TModel["root"]["id"]
+      ? RecordId<TType["id"]>
+      : never
 
 /** A discriminated record reference for any object registered in a model. */
 export type ModelObjectRef<TModel extends ModelCatalog> = ObjectRef<
@@ -365,21 +385,18 @@ function bindLinkProperties(
   return { ...object, actions, properties }
 }
 
-/**
- * Closes and validates a portable company model, then indexes its objects,
- * links, interfaces, and derived actions for downstream projections.
- */
+/** Closes, validates, and indexes a portable company model. */
 export function defineModel<
   const TId extends string,
   const TRoot extends RootType,
   const TObjects extends ReadonlyArray<ObjectType>,
   const TLinks extends ReadonlyArray<LinkType>,
-  const TInterfaces extends ReadonlyArray<InterfaceType> = [],
-  const TActor extends TInterfaces[number] | undefined = undefined,
+  const TInterfaces extends ReadonlyArray<InterfaceType>,
+  const TActor extends TInterfaces[number],
 >(definition: {
-  actor?: TActor
+  actor: TActor
   id: TId
-  interfaces?: TInterfaces
+  interfaces: TInterfaces
   links: TLinks
   name: string
   objects: TObjects
@@ -407,7 +424,7 @@ export function defineModel<
     throw new Error(`Link id '${duplicateLink}' is registered more than once.`)
   }
 
-  const interfaceDefinitions = definition.interfaces ?? []
+  const interfaceDefinitions = definition.interfaces
   const interfaceIds = interfaceDefinitions.map((item) => item.id)
   const duplicateInterface = duplicateValue(interfaceIds)
   if (duplicateInterface !== undefined) {
@@ -421,10 +438,7 @@ export function defineModel<
       `Type id '${typeCollision}' is shared by an object and interface.`
     )
   }
-  if (
-    definition.actor !== undefined &&
-    !interfaceIds.includes(definition.actor.id)
-  ) {
+  if (!interfaceIds.includes(definition.actor.id)) {
     throw new Error(
       `Actor interface '${definition.actor.id}' is not registered in model '${definition.id}'.`
     )
@@ -489,18 +503,16 @@ export function defineModel<
       )
     }
   }
-  if (definition.actor !== undefined) {
-    const actorInterfaceId = definition.actor.id
-    const hasActor =
-      Object.hasOwn(definition.root.interfaces, actorInterfaceId) ||
-      definition.objects.some((object) =>
-        Object.hasOwn(object.interfaces, actorInterfaceId)
-      )
-    if (!hasActor) {
-      throw new Error(
-        `Actor interface '${actorInterfaceId}' has no implementer in model '${definition.id}'.`
-      )
-    }
+  const actorInterfaceId = definition.actor.id
+  const hasActor =
+    Object.hasOwn(definition.root.interfaces, actorInterfaceId) ||
+    definition.objects.some((object) =>
+      Object.hasOwn(object.interfaces, actorInterfaceId)
+    )
+  if (!hasActor) {
+    throw new Error(
+      `Actor interface '${actorInterfaceId}' has no implementer in model '${definition.id}'.`
+    )
   }
 
   const objectsById = new Map(

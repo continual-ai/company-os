@@ -4,6 +4,7 @@ import * as ObjectService from "@continual/runtime/effect/object-service"
 import { Effect } from "effect"
 
 import { Authorization } from "@/server/authorization/authorization-service.server"
+import { PLATFORM_ID } from "@/server/authorization/well-known-authorization.server"
 import { makeRecordAliasResolver } from "@/server/database/model-storage.server"
 
 /** Applies Acme's shared policy and identity resolution to an object repository. */
@@ -21,6 +22,7 @@ export function makeObjectService<
 
     return ObjectService.make(object, repository, {
       authorize: authorization.require,
+      rootId: PLATFORM_ID,
       resolveRecordAliases,
       visibleWithin: authorization.visibleWithin,
     })

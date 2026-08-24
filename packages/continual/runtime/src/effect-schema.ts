@@ -1,12 +1,7 @@
 import { Schema } from "effect"
 
 import type { ErrorType } from "./definition/error"
-import {
-  ActorId,
-  Etag,
-  type ObjectRecord,
-  type ObjectType,
-} from "./definition/object"
+import { Etag, type ObjectRecord, type ObjectType } from "./definition/object"
 import type { PropertyDefinition } from "./definition/property"
 import type {
   AnySchema,
@@ -67,10 +62,15 @@ const moneySchema = Schema.Struct({
   ),
 }).annotate({ identifier: "Money", title: "Money" })
 
-const annotationsSchema = Schema.Record(Schema.String, Schema.String).annotate({
+const metadataSchema = Schema.Record(Schema.String, Schema.String).annotate({
   default: {},
-  identifier: "Annotations",
-  title: "Annotations",
+  description: "Caller-owned string metadata attached to the record.",
+  identifier: "RecordMetadata",
+  title: "Metadata",
+})
+
+const etagSchema = Schema.String.pipe(Schema.fromBrand("Etag", Etag)).annotate({
+  title: "Entity tag",
 })
 
 const recordAliasSchema = Schema.String.pipe(
@@ -436,20 +436,15 @@ export function toEffectObjectSchema(
     title: "Updated at",
   }).pipe(Schema.fromBrand("Timestamp", Timestamp))
   const actorId = Schema.String.annotate({ readOnly: true }).pipe(
-    Schema.fromBrand("ActorId", ActorId)
+    Schema.fromBrand("RecordId", RecordId("actor"))
   )
   const fields: CompiledSchemaFields = Object.fromEntries([
     entry("id", id),
     entry("aliases", recordAliasesSchema),
-    entry("annotations", annotationsSchema),
+    entry("metadata", metadataSchema),
     entry("createdAt", createdAt),
     entry("createdBy", actorId),
-    entry(
-      "etag",
-      Schema.String.annotate({ readOnly: true }).pipe(
-        Schema.fromBrand("Etag", Etag)
-      )
-    ),
+    entry("etag", etagSchema.annotate({ readOnly: true })),
     entry(
       "parent",
       Schema.String.annotate({ title: "Parent" }).pipe(
@@ -485,7 +480,7 @@ export function toEffectObjectCreateSchema(
 ): Schema.Codec<unknown, unknown> {
   const fields: CompiledSchemaFields = {
     aliases: Schema.optionalKey(recordAliasesSchema),
-    annotations: Schema.optionalKey(annotationsSchema),
+    metadata: Schema.optionalKey(metadataSchema),
     ...compileCreateProperties(object),
   }
   if (object.parent.kind !== "root") {
@@ -506,7 +501,13 @@ export function toEffectObjectUpdateSchema(
 ): Schema.Codec<unknown, unknown> {
   const fields: CompiledSchemaFields = {
     aliases: Schema.optionalKey(recordAliasUpdateSchema),
-    annotations: Schema.optionalKey(annotationsSchema),
+    etag: Schema.optionalKey(
+      etagSchema.annotate({
+        description:
+          "Current entity tag. The update fails if the record has changed.",
+      })
+    ),
+    metadata: Schema.optionalKey(metadataSchema),
     ...compileUpdateProperties(object),
   }
   return annotateObjectSchema(

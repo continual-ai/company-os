@@ -5,9 +5,9 @@ import {
   type LinkType,
   linkReferenceTraversals,
   type ModelCatalog,
-  type ModelInterfaceRecordId,
   type ObjectType,
   type RecordId,
+  type RecordIdOf,
   type SchemaDefinition,
 } from "@continual/runtime"
 import {
@@ -110,9 +110,10 @@ type TraversalRecordId<
   TModel extends ModelCatalog,
   TTraversal extends LinkTraversal,
 > = TTraversal["from"]["kind"] extends "interface"
-  ? ModelInterfaceRecordId<
+  ? RecordIdOf<
       TModel,
-      TTraversal["from"]["typeId"] & keyof TModel["interfaces"]
+      TModel["interfaces"][TTraversal["from"]["typeId"] &
+        keyof TModel["interfaces"]]
     >
   : RecordId<TTraversal["from"]["typeId"]>
 
@@ -120,7 +121,7 @@ type InterfaceTables<TModel extends ModelCatalog> = {
   readonly [TInterfaceType in keyof TModel["interfaces"]]: AnyPgTable & {
     readonly id: AnyPgColumn
     readonly $inferSelect: {
-      readonly id: ModelInterfaceRecordId<TModel, TInterfaceType & string>
+      readonly id: RecordIdOf<TModel, TModel["interfaces"][TInterfaceType]>
     }
   }
 }
@@ -259,7 +260,7 @@ export type PostgresStorageOverrides<TModel extends ModelCatalog> = {
 
 function makeCoreTables<const TModel extends ModelCatalog>(
   model: TModel,
-  actorIdColumn?: () => AnyPgColumn
+  actorIdColumn: () => AnyPgColumn
 ) {
   type StoredObjectType =
     | TModel["root"]["id"]
@@ -270,12 +271,9 @@ function makeCoreTables<const TModel extends ModelCatalog>(
     sql`, `
   )
   const auditActor = () => {
-    const column = text().notNull()
     // A model whose initial root and actor refer to each other requires these
     // constraints to be DEFERRABLE in the committed SQL migration.
-    return actorIdColumn === undefined
-      ? column
-      : column.references(actorIdColumn, { onDelete: "restrict" })
+    return text().notNull().references(actorIdColumn, { onDelete: "restrict" })
   }
   const objects = pgTable(
     "objects",
@@ -289,15 +287,21 @@ function makeCoreTables<const TModel extends ModelCatalog>(
         .array()
         .notNull()
         .default(sql`'{}'::text[]`),
-      annotations: jsonb()
+      metadata: jsonb()
         .$type<Readonly<Record<string, string>>>()
         .notNull()
         .default(sql`'{}'::jsonb`),
       systemManaged: boolean().notNull().default(false),
-      etag: text().notNull(),
-      createdAt: timestampWithTimezone().notNull(),
+      etag: text()
+        .default(sql`gen_random_uuid()::text`)
+        .notNull(),
+      createdAt: timestampWithTimezone()
+        .default(sql`now()`)
+        .notNull(),
       createdById: auditActor(),
-      updatedAt: timestampWithTimezone().notNull(),
+      updatedAt: timestampWithTimezone()
+        .default(sql`now()`)
+        .notNull(),
       updatedById: auditActor(),
     },
     (table) => [
@@ -613,17 +617,14 @@ export function makePostgresSchema<const TModel extends ModelCatalog>(
 ): PostgresStorage<TModel> {
   const actorInterface = model.actor
   let actorTable: AnyPgTable | undefined
-  const actorIdColumn =
-    actorInterface === undefined
-      ? undefined
-      : () => {
-          if (actorTable === undefined) {
-            throw new Error(
-              `Actor interface '${actorInterface.id}' does not have a storage table.`
-            )
-          }
-          return columnId(actorTable)
-        }
+  const actorIdColumn = () => {
+    if (actorTable === undefined) {
+      throw new Error(
+        `Actor interface '${actorInterface.id}' does not have a storage table.`
+      )
+    }
+    return columnId(actorTable)
+  }
   const { recordAliases, objects, roots } = makeCoreTables(model, actorIdColumn)
   const tableOwners = new Map([
     ["record_aliases", "core record aliases"],
@@ -650,9 +651,7 @@ export function makePostgresSchema<const TModel extends ModelCatalog>(
         .references(() => objects.id, { onDelete: "cascade" }),
     })
   }
-  if (actorInterface !== undefined) {
-    actorTable = interfaceTables[actorInterface.id]
-  }
+  actorTable = interfaceTables[actorInterface.id]
 
   const objectTables: Record<string, AnyPgTable> = {}
   const uniqueLinkProperties = new Set(

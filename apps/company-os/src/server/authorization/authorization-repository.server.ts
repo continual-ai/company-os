@@ -1,3 +1,4 @@
+import type { IdentityId } from "@acme/api"
 import { and, arrayContains, eq, inArray, or, sql } from "drizzle-orm"
 import { Context, Effect, Layer } from "effect"
 
@@ -30,7 +31,7 @@ const make = Effect.gen(function* () {
   const listScopeIdsWithPermission = Effect.fn(
     "@acme/AuthorizationRepository.listScopeIdsWithPermission"
   )(function* (input: {
-    readonly identityId: string
+    readonly actorId: IdentityId
     readonly permission: string
     readonly scopeIds?: ReadonlyArray<string>
   }) {
@@ -42,7 +43,7 @@ const make = Effect.gen(function* () {
     const groupIds = database
       .select({ id: groupMemberships.groupId })
       .from(groupMemberships)
-      .where(eq(groupMemberships.memberId, input.identityId))
+      .where(eq(groupMemberships.memberId, input.actorId))
     const rows = yield* database
       .selectDistinct({
         scopeId: sql<string>`${roleAssignments.authorizationScopeId}`,
@@ -53,7 +54,7 @@ const make = Effect.gen(function* () {
       .where(
         and(
           or(
-            eq(roleAssignments.principalId, input.identityId),
+            eq(roleAssignments.principalId, input.actorId),
             inArray(roleAssignments.principalId, groupIds)
           ),
           eq(roles.scopeType, objects.objectType),

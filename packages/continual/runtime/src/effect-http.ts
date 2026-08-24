@@ -12,7 +12,7 @@ import {
 import { isStandardActionId, type Action } from "./definition/action"
 import type { ErrorCategory, ErrorType } from "./definition/error"
 import { type ModelCatalog, modelObjects } from "./definition/model"
-import type { ObjectType } from "./definition/object"
+import { Etag, type ObjectType } from "./definition/object"
 import {
   DEFAULT_PAGE_SIZE,
   filterOperators,
@@ -148,6 +148,10 @@ const mutationHeaders = {
 const pageTokenSchema = Schema.String.pipe(
   Schema.fromBrand("PageToken", PageToken)
 )
+
+const etagSchema = Schema.String.pipe(Schema.fromBrand("Etag", Etag)).annotate({
+  title: "Entity tag",
+})
 
 const compiledErrorSchemas = new WeakMap<ErrorType, Schema.Top>()
 
@@ -287,7 +291,7 @@ function addDefaultEndpoints(
   })
   const searchEndpoint = HttpApiEndpoint.post(
     endpointId("search", object),
-    `${collectionPath}/search`,
+    effectActionRoute(`${collectionPath}:search`),
     {
       payload: Schema.Struct({
         filter: Schema.optionalKey(filterSchema),
@@ -458,6 +462,14 @@ function addDefaultEndpoints(
       {
         headers: mutationHeaders,
         params: parameter.schema,
+        query: {
+          etag: Schema.optionalKey(
+            etagSchema.annotate({
+              description:
+                "Current entity tag. The delete fails if the record has changed.",
+            })
+          ),
+        },
         success: HttpApiSchema.NoContent,
         error: recordWriteErrors,
       }

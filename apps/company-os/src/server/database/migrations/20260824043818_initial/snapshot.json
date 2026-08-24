@@ -1,7 +1,7 @@
 {
   "version": "8",
   "dialect": "postgres",
-  "id": "ed3134e7-c503-4249-b94a-352cd11fd523",
+  "id": "024a19c7-6113-4766-86d1-15641c235944",
   "prevIds": ["00000000-0000-0000-0000-000000000000"],
   "ddl": [
     {
@@ -883,7 +883,7 @@
       "default": "'{}'",
       "generated": null,
       "identity": null,
-      "name": "annotations",
+      "name": "metadata",
       "entityType": "columns",
       "schema": "public",
       "table": "objects"
@@ -906,7 +906,7 @@
       "typeSchema": null,
       "notNull": true,
       "dimensions": 0,
-      "default": null,
+      "default": "gen_random_uuid()",
       "generated": null,
       "identity": null,
       "name": "etag",
@@ -919,7 +919,7 @@
       "typeSchema": null,
       "notNull": true,
       "dimensions": 0,
-      "default": null,
+      "default": "now()",
       "generated": null,
       "identity": null,
       "name": "created_at",
@@ -945,7 +945,7 @@
       "typeSchema": null,
       "notNull": true,
       "dimensions": 0,
-      "default": null,
+      "default": "now()",
       "generated": null,
       "identity": null,
       "name": "updated_at",

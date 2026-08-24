@@ -2,6 +2,7 @@ import { OpenApi } from "effect/unstable/httpapi"
 import { afterAll, describe, expect, it } from "vitest"
 
 import { defineError } from "./definition/error"
+import { defineInterface } from "./definition/interface"
 import { defineModel } from "./definition/model"
 import { defineObject } from "./definition/object"
 import { defineRoot } from "./definition/root"
@@ -15,7 +16,16 @@ const ArchiveFailed = defineError({
   details: schema.object({ reason: schema.string() }),
 })
 
-const Platform = defineRoot({ id: "platform", name: "Platform" })
+const Identity = defineInterface({
+  id: "identity",
+  name: "Identity",
+  pluralName: "Identities",
+})
+const Platform = defineRoot({
+  id: "platform",
+  implements: [{ interface: Identity }],
+  name: "Platform",
+})
 
 const Account = defineObject({
   id: "account",
@@ -60,7 +70,9 @@ const Account = defineObject({
 })
 
 const Example = defineModel({
+  actor: Identity,
   id: "example",
+  interfaces: [Identity],
   name: "Example",
   objects: [Account],
   links: [],
@@ -91,7 +103,7 @@ describe("Effect HTTP projection", () => {
     expect(document.paths["/api/v1/accounts:archiveAll"]).toMatchObject({
       post: { operationId: "archiveAllAccounts" },
     })
-    expect(document.paths["/api/v1/accounts/search"]).toMatchObject({
+    expect(document.paths["/api/v1/accounts:search"]).toMatchObject({
       post: { operationId: "searchAccounts" },
     })
     expect(document.paths["/api/v1/accounts/{id}"]).toMatchObject({
@@ -114,7 +126,7 @@ describe("Effect HTTP projection", () => {
     expect(document.components?.schemas).toHaveProperty("AccountStatus")
     expect(document.components?.schemas).toHaveProperty("AccountEmail")
     expect(document.components?.schemas).toHaveProperty("AccountLogo")
-    expect(document.components?.schemas).toHaveProperty("Annotations")
+    expect(document.components?.schemas).toHaveProperty("RecordMetadata")
     expect(document.components?.schemas).toHaveProperty("ImageRef")
     expect(document.components?.schemas).toHaveProperty("RecordAliases")
     expect(document.components?.schemas).not.toHaveProperty(
@@ -139,6 +151,7 @@ describe("Effect HTTP projection", () => {
     expect(recordSchema).toHaveProperty("properties.aliases")
     expect(recordSchema).toHaveProperty("properties.createdBy")
     expect(recordSchema).toHaveProperty("properties.logo")
+    expect(recordSchema).toHaveProperty("properties.metadata")
     expect(recordSchema).toHaveProperty("properties.parent")
     expect(recordSchema).toHaveProperty("properties.searchLabel")
     expect(recordSchema).toHaveProperty("properties.updatedBy")
@@ -162,6 +175,7 @@ describe("Effect HTTP projection", () => {
     expect(JSON.stringify(createSchema)).not.toContain('"writeOnly":true')
     expect(updateSchema).toHaveProperty("properties.email")
     expect(updateSchema).toHaveProperty("properties.aliases")
+    expect(updateSchema).toHaveProperty("properties.etag")
     expect(updateSchema).toHaveProperty("properties.logo")
     expect(updateSchema).toHaveProperty("properties.externalId")
     expect(JSON.stringify(updateSchema)).toContain("Immutable after creation")
@@ -181,7 +195,9 @@ describe("Effect HTTP projection", () => {
       display: { title: "name" },
     })
     const model = defineModel({
+      actor: Identity,
       id: "batchDeleteExample",
+      interfaces: [Identity],
       name: "Batch delete example",
       objects: [Deletable],
       links: [],
@@ -205,6 +221,11 @@ describe("Effect HTTP projection", () => {
       },
       required: ["ids"],
     })
+    expect(
+      batchDocument.paths["/api/v1/deletables/{id}"]?.delete?.parameters
+    ).toContainEqual(
+      expect.objectContaining({ in: "query", name: "etag", required: false })
+    )
   })
 
   it("projects business actions to AIP-style paths and declared errors", () => {

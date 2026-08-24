@@ -1,12 +1,22 @@
 import { describe, expect, expectTypeOf, it } from "vitest"
 
 import { ApiClientResponseError, createClient, type ApiClient } from "./client"
+import { defineInterface } from "./definition/interface"
 import { defineModel } from "./definition/model"
-import { defineObject } from "./definition/object"
+import { defineObject, Etag } from "./definition/object"
 import { defineRoot } from "./definition/root"
 import { RecordAlias, schema, type RecordId } from "./definition/schema"
 
-const Platform = defineRoot({ id: "platform", name: "Platform" })
+const Identity = defineInterface({
+  id: "identity",
+  name: "Identity",
+  pluralName: "Identities",
+})
+const Platform = defineRoot({
+  id: "platform",
+  implements: [{ interface: Identity }],
+  name: "Platform",
+})
 
 const Account = defineObject({
   id: "account",
@@ -43,7 +53,9 @@ const Account = defineObject({
 })
 
 const Example = defineModel({
+  actor: Identity,
   id: "example",
+  interfaces: [Identity],
   name: "Example",
   objects: [Account],
   links: [],
@@ -52,7 +64,7 @@ const Example = defineModel({
 
 const accountRecord = {
   aliases: [],
-  annotations: {},
+  metadata: {},
   createdAt: "2026-08-18T18:00:00Z",
   createdBy: "user-1",
   etag: "etag-1",
@@ -68,7 +80,7 @@ function responseBody(url: string) {
   if (url.endsWith(":archiveAll")) return { archivedCount: 3 }
   if (url.endsWith(":archive")) return { archived: true }
   if (url.endsWith(":batchGet")) return { items: [accountRecord] }
-  if (url.endsWith("/search")) {
+  if (url.endsWith(":search")) {
     return { items: [accountRecord], nextPageToken: "" }
   }
   if (url.includes("?")) {
@@ -114,6 +126,7 @@ describe("inferred API client", () => {
     await client.accounts.get({ id: hubspotAlias })
     await client.accounts.update({
       aliases: { add: [salesforceAlias], remove: [hubspotAlias] },
+      etag: Etag("etag-1"),
       id: hubspotAlias,
     })
     const page = await client.accounts.list({ pageSize: 25 })
@@ -128,6 +141,7 @@ describe("inferred API client", () => {
     })
     const batch = await client.accounts.batchGet({ ids: [hubspotAlias] })
     await client.accounts.batchDelete({ ids: [hubspotAlias] })
+    await client.accounts.delete({ etag: Etag("etag-1"), id: hubspotAlias })
     const archived = await client.accounts.archive({
       id: hubspotAlias,
       note: "No longer active",
@@ -141,9 +155,10 @@ describe("inferred API client", () => {
       "https://company.example/api/v1/accounts/hubspot%3Aportal_1%3Acompany%3Aaccount_1",
       "https://company.example/api/v1/accounts/hubspot%3Aportal_1%3Acompany%3Aaccount_1",
       "https://company.example/api/v1/accounts?pageSize=25",
-      "https://company.example/api/v1/accounts/search",
+      "https://company.example/api/v1/accounts:search",
       "https://company.example/api/v1/accounts:batchGet",
       "https://company.example/api/v1/accounts:batchDelete",
+      "https://company.example/api/v1/accounts/hubspot%3Aportal_1%3Acompany%3Aaccount_1?etag=etag-1",
       "https://company.example/api/v1/accounts/hubspot%3Aportal_1%3Acompany%3Aaccount_1:archive",
       "https://company.example/api/v1/accounts:archiveAll",
     ])
@@ -151,7 +166,7 @@ describe("inferred API client", () => {
       '{"aliases":["hubspot:portal_1:company:account_1"],"name":"Acme"}'
     )
     expect(calls[2]?.init.body).toBe(
-      '{"aliases":{"add":["salesforce:org_1:account:account_1"],"remove":["hubspot:portal_1:company:account_1"]}}'
+      '{"aliases":{"add":["salesforce:org_1:account:account_1"],"remove":["hubspot:portal_1:company:account_1"]},"etag":"etag-1"}'
     )
     expect(calls[4]?.init.body).toBe(
       '{"filter":{"and":[{"field":"name","operator":"contains","value":"acme"},{"field":"name","operator":"startsWith","value":"A"}]},"sort":[{"direction":"desc","field":"name","nulls":"last"}]}'
@@ -162,8 +177,8 @@ describe("inferred API client", () => {
     expect(calls[6]?.init.body).toBe(
       '{"ids":["hubspot:portal_1:company:account_1"]}'
     )
-    expect(calls[7]?.init.body).toBe('{"note":"No longer active"}')
-    expect(calls[8]?.init.body).toBe('{"filter":"updatedAt < 2025-01-01"}')
+    expect(calls[8]?.init.body).toBe('{"note":"No longer active"}')
+    expect(calls[9]?.init.body).toBe('{"filter":"updatedAt < 2025-01-01"}')
     expect(page.nextPageToken).toBe("")
     expect(search.items[0]?.id).toBe(created.id)
     expect(batch.items[0]?.id).toBe(created.id)

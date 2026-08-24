@@ -1,10 +1,9 @@
 import type { AcmeModel } from "@acme/api"
-import { inArray } from "drizzle-orm"
+import { inArray, sql } from "drizzle-orm"
 import { Data, Effect } from "effect"
 
 import {
   PLATFORM_ID,
-  SYSTEM_ACTOR_ID,
   SYSTEM_SERVICE_ACCOUNT_ID,
 } from "@/server/authorization/well-known-authorization.server"
 import { Database } from "@/server/database/database.server"
@@ -14,8 +13,6 @@ import {
   objects,
   platforms,
 } from "@/server/database/schema.server"
-
-const BOOTSTRAP_ETAG = "bootstrap:system-actor:v1"
 
 class SystemActorBootstrapConflict extends Data.TaggedError(
   "SystemActorBootstrapConflict"
@@ -29,16 +26,12 @@ function objectRow(input: {
     | keyof typeof AcmeModel.objects
   readonly parentId: string | null
 }) {
-  const now = new Date().toISOString()
   return {
     ...input,
-    annotations: {},
-    createdAt: now,
-    createdById: SYSTEM_ACTOR_ID,
-    etag: BOOTSTRAP_ETAG,
+    metadata: {},
+    createdById: SYSTEM_SERVICE_ACCOUNT_ID,
     systemManaged: true,
-    updatedAt: now,
-    updatedById: SYSTEM_ACTOR_ID,
+    updatedById: SYSTEM_SERVICE_ACCOUNT_ID,
   }
 }
 
@@ -60,10 +53,10 @@ export const bootstrapSystemActor = Effect.fn("@acme/bootstrapSystemActor")(
           .onConflictDoUpdate({
             target: objects.id,
             set: {
-              etag: platform.etag,
+              etag: sql`gen_random_uuid()::text`,
               systemManaged: true,
-              updatedAt: platform.updatedAt,
-              updatedById: SYSTEM_ACTOR_ID,
+              updatedAt: sql`now()`,
+              updatedById: SYSTEM_SERVICE_ACCOUNT_ID,
             },
           })
         yield* transaction
@@ -87,10 +80,10 @@ export const bootstrapSystemActor = Effect.fn("@acme/bootstrapSystemActor")(
           .onConflictDoUpdate({
             target: objects.id,
             set: {
-              etag: systemAccount.etag,
+              etag: sql`gen_random_uuid()::text`,
               systemManaged: true,
-              updatedAt: systemAccount.updatedAt,
-              updatedById: SYSTEM_ACTOR_ID,
+              updatedAt: sql`now()`,
+              updatedById: SYSTEM_SERVICE_ACCOUNT_ID,
             },
           })
         yield* transaction

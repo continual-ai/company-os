@@ -3,6 +3,7 @@ import { describe, expect, expectTypeOf, it } from "vitest"
 
 import {
   defineObject,
+  type Etag,
   type ObjectCreateInput,
   type RecordAliasUpdate,
   type ObjectRecord,
@@ -58,7 +59,7 @@ describe("Effect Schema projection", () => {
     const decode = Schema.decodeUnknownSync(toEffectObjectSchema(Account))
     const base = {
       aliases: ["hubspot:portal_1:company:account_1"],
-      annotations: {},
+      metadata: {},
       id: "account_1",
       createdAt: "2026-08-18T12:00:00Z",
       createdBy: "user_1",
@@ -166,7 +167,7 @@ describe("Effect Schema projection", () => {
     expectTypeOf<AccountRecord["status"]>().toEqualTypeOf<
       "active" | "inactive"
     >()
-    expectTypeOf<Create["annotations"]>().toEqualTypeOf<
+    expectTypeOf<Create["metadata"]>().toEqualTypeOf<
       Readonly<Record<string, string>> | undefined
     >()
     expectTypeOf<Create["aliases"]>().toEqualTypeOf<
@@ -180,6 +181,7 @@ describe("Effect Schema projection", () => {
       EmailAddress | null | undefined
     >()
     expectTypeOf<Update["id"]>().toEqualTypeOf<RecordIdentifier<"account">>()
+    expectTypeOf<Update["etag"]>().toEqualTypeOf<Etag | undefined>()
     expectTypeOf<Update["externalId"]>().toEqualTypeOf<string | undefined>()
     expectTypeOf<Update["aliases"]>().toEqualTypeOf<
       RecordAliasUpdate | undefined
@@ -200,13 +202,13 @@ describe("Effect Schema projection", () => {
     expect(
       decodeCreate({
         aliases: [hubspotAlias],
-        annotations: { source: "import" },
+        metadata: { source: "import" },
         externalId: "external_1",
         name: "Acme",
       })
     ).toEqual({
       aliases: [hubspotAlias],
-      annotations: { source: "import" },
+      metadata: { source: "import" },
       externalId: "external_1",
       name: "Acme",
     })
@@ -224,7 +226,8 @@ describe("Effect Schema projection", () => {
     expect(decodeUpdate({ name: "Renamed" })).toEqual({ name: "Renamed" })
     expect(decodeUpdate({ email: null })).toEqual({ email: null })
     expect(() => decodeUpdate({ email: "" })).toThrow()
-    expect(decodeUpdate({ annotations: {} })).toEqual({ annotations: {} })
+    expect(decodeUpdate({ metadata: {} })).toEqual({ metadata: {} })
+    expect(decodeUpdate({ etag: "v1" })).toEqual({ etag: "v1" })
     expect(decodeUpdate({ aliases: [hubspotAlias] })).toEqual({
       aliases: [hubspotAlias],
     })

@@ -11,9 +11,8 @@ import { describe, expect, it } from "vitest"
 import {
   PLATFORM_ADMIN_ROLE_ID,
   PLATFORM_ID,
-  SYSTEM_ACTOR_ID,
-  SYSTEM_ROLE_ASSIGNMENT_ID,
   SYSTEM_SERVICE_ACCOUNT_ID,
+  SYSTEM_ROLE_ASSIGNMENT_ID,
 } from "@/server/authorization/well-known-authorization.server"
 import { Database } from "@/server/database/database.server"
 import {
@@ -101,13 +100,13 @@ describe("Company OS seeds", () => {
           .limit(1)
         const aliases = yield* database.select().from(recordAliases)
         const impersonation = yield* authenticatedInvocation(
-          SYSTEM_ACTOR_ID
+          SYSTEM_SERVICE_ACCOUNT_ID
         ).pipe(Effect.flip)
         const unknownActor = yield* database
           .insert(objects)
           .values({
             ancestorIds: [PLATFORM_ID],
-            annotations: {},
+            metadata: {},
             createdAt: "2026-08-24T00:00:00.000Z",
             createdById: "identity_missing",
             etag: Etag("invalid-actor"),
@@ -116,7 +115,7 @@ describe("Company OS seeds", () => {
             parentId: PLATFORM_ID,
             systemManaged: false,
             updatedAt: "2026-08-24T00:00:00.000Z",
-            updatedById: SYSTEM_ACTOR_ID,
+            updatedById: SYSTEM_SERVICE_ACCOUNT_ID,
           })
           .pipe(Effect.flip)
 

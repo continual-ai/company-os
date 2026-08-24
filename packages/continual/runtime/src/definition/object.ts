@@ -37,6 +37,11 @@ import type {
 import { assertReferencePropertyName } from "./schema"
 
 declare const parentRecordType: unique symbol
+declare const actorRecordType: unique symbol
+
+type RecordIds<TTypeId extends string> = TTypeId extends string
+  ? RecordId<TTypeId>
+  : never
 
 export interface ObjectParent<
   TTypeId extends string = string,
@@ -63,11 +68,12 @@ export type ObjectRef<TObjectType extends string = string> =
 export interface BaseRecord<
   TObjectType extends string = string,
   TParentTypeId extends string = string,
+  TActorTypeId extends string = string,
 > {
   readonly aliases: ReadonlyArray<RecordAlias>
-  readonly annotations: Readonly<Record<string, string>>
+  readonly metadata: Readonly<Record<string, string>>
   readonly createdAt: Timestamp
-  readonly createdBy: ActorId
+  readonly createdBy: RecordIds<TActorTypeId>
   readonly etag: Etag
   readonly id: RecordId<TObjectType>
   readonly parent: TParentTypeId extends string
@@ -76,13 +82,8 @@ export interface BaseRecord<
   /** Whether ordinary mutations are reserved for trusted system workflows. */
   readonly systemManaged: boolean
   readonly updatedAt: Timestamp
-  readonly updatedBy: ActorId
+  readonly updatedBy: RecordIds<TActorTypeId>
 }
-
-export type ActorId = string & Brand.Brand<"ActorId">
-export const ActorId = Brand.make<ActorId>(
-  (value) => value.length > 0 || "Expected a non-empty actor ID"
-)
 
 export type Etag = string & Brand.Brand<"Etag">
 export const Etag = Brand.make<Etag>(
@@ -127,7 +128,9 @@ export interface ObjectType<
   TParentRecordTypeId extends string = TParentTypeId,
   TInterfaces extends Readonly<Record<string, InterfaceImplementation>> =
     Readonly<Record<string, InterfaceImplementation>>,
+  TActorRecordTypeId extends string = string,
 > {
+  readonly [actorRecordType]?: TActorRecordTypeId
   actions: TActions
   collection: TCollection
   description?: string
@@ -151,9 +154,14 @@ export type ObjectParentRecordTypeId<TObject extends ObjectType> = NonNullable<
   TObject["parent"][typeof parentRecordType]
 >
 
+export type ObjectActorRecordTypeId<TObject extends ObjectType> = NonNullable<
+  TObject[typeof actorRecordType]
+>
+
 export type ObjectRecord<TObject extends ObjectType> = BaseRecord<
   TObject["id"],
-  ObjectParentRecordTypeId<TObject>
+  ObjectParentRecordTypeId<TObject>,
+  ObjectActorRecordTypeId<TObject>
 > &
   InferProperties<TObject["properties"]>
 
@@ -190,12 +198,12 @@ type Simplify<TValue> = { [TKey in keyof TValue]: TValue[TKey] } & {}
 
 interface BaseCreateProperties {
   readonly aliases?: ReadonlyArray<RecordAlias>
-  readonly annotations?: Readonly<Record<string, string>>
+  readonly metadata?: Readonly<Record<string, string>>
 }
 
 interface BaseUpdateProperties {
   readonly aliases?: RecordAliasUpdate
-  readonly annotations?: Readonly<Record<string, string>>
+  readonly metadata?: Readonly<Record<string, string>>
 }
 
 type CreateParent<TObject extends ObjectType> =
@@ -258,8 +266,12 @@ export type ObjectGetInput<TObject extends ObjectType> = {
   readonly id: RecordIdentifier<TObject["id"]>
 }
 
+interface ObjectWritePrecondition {
+  readonly etag?: Etag
+}
+
 export type ObjectDeleteInput<TObject extends ObjectType> =
-  ObjectGetInput<TObject>
+  ObjectGetInput<TObject> & ObjectWritePrecondition
 
 export interface ObjectBatchGetInput<TObject extends ObjectType> {
   readonly ids: ReadonlyArray<RecordIdentifier<TObject["id"]>>
@@ -270,15 +282,17 @@ export interface ObjectBatchDeleteInput<TObject extends ObjectType> {
 }
 
 export type ObjectUpdateInput<TObject extends ObjectType> =
-  ObjectGetInput<TObject> & ObjectUpdateChanges<TObject>
+  ObjectGetInput<TObject> &
+    ObjectWritePrecondition &
+    ObjectUpdateChanges<TObject>
 
 const reservedPropertyIds = new Set([
   "aliases",
-  "annotations",
   "createdAt",
   "createdBy",
   "etag",
   "id",
+  "metadata",
   "parent",
   "systemManaged",
   "updatedAt",

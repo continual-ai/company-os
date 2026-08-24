@@ -1,14 +1,16 @@
 import { AcmeModel } from "@acme/api"
 import { modelTypeAccepts } from "@continual/runtime"
-import {
-  CurrentInvocation,
-  type ObjectAccessRequest,
-} from "@continual/runtime/effect/object-service"
+import { type ObjectAccessRequest } from "@continual/runtime/effect/object-service"
 import { Context, Data, Effect, Layer } from "effect"
+
+import { currentActorId } from "@/server/invocation-context.server"
 
 import { AuthorizationRepository } from "./authorization-repository.server"
 import { objectPermission } from "./permission-catalog.server"
-import { SYSTEM_ACTOR_ID } from "./well-known-authorization.server"
+import {
+  PLATFORM_ID,
+  SYSTEM_SERVICE_ACCOUNT_ID,
+} from "./well-known-authorization.server"
 
 export class AuthorizationTargetNotFound extends Data.TaggedError(
   "AuthorizationTargetNotFound"
@@ -48,11 +50,11 @@ const make = Effect.gen(function* () {
   const require = Effect.fn("@acme/Authorization.require")(function* (
     request: ObjectAccessRequest
   ) {
-    const { actorId, rootId } = yield* CurrentInvocation
+    const actorId = yield* currentActorId
     const permission = objectPermission(request)
     const targetIds =
       request.recordIds ??
-      (request.parentId === undefined ? [rootId] : [request.parentId])
+      (request.parentId === undefined ? [PLATFORM_ID] : [request.parentId])
     const targets = yield* repository.getTargets(targetIds)
     const targetsById = new Map(targets.map((target) => [target.id, target]))
     const expectedType = request.parentTypeId ?? request.objectType
@@ -78,7 +80,7 @@ const make = Effect.gen(function* () {
     ]
     const permittedScopeIds = new Set(
       yield* repository.listScopeIdsWithPermission({
-        identityId: actorId,
+        actorId,
         permission,
         scopeIds,
       })
@@ -87,7 +89,7 @@ const make = Effect.gen(function* () {
       (target) =>
         (isSystemManagedMutation(request.operation) &&
           target.systemManaged &&
-          actorId !== SYSTEM_ACTOR_ID) ||
+          actorId !== SYSTEM_SERVICE_ACCOUNT_ID) ||
         !permittedAtTarget(target, permittedScopeIds)
     )
     if (denied === undefined) return undefined
@@ -99,7 +101,7 @@ const make = Effect.gen(function* () {
           ? permittedScopeIds
           : new Set(
               yield* repository.listScopeIdsWithPermission({
-                identityId: actorId,
+                actorId,
                 permission: readCapability,
                 scopeIds,
               })
@@ -127,10 +129,10 @@ const make = Effect.gen(function* () {
 
   const visibleWithin = Effect.fn("@acme/Authorization.visibleWithin")(
     function* (request: ObjectAccessRequest) {
-      const { actorId } = yield* CurrentInvocation
+      const actorId = yield* currentActorId
       const permission = objectPermission(request)
       return yield* repository.listScopeIdsWithPermission({
-        identityId: actorId,
+        actorId,
         permission,
       })
     }
