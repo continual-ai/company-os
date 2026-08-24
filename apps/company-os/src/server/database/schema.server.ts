@@ -1,64 +1,7 @@
 import { AcmeModel } from "@acme/api"
 import { makePostgresSchema } from "@continual/postgres"
-import { sql } from "drizzle-orm"
-import { index, text, uniqueIndex } from "drizzle-orm/pg-core"
 
-export const AcmeStorage = makePostgresSchema(AcmeModel, {
-  objects: {
-    company: {
-      indexes: ({ domain }) => [
-        index("companies_domain_idx")
-          .on(sql`lower(${domain})`)
-          .where(sql`${domain} is not null`),
-      ],
-    },
-    contact: {
-      columns: {
-        name: () =>
-          text()
-            .notNull()
-            .generatedAlwaysAs(sql`trim(first_name || ' ' || last_name)`),
-      },
-      indexes: ({ email }) => [
-        index("contacts_email_idx")
-          .on(sql`lower(${email})`)
-          .where(sql`${email} is not null`),
-      ],
-    },
-    groupMembership: {
-      indexes: ({ memberId, parentId }) => [
-        uniqueIndex("group_memberships_parent_id_member_id_unique").on(
-          parentId,
-          memberId
-        ),
-      ],
-    },
-    interaction: {
-      indexes: ({ occurredAt }) => [
-        index("interactions_occurred_at_idx").on(occurredAt),
-      ],
-    },
-    lead: {
-      indexes: ({ email }) => [
-        index("leads_email_idx")
-          .on(sql`lower(${email})`)
-          .where(sql`${email} is not null`),
-      ],
-    },
-    roleAssignment: {
-      indexes: ({ parentId, principalId, roleId }) => [
-        uniqueIndex(
-          "role_assignments_parent_id_principal_id_role_id_unique"
-        ).on(parentId, principalId, roleId),
-      ],
-    },
-    role: {
-      columns: {
-        permissions: () => text().array().notNull(),
-      },
-    },
-  },
-})
+export const AcmeStorage = makePostgresSchema(AcmeModel)
 
 // Drizzle Kit currently discovers top-level exported table instances. These
 // aliases expose the generated projection without duplicating its definition.

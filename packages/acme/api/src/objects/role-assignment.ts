@@ -11,5 +11,6 @@ export const RoleAssignment = defineObject({
   description: "One role granted to one principal at one authorization scope.",
   actions: { batchDelete: false, update: false },
   properties: {},
+  uniqueBy: { assignment: ["parent", "principal", "role"] },
   display: { icon: "shieldCheck", title: "id" },
 })

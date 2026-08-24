@@ -11,5 +11,6 @@ export const GroupMembership = defineObject({
   description: "One identity's membership in a group.",
   actions: { update: false },
   properties: {},
+  uniqueBy: { membership: ["parent", "member"] },
   display: { icon: "userRoundPlus", title: "id" },
 })

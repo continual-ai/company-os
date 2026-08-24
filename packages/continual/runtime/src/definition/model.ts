@@ -601,6 +601,34 @@ export function defineModel<
       bindLinkProperties(object, definition.links),
     ])
   )
+  const singularLinkProperties = new Set(
+    definition.links.flatMap((link) => {
+      const reference = linkReferenceTraversals(link)
+      return reference === undefined || reference.source.from.kind !== "object"
+        ? []
+        : [`${reference.source.from.typeId}.${reference.source.key}`]
+    })
+  )
+  for (const object of Object.values(objects)) {
+    for (const [ruleId, fields] of Object.entries(object.uniqueBy)) {
+      for (const field of fields) {
+        if (field !== "parent" && !Object.hasOwn(object.properties, field)) {
+          throw new Error(
+            `Object '${object.id}' unique rule '${ruleId}' references unknown field '${field}'.`
+          )
+        }
+      }
+      const onlyField = fields.length === 1 ? fields[0] : undefined
+      if (
+        onlyField !== undefined &&
+        singularLinkProperties.has(`${object.id}.${onlyField}`)
+      ) {
+        throw new Error(
+          `Object '${object.id}' unique rule '${ruleId}' defines relationship cardinality; express single-link uniqueness on the link.`
+        )
+      }
+    }
+  }
   const links = Object.fromEntries(
     definition.links.map((link) => [link.id, link])
   )

@@ -18,20 +18,10 @@ export const Contact = defineObject({
   ],
   properties: {
     photo: schema.image({ label: "Photo", aspectRatio: 1, nullable: true }),
-    firstName: schema.string({
-      label: "First name",
-      minLength: 1,
-      maxLength: 100,
-    }),
-    lastName: schema.string({
-      label: "Last name",
-      minLength: 1,
-      maxLength: 100,
-    }),
     name: schema.string({
       label: "Name",
-      outputOnly: true,
-      description: "The contact's generated full display name.",
+      minLength: 1,
+      maxLength: 200,
     }),
     jobTitle: schema.string({
       label: "Job title",

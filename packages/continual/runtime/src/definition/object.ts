@@ -148,6 +148,7 @@ export interface ObjectType<
   parent: ObjectParent<TParentTypeId, TParentKind, TParentRecordTypeId>
   pluralName: string
   properties: TProperties
+  uniqueBy: Readonly<Record<string, ReadonlyArray<string>>>
 }
 
 export type ObjectParentRecordTypeId<TObject extends ObjectType> = NonNullable<
@@ -325,6 +326,7 @@ export function defineObject<
   parent: TParent
   pluralName: string
   properties: TProperties
+  uniqueBy?: Readonly<Record<string, ReadonlyArray<string>>>
 }): ObjectType<
   TId,
   TCollection,
@@ -343,6 +345,11 @@ export function defineObject<
   }
   for (const [propertyId, property] of Object.entries(definition.properties)) {
     definitionId(propertyId)
+    if (property.outputOnly === true) {
+      throw new Error(
+        `Object '${definition.id}' property '${propertyId}' cannot be output-only; expose derived values through a query projection.`
+      )
+    }
     assertReferencePropertyName(
       `Object '${definition.id}'`,
       propertyId,
@@ -351,6 +358,23 @@ export function defineObject<
     if (reservedPropertyIds.has(propertyId)) {
       throw new Error(
         `Object '${definition.id}' cannot redefine base property '${propertyId}'.`
+      )
+    }
+  }
+  const uniqueBy = definition.uniqueBy ?? {}
+  for (const [ruleId, fields] of Object.entries(uniqueBy)) {
+    definitionId(ruleId)
+    if (fields.length === 0) {
+      throw new Error(
+        `Object '${definition.id}' unique rule '${ruleId}' must reference at least one field.`
+      )
+    }
+    const duplicateField = fields.find(
+      (field, index) => fields.indexOf(field) !== index
+    )
+    if (duplicateField !== undefined) {
+      throw new Error(
+        `Object '${definition.id}' unique rule '${ruleId}' references field '${duplicateField}' more than once.`
       )
     }
   }
@@ -405,6 +429,7 @@ export function defineObject<
     pluralName: definition.pluralName,
     display: definition.display,
     properties,
+    uniqueBy,
   }
   const actions = {
     ...Object.fromEntries(

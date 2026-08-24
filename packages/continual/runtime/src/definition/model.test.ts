@@ -40,6 +40,7 @@ const Contact = defineObject({
   properties: {
     name: schema.string(),
   },
+  uniqueBy: { name: ["name"] },
   display: { title: "name" },
   actions: {
     enroll: {
@@ -107,6 +108,7 @@ describe("model definitions", () => {
       kind: "root",
       typeId: "root",
     })
+    expect(model.objects.contact.uniqueBy).toEqual({ name: ["name"] })
     expect(Object.keys(model.actions.contact)).toEqual([
       "create",
       "update",
@@ -229,6 +231,83 @@ describe("model definitions", () => {
         root: Root,
       })
     ).toThrow(/collection 'contacts'/)
+  })
+
+  it("rejects unique rules that reference unknown fields", () => {
+    const InvalidUnique = defineObject({
+      id: "invalidUnique",
+      collection: "invalidUniques",
+      display: { title: "name" },
+      name: "Invalid unique",
+      parent: Root,
+      pluralName: "Invalid uniques",
+      properties: { name: schema.string() },
+      uniqueBy: { missing: ["missing"] },
+    })
+
+    expect(() =>
+      defineModel({
+        actor: TestActor,
+        id: "invalidUniqueModel",
+        interfaces: [TestActor],
+        links: [],
+        name: "Invalid unique model",
+        objects: [InvalidUnique],
+        root: Root,
+      })
+    ).toThrow(/unique rule 'missing' references unknown field 'missing'/)
+  })
+
+  it("keeps single-link uniqueness in link cardinality", () => {
+    const Account = defineObject({
+      id: "account",
+      collection: "accounts",
+      display: { title: "name" },
+      name: "Account",
+      parent: Root,
+      pluralName: "Accounts",
+      properties: { name: schema.string() },
+    })
+    const Profile = defineObject({
+      id: "profile",
+      collection: "profiles",
+      display: { title: "name" },
+      name: "Profile",
+      parent: Root,
+      pluralName: "Profiles",
+      properties: { name: schema.string() },
+      uniqueBy: { account: ["account"] },
+    })
+    const ProfileAccount = defineLink({
+      id: "profileAccount",
+      forward: {
+        cardinality: "one",
+        from: Profile,
+        key: "account",
+        label: "Account",
+        to: Account,
+      },
+      name: "Profile account",
+      reverse: {
+        cardinality: "many",
+        from: Account,
+        key: "profiles",
+        label: "Profiles",
+        to: Profile,
+      },
+    })
+
+    expect(() =>
+      defineModel({
+        actor: TestActor,
+        id: "invalidLinkUniqueModel",
+        interfaces: [TestActor],
+        links: [ProfileAccount],
+        name: "Invalid link unique model",
+        objects: [Account, Profile],
+        root: Root,
+      })
+    ).toThrow(/express single-link uniqueness on the link/)
   })
 
   it("requires the declared actor interface to have an implementer", () => {
@@ -820,10 +899,10 @@ describe("object properties", () => {
     })
   })
 
-  it("rejects contradictory property annotations", () => {
-    expect(
-      invalidProperty(schema.string({ default: "generated", outputOnly: true }))
-    ).toThrow(/output-only property cannot declare an input default/)
+  it("rejects output-only object properties", () => {
+    expect(invalidProperty(schema.string({ outputOnly: true }))).toThrow(
+      /cannot be output-only/
+    )
   })
 })
 

@@ -31,7 +31,6 @@ import {
   customType,
   date,
   doublePrecision,
-  type ExtraConfigColumn,
   foreignKey,
   index,
   integer,
@@ -232,27 +231,8 @@ type ModelRelations<TModel extends ModelCatalog> = {
   }
 }
 
-interface ObjectStorageOverride<TObject extends ObjectType> {
-  readonly columns?: Partial<
-    Readonly<Record<ObjectPropertyKey<TObject>, () => PgColumnBuilder>>
-  >
-  readonly indexes?: (
-    columns: Readonly<{
-      [TKey in PhysicalObjectColumn<TObject>]: ExtraConfigColumn
-    }>
-  ) => ReadonlyArray<PgTableExtraConfigValue>
-}
-
 interface ColumnBuilderRegistry {
   [columnId: string]: PgColumnBuilder
-}
-
-export type PostgresStorageOverrides<TModel extends ModelCatalog> = {
-  readonly objects?: {
-    readonly [TObjectType in keyof TModel["objects"]]?: ObjectStorageOverride<
-      TModel["objects"][TObjectType]
-    >
-  }
 }
 
 function makeCoreTables<const TModel extends ModelCatalog>(
@@ -373,6 +353,7 @@ function columnId(table: AnyPgTable): AnyPgColumn {
 function usesJsonColumn(property: AnySchema): boolean {
   switch (property.kind) {
     case "array":
+      return !usesNativeArray(property.items)
     case "file":
     case "geoPoint":
     case "image":
@@ -385,6 +366,19 @@ function usesJsonColumn(property: AnySchema): boolean {
       return true
     case "optional":
       return usesJsonColumn(property.value)
+    default:
+      return false
+  }
+}
+
+function usesNativeArray(property: AnySchema): boolean {
+  switch (property.kind) {
+    case "boolean":
+    case "decimal":
+    case "enum":
+    case "number":
+    case "string":
+      return true
     default:
       return false
   }
@@ -420,6 +414,9 @@ function baseColumn(property: AnySchema): PgColumnBuilder {
       }
       return text()
     case "array":
+      return usesNativeArray(property.items)
+        ? baseColumn(property.items).array()
+        : jsonb().$type<unknown>()
     case "file":
     case "geoPoint":
     case "image":
@@ -609,8 +606,7 @@ function makeRelations(
 
 /** Compiles a portable closed-world model into deterministic Drizzle tables. */
 export function makePostgresSchema<const TModel extends ModelCatalog>(
-  model: TModel,
-  overrides: PostgresStorageOverrides<TModel> = {}
+  model: TModel
 ): PostgresStorage<TModel> {
   const actorInterface = model.actor
   let actorTable: AnyPgTable | undefined
@@ -651,7 +647,7 @@ export function makePostgresSchema<const TModel extends ModelCatalog>(
   actorTable = interfaceTables[actorInterface.id]
 
   const objectTables: Record<string, AnyPgTable> = {}
-  const uniqueLinkProperties = new Set(
+  const oneToOneReferenceProperties = new Set(
     Object.values(model.links).flatMap((link) => {
       const reference = linkReferenceTraversals(link)
       if (
@@ -676,7 +672,6 @@ export function makePostgresSchema<const TModel extends ModelCatalog>(
   for (const object of Object.values(model.objects)) {
     const tableName = snakeCase(object.collection)
     claimTableName(tableName, `object '${object.id}'`)
-    const objectOverride = overrides.objects?.[object.id]
     const columns: ColumnBuilderRegistry = {
       id: text()
         .primaryKey()
@@ -684,22 +679,13 @@ export function makePostgresSchema<const TModel extends ModelCatalog>(
       parentId: text().notNull(),
     }
     for (const [propertyId, property] of Object.entries(object.properties)) {
-      const override = objectOverride?.columns?.[propertyId]
-      if (property.outputOnly && override === undefined) {
-        throw new Error(
-          `Output-only property '${object.id}.${propertyId}' requires a storage column override.`
-        )
-      }
       const columnKey = physicalPropertyKey(propertyId, property)
       if (columns[columnKey] !== undefined) {
         throw new Error(
           `Object '${object.id}' properties produce duplicate PostgreSQL column '${columnKey}'.`
         )
       }
-      columns[columnKey] =
-        override === undefined
-          ? configuredColumn(property, tableForType)
-          : override()
+      columns[columnKey] = configuredColumn(property, tableForType)
     }
 
     objectTables[object.id] = pgTable(tableName, columns, (table) => {
@@ -725,7 +711,7 @@ export function makePostgresSchema<const TModel extends ModelCatalog>(
             index(`${tableName}_${snakeCase(columnKey)}_idx`).on(column)
           )
         }
-        if (uniqueLinkProperties.has(`${object.id}.${propertyId}`)) {
+        if (oneToOneReferenceProperties.has(`${object.id}.${propertyId}`)) {
           constraints.push(
             uniqueIndex(`${tableName}_${snakeCase(columnKey)}_unique`).on(
               column
@@ -733,18 +719,33 @@ export function makePostgresSchema<const TModel extends ModelCatalog>(
           )
         }
       }
-      // SAFETY: the table was built immediately above from this object's
-      // physical property and parent-column keys. Runtime iteration erases
-      // the model registry's per-object generic, so restore only the callback
-      // boundary needed to invoke the already type-checked override.
-      // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion
-      const customIndexes = objectOverride?.indexes as unknown as
-        | ((
-            columns: Readonly<Record<string, ExtraConfigColumn>>
-          ) => ReadonlyArray<PgTableExtraConfigValue>)
-        | undefined
-      const custom = customIndexes?.(table) ?? []
-      constraints.push(...custom)
+      for (const [ruleId, fields] of Object.entries(object.uniqueBy)) {
+        const uniqueColumns = fields.map((field) => {
+          const columnKey =
+            field === "parent"
+              ? "parentId"
+              : physicalPropertyKey(field, object.properties[field]!)
+          const column = table[columnKey]
+          if (column === undefined) {
+            throw new Error(
+              `Object '${object.id}' unique rule '${ruleId}' references missing column '${columnKey}'.`
+            )
+          }
+          return column
+        })
+        const first = uniqueColumns[0]
+        if (first === undefined) {
+          throw new Error(
+            `Object '${object.id}' unique rule '${ruleId}' must reference at least one field.`
+          )
+        }
+        constraints.push(
+          uniqueIndex(`${tableName}_${snakeCase(ruleId)}_unique`).on(
+            first,
+            ...uniqueColumns.slice(1)
+          )
+        )
+      }
       return constraints
     })
   }

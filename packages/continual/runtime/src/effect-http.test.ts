@@ -38,7 +38,6 @@ const Account = defineObject({
     externalId: schema.string({ immutable: true }),
     logo: schema.image({ nullable: true }),
     name: schema.string(),
-    searchLabel: schema.string({ outputOnly: true }),
     status: schema.select({
       default: "active",
       options: [
@@ -153,14 +152,13 @@ describe("Effect HTTP projection", () => {
     expect(recordSchema).toHaveProperty("properties.logo")
     expect(recordSchema).toHaveProperty("properties.metadata")
     expect(recordSchema).toHaveProperty("properties.parent")
-    expect(recordSchema).toHaveProperty("properties.searchLabel")
     expect(recordSchema).toHaveProperty("properties.updatedBy")
     expect(recordSchema).not.toHaveProperty("properties.createdById")
     expect(recordSchema).not.toHaveProperty("properties.parentId")
     expect(recordSchema).not.toHaveProperty("properties.updatedById")
     expect(recordSchema).toHaveProperty(
       "required",
-      expect.arrayContaining(["aliases", "email", "logo", "searchLabel"])
+      expect.arrayContaining(["aliases", "email", "logo"])
     )
     expect(JSON.stringify(document.components?.schemas.AccountLogo)).toContain(
       '"type":"null"'
@@ -171,7 +169,6 @@ describe("Effect HTTP projection", () => {
     expect(createSchema).toHaveProperty("properties.logo")
     expect(createSchema).toHaveProperty("properties.externalId")
     expect(createSchema).not.toHaveProperty("properties.parent")
-    expect(createSchema).not.toHaveProperty("properties.searchLabel")
     expect(JSON.stringify(createSchema)).not.toContain('"writeOnly":true')
     expect(updateSchema).toHaveProperty("properties.email")
     expect(updateSchema).toHaveProperty("properties.aliases")
@@ -181,7 +178,6 @@ describe("Effect HTTP projection", () => {
     expect(JSON.stringify(updateSchema)).toContain("Immutable after creation")
     expect(JSON.stringify(updateSchema)).toContain('"add"')
     expect(JSON.stringify(updateSchema)).toContain('"remove"')
-    expect(updateSchema).not.toHaveProperty("properties.searchLabel")
   })
 
   it("projects atomic batch delete when standard deletion is enabled", () => {

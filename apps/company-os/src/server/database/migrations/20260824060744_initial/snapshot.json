@@ -1,7 +1,7 @@
 {
   "version": "8",
   "dialect": "postgres",
-  "id": "76aa8fbb-59cf-4cd5-80f0-a871e0904291",
+  "id": "446c009f-5a62-4e8e-bac1-5758a2c5c113",
   "prevIds": ["00000000-0000-0000-0000-000000000000"],
   "ddl": [
     {
@@ -281,35 +281,6 @@
       "dimensions": 0,
       "default": null,
       "generated": null,
-      "identity": null,
-      "name": "first_name",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "contacts"
-    },
-    {
-      "type": "text",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "last_name",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "contacts"
-    },
-    {
-      "type": "text",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": null,
-      "generated": {
-        "as": "trim(first_name || ' ' || last_name)",
-        "type": "stored"
-      },
       "identity": null,
       "name": "name",
       "entityType": "columns",
@@ -1303,27 +1274,6 @@
       "nameExplicit": true,
       "columns": [
         {
-          "value": "lower(\"domain\")",
-          "isExpression": true,
-          "asc": true,
-          "nullsFirst": false,
-          "opclass": null
-        }
-      ],
-      "isUnique": false,
-      "where": "\"domain\" is not null",
-      "with": "",
-      "method": "btree",
-      "concurrently": false,
-      "name": "companies_domain_idx",
-      "entityType": "indexes",
-      "schema": "public",
-      "table": "companies"
-    },
-    {
-      "nameExplicit": true,
-      "columns": [
-        {
           "value": "parent_id",
           "isExpression": false,
           "asc": true,
@@ -1358,27 +1308,6 @@
       "method": "btree",
       "concurrently": false,
       "name": "contacts_primary_company_id_idx",
-      "entityType": "indexes",
-      "schema": "public",
-      "table": "contacts"
-    },
-    {
-      "nameExplicit": true,
-      "columns": [
-        {
-          "value": "lower(\"email\")",
-          "isExpression": true,
-          "asc": true,
-          "nullsFirst": false,
-          "opclass": null
-        }
-      ],
-      "isUnique": false,
-      "where": "\"email\" is not null",
-      "with": "",
-      "method": "btree",
-      "concurrently": false,
-      "name": "contacts_email_idx",
       "entityType": "indexes",
       "schema": "public",
       "table": "contacts"
@@ -1490,7 +1419,7 @@
       "with": "",
       "method": "btree",
       "concurrently": false,
-      "name": "group_memberships_parent_id_member_id_unique",
+      "name": "group_memberships_membership_unique",
       "entityType": "indexes",
       "schema": "public",
       "table": "group_memberships"
@@ -1562,27 +1491,6 @@
       "nameExplicit": true,
       "columns": [
         {
-          "value": "occurred_at",
-          "isExpression": false,
-          "asc": true,
-          "nullsFirst": false,
-          "opclass": null
-        }
-      ],
-      "isUnique": false,
-      "where": null,
-      "with": "",
-      "method": "btree",
-      "concurrently": false,
-      "name": "interactions_occurred_at_idx",
-      "entityType": "indexes",
-      "schema": "public",
-      "table": "interactions"
-    },
-    {
-      "nameExplicit": true,
-      "columns": [
-        {
           "value": "parent_id",
           "isExpression": false,
           "asc": true,
@@ -1596,27 +1504,6 @@
       "method": "btree",
       "concurrently": false,
       "name": "leads_parent_id_idx",
-      "entityType": "indexes",
-      "schema": "public",
-      "table": "leads"
-    },
-    {
-      "nameExplicit": true,
-      "columns": [
-        {
-          "value": "lower(\"email\")",
-          "isExpression": true,
-          "asc": true,
-          "nullsFirst": false,
-          "opclass": null
-        }
-      ],
-      "isUnique": false,
-      "where": "\"email\" is not null",
-      "with": "",
-      "method": "btree",
-      "concurrently": false,
-      "name": "leads_email_idx",
       "entityType": "indexes",
       "schema": "public",
       "table": "leads"
@@ -1847,7 +1734,7 @@
       "with": "",
       "method": "btree",
       "concurrently": false,
-      "name": "role_assignments_parent_id_principal_id_role_id_unique",
+      "name": "role_assignments_assignment_unique",
       "entityType": "indexes",
       "schema": "public",
       "table": "role_assignments"
@@ -1911,6 +1798,27 @@
       "method": "btree",
       "concurrently": false,
       "name": "users_parent_id_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "users"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "email",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "users_email_unique",
       "entityType": "indexes",
       "schema": "public",
       "table": "users"

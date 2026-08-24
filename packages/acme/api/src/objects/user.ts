@@ -17,5 +17,6 @@ export const User = defineObject({
     email: schema.email({ label: "Email", maxLength: 320, nullable: true }),
     image: schema.image({ label: "Image", aspectRatio: 1, nullable: true }),
   },
+  uniqueBy: { email: ["email"] },
   display: { icon: "person", image: "image", subtitle: "email", title: "name" },
 })

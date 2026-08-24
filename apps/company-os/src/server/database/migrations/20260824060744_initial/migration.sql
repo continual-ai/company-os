@@ -17,9 +17,7 @@ CREATE TABLE "contacts" (
 	"id" text PRIMARY KEY,
 	"parent_id" text NOT NULL,
 	"photo" jsonb,
-	"first_name" text NOT NULL,
-	"last_name" text NOT NULL,
-	"name" text GENERATED ALWAYS AS (trim(first_name || ' ' || last_name)) STORED NOT NULL,
+	"name" text NOT NULL,
 	"job_title" text,
 	"email" text,
 	"phone" text,
@@ -148,21 +146,17 @@ CREATE TABLE "users" (
 );
 --> statement-breakpoint
 CREATE INDEX "companies_parent_id_idx" ON "companies" ("parent_id");--> statement-breakpoint
-CREATE INDEX "companies_domain_idx" ON "companies" (lower("domain")) WHERE "domain" is not null;--> statement-breakpoint
 CREATE INDEX "contacts_parent_id_idx" ON "contacts" ("parent_id");--> statement-breakpoint
 CREATE INDEX "contacts_primary_company_id_idx" ON "contacts" ("primary_company_id");--> statement-breakpoint
-CREATE INDEX "contacts_email_idx" ON "contacts" (lower("email")) WHERE "email" is not null;--> statement-breakpoint
 CREATE INDEX "deals_parent_id_idx" ON "deals" ("parent_id");--> statement-breakpoint
 CREATE INDEX "deals_company_id_idx" ON "deals" ("company_id");--> statement-breakpoint
 CREATE INDEX "group_memberships_parent_id_idx" ON "group_memberships" ("parent_id");--> statement-breakpoint
 CREATE INDEX "group_memberships_member_id_idx" ON "group_memberships" ("member_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "group_memberships_parent_id_member_id_unique" ON "group_memberships" ("parent_id","member_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "group_memberships_membership_unique" ON "group_memberships" ("parent_id","member_id");--> statement-breakpoint
 CREATE INDEX "groups_parent_id_idx" ON "groups" ("parent_id");--> statement-breakpoint
 CREATE INDEX "interactions_parent_id_idx" ON "interactions" ("parent_id");--> statement-breakpoint
 CREATE INDEX "interactions_subject_id_idx" ON "interactions" ("subject_id");--> statement-breakpoint
-CREATE INDEX "interactions_occurred_at_idx" ON "interactions" ("occurred_at");--> statement-breakpoint
 CREATE INDEX "leads_parent_id_idx" ON "leads" ("parent_id");--> statement-breakpoint
-CREATE INDEX "leads_email_idx" ON "leads" (lower("email")) WHERE "email" is not null;--> statement-breakpoint
 CREATE INDEX "line_items_parent_id_idx" ON "line_items" ("parent_id");--> statement-breakpoint
 CREATE INDEX "objects_object_type_idx" ON "objects" ("object_type");--> statement-breakpoint
 CREATE INDEX "objects_parent_id_idx" ON "objects" ("parent_id");--> statement-breakpoint
@@ -172,10 +166,11 @@ CREATE INDEX "record_aliases_object_id_idx" ON "record_aliases" ("object_id");--
 CREATE INDEX "role_assignments_parent_id_idx" ON "role_assignments" ("parent_id");--> statement-breakpoint
 CREATE INDEX "role_assignments_principal_id_idx" ON "role_assignments" ("principal_id");--> statement-breakpoint
 CREATE INDEX "role_assignments_role_id_idx" ON "role_assignments" ("role_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "role_assignments_parent_id_principal_id_role_id_unique" ON "role_assignments" ("parent_id","principal_id","role_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "role_assignments_assignment_unique" ON "role_assignments" ("parent_id","principal_id","role_id");--> statement-breakpoint
 CREATE INDEX "roles_parent_id_idx" ON "roles" ("parent_id");--> statement-breakpoint
 CREATE INDEX "service_accounts_parent_id_idx" ON "service_accounts" ("parent_id");--> statement-breakpoint
 CREATE INDEX "users_parent_id_idx" ON "users" ("parent_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "users_email_unique" ON "users" ("email");--> statement-breakpoint
 ALTER TABLE "interface_authorization_scope" ADD CONSTRAINT "interface_authorization_scope_id_objects_id_fkey" FOREIGN KEY ("id") REFERENCES "objects"("id") ON DELETE CASCADE;--> statement-breakpoint
 ALTER TABLE "companies" ADD CONSTRAINT "companies_id_objects_id_fkey" FOREIGN KEY ("id") REFERENCES "objects"("id") ON DELETE CASCADE;--> statement-breakpoint
 ALTER TABLE "companies" ADD CONSTRAINT "companies_parent_platform_fk" FOREIGN KEY ("parent_id") REFERENCES "roots"("id") ON DELETE RESTRICT;--> statement-breakpoint

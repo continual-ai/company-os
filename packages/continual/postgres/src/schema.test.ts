@@ -54,6 +54,7 @@ describe("makePostgresSchema", () => {
       parent: ScopedPlatform,
       pluralName: "Permissions",
       properties: { name: schema.string() },
+      uniqueBy: { scopeName: ["scope", "name"] },
     })
     const PermissionScope = defineLink({
       id: "permissionScope",
@@ -97,6 +98,11 @@ describe("makePostgresSchema", () => {
     expectTypeOf<
       typeof storage.objects.workspace.$inferSelect.parentId
     >().toEqualTypeOf<RecordId<"platform">>()
+    expect(
+      getTableConfig(storage.objects.permission).indexes.map(
+        ({ config }) => config.name
+      )
+    ).toContain("permissions_scope_name_unique")
   })
 
   it("projects many-to-many links through one generated junction table", () => {
@@ -160,6 +166,65 @@ describe("makePostgresSchema", () => {
     expect(storage.relations.team?.relations.members?.targetTableName).toBe(
       "person"
     )
+    expect(
+      getTableConfig(storage.linkTables.teamMembership).primaryKeys
+    ).toHaveLength(1)
+  })
+
+  it("derives one-to-one uniqueness from link cardinality", () => {
+    const Person = defineObject({
+      id: "person",
+      collection: "people",
+      display: { title: "name" },
+      name: "Person",
+      parent: Platform,
+      pluralName: "People",
+      properties: { name: schema.string() },
+    })
+    const Badge = defineObject({
+      id: "badge",
+      collection: "badges",
+      display: { title: "name" },
+      name: "Badge",
+      parent: Platform,
+      pluralName: "Badges",
+      properties: { name: schema.string() },
+    })
+    const PersonBadge = defineLink({
+      id: "personBadge",
+      forward: {
+        cardinality: "zeroOrOne",
+        from: Person,
+        key: "badge",
+        label: "Badge",
+        to: Badge,
+      },
+      name: "Person badge",
+      reverse: {
+        cardinality: "zeroOrOne",
+        from: Badge,
+        key: "holder",
+        label: "Holder",
+        to: Person,
+      },
+    })
+    const model = defineModel({
+      actor: Identity,
+      id: "badges",
+      interfaces: [Identity],
+      links: [PersonBadge],
+      name: "Badges",
+      objects: [Badge, Person],
+      root: Platform,
+    })
+
+    const storage = makePostgresSchema(model)
+
+    expect(
+      getTableConfig(storage.objects.person).indexes.map(
+        ({ config }) => config.name
+      )
+    ).toContain("people_badge_id_unique")
   })
 
   it("rejects physical table-name collisions after normalization", () => {
@@ -196,6 +261,7 @@ describe("makePostgresSchema", () => {
       pluralName: "Validated records",
       properties: {
         count: schema.number({ maximum: 10, minimum: 1 }),
+        labels: schema.array(schema.string()),
         name: schema.string({ maxLength: 100, minLength: 1 }),
         status: schema.select({
           options: [
@@ -225,5 +291,6 @@ describe("makePostgresSchema", () => {
     expect(
       getTableConfig(storage.core.recordAliases).checks.map(({ name }) => name)
     ).toEqual([])
+    expect(storage.objects.validatedRecord.labels.dimensions).toBe(1)
   })
 })

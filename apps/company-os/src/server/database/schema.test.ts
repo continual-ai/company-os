@@ -13,8 +13,6 @@ describe("Acme PostgreSQL schema", () => {
       "id",
       "parentId",
       "photo",
-      "firstName",
-      "lastName",
       "name",
       "jobTitle",
       "email",
@@ -48,6 +46,12 @@ describe("Acme PostgreSQL schema", () => {
       "timestamp with time zone"
     )
     expect(AcmeStorage.objects.deal.expectedCloseDate.getSQLType()).toBe("date")
+    expect(AcmeStorage.objects.role.permissions.dimensions).toBe(1)
+    expect(
+      getTableConfig(AcmeStorage.objects.user).indexes.map(
+        ({ config }) => config.name
+      )
+    ).toContain("users_email_unique")
     expect(
       getTableConfig(AcmeStorage.objects.lineItem).foreignKeys.map((key) =>
         key.getName()
