@@ -1,4 +1,4 @@
-import type { AnySchema, PropertyDefinition } from "@continual/runtime"
+import type { AnySchema, PropertyDefinition } from "@company/runtime"
 
 const calendarDatePattern = /^\d{4}-\d{2}-\d{2}$/
 const domainPattern = /^(?!-)(?:[a-z0-9-]+\.)+[a-z]{2,}$/

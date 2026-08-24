@@ -1,4 +1,4 @@
-import { AcmeModel } from "@acme/api"
+import { Model } from "@company/model"
 import { and, eq } from "drizzle-orm"
 import { Context, Effect, Layer } from "effect"
 
@@ -8,10 +8,10 @@ import { objects, roleAssignments } from "@/server/database/schema.server"
 
 const make = Effect.gen(function* () {
   const database = yield* Database
-  const base = yield* makeObjectRepository(AcmeModel.objects.roleAssignment)
+  const base = yield* makeObjectRepository(Model.objects.roleAssignment)
 
   const getScopeObjectType = Effect.fn(
-    "@acme/RoleAssignmentRepository.getScopeObjectType"
+    "@company/RoleAssignmentRepository.getScopeObjectType"
   )(function* (scopeId: string) {
     const rows = yield* database
       .select({ objectType: objects.objectType })
@@ -22,7 +22,7 @@ const make = Effect.gen(function* () {
   })
 
   const lockRoleAssignments = Effect.fn(
-    "@acme/RoleAssignmentRepository.lockRoleAssignments"
+    "@company/RoleAssignmentRepository.lockRoleAssignments"
   )(function* (input: { readonly roleId: string; readonly scopeId: string }) {
     return yield* database
       .select({ id: roleAssignments.id })
@@ -41,7 +41,7 @@ const make = Effect.gen(function* () {
 })
 
 export class RoleAssignmentRepository extends Context.Service<RoleAssignmentRepository>()(
-  "@acme/RoleAssignmentRepository",
+  "@company/RoleAssignmentRepository",
   { make }
 ) {
   static readonly layer = Layer.effect(this, this.make)

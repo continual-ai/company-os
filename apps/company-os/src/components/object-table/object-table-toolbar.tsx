@@ -1,5 +1,6 @@
-import { Button } from "@acme/ui/components/button"
-import { Checkbox } from "@acme/ui/components/checkbox"
+import type { ObjectType } from "@company/runtime"
+import { Button } from "@company/ui/components/button"
+import { Checkbox } from "@company/ui/components/checkbox"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -8,14 +9,13 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@acme/ui/components/dropdown-menu"
-import { Input } from "@acme/ui/components/input"
+} from "@company/ui/components/dropdown-menu"
+import { Input } from "@company/ui/components/input"
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@acme/ui/components/popover"
-import type { ObjectType } from "@continual/runtime"
+} from "@company/ui/components/popover"
 import {
   ArrowDownAZIcon,
   ArrowUpAZIcon,

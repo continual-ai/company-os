@@ -20,7 +20,7 @@ const collections = [
 const page = {
   breadcrumb: "Learn",
   description:
-    "Explore the governed knowledge behind how Acme operates, from company context to playbooks and ways of working.",
+    "Explore governed knowledge, from shared context to playbooks and ways of working.",
   title: "Learn",
 }
 
@@ -34,7 +34,7 @@ function LearnOverview() {
     <div className="mx-auto w-full max-w-[90rem] px-5 py-10 lg:px-8 lg:py-14">
       <section className="max-w-3xl">
         <h1 className="text-3xl font-semibold tracking-tight">
-          The knowledge behind how Acme operates.
+          The knowledge behind how this system operates.
         </h1>
         <p className="mt-3 max-w-2xl leading-7 text-muted-foreground">
           Learn can grow from a company handbook into governed, searchable

@@ -54,7 +54,7 @@ function componentPage(
     breadcrumb: component?.name ?? "Component",
     description:
       component?.description ??
-      "Browse Acme's current public design-system component surface.",
+      "Browse the current public design-system component surface.",
     section: "Design system",
     title: component?.name ?? "Component",
   }

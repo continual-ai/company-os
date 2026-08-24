@@ -6,10 +6,7 @@ import type {
   ObjectTableRecord,
   ObjectTableValue,
 } from "@/components/object-table/object-table-config"
-import {
-  exampleCompanyRecords,
-  resolveExampleCompanyImage,
-} from "@/components/object-table/object-table-example-data"
+import { exampleCompanyRecords } from "@/components/object-table/object-table-example-data"
 import {
   objectTableExampleVisiblePropertyIds,
   ObjectTableExampleCompany,
@@ -94,7 +91,6 @@ function ObjectTablePatternPage() {
         <ObjectTable
           object={ObjectTableExampleCompany}
           records={companies}
-          resolveImageSrc={resolveExampleCompanyImage}
           visiblePropertyIds={objectTableExampleVisiblePropertyIds}
           onCellCommit={updateCompany}
           onCreateRecord={createCompany}

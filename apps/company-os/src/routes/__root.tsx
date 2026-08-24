@@ -1,6 +1,7 @@
 import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router"
 
 import {
+  appName,
   canonicalMetadata,
   documentHead,
   resolvePageMetadata,
@@ -11,8 +12,8 @@ import appCss from "@/styles/app.css?url"
 const rootDocument = {
   breadcrumb: "Home",
   description:
-    "Run Acme's work from shared business context used by people, applications, integrations, and agents.",
-  title: "Acme Company OS",
+    "Run work from shared context used by people, applications, integrations, and agents.",
+  title: appName,
 } as const
 
 export const Route = createRootRoute({
@@ -32,8 +33,6 @@ export const Route = createRootRoute({
       links: [
         { rel: "stylesheet", href: appCss },
         { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
-        { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
-        { rel: "manifest", href: "/site.webmanifest" },
         ...(location.links ?? []),
       ],
     }

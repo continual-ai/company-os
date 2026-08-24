@@ -1,4 +1,4 @@
-import { cn } from "@acme/ui/lib/utils"
+import { cn } from "@company/ui/lib/utils"
 import { CheckIcon, CircleAlertIcon, LoaderCircleIcon } from "lucide-react"
 import { useLayoutEffect, useRef, useState } from "react"
 import type { ReactNode } from "react"

@@ -6,7 +6,7 @@ import { pageOptions } from "@/route-metadata"
 const page = {
   breadcrumb: "Design system",
   description:
-    "Develop and verify Acme's company-owned interface foundations, components, and proven product patterns.",
+    "Develop and verify the source-owned interface foundations, components, and proven product patterns.",
   title: "Design system",
 }
 

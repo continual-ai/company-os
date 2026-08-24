@@ -1,15 +1,9 @@
-import type { ImageRef } from "@continual/runtime"
-
 import type { ObjectTableRecord } from "./object-table-config"
-
-export function resolveExampleCompanyImage(image: ImageRef): string | null {
-  return image.assetId === "acme-app-icon" ? "/icon-192.png" : null
-}
 
 export const exampleCompanyRecords: ObjectTableRecord[] = [
   {
     id: "northwind",
-    logo: { assetId: "acme-app-icon", alt: "Northwind Traders logo" },
+    logo: null,
     name: "Northwind Traders",
     lifecycleStage: "customer",
     domain: "northwind.example",
@@ -28,7 +22,7 @@ export const exampleCompanyRecords: ObjectTableRecord[] = [
   },
   {
     id: "contoso",
-    logo: { assetId: "acme-app-icon", alt: "Contoso logo" },
+    logo: null,
     name: "Contoso",
     lifecycleStage: "customer",
     domain: "contoso.example",
@@ -66,7 +60,7 @@ export const exampleCompanyRecords: ObjectTableRecord[] = [
   },
   {
     id: "adventure-works",
-    logo: { assetId: "acme-app-icon", alt: "Adventure Works logo" },
+    logo: null,
     name: "Adventure Works",
     lifecycleStage: "customer",
     domain: "adventure-works.example",

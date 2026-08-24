@@ -32,7 +32,7 @@ export function ComponentPage({ slug }: { slug: ComponentSlug }) {
           <p className="mt-3 text-xs leading-5 text-muted-foreground">
             Import through{" "}
             <code className="bg-muted px-1.5 py-0.5">
-              @acme/ui/components/{component.slug}
+              @company/ui/components/{component.slug}
             </code>
             . Business meaning and workflow composition remain with the owning
             application.

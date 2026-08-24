@@ -1,0 +1,28 @@
+{
+  "name": "@company/runtime",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Portable semantic definitions, projections, and execution for Company OS.",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./client": "./src/client.ts",
+    "./effect": "./src/effect-schema.ts",
+    "./effect/http": "./src/effect-http.ts",
+    "./effect/object-repository": "./src/effect-object-repository.ts",
+    "./effect/object-service": "./src/effect-object-service.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "effect": "catalog:",
+    "typeid-js": "catalog:"
+  },
+  "devDependencies": {
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

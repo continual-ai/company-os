@@ -4,7 +4,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@acme/ui/components/card"
+} from "@company/ui/components/card"
 import { createFileRoute } from "@tanstack/react-router"
 import { CheckCircle2Icon, CircleIcon } from "lucide-react"
 
@@ -13,7 +13,7 @@ import { pageOptions } from "@/route-metadata"
 
 const page = {
   breadcrumb: "Tasks",
-  description: "Review the work that currently needs attention across Acme.",
+  description: "Review the work that currently needs attention.",
   title: "Tasks",
 }
 

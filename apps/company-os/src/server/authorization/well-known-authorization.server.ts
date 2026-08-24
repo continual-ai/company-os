@@ -1,4 +1,4 @@
-import { RecordId } from "@continual/runtime"
+import { RecordId } from "@company/runtime"
 
 export const PLATFORM_ID = RecordId("platform")("platform_system")
 export const SYSTEM_SERVICE_ACCOUNT_ID = RecordId("serviceAccount")(

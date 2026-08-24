@@ -1,5 +1,8 @@
-import { Button } from "@acme/ui/components/button"
+import { modelMetadata } from "@company/model/metadata"
+import { Button } from "@company/ui/components/button"
 import { createFileRoute } from "@tanstack/react-router"
+
+import { appMetadata } from "@/app-metadata"
 
 const projects = [
   { name: "Northwind rollout", status: "In progress" },
@@ -13,8 +16,8 @@ function ClientPortalHome() {
     <main className="mx-auto min-h-svh max-w-6xl px-6 py-8 lg:px-8">
       <header className="flex items-center justify-between border-b pb-6">
         <div>
-          <p className="font-medium">Acme</p>
-          <p className="text-sm text-muted-foreground">Client portal</p>
+          <p className="font-medium">{modelMetadata.name}</p>
+          <p className="text-sm text-muted-foreground">{appMetadata.name}</p>
         </div>
         <Button variant="outline" disabled>
           Sign in — coming next
@@ -24,11 +27,11 @@ function ClientPortalHome() {
       <section className="py-12">
         <p className="text-sm font-medium text-muted-foreground">Projects</p>
         <h1 className="mt-2 text-3xl font-semibold tracking-tight">
-          Work with Acme
+          Work with {modelMetadata.name}
         </h1>
         <p className="mt-3 max-w-2xl text-muted-foreground">
           Customers see the commitments, decisions, documents, and outcomes that
-          Acme has deliberately shared with them.
+          {modelMetadata.name} has deliberately shared with them.
         </p>
         <div className="mt-8 grid gap-3 sm:grid-cols-2">
           {projects.map((project) => (

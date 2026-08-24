@@ -1,3 +1,3 @@
-@import "@acme/ui/globals.css";
+@import "@company/ui/globals.css";
 
 @source "../**/*.{ts,tsx}";

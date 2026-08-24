@@ -1,4 +1,4 @@
-import { AcmeModel } from "@acme/api"
+import { Model } from "@company/model"
 import { Context, Effect, Layer } from "effect"
 
 import { LineItemRepository } from "./line-item-repository.server"
@@ -6,12 +6,12 @@ import { makeObjectService } from "./object-service.server"
 
 const make = Effect.gen(function* () {
   const repository = yield* LineItemRepository
-  return yield* makeObjectService(AcmeModel.objects.lineItem, repository)
+  return yield* makeObjectService(Model.objects.lineItem, repository)
 })
 
-/** Governed queries and actions for Acme deal line items. */
+/** Governed queries and actions for deal line items. */
 export class LineItemService extends Context.Service<LineItemService>()(
-  "@acme/LineItemService",
+  "@company/LineItemService",
   { make }
 ) {
   static readonly layer = Layer.effect(this, this.make)

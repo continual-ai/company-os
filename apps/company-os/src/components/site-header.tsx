@@ -5,8 +5,8 @@ import {
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
-} from "@acme/ui/components/breadcrumb"
-import { SidebarTrigger } from "@acme/ui/components/sidebar"
+} from "@company/ui/components/breadcrumb"
+import { SidebarTrigger } from "@company/ui/components/sidebar"
 import { Link, useMatches } from "@tanstack/react-router"
 import { Fragment } from "react"
 

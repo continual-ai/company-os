@@ -1,18 +1,18 @@
-import { AcmeModel } from "@acme/api"
-import { Button } from "@acme/ui/components/button"
+import { Model } from "@company/model"
+import { Button } from "@company/ui/components/button"
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@acme/ui/components/card"
+} from "@company/ui/components/card"
 import { createFileRoute } from "@tanstack/react-router"
 
 import { operatingTasks } from "@/operate-data"
 import { pageOptions } from "@/route-metadata"
 
-const model = Object.values(AcmeModel.objects).map((object) => ({
+const model = Object.values(Model.objects).map((object) => ({
   name: object.pluralName,
   description: object.description,
 }))
@@ -43,7 +43,7 @@ const summaries = [
 const page = {
   breadcrumb: "Home",
   description:
-    "Run Acme's work from shared business context used by people, applications, integrations, and agents.",
+    "Run work from shared business context used by people, applications, integrations, and agents.",
   title: "Home",
 }
 
@@ -90,7 +90,7 @@ function OperateHome() {
             <CardHeader className="border-b">
               <CardTitle>Operating model</CardTitle>
               <CardDescription>
-                Business objects projected from @acme/api
+                Business objects projected from @company/model
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-px bg-border p-0 sm:grid-cols-2 xl:grid-cols-4">

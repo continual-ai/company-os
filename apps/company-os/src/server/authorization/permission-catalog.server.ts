@@ -1,8 +1,8 @@
-import { AcmeModel } from "@acme/api"
+import { Model } from "@company/model"
 import type {
   ObjectAccessRequest,
   ObjectOperation,
-} from "@continual/runtime/effect/object-service"
+} from "@company/runtime/effect/object-service"
 
 function permissionOperation(operation: ObjectOperation): string {
   switch (operation) {
@@ -15,18 +15,18 @@ function permissionOperation(operation: ObjectOperation): string {
   }
 }
 
-/** Maps a runtime object operation to Acme's exact permission vocabulary. */
+/** Maps a runtime object operation to the model's exact permission vocabulary. */
 export function objectPermission(request: ObjectAccessRequest): string {
   return `${request.objectType}.${permissionOperation(request.operation)}`
 }
 
-/** Every permission currently declared by Acme's closed-world model. */
+/** Every permission currently declared by the closed-world model. */
 export const modelPermissions: ReadonlyArray<string> = [
-  ...Object.keys(AcmeModel.objects).flatMap((objectType) => [
+  ...Object.keys(Model.objects).flatMap((objectType) => [
     `${objectType}.get`,
     `${objectType}.list`,
   ]),
-  ...Object.values(AcmeModel.actions).flatMap((actions) =>
+  ...Object.values(Model.actions).flatMap((actions) =>
     Object.values(actions)
       .filter(({ id }) => id !== "batchDelete")
       .map((action) => `${action.objectType}.${action.id}`)

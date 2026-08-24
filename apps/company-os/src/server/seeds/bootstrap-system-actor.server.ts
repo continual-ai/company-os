@@ -1,4 +1,4 @@
-import type { AcmeModel } from "@acme/api"
+import type { Model } from "@company/model"
 import { inArray, sql } from "drizzle-orm"
 import { Data, Effect } from "effect"
 
@@ -21,9 +21,7 @@ class SystemActorBootstrapConflict extends Data.TaggedError(
 function objectRow(input: {
   readonly ancestorIds: Array<string>
   readonly id: string
-  readonly objectType:
-    | (typeof AcmeModel.root)["id"]
-    | keyof typeof AcmeModel.objects
+  readonly objectType: (typeof Model.root)["id"] | keyof typeof Model.objects
   readonly parentId: string | null
 }) {
   return {
@@ -36,7 +34,7 @@ function objectRow(input: {
 }
 
 /** Establishes only the cyclic root and system identity required by seeds. */
-export const bootstrapSystemActor = Effect.fn("@acme/bootstrapSystemActor")(
+export const bootstrapSystemActor = Effect.fn("@company/bootstrapSystemActor")(
   function* () {
     const database = yield* Database
     yield* database.transaction((transaction) =>

@@ -8,7 +8,7 @@ import { pageOptions } from "@/route-metadata"
 
 const page = {
   breadcrumb: "Profile",
-  description: "Edit the local profile shown throughout Acme Company OS.",
+  description: "Edit the local profile shown throughout this app.",
   title: "Profile settings",
 }
 
@@ -36,7 +36,7 @@ function ProfileSettings() {
   return (
     <SettingsPage
       title="Profile"
-      description="Edit the profile presented by this browser's local Company OS session."
+      description="Edit the profile presented by this browser's local session."
     >
       <SettingsSection
         title="Personal information"

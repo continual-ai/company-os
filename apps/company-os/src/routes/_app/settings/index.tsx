@@ -1,4 +1,4 @@
-import { Button } from "@acme/ui/components/button"
+import { Button } from "@company/ui/components/button"
 import { Link, createFileRoute } from "@tanstack/react-router"
 
 import {
@@ -10,7 +10,7 @@ import { pageOptions } from "@/route-metadata"
 
 const page = {
   breadcrumb: "General",
-  description: "Review the local Company OS account and session settings.",
+  description: "Review the local account and session settings.",
   title: "General settings",
 }
 
@@ -23,12 +23,12 @@ function GeneralSettings() {
   return (
     <SettingsPage
       title="General"
-      description="Manage the settings that apply to this local Company OS interface."
+      description="Manage the settings that apply to this local interface."
     >
       <SettingsSection title="Account">
         <SettingsRow
           title="Profile"
-          description="The name and contact information shown in this Company OS."
+          description="The name and contact information shown in this app."
         >
           <Button
             variant="outline"

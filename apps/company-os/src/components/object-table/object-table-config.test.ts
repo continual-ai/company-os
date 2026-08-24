@@ -77,7 +77,7 @@ describe("matchesObjectTableFilter", () => {
       matchesObjectTableFilter(null, { operator: "empty", values: [] })
     ).toBe(true)
     expect(
-      matchesObjectTableFilter("Acme", { operator: "notEmpty", values: [] })
+      matchesObjectTableFilter("Example", { operator: "notEmpty", values: [] })
     ).toBe(true)
   })
 })

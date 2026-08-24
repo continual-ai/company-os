@@ -18,10 +18,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@acme/api": "workspace:*",
-    "@acme/ui": "workspace:*",
-    "@continual/postgres": "workspace:*",
-    "@continual/runtime": "workspace:*",
+    "@company/model": "workspace:*",
+    "@company/postgres": "workspace:*",
+    "@company/runtime": "workspace:*",
+    "@company/ui": "workspace:*",
     "@effect/platform-node": "catalog:",
     "@effect/sql-pg": "catalog:",
     "@tailwindcss/vite": "catalog:",

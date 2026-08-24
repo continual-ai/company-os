@@ -5,7 +5,7 @@ import { pageOptions } from "@/route-metadata"
 const page = {
   breadcrumb: "API reference",
   description:
-    "Explore the OpenAPI contract generated from Acme's source-owned domain model.",
+    "Explore the OpenAPI contract generated from the source-owned domain model.",
   title: "API reference",
 }
 
@@ -21,7 +21,7 @@ function ApiReferencePage() {
       <iframe
         className="h-[calc(100svh-var(--header-height))] w-full border-0 bg-background"
         src="/api/docs"
-        title="Acme API reference"
+        title="API reference"
       />
     </div>
   )

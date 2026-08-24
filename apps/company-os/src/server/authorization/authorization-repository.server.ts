@@ -1,4 +1,4 @@
-import type { IdentityId } from "@acme/api"
+import type { IdentityId } from "@company/model"
 import { and, arrayContains, eq, inArray, or, sql } from "drizzle-orm"
 import { Context, Effect, Layer } from "effect"
 
@@ -13,7 +13,7 @@ import {
 const make = Effect.gen(function* () {
   const database = yield* Database
 
-  const getTargets = Effect.fn("@acme/AuthorizationRepository.getTargets")(
+  const getTargets = Effect.fn("@company/AuthorizationRepository.getTargets")(
     function* (ids: ReadonlyArray<string>) {
       if (ids.length === 0) return []
       return yield* database
@@ -29,7 +29,7 @@ const make = Effect.gen(function* () {
   )
 
   const listScopeIdsWithPermission = Effect.fn(
-    "@acme/AuthorizationRepository.listScopeIdsWithPermission"
+    "@company/AuthorizationRepository.listScopeIdsWithPermission"
   )(function* (input: {
     readonly actorId: IdentityId
     readonly permission: string
@@ -69,9 +69,9 @@ const make = Effect.gen(function* () {
   return { getTargets, listScopeIdsWithPermission }
 })
 
-/** Optimized, read-only projection over Acme's authorization objects. */
+/** Optimized, read-only projection over the model's authorization objects. */
 export class AuthorizationRepository extends Context.Service<AuthorizationRepository>()(
-  "@acme/AuthorizationRepository",
+  "@company/AuthorizationRepository",
   { make }
 ) {
   static readonly layer = Layer.effect(this, this.make)

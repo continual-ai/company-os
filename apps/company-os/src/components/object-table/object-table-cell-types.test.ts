@@ -1,4 +1,4 @@
-import { schema } from "@continual/runtime"
+import { schema } from "@company/runtime"
 import { describe, expect, it } from "vitest"
 
 import {

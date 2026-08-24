@@ -1,37 +1,37 @@
-import { Badge } from "@acme/ui/components/badge"
-import { Checkbox } from "@acme/ui/components/checkbox"
+import type {
+  Choice,
+  ChoiceColor,
+  ObjectType,
+  PropertyDefinition,
+} from "@company/runtime"
+import { Badge } from "@company/ui/components/badge"
+import { Checkbox } from "@company/ui/components/checkbox"
 import {
   Command,
   CommandEmpty,
   CommandInput,
   CommandItem,
   CommandList,
-} from "@acme/ui/components/command"
-import { Input } from "@acme/ui/components/input"
+} from "@company/ui/components/command"
+import { Input } from "@company/ui/components/input"
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@acme/ui/components/popover"
+} from "@company/ui/components/popover"
 import {
   PreviewCard,
   PreviewCardContent,
   PreviewCardTrigger,
-} from "@acme/ui/components/preview-card"
+} from "@company/ui/components/preview-card"
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@acme/ui/components/select"
-import { cn } from "@acme/ui/lib/utils"
-import type {
-  Choice,
-  ChoiceColor,
-  ObjectType,
-  PropertyDefinition,
-} from "@continual/runtime"
+} from "@company/ui/components/select"
+import { cn } from "@company/ui/lib/utils"
 import {
   FactoryIcon,
   ImageIcon,

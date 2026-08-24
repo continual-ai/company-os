@@ -37,43 +37,53 @@ function forbiddenReason(
   packageName: string,
   specifier: string
 ): string | null {
-  if (packageName.startsWith("@continual/") && specifier.startsWith("@acme/")) {
-    return "Reusable @continual packages cannot depend on source-owned @acme packages."
+  if (
+    packageName === "@company/runtime" &&
+    specifier.startsWith("@company/") &&
+    !isPackage(specifier, "@company/runtime")
+  ) {
+    return "@company/runtime is the portable foundation and cannot depend on model, storage, or UI packages."
   }
 
   if (
-    packageName.startsWith("@continual/") &&
+    packageName === "@company/postgres" &&
+    specifier.startsWith("@company/") &&
+    !isPackage(specifier, "@company/postgres") &&
+    !isPackage(specifier, "@company/runtime")
+  ) {
+    return "@company/postgres may depend only on @company/runtime; model and application policy remain outside the adapter."
+  }
+
+  if (
+    packageName === "@company/model" &&
+    specifier.startsWith("@company/") &&
+    !isPackage(specifier, "@company/model") &&
+    !isPackage(specifier, "@company/runtime")
+  ) {
+    return "@company/model may depend only on @company/runtime; it cannot depend on UI or implementations."
+  }
+
+  if (
+    packageName === "@company/ui" &&
+    specifier.startsWith("@company/") &&
+    !isPackage(specifier, "@company/ui")
+  ) {
+    return "@company/ui owns presentation primitives and cannot depend on business definitions, execution, or applications."
+  }
+
+  if (
+    packageName.startsWith("@company/") &&
     APPLICATION_PACKAGE_NAMES.some((appName) => isPackage(specifier, appName))
   ) {
-    return "Reusable @continual packages cannot depend on company applications."
-  }
-
-  if (
-    packageName === "@acme/api" &&
-    ((specifier.startsWith("@acme/") && !isPackage(specifier, "@acme/api")) ||
-      (specifier.startsWith("@continual/") &&
-        !isPackage(specifier, "@continual/runtime")))
-  ) {
-    return "@acme/api may depend only on @continual/runtime; it cannot depend on UI or implementations."
-  }
-
-  if (
-    packageName === "@acme/ui" &&
-    (isPackage(specifier, "@acme/api") ||
-      specifier.startsWith("@continual/") ||
-      APPLICATION_PACKAGE_NAMES.some((appName) =>
-        isPackage(specifier, appName)
-      ))
-  ) {
-    return "@acme/ui owns presentation primitives and cannot depend on business definitions, execution, or applications."
+    return "Source-owned packages cannot depend on deployable applications."
   }
 
   if (
     packageName.startsWith("app:") &&
-    isPackage(specifier, "@continual/postgres") &&
+    isPackage(specifier, "@company/postgres") &&
     !isServerSourceFile(filename)
   ) {
-    return "@continual/postgres is server-only and must be imported behind an app server module."
+    return "@company/postgres is server-only and must be imported behind an app server module."
   }
 
   if (

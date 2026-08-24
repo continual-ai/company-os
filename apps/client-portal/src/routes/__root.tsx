@@ -1,4 +1,7 @@
+import { modelMetadata } from "@company/model/metadata"
 import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router"
+
+import { appMetadata } from "@/app-metadata"
 
 import appCss from "@/styles/app.css?url"
 
@@ -7,7 +10,7 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Client Portal | Acme" },
+      { title: `${appMetadata.name} | ${modelMetadata.name}` },
       { name: "robots", content: "noindex, nofollow" },
     ],
     links: [{ rel: "stylesheet", href: appCss }],

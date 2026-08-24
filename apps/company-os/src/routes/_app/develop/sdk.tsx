@@ -2,16 +2,16 @@ import { createFileRoute } from "@tanstack/react-router"
 
 import { pageOptions } from "@/route-metadata"
 
-const sdkExample = `import { AcmeModel } from "@acme/api"
-import { createClient } from "@continual/runtime/client"
+const sdkExample = `import { Model } from "@company/model"
+import { createClient } from "@company/runtime/client"
 
-const acme = createClient(AcmeModel)
-const companies = await acme.companies.list()`
+const client = createClient(Model)
+const companies = await client.companies.list()`
 
 const page = {
   breadcrumb: "SDK",
   description:
-    "Use Acme from TypeScript with the model-inferred client or generate another client from the OpenAPI contract.",
+    "Use the operating model from TypeScript or generate another client from the OpenAPI contract.",
   title: "SDK",
 }
 
@@ -26,12 +26,12 @@ function SdkPage() {
       <section className="max-w-3xl">
         <p className="text-sm font-medium text-muted-foreground">Current</p>
         <h1 className="mt-2 text-3xl font-semibold tracking-tight">
-          Use Acme from TypeScript.
+          Use the operating model from TypeScript.
         </h1>
         <p className="mt-3 max-w-2xl leading-7 text-muted-foreground">
-          The current client is inferred directly from Acme&apos;s source-owned
-          domain model. It calls the same governed HTTP capabilities used by the
-          Company OS application without introducing a second API definition.
+          The current client is inferred directly from the source-owned domain
+          model. It calls the same governed HTTP capabilities used by the
+          application without introducing a second API definition.
         </p>
       </section>
 
@@ -42,8 +42,8 @@ function SdkPage() {
           </p>
           <h2 className="mt-8 text-lg font-medium">Model-inferred client</h2>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            Import the portable Acme model and the browser-safe runtime client
-            directly inside this source workspace.
+            Import the portable model and browser-safe runtime client directly
+            inside this source workspace.
           </p>
           <pre className="mt-6 overflow-x-auto border bg-muted/50 p-4 text-xs leading-6">
             <code>{sdkExample}</code>
@@ -56,8 +56,8 @@ function SdkPage() {
           </p>
           <h2 className="mt-8 text-lg font-medium">Generate from OpenAPI</h2>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            Acme publishes a runtime-derived OpenAPI 3.1 contract for consumers
-            that cannot import the TypeScript model directly.
+            The app publishes a runtime-derived OpenAPI 3.1 contract for
+            consumers that cannot import the TypeScript model directly.
           </p>
           <a
             href="/api/openapi"
@@ -71,10 +71,10 @@ function SdkPage() {
       <section className="mt-8 border p-6">
         <p className="text-xs font-medium text-muted-foreground">Direction</p>
         <h2 className="mt-3 text-lg font-medium">
-          Publish an Acme-specific package when an external consumer needs it.
+          Publish a source-owned package when an external consumer needs it.
         </h2>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-          A future package such as @acme/client can bind the model,
+          A future package such as @company/client can bind the model,
           authentication, and deployment URL behind a smaller import. Today that
           package does not exist; the source model and generic runtime client
           are the authoritative implementation.

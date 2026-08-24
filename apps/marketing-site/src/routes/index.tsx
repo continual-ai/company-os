@@ -1,5 +1,6 @@
-import { buttonVariants } from "@acme/ui/components/button"
-import { cn } from "@acme/ui/lib/utils"
+import { modelMetadata } from "@company/model/metadata"
+import { buttonVariants } from "@company/ui/components/button"
+import { cn } from "@company/ui/lib/utils"
 import { createFileRoute } from "@tanstack/react-router"
 import { ArrowRight, Building2, FolderKanban, Users } from "lucide-react"
 
@@ -38,14 +39,16 @@ function MarketingSiteHome() {
         <section className="border-b">
           <div className="mx-auto grid min-h-[38rem] max-w-6xl items-center gap-12 px-6 py-20 lg:grid-cols-[1.3fr_0.7fr]">
             <div>
-              <p className="text-sm font-medium text-muted-foreground">Acme</p>
+              <p className="text-sm font-medium text-muted-foreground">
+                {modelMetadata.name}
+              </p>
               <h1 className="mt-5 max-w-3xl text-5xl leading-[1.02] font-semibold tracking-[-0.05em] text-balance sm:text-7xl">
-                Complex work, run as one company.
+                Complex work, run as one system.
               </h1>
               <p className="mt-6 max-w-2xl text-lg leading-8 text-muted-foreground">
-                Acme connects customer context, project delivery, and the work
-                that needs attention so every team operates from the same
-                system.
+                {modelMetadata.name} connects customer context, project
+                delivery, and the work that needs attention so every team
+                operates from the same system.
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
                 <a
@@ -61,7 +64,7 @@ function MarketingSiteHome() {
                     buttonVariants({ variant: "outline", size: "lg" })
                   )}
                 >
-                  Open company OS
+                  Open Company OS
                 </a>
               </div>
             </div>

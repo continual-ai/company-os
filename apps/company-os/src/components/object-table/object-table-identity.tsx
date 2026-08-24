@@ -1,10 +1,10 @@
-import { Badge } from "@acme/ui/components/badge"
+import type { ObjectType } from "@company/runtime"
+import { Badge } from "@company/ui/components/badge"
 import {
   PreviewCard,
   PreviewCardContent,
   PreviewCardTrigger,
-} from "@acme/ui/components/preview-card"
-import type { ObjectType } from "@continual/runtime"
+} from "@company/ui/components/preview-card"
 import { BoxIcon, Building2Icon, UserRoundIcon } from "lucide-react"
 
 import { objectTablePropertySchema } from "./object-table-cell-types"

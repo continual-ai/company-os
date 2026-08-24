@@ -1,4 +1,5 @@
-import { Button } from "@acme/ui/components/button"
+import type { PropertyDefinition } from "@company/runtime"
+import { Button } from "@company/ui/components/button"
 import {
   Command,
   CommandEmpty,
@@ -6,7 +7,7 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from "@acme/ui/components/command"
+} from "@company/ui/components/command"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,14 +15,13 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
-} from "@acme/ui/components/dropdown-menu"
-import { Input } from "@acme/ui/components/input"
+} from "@company/ui/components/dropdown-menu"
+import { Input } from "@company/ui/components/input"
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@acme/ui/components/popover"
-import type { PropertyDefinition } from "@continual/runtime"
+} from "@company/ui/components/popover"
 import {
   CheckIcon,
   ChevronLeftIcon,

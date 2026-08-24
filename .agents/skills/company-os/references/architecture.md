@@ -5,13 +5,16 @@ current implementation is evidence, not a target architecture.
 
 ## Intended ownership
 
-The example company owns its business source, policy, data, applications, and private
-implementations. Reusable framework code should remain company-neutral. A hosted platform may
+The repository owner owns its business source, policy, data, applications, and private
+implementations. Reusable framework code should remain source-neutral. A hosted platform may
 operate infrastructure or access, but should not become a second source of business truth merely
 because it hosts or observes the system.
 
-The repository currently expresses that split with `@acme/*`, `apps/*`, and `@continual/*`. Those
-names are useful local boundaries, not proof that every future concern needs another package.
+The repository expresses that ownership with vendored `@company/*` packages and `apps/*`.
+`@company/*` is a stable source-ownership namespace, not a configured organization name.
+`apps/company-os` is the central composition root; focused apps such as a portal or marketing site
+remain interfaces over its governed capabilities. Continual-specific code should appear only at a
+real hosted integration boundary, never as a required foundation for standalone operation.
 
 ## Authority before layering
 

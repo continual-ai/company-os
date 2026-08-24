@@ -1,7 +1,7 @@
-import type { AcmeModel } from "@acme/api"
-import { Button } from "@acme/ui/components/button"
-import { cn } from "@acme/ui/lib/utils"
-import type { Choice, PropertyDefinition } from "@continual/runtime"
+import type { Model } from "@company/model"
+import type { Choice, PropertyDefinition } from "@company/runtime"
+import { Button } from "@company/ui/components/button"
+import { cn } from "@company/ui/lib/utils"
 import {
   ArrowRightIcon,
   BoxesIcon,
@@ -12,10 +12,10 @@ import {
 } from "lucide-react"
 import { useMemo, useState } from "react"
 
-type CompanyModel = typeof AcmeModel
-type ModelObject = CompanyModel["objects"][keyof CompanyModel["objects"]]
+type ModelDefinition = typeof Model
+type ModelObject = ModelDefinition["objects"][keyof ModelDefinition["objects"]]
 type ModelObjectId = ModelObject["id"]
-type ModelLink = CompanyModel["links"][keyof CompanyModel["links"]]
+type ModelLink = ModelDefinition["links"][keyof ModelDefinition["links"]]
 
 type Point = {
   x: number
@@ -44,7 +44,7 @@ const cardinalityLabels = {
   zeroOrOne: "0..1",
 } as const
 
-function modelActions(model: CompanyModel) {
+function modelActions(model: ModelDefinition) {
   return Object.values(model.actions).flatMap((group) => Object.values(group))
 }
 
@@ -144,7 +144,7 @@ function pointStyle(point: Point) {
   }
 }
 
-export function ModelExplorer({ model }: { model: CompanyModel }) {
+export function ModelExplorer({ model }: { model: ModelDefinition }) {
   const objects = useMemo(() => Object.values(model.objects), [model.objects])
   const interfaces = useMemo(
     () => Object.values(model.interfaces),

@@ -1,5 +1,5 @@
 {
-  "name": "company-os-repository",
+  "name": "company-os-workspace",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -14,7 +14,7 @@
     "lint:fix": "oxlint --fix . && turbo boundaries",
     "test": "turbo test",
     "typecheck": "tsc --noEmit && turbo typecheck",
-    "ui:add": "pnpm --filter @acme/ui exec shadcn add"
+    "ui:add": "pnpm --filter @company/ui exec shadcn add"
   },
   "devDependencies": {
     "@oxlint/plugins": "1.78.0",

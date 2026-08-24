@@ -2,11 +2,11 @@ import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
-} from "@acme/ui/components/sidebar"
-import { TooltipProvider } from "@acme/ui/components/tooltip"
+} from "@company/ui/components/sidebar"
+import { TooltipProvider } from "@company/ui/components/tooltip"
 import { useMatchRoute } from "@tanstack/react-router"
 
-import { CompanySidebar } from "@/components/company-sidebar"
+import { AppSidebar } from "@/components/app-sidebar"
 import { LocalProfileProvider } from "@/components/local-profile"
 import { SettingsSidebar } from "@/components/settings-sidebar"
 import { SiteHeader } from "@/components/site-header"
@@ -32,7 +32,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           revealOnHover={!isSettings}
           style={sidebarStyle}
         >
-          {isSettings ? <SettingsSidebar /> : <CompanySidebar />}
+          {isSettings ? <SettingsSidebar /> : <AppSidebar />}
           <SidebarInset className="h-svh min-h-0 min-w-0 overflow-hidden">
             {isSettings ? (
               <header className="flex h-(--header-height) shrink-0 items-center gap-3 border-b bg-background px-4 md:hidden">

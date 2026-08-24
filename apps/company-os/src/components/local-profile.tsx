@@ -7,8 +7,8 @@ import {
   useState,
 } from "react"
 
-const displayNameStorageKey = "acme-company-os-display-name"
-const emailStorageKey = "acme-company-os-email"
+const displayNameStorageKey = "company-os-display-name"
+const emailStorageKey = "company-os-email"
 
 type LocalProfile = {
   displayName: string
@@ -22,7 +22,7 @@ type LocalProfileContextValue = {
 }
 
 const defaultProfile: LocalProfile = {
-  displayName: "Acme operator",
+  displayName: "Operator",
   email: "",
 }
 

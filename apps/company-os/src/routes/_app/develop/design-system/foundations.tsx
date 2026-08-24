@@ -5,7 +5,7 @@ import { pageOptions } from "@/route-metadata"
 const page = {
   breadcrumb: "Foundations",
   description:
-    "Explore Acme's semantic color, typography, density, and surface foundations.",
+    "Explore the system's semantic color, typography, density, and surface foundations.",
   title: "Foundations",
 }
 

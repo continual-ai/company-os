@@ -1,23 +1,23 @@
-import { AcmeModel } from "@acme/api"
+import { Model } from "@company/model"
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@acme/ui/components/card"
+} from "@company/ui/components/card"
 import { createFileRoute } from "@tanstack/react-router"
 
 import { operatingTasks } from "@/operate-data"
 import { pageOptions } from "@/route-metadata"
 
-const objectCount = Object.values(AcmeModel.objects).length
-const linkCount = Object.values(AcmeModel.links).length
+const objectCount = Object.values(Model.objects).length
+const linkCount = Object.values(Model.links).length
 
 const page = {
   breadcrumb: "Reports",
   description:
-    "Review operational indicators and establish governed business metrics as Acme needs them.",
+    "Review operational indicators and establish governed business metrics as they are needed.",
   title: "Reports",
 }
 
@@ -34,7 +34,8 @@ function ReportsPage() {
         <h1 className="mt-2 text-3xl font-semibold tracking-tight">Reports</h1>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
           Start with observable operating state. Business metrics should be
-          added when Acme defines the interpretation and decision they support.
+          added when the model defines the interpretation and decision they
+          support.
         </p>
       </header>
 
@@ -65,7 +66,7 @@ function Indicator({ label, value }: { label: string; value: number }) {
         <CardTitle className="text-2xl tabular-nums">{value}</CardTitle>
       </CardHeader>
       <CardContent className="text-xs text-muted-foreground">
-        Current Company OS state
+        Current operating state
       </CardContent>
     </Card>
   )

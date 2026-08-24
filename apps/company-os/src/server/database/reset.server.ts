@@ -3,7 +3,7 @@ import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 import { PgClient } from "@effect/sql-pg"
 import { Config, Effect, Redacted } from "effect"
 
-import { seedCompanyOs } from "@/server/seeds/seed-company-os.server"
+import { seedSystem } from "@/server/seeds/seed-system.server"
 
 import { Database } from "./database.server"
 import { applyMigrations } from "./migrations.server"
@@ -25,7 +25,7 @@ Effect.gen(function* () {
   yield* sql`drop schema if exists public cascade`
   yield* sql`create schema public`
   yield* applyMigrations()
-  yield* seedCompanyOs()
+  yield* seedSystem()
   yield* Effect.log(
     "Database reset complete; all committed migrations applied and source-owned records converged."
   )

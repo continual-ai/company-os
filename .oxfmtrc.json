@@ -9,7 +9,7 @@
     "sortScripts": true
   },
   "sortTailwindcss": {
-    "stylesheet": "packages/acme/ui/src/styles/globals.css",
+    "stylesheet": "packages/company/ui/src/styles/globals.css",
     "functions": ["cn", "cva"]
   },
   "ignorePatterns": [

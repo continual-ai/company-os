@@ -1,4 +1,4 @@
-import type { ImageRef, PropertyDefinition } from "@continual/runtime"
+import type { ImageRef, PropertyDefinition } from "@company/runtime"
 import {
   columnFilteringFeature,
   columnPinningFeature,

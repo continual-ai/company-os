@@ -1,4 +1,4 @@
-import { defineObject, defineRoot, schema } from "@continual/runtime"
+import { defineObject, defineRoot, schema } from "@company/runtime"
 
 const Platform = defineRoot({ id: "platform", name: "Platform" })
 

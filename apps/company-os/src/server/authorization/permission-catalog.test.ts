@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 import { modelPermissions, objectPermission } from "./permission-catalog.server"
 
 describe("authorization permission catalog", () => {
-  it("derives only operations enabled by the Acme model", () => {
+  it("derives only operations enabled by the model", () => {
     expect(modelPermissions).toContain("company.get")
     expect(modelPermissions).toContain("company.list")
     expect(modelPermissions).toContain("company.create")

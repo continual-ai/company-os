@@ -1,5 +1,6 @@
-import { AcmeModel } from "@acme/api"
-import type { ObjectInsert } from "@continual/runtime/effect/object-repository"
+import { Model } from "@company/model"
+import { modelMetadata } from "@company/model/metadata"
+import type { ObjectInsert } from "@company/runtime/effect/object-repository"
 import { Effect } from "effect"
 
 import { modelPermissions } from "@/server/authorization/permission-catalog.server"
@@ -12,36 +13,36 @@ import {
 import { makeObjectRepository } from "@/server/database/model-storage.server"
 import { currentActorId } from "@/server/invocation-context.server"
 
-/** Converges Acme's source-owned authorization records through repositories. */
-export const seedAuthorization = Effect.fn("@acme/seedAuthorization")(
+/** Converges source-owned authorization records through repositories. */
+export const seedAuthorization = Effect.fn("@company/seedAuthorization")(
   function* () {
     const actorId = yield* currentActorId
     const serviceAccountRepository = yield* makeObjectRepository(
-      AcmeModel.objects.serviceAccount
+      Model.objects.serviceAccount
     )
-    const roleRepository = yield* makeObjectRepository(AcmeModel.objects.role)
+    const roleRepository = yield* makeObjectRepository(Model.objects.role)
     const roleAssignmentRepository = yield* makeObjectRepository(
-      AcmeModel.objects.roleAssignment
+      Model.objects.roleAssignment
     )
 
     const systemServiceAccount = {
       aliases: [],
       metadata: {},
       createdBy: actorId,
-      description: "Acme's built-in system identity.",
+      description: `Built-in system identity for ${modelMetadata.name}.`,
       id: SYSTEM_SERVICE_ACCOUNT_ID,
-      name: "Company OS",
+      name: "System",
       parent: PLATFORM_ID,
       systemManaged: true,
       updatedBy: actorId,
-    } satisfies ObjectInsert<(typeof AcmeModel.objects)["serviceAccount"]>
+    } satisfies ObjectInsert<(typeof Model.objects)["serviceAccount"]>
     yield* serviceAccountRepository.upsert(systemServiceAccount)
 
-    const platformAdministrator = {
+    const systemAdministrator = {
       aliases: [],
       metadata: {},
       createdBy: actorId,
-      description: "Full administration of Acme's Company OS.",
+      description: `Full administration of ${modelMetadata.name}.`,
       id: PLATFORM_ADMIN_ROLE_ID,
       name: "Platform administrator",
       parent: PLATFORM_ID,
@@ -49,8 +50,8 @@ export const seedAuthorization = Effect.fn("@acme/seedAuthorization")(
       scopeType: "platform",
       systemManaged: true,
       updatedBy: actorId,
-    } satisfies ObjectInsert<(typeof AcmeModel.objects)["role"]>
-    yield* roleRepository.upsert(platformAdministrator)
+    } satisfies ObjectInsert<(typeof Model.objects)["role"]>
+    yield* roleRepository.upsert(systemAdministrator)
 
     const systemAdministratorAssignment = {
       aliases: [],
@@ -62,7 +63,7 @@ export const seedAuthorization = Effect.fn("@acme/seedAuthorization")(
       role: PLATFORM_ADMIN_ROLE_ID,
       systemManaged: true,
       updatedBy: actorId,
-    } satisfies ObjectInsert<(typeof AcmeModel.objects)["roleAssignment"]>
+    } satisfies ObjectInsert<(typeof Model.objects)["roleAssignment"]>
     yield* roleAssignmentRepository.upsert(systemAdministratorAssignment)
   }
 )

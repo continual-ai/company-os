@@ -15,7 +15,7 @@ function DesignSystemOverview() {
           Company-owned interface
         </p>
         <h1 className="mt-2 text-4xl font-semibold tracking-tight sm:text-5xl">
-          The interface Acme operates through.
+          The interface this system operates through.
         </h1>
         <p className="mt-5 max-w-2xl text-base leading-7 text-muted-foreground">
           A curated mechanical layer keeps applications coherent. Opinionated
@@ -28,7 +28,7 @@ function DesignSystemOverview() {
           <p className="text-xs font-medium text-muted-foreground">Current</p>
           <h2 className="mt-8 text-lg font-medium">Components</h2>
           <p className="mt-2 max-w-md text-sm leading-6 text-muted-foreground">
-            Source-owned shadcn mechanics, curated and styled in @acme/ui for
+            Source-owned shadcn mechanics, curated and styled in @company/ui for
             consistent interaction, accessibility, and visual language.
           </p>
         </article>
@@ -37,7 +37,7 @@ function DesignSystemOverview() {
           <h2 className="mt-8 text-lg font-medium">Product patterns</h2>
           <p className="mt-2 max-w-md text-sm leading-6 text-muted-foreground">
             Higher-level compositions begin with the app that needs them. A
-            pattern moves into @acme/ui only when its semantics hold across
+            pattern moves into @company/ui only when its semantics hold across
             concrete consumers.
           </p>
         </article>

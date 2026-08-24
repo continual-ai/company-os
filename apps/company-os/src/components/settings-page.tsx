@@ -1,4 +1,4 @@
-import { cn } from "@acme/ui/lib/utils"
+import { cn } from "@company/ui/lib/utils"
 
 export function SettingsPage({
   title,

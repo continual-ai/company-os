@@ -1,4 +1,4 @@
-import { Button } from "@acme/ui/components/button"
+import { Button } from "@company/ui/components/button"
 import { createFileRoute } from "@tanstack/react-router"
 import { useEffect, useState } from "react"
 
@@ -11,11 +11,11 @@ import { pageOptions } from "@/route-metadata"
 
 const page = {
   breadcrumb: "Appearance",
-  description: "Choose how Acme Company OS appears in this browser.",
+  description: "Choose how this app appears in this browser.",
   title: "Appearance settings",
 }
 
-const themeStorageKey = "acme-company-os-theme"
+const themeStorageKey = "company-os-theme"
 const themes = ["Light", "System", "Dark"] as const
 type Theme = (typeof themes)[number]
 
@@ -47,7 +47,7 @@ function AppearanceSettings() {
   return (
     <SettingsPage
       title="Appearance"
-      description="Choose a local presentation for this Company OS interface."
+      description="Choose a local presentation for this interface."
     >
       <SettingsSection title="Interface">
         <SettingsRow

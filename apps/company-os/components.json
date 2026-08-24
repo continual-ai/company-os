@@ -5,7 +5,7 @@
   "tsx": true,
   "tailwind": {
     "config": "",
-    "css": "../../packages/acme/ui/src/styles/globals.css",
+    "css": "../../packages/company/ui/src/styles/globals.css",
     "baseColor": "neutral",
     "cssVariables": true
   },
@@ -14,8 +14,8 @@
     "components": "@/components",
     "hooks": "@/hooks",
     "lib": "@/lib",
-    "utils": "@acme/ui/lib/utils",
-    "ui": "@acme/ui/components"
+    "utils": "@company/ui/lib/utils",
+    "ui": "@company/ui/components"
   },
   "rtl": false,
   "menuColor": "default",

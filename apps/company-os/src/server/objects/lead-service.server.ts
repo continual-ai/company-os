@@ -1,4 +1,4 @@
-import { AcmeModel } from "@acme/api"
+import { Model } from "@company/model"
 import { Context, Effect, Layer } from "effect"
 
 import { LeadRepository } from "./lead-repository.server"
@@ -6,12 +6,12 @@ import { makeObjectService } from "./object-service.server"
 
 const make = Effect.gen(function* () {
   const repository = yield* LeadRepository
-  return yield* makeObjectService(AcmeModel.objects.lead, repository)
+  return yield* makeObjectService(Model.objects.lead, repository)
 })
 
-/** Governed queries and actions for Acme lead objects. */
+/** Governed queries and actions for lead objects. */
 export class LeadService extends Context.Service<LeadService>()(
-  "@acme/LeadService",
+  "@company/LeadService",
   { make }
 ) {
   static readonly layer = Layer.effect(this, this.make)

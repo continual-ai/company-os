@@ -1,8 +1,8 @@
 import { fileURLToPath } from "node:url"
 
-import { AcmeModel } from "@acme/api"
-import { Etag, RecordId, Timestamp } from "@continual/runtime"
-import { CurrentInvocation } from "@continual/runtime/effect/object-service"
+import { Model } from "@company/model"
+import { Etag, RecordId, Timestamp } from "@company/runtime"
+import { CurrentInvocation } from "@company/runtime/effect/object-service"
 import { PgliteClient } from "@effect/sql-pglite"
 import { eq } from "drizzle-orm"
 import * as PgliteDrizzle from "drizzle-orm/effect-pglite"
@@ -38,7 +38,7 @@ import {
   RoleScopeMismatch,
 } from "@/server/objects/role-assignment-service.server"
 import { RoleRepository } from "@/server/objects/role-repository.server"
-import { seedCompanyOs } from "@/server/seeds/seed-company-os.server"
+import { seedSystem } from "@/server/seeds/seed-system.server"
 
 import { AuthorizationRepository } from "./authorization-repository.server"
 import {
@@ -115,7 +115,7 @@ describe("Authorization", () => {
         const pglite = yield* PgliteDrizzle.makeWithDefaults({ relations })
         yield* migrate(pglite, { migrationsFolder })
         const database = asDatabase(pglite)
-        yield* seedCompanyOs().pipe(Effect.provideService(Database, database))
+        yield* seedSystem().pipe(Effect.provideService(Database, database))
 
         yield* database.insert(objects).values([
           objectRow({
@@ -222,7 +222,7 @@ describe("Authorization", () => {
           Effect.provideService(Database, database)
         )
         const companyService = yield* makeObjectService(
-          AcmeModel.objects.company,
+          Model.objects.company,
           companyRepository
         ).pipe(
           Effect.provideService(Authorization, authorization),

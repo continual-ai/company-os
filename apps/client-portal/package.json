@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@acme/ui": "workspace:*",
+    "@company/model": "workspace:*",
+    "@company/ui": "workspace:*",
     "@tailwindcss/vite": "catalog:",
     "@tanstack/react-router": "catalog:",
     "@tanstack/react-start": "catalog:",

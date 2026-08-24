@@ -1,13 +1,13 @@
-import type { ObjectType } from "@continual/runtime"
-import type { Repository } from "@continual/runtime/effect/object-repository"
-import * as ObjectService from "@continual/runtime/effect/object-service"
+import type { ObjectType } from "@company/runtime"
+import type { Repository } from "@company/runtime/effect/object-repository"
+import * as ObjectService from "@company/runtime/effect/object-service"
 import { Effect } from "effect"
 
 import { Authorization } from "@/server/authorization/authorization-service.server"
 import { PLATFORM_ID } from "@/server/authorization/well-known-authorization.server"
 import { makeRecordAliasResolver } from "@/server/database/model-storage.server"
 
-/** Applies Acme's shared policy and identity resolution to an object repository. */
+/** Applies application policy and identity resolution to an object repository. */
 export function makeObjectService<
   const TObject extends ObjectType,
   TError,

@@ -1,27 +1,27 @@
-import { AcmeModel } from "@acme/api"
-import { makePostgresSchema } from "@continual/postgres"
+import { Model } from "@company/model"
+import { makePostgresSchema } from "@company/postgres"
 
-export const AcmeStorage = makePostgresSchema(AcmeModel)
+export const Storage = makePostgresSchema(Model)
 
 // Drizzle Kit currently discovers top-level exported table instances. These
 // aliases expose the generated projection without duplicating its definition.
-export const objects = AcmeStorage.core.objects
-export const recordAliases = AcmeStorage.core.recordAliases
-export const platforms = AcmeStorage.core.roots
-export const authorizationScopes = AcmeStorage.interfaces.authorizationScope
-export const identities = AcmeStorage.interfaces.identity
-export const parties = AcmeStorage.interfaces.party
-export const principals = AcmeStorage.interfaces.principal
-export const companies = AcmeStorage.objects.company
-export const contacts = AcmeStorage.objects.contact
-export const deals = AcmeStorage.objects.deal
-export const groupMemberships = AcmeStorage.objects.groupMembership
-export const groups = AcmeStorage.objects.group
-export const interactions = AcmeStorage.objects.interaction
-export const leads = AcmeStorage.objects.lead
-export const lineItems = AcmeStorage.objects.lineItem
-export const roleAssignments = AcmeStorage.objects.roleAssignment
-export const roles = AcmeStorage.objects.role
-export const serviceAccounts = AcmeStorage.objects.serviceAccount
-export const users = AcmeStorage.objects.user
-export const relations = AcmeStorage.relations
+export const objects = Storage.core.objects
+export const recordAliases = Storage.core.recordAliases
+export const platforms = Storage.core.roots
+export const authorizationScopes = Storage.interfaces.authorizationScope
+export const identities = Storage.interfaces.identity
+export const parties = Storage.interfaces.party
+export const principals = Storage.interfaces.principal
+export const companies = Storage.objects.company
+export const contacts = Storage.objects.contact
+export const deals = Storage.objects.deal
+export const groupMemberships = Storage.objects.groupMembership
+export const groups = Storage.objects.group
+export const interactions = Storage.objects.interaction
+export const leads = Storage.objects.lead
+export const lineItems = Storage.objects.lineItem
+export const roleAssignments = Storage.objects.roleAssignment
+export const roles = Storage.objects.role
+export const serviceAccounts = Storage.objects.serviceAccount
+export const users = Storage.objects.user
+export const relations = Storage.relations

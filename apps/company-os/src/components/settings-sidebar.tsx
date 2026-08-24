@@ -8,7 +8,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@acme/ui/components/sidebar"
+} from "@company/ui/components/sidebar"
 import { Link, useMatchRoute } from "@tanstack/react-router"
 import {
   ArrowLeftIcon,

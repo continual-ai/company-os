@@ -21,7 +21,7 @@ function DevelopOverview() {
         <DeveloperSurface
           eyebrow="Model"
           title="Domain model"
-          description="Explore Acme's object types, properties, link types, and governed action types."
+          description="Explore the model's object types, properties, link types, and governed action types."
           to="/develop/model"
         />
         <DeveloperSurface
@@ -33,19 +33,19 @@ function DevelopOverview() {
         <DeveloperSurface
           eyebrow="TypeScript"
           title="SDK"
-          description="Use the model-inferred client from source or generate another client from Acme's OpenAPI contract."
+          description="Use the model-inferred client from source or generate another client from the OpenAPI contract."
           to="/develop/sdk"
         />
         <DeveloperSurface
           eyebrow="Assistants"
           title="MCP"
-          description="Connect Claude, ChatGPT, Cursor, and other MCP clients to governed Company OS capabilities."
+          description="Connect Claude, ChatGPT, Cursor, and other MCP clients to governed capabilities."
           to="/develop/mcp"
         />
         <DeveloperSurface
           eyebrow="Interface"
           title="Design system"
-          description="Develop and verify the foundations, components, and operating patterns used across Acme apps."
+          description="Develop and verify the foundations, components, and operating patterns used across apps."
           to="/develop/design-system"
         />
         <DeveloperSurface

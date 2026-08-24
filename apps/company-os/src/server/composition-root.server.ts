@@ -1,9 +1,6 @@
-import { AcmeModel } from "@acme/api"
-import { createApiDescription } from "@continual/runtime"
-import {
-  createApiReference,
-  createHttpApi,
-} from "@continual/runtime/effect/http"
+import { Model } from "@company/model"
+import { createApiDescription } from "@company/runtime"
+import { createApiReference, createHttpApi } from "@company/runtime/effect/http"
 import { Layer } from "effect"
 import { OpenApi } from "effect/unstable/httpapi"
 
@@ -83,8 +80,8 @@ const applicationLayer = servicesLayer.pipe(
   Layer.provide(applicationDependenciesLayer)
 )
 
-const apiDescription = createApiDescription(AcmeModel)
-const httpApi = createHttpApi(AcmeModel)
+const apiDescription = createApiDescription(Model)
+const httpApi = createHttpApi(Model)
 const openApiDocument = OpenApi.fromApi(httpApi)
 const apiReference = createApiReference(httpApi, "/api/docs", {
   customCss: `
@@ -96,7 +93,7 @@ const apiReference = createApiReference(httpApi, "/api/docs", {
   showSidebar: false,
 })
 
-export const companyOs = {
+export const application = {
   api: {
     description: apiDescription,
     document: openApiDocument,

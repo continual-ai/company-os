@@ -1,6 +1,6 @@
-import { AcmeModel } from "@acme/api"
-import { modelTypeAccepts } from "@continual/runtime"
-import { type ObjectAccessRequest } from "@continual/runtime/effect/object-service"
+import { Model } from "@company/model"
+import { modelTypeAccepts } from "@company/runtime"
+import { type ObjectAccessRequest } from "@company/runtime/effect/object-service"
 import { Context, Data, Effect, Layer } from "effect"
 
 import { currentActorId } from "@/server/invocation-context.server"
@@ -47,7 +47,7 @@ const make = Effect.gen(function* () {
 
   // Decisions intentionally read current assignments and group membership so
   // changes earlier in the same transaction take effect without cache repair.
-  const require = Effect.fn("@acme/Authorization.require")(function* (
+  const require = Effect.fn("@company/Authorization.require")(function* (
     request: ObjectAccessRequest
   ) {
     const actorId = yield* currentActorId
@@ -62,7 +62,7 @@ const make = Effect.gen(function* () {
       const target = targetsById.get(id)
       return (
         target === undefined ||
-        !modelTypeAccepts(AcmeModel, target.objectType, expectedType)
+        !modelTypeAccepts(Model, target.objectType, expectedType)
       )
     })
     if (missing !== undefined) {
@@ -127,7 +127,7 @@ const make = Effect.gen(function* () {
     )
   })
 
-  const visibleWithin = Effect.fn("@acme/Authorization.visibleWithin")(
+  const visibleWithin = Effect.fn("@company/Authorization.visibleWithin")(
     function* (request: ObjectAccessRequest) {
       const actorId = yield* currentActorId
       const permission = objectPermission(request)
@@ -138,7 +138,7 @@ const make = Effect.gen(function* () {
     }
   )
 
-  const can = Effect.fn("@acme/Authorization.can")(function* (
+  const can = Effect.fn("@company/Authorization.can")(function* (
     request: ObjectAccessRequest
   ) {
     return yield* require(request).pipe(
@@ -153,9 +153,9 @@ const make = Effect.gen(function* () {
   return { can, require, visibleWithin }
 })
 
-/** Acme's hierarchy-based, default-deny authorization policy. */
+/** The model's hierarchy-based, default-deny authorization policy. */
 export class Authorization extends Context.Service<Authorization>()(
-  "@acme/Authorization",
+  "@company/Authorization",
   { make }
 ) {
   static readonly layer = Layer.effect(this, this.make)

@@ -1,4 +1,4 @@
-import { cn } from "@acme/ui/lib/utils"
+import { cn } from "@company/ui/lib/utils"
 import { Link, Outlet, useMatchRoute } from "@tanstack/react-router"
 import { ChevronDownIcon } from "lucide-react"
 

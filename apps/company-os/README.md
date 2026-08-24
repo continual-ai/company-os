@@ -1,9 +1,9 @@
 # Company OS app
 
-Acme's backend and company management application in one TanStack Start deployment.
+The repository's central backend and operating application in one TanStack Start deployment.
 
 This app is the repository's private composition root. It currently projects the semantic contract
-from `@acme/api` into Drizzle storage, API descriptions, OpenAPI, and assembled Effect repository
+from `@company/model` into Drizzle storage, API descriptions, OpenAPI, and assembled Effect repository
 and service layers. The executable external routes are the health and contract/documentation
 endpoints listed below; object CRUD and custom-action handlers have not yet been bound. As those
 transports are added, the operating application, agents, and external interfaces should call the
@@ -79,19 +79,20 @@ through validation, transactions, and domain invariants.
 
 An invocation boundary authenticates external credentials, resolves them to a canonical Identity
 record ID, rejects the reserved system actor, and provides `CurrentInvocation` through
-`authenticatedInvocation`. Acme pins the server-owned Platform root; callers never choose it from
+`authenticatedInvocation`. The server pins the Platform root; callers never choose it from
 request data. Internal entrypoints explicitly use `systemInvocation`. HTTP, MCP, jobs, and agents
 should otherwise differ only in how they establish that trusted context before calling the same
 governed services. Executable object handlers are not bound yet.
 
-`IdentityId` and `PrincipalId` are derived from the closed `AcmeModel`, so each is the branded union
+`IdentityId` and `PrincipalId` are derived from the closed `Model`, so each is the branded union
 of its interface's concrete implementers. `actorId` names an identity in invocation and
 authorization internals; `principal` names the identity-or-group relationship on role assignments.
 There is no separate `ActorId` brand or Actor object.
 
-The portable repository contract and standard service behavior come from `@continual/runtime`;
-`@continual/postgres` supplies the reusable Drizzle schema compiler and repository implementation.
-Acme owns the concrete storage projection, migrations, and typed `Database` service in this app.
+The portable repository contract and standard service behavior come from `@company/runtime`;
+`@company/postgres` supplies the reusable Drizzle schema compiler and repository implementation.
+The repository owns the concrete storage projection, migrations, and typed `Database` service in
+this app.
 Interface membership uses internal tables named from immutable interface IDs rather than display
 metadata. Portable records expose `parent`; generated Drizzle rows use
 `parentId`; and every object-specific table stores `parent_id`. A composite foreign key ensures it
@@ -114,7 +115,7 @@ another business service.
 
 ## Database workflow
 
-The app uses `@continual/postgres` with the Effect PostgreSQL driver. The portable `AcmeModel` is
+The app uses `@company/postgres` with the Effect PostgreSQL driver. The portable `Model` is
 the source of truth for objects, properties, interfaces, ownership, links, and uniqueness.
 `src/server/database/schema.server.ts` only instantiates the reusable compiler and exposes its
 tables as direct ESM exports because Drizzle Kit does not inspect nested schema objects. A schema
@@ -148,7 +149,7 @@ all remaining records. All three commands are safe to run repeatedly.
 
 ### Change the pre-deployment baseline
 
-1. Edit the source contract in `packages/acme/api`. When registering a new object or interface,
+1. Edit the source contract in `packages/company/model`. When registering a new object or interface,
    expose its generated table from `src/server/database/schema.server.ts` for Drizzle Kit; the
    schema coverage test fails if that tooling export is missing.
 2. Remove the existing baseline migration directory and generate a new baseline from the repository
@@ -254,18 +255,18 @@ Open <http://localhost:3002>. Useful endpoints:
 - `/learn` — company knowledge and guidance
 
 - `GET /health` — process health
-- `GET /api/description` — serializable API projection of `AcmeModel`
+- `GET /api/description` — serializable API projection of `Model`
 - `GET /api/openapi` — runtime-derived OpenAPI 3.1 contract
 - `GET /api/docs` — generated Scalar API reference
 
-Set the public deployment origin when generating canonical URLs and social-card metadata:
+Set the public deployment origin when generating canonical URLs:
 
 ```sh
 VITE_COMPANY_OS_URL=https://os.example.com
 ```
 
-The app omits canonical URLs and absolute share-image metadata when this value is unset, preventing
-local development URLs from leaking into production metadata.
+The app omits canonical URLs when this value is unset, preventing local development URLs from
+leaking into production metadata.
 
 ## Page metadata
 
@@ -276,7 +277,7 @@ the active TanStack matches:
 ```tsx
 const page = {
   breadcrumb: "Companies",
-  description: "Browse Acme company records.",
+  description: "Browse company records.",
   title: "Companies",
 }
 
@@ -299,7 +300,7 @@ export const Route = createFileRoute("/_app/companies/$companyId")({
       company,
       page: {
         breadcrumb: company.name,
-        description: `Review ${company.name} in Company OS.`,
+        description: `Review ${company.name} in the operating app.`,
         title: company.name,
       },
     }

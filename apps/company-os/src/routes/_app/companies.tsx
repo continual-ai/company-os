@@ -1,4 +1,4 @@
-import { AcmeModel } from "@acme/api"
+import { Model } from "@company/model"
 import { createFileRoute } from "@tanstack/react-router"
 import { useCallback, useState } from "react"
 
@@ -7,10 +7,7 @@ import type {
   ObjectTableRecord,
   ObjectTableValue,
 } from "@/components/object-table/object-table-config"
-import {
-  exampleCompanyRecords,
-  resolveExampleCompanyImage,
-} from "@/components/object-table/object-table-example-data"
+import { exampleCompanyRecords } from "@/components/object-table/object-table-example-data"
 import {
   objectTableExampleVisiblePropertyIds,
   ObjectTableExampleCompany,
@@ -19,8 +16,7 @@ import { pageOptions } from "@/route-metadata"
 
 const page = {
   breadcrumb: "Companies",
-  description:
-    AcmeModel.objects.company.description ?? "Browse Acme company records.",
+  description: Model.objects.company.description ?? "Browse company records.",
   title: "Companies",
 }
 
@@ -76,7 +72,6 @@ function CompaniesPage() {
     <ObjectTable
       object={ObjectTableExampleCompany}
       records={companies}
-      resolveImageSrc={resolveExampleCompanyImage}
       visiblePropertyIds={objectTableExampleVisiblePropertyIds}
       onCellCommit={updateCompany}
       onCreateRecord={createCompany}

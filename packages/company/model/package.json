@@ -1,0 +1,28 @@
+{
+  "name": "@company/model",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The source-owned browser-safe semantic model.",
+  "type": "module",
+  "sideEffects": false,
+  "imports": {
+    "#interfaces/*": "./src/interfaces/*.ts",
+    "#objects/*": "./src/objects/*.ts",
+    "#platform": "./src/platform.ts"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./metadata": "./src/metadata.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@company/runtime": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

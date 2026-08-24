@@ -7,7 +7,7 @@ const consumers = ["Claude", "ChatGPT", "Cursor", "Other MCP clients"] as const
 const page = {
   breadcrumb: "MCP",
   description:
-    "Connect assistants to Acme through an MCP projection of the same governed Company OS capabilities.",
+    "Connect assistants through an MCP projection of the same governed capabilities.",
   title: "MCP",
 }
 
@@ -22,12 +22,12 @@ function McpPage() {
       <section className="max-w-3xl">
         <p className="text-sm font-medium text-muted-foreground">Direction</p>
         <h1 className="mt-2 text-3xl font-semibold tracking-tight">
-          Connect assistants to Acme through MCP.
+          Connect assistants through MCP.
         </h1>
         <p className="mt-3 max-w-2xl leading-7 text-muted-foreground">
-          MCP should project the same governed Company OS capabilities used by
-          people and applications so assistants can inspect business context and
-          take authorized actions without becoming a second implementation.
+          MCP should project the same governed capabilities used by people and
+          applications so assistants can inspect business context and take
+          authorized actions without becoming a second implementation.
         </p>
       </section>
 
@@ -38,7 +38,7 @@ function McpPage() {
           </p>
           <h2 className="mt-8 text-lg font-medium">Not exposed yet</h2>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            This Company OS does not currently publish an MCP endpoint. The
+            This repository does not currently publish an MCP endpoint. The
             connection URL and client configuration belong here once identity,
             authorization, and the tool projection are implemented.
           </p>

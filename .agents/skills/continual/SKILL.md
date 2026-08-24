@@ -22,7 +22,7 @@ features or a commitment to a particular platform design.
    operator control.
 5. Distinguish verified **Current** behavior from proposed **Direction** and **Vision**.
 
-Never infer hosted availability or contract details from `@continual/*` package names in this
+Never infer hosted availability or contract details from names or local integration code in this
 repository. Verify live APIs, authentication, limits, and failure semantics before integration.
 
 ## Read selectively
@@ -39,8 +39,7 @@ Read both references only when introducing or materially changing a platform dep
 
 - Continual is being explored as an optional operator around a customer-owned Company OS, not as
   the necessary owner of its business model.
-- Local `@continual/*` packages are reusable framework code and do not prove that the hosted
-  platform is required.
+- The vendored `@company/*` foundation does not imply a hosted Continual dependency.
 - A hosted capability should be justified by concrete operational value, not by a desire to route
   everything through Continual.
 - Platform interfaces, conversations, queues, caches, and audit views should not silently become a

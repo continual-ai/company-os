@@ -1,5 +1,6 @@
-import { Button } from "@acme/ui/components/button"
-import { Checkbox } from "@acme/ui/components/checkbox"
+import type { ObjectType } from "@company/runtime"
+import { Button } from "@company/ui/components/button"
+import { Checkbox } from "@company/ui/components/checkbox"
 import {
   Table,
   TableBody,
@@ -8,9 +9,8 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@acme/ui/components/table"
-import { cn } from "@acme/ui/lib/utils"
-import type { ObjectType } from "@continual/runtime"
+} from "@company/ui/components/table"
+import { cn } from "@company/ui/lib/utils"
 import {
   createColumnHelper,
   type CellContext,

@@ -42,19 +42,22 @@ Direction, and Vision distinct. The canonical skills live in `.agents/skills`; `
 
 ## Ownership
 
-- `@acme/*` and `apps/*` are source-owned by the example company. Business nouns and behavior
-  belong there.
-- `@continual/*` is reusable framework code and must never import `@acme/*`. Add reusable surface
-  only after a concrete company slice establishes common semantics.
-- `@acme/api` is browser-safe company contract source. It may depend on the portable
-  `@continual/runtime` surface, but not on UI, handlers, persistence, providers, or Effect.
-- `@continual/postgres` is the reusable server-only PostgreSQL adapter. It implements runtime
-  repository contracts but does not own company migrations, credentials, custom persistence
-  queries, or Effect service identities.
+- `@company/*` and `apps/*` are vendored, source-owned parts of the standalone Company OS.
+- `@company/runtime` is the portable definition and execution foundation. It must not import the
+  company model, UI, storage adapter, or applications.
+- `@company/model` is browser-safe semantic model source. It may depend on the portable
+  `@company/runtime` surface, but not on UI, handlers, persistence, providers, or Effect.
+- `@company/postgres` is the reusable server-only PostgreSQL adapter. It implements runtime
+  repository contracts and may depend on `@company/runtime`, but it does not own model definitions,
+  migrations, credentials, custom persistence queries, or application Effect service identities.
+- `@company/ui` owns shared presentation primitives and does not depend on the model, runtime,
+  persistence, or applications.
 - Browser applications may use public browser-safe package exports. They must not import another
   app or private Company OS server modules.
-- `apps/company-os` is the private server composition boundary. Keep company policy and writes
-  behind governed backend capabilities rather than reimplementing them in each interface.
+- `apps/company-os` is the central product and private server composition boundary. Other apps are
+  focused interfaces over its governed capabilities, not independent business authorities.
+- Hosted Continual integration must remain optional. Add a source-owned adapter only for a concrete
+  platform contract; environment injection alone does not justify another package.
 
 Use explicit imports inside packages. Do not add internal barrel files, wildcard exports, or
 re-export chains. A package may expose one deliberate top-level facade with explicit named
@@ -63,7 +66,7 @@ re-exports when registered in the Company OS Oxlint rule.
 Import another workspace through its declared package name and public exports, never through a
 relative filesystem path or a TypeScript `paths` shortcut. Use `@/*` for app-local imports that
 would otherwise traverse a parent directory and simple relative imports within a package.
-Package-local generator aliases such as `@acme/ui/*` may resolve back into the same package. Oxlint
+Package-local generator aliases such as `@company/ui/*` may resolve back into the same package. Oxlint
 and `turbo boundaries` enforce these conventions.
 
 ## Stack
@@ -75,7 +78,7 @@ and `turbo boundaries` enforce these conventions.
   implementation as static `.layer`. Name alternatives descriptively, such as `.layerTest` or
   `.layerMemory`; do not use the v3 `.Default` or an ambiguous `Live` suffix. Capabilities supplied
   by an outer boundary may remain layerless.
-- Use source-owned shadcn components and Tailwind CSS v4 tokens from `@acme/ui`.
+- Use source-owned shadcn components and Tailwind CSS v4 tokens from `@company/ui`.
 - Use `pnpm` and Turborepo. Do not add another frontend framework or component library.
 - Preserve an ordinary Fetch-compatible runtime boundary where practical.
 

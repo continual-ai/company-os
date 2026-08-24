@@ -6,8 +6,8 @@ import { relations } from "./schema.server"
 
 const make = PgDrizzle.makeWithDefaults({ relations })
 
-/** Acme's typed database, backed by the configured Effect PostgreSQL client. */
-export class Database extends Context.Service<Database>()("@acme/Database", {
+/** The application's typed database, backed by the configured Effect PostgreSQL client. */
+export class Database extends Context.Service<Database>()("@company/Database", {
   make,
 }) {
   static readonly layer = Layer.effect(this, this.make)

@@ -1,13 +1,13 @@
-import type { AcmeModel } from "@acme/api"
+import type { Model } from "@company/model"
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@acme/ui/components/card"
+} from "@company/ui/components/card"
 
-type ModelObject = (typeof AcmeModel.objects)[keyof typeof AcmeModel.objects]
+type ModelObject = (typeof Model.objects)[keyof typeof Model.objects]
 
 export function ObjectBrowser({ object }: { object: ModelObject }) {
   return (

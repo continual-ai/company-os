@@ -8,6 +8,7 @@ import {
   resolvePageMetadata,
 } from "./route-metadata"
 import type { PageMetadata } from "./route-metadata"
+import { appName } from "./route-metadata"
 
 const overview = {
   breadcrumb: "Overview",
@@ -16,9 +17,9 @@ const overview = {
 } satisfies PageMetadata
 
 const customer = {
-  breadcrumb: "Acme Corporation",
-  description: "Review Acme Corporation.",
-  title: "Acme Corporation",
+  breadcrumb: "Example Corporation",
+  description: "Review Example Corporation.",
+  title: "Example Corporation",
 } satisfies PageMetadata
 
 afterEach(() => vi.unstubAllEnvs())
@@ -76,16 +77,15 @@ describe("document metadata", () => {
     })
 
     expect(document.meta).toContainEqual({
-      title: "Acme Corporation | Customers | Acme Company OS",
+      title: `Example Corporation | Customers | ${appName}`,
     })
     expect(document.meta).toContainEqual({
       name: "description",
       content: customer.description,
     })
-    expect(document.meta).toContainEqual({
-      property: "og:image",
-      content: "https://os.example.com/social-card.png",
-    })
+    expect(document.meta).not.toContainEqual(
+      expect.objectContaining({ property: "og:image" })
+    )
   })
 
   it("omits deployment URLs when the public origin is not configured", () => {

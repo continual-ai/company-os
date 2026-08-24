@@ -1,5 +1,5 @@
-import { AcmeModel } from "@acme/api"
-import type { ObjectCreateInput } from "@continual/runtime"
+import { Model } from "@company/model"
+import type { ObjectCreateInput } from "@company/runtime"
 import { Context, Data, Effect, Layer } from "effect"
 
 import { modelPermissions } from "@/server/authorization/permission-catalog.server"
@@ -33,13 +33,13 @@ const make = Effect.gen(function* () {
   const repository = yield* RoleAssignmentRepository
   const roleRepository = yield* RoleRepository
   const base = yield* makeObjectService(
-    AcmeModel.objects.roleAssignment,
+    Model.objects.roleAssignment,
     repository
   )
   const permissions = new Set(modelPermissions)
 
-  const create = Effect.fn("@acme/RoleAssignmentService.create")(function* (
-    input: ObjectCreateInput<(typeof AcmeModel.objects)["roleAssignment"]>
+  const create = Effect.fn("@company/RoleAssignmentService.create")(function* (
+    input: ObjectCreateInput<(typeof Model.objects)["roleAssignment"]>
   ) {
     return yield* database.transaction(() =>
       Effect.gen(function* () {
@@ -78,7 +78,7 @@ const make = Effect.gen(function* () {
     )
   })
 
-  const deleteAssignment = Effect.fn("@acme/RoleAssignmentService.delete")(
+  const deleteAssignment = Effect.fn("@company/RoleAssignmentService.delete")(
     function* (input: Parameters<typeof base.delete>[0]) {
       return yield* database.transaction(() =>
         Effect.gen(function* () {
@@ -103,7 +103,7 @@ const make = Effect.gen(function* () {
 })
 
 export class RoleAssignmentService extends Context.Service<RoleAssignmentService>()(
-  "@acme/RoleAssignmentService",
+  "@company/RoleAssignmentService",
   { make }
 ) {
   static readonly layer = Layer.effect(this, this.make)

@@ -3,8 +3,12 @@ import {
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from "@acme/ui/components/accordion"
-import { Alert, AlertDescription, AlertTitle } from "@acme/ui/components/alert"
+} from "@company/ui/components/accordion"
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@company/ui/components/alert"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,15 +19,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@acme/ui/components/alert-dialog"
+} from "@company/ui/components/alert-dialog"
 import {
   Avatar,
   AvatarBadge,
   AvatarFallback,
   AvatarGroup,
   AvatarGroupCount,
-} from "@acme/ui/components/avatar"
-import { Badge } from "@acme/ui/components/badge"
+} from "@company/ui/components/avatar"
+import { Badge } from "@company/ui/components/badge"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -31,8 +35,8 @@ import {
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
-} from "@acme/ui/components/breadcrumb"
-import { Button } from "@acme/ui/components/button"
+} from "@company/ui/components/breadcrumb"
+import { Button } from "@company/ui/components/button"
 import {
   Card,
   CardAction,
@@ -41,8 +45,8 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@acme/ui/components/card"
-import { Checkbox } from "@acme/ui/components/checkbox"
+} from "@company/ui/components/card"
+import { Checkbox } from "@company/ui/components/checkbox"
 import {
   Command,
   CommandEmpty,
@@ -51,7 +55,7 @@ import {
   CommandItem,
   CommandList,
   CommandShortcut,
-} from "@acme/ui/components/command"
+} from "@company/ui/components/command"
 import {
   Dialog,
   DialogContent,
@@ -60,7 +64,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@acme/ui/components/dialog"
+} from "@company/ui/components/dialog"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -69,7 +73,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@acme/ui/components/dropdown-menu"
+} from "@company/ui/components/dropdown-menu"
 import {
   Empty,
   EmptyContent,
@@ -77,22 +81,22 @@ import {
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
-} from "@acme/ui/components/empty"
+} from "@company/ui/components/empty"
 import {
   Field,
   FieldDescription,
   FieldError,
   FieldLabel,
-} from "@acme/ui/components/field"
-import { Input } from "@acme/ui/components/input"
+} from "@company/ui/components/field"
+import { Input } from "@company/ui/components/input"
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupButton,
   InputGroupInput,
   InputGroupText,
-} from "@acme/ui/components/input-group"
-import { Label } from "@acme/ui/components/label"
+} from "@company/ui/components/input-group"
+import { Label } from "@company/ui/components/label"
 import {
   Popover,
   PopoverContent,
@@ -100,13 +104,13 @@ import {
   PopoverHeader,
   PopoverTitle,
   PopoverTrigger,
-} from "@acme/ui/components/popover"
+} from "@company/ui/components/popover"
 import {
   Progress,
   ProgressLabel,
   ProgressValue,
-} from "@acme/ui/components/progress"
-import { RadioGroup, RadioGroupItem } from "@acme/ui/components/radio-group"
+} from "@company/ui/components/progress"
+import { RadioGroup, RadioGroupItem } from "@company/ui/components/radio-group"
 import {
   Select,
   SelectContent,
@@ -115,8 +119,8 @@ import {
   SelectLabel,
   SelectTrigger,
   SelectValue,
-} from "@acme/ui/components/select"
-import { Separator } from "@acme/ui/components/separator"
+} from "@company/ui/components/select"
+import { Separator } from "@company/ui/components/separator"
 import {
   Sheet,
   SheetContent,
@@ -125,7 +129,7 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-} from "@acme/ui/components/sheet"
+} from "@company/ui/components/sheet"
 import {
   Sidebar,
   SidebarContent,
@@ -137,9 +141,9 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
-} from "@acme/ui/components/sidebar"
-import { Skeleton } from "@acme/ui/components/skeleton"
-import { Switch } from "@acme/ui/components/switch"
+} from "@company/ui/components/sidebar"
+import { Skeleton } from "@company/ui/components/skeleton"
+import { Switch } from "@company/ui/components/switch"
 import {
   Table,
   TableBody,
@@ -147,19 +151,19 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@acme/ui/components/table"
+} from "@company/ui/components/table"
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
-} from "@acme/ui/components/tabs"
-import { Textarea } from "@acme/ui/components/textarea"
+} from "@company/ui/components/tabs"
+import { Textarea } from "@company/ui/components/textarea"
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@acme/ui/components/tooltip"
+} from "@company/ui/components/tooltip"
 import {
   ArchiveIcon,
   Building2Icon,
@@ -185,7 +189,7 @@ const snippet = (...lines: string[]) => lines.join("\n")
 const exampleDetails = {
   accordion: {
     code: snippet(
-      'import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@acme/ui/components/accordion"',
+      'import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@company/ui/components/accordion"',
       "",
       '<Accordion defaultValue={["governance"]}>',
       '  <AccordionItem value="governance">',
@@ -199,7 +203,7 @@ const exampleDetails = {
   },
   alert: {
     code: snippet(
-      'import { Alert, AlertDescription, AlertTitle } from "@acme/ui/components/alert"',
+      'import { Alert, AlertDescription, AlertTitle } from "@company/ui/components/alert"',
       "",
       "<Alert>",
       "  <CheckCircle2Icon />",
@@ -212,7 +216,7 @@ const exampleDetails = {
   },
   "alert-dialog": {
     code: snippet(
-      'import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@acme/ui/components/alert-dialog"',
+      'import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@company/ui/components/alert-dialog"',
       "",
       "<AlertDialog>",
       '  <AlertDialogTrigger render={<Button variant="destructive" />}>Archive company</AlertDialogTrigger>',
@@ -233,7 +237,7 @@ const exampleDetails = {
   },
   avatar: {
     code: snippet(
-      'import { Avatar, AvatarBadge, AvatarFallback } from "@acme/ui/components/avatar"',
+      'import { Avatar, AvatarBadge, AvatarFallback } from "@company/ui/components/avatar"',
       "",
       '<Avatar size="lg">',
       "  <AvatarFallback>TZ</AvatarFallback>",
@@ -245,7 +249,7 @@ const exampleDetails = {
   },
   badge: {
     code: snippet(
-      'import { Badge } from "@acme/ui/components/badge"',
+      'import { Badge } from "@company/ui/components/badge"',
       "",
       '<Badge variant="secondary">Qualified</Badge>'
     ),
@@ -254,7 +258,7 @@ const exampleDetails = {
   },
   breadcrumb: {
     code: snippet(
-      'import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@acme/ui/components/breadcrumb"',
+      'import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@company/ui/components/breadcrumb"',
       "",
       "<Breadcrumb>",
       "  <BreadcrumbList>",
@@ -269,7 +273,7 @@ const exampleDetails = {
   },
   button: {
     code: snippet(
-      'import { Button } from "@acme/ui/components/button"',
+      'import { Button } from "@company/ui/components/button"',
       "",
       "<Button>Save company</Button>",
       '<Button variant="outline">Cancel</Button>',
@@ -280,7 +284,7 @@ const exampleDetails = {
   },
   card: {
     code: snippet(
-      'import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@acme/ui/components/card"',
+      'import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@company/ui/components/card"',
       "",
       "<Card>",
       "  <CardHeader>",
@@ -297,8 +301,8 @@ const exampleDetails = {
   },
   checkbox: {
     code: snippet(
-      'import { Checkbox } from "@acme/ui/components/checkbox"',
-      'import { Label } from "@acme/ui/components/label"',
+      'import { Checkbox } from "@company/ui/components/checkbox"',
+      'import { Label } from "@company/ui/components/label"',
       "",
       '<div className="flex items-center gap-2">',
       '  <Checkbox id="approval" defaultChecked />',
@@ -310,7 +314,7 @@ const exampleDetails = {
   },
   command: {
     code: snippet(
-      'import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from "@acme/ui/components/command"',
+      'import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from "@company/ui/components/command"',
       "",
       "<Command>",
       '  <CommandInput placeholder="Search company objects..." />',
@@ -327,7 +331,7 @@ const exampleDetails = {
   },
   dialog: {
     code: snippet(
-      'import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@acme/ui/components/dialog"',
+      'import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@company/ui/components/dialog"',
       "",
       "<Dialog>",
       "  <DialogTrigger render={<Button />}>Add contact</DialogTrigger>",
@@ -346,7 +350,7 @@ const exampleDetails = {
   },
   "dropdown-menu": {
     code: snippet(
-      'import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@acme/ui/components/dropdown-menu"',
+      'import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@company/ui/components/dropdown-menu"',
       "",
       "<DropdownMenu>",
       '  <DropdownMenuTrigger render={<Button variant="outline" size="icon" />}><MoreHorizontalIcon /></DropdownMenuTrigger>',
@@ -361,7 +365,7 @@ const exampleDetails = {
   },
   empty: {
     code: snippet(
-      'import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@acme/ui/components/empty"',
+      'import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@company/ui/components/empty"',
       "",
       "<Empty>",
       '  <EmptyMedia variant="icon"><Building2Icon /></EmptyMedia>',
@@ -377,12 +381,12 @@ const exampleDetails = {
   },
   field: {
     code: snippet(
-      'import { Field, FieldDescription, FieldLabel } from "@acme/ui/components/field"',
-      'import { Input } from "@acme/ui/components/input"',
+      'import { Field, FieldDescription, FieldLabel } from "@company/ui/components/field"',
+      'import { Input } from "@company/ui/components/input"',
       "",
       "<Field>",
       '  <FieldLabel htmlFor="domain">Company domain</FieldLabel>',
-      '  <Input id="domain" placeholder="acme.example" />',
+      '  <Input id="domain" placeholder="example.example" />',
       "  <FieldDescription>Used to match contacts and activity.</FieldDescription>",
       "</Field>"
     ),
@@ -391,20 +395,20 @@ const exampleDetails = {
   },
   input: {
     code: snippet(
-      'import { Input } from "@acme/ui/components/input"',
+      'import { Input } from "@company/ui/components/input"',
       "",
-      '<Input aria-label="Company name" placeholder="Acme" />'
+      '<Input aria-label="Company name" placeholder="Example" />'
     ),
     usage:
       "Use Input inside Field for most forms so labels, descriptions, and errors retain a consistent relationship.",
   },
   "input-group": {
     code: snippet(
-      'import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from "@acme/ui/components/input-group"',
+      'import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from "@company/ui/components/input-group"',
       "",
       "<InputGroup>",
       "  <InputGroupAddon><InputGroupText>https://</InputGroupText></InputGroupAddon>",
-      '  <InputGroupInput aria-label="Company domain" placeholder="acme.example" />',
+      '  <InputGroupInput aria-label="Company domain" placeholder="example.example" />',
       "</InputGroup>"
     ),
     usage:
@@ -412,7 +416,7 @@ const exampleDetails = {
   },
   label: {
     code: snippet(
-      'import { Label } from "@acme/ui/components/label"',
+      'import { Label } from "@company/ui/components/label"',
       "",
       '<Label htmlFor="company-name">Company name</Label>'
     ),
@@ -421,7 +425,7 @@ const exampleDetails = {
   },
   popover: {
     code: snippet(
-      'import { Popover, PopoverContent, PopoverDescription, PopoverHeader, PopoverTitle, PopoverTrigger } from "@acme/ui/components/popover"',
+      'import { Popover, PopoverContent, PopoverDescription, PopoverHeader, PopoverTitle, PopoverTrigger } from "@company/ui/components/popover"',
       "",
       "<Popover>",
       '  <PopoverTrigger render={<Button variant="outline" />}>Assignment</PopoverTrigger>',
@@ -438,7 +442,7 @@ const exampleDetails = {
   },
   progress: {
     code: snippet(
-      'import { Progress, ProgressLabel, ProgressValue } from "@acme/ui/components/progress"',
+      'import { Progress, ProgressLabel, ProgressValue } from "@company/ui/components/progress"',
       "",
       "<Progress value={68}>",
       "  <ProgressLabel>Importing records</ProgressLabel>",
@@ -450,8 +454,8 @@ const exampleDetails = {
   },
   "radio-group": {
     code: snippet(
-      'import { RadioGroup, RadioGroupItem } from "@acme/ui/components/radio-group"',
-      'import { Label } from "@acme/ui/components/label"',
+      'import { RadioGroup, RadioGroupItem } from "@company/ui/components/radio-group"',
+      'import { Label } from "@company/ui/components/label"',
       "",
       '<RadioGroup defaultValue="review">',
       '  <div className="flex items-center gap-2">',
@@ -469,7 +473,7 @@ const exampleDetails = {
   },
   select: {
     code: snippet(
-      'import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@acme/ui/components/select"',
+      'import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@company/ui/components/select"',
       "",
       '<Select defaultValue="qualified">',
       "  <SelectTrigger><SelectValue /></SelectTrigger>",
@@ -485,7 +489,7 @@ const exampleDetails = {
   },
   separator: {
     code: snippet(
-      'import { Separator } from "@acme/ui/components/separator"',
+      'import { Separator } from "@company/ui/components/separator"',
       "",
       '<div className="flex items-center gap-4">',
       "  <span>Pipeline</span>",
@@ -498,7 +502,7 @@ const exampleDetails = {
   },
   sheet: {
     code: snippet(
-      'import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from "@acme/ui/components/sheet"',
+      'import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from "@company/ui/components/sheet"',
       "",
       "<Sheet>",
       '  <SheetTrigger render={<Button variant="outline" />}>Edit details</SheetTrigger>',
@@ -516,7 +520,7 @@ const exampleDetails = {
   },
   sidebar: {
     code: snippet(
-      'import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider } from "@acme/ui/components/sidebar"',
+      'import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider } from "@company/ui/components/sidebar"',
       "",
       "<SidebarProvider>",
       '  <Sidebar collapsible="none">',
@@ -533,7 +537,7 @@ const exampleDetails = {
   },
   skeleton: {
     code: snippet(
-      'import { Skeleton } from "@acme/ui/components/skeleton"',
+      'import { Skeleton } from "@company/ui/components/skeleton"',
       "",
       '<div className="space-y-2">',
       '  <Skeleton className="h-4 w-40" />',
@@ -546,8 +550,8 @@ const exampleDetails = {
   },
   switch: {
     code: snippet(
-      'import { Switch } from "@acme/ui/components/switch"',
-      'import { Label } from "@acme/ui/components/label"',
+      'import { Switch } from "@company/ui/components/switch"',
+      'import { Label } from "@company/ui/components/label"',
       "",
       '<div className="flex items-center justify-between gap-4">',
       '  <Label htmlFor="notifications">Operating notifications</Label>',
@@ -559,11 +563,11 @@ const exampleDetails = {
   },
   table: {
     code: snippet(
-      'import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@acme/ui/components/table"',
+      'import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@company/ui/components/table"',
       "",
       "<Table>",
       "  <TableHeader><TableRow><TableHead>Company</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>",
-      "  <TableBody><TableRow><TableCell>Acme</TableCell><TableCell>Qualified</TableCell></TableRow></TableBody>",
+      "  <TableBody><TableRow><TableCell>Example</TableCell><TableCell>Qualified</TableCell></TableRow></TableBody>",
       "</Table>"
     ),
     usage:
@@ -571,7 +575,7 @@ const exampleDetails = {
   },
   tabs: {
     code: snippet(
-      'import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/components/tabs"',
+      'import { Tabs, TabsContent, TabsList, TabsTrigger } from "@company/ui/components/tabs"',
       "",
       '<Tabs defaultValue="overview">',
       "  <TabsList>",
@@ -587,7 +591,7 @@ const exampleDetails = {
   },
   textarea: {
     code: snippet(
-      'import { Textarea } from "@acme/ui/components/textarea"',
+      'import { Textarea } from "@company/ui/components/textarea"',
       "",
       '<Textarea aria-label="Operating note" placeholder="Add context for the next review..." />'
     ),
@@ -596,7 +600,7 @@ const exampleDetails = {
   },
   tooltip: {
     code: snippet(
-      'import { Tooltip, TooltipContent, TooltipTrigger } from "@acme/ui/components/tooltip"',
+      'import { Tooltip, TooltipContent, TooltipTrigger } from "@company/ui/components/tooltip"',
       "",
       "<Tooltip>",
       '  <TooltipTrigger render={<Button variant="outline" size="icon" />}><SettingsIcon /></TooltipTrigger>',
@@ -630,7 +634,7 @@ function ComponentPreview({ slug }: { slug: ComponentSlug }) {
           <AccordionItem value="ownership">
             <AccordionTrigger>Who owns the data?</AccordionTrigger>
             <AccordionContent>
-              Acme owns the authoritative business state and its operating
+              The repository owns its authoritative business state and operating
               policy.
             </AccordionContent>
           </AccordionItem>
@@ -847,7 +851,7 @@ function ComponentPreview({ slug }: { slug: ComponentSlug }) {
       return (
         <Field className="mx-auto max-w-sm">
           <FieldLabel htmlFor="example-domain">Company domain</FieldLabel>
-          <Input id="example-domain" placeholder="acme.example" />
+          <Input id="example-domain" placeholder="northwind.example" />
           <FieldDescription>
             Used to match contacts and company activity.
           </FieldDescription>
@@ -859,7 +863,7 @@ function ComponentPreview({ slug }: { slug: ComponentSlug }) {
         <Input
           className="mx-auto max-w-sm"
           aria-label="Company name"
-          placeholder="Acme"
+          placeholder="Northwind"
         />
       )
     case "input-group":
@@ -870,7 +874,7 @@ function ComponentPreview({ slug }: { slug: ComponentSlug }) {
           </InputGroupAddon>
           <InputGroupInput
             aria-label="Company domain"
-            placeholder="acme.example"
+            placeholder="northwind.example"
           />
           <InputGroupAddon align="inline-end">
             <InputGroupButton size="icon-xs">
@@ -884,7 +888,7 @@ function ComponentPreview({ slug }: { slug: ComponentSlug }) {
       return (
         <div className="mx-auto grid max-w-sm gap-2">
           <Label htmlFor="example-company-name">Company name</Label>
-          <Input id="example-company-name" defaultValue="Acme" />
+          <Input id="example-company-name" defaultValue="Northwind" />
         </div>
       )
     case "popover":
@@ -971,7 +975,7 @@ function ComponentPreview({ slug }: { slug: ComponentSlug }) {
                 </SheetDescription>
               </SheetHeader>
               <div className="px-4">
-                <Input aria-label="Company name" defaultValue="Acme" />
+                <Input aria-label="Company name" defaultValue="Northwind" />
               </div>
               <SheetFooter>
                 <Button>Save changes</Button>
@@ -988,7 +992,7 @@ function ComponentPreview({ slug }: { slug: ComponentSlug }) {
         >
           <Sidebar collapsible="none" className="border-r">
             <SidebarHeader className="border-b text-xs font-medium">
-              Acme
+              Project
             </SidebarHeader>
             <SidebarContent>
               <SidebarGroup>
@@ -1047,7 +1051,7 @@ function ComponentPreview({ slug }: { slug: ComponentSlug }) {
           </TableHeader>
           <TableBody>
             <TableRow>
-              <TableCell className="font-medium">Acme</TableCell>
+              <TableCell className="font-medium">Northwind</TableCell>
               <TableCell>
                 <Badge variant="secondary">Qualified</Badge>
               </TableCell>

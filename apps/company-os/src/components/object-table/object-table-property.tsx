@@ -1,5 +1,5 @@
-import { cn } from "@acme/ui/lib/utils"
-import type { PropertyDefinition } from "@continual/runtime"
+import type { PropertyDefinition } from "@company/runtime"
+import { cn } from "@company/ui/lib/utils"
 import {
   AtSignIcon,
   CalendarDaysIcon,

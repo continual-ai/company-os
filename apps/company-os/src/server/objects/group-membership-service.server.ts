@@ -1,4 +1,4 @@
-import { AcmeModel } from "@acme/api"
+import { Model } from "@company/model"
 import { Context, Effect, Layer } from "effect"
 
 import { GroupMembershipRepository } from "./group-membership-repository.server"
@@ -6,11 +6,11 @@ import { makeObjectService } from "./object-service.server"
 
 const make = Effect.gen(function* () {
   const repository = yield* GroupMembershipRepository
-  return yield* makeObjectService(AcmeModel.objects.groupMembership, repository)
+  return yield* makeObjectService(Model.objects.groupMembership, repository)
 })
 
 export class GroupMembershipService extends Context.Service<GroupMembershipService>()(
-  "@acme/GroupMembershipService",
+  "@company/GroupMembershipService",
   { make }
 ) {
   static readonly layer = Layer.effect(this, this.make)

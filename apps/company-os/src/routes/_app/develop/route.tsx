@@ -5,7 +5,7 @@ import { pageOptions } from "@/route-metadata"
 const page = {
   breadcrumb: "Develop",
   description:
-    "Inspect Acme's domain model and generated interfaces, then extend the company system from shared source-owned contracts.",
+    "Inspect the domain model and generated interfaces, then extend the system from shared source-owned contracts.",
   title: "Develop",
 }
 

@@ -1,3 +1,7 @@
+import { modelMetadata } from "@company/model/metadata"
+
+import { appMetadata } from "@/app-metadata"
+
 export type PageMetadata = {
   breadcrumb: string
   description: string
@@ -11,8 +15,7 @@ export type DocumentMetadata = {
   title: string
 }
 
-const appName = "Acme Company OS"
-const socialImagePath = "/social-card.png"
+export const appName = `${modelMetadata.name} ${appMetadata.name}`
 
 declare module "@tanstack/react-router" {
   interface StaticDataRouteOption {
@@ -51,7 +54,6 @@ export function documentHead(document: DocumentMetadata) {
     document.title === appName
       ? appName
       : [document.title, document.section, appName].filter(Boolean).join(" | ")
-  const socialImageUrl = absoluteSiteUrl(socialImagePath)
   const meta = [
     { title },
     { name: "description", content: document.description },
@@ -59,32 +61,10 @@ export function documentHead(document: DocumentMetadata) {
     { property: "og:description", content: document.description },
     { property: "og:type", content: "website" },
     { property: "og:site_name", content: appName },
-    {
-      name: "twitter:card",
-      content: socialImageUrl ? "summary_large_image" : "summary",
-    },
+    { name: "twitter:card", content: "summary" },
     { name: "twitter:title", content: title },
     { name: "twitter:description", content: document.description },
   ]
-
-  if (socialImageUrl) {
-    meta.push(
-      { property: "og:image", content: socialImageUrl },
-      { property: "og:image:width", content: "1200" },
-      { property: "og:image:height", content: "630" },
-      {
-        property: "og:image:alt",
-        content:
-          "Acme Company OS — run the company from shared business context.",
-      },
-      { name: "twitter:image", content: socialImageUrl },
-      {
-        name: "twitter:image:alt",
-        content:
-          "Acme Company OS — run the company from shared business context.",
-      }
-    )
-  }
 
   return { meta }
 }

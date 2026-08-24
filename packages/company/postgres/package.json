@@ -1,0 +1,26 @@
+{
+  "name": "@company/postgres",
+  "version": "0.0.0",
+  "private": true,
+  "description": "PostgreSQL storage for a Company OS semantic model.",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@company/runtime": "workspace:*",
+    "@effect/sql-pg": "catalog:",
+    "drizzle-orm": "catalog:",
+    "effect": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}
