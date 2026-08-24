@@ -29,7 +29,7 @@ const make = Effect.gen(function* () {
       .from(roleAssignments)
       .where(
         and(
-          eq(roleAssignments.authorizationScopeId, input.scopeId),
+          eq(roleAssignments.parentId, input.scopeId),
           eq(roleAssignments.roleId, input.roleId)
         )
       )

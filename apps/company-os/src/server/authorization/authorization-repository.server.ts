@@ -39,18 +39,18 @@ const make = Effect.gen(function* () {
     const scopeCondition =
       input.scopeIds === undefined
         ? undefined
-        : inArray(roleAssignments.authorizationScopeId, input.scopeIds)
+        : inArray(roleAssignments.parentId, input.scopeIds)
     const groupIds = database
-      .select({ id: groupMemberships.groupId })
+      .select({ id: groupMemberships.parentId })
       .from(groupMemberships)
       .where(eq(groupMemberships.memberId, input.actorId))
     const rows = yield* database
       .selectDistinct({
-        scopeId: sql<string>`${roleAssignments.authorizationScopeId}`,
+        scopeId: sql<string>`${roleAssignments.parentId}`,
       })
       .from(roleAssignments)
       .innerJoin(roles, eq(roleAssignments.roleId, roles.id))
-      .innerJoin(objects, eq(roleAssignments.authorizationScopeId, objects.id))
+      .innerJoin(objects, eq(roleAssignments.parentId, objects.id))
       .where(
         and(
           or(
@@ -62,7 +62,7 @@ const make = Effect.gen(function* () {
           scopeCondition
         )
       )
-      .orderBy(roleAssignments.authorizationScopeId)
+      .orderBy(roleAssignments.parentId)
     return rows.map(({ scopeId }) => scopeId)
   })
 

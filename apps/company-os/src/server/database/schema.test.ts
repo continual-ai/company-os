@@ -11,7 +11,7 @@ describe("Acme PostgreSQL schema", () => {
   it("projects object properties, link references, and relation metadata", () => {
     expect(Object.keys(getTableColumns(AcmeStorage.objects.contact))).toEqual([
       "id",
-      "platformId",
+      "parentId",
       "photo",
       "firstName",
       "lastName",
@@ -33,6 +33,9 @@ describe("Acme PostgreSQL schema", () => {
     expectTypeOf<
       (typeof AcmeStorage.objects.deal)["$inferSelect"]["companyId"]
     >().toEqualTypeOf<RecordId<"company">>()
+    expectTypeOf<
+      (typeof AcmeStorage.objects.lineItem)["$inferSelect"]["parentId"]
+    >().toEqualTypeOf<RecordId<"deal">>()
     expect(getTableName(AcmeStorage.interfaces.party)).toBe("interface_party")
     const objectColumns = getTableColumns(AcmeStorage.core.objects)
     expect(objectColumns.createdAt.getSQLType()).toBe(

@@ -94,6 +94,9 @@ describe("makePostgresSchema", () => {
     expectTypeOf<
       typeof storage.objects.permission.$inferSelect.scopeId
     >().toEqualTypeOf<RecordId<"platform"> | RecordId<"workspace">>()
+    expectTypeOf<
+      typeof storage.objects.workspace.$inferSelect.parentId
+    >().toEqualTypeOf<RecordId<"platform">>()
   })
 
   it("projects many-to-many links through one generated junction table", () => {

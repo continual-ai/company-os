@@ -148,7 +148,7 @@ describe("Authorization", () => {
           id: userId,
           image: null,
           name: "Ada Lovelace",
-          platformId: PLATFORM_ID,
+          parentId: PLATFORM_ID,
         })
         yield* database.insert(identities).values({ id: userId })
         yield* database.insert(principals).values({ id: userId })
@@ -160,7 +160,7 @@ describe("Authorization", () => {
             lifecycleStage: "prospect",
             logo: null,
             name: "Allowed",
-            platformId: PLATFORM_ID,
+            parentId: PLATFORM_ID,
             website: null,
           },
           {
@@ -170,7 +170,7 @@ describe("Authorization", () => {
             lifecycleStage: "prospect",
             logo: null,
             name: "Via group",
-            platformId: PLATFORM_ID,
+            parentId: PLATFORM_ID,
             website: null,
           },
         ])
@@ -186,7 +186,7 @@ describe("Authorization", () => {
           id: readerRoleId,
           name: "Company reader",
           permissions: ["company.get", "company.list"],
-          platformId: PLATFORM_ID,
+          parentId: PLATFORM_ID,
           scopeType: "company",
         })
 
@@ -202,7 +202,7 @@ describe("Authorization", () => {
           })
         )
         yield* database.insert(roleAssignments).values({
-          authorizationScopeId: allowedCompanyId,
+          parentId: allowedCompanyId,
           id: directAssignmentId,
           principalId: userId,
           roleId: readerRoleId,
@@ -262,7 +262,7 @@ describe("Authorization", () => {
           description: null,
           id: groupId,
           name: "Sales",
-          platformId: PLATFORM_ID,
+          parentId: PLATFORM_ID,
         })
         yield* database.insert(principals).values({ id: groupId })
         yield* database.insert(objects).values(
@@ -274,7 +274,7 @@ describe("Authorization", () => {
           })
         )
         yield* database.insert(groupMemberships).values({
-          groupId,
+          parentId: groupId,
           id: membershipId,
           memberId: userId,
         })
@@ -290,7 +290,7 @@ describe("Authorization", () => {
           })
         )
         yield* database.insert(roleAssignments).values({
-          authorizationScopeId: groupCompanyId,
+          parentId: groupCompanyId,
           id: groupAssignmentId,
           principalId: groupId,
           roleId: readerRoleId,
@@ -342,7 +342,7 @@ describe("Authorization", () => {
           })
         )
         yield* database.insert(roleAssignments).values({
-          authorizationScopeId: PLATFORM_ID,
+          parentId: PLATFORM_ID,
           id: userAdministratorAssignmentId,
           principalId: userId,
           roleId: PLATFORM_ADMIN_ROLE_ID,

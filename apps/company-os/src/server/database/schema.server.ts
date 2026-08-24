@@ -26,9 +26,9 @@ export const AcmeStorage = makePostgresSchema(AcmeModel, {
       ],
     },
     groupMembership: {
-      indexes: ({ groupId, memberId }) => [
-        uniqueIndex("group_memberships_group_id_member_id_unique").on(
-          groupId,
+      indexes: ({ memberId, parentId }) => [
+        uniqueIndex("group_memberships_parent_id_member_id_unique").on(
+          parentId,
           memberId
         ),
       ],
@@ -46,12 +46,10 @@ export const AcmeStorage = makePostgresSchema(AcmeModel, {
       ],
     },
     roleAssignment: {
-      indexes: ({ authorizationScopeId, principalId, roleId }) => [
-        uniqueIndex("role_assignments_scope_principal_role_unique").on(
-          authorizationScopeId,
-          principalId,
-          roleId
-        ),
+      indexes: ({ parentId, principalId, roleId }) => [
+        uniqueIndex(
+          "role_assignments_parent_id_principal_id_role_id_unique"
+        ).on(parentId, principalId, roleId),
       ],
     },
     role: {

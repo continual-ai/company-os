@@ -341,7 +341,6 @@ export function makeObjectRepository<
         `Object '${object.id}' does not have a PostgreSQL storage table.`
       )
     }
-    const parentColumn = `${object.parent.typeId}Id`
     const parentInterfaceTable =
       object.parent.kind === "interface"
         ? Object.entries(storage.interfaces).find(
@@ -376,9 +375,9 @@ export function makeObjectRepository<
         `Storage table for object '${object.id}' must declare an id column.`
       )
     }
-    if (storageColumns[parentColumn] === undefined) {
+    if (storageColumns.parentId === undefined) {
       return yield* Effect.die(
-        `Storage table for object '${object.id}' must declare semantic parent column '${parentColumn}'.`
+        `Storage table for object '${object.id}' must declare a parentId column.`
       )
     }
     const propertyColumns = Object.fromEntries(
@@ -892,8 +891,11 @@ export function makeObjectRepository<
               )
             }
           }
-          const objectValues = { id, ...toStorageProperties(properties) }
-          Object.assign(objectValues, { [parentColumn]: parentId })
+          const objectValues = {
+            id,
+            ...toStorageProperties(properties),
+            parentId,
+          }
           // SAFETY: the portable object schema validates the property values,
           // while the model-derived storage projection supplies this table.
           // oxlint-disable-next-line typescript/no-unsafe-type-assertion
@@ -1037,8 +1039,7 @@ export function makeObjectRepository<
             )
 
           const storageProperties = toStorageProperties(properties)
-          const objectValues = { id, ...storageProperties }
-          Object.assign(objectValues, { [parentColumn]: parentId })
+          const objectValues = { id, ...storageProperties, parentId }
           // SAFETY: the portable object schema validates the complete record,
           // while the model-derived projection supplies this exact table.
           // oxlint-disable-next-line typescript/no-unsafe-type-assertion

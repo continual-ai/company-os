@@ -93,9 +93,11 @@ The portable repository contract and standard service behavior come from `@conti
 `@continual/postgres` supplies the reusable Drizzle schema compiler and repository implementation.
 Acme owns the concrete storage projection, physical overrides, migrations, and typed `Database`
 service in this app. Interface membership uses internal tables named from immutable interface IDs
-rather than display metadata. Every object-specific table mirrors the standard `parentId` under
-its semantic name—such as `platformId` or `dealId`—while a composite foreign key ensures it remains
-identical to the generic parent on the shared object row. The shared row also stores complete
+rather than display metadata. Portable records expose `parent`; generated Drizzle rows use
+`parentId`; and every object-specific table stores `parent_id`. A composite foreign key ensures it
+remains identical to the generic parent on the shared object row. Ordinary record-reference
+properties use their semantic relationship name plus `Id`, such as `companyId`; ownership always
+uses `parentId` regardless of the parent's concrete type. The shared row also stores complete
 ancestry and references the model-declared Identity interface from its audit actor columns.
 Globally unique opaque aliases live in normalized `record_aliases` rows and are hydrated
 as the standard `aliases` set on every public object record. Repository transactions claim and

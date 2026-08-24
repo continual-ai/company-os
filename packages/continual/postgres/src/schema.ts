@@ -76,15 +76,12 @@ type PhysicalObjectPropertyKeys<TObject extends ObjectType> = {
 
 type PhysicalObjectColumn<TObject extends ObjectType> =
   | "id"
-  | `${TObject["parent"]["typeId"]}Id`
+  | "parentId"
   | PhysicalObjectPropertyKeys<TObject>
 
 type StoredObjectRow<TObject extends ObjectType> = {
   readonly id: RecordId<TObject["id"]>
-} & {
-  readonly [TKey in `${TObject["parent"]["typeId"]}Id`]: RecordId<
-    TObject["parent"]["typeId"]
-  >
+  readonly parentId: RecordId<TObject["parent"]["typeId"]>
 } & {
   readonly [
     TKey in ObjectPropertyKey<TObject> as PhysicalObjectPropertyKey<
@@ -679,13 +676,12 @@ export function makePostgresSchema<const TModel extends ModelCatalog>(
   for (const object of Object.values(model.objects)) {
     const tableName = snakeCase(object.collection)
     claimTableName(tableName, `object '${object.id}'`)
-    const parentColumn = `${object.parent.typeId}Id`
     const objectOverride = overrides.objects?.[object.id]
     const columns: ColumnBuilderRegistry = {
       id: text()
         .primaryKey()
         .references(() => objects.id, { onDelete: "cascade" }),
-      [parentColumn]: text().notNull(),
+      parentId: text().notNull(),
     }
     for (const [propertyId, property] of Object.entries(object.properties)) {
       const override = objectOverride?.columns?.[propertyId]
@@ -708,16 +704,14 @@ export function makePostgresSchema<const TModel extends ModelCatalog>(
 
     objectTables[object.id] = pgTable(tableName, columns, (table) => {
       const constraints: Array<PgTableExtraConfigValue> = [
-        index(`${tableName}_${snakeCase(parentColumn)}_idx`).on(
-          table[parentColumn]!
-        ),
+        index(`${tableName}_parent_id_idx`).on(table.parentId!),
         foreignKey({
-          columns: [table[parentColumn]!],
+          columns: [table.parentId!],
           foreignColumns: [columnId(tableForType(object.parent.typeId))],
-          name: `${tableName}_${snakeCase(parentColumn)}_fk`,
+          name: `${tableName}_parent_${snakeCase(object.parent.typeId)}_fk`,
         }).onDelete("restrict"),
         foreignKey({
-          columns: [table.id!, table[parentColumn]!],
+          columns: [table.id!, table.parentId!],
           foreignColumns: [objects.id, objects.parentId],
           name: `${tableName}_object_parent_fk`,
         }).onDelete("cascade"),

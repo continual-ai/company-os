@@ -510,7 +510,7 @@ describe("Drizzle object repository", () => {
     ])
     expect(result.lineItemKindRows).toEqual([
       expect.objectContaining({
-        dealId: "deal_1",
+        parentId: "deal_1",
         id: result.lineItem.id,
       }),
     ])
@@ -529,7 +529,7 @@ describe("Drizzle object repository", () => {
       ).toEqual(
         new Set([
           "id",
-          snakeCase(`${object.parent.typeId}Id`),
+          "parent_id",
           ...Object.entries(object.properties).map(([propertyId, property]) =>
             snakeCase(
               property.kind === "recordId" ? `${propertyId}Id` : propertyId
