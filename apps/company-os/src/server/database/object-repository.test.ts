@@ -477,7 +477,7 @@ describe("Drizzle object repository", () => {
     expect(result.wrongTypeAlias).toBeInstanceOf(RecordAliasNotFound)
     expect(result.rolledBack).toBeInstanceOf(ObjectNotFound)
     expect(result.leads.items).toHaveLength(1)
-    expect(result.leads.items[0]).toMatchObject({ email: "Lead@Acme.Example" })
+    expect(result.leads.items[0]).toMatchObject({ email: "lead@acme.example" })
     expect(result.partyRows.map(({ id }) => id)).toEqual([
       result.first.id,
       result.second.id,

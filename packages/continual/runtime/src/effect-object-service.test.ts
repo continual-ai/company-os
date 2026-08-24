@@ -15,6 +15,7 @@ import {
 } from "./definition/request"
 import { defineRoot } from "./definition/root"
 import {
+  EmailAddress,
   RecordAlias,
   type RecordAlias as RecordAliasType,
   RecordId,
@@ -377,6 +378,7 @@ describe("ObjectService", () => {
           .pipe(Effect.flip)
         const first = yield* service.create({
           aliases: [hubspotAcme],
+          email: EmailAddress("Sales@Acme.Example"),
           name: "Acme",
           slug: "acme",
         })
@@ -510,7 +512,7 @@ describe("ObjectService", () => {
 
     expect(result.first).toMatchObject({
       aliases: ["hubspot:portal_1:company:acme"],
-      email: null,
+      email: "sales@acme.example",
       id: "account_1",
       name: "Acme",
       systemManaged: false,

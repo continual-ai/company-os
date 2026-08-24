@@ -17,7 +17,10 @@ import {
   type Page,
   type ObjectRef,
 } from "@continual/runtime"
-import { toEffectObjectSchema, toEffectSchema } from "@continual/runtime/effect"
+import {
+  toEffectInputSchema,
+  toEffectObjectSchema,
+} from "@continual/runtime/effect"
 import {
   ObjectNotFound,
   RecordAliasConflict,
@@ -500,7 +503,7 @@ export function makeObjectRepository<
       }
       const property = object.properties[field]
       if (property !== undefined) {
-        const decoded = Schema.decodeUnknownSync(toEffectSchema(property))(
+        const decoded = Schema.decodeUnknownSync(toEffectInputSchema(property))(
           value
         )
         const queryValue = Schema.decodeUnknownSync(queryValueSchema)(decoded)

@@ -42,7 +42,6 @@ const Account = defineObject({
     externalId: schema.string({ immutable: true }),
     name: schema.string({ minLength: 1 }),
     email: schema.email({ nullable: true }),
-    searchLabel: schema.string({ outputOnly: true }),
     status: schema.select({
       default: "active",
       options: [
@@ -55,6 +54,18 @@ const Account = defineObject({
 })
 
 describe("Effect Schema projection", () => {
+  it("canonicalizes semantic string inputs before validation", () => {
+    const decodeEmail = Schema.decodeUnknownSync(
+      toEffectInputSchema(schema.email())
+    )
+    const decodeDomain = Schema.decodeUnknownSync(
+      toEffectInputSchema(schema.domain())
+    )
+
+    expect(decodeEmail("  Hello@Example.COM  ")).toBe("hello@example.com")
+    expect(decodeDomain("  ACME.Example  ")).toBe("acme.example")
+  })
+
   it("decodes records from portable object definitions", () => {
     const decode = Schema.decodeUnknownSync(toEffectObjectSchema(Account))
     const base = {
@@ -77,7 +88,6 @@ describe("Effect Schema projection", () => {
         externalId: "external_1",
         logo: { assetId: "asset_1", alt: "Acme logo" },
         name: "Acme",
-        searchLabel: "Acme search",
         status: "active",
       })
     ).toEqual({
@@ -86,7 +96,6 @@ describe("Effect Schema projection", () => {
       externalId: "external_1",
       logo: { assetId: "asset_1", alt: "Acme logo" },
       name: "Acme",
-      searchLabel: "Acme search",
       status: "active",
     })
     expect(() =>
@@ -96,7 +105,6 @@ describe("Effect Schema projection", () => {
         externalId: "external_1",
         logo: null,
         name: "",
-        searchLabel: "",
         status: "active",
       })
     ).toThrow()
@@ -107,7 +115,6 @@ describe("Effect Schema projection", () => {
         name: "Acme",
         email: "not-an-email",
         logo: null,
-        searchLabel: "",
         status: "active",
       })
     ).toThrow()
@@ -118,7 +125,6 @@ describe("Effect Schema projection", () => {
         logo: { assetId: "" },
         email: null,
         name: "Acme",
-        searchLabel: "",
         status: "active",
       })
     ).toThrow()
@@ -130,7 +136,6 @@ describe("Effect Schema projection", () => {
         email: null,
         logo: null,
         name: "Acme",
-        searchLabel: "",
         status: "active",
       })
     ).toThrow()
@@ -217,7 +222,7 @@ describe("Effect Schema projection", () => {
       decodeCreate({
         externalId: "external_1",
         name: "Acme",
-        searchLabel: "not accepted",
+        unknown: "not accepted",
       })
     ).toEqual({
       externalId: "external_1",

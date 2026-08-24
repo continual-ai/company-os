@@ -1,4 +1,4 @@
-import { Schema } from "effect"
+import { Schema, SchemaTransformation } from "effect"
 
 import type { ErrorType } from "./definition/error"
 import { Etag, type ObjectRecord, type ObjectType } from "./definition/object"
@@ -111,8 +111,21 @@ function entry<const TKey extends PropertyKey, TValue>(
   return [key, value]
 }
 
-function compileString(definition: StringSchema): Schema.Codec<string> {
-  let value: Schema.Codec<string> = Schema.String
+function compileString(
+  definition: StringSchema,
+  mode: CompileMode
+): Schema.Codec<string> {
+  let value: Schema.Codec<string> =
+    mode === "input" &&
+    (definition.format === "domain" || definition.format === "email")
+      ? Schema.String.pipe(
+          Schema.decode(
+            SchemaTransformation.trim().compose(
+              SchemaTransformation.toLowerCase()
+            )
+          )
+        )
+      : Schema.String
 
   if (definition.minLength !== undefined) {
     value = value.check(Schema.isMinLength(definition.minLength))
@@ -249,7 +262,7 @@ function compileBase(
         ? toEffectRecordIdentifierSchema(definition.typeId)
         : recordIdSchema(definition.typeId)
     case "string":
-      return compileString(definition)
+      return compileString(definition, mode)
     case "struct": {
       const fields: CompiledSchemaFields = Object.fromEntries(
         Object.entries(definition.properties).map(([id, member]) =>
