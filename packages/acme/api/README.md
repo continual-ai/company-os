@@ -17,9 +17,9 @@ object declares its canonical parent type independently of its business links; f
 item is owned by a deal while CRM associations remain ordinary links.
 
 Each link defines complete `forward` and `reverse` traversals. The closed `AcmeModel` verifies that
-their endpoints mirror each other and derives singular ID properties such as `deal.companyId` and
-`contact.primaryCompanyId`, keeping object write schemas and link semantics aligned without making
-storage orientation part of the authoring API.
+their endpoints mirror each other and derives singular relationship properties such as
+`deal.company` and `contact.primaryCompany`, keeping object write schemas and link semantics aligned
+without making storage orientation part of the authoring API.
 
 ## Belongs here
 

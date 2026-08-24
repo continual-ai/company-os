@@ -1,5 +1,6 @@
 import { defineObject, schema } from "@continual/runtime"
 
+import { AuthorizationScope } from "#interfaces/authorization-scope"
 import { Party } from "#interfaces/party"
 import { Platform } from "#platform"
 
@@ -11,6 +12,7 @@ export const Company = defineObject({
   pluralName: "Companies",
   description: "An organization Acme sells to, serves, or partners with.",
   implements: [
+    { interface: AuthorizationScope },
     {
       interface: Party,
       propertyMapping: { image: "logo", name: "name" },
