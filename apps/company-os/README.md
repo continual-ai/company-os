@@ -54,12 +54,12 @@ Effect PostgreSQL client
 - Handlers call the governed service method corresponding to the declared object query or action.
 - Cross-object service methods coordinate governed object services and own their transaction.
 - Object services are the authoritative boundary for authorization, portable schema validation,
-  metadata, and object-level behavior, regardless of whether the caller is HTTP, MCP, an agent, a
-  job, or another service.
+  caller-owned metadata, audit identity, write preconditions, and object-level behavior, regardless
+  of whether the caller is HTTP, MCP, an agent, a job, or another service.
 - Repositories atomically maintain the shared object row, same-ID object-specific row, and declared
-  interface membership rows, implement all-or-nothing batch writes, and own custom persistence
-  queries; only repository implementations access the database, and they do not duplicate portable
-  property validation as SQL checks.
+  interface membership rows, assign entity tags and storage timestamps, implement all-or-nothing
+  batch writes, and own custom persistence queries; only repository implementations access the
+  database, and they do not duplicate portable property validation as SQL checks.
 
 Authorization uses the same ontology and storage path as business data. An authenticated identity
 acts as itself and as every group it belongs to. Role assignments grant exact model-derived
@@ -83,6 +83,11 @@ record ID, rejects the reserved system actor, and provides `CurrentInvocation` t
 request data. Internal entrypoints explicitly use `systemInvocation`. HTTP, MCP, jobs, and agents
 should otherwise differ only in how they establish that trusted context before calling the same
 governed services. Executable object handlers are not bound yet.
+
+`IdentityId` and `PrincipalId` are derived from the closed `AcmeModel`, so each is the branded union
+of its interface's concrete implementers. `actorId` names an identity in invocation and
+authorization internals; `principal` names the identity-or-group relationship on role assignments.
+There is no separate `ActorId` brand or Actor object.
 
 The portable repository contract and standard service behavior come from `@continual/runtime`;
 `@continual/postgres` supplies the reusable Drizzle schema compiler and repository implementation.
@@ -112,8 +117,10 @@ the source of truth for objects, properties, interfaces, ownership, and links.
 `src/server/database/schema.server.ts` instantiates the reusable compiler and contains only
 deliberate Acme-specific physical overrides such as generated columns and indexes. There is no
 generated TypeScript schema and no handwritten second copy of the model. Drizzle Kit reads the
-projection and generates an explicit, immutable SQL history under
-`src/server/database/migrations`. Deployments apply that history and converge source-owned records
+projection and generates explicit SQL under `src/server/database/migrations`. While the baseline is
+still pre-deployment, keep one reviewed `initial` migration and replace it whenever the model
+changes. Once any shared or production database depends on that baseline, freeze it and append
+forward-only migrations. Deployments apply the committed history and converge source-owned records
 before serving the corresponding application revision.
 
 ### Local setup
@@ -134,15 +141,16 @@ order and is the normal setup and release command. Raw persistence establishes o
 Platform and audit Identity needed to begin; repositories converge the concrete system account and
 all remaining records. All three commands are safe to run repeatedly.
 
-### Change the schema
+### Change the pre-deployment baseline
 
 1. Edit the source contract in `packages/acme/api`. Change
    `src/server/database/schema.server.ts` only when the physical projection needs a deliberate
    database-specific override.
-2. Generate a named migration from the repository root:
+2. Remove the existing baseline migration directory and generate a new baseline from the repository
+   root:
 
    ```sh
-   pnpm --filter company-os db:generate --name add_company_owner
+   pnpm --filter company-os db:generate --name initial
    ```
 
 3. Review both the generated `migration.sql` and `snapshot.json`. Check renames, destructive DDL,
@@ -154,11 +162,15 @@ all remaining records. All three commands are safe to run repeatedly.
    pnpm --filter company-os test
    ```
 
-5. Apply the migration to the local database and exercise the affected repository behavior:
+5. Reset the dedicated local database and exercise the affected repository behavior:
 
    ```sh
-   pnpm --filter company-os db:deploy
+   CONFIRM_DATABASE_RESET=company_os pnpm --filter company-os db:reset
    ```
+
+This replacement workflow is deliberately limited to the current pre-deployment phase. After the
+first shared deployment, preserve the baseline and generate a descriptive migration such as
+`pnpm --filter company-os db:generate --name add_company_owner` for every subsequent schema change.
 
 For SQL that Drizzle cannot derive, generate an empty, tracked migration instead of creating an
 untracked script:

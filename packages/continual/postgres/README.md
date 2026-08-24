@@ -7,6 +7,11 @@ tables and provides the standard PostgreSQL object repository implementation. It
 storage behavior shared by company backends: object hierarchy, interface membership, links,
 aliases, filtering, pagination, optimistic writes, and transactional invariants.
 
+PostgreSQL is authoritative for record timestamps: inserts use column defaults and updates set
+`updated_at = now()` in the same statement that checks the current entity tag. The same write
+generates the successor tag with PostgreSQL's UUID generator. Audit actor IDs arrive from the
+governed service; no trigger or session identity is hidden beneath the repository query.
+
 The compiler maps persisted shape into native columns, defaults, nullability, foreign keys,
 uniqueness, indexes, and structural checks. It deliberately does not duplicate portable property
 rules such as string lengths, numeric ranges, select membership, or formats as SQL constraints;

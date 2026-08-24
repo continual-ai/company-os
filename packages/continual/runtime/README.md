@@ -13,6 +13,7 @@ import {
   defineModel,
   defineObject,
   defineRoot,
+  type RecordIdOf,
   schema,
 } from "@continual/runtime"
 import { createClient } from "@continual/runtime/client"
@@ -27,7 +28,24 @@ Every model defines one semantic root, and its objects form one explicit ownersh
 it. For example, a standalone Company OS can name that root `Platform`:
 
 ```ts
+const Identity = defineInterface({
+  id: "identity",
+  name: "Identity",
+  pluralName: "Identities",
+})
+
 const Platform = defineRoot({ id: "platform", name: "Platform" })
+
+const User = defineObject({
+  id: "user",
+  collection: "users",
+  name: "User",
+  parent: Platform,
+  pluralName: "Users",
+  properties: { name: schema.string({ label: "Name" }) },
+  display: { title: "name" },
+  implements: [{ interface: Identity }],
+})
 
 const Lead = defineObject({
   id: "lead",
@@ -40,12 +58,16 @@ const Lead = defineObject({
 })
 
 const CompanyModel = defineModel({
+  actor: Identity,
   id: "company",
-  name: "Company",
-  root: Platform,
-  objects: [Lead],
+  interfaces: [Identity],
   links: [],
+  name: "Company",
+  objects: [User, Lead],
+  root: Platform,
 })
+
+export type IdentityId = RecordIdOf<typeof CompanyModel, typeof Identity>
 ```
 
 The root is a singleton structural resource rather than an ordinary CRUD object. It may implement
@@ -53,9 +75,14 @@ marker interfaces, such as an authorization scope, but does not acquire configur
 actions; model-specific configuration belongs in ordinary child objects.
 
 Every object definition declares its parent type. Creates directly beneath the model root inherit
-the authenticated authority's root record; nested creates supply a typed `parent`. This parent
+the company service's configured root record; nested creates supply a typed `parent`. This parent
 is the canonical authorization and administrative containment edge; ordinary business
 relationships remain links.
+Every model also selects a registered interface as its `actor`. The IDs represented by that
+interface become the exact `createdBy` and `updatedBy` types for every bound object record.
+`RecordIdOf` derives similarly branded ID unions for any registered interface, object, or root, so
+company APIs can publish names such as `IdentityId` and `PrincipalId` without defining parallel
+brands.
 Objects are readable through `get`, `list`, and `batchGet` by convention. They provide `create`,
 `update`, `delete`, and atomic `batchDelete` actions by default; set a write to `false` to disable
 it, and declare additional actions for business behavior. Disabling `delete` also disables
@@ -73,7 +100,7 @@ overloading a business property's name.
 
 The remaining vocabulary is deliberately scoped. A **property** is schema-declared data on an
 object, interface, or structured input. A **field** is a query, sort, or validation selector and may
-name either a property or standard record metadata such as `id` and `createdAt`. A **key** is a local
+name either a property or a standard record field such as `id` and `createdAt`. A **key** is a local
 programmatic member name, such as a link traversal key; it is not another form of canonical `id`.
 
 Public relationship properties use the relationship noun without an `Id` suffix: `company`,
@@ -101,7 +128,7 @@ Stable source-owned records may use readable well-known canonical IDs such as
 determine type, routing, or authorization. Aliases are alternate identifiers, especially identities
 assigned by external systems; they are not required for well-known records.
 
-Every returned record also carries output-only `systemManaged` metadata. It identifies records
+Every returned record also carries the output-only `systemManaged` field. It identifies records
 whose ordinary mutations are reserved for trusted system workflows; it does not grant access or
 change hierarchy. The company-owned authorization policy decides which invocation is trusted to
 manage them.
@@ -149,7 +176,7 @@ await client.leads.qualify({ id: leadId })
 ```
 
 `list` is the one standard collection query. Simple pagination uses `GET /leads`; filters or
-sorting use the equivalent `POST /leads/search` projection so the transport does not constrain the
+sorting use the equivalent `POST /leads:search` projection so the transport does not constrain the
 portable request. Filters are typed by property kind, compose with `and`, `or`, and `not`, and
 sorting is ordered and deterministic:
 
@@ -204,6 +231,7 @@ const makeCompanyService = Effect.gen(function* () {
 
   return ObjectService.make(AcmeModel.objects.company, repository, {
     authorize: authorization.require,
+    rootId: PLATFORM_ID,
     resolveRecordAliases,
     visibleWithin: authorization.visibleWithin,
   })
@@ -233,15 +261,28 @@ The repository-only `upsert` contract converges complete stable-ID records for t
 not automatically exposed as a public object action.
 
 The object service is the authoritative boundary for record-identifier resolution,
-definition-derived validation, authorization, defaults, record metadata, immutable properties,
-create-under-parent context, and optimistic writes. This applies equally to calls from HTTP, MCP,
-agents, jobs, tests, and other services. Transport decoding is an additional protocol boundary,
-not the only validation layer. Each invocation supplies `CurrentInvocation` from a trusted boundary;
-the runtime never reads actor or root identity from operation input. Company services must add
-authorization and business behavior before a transport is bound. Repositories
+definition-derived validation, authorization, defaults, caller-owned `metadata`, immutable
+properties, audit fields, create-under-parent context, and optimistic writes. Update and delete
+accept an optional `etag`; when supplied it is the caller's write precondition, and when omitted the
+service uses the version it loaded while enforcing policy. The service supplies audit actors from
+its invocation context. The repository compares the current `etag`, generates the stored successor,
+uses its storage clock for `createdAt` and `updatedAt`, and persists those values in the same atomic
+write. This applies equally to calls from HTTP, MCP, agents, jobs, tests, and other services.
+Transport decoding is an additional protocol boundary, not the only validation layer. Each
+invocation supplies `CurrentInvocation` from a trusted boundary; the company service supplies its
+root configuration. The runtime never reads either value from operation input. Company services
+must add authorization and business behavior before a transport is bound. Repositories
 receive validated values and own persistence translation, concurrency, and atomicity rather than
 reimplementing semantic validation. Custom actions coordinate object services rather than reaching
 through them to repositories.
+
+Use one naming pattern in company backends: `CompanyRepository` is the object-specific persistence
+capability, `CompanyService` is the governed application capability, and an HTTP or MCP handler is a
+thin transport adapter over that service. Routers partition the semantic input mechanically—such
+as `id` in the path, delete `etag` in the query, and update values in the body—then merge those parts
+back into the same service request object. They do not authorize, validate business rules, supply
+audit identity, generate stored versions, or call repositories directly. There is no separate
+controller layer unless a transport has substantial protocol-specific behavior worth naming.
 
 ## Owns
 
