@@ -240,11 +240,12 @@ function addDefaultEndpoints(
 
   const filterFields = [
     "createdAt",
-    "createdById",
+    "createdBy",
     "id",
-    "parentId",
+    "parent",
+    "systemManaged",
     "updatedAt",
-    "updatedById",
+    "updatedBy",
     ...Object.keys(object.properties),
   ]
   const fieldSchema = Schema.Literals(filterFields).annotate({

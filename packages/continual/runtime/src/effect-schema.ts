@@ -443,7 +443,7 @@ export function toEffectObjectSchema(
     entry("aliases", recordAliasesSchema),
     entry("annotations", annotationsSchema),
     entry("createdAt", createdAt),
-    entry("createdById", actorId),
+    entry("createdBy", actorId),
     entry(
       "etag",
       Schema.String.annotate({ readOnly: true }).pipe(
@@ -451,16 +451,25 @@ export function toEffectObjectSchema(
       )
     ),
     entry(
-      "parentId",
-      Schema.String.annotate({ title: "Parent ID" }).pipe(
+      "parent",
+      Schema.String.annotate({ title: "Parent" }).pipe(
         Schema.fromBrand(
-          `RecordId:${object.parent.objectType}`,
-          RecordId(object.parent.objectType)
+          `RecordId:${object.parent.typeId}`,
+          RecordId(object.parent.typeId)
         )
       )
     ),
+    entry(
+      "systemManaged",
+      Schema.Boolean.annotate({
+        description:
+          "Whether ordinary mutations are reserved for trusted system workflows.",
+        readOnly: true,
+        title: "System managed",
+      })
+    ),
     entry("updatedAt", updatedAt),
-    entry("updatedById", actorId),
+    entry("updatedBy", actorId),
     ...Object.entries(compileObjectProperties(object)),
   ])
   return annotateObjectSchema(
@@ -479,10 +488,10 @@ export function toEffectObjectCreateSchema(
     annotations: Schema.optionalKey(annotationsSchema),
     ...compileCreateProperties(object),
   }
-  if (!object.parent.root) {
-    fields.parentId = toEffectRecordIdentifierSchema(
-      object.parent.objectType
-    ).annotate({ title: "Parent ID or alias" })
+  if (object.parent.kind !== "root") {
+    fields.parent = toEffectRecordIdentifierSchema(
+      object.parent.typeId
+    ).annotate({ title: "Parent" })
   }
   return annotateObjectSchema(
     object,

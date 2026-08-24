@@ -22,9 +22,10 @@ export type {
   InterfaceImplementation,
   InterfaceType,
 } from "./definition/interface"
-export { defineModel } from "./definition/model"
+export { defineModel, modelTypeAccepts } from "./definition/model"
 export type {
   Model,
+  ModelCatalog,
   ModelInterfaceRecordId,
   ModelObjectRef,
 } from "./definition/model"

@@ -3,7 +3,7 @@ import { describe, expect, expectTypeOf, it } from "vitest"
 import { defineError } from "./error"
 import { defineInterface } from "./interface"
 import { defineLink } from "./link"
-import { defineModel } from "./model"
+import { defineModel, modelTypeAccepts } from "./model"
 import { defineObject } from "./object"
 import { defineRoot } from "./root"
 import {
@@ -93,8 +93,8 @@ describe("model definitions", () => {
     expect(Object.keys(model.objects)).toEqual(["contact"])
     expect(model.root).toEqual(Root)
     expect(model.objects.contact.parent).toEqual({
-      objectType: "root",
-      root: true,
+      kind: "root",
+      typeId: "root",
     })
     expect(Object.keys(model.actions.contact)).toEqual([
       "create",
@@ -142,9 +142,7 @@ describe("model definitions", () => {
       scope: "collection",
     })
     expectTypeOf(model.objects.contact.collection).toEqualTypeOf<"contacts">()
-    expectTypeOf(
-      model.objects.contact.parent.objectType
-    ).toEqualTypeOf<"root">()
+    expectTypeOf(model.objects.contact.parent.typeId).toEqualTypeOf<"root">()
     expectTypeOf(model.actions.contact.enroll.id).toEqualTypeOf<"enroll">()
     expect(model.actions.contact).toBe(model.objects.contact.actions)
   })
@@ -216,6 +214,25 @@ describe("model definitions", () => {
     ).toThrow(/collection 'contacts'/)
   })
 
+  it("requires the declared actor interface to have an implementer", () => {
+    const Identity = defineInterface({
+      id: "identity",
+      name: "Identity",
+      pluralName: "Identities",
+    })
+    expect(() =>
+      defineModel({
+        actor: Identity,
+        id: "missingActor",
+        interfaces: [Identity],
+        links: [],
+        name: "Missing actor",
+        objects: [Contact],
+        root: Root,
+      })
+    ).toThrow(/Actor interface 'identity' has no implementer/)
+  })
+
   it("rejects object references absent from the model", () => {
     const Account = defineObject({
       id: "account",
@@ -233,10 +250,10 @@ describe("model definitions", () => {
         name: "Membership",
         parent: Account,
         pluralName: "Memberships",
-        properties: { accountId: schema.recordId(Account) },
-        display: { title: "accountId" },
+        properties: { account: schema.recordId(Account) },
+        display: { title: "account" },
       })
-    ).toThrow(/use the standard 'parentId'/)
+    ).toThrow(/use the standard 'parent'/)
 
     const Membership = defineObject({
       id: "membership",
@@ -248,7 +265,7 @@ describe("model definitions", () => {
       display: { title: "name" },
     })
 
-    expectTypeOf(Membership.parent.objectType).toEqualTypeOf<"account">()
+    expectTypeOf(Membership.parent.typeId).toEqualTypeOf<"account">()
     const completeModel = defineModel({
       id: "complete",
       name: "Complete",
@@ -258,7 +275,7 @@ describe("model definitions", () => {
     })
     expect(completeModel.actions.membership.create.input).toMatchObject({
       properties: {
-        parentId: { kind: "recordId", typeId: "account" },
+        parent: { kind: "recordId", typeId: "account" },
       },
     })
 
@@ -270,7 +287,52 @@ describe("model definitions", () => {
         links: [],
         root: Root,
       })
-    ).toThrow(/parent references object 'account'/)
+    ).toThrow(/parent type 'account' is not registered as object/)
+  })
+
+  it("names public record references by their semantic role", () => {
+    const Account = defineObject({
+      id: "account",
+      collection: "accounts",
+      name: "Account",
+      parent: Root,
+      pluralName: "Accounts",
+      properties: { name: schema.string() },
+      display: { title: "name" },
+    })
+
+    expect(() =>
+      defineObject({
+        id: "membership",
+        collection: "memberships",
+        name: "Membership",
+        parent: Root,
+        pluralName: "Memberships",
+        properties: { accountId: schema.recordId(Account) },
+        display: { title: "accountId" },
+      })
+    ).toThrow(/record reference 'accountId'.*without an 'Id' suffix/)
+
+    expect(() =>
+      defineInterface({
+        id: "accountHolder",
+        name: "Account holder",
+        pluralName: "Account holders",
+        properties: { accountId: schema.recordId(Account) },
+      })
+    ).toThrow(/record reference 'accountId'.*without an 'Id' suffix/)
+
+    expect(() =>
+      schema.object({ accountIds: schema.array(schema.recordId(Account)) })
+    ).toThrow(/record reference 'accountIds'.*without an 'Id' suffix/)
+
+    expect(
+      schema.object({
+        externalId: schema.string(),
+        id: schema.recordId(Account),
+        ids: schema.array(schema.recordId(Account)),
+      })
+    ).toMatchObject({ kind: "struct" })
   })
 
   it("registers first-class bidirectional links", () => {
@@ -329,7 +391,7 @@ describe("model definitions", () => {
     expectTypeOf(
       model.links.companyContacts.reverse.key
     ).toEqualTypeOf<"contacts">()
-    expect(model.objects.companyContact.properties.companyId).toMatchObject({
+    expect(model.objects.companyContact.properties.company).toMatchObject({
       kind: "recordId",
       label: "Company",
       requiredOnCreate: true,
@@ -383,7 +445,7 @@ describe("model definitions", () => {
       root: Root,
     })
 
-    expect(model.objects.employee.properties.companyId).toMatchObject({
+    expect(model.objects.employee.properties.company).toMatchObject({
       kind: "recordId",
       typeId: "company",
     })
@@ -621,8 +683,15 @@ describe("root definitions", () => {
       propertyMapping: {},
     })
     expectTypeOf<
-      InferSchema<typeof model.objects.permission.properties.scopeId>
+      InferSchema<typeof model.objects.permission.properties.scope>
     >().toEqualTypeOf<RecordId<"platform"> | RecordId<"workspace">>()
+    expect(modelTypeAccepts(model, "platform", "authorizationScope")).toBe(true)
+    expect(modelTypeAccepts(model, "workspace", "authorizationScope")).toBe(
+      true
+    )
+    expect(modelTypeAccepts(model, "permission", "authorizationScope")).toBe(
+      false
+    )
     expect(() =>
       defineModel({
         id: "missingScope",
@@ -676,7 +745,7 @@ describe("root definitions", () => {
         objects: [OtherObject],
         root: Root,
       })
-    ).toThrow(/parent does not match root 'root'/)
+    ).toThrow(/parent type 'otherRoot' is not registered as root/)
   })
 })
 

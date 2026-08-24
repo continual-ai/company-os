@@ -126,12 +126,10 @@ type CanonicalObjectPropertyFilter<TObject extends ObjectType> = {
 }[keyof TObject["properties"] & string]
 
 type BaseObjectFilter<TObject extends ObjectType> =
-  | EqualityFilter<"createdById" | "updatedById", string>
+  | EqualityFilter<"createdBy" | "updatedBy", string>
   | EqualityFilter<"id", RecordIdentifier<TObject["id"]>>
-  | EqualityFilter<
-      "parentId",
-      RecordIdentifier<TObject["parent"]["objectType"]>
-    >
+  | EqualityFilter<"parent", RecordIdentifier<TObject["parent"]["typeId"]>>
+  | EqualityFilter<"systemManaged", boolean>
   | OrderedFilter<"createdAt" | "updatedAt", ObjectRecord<TObject>["createdAt"]>
 
 export type ObjectFilter<TObject extends ObjectType = ObjectType> =
@@ -148,9 +146,10 @@ export type ObjectFilter<TObject extends ObjectType = ObjectType> =
     }
 
 type CanonicalBaseObjectFilter<TObject extends ObjectType> =
-  | EqualityFilter<"createdById" | "updatedById", string>
+  | EqualityFilter<"createdBy" | "updatedBy", string>
   | EqualityFilter<"id", ObjectRecord<TObject>["id"]>
-  | EqualityFilter<"parentId", ObjectRecord<TObject>["parentId"]>
+  | EqualityFilter<"parent", ObjectRecord<TObject>["parent"]>
+  | EqualityFilter<"systemManaged", boolean>
   | OrderedFilter<"createdAt" | "updatedAt", ObjectRecord<TObject>["createdAt"]>
 
 export type CanonicalObjectFilter<TObject extends ObjectType> =
@@ -180,11 +179,12 @@ export interface ObjectSort<TObject extends ObjectType = ObjectType> {
   readonly direction: SortDirection
   readonly field:
     | "createdAt"
-    | "createdById"
+    | "createdBy"
     | "id"
-    | "parentId"
+    | "parent"
+    | "systemManaged"
     | "updatedAt"
-    | "updatedById"
+    | "updatedBy"
     | SortablePropertyKeys<TObject>
   /** Defaults to `last`, independently of direction. */
   readonly nulls?: NullPlacement

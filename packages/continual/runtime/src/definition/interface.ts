@@ -6,6 +6,7 @@ import type {
   ImageSchema,
   SchemaDefinition,
 } from "./schema"
+import { assertReferencePropertyName } from "./schema"
 
 export interface InterfaceDisplay<
   TProperties extends Readonly<Record<string, AnySchema>>,
@@ -227,6 +228,11 @@ export function defineInterface<
   const properties = (definition.properties ?? {}) as TProperties
   for (const [propertyId, property] of Object.entries(properties)) {
     definitionId(propertyId)
+    assertReferencePropertyName(
+      `Interface '${definition.id}'`,
+      propertyId,
+      property
+    )
     if (
       Object.hasOwn(property, "default") ||
       property.immutable === true ||

@@ -137,8 +137,14 @@ describe("Effect HTTP projection", () => {
     const updateSchema = document.components?.schemas.AccountUpdateInput
     expect(recordSchema).toHaveProperty("properties.email")
     expect(recordSchema).toHaveProperty("properties.aliases")
+    expect(recordSchema).toHaveProperty("properties.createdBy")
     expect(recordSchema).toHaveProperty("properties.logo")
+    expect(recordSchema).toHaveProperty("properties.parent")
     expect(recordSchema).toHaveProperty("properties.searchLabel")
+    expect(recordSchema).toHaveProperty("properties.updatedBy")
+    expect(recordSchema).not.toHaveProperty("properties.createdById")
+    expect(recordSchema).not.toHaveProperty("properties.parentId")
+    expect(recordSchema).not.toHaveProperty("properties.updatedById")
     expect(recordSchema).toHaveProperty(
       "required",
       expect.arrayContaining(["aliases", "email", "logo", "searchLabel"])
@@ -151,7 +157,7 @@ describe("Effect HTTP projection", () => {
     expect(createSchema).toHaveProperty("properties.aliases")
     expect(createSchema).toHaveProperty("properties.logo")
     expect(createSchema).toHaveProperty("properties.externalId")
-    expect(createSchema).not.toHaveProperty("properties.parentId")
+    expect(createSchema).not.toHaveProperty("properties.parent")
     expect(createSchema).not.toHaveProperty("properties.searchLabel")
     expect(JSON.stringify(createSchema)).not.toContain('"writeOnly":true')
     expect(updateSchema).toHaveProperty("properties.email")

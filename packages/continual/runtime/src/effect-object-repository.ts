@@ -6,6 +6,7 @@ import type {
   Etag,
   ObjectCreateValues,
   ObjectRecord,
+  ObjectParentRecordTypeId,
   ObjectType,
   ObjectUpdateValues,
 } from "./definition/object"
@@ -39,7 +40,7 @@ export class ObjectParentTypeMismatch extends Data.TaggedError(
   "ObjectParentTypeMismatch"
 )<{
   readonly actualParentObjectType: string
-  readonly expectedParentObjectType: string
+  readonly expectedParentTypeId: string
   readonly objectType: string
   readonly parentId: string
 }> {}
@@ -66,20 +67,24 @@ export class RecordAliasNotFound extends Data.TaggedError(
 /** Values supplied by the object service for a newly inserted record. */
 export type ObjectInsert<TObject extends ObjectType> = BaseRecord<
   TObject["id"],
-  TObject["parent"]["objectType"]
+  ObjectParentRecordTypeId<TObject>
 > &
-  Omit<ObjectCreateValues<TObject>, "parentId">
+  Omit<ObjectCreateValues<TObject>, "parent">
 
 /** Metadata applied atomically with an object update. */
 export interface ObjectUpdateMetadata {
   readonly etag: Etag
   readonly updatedAt: BaseRecord["updatedAt"]
-  readonly updatedById: ActorId
+  readonly updatedBy: ActorId
 }
 
-/** Canonical values accepted by a repository update. */
-export type ObjectRepositoryUpdate<TObject extends ObjectType> =
-  ObjectUpdateValues<TObject>
+/** Canonical update command accepted by persistence. */
+export interface ObjectRepositoryUpdate<TObject extends ObjectType> {
+  readonly changes: ObjectUpdateValues<TObject>
+  readonly expectedEtag: Etag
+  readonly id: RecordId<TObject["id"]>
+  readonly metadata: ObjectUpdateMetadata
+}
 
 /** Canonical query values accepted by a repository list. */
 export type RepositoryListRequest<TObject extends ObjectType> =
@@ -88,6 +93,11 @@ export type RepositoryListRequest<TObject extends ObjectType> =
 /** Canonical query filter accepted by a repository list. */
 export type RepositoryFilter<TObject extends ObjectType> =
   CanonicalObjectFilter<TObject>
+
+/** Internal hierarchy constraint supplied by governed services, never callers. */
+export interface RepositoryListVisibility {
+  readonly visibleWithin: ReadonlyArray<string>
+}
 
 /** Record version that must still exist when an atomic batch delete commits. */
 export interface ObjectDeleteTarget<TObject extends ObjectType> {
@@ -119,8 +129,7 @@ export interface Repository<
     TRequirements
   >
   readonly delete: (
-    id: RecordId<TObject["id"]>,
-    expectedEtag: Etag
+    target: ObjectDeleteTarget<TObject>
   ) => Effect.Effect<void, TError, TRequirements>
   readonly get: (
     id: RecordId<TObject["id"]>
@@ -129,12 +138,14 @@ export interface Repository<
     record: ObjectInsert<TObject>
   ) => Effect.Effect<ObjectRecord<TObject>, TError, TRequirements>
   readonly list: (
-    request?: RepositoryListRequest<TObject>
+    request?: RepositoryListRequest<TObject>,
+    visibility?: RepositoryListVisibility
   ) => Effect.Effect<Page<ObjectRecord<TObject>>, TError, TRequirements>
   readonly update: (
-    id: RecordId<TObject["id"]>,
-    input: ObjectRepositoryUpdate<TObject>,
-    expectedEtag: Etag,
-    metadata: ObjectUpdateMetadata
+    command: ObjectRepositoryUpdate<TObject>
+  ) => Effect.Effect<ObjectRecord<TObject>, TError, TRequirements>
+  /** Idempotently converges one complete, stable-ID record for trusted seeds. */
+  readonly upsert: (
+    record: ObjectInsert<TObject>
   ) => Effect.Effect<ObjectRecord<TObject>, TError, TRequirements>
 }

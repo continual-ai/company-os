@@ -53,7 +53,7 @@ marker interfaces, such as an authorization scope, but does not acquire configur
 actions; model-specific configuration belongs in ordinary child objects.
 
 Every object definition declares its parent type. Creates directly beneath the model root inherit
-the authenticated authority's root record; nested creates supply a typed `parentId`. This parent
+the authenticated authority's root record; nested creates supply a typed `parent`. This parent
 is the canonical authorization and administrative containment edge; ordinary business
 relationships remain links.
 Objects are readable through `get`, `list`, and `batchGet` by convention. They provide `create`,
@@ -76,6 +76,15 @@ object, interface, or structured input. A **field** is a query, sort, or validat
 name either a property or standard record metadata such as `id` and `createdAt`. A **key** is a local
 programmatic member name, such as a link traversal key; it is not another form of canonical `id`.
 
+Public relationship properties use the relationship noun without an `Id` suffix: `company`,
+`parent`, `createdBy`, and `updatedBy`. Their unexpanded value is a canonical record ID, and the
+stable noun leaves room for a transport to expand that same property later. Definition-time
+validation rejects record-reference properties that violate this rule. A record's own `id`,
+plural selector inputs such as `ids`, and genuinely opaque identifiers such as `externalId` or
+`assetId` retain the suffix. Internal authorization requests and physical storage columns use
+explicit names such as `recordIds`, `companyId`, and `company_id` when distinguishing a scalar ID
+from a loaded relation improves clarity.
+
 Every record has one canonical `id` and a set of opaque, globally qualified `aliases`, such as
 `hubspot:portal_1:company:123`. Create accepts an alias array. On update, an array replaces the
 complete set, while `{ add, remove }` applies an atomic delta; omission leaves aliases unchanged.
@@ -83,15 +92,25 @@ complete set, while `{ add, remove }` applies an atomic delta; omission leaves a
 a public input locates or references an existing record: `get`, `update`, `delete`, batch methods,
 parents, singular links, and reference filters. Alias values must be qualified with a namespace and
 contain `:`; canonical IDs cannot contain `:`, so transports can carry both as one unambiguous
-string. Services resolve aliases and validate their expected object or interface type before
-authorization. Stored references, repository calls, events, and returned records always use the
-canonical ID.
+string. Services resolve aliases in ordered batches and validate their expected object or interface
+type before authorization. Stored references, repository calls, events, and returned records always
+use the canonical ID.
+
+Stable source-owned records may use readable well-known canonical IDs such as
+`service_account_system`. These remain opaque application ABI: prefixes aid diagnostics but never
+determine type, routing, or authorization. Aliases are alternate identifiers, especially identities
+assigned by external systems; they are not required for well-known records.
+
+Every returned record also carries output-only `systemManaged` metadata. It identifies records
+whose ordinary mutations are reserved for trusted system workflows; it does not grant access or
+change hierarchy. The company-owned authorization policy decides which invocation is trusted to
+manage them.
 
 Interfaces name polymorphic roles such as `Party`, so links and other contracts can target a role
 without choosing one concrete object type. An interface may be a marker capability with no
 properties or a shared projection whose properties implementing objects map through an explicit
 `propertyMapping`. A link defines complete `forward` and `reverse` traversals, each with its source,
-target, local traversal `key`, label, and cardinality. `defineModel` derives a typed `${key}Id`
+target, local traversal `key`, label, and cardinality. `defineModel` derives a typed `${key}`
 property for the singular traversal, so standard object creates, updates, filters, and reads use the
 same reference without authors repeating it. Many traversals remain link collections rather than
 embedded record fields. The portable contract does not expose which traversal owns a foreign key
@@ -181,11 +200,12 @@ export class CompanyRepository extends Context.Service<CompanyRepository>()(
 const makeCompanyService = Effect.gen(function* () {
   const authorization = yield* Authorization
   const repository = yield* CompanyRepository
-  const resolveRecordAlias = yield* makeRecordAliasResolver
+  const resolveRecordAliases = yield* makeRecordAliasResolver
 
   return ObjectService.make(AcmeModel.objects.company, repository, {
     authorize: authorization.require,
-    resolveRecordAlias,
+    resolveRecordAliases,
+    visibleWithin: authorization.visibleWithin,
   })
 })
 
@@ -202,17 +222,23 @@ preserve its own atomicity and hierarchy invariants. In particular, `batchDelete
 supplied record version in one transaction or leave all of them unchanged. `@continual/postgres`
 provides the optional shared PostgreSQL implementation; company backends still own their adapter
 choice, physical overrides, migrations, credentials, and service composition. These physical
-choices never become part of the portable semantic model.
+choices never become part of the portable semantic model. Public clients, custom actions, and
+governed services accept one schema-aligned request object. Repositories accept canonical IDs
+directly for simple lookups, complete records for inserts and seed upserts, and named command objects
+for versioned mutations; transport-specific argument shapes stop at the router boundary.
 Repositories must also claim aliases atomically with the object write, enforce global uniqueness,
 release removed aliases, and return aliases in deterministic order. A normalized alias table is the
 expected relational projection; the public array is a record view, not a storage prescription.
+The repository-only `upsert` contract converges complete stable-ID records for trusted seeds; it is
+not automatically exposed as a public object action.
 
 The object service is the authoritative boundary for record-identifier resolution,
 definition-derived validation, authorization, defaults, record metadata, immutable properties,
 create-under-parent context, and optimistic writes. This applies equally to calls from HTTP, MCP,
 agents, jobs, tests, and other services. Transport decoding is an additional protocol boundary,
-not the only validation layer. Company
-services must add authorization and business behavior before a transport is bound. Repositories
+not the only validation layer. Each invocation supplies `CurrentInvocation` from a trusted boundary;
+the runtime never reads actor or root identity from operation input. Company services must add
+authorization and business behavior before a transport is bound. Repositories
 receive validated values and own persistence translation, concurrency, and atomicity rather than
 reimplementing semantic validation. Custom actions coordinate object services rather than reaching
 through them to repositories.

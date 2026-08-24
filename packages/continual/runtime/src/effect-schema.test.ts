@@ -61,11 +61,12 @@ describe("Effect Schema projection", () => {
       annotations: {},
       id: "account_1",
       createdAt: "2026-08-18T12:00:00Z",
-      createdById: "user_1",
+      createdBy: "user_1",
       etag: "v1",
-      parentId: "platform_1",
+      parent: "platform_1",
+      systemManaged: false,
       updatedAt: "2026-08-18T13:00:00.123Z",
-      updatedById: "user_1",
+      updatedBy: "user_1",
     }
 
     expect(
@@ -171,8 +172,8 @@ describe("Effect Schema projection", () => {
     expectTypeOf<Create["aliases"]>().toEqualTypeOf<
       ReadonlyArray<RecordAliasType> | undefined
     >()
-    expectTypeOf<Create["parentId"]>().toEqualTypeOf<undefined>()
-    expectTypeOf<AccountRecord["parentId"]>().toEqualTypeOf<
+    expectTypeOf<Create["parent"]>().toEqualTypeOf<undefined>()
+    expectTypeOf<AccountRecord["parent"]>().toEqualTypeOf<
       RecordId<"platform">
     >()
     expectTypeOf<Update["email"]>().toEqualTypeOf<
@@ -258,53 +259,54 @@ describe("Effect Schema projection", () => {
     })
     type MembershipCreate = ObjectCreateInput<typeof Membership>
     const membership = {
-      parentId: AccountId("account_1"),
+      parent: AccountId("account_1"),
       role: "owner",
     } satisfies MembershipCreate
-    expectTypeOf(membership.parentId).toEqualTypeOf<RecordId<"account">>()
-    expectTypeOf<MembershipCreate["parentId"]>().toEqualTypeOf<
+    expectTypeOf(membership.parent).toEqualTypeOf<RecordId<"account">>()
+    expectTypeOf<MembershipCreate["parent"]>().toEqualTypeOf<
       RecordIdentifier<"account">
     >()
     const decodeMembership = Schema.decodeUnknownSync(
       toEffectObjectCreateSchema(Membership)
     )
     expect(decodeMembership(membership)).toEqual({
-      parentId: "account_1",
+      parent: "account_1",
       role: "owner",
     })
-    expect(decodeMembership({ parentId: hubspotAlias, role: "owner" })).toEqual(
-      { parentId: hubspotAlias, role: "owner" }
-    )
+    expect(decodeMembership({ parent: hubspotAlias, role: "owner" })).toEqual({
+      parent: hubspotAlias,
+      role: "owner",
+    })
     expect(() => decodeMembership({ role: "owner" })).toThrow()
   })
 
   it("preserves action input inference while keeping Effect out of definitions", () => {
     const input = schema.object({
-      accountId: schema.recordId(Account),
+      account: schema.recordId(Account),
       notify: schema.optional(schema.boolean()),
     })
     type Input = InferSchema<typeof input>
     type InputBoundary = InferInputSchema<typeof input>
 
     expectTypeOf<Input>().toEqualTypeOf<{
-      readonly accountId: RecordId<"account">
+      readonly account: RecordId<"account">
       readonly notify?: boolean
     }>()
     expectTypeOf<InputBoundary>().toEqualTypeOf<{
-      readonly accountId: RecordIdentifier<"account">
+      readonly account: RecordIdentifier<"account">
       readonly notify?: boolean
     }>()
 
     const decode = Schema.decodeUnknownSync(toEffectSchema(input))
-    expect(decode({ accountId: "account_1" })).toEqual({
-      accountId: "account_1",
+    expect(decode({ account: "account_1" })).toEqual({
+      account: "account_1",
     })
     expect(() => decode({})).toThrow()
 
     const decodeInput = Schema.decodeUnknownSync(toEffectInputSchema(input))
     expect(
-      decodeInput({ accountId: RecordAlias("hubspot:account:account_1") })
-    ).toEqual({ accountId: "hubspot:account:account_1" })
+      decodeInput({ account: RecordAlias("hubspot:account:account_1") })
+    ).toEqual({ account: "hubspot:account:account_1" })
   })
 
   it("validates semantic money values", () => {

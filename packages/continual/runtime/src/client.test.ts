@@ -54,13 +54,14 @@ const accountRecord = {
   aliases: [],
   annotations: {},
   createdAt: "2026-08-18T18:00:00Z",
-  createdById: "user-1",
+  createdBy: "user-1",
   etag: "etag-1",
   id: "account/1",
   name: "Acme",
-  parentId: "platform_1",
+  parent: "platform_1",
+  systemManaged: false,
   updatedAt: "2026-08-18T18:00:00Z",
-  updatedById: "user-1",
+  updatedBy: "user-1",
 }
 
 function responseBody(url: string) {

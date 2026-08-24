@@ -328,9 +328,36 @@ export type AnySchema =
   | StructSchema
   | UnionSchema
 
+function isRecordReference(schemaDefinition: AnySchema): boolean {
+  switch (schemaDefinition.kind) {
+    case "array":
+      return isRecordReference(schemaDefinition.items)
+    case "optional":
+      return isRecordReference(schemaDefinition.value)
+    case "recordId":
+      return true
+    case "union":
+      return schemaDefinition.members.some(isRecordReference)
+    default:
+      return false
+  }
+}
+
+export function assertReferencePropertyName(
+  owner: string,
+  propertyId: string,
+  schemaDefinition: AnySchema
+): void {
+  if (/Ids?$/.test(propertyId) && isRecordReference(schemaDefinition)) {
+    throw new Error(
+      `${owner} record reference '${propertyId}' must be named by its semantic role without an 'Id' suffix.`
+    )
+  }
+}
+
 type InputSchemaValue<TSchema extends AnySchema> =
-  TSchema extends RecordIdSchema<string, infer TRecordTypeId>
-    ? RecordIdentifier<TRecordTypeId>
+  TSchema extends RecordIdSchema
+    ? SchemaValue<TSchema> | RecordAlias
     : TSchema extends ArraySchema<infer TItem>
       ? ReadonlyArray<InferInputSchema<TItem>>
       : TSchema extends MapSchema<infer TValue>
@@ -569,7 +596,10 @@ function object<
   properties: TProperties,
   options?: TOptions
 ): StructSchema<TProperties> & TOptions {
-  for (const propertyId of Object.keys(properties)) definitionId(propertyId)
+  for (const [propertyId, property] of Object.entries(properties)) {
+    definitionId(propertyId)
+    assertReferencePropertyName("Structured schema", propertyId, property)
+  }
   return {
     kind: "struct",
     properties,

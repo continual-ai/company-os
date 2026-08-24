@@ -348,7 +348,7 @@ function aliasUpdateSchema() {
 
 function objectRecordSchema(object: {
   readonly id: string
-  readonly parent: { readonly objectType: string }
+  readonly parent: { readonly typeId: string }
   readonly properties: Properties
 }) {
   return schema.object({
@@ -356,11 +356,12 @@ function objectRecordSchema(object: {
     aliases: aliasesSchema(),
     annotations: schema.map(schema.string()),
     createdAt: schema.timestamp({ outputOnly: true }),
-    createdById: schema.string({ outputOnly: true }),
+    createdBy: schema.string({ outputOnly: true }),
     etag: schema.string({ outputOnly: true }),
-    parentId: schema.recordId({ id: object.parent.objectType }),
+    parent: schema.recordId({ id: object.parent.typeId }),
+    systemManaged: schema.boolean({ outputOnly: true }),
     updatedAt: schema.timestamp({ outputOnly: true }),
-    updatedById: schema.string({ outputOnly: true }),
+    updatedBy: schema.string({ outputOnly: true }),
     ...object.properties,
   })
 }
@@ -370,7 +371,10 @@ export function standardActions(
     readonly collection: string
     readonly id: string
     readonly name: string
-    readonly parent: { readonly objectType: string; readonly root: boolean }
+    readonly parent: {
+      readonly kind: "interface" | "object" | "root"
+      readonly typeId: string
+    }
     readonly pluralName: string
     readonly properties: Properties
   },
@@ -389,9 +393,10 @@ export function standardActions(
       .map(([id, property]) => [id, schema.optional(property)])
   )
   if (settings.create) {
-    const parentInput = object.parent.root
-      ? {}
-      : { parentId: schema.recordId({ id: object.parent.objectType }) }
+    const parentInput =
+      object.parent.kind === "root"
+        ? {}
+        : { parent: schema.recordId({ id: object.parent.typeId }) }
     actions.push({
       kind: "action",
       id: "create",

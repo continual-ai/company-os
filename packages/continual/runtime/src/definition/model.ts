@@ -18,6 +18,7 @@ import type { RootType } from "./root"
 import {
   schema,
   type AnySchema,
+  type InferSchema,
   type RecordId,
   type RecordIdSchema,
 } from "./schema"
@@ -29,6 +30,7 @@ type LinkReferenceProperty<
   TRecordTypeId extends string,
   TCardinality extends Exclude<LinkCardinality, "many">,
 > = RecordIdSchema<TTargetTypeId, TRecordTypeId> & {
+  readonly _Value?: InferSchema<RecordIdSchema<TTargetTypeId, TRecordTypeId>>
   immutable: false
   nullable: TCardinality extends "zeroOrOne" ? true : false
   outputOnly: false
@@ -68,7 +70,7 @@ type StoredLinkProperty<
   TRoot extends RootType,
 > = TOwner["from"]["typeId"] extends TObjectType
   ? {
-      readonly [TKey in `${TOwner["key"]}Id`]: LinkReferenceProperty<
+      readonly [TKey in TOwner["key"]]: LinkReferenceProperty<
         TTarget["from"]["typeId"],
         LinkTargetRecordId<TTarget, TObjects, TRoot>,
         Exclude<TOwner["cardinality"], "many">
@@ -137,8 +139,9 @@ type BoundObject<
     infer TCollection,
     infer TProperties,
     infer TActions,
-    infer TParentObjectType,
-    infer TParentIsRoot,
+    infer TParentTypeId,
+    infer TParentKind,
+    infer TParentRecordTypeId,
     infer TInterfaces
   >
     ? ObjectType<
@@ -146,8 +149,11 @@ type BoundObject<
         TCollection,
         BoundProperties<TId, TProperties, TLinks, TObjects, TRoot>,
         TActions,
-        TParentObjectType,
-        TParentIsRoot,
+        TParentTypeId,
+        TParentKind,
+        TParentKind extends "interface"
+          ? InterfaceImplementerId<TObjects, TRoot, TParentTypeId>
+          : TParentRecordTypeId,
         TInterfaces
       >
     : never
@@ -186,6 +192,8 @@ export interface ModelCatalog {
     readonly objects: ReadonlyArray<ObjectType>
   }
   actions: Readonly<Record<string, Readonly<Record<string, Action>>>>
+  /** Interface implemented by records allowed to appear in audit actor fields. */
+  actor: InterfaceType | undefined
   id: string
   interfaces: Readonly<Record<string, InterfaceType>>
   kind: "model"
@@ -202,6 +210,7 @@ export interface Model<
   TLinks extends ReadonlyArray<LinkType> = ReadonlyArray<LinkType>,
   TInterfaces extends ReadonlyArray<InterfaceType> =
     ReadonlyArray<InterfaceType>,
+  TActor extends InterfaceType | undefined = InterfaceType | undefined,
 > {
   readonly [modelTypes]?: {
     readonly links: TLinks
@@ -211,6 +220,7 @@ export interface Model<
     >
   }
   actions: ActionRegistry<TObjects>
+  actor: TActor
   id: TId
   interfaces: InterfaceRegistry<TInterfaces>
   kind: "model"
@@ -314,10 +324,10 @@ function bindLinkProperties(
         return []
       }
 
-      const propertyId = `${reference.source.key}Id`
+      const propertyId = reference.source.key
       if (Object.hasOwn(object.properties, propertyId)) {
         throw new Error(
-          `Object '${object.id}' property '${propertyId}' duplicates link '${link.id}'; the model derives singular link ID properties automatically.`
+          `Object '${object.id}' property '${propertyId}' duplicates link '${link.id}'; the model derives singular link properties automatically.`
         )
       }
       const options: LinkReferenceOptions = { label: reference.source.label }
@@ -365,14 +375,16 @@ export function defineModel<
   const TObjects extends ReadonlyArray<ObjectType>,
   const TLinks extends ReadonlyArray<LinkType>,
   const TInterfaces extends ReadonlyArray<InterfaceType> = [],
+  const TActor extends TInterfaces[number] | undefined = undefined,
 >(definition: {
+  actor?: TActor
   id: TId
   interfaces?: TInterfaces
   links: TLinks
   name: string
   objects: TObjects
   root: TRoot
-}): Model<TId, TRoot, TObjects, TLinks, TInterfaces> {
+}): Model<TId, TRoot, TObjects, TLinks, TInterfaces, TActor> {
   const objectTypeIds = definition.objects.map((object) => object.id)
   const duplicateObject = duplicateValue(objectTypeIds)
   if (duplicateObject !== undefined) {
@@ -409,6 +421,14 @@ export function defineModel<
       `Type id '${typeCollision}' is shared by an object and interface.`
     )
   }
+  if (
+    definition.actor !== undefined &&
+    !interfaceIds.includes(definition.actor.id)
+  ) {
+    throw new Error(
+      `Actor interface '${definition.actor.id}' is not registered in model '${definition.id}'.`
+    )
+  }
 
   if (
     objectTypeIds.includes(definition.root.id) ||
@@ -433,20 +453,16 @@ export function defineModel<
     }
   }
   for (const object of definition.objects) {
-    if (
-      object.parent.root !==
-      (object.parent.objectType === definition.root.id)
-    ) {
+    const parentRegistered =
+      (object.parent.kind === "root" &&
+        object.parent.typeId === definition.root.id) ||
+      (object.parent.kind === "object" &&
+        registeredObjectTypeIds.has(object.parent.typeId)) ||
+      (object.parent.kind === "interface" &&
+        interfaceIds.includes(object.parent.typeId))
+    if (!parentRegistered) {
       throw new Error(
-        `Object '${object.id}' parent does not match root '${definition.root.id}' in model '${definition.id}'.`
-      )
-    }
-    if (
-      object.parent.objectType !== definition.root.id &&
-      !registeredObjectTypeIds.has(object.parent.objectType)
-    ) {
-      throw new Error(
-        `Object '${object.id}' parent references object '${object.parent.objectType}', which is not registered in model '${definition.id}'.`
+        `Object '${object.id}' parent type '${object.parent.typeId}' is not registered as ${object.parent.kind} in model '${definition.id}'.`
       )
     }
     for (const [propertyId, property] of Object.entries(object.properties)) {
@@ -473,23 +489,36 @@ export function defineModel<
       )
     }
   }
+  if (definition.actor !== undefined) {
+    const actorInterfaceId = definition.actor.id
+    const hasActor =
+      Object.hasOwn(definition.root.interfaces, actorInterfaceId) ||
+      definition.objects.some((object) =>
+        Object.hasOwn(object.interfaces, actorInterfaceId)
+      )
+    if (!hasActor) {
+      throw new Error(
+        `Actor interface '${actorInterfaceId}' has no implementer in model '${definition.id}'.`
+      )
+    }
+  }
 
   const objectsById = new Map(
     definition.objects.map((object) => [object.id, object])
   )
   for (const object of definition.objects) {
     const ancestry = new Set([object.id])
-    let parentObjectType = object.parent.objectType
-    while (parentObjectType !== definition.root.id) {
-      if (ancestry.has(parentObjectType)) {
+    let parent = object.parent
+    while (parent.kind === "object") {
+      if (ancestry.has(parent.typeId)) {
         throw new Error(
           `Object '${object.id}' has a cyclic parent hierarchy in model '${definition.id}'.`
         )
       }
-      ancestry.add(parentObjectType)
-      const parent = objectsById.get(parentObjectType)
-      if (parent === undefined) break
-      parentObjectType = parent.parent.objectType
+      ancestry.add(parent.typeId)
+      const parentObject = objectsById.get(parent.typeId)
+      if (parentObject === undefined) break
+      parent = parentObject.parent
     }
   }
 
@@ -500,7 +529,7 @@ export function defineModel<
       !registeredObjectTypeIds.has(reference.source.from.typeId)
     ) {
       throw new Error(
-        `Link '${link.id}' derives its singular '${reference.source.key}Id' property on interface '${reference.source.from.typeId}'; singular link references must resolve to an object.`
+        `Link '${link.id}' derives its singular '${reference.source.key}' property on interface '${reference.source.from.typeId}'; singular link references must resolve to an object.`
       )
     }
     for (const traversal of [link.forward, link.reverse]) {
@@ -574,6 +603,7 @@ export function defineModel<
   // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion
   return {
     actions,
+    actor: definition.actor,
     id: definitionId(definition.id),
     interfaces,
     kind: "model",
@@ -581,11 +611,27 @@ export function defineModel<
     name: definition.name,
     objects,
     root: definition.root,
-  } as unknown as Model<TId, TRoot, TObjects, TLinks, TInterfaces>
+  } as unknown as Model<TId, TRoot, TObjects, TLinks, TInterfaces, TActor>
 }
 
 export function modelActions(model: ModelCatalog): ReadonlyArray<Action> {
   return Object.values(model.actions).flatMap((group) => Object.values(group))
+}
+
+/** Whether a concrete stored object type is the expected type or implements it. */
+export function modelTypeAccepts(
+  model: ModelCatalog,
+  actualObjectType: string,
+  expectedTypeId: string
+): boolean {
+  if (actualObjectType === expectedTypeId) return true
+  if (actualObjectType === model.root.id) {
+    return Object.hasOwn(model.root.interfaces, expectedTypeId)
+  }
+  const object = model.objects[actualObjectType]
+  return (
+    object !== undefined && Object.hasOwn(object.interfaces, expectedTypeId)
+  )
 }
 
 export function modelLinks(model: ModelCatalog): ReadonlyArray<LinkType> {

@@ -12,10 +12,13 @@ import {
 import type { ObjectType } from "./definition/object"
 import type { RootType } from "./definition/root"
 
-export const API_DESCRIPTION_VERSION = "0.22" as const
+export const API_DESCRIPTION_VERSION = "0.25" as const
 
 type ObjectDescription = Omit<ObjectType, "actions" | "kind" | "parent"> & {
-  parent: { readonly objectType: string }
+  parent: {
+    readonly kind: "interface" | "object" | "root"
+    readonly typeId: string
+  }
 }
 
 /**
@@ -37,12 +40,11 @@ function describeObject({
   kind: _kind,
   ...description
 }: ModelObject<ModelCatalog>): ObjectDescription {
-  const { root: _root, ...parent } = description.parent
   return {
     ...description,
     display: { ...description.display },
     interfaces: { ...description.interfaces },
-    parent,
+    parent: { ...description.parent },
     properties: { ...description.properties },
   }
 }

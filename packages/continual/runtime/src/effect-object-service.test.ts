@@ -1,5 +1,5 @@
 import { Effect, Schema } from "effect"
-import { describe, expect, it } from "vitest"
+import { describe, expect, expectTypeOf, it } from "vitest"
 
 import {
   ActorId,
@@ -50,6 +50,22 @@ const Account = defineObject({
     }),
   },
   display: { status: "status", title: "name" },
+})
+
+const ReadOnlyAccount = defineObject({
+  id: "readOnlyAccount",
+  collection: "readOnlyAccounts",
+  name: "Read-only account",
+  parent: Platform,
+  pluralName: "Read-only accounts",
+  actions: {
+    batchDelete: false,
+    create: false,
+    delete: false,
+    update: false,
+  },
+  properties: { name: schema.string() },
+  display: { title: "name" },
 })
 
 type AccountRecord = ObjectRecord<typeof Account>
@@ -144,7 +160,7 @@ function makeRepository(
         return undefined
       }),
     batchGet: (ids) => Effect.forEach(ids, get),
-    delete: (id, expectedEtag) =>
+    delete: ({ expectedEtag, id }) =>
       get(id).pipe(
         Effect.flatMap((record) =>
           record.etag !== expectedEtag
@@ -196,7 +212,7 @@ function makeRepository(
           nextPageToken: hasNextPage ? PageToken(items.at(-1)!.id) : "",
         }
       }),
-    update: (id, input, expectedEtag, metadata) =>
+    update: ({ changes: input, expectedEtag, id, metadata }) =>
       get(id).pipe(
         Effect.flatMap((record) =>
           Effect.gen(function* () {
@@ -241,13 +257,71 @@ function makeRepository(
           })
         )
       ),
+    upsert: (record) =>
+      Effect.gen(function* () {
+        yield* claimAliases(record.id, record.aliases)
+        const existing = records.get(record.id)
+        if (existing !== undefined) {
+          releaseAliases(
+            record.id,
+            existing.aliases.filter((alias) => !record.aliases.includes(alias))
+          )
+        }
+        const hydrated: AccountRecord = {
+          ...record,
+          aliases: sortedAliases(record.aliases),
+          email: record.email ?? null,
+          status: record.status ?? "active",
+        }
+        records.set(record.id, hydrated)
+        return hydrated
+      }),
   }
 }
 
 describe("ObjectService", () => {
+  it("omits mutations disabled by the object definition", () => {
+    type ReadOnlyService = ObjectService.Service<typeof ReadOnlyAccount>
+
+    expectTypeOf<ReadOnlyService>().toHaveProperty("get")
+    expectTypeOf<ReadOnlyService>().toHaveProperty("list")
+    expectTypeOf<ReadOnlyService>().toHaveProperty("batchGet")
+    expectTypeOf<ReadOnlyService>().not.toHaveProperty("create")
+    expectTypeOf<ReadOnlyService>().not.toHaveProperty("update")
+    expectTypeOf<ReadOnlyService>().not.toHaveProperty("delete")
+    expectTypeOf<ReadOnlyService>().not.toHaveProperty("batchDelete")
+  })
+
+  it("generates sortable TypeIDs by default", async () => {
+    const rootId = PlatformId("platform_1")
+    const service = ObjectService.make(Account, makeRepository(new Map()), {
+      authorize: () => Effect.void,
+      resolveRecordAliases: (_expectedType, aliases) =>
+        Effect.fail(
+          new ObjectNotFound({
+            objectType: Account.id,
+            recordId: aliases[0]!,
+          })
+        ),
+      visibleWithin: () => Effect.succeed([rootId]),
+    })
+
+    const record = await Effect.runPromise(
+      service.create({ name: "Acme", slug: "acme" }).pipe(
+        Effect.provideService(ObjectService.CurrentInvocation, {
+          actorId: ActorId("user_1"),
+          rootId,
+        })
+      )
+    )
+
+    expect(record.id).toMatch(/^account_[0-9a-hjkmnp-tv-z]{26}$/)
+  })
+
   it("provides validated CRUD, atomic batching, pagination, and optimistic writes", async () => {
     let nextId = 0
-    const authorizationRequests: Array<ObjectService.AuthorizationRequest> = []
+    const accessRequests: Array<ObjectService.ObjectAccessRequest> = []
+    const aliasResolutionRequests: Array<ReadonlyArray<RecordAliasType>> = []
     const aliasOwners = new Map<RecordAliasType, string>()
     const repository = makeRepository(aliasOwners)
     const context = {
@@ -256,22 +330,26 @@ describe("ObjectService", () => {
     }
     const service = ObjectService.make(Account, repository, {
       authorize: (request) => {
-        authorizationRequests.push(request)
-        return Effect.succeed(context)
+        accessRequests.push(request)
+        return Effect.void
       },
       generateEtag: () => `etag_${nextId}`,
       generateRecordId: () => `account_${++nextId}`,
-      resolveRecordAlias: (_expectedType, alias) => {
-        const id = aliasOwners.get(alias)
-        return id === undefined
-          ? Effect.fail(
-              new ObjectNotFound({
-                objectType: Account.id,
-                recordId: alias,
-              })
-            )
-          : Effect.succeed(id)
+      resolveRecordAliases: (_expectedType, aliases) => {
+        aliasResolutionRequests.push(aliases)
+        return Effect.forEach(aliases, (alias) => {
+          const id = aliasOwners.get(alias)
+          return id === undefined
+            ? Effect.fail(
+                new ObjectNotFound({
+                  objectType: Account.id,
+                  recordId: alias,
+                })
+              )
+            : Effect.succeed(id)
+        })
       },
+      visibleWithin: () => Effect.succeed([context.rootId]),
     })
 
     const result = await Effect.runPromise(
@@ -321,10 +399,15 @@ describe("ObjectService", () => {
           pageToken: firstPage.nextPageToken,
         })
         const staleWrite = yield* repository
-          .update(first.id, { name: "Stale" }, first.etag, {
-            etag: updated.etag,
-            updatedAt: updated.updatedAt,
-            updatedById: context.actorId,
+          .update({
+            changes: { name: "Stale" },
+            expectedEtag: first.etag,
+            id: first.id,
+            metadata: {
+              etag: updated.etag,
+              updatedAt: updated.updatedAt,
+              updatedBy: context.actorId,
+            },
           })
           .pipe(Effect.flip)
         const immutableWrite = yield* service
@@ -344,7 +427,7 @@ describe("ObjectService", () => {
           name: "Acme, Inc.",
         })
         const aliasBatch = yield* service.batchGet({
-          ids: [second.id, legacyAcme],
+          ids: [hubspotBravo, legacyAcme],
         })
         const aliasConflict = yield* service
           .update({
@@ -409,7 +492,7 @@ describe("ObjectService", () => {
           updated,
           updatedByAlias,
         }
-      })
+      }).pipe(Effect.provideService(ObjectService.CurrentInvocation, context))
     )
 
     expect(result.first).toMatchObject({
@@ -417,7 +500,8 @@ describe("ObjectService", () => {
       email: null,
       id: "account_1",
       name: "Acme",
-      parentId: "platform_1",
+      systemManaged: false,
+      parent: "platform_1",
       slug: "acme",
       status: "active",
     })
@@ -446,6 +530,10 @@ describe("ObjectService", () => {
       result.second.id,
       result.first.id,
     ])
+    expect(aliasResolutionRequests).toContainEqual([
+      "hubspot:portal_1:company:bravo",
+      "legacy:company:acme",
+    ])
     expect(result.firstPage.nextPageToken).not.toBe("")
     expect(result.secondPage.nextPageToken).toBe("")
     expect(result.staleWrite).toBeInstanceOf(ObjectWriteConflict)
@@ -472,11 +560,13 @@ describe("ObjectService", () => {
       ObjectService.InvalidBatchRequest
     )
     expect(result.deleted).toBeInstanceOf(ObjectNotFound)
-    expect(authorizationRequests[0]).toEqual({
+    expect(accessRequests[0]).toEqual({
       objectType: "account",
       operation: "create",
+      parentId: "platform_1",
+      parentTypeId: "platform",
     })
-    expect(authorizationRequests.at(-1)).toEqual({
+    expect(accessRequests.at(-1)).toEqual({
       objectType: "account",
       operation: "batchDelete",
       recordIds: ["account_3", "account_4"],

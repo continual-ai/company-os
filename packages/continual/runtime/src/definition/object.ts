@@ -15,6 +15,7 @@ import {
   type InterfaceImplementationMap,
   bindInterfaceImplementations,
 } from "./interface"
+import type { InterfaceType } from "./interface"
 import {
   type InferProperties,
   type InferProperty,
@@ -33,13 +34,21 @@ import type {
   RecordIdentifier,
   Timestamp,
 } from "./schema"
+import { assertReferencePropertyName } from "./schema"
+
+declare const parentRecordType: unique symbol
 
 export interface ObjectParent<
-  TObjectType extends string = string,
-  TRoot extends boolean = boolean,
+  TTypeId extends string = string,
+  TKind extends "interface" | "object" | "root" =
+    | "interface"
+    | "object"
+    | "root",
+  TRecordTypeId extends string = TTypeId,
 > {
-  readonly objectType: TObjectType
-  readonly root: TRoot
+  readonly [parentRecordType]?: TRecordTypeId
+  readonly kind: TKind
+  readonly typeId: TTypeId
 }
 
 /** A typed reference used when records from multiple object types can appear. */
@@ -53,17 +62,21 @@ export type ObjectRef<TObjectType extends string = string> =
 
 export interface BaseRecord<
   TObjectType extends string = string,
-  TParentObjectType extends string = string,
+  TParentTypeId extends string = string,
 > {
   readonly aliases: ReadonlyArray<RecordAlias>
   readonly annotations: Readonly<Record<string, string>>
   readonly createdAt: Timestamp
-  readonly createdById: ActorId
+  readonly createdBy: ActorId
   readonly etag: Etag
   readonly id: RecordId<TObjectType>
-  readonly parentId: RecordId<TParentObjectType>
+  readonly parent: TParentTypeId extends string
+    ? RecordId<TParentTypeId>
+    : never
+  /** Whether ordinary mutations are reserved for trusted system workflows. */
+  readonly systemManaged: boolean
   readonly updatedAt: Timestamp
-  readonly updatedById: ActorId
+  readonly updatedBy: ActorId
 }
 
 export type ActorId = string & Brand.Brand<"ActorId">
@@ -98,8 +111,8 @@ export interface ObjectDisplay<TProperties extends Properties> {
       : never
   }[keyof TProperties] &
     string
-  subtitle?: keyof TProperties & string
-  title: keyof TProperties & string
+  subtitle?: (keyof TProperties & string) | "id"
+  title: (keyof TProperties & string) | "id"
 }
 
 export interface ObjectType<
@@ -109,8 +122,9 @@ export interface ObjectType<
   TActions extends Readonly<Record<string, Action>> = Readonly<
     Record<string, Action>
   >,
-  TParentObjectType extends string = string,
-  TParentIsRoot extends boolean = boolean,
+  TParentTypeId extends string = string,
+  TParentKind extends ObjectParent["kind"] = ObjectParent["kind"],
+  TParentRecordTypeId extends string = TParentTypeId,
   TInterfaces extends Readonly<Record<string, InterfaceImplementation>> =
     Readonly<Record<string, InterfaceImplementation>>,
 > {
@@ -128,14 +142,18 @@ export interface ObjectType<
   interfaces: TInterfaces
   kind: "object"
   name: string
-  parent: ObjectParent<TParentObjectType, TParentIsRoot>
+  parent: ObjectParent<TParentTypeId, TParentKind, TParentRecordTypeId>
   pluralName: string
   properties: TProperties
 }
 
+export type ObjectParentRecordTypeId<TObject extends ObjectType> = NonNullable<
+  TObject["parent"][typeof parentRecordType]
+>
+
 export type ObjectRecord<TObject extends ObjectType> = BaseRecord<
   TObject["id"],
-  TObject["parent"]["objectType"]
+  ObjectParentRecordTypeId<TObject>
 > &
   InferProperties<TObject["properties"]>
 
@@ -181,16 +199,16 @@ interface BaseUpdateProperties {
 }
 
 type CreateParent<TObject extends ObjectType> =
-  TObject["parent"]["root"] extends true
-    ? { readonly parentId?: never }
+  TObject["parent"]["kind"] extends "root"
+    ? { readonly parent?: never }
     : {
-        readonly parentId: RecordIdentifier<TObject["parent"]["objectType"]>
+        readonly parent: RecordIdentifier<ObjectParentRecordTypeId<TObject>>
       }
 
 type CanonicalCreateParent<TObject extends ObjectType> =
-  TObject["parent"]["root"] extends true
-    ? { readonly parentId?: never }
-    : Pick<ObjectRecord<TObject>, "parentId">
+  TObject["parent"]["kind"] extends "root"
+    ? { readonly parent?: never }
+    : Pick<ObjectRecord<TObject>, "parent">
 
 export type ObjectCreateInput<TObject extends ObjectType> = Simplify<
   BaseCreateProperties &
@@ -258,15 +276,16 @@ const reservedPropertyIds = new Set([
   "aliases",
   "annotations",
   "createdAt",
-  "createdById",
+  "createdBy",
   "etag",
   "id",
-  "parentId",
+  "parent",
+  "systemManaged",
   "updatedAt",
-  "updatedById",
+  "updatedBy",
 ])
 
-type ParentDefinition = RootType | ObjectType
+type ParentDefinition = InterfaceType | ObjectType | RootType
 
 /**
  * Defines a portable company object and derives its enabled standard actions.
@@ -298,17 +317,23 @@ export function defineObject<
   NormalizeProperties<TProperties>,
   NormalizedActions<TId, TActionDefinitions>,
   TParent["id"],
-  TParent["kind"] extends "root" ? true : false,
+  TParent["kind"],
+  TParent["id"],
   InterfaceImplementationMap<TImplementations>
 > {
-  const semanticParentPropertyId = `${definition.parent.id}Id`
+  const semanticParentPropertyId = definition.parent.id
   if (Object.hasOwn(definition.properties, semanticParentPropertyId)) {
     throw new Error(
-      `Object '${definition.id}' cannot redefine its '${definition.parent.id}' parent as property '${semanticParentPropertyId}'; use the standard 'parentId'.`
+      `Object '${definition.id}' cannot redefine its '${definition.parent.id}' parent as property '${semanticParentPropertyId}'; use the standard 'parent'.`
     )
   }
-  for (const propertyId of Object.keys(definition.properties)) {
+  for (const [propertyId, property] of Object.entries(definition.properties)) {
     definitionId(propertyId)
+    assertReferencePropertyName(
+      `Object '${definition.id}'`,
+      propertyId,
+      property
+    )
     if (reservedPropertyIds.has(propertyId)) {
       throw new Error(
         `Object '${definition.id}' cannot redefine base property '${propertyId}'.`
@@ -325,6 +350,9 @@ export function defineObject<
   for (const [role, propertyId] of Object.entries(definition.display)) {
     if (role === "icon") {
       definitionId(propertyId)
+      continue
+    }
+    if (propertyId === "id" && (role === "title" || role === "subtitle")) {
       continue
     }
     const property = properties[propertyId]
@@ -357,8 +385,8 @@ export function defineObject<
     name: definition.name,
     interfaces,
     parent: {
-      objectType: definition.parent.id,
-      root: definition.parent.kind === "root",
+      kind: definition.parent.kind,
+      typeId: definition.parent.id,
     },
     pluralName: definition.pluralName,
     display: definition.display,
@@ -385,7 +413,8 @@ export function defineObject<
     NormalizeProperties<TProperties>,
     NormalizedActions<TId, TActionDefinitions>,
     TParent["id"],
-    TParent["kind"] extends "root" ? true : false,
+    TParent["kind"],
+    TParent["id"],
     InterfaceImplementationMap<TImplementations>
   >
   if (definition.description !== undefined) {
