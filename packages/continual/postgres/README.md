@@ -13,25 +13,23 @@ generates the successor tag with PostgreSQL's UUID generator. Audit actor IDs ar
 governed service; no trigger or session identity is hidden beneath the repository query.
 
 The compiler maps persisted shape into native columns, defaults, nullability, foreign keys,
-uniqueness, indexes, and structural checks. It deliberately does not duplicate portable property
-rules such as string lengths, numeric ranges, select membership, or formats as SQL constraints;
-governed object services validate those rules for every caller before a repository write.
+declared `uniqueBy` invariants, standard indexes, and structural checks. Scalar arrays use native
+PostgreSQL arrays; structured values use JSONB. The adapter deliberately does not duplicate
+portable property rules such as string lengths, numeric ranges, select membership, or formats as
+SQL constraints; governed object services validate and canonicalize those rules for every caller
+before a repository write.
 
 ```ts
 import { AcmeModel } from "@acme/api"
 import { makePostgresSchema } from "@continual/postgres"
 
-export const AcmeStorage = makePostgresSchema(AcmeModel, {
-  objects: {
-    // Deliberate company-specific physical overrides belong here.
-  },
-})
+export const AcmeStorage = makePostgresSchema(AcmeModel)
 ```
 
-The package does not own a company's model, schema overrides, migrations, credentials, Effect
-service identities, authorization, or deployment. The company backend binds its generated storage
-to a typed Drizzle `Database` service and exposes one repository capability per object. Migration
-SQL remains explicit, source-owned history beside that backend.
+The package does not own a company's model, migrations, credentials, Effect service identities,
+authorization, or deployment. The company backend binds its generated storage to a typed Drizzle
+`Database` service and exposes one repository capability per object. Migration SQL remains
+explicit, source-owned history beside that backend.
 
 `makePostgresSchema` is a pure compiler, not an Effect service. Runtime capabilities remain ordinary
 Effect services and Layers at the application composition root: PostgreSQL client, typed database,

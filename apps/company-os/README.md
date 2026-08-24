@@ -91,9 +91,9 @@ There is no separate `ActorId` brand or Actor object.
 
 The portable repository contract and standard service behavior come from `@continual/runtime`;
 `@continual/postgres` supplies the reusable Drizzle schema compiler and repository implementation.
-Acme owns the concrete storage projection, physical overrides, migrations, and typed `Database`
-service in this app. Interface membership uses internal tables named from immutable interface IDs
-rather than display metadata. Portable records expose `parent`; generated Drizzle rows use
+Acme owns the concrete storage projection, migrations, and typed `Database` service in this app.
+Interface membership uses internal tables named from immutable interface IDs rather than display
+metadata. Portable records expose `parent`; generated Drizzle rows use
 `parentId`; and every object-specific table stores `parent_id`. A composite foreign key ensures it
 remains identical to the generic parent on the shared object row. Ordinary record-reference
 properties use their semantic relationship name plus `Id`, such as `companyId`; ownership always
@@ -115,9 +115,10 @@ another business service.
 ## Database workflow
 
 The app uses `@continual/postgres` with the Effect PostgreSQL driver. The portable `AcmeModel` is
-the source of truth for objects, properties, interfaces, ownership, and links.
-`src/server/database/schema.server.ts` instantiates the reusable compiler and contains only
-deliberate Acme-specific physical overrides such as generated columns and indexes. There is no
+the source of truth for objects, properties, interfaces, ownership, links, and uniqueness.
+`src/server/database/schema.server.ts` only instantiates the reusable compiler and exposes its
+tables as direct ESM exports because Drizzle Kit does not inspect nested schema objects. A schema
+test ensures those static tooling exports cover the complete generated projection. There is no
 generated TypeScript schema and no handwritten second copy of the model. Drizzle Kit reads the
 projection and generates explicit SQL under `src/server/database/migrations`. Each migration also
 contains Drizzle's machine-generated schema snapshot: the SQL is the reviewed executable history,
@@ -147,9 +148,9 @@ all remaining records. All three commands are safe to run repeatedly.
 
 ### Change the pre-deployment baseline
 
-1. Edit the source contract in `packages/acme/api`. Change
-   `src/server/database/schema.server.ts` only when the physical projection needs a deliberate
-   database-specific override.
+1. Edit the source contract in `packages/acme/api`. When registering a new object or interface,
+   expose its generated table from `src/server/database/schema.server.ts` for Drizzle Kit; the
+   schema coverage test fails if that tooling export is missing.
 2. Remove the existing baseline migration directory and generate a new baseline from the repository
    root:
 

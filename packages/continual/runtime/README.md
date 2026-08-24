@@ -92,6 +92,15 @@ Each normalized object's `actions` map contains its complete standard-plus-autho
 REST, clients, and descriptions are projections of that contract rather than separate action
 definitions.
 
+An object's optional `uniqueBy` map names durable collection invariants using public field names.
+For example, `{ email: ["email"] }` requires unique non-null email values, while
+`{ membership: ["parent", "member"] }` defines a composite membership identity. Rules may include
+the standard `parent` field and singular link properties; `defineModel` validates them after links
+are bound. These rules identify object records; they do not restate relationship cardinality.
+One-to-one uniqueness and duplicate many-to-many edges derive from the link definition itself, and
+the model rejects a single-link `uniqueBy` rule. Storage adapters enforce both kinds of invariant
+transactionally.
+
 Definition metadata follows one naming rule: `kind` discriminates the category of a definition or
 schema node, while `id` names that definition. Mixed-object runtime values use `objectType`; generic
 targets that may name either an object or interface use `typeId`. Typed records do not repeat their
@@ -249,8 +258,8 @@ The runtime does not impose an ORM, table layout, or migration system. A reposit
 preserve its own atomicity and hierarchy invariants. In particular, `batchDelete` must delete every
 supplied record version in one transaction or leave all of them unchanged. `@continual/postgres`
 provides the optional shared PostgreSQL implementation; company backends still own their adapter
-choice, physical overrides, migrations, credentials, and service composition. These physical
-choices never become part of the portable semantic model. Public clients, custom actions, and
+choice, migrations, credentials, and service composition. These physical choices never become
+part of the portable semantic model. Public clients, custom actions, and
 governed services accept one schema-aligned request object. Repositories accept canonical IDs
 directly for simple lookups, complete records for inserts and seed upserts, and named command objects
 for versioned mutations; transport-specific argument shapes stop at the router boundary.

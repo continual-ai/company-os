@@ -43,7 +43,7 @@ redeclaring its business shape:
 1. [`Lead`](packages/acme/api/src/objects/lead.ts) defines the portable business object.
 2. [`AcmeModel`](packages/acme/api/src/index.ts) closes and validates the company contract.
 3. [`AcmeStorage`](apps/company-os/src/server/database/schema.server.ts) compiles that contract into
-   company-owned PostgreSQL storage and physical overrides.
+   the company-owned PostgreSQL projection.
 4. [`LeadRepository`](apps/company-os/src/server/objects/lead-repository.server.ts) binds the shared
    PostgreSQL adapter to the Lead object.
 5. [`LeadService`](apps/company-os/src/server/objects/lead-service.server.ts) adds Acme's
