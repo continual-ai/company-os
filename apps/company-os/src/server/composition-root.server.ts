@@ -7,6 +7,8 @@ import {
 import { Layer } from "effect"
 import { OpenApi } from "effect/unstable/httpapi"
 
+import { AuthorizationRepository } from "./authorization/authorization-repository.server"
+import { Authorization } from "./authorization/authorization-service.server"
 import { Database } from "./database/database.server"
 import * as Postgres from "./database/postgres.server"
 import { CompanyRepository } from "./objects/company-repository.server"
@@ -15,32 +17,71 @@ import { ContactRepository } from "./objects/contact-repository.server"
 import { ContactService } from "./objects/contact-service.server"
 import { DealRepository } from "./objects/deal-repository.server"
 import { DealService } from "./objects/deal-service.server"
+import { GroupMembershipRepository } from "./objects/group-membership-repository.server"
+import { GroupMembershipService } from "./objects/group-membership-service.server"
+import { GroupRepository } from "./objects/group-repository.server"
+import { GroupService } from "./objects/group-service.server"
 import { InteractionRepository } from "./objects/interaction-repository.server"
 import { InteractionService } from "./objects/interaction-service.server"
 import { LeadRepository } from "./objects/lead-repository.server"
 import { LeadService } from "./objects/lead-service.server"
 import { LineItemRepository } from "./objects/line-item-repository.server"
 import { LineItemService } from "./objects/line-item-service.server"
+import { RoleAssignmentRepository } from "./objects/role-assignment-repository.server"
+import { RoleAssignmentService } from "./objects/role-assignment-service.server"
+import { RoleRepository } from "./objects/role-repository.server"
+import { RoleService } from "./objects/role-service.server"
+import { ServiceAccountRepository } from "./objects/service-account-repository.server"
+import { ServiceAccountService } from "./objects/service-account-service.server"
+import { UserRepository } from "./objects/user-repository.server"
+import { UserService } from "./objects/user-service.server"
 
 const databaseLayer = Database.layer.pipe(Layer.provide(Postgres.layer))
 
-const objectRepositoriesLayer = Layer.mergeAll(
+const repositoriesLayer = Layer.mergeAll(
+  AuthorizationRepository.layer,
   CompanyRepository.layer,
   ContactRepository.layer,
   DealRepository.layer,
+  GroupMembershipRepository.layer,
+  GroupRepository.layer,
   InteractionRepository.layer,
   LeadRepository.layer,
-  LineItemRepository.layer
+  LineItemRepository.layer,
+  RoleAssignmentRepository.layer,
+  RoleRepository.layer,
+  ServiceAccountRepository.layer,
+  UserRepository.layer
 ).pipe(Layer.provide(databaseLayer))
 
-const applicationLayer = Layer.mergeAll(
+const authorizationLayer = Authorization.layer.pipe(
+  Layer.provide(repositoriesLayer)
+)
+
+const servicesLayer = Layer.mergeAll(
   CompanyService.layer,
   ContactService.layer,
   DealService.layer,
+  GroupMembershipService.layer,
+  GroupService.layer,
   InteractionService.layer,
   LeadService.layer,
-  LineItemService.layer
-).pipe(Layer.provide(objectRepositoriesLayer), Layer.provide(databaseLayer))
+  LineItemService.layer,
+  RoleAssignmentService.layer,
+  RoleService.layer,
+  ServiceAccountService.layer,
+  UserService.layer
+)
+
+const applicationDependenciesLayer = Layer.mergeAll(
+  authorizationLayer,
+  databaseLayer,
+  repositoriesLayer
+)
+
+const applicationLayer = servicesLayer.pipe(
+  Layer.provide(applicationDependenciesLayer)
+)
 
 const apiDescription = createApiDescription(AcmeModel)
 const httpApi = createHttpApi(AcmeModel)
@@ -61,7 +102,7 @@ export const companyOs = {
     document: openApiDocument,
     reference: apiReference,
   },
-  /** Supplied with Acme's authorization Layer before execution. */
+  /** Requires only CurrentInvocation when executing governed operations. */
   layer: applicationLayer,
 }
 

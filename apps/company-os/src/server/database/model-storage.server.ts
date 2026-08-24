@@ -1,63 +1,54 @@
 import { AcmeModel } from "@acme/api"
 import {
   makeObjectRepository as makePostgresObjectRepository,
-  resolveRecordAlias as resolvePostgresRecordAlias,
+  resolveRecordAliases as resolvePostgresRecordAliases,
 } from "@continual/postgres"
-import type { RecordAlias } from "@continual/runtime"
-import { Data, Effect } from "effect"
+import { modelTypeAccepts, type RecordAlias } from "@continual/runtime"
+import { RecordAliasNotFound } from "@continual/runtime/effect/object-repository"
+import { Effect } from "effect"
 
 import { Database } from "./database.server"
 import { AcmeStorage } from "./schema.server"
 
 type AcmeObjectType = (typeof AcmeModel.objects)[keyof typeof AcmeModel.objects]
 
-export class RecordAliasTypeMismatch extends Data.TaggedError(
-  "RecordAliasTypeMismatch"
-)<{
-  readonly actualObjectType: string
-  readonly alias: string
-  readonly expectedType: string
-}> {}
-
 /** Resolves an alias across every object type; callers authorize the result. */
 export const resolveRecordAlias = Effect.fn(
   "@acme/modelStorage.resolveRecordAlias"
 )(function* (alias: RecordAlias) {
   const database = yield* Database
-  return yield* resolvePostgresRecordAlias(AcmeStorage, database, alias)
+  const resolved = yield* resolvePostgresRecordAliases(AcmeStorage, database, [
+    alias,
+  ])
+  const reference = resolved[0]
+  return reference === undefined
+    ? yield* Effect.die("Record alias resolver returned no result.")
+    : reference
 })
 
-function acceptsType(actualObjectType: string, expectedType: string): boolean {
-  if (actualObjectType === expectedType) return true
-  const object = Object.values(AcmeModel.objects).find(
-    ({ id }) => id === actualObjectType
-  )
-  return object !== undefined && Object.hasOwn(object.interfaces, expectedType)
-}
-
-/** Captures Acme storage and resolves aliases to validated canonical IDs. */
+/** Captures Acme storage and resolves typed aliases in one ordered batch. */
 export const makeRecordAliasResolver = Effect.gen(function* () {
   const database = yield* Database
 
-  return Effect.fn("@acme/modelStorage.resolveTypedRecordAlias")(function* (
+  return Effect.fn("@acme/modelStorage.resolveTypedRecordAliases")(function* (
     expectedType: string,
-    alias: RecordAlias
+    aliases: ReadonlyArray<RecordAlias>
   ) {
-    const resolved = yield* resolvePostgresRecordAlias(
+    const resolved = yield* resolvePostgresRecordAliases(
       AcmeStorage,
       database,
-      alias
+      aliases
     )
-    if (!acceptsType(resolved.objectType, expectedType)) {
+    const mismatch = resolved.findIndex(
+      (reference) =>
+        !modelTypeAccepts(AcmeModel, reference.objectType, expectedType)
+    )
+    if (mismatch !== -1) {
       return yield* Effect.fail(
-        new RecordAliasTypeMismatch({
-          actualObjectType: resolved.objectType,
-          alias,
-          expectedType,
-        })
+        new RecordAliasNotFound({ alias: aliases[mismatch]! })
       )
     }
-    return resolved.id
+    return resolved.map(({ id }) => id)
   })
 })
 

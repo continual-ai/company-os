@@ -31,7 +31,13 @@ capability. The intended request path is:
 HTTP / MCP / agents
         |
         v
-object services / actions
+authenticate and provide CurrentInvocation
+        |
+        v
+thin protocol handlers
+        |
+        v
+governed object services / actions <--> Authorization
         |
         v
 object repositories
@@ -55,6 +61,29 @@ Effect PostgreSQL client
   queries; only repository implementations access the database, and they do not duplicate portable
   property validation as SQL checks.
 
+Authorization uses the same ontology and storage path as business data. An authenticated identity
+acts as itself and as every group it belongs to. Role assignments grant exact model-derived
+capabilities to a principal at an authorization scope; the grant applies to that scope and its
+ownership descendants. Object services deny by default, authorize batches atomically, conceal
+unreadable records as missing, and constrain lists in SQL before filtering or pagination. The
+authorization repository is a read-optimized projection over those ordinary objects and links,
+not a second policy database. Decisions read current group membership and role assignments with
+set-based SQL rather than caching policy state or issuing queries per target.
+
+`systemManaged` is immutable ownership provenance on the shared object row. It does not grant read
+access or replace hierarchy: ordinary actors follow normal role inheritance but cannot update or
+delete a system-managed record. The well-known system service account is reserved for internal
+seeds, jobs, and named workflows. It receives permissions through the same role assignments as
+other identities; its only special authority is managing system-owned records, and it still passes
+through validation, transactions, and domain invariants.
+
+An invocation boundary authenticates external credentials, resolves them to a canonical Identity
+record ID, rejects the reserved system actor, and provides `CurrentInvocation` through
+`authenticatedInvocation`. Acme pins the server-owned Platform root; callers never choose it from
+request data. Internal entrypoints explicitly use `systemInvocation`. HTTP, MCP, jobs, and agents
+should otherwise differ only in how they establish that trusted context before calling the same
+governed services. Executable object handlers are not bound yet.
+
 The portable repository contract and standard service behavior come from `@continual/runtime`;
 `@continual/postgres` supplies the reusable Drizzle schema compiler and repository implementation.
 Acme owns the concrete storage projection, physical overrides, migrations, and typed `Database`
@@ -62,10 +91,13 @@ service in this app. Interface membership uses internal tables named from immuta
 rather than display metadata. Every object-specific table mirrors the standard `parentId` under
 its semantic name—such as `platformId` or `dealId`—while a composite foreign key ensures it remains
 identical to the generic parent on the shared object row. The shared row also stores complete
-ancestry. Globally unique opaque aliases live in normalized `record_aliases` rows and are hydrated
+ancestry and references the model-declared Identity interface from its audit actor columns.
+Globally unique opaque aliases live in normalized `record_aliases` rows and are hydrated
 as the standard `aliases` set on every public object record. Repository transactions claim and
 release those rows with the corresponding object write; the model-storage resolver can therefore
-locate an object by alias without first knowing its object type. The shared object-service factory
+locate an object by alias without first knowing its object type. Well-known source-owned records
+instead use stable, readable canonical IDs such as `service_account_system`; prefixes are
+diagnostic only and code never infers behavior from them. The shared object-service factory
 validates the expected object or interface type, canonicalizes every reference, and then authorizes
 the request. Repositories and stored foreign keys receive canonical IDs only. Files under
 `src/server/objects` keep each object's service beside its repository. Add an object-specific
@@ -81,8 +113,8 @@ the source of truth for objects, properties, interfaces, ownership, and links.
 deliberate Acme-specific physical overrides such as generated columns and indexes. There is no
 generated TypeScript schema and no handwritten second copy of the model. Drizzle Kit reads the
 projection and generates an explicit, immutable SQL history under
-`src/server/database/migrations`. Deployments run migrations separately before serving the
-corresponding application revision.
+`src/server/database/migrations`. Deployments apply that history and converge source-owned records
+before serving the corresponding application revision.
 
 ### Local setup
 
@@ -91,12 +123,16 @@ credentials if necessary:
 
 ```sh
 cp apps/company-os/.env.example apps/company-os/.env.local
-pnpm --filter company-os db:migrate
+pnpm --filter company-os db:deploy
 ```
 
-`db:migrate` loads `apps/company-os/.env.local` when present and otherwise uses `DATABASE_URL` from
-the process environment. It applies only migrations not already recorded by Drizzle and is safe to
-run repeatedly.
+Database commands load `apps/company-os/.env.local` when present and otherwise use `DATABASE_URL`
+from the process environment. `db:migrate` applies only migrations not already recorded by
+Drizzle. `db:seed` idempotently converges the built-in Platform, system identity, administrator
+role, and initial role assignment through stable canonical IDs. `db:deploy` performs both in that
+order and is the normal setup and release command. Raw persistence establishes only the cyclic
+Platform and audit Identity needed to begin; repositories converge the concrete system account and
+all remaining records. All three commands are safe to run repeatedly.
 
 ### Change the schema
 
@@ -121,7 +157,7 @@ run repeatedly.
 5. Apply the migration to the local database and exercise the affected repository behavior:
 
    ```sh
-   pnpm --filter company-os db:migrate
+   pnpm --filter company-os db:deploy
    ```
 
 For SQL that Drizzle cannot derive, generate an empty, tracked migration instead of creating an
@@ -138,8 +174,8 @@ same committed history.
 ### Reset local development
 
 Reset deletes every object in the `public` and Drizzle migration schemas, recreates `public`, and
-then applies the full committed migration history. It accepts only loopback PostgreSQL hosts and
-requires the exact database name as confirmation:
+then applies the full committed migration history and all source-owned seeds. It accepts only
+loopback PostgreSQL hosts and requires the exact database name as confirmation:
 
 ```sh
 CONFIRM_DATABASE_RESET=company_os pnpm --filter company-os db:reset
@@ -154,14 +190,15 @@ PGlite database from the same migration history.
 Run migrations as one explicit release job from the same immutable revision that will be deployed:
 
 ```sh
-DATABASE_URL="$PRODUCTION_DATABASE_URL" pnpm --filter company-os db:migrate
+DATABASE_URL="$PRODUCTION_DATABASE_URL" pnpm --filter company-os db:deploy
 ```
 
 The deployment sequence is:
 
 1. Back up the database or verify the provider's restore point and test the migration on a
    production-like copy when risk warrants it.
-2. Run one migration job. Do not run migrations concurrently from every application instance.
+2. Run one deployment database job. It applies migrations and then converges the idempotent
+   source-owned seeds. Do not run it concurrently from every application instance.
 3. Deploy or promote the compatible application revision only after migration succeeds.
 4. Verify the health endpoint and the affected read/write path.
 

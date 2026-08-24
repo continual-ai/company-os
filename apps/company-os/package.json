@@ -6,10 +6,12 @@
   "scripts": {
     "build": "vite build",
     "db:check": "drizzle-kit check --config drizzle.config.ts",
+    "db:deploy": "tsx --env-file-if-exists=.env.local src/server/database/deploy.server.ts",
     "db:generate": "drizzle-kit generate --config drizzle.config.ts",
     "db:generate:custom": "drizzle-kit generate --custom --config drizzle.config.ts",
     "db:migrate": "tsx --env-file-if-exists=.env.local src/server/database/migrate.server.ts",
     "db:reset": "tsx --env-file-if-exists=.env.local src/server/database/reset.server.ts",
+    "db:seed": "tsx --env-file-if-exists=.env.local src/server/database/seed.server.ts",
     "dev": "vite dev --port 3002",
     "preview": "vite preview --port 3102",
     "test": "vitest run",

@@ -1,0 +1,110 @@
+import { AcmeModel } from "@acme/api"
+import type { ObjectCreateInput } from "@continual/runtime"
+import { Context, Data, Effect, Layer } from "effect"
+
+import { modelPermissions } from "@/server/authorization/permission-catalog.server"
+import {
+  PLATFORM_ADMIN_ROLE_ID,
+  PLATFORM_ID,
+} from "@/server/authorization/well-known-authorization.server"
+import { Database } from "@/server/database/database.server"
+
+import { makeObjectService } from "./object-service.server"
+import { RoleAssignmentRepository } from "./role-assignment-repository.server"
+import { RoleRepository } from "./role-repository.server"
+
+export class RoleScopeMismatch extends Data.TaggedError("RoleScopeMismatch")<{
+  readonly actualScopeType: string
+  readonly expectedScopeType: string
+  readonly roleId: string
+}> {}
+
+class InvalidRolePermission extends Data.TaggedError("InvalidRolePermission")<{
+  readonly permission: string
+  readonly roleId: string
+}> {}
+
+export class LastPlatformAdministrator extends Data.TaggedError(
+  "LastPlatformAdministrator"
+)<{}> {}
+
+const make = Effect.gen(function* () {
+  const database = yield* Database
+  const repository = yield* RoleAssignmentRepository
+  const roleRepository = yield* RoleRepository
+  const base = yield* makeObjectService(
+    AcmeModel.objects.roleAssignment,
+    repository
+  )
+  const permissions = new Set(modelPermissions)
+
+  const create = Effect.fn("@acme/RoleAssignmentService.create")(function* (
+    input: ObjectCreateInput<(typeof AcmeModel.objects)["roleAssignment"]>
+  ) {
+    return yield* database.transaction(() =>
+      Effect.gen(function* () {
+        const assignment = yield* base.create(input)
+        const role = yield* roleRepository.get(assignment.role)
+        const scopeObjectType = yield* repository.getScopeObjectType(
+          assignment.parent
+        )
+        if (scopeObjectType === undefined) {
+          return yield* Effect.die(
+            `Role assignment '${assignment.id}' has no active scope.`
+          )
+        }
+        if (role.scopeType !== scopeObjectType) {
+          return yield* Effect.fail(
+            new RoleScopeMismatch({
+              actualScopeType: scopeObjectType,
+              expectedScopeType: role.scopeType,
+              roleId: role.id,
+            })
+          )
+        }
+        const invalidPermission = role.permissions.find(
+          (permission) => !permissions.has(permission)
+        )
+        if (invalidPermission !== undefined) {
+          return yield* Effect.fail(
+            new InvalidRolePermission({
+              permission: invalidPermission,
+              roleId: role.id,
+            })
+          )
+        }
+        return assignment
+      })
+    )
+  })
+
+  const deleteAssignment = Effect.fn("@acme/RoleAssignmentService.delete")(
+    function* (input: Parameters<typeof base.delete>[0]) {
+      return yield* database.transaction(() =>
+        Effect.gen(function* () {
+          const assignment = yield* base.get(input)
+          if (
+            assignment.parent === PLATFORM_ID &&
+            assignment.role === PLATFORM_ADMIN_ROLE_ID &&
+            (yield* repository.lockRoleAssignments({
+              roleId: PLATFORM_ADMIN_ROLE_ID,
+              scopeId: PLATFORM_ID,
+            })).length === 1
+          ) {
+            return yield* Effect.fail(new LastPlatformAdministrator())
+          }
+          return yield* base.delete(input)
+        })
+      )
+    }
+  )
+
+  return { ...base, create, delete: deleteAssignment }
+})
+
+export class RoleAssignmentService extends Context.Service<RoleAssignmentService>()(
+  "@acme/RoleAssignmentService",
+  { make }
+) {
+  static readonly layer = Layer.effect(this, this.make)
+}

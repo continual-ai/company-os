@@ -1,16 +1,14 @@
 #!/usr/bin/env node
-import { fileURLToPath } from "node:url"
-
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 import { PgClient } from "@effect/sql-pg"
-import { migrate } from "drizzle-orm/effect-postgres/migrator"
 import { Config, Effect, Redacted } from "effect"
 
+import { seedCompanyOs } from "@/server/seeds/seed-company-os.server"
+
 import { Database } from "./database.server"
+import { applyMigrations } from "./migrations.server"
 import * as Postgres from "./postgres.server"
 import { localDatabaseTarget } from "./reset-target"
-
-const migrationsFolder = fileURLToPath(new URL("./migrations", import.meta.url))
 
 Effect.gen(function* () {
   const databaseUrl = yield* Config.redacted("DATABASE_URL")
@@ -19,7 +17,6 @@ Effect.gen(function* () {
     localDatabaseTarget(Redacted.value(databaseUrl), confirmation)
   )
   const sql = yield* PgClient.PgClient
-  const database = yield* Database
 
   yield* Effect.log(
     `Resetting local PostgreSQL database '${target.databaseName}' on '${target.host}'.`
@@ -27,9 +24,10 @@ Effect.gen(function* () {
   yield* sql`drop schema if exists drizzle cascade`
   yield* sql`drop schema if exists public cascade`
   yield* sql`create schema public`
-  yield* migrate(database, { migrationsFolder })
+  yield* applyMigrations()
+  yield* seedCompanyOs()
   yield* Effect.log(
-    "Database reset complete; all committed migrations applied."
+    "Database reset complete; all committed migrations applied and source-owned records converged."
   )
 }).pipe(
   Effect.provide(Database.layer),

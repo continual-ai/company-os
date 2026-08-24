@@ -2,7 +2,6 @@ import { fileURLToPath } from "node:url"
 
 import { AcmeModel } from "@acme/api"
 import {
-  ActorId,
   DomainName,
   EmailAddress,
   Etag,
@@ -26,16 +25,21 @@ import { migrate } from "drizzle-orm/effect-pglite/migrator"
 import { Effect } from "effect"
 import { describe, expect, expectTypeOf, it } from "vitest"
 
+import {
+  PLATFORM_ID,
+  SYSTEM_ACTOR_ID,
+} from "@/server/authorization/well-known-authorization.server"
+import { systemInvocation } from "@/server/invocation-context.server"
 import { DealRepository } from "@/server/objects/deal-repository.server"
 import { InteractionRepository } from "@/server/objects/interaction-repository.server"
 import { LeadRepository } from "@/server/objects/lead-repository.server"
 import { LineItemRepository } from "@/server/objects/line-item-repository.server"
+import { seedCompanyOs } from "@/server/seeds/seed-company-os.server"
 
 import { Database } from "./database.server"
 import {
   makeRecordAliasResolver,
   makeObjectRepository,
-  RecordAliasTypeMismatch,
   resolveRecordAlias,
 } from "./model-storage.server"
 import {
@@ -44,7 +48,6 @@ import {
   objects,
   parties,
   relations,
-  platforms,
 } from "./schema.server"
 
 const migrationsFolder = fileURLToPath(new URL("./migrations", import.meta.url))
@@ -77,30 +80,17 @@ describe("Drizzle object repository", () => {
   it("migrates and preserves object invariants across standard methods", async () => {
     let nextId = 0
     let nextInteractionId = 0
+    const platform = PLATFORM_ID
+    const context = systemInvocation
     const result = await run(
       Effect.gen(function* () {
         const database = yield* PgliteDrizzle.makeWithDefaults({ relations })
         yield* migrate(database, { migrationsFolder })
         yield* migrate(database, { migrationsFolder })
 
-        const platform = PlatformId("platform_1")
-        yield* database.insert(objects).values({
-          id: platform,
-          objectType: "platform",
-          parentId: null,
-          ancestorIds: [],
-          annotations: {},
-          etag: "platform_etag",
-          createdAt: "2026-08-20T00:00:00.000Z",
-          createdById: "system",
-          updatedAt: "2026-08-20T00:00:00.000Z",
-          updatedById: "system",
-        })
-        yield* database.insert(platforms).values({ id: platform })
-
-        const context = { actorId: ActorId("user_1"), rootId: platform }
         const db = asDatabase(database)
-        const resolveTypedRecordAlias = yield* makeRecordAliasResolver.pipe(
+        yield* seedCompanyOs().pipe(Effect.provideService(Database, db))
+        const resolveTypedRecordAliases = yield* makeRecordAliasResolver.pipe(
           Effect.provideService(Database, db)
         )
         const repository = yield* makeObjectRepository(
@@ -110,10 +100,11 @@ describe("Drizzle object repository", () => {
           AcmeModel.objects.company,
           repository,
           {
-            authorize: () => Effect.succeed(context),
+            authorize: () => Effect.void,
             generateEtag: () => `etag_${nextId}`,
             generateRecordId: () => `company_${++nextId}`,
-            resolveRecordAlias: resolveTypedRecordAlias,
+            resolveRecordAliases: resolveTypedRecordAliases,
+            visibleWithin: () => Effect.succeed([platform]),
           }
         )
 
@@ -157,6 +148,9 @@ describe("Drizzle object repository", () => {
           Effect.flip,
           Effect.provideService(Database, db)
         )
+        const batch = yield* service.batchGet({
+          ids: [hubspotBravo, legacyAcme],
+        })
         const clearedSecond = yield* service.update({
           aliases: [],
           id: second.id,
@@ -165,7 +159,6 @@ describe("Drizzle object repository", () => {
           Effect.flip,
           Effect.provideService(Database, db)
         )
-        const batch = yield* service.batchGet({ ids: [second.id, legacyAcme] })
         const firstPage = yield* service.list({ pageSize: 1 })
         if (firstPage.nextPageToken === "") {
           return yield* Effect.die("Expected another page")
@@ -210,17 +203,22 @@ describe("Drizzle object repository", () => {
           .list({ filter: invalidFilter })
           .pipe(Effect.flip)
         const staleWrite = yield* repository
-          .update(first.id, { name: "Stale" }, first.etag, {
-            etag: Etag("stale_etag"),
-            updatedAt: updated.updatedAt,
-            updatedById: context.actorId,
+          .update({
+            changes: { name: "Stale" },
+            expectedEtag: first.etag,
+            id: first.id,
+            metadata: {
+              etag: Etag("stale_etag"),
+              updatedAt: updated.updatedAt,
+              updatedBy: SYSTEM_ACTOR_ID,
+            },
           })
           .pipe(Effect.flip)
         const wrongParent = yield* repository
           .insert({
             ...first,
             id: CompanyId("company_3"),
-            parentId: PlatformId(first.id),
+            parent: PlatformId(first.id),
           })
           .pipe(Effect.flip)
         const rollbackId = CompanyId("company_rollback")
@@ -242,10 +240,11 @@ describe("Drizzle object repository", () => {
           AcmeModel.objects.lead,
           leadRepository,
           {
-            authorize: () => Effect.succeed(context),
+            authorize: () => Effect.void,
             generateEtag: () => "lead_etag",
             generateRecordId: () => "lead_1",
-            resolveRecordAlias: resolveTypedRecordAlias,
+            resolveRecordAliases: resolveTypedRecordAliases,
+            visibleWithin: () => Effect.succeed([platform]),
           }
         )
         yield* leadService.create({
@@ -271,25 +270,26 @@ describe("Drizzle object repository", () => {
           AcmeModel.objects.interaction,
           interactionRepository,
           {
-            authorize: () => Effect.succeed(context),
+            authorize: () => Effect.void,
             generateEtag: () => "interaction_etag",
             generateRecordId: () => `interaction_${++nextInteractionId}`,
-            resolveRecordAlias: resolveTypedRecordAlias,
+            resolveRecordAliases: resolveTypedRecordAliases,
+            visibleWithin: () => Effect.succeed([platform]),
           }
         )
         yield* interactionService.create({
           occurredAt: Timestamp("2026-08-20T12:00:00Z"),
-          subjectId: legacyAcme,
+          subject: legacyAcme,
           summary: "Introductory call",
         })
         yield* interactionService.create({
           occurredAt: Timestamp("2026-08-20T08:30:00-04:00"),
-          subjectId: RecordId("party")(first.id),
+          subject: first.id,
           summary: "Follow-up call",
         })
         const partyInteractions = yield* interactionService.list({
           filter: {
-            field: "subjectId",
+            field: "subject",
             operator: "eq",
             value: legacyAcme,
           },
@@ -303,14 +303,15 @@ describe("Drizzle object repository", () => {
           AcmeModel.objects.deal,
           dealRepository,
           {
-            authorize: () => Effect.succeed(context),
+            authorize: () => Effect.void,
             generateEtag: () => "deal_etag",
             generateRecordId: () => "deal_1",
-            resolveRecordAlias: resolveTypedRecordAlias,
+            resolveRecordAliases: resolveTypedRecordAliases,
+            visibleWithin: () => Effect.succeed([platform]),
           }
         )
         const deal = yield* dealService.create({
-          companyId: legacyAcme,
+          company: legacyAcme,
           name: "Expansion",
         })
         const dealsWithCompanies = yield* database.query.deal.findMany({
@@ -327,15 +328,16 @@ describe("Drizzle object repository", () => {
           AcmeModel.objects.lineItem,
           lineItemRepository,
           {
-            authorize: () => Effect.succeed(context),
+            authorize: () => Effect.void,
             generateEtag: () => "line_item_etag",
             generateRecordId: () => "line_item_1",
-            resolveRecordAlias: resolveTypedRecordAlias,
+            resolveRecordAliases: resolveTypedRecordAliases,
+            visibleWithin: () => Effect.succeed([platform]),
           }
         )
         const lineItem = yield* lineItemService.create({
           name: "Implementation",
-          parentId: deal.id,
+          parent: deal.id,
         })
         const inconsistentParent = yield* database
           .update(objects)
@@ -403,7 +405,7 @@ describe("Drizzle object repository", () => {
           wrongParent,
           wrongTypeAlias,
         }
-      })
+      }).pipe(Effect.provideService(ObjectService.CurrentInvocation, context))
     )
 
     expect(result.first).toMatchObject({
@@ -412,7 +414,7 @@ describe("Drizzle object repository", () => {
       id: "company_1",
       lifecycleStage: "prospect",
       name: "Acme",
-      parentId: "platform_1",
+      parent: PLATFORM_ID,
     })
     expect(result.updated).toMatchObject({
       id: result.first.id,
@@ -458,7 +460,7 @@ describe("Drizzle object repository", () => {
     expect(result.invalidFilterValue).toBeInstanceOf(InvalidListRequest)
     expect(result.staleWrite).toBeInstanceOf(ObjectWriteConflict)
     expect(result.wrongParent).toBeInstanceOf(ObjectParentTypeMismatch)
-    expect(result.wrongTypeAlias).toBeInstanceOf(RecordAliasTypeMismatch)
+    expect(result.wrongTypeAlias).toBeInstanceOf(RecordAliasNotFound)
     expect(result.rolledBack).toBeInstanceOf(ObjectNotFound)
     expect(result.leads.items).toHaveLength(1)
     expect(result.leads.items[0]).toMatchObject({ email: "Lead@Acme.Example" })
@@ -470,20 +472,20 @@ describe("Drizzle object repository", () => {
       expect.objectContaining({
         kind: "note",
         occurredAt: "2026-08-20T12:30:00.000Z",
-        subjectId: result.first.id,
+        subject: result.first.id,
         summary: "Follow-up call",
       }),
       expect.objectContaining({
         kind: "note",
         occurredAt: "2026-08-20T12:00:00.000Z",
-        subjectId: result.first.id,
+        subject: result.first.id,
         summary: "Introductory call",
       }),
     ])
     expect(result.inconsistentParent).toBeDefined()
     expect(result.lineItem).toMatchObject({
       name: "Implementation",
-      parentId: "deal_1",
+      parent: "deal_1",
       quantity: 1,
     })
     expect(result.dealsWithCompanies).toEqual([
@@ -500,7 +502,7 @@ describe("Drizzle object repository", () => {
     ])
     expect(
       result.lineItemObjectRows.find(({ id }) => id === result.lineItem.id)
-    ).toMatchObject({ ancestorIds: ["deal_1", "platform_1"] })
+    ).toMatchObject({ ancestorIds: ["deal_1", PLATFORM_ID] })
     for (const object of Object.values(AcmeModel.objects)) {
       expect(
         new Set(
@@ -513,8 +515,12 @@ describe("Drizzle object repository", () => {
       ).toEqual(
         new Set([
           "id",
-          snakeCase(`${object.parent.objectType}Id`),
-          ...Object.keys(object.properties).map(snakeCase),
+          snakeCase(`${object.parent.typeId}Id`),
+          ...Object.entries(object.properties).map(([propertyId, property]) =>
+            snakeCase(
+              property.kind === "recordId" ? `${propertyId}Id` : propertyId
+            )
+          ),
         ])
       )
     }

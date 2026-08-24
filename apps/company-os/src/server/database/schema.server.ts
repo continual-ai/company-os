@@ -1,7 +1,7 @@
 import { AcmeModel } from "@acme/api"
 import { makePostgresSchema } from "@continual/postgres"
 import { sql } from "drizzle-orm"
-import { index, text } from "drizzle-orm/pg-core"
+import { index, text, uniqueIndex } from "drizzle-orm/pg-core"
 
 export const AcmeStorage = makePostgresSchema(AcmeModel, {
   objects: {
@@ -25,6 +25,14 @@ export const AcmeStorage = makePostgresSchema(AcmeModel, {
           .where(sql`${email} is not null`),
       ],
     },
+    groupMembership: {
+      indexes: ({ groupId, memberId }) => [
+        uniqueIndex("group_memberships_group_id_member_id_unique").on(
+          groupId,
+          memberId
+        ),
+      ],
+    },
     interaction: {
       indexes: ({ occurredAt }) => [
         index("interactions_occurred_at_idx").on(occurredAt),
@@ -37,6 +45,20 @@ export const AcmeStorage = makePostgresSchema(AcmeModel, {
           .where(sql`${email} is not null`),
       ],
     },
+    roleAssignment: {
+      indexes: ({ authorizationScopeId, principalId, roleId }) => [
+        uniqueIndex("role_assignments_scope_principal_role_unique").on(
+          authorizationScopeId,
+          principalId,
+          roleId
+        ),
+      ],
+    },
+    role: {
+      columns: {
+        permissions: () => text().array().notNull(),
+      },
+    },
   },
 })
 
@@ -45,11 +67,20 @@ export const AcmeStorage = makePostgresSchema(AcmeModel, {
 export const objects = AcmeStorage.core.objects
 export const recordAliases = AcmeStorage.core.recordAliases
 export const platforms = AcmeStorage.core.roots
+export const authorizationScopes = AcmeStorage.interfaces.authorizationScope
+export const identities = AcmeStorage.interfaces.identity
 export const parties = AcmeStorage.interfaces.party
+export const principals = AcmeStorage.interfaces.principal
 export const companies = AcmeStorage.objects.company
 export const contacts = AcmeStorage.objects.contact
 export const deals = AcmeStorage.objects.deal
+export const groupMemberships = AcmeStorage.objects.groupMembership
+export const groups = AcmeStorage.objects.group
 export const interactions = AcmeStorage.objects.interaction
 export const leads = AcmeStorage.objects.lead
 export const lineItems = AcmeStorage.objects.lineItem
+export const roleAssignments = AcmeStorage.objects.roleAssignment
+export const roles = AcmeStorage.objects.role
+export const serviceAccounts = AcmeStorage.objects.serviceAccount
+export const users = AcmeStorage.objects.user
 export const relations = AcmeStorage.relations
