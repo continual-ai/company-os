@@ -2,7 +2,7 @@ import { fileURLToPath } from "node:url"
 
 import { Etag } from "@continual/runtime"
 import { PgliteClient } from "@effect/sql-pglite"
-import { eq, inArray } from "drizzle-orm"
+import { eq, inArray, sql } from "drizzle-orm"
 import * as PgliteDrizzle from "drizzle-orm/effect-pglite"
 import { migrate } from "drizzle-orm/effect-pglite/migrator"
 import { Effect } from "effect"
@@ -58,6 +58,24 @@ describe("Company OS seeds", () => {
         const pglite = yield* PgliteDrizzle.makeWithDefaults({ relations })
         yield* migrate(pglite, { migrationsFolder })
         const database = asDatabase(pglite)
+
+        const auditConstraints = yield* database.execute<{
+          constraintName: string
+          deferrable: boolean
+          initiallyDeferred: boolean
+        }>(
+          sql`select
+                conname as "constraintName",
+                condeferrable as "deferrable",
+                condeferred as "initiallyDeferred"
+              from pg_constraint
+              where conname in (
+                'objects_created_by_id_interface_identity_id_fkey',
+                'objects_updated_by_id_interface_identity_id_fkey'
+              )
+              order by conname`,
+          "objects"
+        )
 
         yield* seedCompanyOs().pipe(Effect.provideService(Database, database))
         yield* database
@@ -122,6 +140,7 @@ describe("Company OS seeds", () => {
         return {
           aliases,
           assignment,
+          auditConstraints,
           impersonation,
           role,
           seededObjects,
@@ -139,6 +158,18 @@ describe("Company OS seeds", () => {
       ])
     )
     expect(result.seededObjects).toHaveLength(4)
+    expect(result.auditConstraints).toEqual([
+      {
+        constraintName: "objects_created_by_id_interface_identity_id_fkey",
+        deferrable: true,
+        initiallyDeferred: true,
+      },
+      {
+        constraintName: "objects_updated_by_id_interface_identity_id_fkey",
+        deferrable: true,
+        initiallyDeferred: true,
+      },
+    ])
     expect(
       result.seededObjects.every(({ systemManaged }) => systemManaged)
     ).toBe(true)

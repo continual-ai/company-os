@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "turbo build",
-    "check": "pnpm format:check && pnpm lint && pnpm deadcode && pnpm typecheck",
+    "check": "pnpm format:check && pnpm lint && pnpm deadcode && pnpm typecheck && pnpm --filter company-os db:check",
     "deadcode": "knip",
     "dev": "turbo dev --filter='./apps/*'",
     "format": "oxfmt .",

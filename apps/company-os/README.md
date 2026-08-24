@@ -117,11 +117,13 @@ the source of truth for objects, properties, interfaces, ownership, and links.
 `src/server/database/schema.server.ts` instantiates the reusable compiler and contains only
 deliberate Acme-specific physical overrides such as generated columns and indexes. There is no
 generated TypeScript schema and no handwritten second copy of the model. Drizzle Kit reads the
-projection and generates explicit SQL under `src/server/database/migrations`. While the baseline is
-still pre-deployment, keep one reviewed `initial` migration and replace it whenever the model
-changes. Once any shared or production database depends on that baseline, freeze it and append
-forward-only migrations. Deployments apply the committed history and converge source-owned records
-before serving the corresponding application revision.
+projection and generates explicit SQL under `src/server/database/migrations`. Each migration also
+contains Drizzle's machine-generated schema snapshot: the SQL is the reviewed executable history,
+while the snapshot is committed compiler state used to generate and check later migrations. Never
+edit a snapshot by hand. While the baseline is still pre-deployment, keep one reviewed `initial`
+migration and replace it whenever the model changes. Once any shared or production database depends
+on that baseline, freeze it and append forward-only migrations. Deployments apply the committed
+history and converge source-owned records before serving the corresponding application revision.
 
 ### Local setup
 
@@ -153,8 +155,9 @@ all remaining records. All three commands are safe to run repeatedly.
    pnpm --filter company-os db:generate --name initial
    ```
 
-3. Review both the generated `migration.sql` and `snapshot.json`. Check renames, destructive DDL,
-   defaults, indexes, foreign keys, locks, and data backfills explicitly.
+3. Review the generated `migration.sql`. Check renames, destructive DDL, defaults, indexes, foreign
+   keys, locks, and data backfills explicitly. Confirm that Drizzle produced `snapshot.json` and
+   commit it unchanged; it is generated diff state rather than a human-authored migration.
 4. Validate the migration history and rebuild a fresh database through the integration tests:
 
    ```sh
@@ -172,6 +175,12 @@ This replacement workflow is deliberately limited to the current pre-deployment 
 first shared deployment, preserve the baseline and generate a descriptive migration such as
 `pnpm --filter company-os db:generate --name add_company_owner` for every subsequent schema change.
 
+Drizzle does not currently represent PostgreSQL constraint deferrability in its schema definition.
+Any migration that creates or replaces the `objects.created_by_id` or `objects.updated_by_id`
+foreign key must retain `DEFERRABLE INITIALLY DEFERRED`; bootstrapping the mutually dependent
+Platform and system Identity requires those checks to run at transaction commit. The migration
+integration test verifies the resulting PostgreSQL constraints directly.
+
 For SQL that Drizzle cannot derive, generate an empty, tracked migration instead of creating an
 untracked script:
 
@@ -179,9 +188,9 @@ untracked script:
 pnpm --filter company-os db:generate:custom --name backfill_company_owner
 ```
 
-Keep the TypeScript schema, generated SQL, snapshot, and application change in the same commit. Do
-not use `drizzle-kit push`; every environment, including local development, should exercise the
-same committed history.
+Keep the TypeScript schema, reviewed SQL, generated snapshot, and application change in the same
+commit. Do not use `drizzle-kit push`; every environment, including local development, should
+exercise the same committed history.
 
 ### Reset local development
 
