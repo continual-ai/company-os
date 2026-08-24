@@ -7,11 +7,11 @@ import {
   RecordId,
   type RecordAlias,
   type RecordAliasUpdate,
-  type Model,
+  type ModelCatalog,
   type ModelObjectRef,
   PageToken,
   Timestamp,
-  type Etag,
+  type InferProperty,
   type ObjectRecord,
   type ObjectSort,
   type ObjectType,
@@ -29,9 +29,9 @@ import {
   InvalidListRequest,
   type ObjectDeleteTarget,
   type ObjectInsert,
-  type ObjectUpdateMetadata,
   type ObjectRepositoryUpdate,
   type RepositoryListRequest,
+  type RepositoryListVisibility,
   type RepositoryFilter,
   type Repository,
 } from "@continual/runtime/effect/object-repository"
@@ -67,7 +67,40 @@ import type {
 import { Effect, Schema } from "effect"
 import type { SqlError } from "effect/unstable/sql/SqlError"
 
-import type { PostgresStorage } from "./schema"
+import { physicalPropertyKey, type PostgresStorage } from "./schema"
+
+type StoragePropertyValues<TObject extends ObjectType> = Partial<
+  Readonly<
+    Record<
+      | (keyof TObject["properties"] & string)
+      | `${keyof TObject["properties"] & string}Id`,
+      InferProperty<TObject["properties"][keyof TObject["properties"] & string]>
+    >
+  >
+>
+
+type ObjectInsertPropertyValues<TObject extends ObjectType> = Omit<
+  ObjectInsert<TObject>,
+  | "aliases"
+  | "annotations"
+  | "createdAt"
+  | "createdBy"
+  | "etag"
+  | "id"
+  | "parent"
+  | "systemManaged"
+  | "updatedAt"
+  | "updatedBy"
+>
+
+type ObjectUpdatePropertyValues<TObject extends ObjectType> = Omit<
+  ObjectRepositoryUpdate<TObject>["changes"],
+  "aliases" | "annotations"
+>
+
+type CanonicalStoragePropertyValues<TObject extends ObjectType> =
+  | ObjectInsertPropertyValues<TObject>
+  | ObjectUpdatePropertyValues<TObject>
 
 export type PostgresRepositoryError =
   | EffectDrizzleQueryError
@@ -241,39 +274,50 @@ function makeObjectRef<const TObjectType extends string>(
   return reference as ObjectRef<TObjectType>
 }
 
-/** Resolves a globally unique alias without requiring its object type. */
-export function resolveRecordAlias<
-  const TModel extends Model,
+/** Resolves globally unique aliases in input order without requiring object types. */
+export function resolveRecordAliases<
+  const TModel extends ModelCatalog,
   const TRelations extends AnyRelations,
 >(
   storage: PostgresStorage<TModel>,
   db: EffectPgDatabase<TRelations>,
-  alias: RecordAlias
-): Effect.Effect<ModelObjectRef<TModel>, PostgresRecordAliasResolutionError> {
+  aliases: ReadonlyArray<RecordAlias>
+): Effect.Effect<
+  ReadonlyArray<ModelObjectRef<TModel>>,
+  PostgresRecordAliasResolutionError
+> {
+  if (aliases.length === 0) return Effect.succeed([])
   const { recordAliases, objects } = storage.core
   return Effect.gen(function* () {
     const rows = yield* db
-      .select({ id: objects.id, objectType: objects.objectType })
+      .select({
+        alias: recordAliases.alias,
+        id: objects.id,
+        objectType: objects.objectType,
+      })
       .from(recordAliases)
       .innerJoin(objects, eq(recordAliases.objectId, objects.id))
-      .where(eq(recordAliases.alias, alias))
-      .limit(1)
-    const resolved = rows[0]
-    if (resolved === undefined) {
-      return yield* Effect.fail(new RecordAliasNotFound({ alias }))
+      .where(inArray(recordAliases.alias, [...new Set(aliases)]))
+    const byAlias = new Map(rows.map((row) => [row.alias, row]))
+    const references: Array<ModelObjectRef<TModel>> = []
+    for (const alias of aliases) {
+      const resolved = byAlias.get(alias)
+      if (resolved === undefined) {
+        return yield* Effect.fail(new RecordAliasNotFound({ alias }))
+      }
+      if (resolved.objectType === storage.model.root.id) {
+        return yield* Effect.die(
+          `Model root '${resolved.id}' cannot own a record alias.`
+        )
+      }
+      if (!Object.hasOwn(storage.model.objects, resolved.objectType)) {
+        return yield* Effect.die(
+          `Alias '${alias}' resolved to unknown object type '${resolved.objectType}'.`
+        )
+      }
+      references.push(makeObjectRef(resolved.objectType, resolved.id))
     }
-    if (resolved.objectType === storage.model.root.id) {
-      return yield* Effect.die(
-        `Model root '${resolved.id}' cannot own a record alias.`
-      )
-    }
-    if (!Object.hasOwn(storage.model.objects, resolved.objectType)) {
-      return yield* Effect.die(
-        `Alias '${alias}' resolved to unknown object type '${resolved.objectType}'.`
-      )
-    }
-    const reference = makeObjectRef(resolved.objectType, resolved.id)
-    return reference
+    return references
   })
 }
 
@@ -283,7 +327,7 @@ export function resolveRecordAlias<
  * returned capability without bypassing its hydration and write invariants.
  */
 export function makeObjectRepository<
-  const TModel extends Model,
+  const TModel extends ModelCatalog,
   const TObject extends TModel["objects"][keyof TModel["objects"] & string],
   const TRelations extends AnyRelations,
 >(
@@ -301,7 +345,21 @@ export function makeObjectRepository<
         `Object '${object.id}' does not have a PostgreSQL storage table.`
       )
     }
-    const parentColumn = `${object.parent.objectType}Id`
+    const parentColumn = `${object.parent.typeId}Id`
+    const parentInterfaceTable =
+      object.parent.kind === "interface"
+        ? Object.entries(storage.interfaces).find(
+            ([interfaceId]) => interfaceId === object.parent.typeId
+          )?.[1]
+        : undefined
+    if (
+      object.parent.kind === "interface" &&
+      parentInterfaceTable === undefined
+    ) {
+      return yield* Effect.die(
+        `Parent interface '${object.parent.typeId}' does not have a PostgreSQL storage table.`
+      )
+    }
     const interfaceTables: ReadonlyArray<AnyPgTable> = Object.values(
       object.interfaces
     ).map((implementation) => {
@@ -327,11 +385,31 @@ export function makeObjectRepository<
         `Storage table for object '${object.id}' must declare semantic parent column '${parentColumn}'.`
       )
     }
-    const columns = Object.fromEntries(
-      Object.entries(storageColumns).filter(
-        ([columnId]) => columnId !== parentColumn
-      )
+    const propertyColumns = Object.fromEntries(
+      Object.entries(object.properties).map(([propertyId, property]) => {
+        const storageKey = physicalPropertyKey(propertyId, property)
+        const column = storageColumns[storageKey]
+        if (column === undefined) {
+          throw new Error(
+            `Storage table for object '${object.id}' must declare property column '${storageKey}'.`
+          )
+        }
+        return [propertyId, column]
+      })
     )
+    const columns = { id: idColumn, ...propertyColumns }
+    const toStorageProperties = (
+      properties: CanonicalStoragePropertyValues<TObject>
+    ): StoragePropertyValues<TObject> =>
+      // SAFETY: every input key is drawn from this object's declared
+      // properties; only record references receive the physical `Id` suffix.
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+      Object.fromEntries(
+        Object.entries(properties).map(([propertyId, value]) => [
+          physicalPropertyKey(propertyId, object.properties[propertyId]!),
+          value,
+        ])
+      ) as StoragePropertyValues<TObject>
     const RecordSchema = toEffectObjectSchema(object)
     const RecordsSchema = Schema.Array(RecordSchema)
     const selection = {
@@ -344,21 +422,23 @@ export function makeObjectRepository<
       )`,
       annotations: objects.annotations,
       createdAt: objects.createdAt,
-      createdById: objects.createdById,
+      createdBy: objects.createdById,
       etag: objects.etag,
-      parentId: objects.parentId,
+      parent: objects.parentId,
+      systemManaged: objects.systemManaged,
       updatedAt: objects.updatedAt,
-      updatedById: objects.updatedById,
+      updatedBy: objects.updatedById,
     }
 
     const queryColumns = {
       ...columns,
       createdAt: objects.createdAt,
-      createdById: objects.createdById,
+      createdBy: objects.createdById,
       id: idColumn,
-      parentId: objects.parentId,
+      parent: objects.parentId,
+      systemManaged: objects.systemManaged,
       updatedAt: objects.updatedAt,
-      updatedById: objects.updatedById,
+      updatedBy: objects.updatedById,
     }
 
     const columnFor = (field: string): Column => {
@@ -375,12 +455,13 @@ export function makeObjectRepository<
     }
 
     const allowedOperators = (field: string): ReadonlySet<string> => {
-      if (field === "id" || field === "parentId") {
+      if (field === "id" || field === "parent") {
         return new Set(["eq", "in"])
       }
-      if (field === "createdById" || field === "updatedById") {
+      if (field === "createdBy" || field === "updatedBy") {
         return new Set(["eq", "in"])
       }
+      if (field === "systemManaged") return new Set(["eq", "in"])
       if (field === "createdAt" || field === "updatedAt") {
         return new Set(["eq", "gt", "gte", "in", "lt", "lte"])
       }
@@ -436,8 +517,11 @@ export function makeObjectRepository<
         }
         return queryValue
       }
+      if (field === "systemManaged") {
+        return Schema.decodeUnknownSync(Schema.Boolean)(value)
+      }
       const textValue = Schema.decodeUnknownSync(Schema.String)(value)
-      if (field === "id" || field === "parentId") {
+      if (field === "id" || field === "parent") {
         if (textValue.length === 0) {
           throw invalidListRequest(
             object,
@@ -446,7 +530,7 @@ export function makeObjectRepository<
         }
         return textValue
       }
-      if (field === "createdById" || field === "updatedById") {
+      if (field === "createdBy" || field === "updatedBy") {
         return ActorId(textValue)
       }
       if (field === "createdAt" || field === "updatedAt") {
@@ -643,7 +727,8 @@ export function makeObjectRepository<
     })
 
     const list = Effect.fn(`${object.id}.repository.list`)(function* (
-      request: RepositoryListRequest<TObject> = {}
+      request: RepositoryListRequest<TObject> = {},
+      visibility?: RepositoryListVisibility
     ): Effect.fn.Return<Page<ObjectRecord<TObject>>, PostgresRepositoryError> {
       const size = Math.min(
         MAX_PAGE_SIZE,
@@ -690,8 +775,20 @@ export function makeObjectRepository<
         cursor === undefined
           ? undefined
           : cursorCondition(resolvedSort, cursor.values)
+      const visible =
+        visibility === undefined
+          ? undefined
+          : visibility.visibleWithin.length === 0
+            ? sql`false`
+            : or(
+                inArray(idColumn, visibility.visibleWithin),
+                sql`${objects.ancestorIds} && array[${sql.join(
+                  visibility.visibleWithin.map((scopeId) => sql`${scopeId}`),
+                  sql`, `
+                )}]::text[]`
+              )
       const records = yield* select(
-        and(filter, after),
+        and(filter, after, visible),
         resolvedSort.map(orderExpression)
       )
         .limit(size + 1)
@@ -721,12 +818,13 @@ export function makeObjectRepository<
         aliases,
         annotations,
         createdAt,
-        createdById,
+        createdBy,
         etag,
         id,
-        parentId,
+        parent: parentId,
+        systemManaged,
         updatedAt,
-        updatedById,
+        updatedBy,
         ...properties
       } = record
 
@@ -749,11 +847,19 @@ export function makeObjectRepository<
               })
             )
           }
-          if (parent.objectType !== object.parent.objectType) {
+          const parentMatches =
+            parentInterfaceTable !== undefined
+              ? (yield* tx
+                  .select({ id: parentInterfaceTable.id })
+                  .from(parentInterfaceTable)
+                  .where(eq(parentInterfaceTable.id, parentId))
+                  .limit(1)).length === 1
+              : parent.objectType === object.parent.typeId
+          if (!parentMatches) {
             return yield* Effect.fail(
               new ObjectParentTypeMismatch({
                 actualParentObjectType: parent.objectType,
-                expectedParentObjectType: object.parent.objectType,
+                expectedParentTypeId: object.parent.typeId,
                 objectType: object.id,
                 parentId,
               })
@@ -764,13 +870,14 @@ export function makeObjectRepository<
             ancestorIds: [parentId, ...parent.ancestorIds],
             annotations,
             createdAt,
-            createdById,
+            createdById: createdBy,
             etag,
             id,
             objectType: object.id,
             parentId,
+            systemManaged,
             updatedAt,
-            updatedById,
+            updatedById: updatedBy,
           })
           if (aliases.length > 0) {
             yield* tx
@@ -795,7 +902,7 @@ export function makeObjectRepository<
               )
             }
           }
-          const objectValues = { id, ...properties }
+          const objectValues = { id, ...toStorageProperties(properties) }
           Object.assign(objectValues, { [parentColumn]: parentId })
           // SAFETY: the portable object schema validates the property values,
           // while the model-derived storage projection supplies this table.
@@ -816,21 +923,199 @@ export function makeObjectRepository<
       return yield* get(id)
     })
 
-    const update = Effect.fn(`${object.id}.repository.update`)(function* (
-      id: RecordId<TObject["id"]>,
-      input: ObjectRepositoryUpdate<TObject>,
-      expectedEtag: Etag,
-      metadata: ObjectUpdateMetadata
+    const upsert = Effect.fn(`${object.id}.repository.upsert`)(function* (
+      record: ObjectInsert<TObject>
     ) {
-      const { aliases, annotations, ...properties } = input
+      const {
+        aliases,
+        annotations,
+        createdAt,
+        createdBy,
+        etag,
+        id,
+        parent: parentId,
+        systemManaged,
+        updatedAt,
+        updatedBy,
+        ...properties
+      } = record
+
+      yield* db.transaction((tx) =>
+        Effect.gen(function* () {
+          const parentRows = yield* tx
+            .select({
+              ancestorIds: objects.ancestorIds,
+              objectType: objects.objectType,
+            })
+            .from(objects)
+            .where(eq(objects.id, parentId))
+            .limit(1)
+          const parent = parentRows[0]
+          if (parent === undefined) {
+            return yield* Effect.fail(
+              new ObjectParentNotFound({ objectType: object.id, parentId })
+            )
+          }
+          const parentMatches =
+            parentInterfaceTable !== undefined
+              ? (yield* tx
+                  .select({ id: parentInterfaceTable.id })
+                  .from(parentInterfaceTable)
+                  .where(eq(parentInterfaceTable.id, parentId))
+                  .limit(1)).length === 1
+              : parent.objectType === object.parent.typeId
+          if (!parentMatches) {
+            return yield* Effect.fail(
+              new ObjectParentTypeMismatch({
+                actualParentObjectType: parent.objectType,
+                expectedParentTypeId: object.parent.typeId,
+                objectType: object.id,
+                parentId,
+              })
+            )
+          }
+
+          const existingRows = yield* tx
+            .select({
+              objectType: objects.objectType,
+              parentId: objects.parentId,
+            })
+            .from(objects)
+            .where(eq(objects.id, id))
+            .limit(1)
+          const existing = existingRows[0]
+          if (
+            existing !== undefined &&
+            (existing.objectType !== object.id ||
+              existing.parentId !== parentId)
+          ) {
+            return yield* Effect.fail(conflict(object, id))
+          }
+
+          yield* tx
+            .insert(objects)
+            .values({
+              ancestorIds: [parentId, ...parent.ancestorIds],
+              annotations,
+              createdAt,
+              createdById: createdBy,
+              etag,
+              id,
+              objectType: object.id,
+              parentId,
+              systemManaged,
+              updatedAt,
+              updatedById: updatedBy,
+            })
+            .onConflictDoUpdate({
+              target: objects.id,
+              set: {
+                annotations,
+                etag,
+                systemManaged,
+                updatedAt,
+                updatedById: updatedBy,
+              },
+            })
+
+          if (aliases.length > 0) {
+            yield* tx
+              .insert(recordAliases)
+              .values(aliases.map((alias) => ({ alias, objectId: id })))
+              .onConflictDoNothing()
+            const owners = yield* tx
+              .select({
+                alias: recordAliases.alias,
+                objectId: recordAliases.objectId,
+              })
+              .from(recordAliases)
+              .where(inArray(recordAliases.alias, [...aliases]))
+            const conflictOwner = owners.find((owner) => owner.objectId !== id)
+            if (conflictOwner !== undefined) {
+              return yield* Effect.fail(
+                new RecordAliasConflict({
+                  alias: conflictOwner.alias,
+                  conflictingRecordId: conflictOwner.objectId,
+                  recordId: id,
+                })
+              )
+            }
+          }
+          yield* tx
+            .delete(recordAliases)
+            .where(
+              aliases.length === 0
+                ? eq(recordAliases.objectId, id)
+                : and(
+                    eq(recordAliases.objectId, id),
+                    notInArray(recordAliases.alias, [...aliases])
+                  )
+            )
+
+          const storageProperties = toStorageProperties(properties)
+          const objectValues = { id, ...storageProperties }
+          Object.assign(objectValues, { [parentColumn]: parentId })
+          // SAFETY: the portable object schema validates the complete record,
+          // while the model-derived projection supplies this exact table.
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+          const objectRow = objectValues as PgInsertValue<typeof table>
+          const inserted = tx.insert(table).values(objectRow)
+          if (Object.keys(storageProperties).length === 0) {
+            yield* inserted.onConflictDoNothing()
+          } else {
+            // SAFETY: the complete seed record carries this object's canonical
+            // property values and never changes its semantic parent.
+            // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion
+            const changes = storageProperties as unknown as PgUpdateSetSource<
+              typeof table
+            >
+            yield* inserted.onConflictDoUpdate({
+              target: idColumn,
+              set: changes,
+            })
+          }
+          for (const interfaceTable of interfaceTables) {
+            // SAFETY: interface tables are same-ID projections derived from
+            // the model declaration.
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+            const interfaceRow = { id } as PgInsertValue<typeof interfaceTable>
+            yield* tx
+              .insert(interfaceTable)
+              .values(interfaceRow)
+              .onConflictDoNothing()
+          }
+          return undefined
+        })
+      )
+
+      return yield* get(id)
+    })
+
+    const update = Effect.fn(`${object.id}.repository.update`)(function* ({
+      changes,
+      expectedEtag,
+      id,
+      metadata,
+    }: ObjectRepositoryUpdate<TObject>) {
+      const { aliases, annotations, ...properties } = changes
+      const storageProperties = toStorageProperties(properties)
       yield* db.transaction((tx) =>
         Effect.gen(function* () {
           const updated = yield* tx
             .update(objects)
             .set(
               annotations === undefined
-                ? metadata
-                : { annotations, ...metadata }
+                ? {
+                    etag: metadata.etag,
+                    updatedAt: metadata.updatedAt,
+                    updatedById: metadata.updatedBy,
+                  }
+                : {
+                    annotations,
+                    etag: metadata.etag,
+                    updatedAt: metadata.updatedAt,
+                    updatedById: metadata.updatedBy,
+                  }
             )
             .where(
               and(
@@ -898,14 +1183,13 @@ export function makeObjectRepository<
             }
           }
 
-          if (Object.keys(properties).length > 0) {
-            // SAFETY: the portable object update schema validates the values,
-            // while this factory is explicitly paired with the same table.
-            // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion
-            const changes = properties as unknown as PgUpdateSetSource<
-              typeof table
-            >
-            yield* tx.update(table).set(changes).where(eq(idColumn, id))
+          if (Object.keys(storageProperties).length > 0) {
+            const storageChanges =
+              // SAFETY: the portable object update schema validates the values,
+              // while this factory is explicitly paired with the same table.
+              // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion
+              storageProperties as unknown as PgUpdateSetSource<typeof table>
+            yield* tx.update(table).set(storageChanges).where(eq(idColumn, id))
           }
           return undefined
         })
@@ -914,23 +1198,23 @@ export function makeObjectRepository<
       return yield* get(id)
     })
 
-    const deleteObject = Effect.fn(`${object.id}.repository.delete`)(function* (
-      id: RecordId<TObject["id"]>,
-      expectedEtag: Etag
-    ) {
-      const deleted = yield* db
-        .delete(objects)
-        .where(
-          and(
-            eq(objects.id, id),
-            eq(objects.objectType, object.id),
-            eq(objects.etag, expectedEtag)
+    const deleteObject = Effect.fn(`${object.id}.repository.delete`)(
+      function* ({ expectedEtag, id }: ObjectDeleteTarget<TObject>) {
+        const deleted = yield* db
+          .delete(objects)
+          .where(
+            and(
+              eq(objects.id, id),
+              eq(objects.objectType, object.id),
+              eq(objects.etag, expectedEtag)
+            )
           )
-        )
-        .returning({ id: objects.id })
-      if (deleted.length === 0) return yield* Effect.fail(conflict(object, id))
-      return undefined
-    })
+          .returning({ id: objects.id })
+        if (deleted.length === 0)
+          return yield* Effect.fail(conflict(object, id))
+        return undefined
+      }
+    )
 
     const batchDelete = Effect.fn(`${object.id}.repository.batchDelete`)(
       function* (targets: ReadonlyArray<ObjectDeleteTarget<TObject>>) {
@@ -967,6 +1251,7 @@ export function makeObjectRepository<
       insert,
       list,
       update,
+      upsert,
     }
   })
 }

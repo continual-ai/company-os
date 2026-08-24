@@ -1,6 +1,6 @@
 export {
   makeObjectRepository,
-  resolveRecordAlias,
+  resolveRecordAliases,
   type PostgresRecordAliasResolutionError,
   type PostgresRepositoryError,
 } from "./object-repository"

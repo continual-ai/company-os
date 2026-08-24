@@ -4,7 +4,7 @@ import {
   type LinkTraversal,
   type LinkType,
   linkReferenceTraversals,
-  type Model,
+  type ModelCatalog,
   type ModelInterfaceRecordId,
   type ObjectType,
   type RecordId,
@@ -59,21 +59,39 @@ const timestampWithTimezone = customType<{
 type ObjectPropertyKey<TObject extends ObjectType> =
   keyof TObject["properties"] & string
 
+type PhysicalObjectPropertyKey<
+  TObject extends ObjectType,
+  TKey extends ObjectPropertyKey<TObject>,
+> =
+  Extract<
+    TObject["properties"][TKey],
+    { readonly kind: "recordId" }
+  > extends never
+    ? TKey
+    : `${TKey}Id`
+
+type PhysicalObjectPropertyKeys<TObject extends ObjectType> = {
+  [TKey in ObjectPropertyKey<TObject>]: PhysicalObjectPropertyKey<TObject, TKey>
+}[ObjectPropertyKey<TObject>]
+
 type PhysicalObjectColumn<TObject extends ObjectType> =
   | "id"
-  | `${TObject["parent"]["objectType"]}Id`
-  | ObjectPropertyKey<TObject>
+  | `${TObject["parent"]["typeId"]}Id`
+  | PhysicalObjectPropertyKeys<TObject>
 
 type StoredObjectRow<TObject extends ObjectType> = {
   readonly id: RecordId<TObject["id"]>
 } & {
-  readonly [TKey in `${TObject["parent"]["objectType"]}Id`]: RecordId<
-    TObject["parent"]["objectType"]
+  readonly [TKey in `${TObject["parent"]["typeId"]}Id`]: RecordId<
+    TObject["parent"]["typeId"]
   >
 } & {
-  readonly [TKey in ObjectPropertyKey<TObject>]: InferSchema<
-    TObject["properties"][TKey]
-  >
+  readonly [
+    TKey in ObjectPropertyKey<TObject> as PhysicalObjectPropertyKey<
+      TObject,
+      TKey
+    >
+  ]: InferSchema<TObject["properties"][TKey]>
 }
 
 type ObjectTable<TObject extends ObjectType> = AnyPgTable & {
@@ -82,14 +100,14 @@ type ObjectTable<TObject extends ObjectType> = AnyPgTable & {
   readonly $inferSelect: StoredObjectRow<TObject>
 }
 
-type ObjectTables<TModel extends Model> = {
+type ObjectTables<TModel extends ModelCatalog> = {
   readonly [TObjectType in keyof TModel["objects"]]: ObjectTable<
     TModel["objects"][TObjectType]
   >
 }
 
 type TraversalRecordId<
-  TModel extends Model,
+  TModel extends ModelCatalog,
   TTraversal extends LinkTraversal,
 > = TTraversal["from"]["kind"] extends "interface"
   ? ModelInterfaceRecordId<
@@ -98,7 +116,7 @@ type TraversalRecordId<
     >
   : RecordId<TTraversal["from"]["typeId"]>
 
-type InterfaceTables<TModel extends Model> = {
+type InterfaceTables<TModel extends ModelCatalog> = {
   readonly [TInterfaceType in keyof TModel["interfaces"]]: AnyPgTable & {
     readonly id: AnyPgColumn
     readonly $inferSelect: {
@@ -107,7 +125,7 @@ type InterfaceTables<TModel extends Model> = {
   }
 }
 
-type LinkTable<TModel extends Model, TLink> =
+type LinkTable<TModel extends ModelCatalog, TLink> =
   TLink extends LinkType<string, infer TForward, infer TReverse>
     ? AnyPgTable & {
         readonly [
@@ -128,7 +146,7 @@ type LinkTable<TModel extends Model, TLink> =
       }
     : never
 
-type LinkTables<TModel extends Model> = {
+type LinkTables<TModel extends ModelCatalog> = {
   readonly [
     TLinkId in keyof TModel["links"] as TModel["links"][TLinkId] extends LinkType<
       string,
@@ -144,7 +162,7 @@ type LinkTables<TModel extends Model> = {
   ]: LinkTable<TModel, TModel["links"][TLinkId]>
 }
 
-type SchemaTables<TModel extends Model> = {
+type SchemaTables<TModel extends ModelCatalog> = {
   readonly __recordAliases: CoreTables<TModel>["recordAliases"]
   readonly __objects: CoreTables<TModel>["objects"]
   readonly __roots: CoreTables<TModel>["roots"]
@@ -196,17 +214,17 @@ type UnionToIntersection<TValue> = (
   : never
 
 type LinkRelations<
-  TModel extends Model,
+  TModel extends ModelCatalog,
   TTypeId extends string,
 > = UnionToIntersection<
   RelationsForLink<TTypeId, TModel["links"][keyof TModel["links"]]>
 >
 
-type ModelTypeId<TModel extends Model> =
+type ModelTypeId<TModel extends ModelCatalog> =
   | (keyof TModel["interfaces"] & string)
   | (keyof TModel["objects"] & string)
 
-type ModelRelations<TModel extends Model> = {
+type ModelRelations<TModel extends ModelCatalog> = {
   readonly [TTableId in keyof SchemaTables<TModel>]: {
     readonly name: TTableId & string
     readonly relations: TTableId extends ModelTypeId<TModel>
@@ -231,7 +249,7 @@ interface ColumnBuilderRegistry {
   [columnId: string]: PgColumnBuilder
 }
 
-export type PostgresStorageOverrides<TModel extends Model> = {
+export type PostgresStorageOverrides<TModel extends ModelCatalog> = {
   readonly objects?: {
     readonly [TObjectType in keyof TModel["objects"]]?: ObjectStorageOverride<
       TModel["objects"][TObjectType]
@@ -239,7 +257,10 @@ export type PostgresStorageOverrides<TModel extends Model> = {
   }
 }
 
-function makeCoreTables<const TModel extends Model>(model: TModel) {
+function makeCoreTables<const TModel extends ModelCatalog>(
+  model: TModel,
+  actorIdColumn?: () => AnyPgColumn
+) {
   type StoredObjectType =
     | TModel["root"]["id"]
     | (keyof TModel["objects"] & string)
@@ -248,6 +269,14 @@ function makeCoreTables<const TModel extends Model>(model: TModel) {
     storedObjectTypes.map((objectType) => sql`${objectType}`),
     sql`, `
   )
+  const auditActor = () => {
+    const column = text().notNull()
+    // A model whose initial root and actor refer to each other requires these
+    // constraints to be DEFERRABLE in the committed SQL migration.
+    return actorIdColumn === undefined
+      ? column
+      : column.references(actorIdColumn, { onDelete: "restrict" })
+  }
   const objects = pgTable(
     "objects",
     {
@@ -264,11 +293,12 @@ function makeCoreTables<const TModel extends Model>(model: TModel) {
         .$type<Readonly<Record<string, string>>>()
         .notNull()
         .default(sql`'{}'::jsonb`),
+      systemManaged: boolean().notNull().default(false),
       etag: text().notNull(),
       createdAt: timestampWithTimezone().notNull(),
-      createdById: text().notNull(),
+      createdById: auditActor(),
       updatedAt: timestampWithTimezone().notNull(),
-      updatedById: text().notNull(),
+      updatedById: auditActor(),
     },
     (table) => [
       check(
@@ -304,11 +334,11 @@ function makeCoreTables<const TModel extends Model>(model: TModel) {
   return { recordAliases, objects, roots }
 }
 
-type CoreTables<TModel extends Model> = ReturnType<
+type CoreTables<TModel extends ModelCatalog> = ReturnType<
   typeof makeCoreTables<TModel>
 >
 
-export interface PostgresStorage<TModel extends Model> {
+export interface PostgresStorage<TModel extends ModelCatalog> {
   readonly core: CoreTables<TModel>
   readonly interfaces: InterfaceTables<TModel>
   readonly linkTables: LinkTables<TModel>
@@ -324,6 +354,13 @@ function snakeCase(value: string): string {
     .replaceAll(/[^a-zA-Z0-9]+/g, "_")
     .replaceAll(/^_+|_+$/g, "")
     .toLowerCase()
+}
+
+export function physicalPropertyKey(
+  propertyId: string,
+  property: AnySchema
+): string {
+  return property.kind === "recordId" ? `${propertyId}Id` : propertyId
 }
 
 function columnId(table: AnyPgTable): AnyPgColumn {
@@ -459,7 +496,7 @@ function addRelation(
 }
 
 function makeRelations(
-  model: Model,
+  model: ModelCatalog,
   schema: Readonly<Record<string, AnyPgTable>>
 ): AnyRelations {
   return defineRelations(schema, (relations) => {
@@ -570,11 +607,24 @@ function makeRelations(
 }
 
 /** Compiles a portable closed-world model into deterministic Drizzle tables. */
-export function makePostgresSchema<const TModel extends Model>(
+export function makePostgresSchema<const TModel extends ModelCatalog>(
   model: TModel,
   overrides: PostgresStorageOverrides<TModel> = {}
 ): PostgresStorage<TModel> {
-  const { recordAliases, objects, roots } = makeCoreTables(model)
+  const actorInterface = model.actor
+  let actorTable: AnyPgTable | undefined
+  const actorIdColumn =
+    actorInterface === undefined
+      ? undefined
+      : () => {
+          if (actorTable === undefined) {
+            throw new Error(
+              `Actor interface '${actorInterface.id}' does not have a storage table.`
+            )
+          }
+          return columnId(actorTable)
+        }
+  const { recordAliases, objects, roots } = makeCoreTables(model, actorIdColumn)
   const tableOwners = new Map([
     ["record_aliases", "core record aliases"],
     ["objects", "core objects"],
@@ -600,6 +650,9 @@ export function makePostgresSchema<const TModel extends Model>(
         .references(() => objects.id, { onDelete: "cascade" }),
     })
   }
+  if (actorInterface !== undefined) {
+    actorTable = interfaceTables[actorInterface.id]
+  }
 
   const objectTables: Record<string, AnyPgTable> = {}
   const uniqueLinkProperties = new Set(
@@ -610,7 +663,7 @@ export function makePostgresSchema<const TModel extends Model>(
         reference.source.cardinality !== "many" &&
         reference.target.cardinality !== "many"
       ) {
-        return [`${reference.source.from.typeId}.${reference.source.key}Id`]
+        return [`${reference.source.from.typeId}.${reference.source.key}`]
       }
       return []
     })
@@ -627,17 +680,13 @@ export function makePostgresSchema<const TModel extends Model>(
   for (const object of Object.values(model.objects)) {
     const tableName = snakeCase(object.collection)
     claimTableName(tableName, `object '${object.id}'`)
-    const parentColumn = `${object.parent.objectType}Id`
+    const parentColumn = `${object.parent.typeId}Id`
     const objectOverride = overrides.objects?.[object.id]
     const columns: ColumnBuilderRegistry = {
       id: text()
         .primaryKey()
         .references(() => objects.id, { onDelete: "cascade" }),
-      [parentColumn]: text()
-        .notNull()
-        .references(() => columnId(tableForType(object.parent.objectType)), {
-          onDelete: "restrict",
-        }),
+      [parentColumn]: text().notNull(),
     }
     for (const [propertyId, property] of Object.entries(object.properties)) {
       const override = objectOverride?.columns?.[propertyId]
@@ -646,7 +695,13 @@ export function makePostgresSchema<const TModel extends Model>(
           `Output-only property '${object.id}.${propertyId}' requires a storage column override.`
         )
       }
-      columns[propertyId] =
+      const columnKey = physicalPropertyKey(propertyId, property)
+      if (columns[columnKey] !== undefined) {
+        throw new Error(
+          `Object '${object.id}' properties produce duplicate PostgreSQL column '${columnKey}'.`
+        )
+      }
+      columns[columnKey] =
         override === undefined
           ? configuredColumn(property, tableForType)
           : override()
@@ -658,22 +713,28 @@ export function makePostgresSchema<const TModel extends Model>(
           table[parentColumn]!
         ),
         foreignKey({
+          columns: [table[parentColumn]!],
+          foreignColumns: [columnId(tableForType(object.parent.typeId))],
+          name: `${tableName}_${snakeCase(parentColumn)}_fk`,
+        }).onDelete("restrict"),
+        foreignKey({
           columns: [table.id!, table[parentColumn]!],
           foreignColumns: [objects.id, objects.parentId],
           name: `${tableName}_object_parent_fk`,
         }).onDelete("cascade"),
       ]
       for (const [propertyId, property] of Object.entries(object.properties)) {
-        const column = table[propertyId]
+        const columnKey = physicalPropertyKey(propertyId, property)
+        const column = table[columnKey]
         if (column === undefined) continue
         if (property.kind === "recordId") {
           constraints.push(
-            index(`${tableName}_${snakeCase(propertyId)}_idx`).on(column)
+            index(`${tableName}_${snakeCase(columnKey)}_idx`).on(column)
           )
         }
         if (uniqueLinkProperties.has(`${object.id}.${propertyId}`)) {
           constraints.push(
-            uniqueIndex(`${tableName}_${snakeCase(propertyId)}_unique`).on(
+            uniqueIndex(`${tableName}_${snakeCase(columnKey)}_unique`).on(
               column
             )
           )
