@@ -56,7 +56,8 @@ redeclaring its business shape:
 5. [`LeadService`](apps/company-os/src/server/objects/lead-service.server.ts) adds source-owned
    authorization to the standard object behavior.
 6. The [composition root](apps/company-os/src/server/composition-root.server.ts) assembles the
-   repositories and services and derives the API description and HTTP contract from `Model`.
+   repositories and services and binds the API description and executable HTTP contract derived
+   from `Model`.
 
 This is a guide to the working slice, not a requirement that every future capability add the same
 layers. Each boundary should continue to earn its place through a concrete responsibility.
