@@ -57,7 +57,7 @@ export function createBetterAuth({
     },
     advanced: {
       database: { joins: false },
-      cookiePrefix: "company_os",
+      cookiePrefix: config.cookiePrefix,
     },
     plugins: [
       genericOAuth({

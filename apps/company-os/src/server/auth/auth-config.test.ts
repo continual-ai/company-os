@@ -30,6 +30,7 @@ describe("authentication configuration", () => {
     expect(config).toMatchObject({
       baseUrl: "http://localhost:3002",
       bootstrapEmail: "owner@example.com",
+      cookiePrefix: "company_os",
       oidc: {
         discoveryUrl:
           "https://accounts.example.com/.well-known/openid-configuration",

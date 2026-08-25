@@ -47,6 +47,7 @@ const TestDatabase = PgliteClient.layer()
 const authConfig: AuthConfig = {
   baseUrl: "http://localhost:3002",
   bootstrapEmail: undefined,
+  cookiePrefix: "company_os_test",
   oidc: {
     clientId: "client-id",
     clientSecret: Redacted.make("client-secret"),

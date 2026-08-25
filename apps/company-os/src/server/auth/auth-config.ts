@@ -4,6 +4,7 @@ import { Config, Context, Effect, Layer, Redacted } from "effect"
 export interface AuthConfig {
   readonly baseUrl: string
   readonly bootstrapEmail: EmailAddress | undefined
+  readonly cookiePrefix: string
   readonly oidc: {
     readonly clientId: string
     readonly clientSecret: Redacted.Redacted
@@ -39,6 +40,9 @@ const deploymentConfig = Config.all({
   bootstrapEmail: Config.string("AUTH_BOOTSTRAP_EMAIL").pipe(
     Config.withDefault("")
   ),
+  cookiePrefix: Config.nonEmptyString("AUTH_COOKIE_PREFIX").pipe(
+    Config.withDefault("company_os")
+  ),
   oidc: Config.all({
     clientId: Config.nonEmptyString("AUTH_OIDC_CLIENT_ID"),
     clientSecret: Config.redacted("AUTH_OIDC_CLIENT_SECRET"),
@@ -70,6 +74,7 @@ export const loadAuthConfig: Effect.Effect<
         baseUrl: httpUrl(config.baseUrl, "BETTER_AUTH_URL"),
         bootstrapEmail:
           bootstrapEmail === "" ? undefined : EmailAddress(bootstrapEmail),
+        cookiePrefix: config.cookiePrefix,
         oidc: {
           clientId: config.oidc.clientId,
           clientSecret: requiredSecret(
