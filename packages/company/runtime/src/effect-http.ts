@@ -16,7 +16,6 @@ import { Etag, type ObjectType } from "./definition/object"
 import {
   DEFAULT_PAGE_SIZE,
   filterOperators,
-  IdempotencyKey,
   MAX_BATCH_DELETE_SIZE,
   MAX_BATCH_GET_SIZE,
   MAX_PAGE_SIZE,
@@ -88,7 +87,8 @@ function pascalCase(value: string): string {
     .replace(/[^a-zA-Z0-9]/g, "")
 }
 
-function endpointId(
+/** Returns the stable operation identifier shared by generated contracts and handlers. */
+export function httpEndpointId(
   operation: string,
   object: ObjectType,
   scope?: "collection" | "object"
@@ -131,18 +131,6 @@ function effectActionRoute(path: `/${string}`): `/${string}` {
   // leading slash required by Effect's route type.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   return constantVerbs.replace(/\{([^}/]+)\}/g, ":$1") as `/${string}`
-}
-
-const mutationHeaders = {
-  "idempotency-key": Schema.optionalKey(
-    Schema.String.check(Schema.isMaxLength(200))
-      .pipe(Schema.fromBrand("IdempotencyKey", IdempotencyKey))
-      .annotate({
-        description:
-          "A caller-generated key used to make retries of this mutation safe.",
-        title: "Idempotency key",
-      })
-  ),
 }
 
 const pageTokenSchema = Schema.String.pipe(
@@ -210,7 +198,7 @@ function addDefaultEndpoints(
     title: object.pluralName,
   })
   const listEndpoint = HttpApiEndpoint.get(
-    endpointId("list", object),
+    httpEndpointId("list", object),
     collectionPath,
     {
       query: {
@@ -236,7 +224,7 @@ function addDefaultEndpoints(
     }
   ).annotateMerge(
     endpointAnnotations({
-      identifier: endpointId("list", object),
+      identifier: httpEndpointId("list", object),
       summary: `List ${object.pluralName.toLowerCase()}`,
     })
   )
@@ -290,7 +278,7 @@ function addDefaultEndpoints(
     title: `${object.name} filter`,
   })
   const searchEndpoint = HttpApiEndpoint.post(
-    endpointId("search", object),
+    httpEndpointId("search", object),
     effectActionRoute(`${collectionPath}:search`),
     {
       payload: Schema.Struct({
@@ -323,7 +311,7 @@ function addDefaultEndpoints(
     endpointAnnotations({
       description:
         "Standard object search with nested boolean filters, type-aware comparison operators, deterministic multi-property sorting, and cursor pagination.",
-      identifier: endpointId("search", object),
+      identifier: httpEndpointId("search", object),
       summary: `Search ${object.pluralName.toLowerCase()}`,
     })
   )
@@ -336,7 +324,7 @@ function addDefaultEndpoints(
     title: `${object.pluralName} batch`,
   })
   const batchEndpoint = HttpApiEndpoint.post(
-    endpointId("batchGet", object),
+    httpEndpointId("batchGet", object),
     effectActionRoute(`${collectionPath}:batchGet`),
     {
       payload: Schema.Struct({
@@ -355,7 +343,7 @@ function addDefaultEndpoints(
   ).annotateMerge(
     endpointAnnotations({
       description: `Returns records in the same order as the requested identifiers. The request fails if any identifier cannot be resolved.`,
-      identifier: endpointId("batchGet", object),
+      identifier: httpEndpointId("batchGet", object),
       summary: `Batch get ${object.pluralName.toLowerCase()}`,
     })
   )
@@ -363,10 +351,9 @@ function addDefaultEndpoints(
 
   if (object.actions.batchDelete !== undefined) {
     const endpoint = HttpApiEndpoint.post(
-      endpointId("batchDelete", object),
+      httpEndpointId("batchDelete", object),
       effectActionRoute(`${collectionPath}:batchDelete`),
       {
-        headers: mutationHeaders,
         payload: Schema.Struct({
           ids: Schema.Array(
             toEffectRecordIdentifierSchema(object.id).annotate({
@@ -390,7 +377,7 @@ function addDefaultEndpoints(
     ).annotateMerge(
       endpointAnnotations({
         description: `Deletes every requested ${object.name.toLowerCase()} in one atomic transaction. Identifiers must resolve to unique records; if any record cannot be deleted, none are deleted.`,
-        identifier: endpointId("batchDelete", object),
+        identifier: httpEndpointId("batchDelete", object),
         summary: `Batch delete ${object.pluralName.toLowerCase()}`,
       })
     )
@@ -402,17 +389,16 @@ function addDefaultEndpoints(
       .pipe(HttpApiSchema.status(201))
       .annotate({ identifier: `Created${pascalCase(object.id)}` })
     const endpoint = HttpApiEndpoint.post(
-      endpointId("create", object),
+      httpEndpointId("create", object),
       collectionPath,
       {
-        headers: mutationHeaders,
         payload: createInput,
         success: createdRecord,
         error: writeErrors,
       }
     ).annotateMerge(
       endpointAnnotations({
-        identifier: endpointId("create", object),
+        identifier: httpEndpointId("create", object),
         summary: `Create ${object.name.toLowerCase()}`,
       })
     )
@@ -420,7 +406,7 @@ function addDefaultEndpoints(
   }
 
   const getEndpoint = HttpApiEndpoint.get(
-    endpointId("get", object),
+    httpEndpointId("get", object),
     recordPath,
     {
       params: parameter.schema,
@@ -429,7 +415,7 @@ function addDefaultEndpoints(
     }
   ).annotateMerge(
     endpointAnnotations({
-      identifier: endpointId("get", object),
+      identifier: httpEndpointId("get", object),
       summary: `Get ${object.name.toLowerCase()}`,
     })
   )
@@ -437,10 +423,9 @@ function addDefaultEndpoints(
 
   if (object.actions.update !== undefined) {
     const endpoint = HttpApiEndpoint.patch(
-      endpointId("update", object),
+      httpEndpointId("update", object),
       recordPath,
       {
-        headers: mutationHeaders,
         params: parameter.schema,
         payload: updateInput,
         success: record,
@@ -448,7 +433,7 @@ function addDefaultEndpoints(
       }
     ).annotateMerge(
       endpointAnnotations({
-        identifier: endpointId("update", object),
+        identifier: httpEndpointId("update", object),
         summary: `Update ${object.name.toLowerCase()}`,
       })
     )
@@ -457,10 +442,9 @@ function addDefaultEndpoints(
 
   if (object.actions.delete !== undefined) {
     const endpoint = HttpApiEndpoint.delete(
-      endpointId("delete", object),
+      httpEndpointId("delete", object),
       recordPath,
       {
-        headers: mutationHeaders,
         params: parameter.schema,
         query: {
           etag: Schema.optionalKey(
@@ -475,7 +459,7 @@ function addDefaultEndpoints(
       }
     ).annotateMerge(
       endpointAnnotations({
-        identifier: endpointId("delete", object),
+        identifier: httpEndpointId("delete", object),
         summary: `Delete ${object.name.toLowerCase()}`,
       })
     )
@@ -491,7 +475,7 @@ function addActionEndpoint(
   action: Action,
   basePath: `/${string}`
 ): DynamicGroup {
-  const identifier = endpointId(action.id, object, action.scope)
+  const identifier = httpEndpointId(action.id, object, action.scope)
   const placeholders = [...action.http.path.matchAll(/\{([^}/]+)\}/g)].map(
     (match) => match[1] ?? ""
   )
@@ -527,7 +511,6 @@ function addActionEndpoint(
         ? { params, payload }
         : { params }
   const options = {
-    headers: mutationHeaders,
     success: toEffectSchema(action.output).annotate({
       identifier: `${pascalCase(identifier)}Output`,
       title: `${action.name} output`,

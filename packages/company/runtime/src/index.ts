@@ -8,6 +8,7 @@ export type {
   ActionOutput,
   ActionScope,
 } from "./definition/action"
+export { isStandardActionId } from "./definition/action"
 export { defineError, errorCategories } from "./definition/error"
 export type { ApiError, ErrorType, ErrorCategory } from "./definition/error"
 export type {
@@ -22,7 +23,7 @@ export type {
   InterfaceImplementation,
   InterfaceType,
 } from "./definition/interface"
-export { defineModel, modelTypeAccepts } from "./definition/model"
+export { defineModel, modelObjects, modelTypeAccepts } from "./definition/model"
 export type {
   Model,
   ModelCatalog,
@@ -63,7 +64,6 @@ export type { RootType } from "./definition/root"
 export {
   DEFAULT_PAGE_SIZE,
   filterOperators,
-  IdempotencyKey,
   MAX_BATCH_DELETE_SIZE,
   MAX_BATCH_GET_SIZE,
   MAX_PAGE_SIZE,
@@ -75,7 +75,6 @@ export type {
   Batch,
   FilterOperator,
   ListRequest,
-  MutationOptions,
   NullPlacement,
   ObjectFilter,
   ObjectSort,

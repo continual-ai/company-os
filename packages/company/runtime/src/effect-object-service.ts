@@ -199,7 +199,8 @@ export interface MakeOptions<
   >
 }
 
-function defaultRecordId(objectType: string): string {
+/** Generates the canonical opaque identifier used by standard and custom actions. */
+export function generateRecordId(objectType: string): string {
   const prefix = objectType
     .replaceAll(/([a-z0-9])([A-Z])/g, "$1_$2")
     .toLowerCase()
@@ -592,7 +593,7 @@ export function make<
   const decodeUpdateUnknown = Schema.decodeUnknownEffect(
     toEffectObjectUpdateSchema(object)
   )
-  const generateRecordId = options.generateRecordId ?? defaultRecordId
+  const makeRecordId = options.generateRecordId ?? generateRecordId
 
   const authorize = (
     operation: ObjectOperation,
@@ -731,7 +732,7 @@ export function make<
       aliases: canonical.aliases ?? [],
       metadata: canonical.metadata ?? {},
       createdBy: actorId,
-      id: RecordId(object.id)(generateRecordId(object.id)),
+      id: RecordId(object.id)(makeRecordId(object.id)),
       parent,
       systemManaged: false,
       updatedBy: actorId,

@@ -110,9 +110,7 @@ describe("Effect HTTP projection", () => {
       patch: { operationId: "updateAccount" },
     })
     expect(document.paths["/api/v1/accounts/{id}"]?.delete).toBeUndefined()
-    expect(document.paths["/api/v1/accounts"]?.post?.parameters).toContainEqual(
-      expect.objectContaining({ in: "header", name: "idempotency-key" })
-    )
+    expect(document.paths["/api/v1/accounts"]?.post?.parameters).toEqual([])
     expect(document.paths["/api/v1/accounts"]?.post?.responses).toHaveProperty(
       "422"
     )

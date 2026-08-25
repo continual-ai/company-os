@@ -20,13 +20,7 @@ import type {
   ObjectRecord,
   ObjectUpdateInput,
 } from "./definition/object"
-import type {
-  Batch,
-  IdempotencyKey,
-  ListRequest,
-  MutationOptions,
-  Page,
-} from "./definition/request"
+import type { Batch, ListRequest, Page } from "./definition/request"
 
 export interface ApiClientOptions {
   /** Versioned API root. Defaults to the same-origin `/api/v1`. */
@@ -75,8 +69,7 @@ type DefaultObjectClient<TObject extends ObjectType> = {
   "batchDelete",
   {
     readonly batchDelete: (
-      input: ObjectBatchDeleteInput<TObject>,
-      options?: MutationOptions
+      input: ObjectBatchDeleteInput<TObject>
     ) => Promise<void>
   }
 > &
@@ -85,8 +78,7 @@ type DefaultObjectClient<TObject extends ObjectType> = {
     "create",
     {
       readonly create: (
-        input: ObjectCreateInput<TObject>,
-        options?: MutationOptions
+        input: ObjectCreateInput<TObject>
       ) => Promise<ObjectRecord<TObject>>
     }
   > &
@@ -94,10 +86,7 @@ type DefaultObjectClient<TObject extends ObjectType> = {
     TObject,
     "delete",
     {
-      readonly delete: (
-        input: ObjectDeleteInput<TObject>,
-        options?: MutationOptions
-      ) => Promise<void>
+      readonly delete: (input: ObjectDeleteInput<TObject>) => Promise<void>
     }
   > &
   StandardMethod<
@@ -105,15 +94,13 @@ type DefaultObjectClient<TObject extends ObjectType> = {
     "update",
     {
       readonly update: (
-        input: ObjectUpdateInput<TObject>,
-        options?: MutationOptions
+        input: ObjectUpdateInput<TObject>
       ) => Promise<ObjectRecord<TObject>>
     }
   >
 
 type ActionMethod<TAction extends Action> = (
-  input: ActionInput<TAction>,
-  options?: MutationOptions
+  input: ActionInput<TAction>
 ) => Promise<ActionOutput<TAction>>
 
 type AuthoredAction<TAction extends Action> = TAction extends Action
@@ -137,7 +124,6 @@ export type ApiClient<TModel extends ModelCatalog> = {
 
 interface RequestOptions {
   readonly body?: unknown
-  readonly idempotencyKey?: IdempotencyKey
   readonly method: "DELETE" | "GET" | "PATCH" | "POST"
   readonly path: string
   readonly query?: URLSearchParams
@@ -157,12 +143,6 @@ type JsonValue =
 
 function normalizeBaseUrl(baseUrl: string): string {
   return baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl
-}
-
-function mutationOptions(options: MutationOptions | undefined) {
-  return options?.idempotencyKey === undefined
-    ? {}
-    : { idempotencyKey: options.idempotencyKey }
 }
 
 /**
@@ -186,9 +166,6 @@ export function createClient<const TModel extends ModelCatalog>(
 
     if (requestOptions.body !== undefined) {
       headers.set("content-type", "application/json")
-    }
-    if (requestOptions.idempotencyKey !== undefined) {
-      headers.set("idempotency-key", requestOptions.idempotencyKey)
     }
 
     const query = requestOptions.query?.toString()
@@ -250,31 +227,22 @@ export function createClient<const TModel extends ModelCatalog>(
     )
 
     if (object.actions.batchDelete !== undefined) {
-      methods.set(
-        "batchDelete",
-        (
-          input: { readonly ids: readonly string[] },
-          mutation: MutationOptions | undefined
-        ) =>
-          request({
-            body: input,
-            method: "POST",
-            path: `${collectionPath}:batchDelete`,
-            ...mutationOptions(mutation),
-          })
+      methods.set("batchDelete", (input: { readonly ids: readonly string[] }) =>
+        request({
+          body: input,
+          method: "POST",
+          path: `${collectionPath}:batchDelete`,
+        })
       )
     }
 
     if (object.actions.create !== undefined) {
-      methods.set(
-        "create",
-        (input: JsonValue, mutation: MutationOptions | undefined) =>
-          request({
-            body: input,
-            method: "POST",
-            path: collectionPath,
-            ...mutationOptions(mutation),
-          })
+      methods.set("create", (input: JsonValue) =>
+        request({
+          body: input,
+          method: "POST",
+          path: collectionPath,
+        })
       )
     }
 
@@ -286,37 +254,26 @@ export function createClient<const TModel extends ModelCatalog>(
     )
 
     if (object.actions.update !== undefined) {
-      methods.set(
-        "update",
-        (
-          input: JsonObject & { readonly id: string },
-          mutation: MutationOptions | undefined
-        ) => {
-          const { id, ...body } = input
-          return request({
-            body,
-            method: "PATCH",
-            path: `${collectionPath}/${encodeURIComponent(id)}`,
-            ...mutationOptions(mutation),
-          })
-        }
-      )
+      methods.set("update", (input: JsonObject & { readonly id: string }) => {
+        const { id, ...body } = input
+        return request({
+          body,
+          method: "PATCH",
+          path: `${collectionPath}/${encodeURIComponent(id)}`,
+        })
+      })
     }
 
     if (object.actions.delete !== undefined) {
       methods.set(
         "delete",
-        (
-          { etag, id }: { readonly etag?: string; readonly id: string },
-          mutation: MutationOptions | undefined
-        ) => {
+        ({ etag, id }: { readonly etag?: string; readonly id: string }) => {
           const query = new URLSearchParams()
           if (etag !== undefined) query.set("etag", etag)
           return request({
             method: "DELETE",
             path: `${collectionPath}/${encodeURIComponent(id)}`,
             query,
-            ...mutationOptions(mutation),
           })
         }
       )
@@ -324,35 +281,31 @@ export function createClient<const TModel extends ModelCatalog>(
 
     for (const action of Object.values(object.actions)) {
       if (isStandardActionId(action.id)) continue
-      methods.set(
-        action.id,
-        (input: JsonObject, mutation: MutationOptions | undefined) => {
-          const body = { ...input }
-          const path = action.http.path.replace(
-            /\{([^}/]+)\}/g,
-            (_placeholder, property: string) => {
-              const value = body[property]
-              if (value === undefined) {
-                throw new TypeError(
-                  `Action '${object.id}.${action.id}' requires path property '${property}'.`
-                )
-              }
-              delete body[property]
-              // SAFETY: action binding validation permits only string-valued path schemas.
-              // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-              return encodeURIComponent(value as string)
+      methods.set(action.id, (input: JsonObject) => {
+        const body = { ...input }
+        const path = action.http.path.replace(
+          /\{([^}/]+)\}/g,
+          (_placeholder, property: string) => {
+            const value = body[property]
+            if (value === undefined) {
+              throw new TypeError(
+                `Action '${object.id}.${action.id}' requires path property '${property}'.`
+              )
             }
-          )
-          const actionRequest = {
-            method: action.http.method,
-            path,
-            ...mutationOptions(mutation),
+            delete body[property]
+            // SAFETY: action binding validation permits only string-valued path schemas.
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+            return encodeURIComponent(value as string)
           }
-          return Object.keys(body).length === 0
-            ? request(actionRequest)
-            : request({ ...actionRequest, body })
+        )
+        const actionRequest = {
+          method: action.http.method,
+          path,
         }
-      )
+        return Object.keys(body).length === 0
+          ? request(actionRequest)
+          : request({ ...actionRequest, body })
+      })
     }
 
     objectClients.set(object.collection, Object.fromEntries(methods))

@@ -36,12 +36,6 @@ export const PageToken = Brand.make<PageToken>(
   (value) => value.length > 0 || "Expected a non-empty page token"
 )
 
-/** Client-generated key retained across retries of the same mutation. */
-export type IdempotencyKey = string & Brand.Brand<"IdempotencyKey">
-export const IdempotencyKey = Brand.make<IdempotencyKey>(
-  (value) => value.length > 0 || "Expected a non-empty idempotency key"
-)
-
 type EqualityFilter<TField extends string, TValue> =
   | {
       readonly field: TField
@@ -212,8 +206,4 @@ export interface Page<TItem> {
 
 export interface Batch<TItem> {
   readonly items: ReadonlyArray<TItem>
-}
-
-export interface MutationOptions {
-  readonly idempotencyKey?: IdempotencyKey
 }

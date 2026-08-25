@@ -1,7 +1,7 @@
 import { expect, expectTypeOf, it } from "vitest"
 
 import { Etag } from "./object"
-import { IdempotencyKey, PageToken } from "./request"
+import { PageToken } from "./request"
 import {
   CalendarDate,
   CurrencyCode,
@@ -28,7 +28,6 @@ it("constructs nominally distinct standard values through validated brands", () 
   expect(accountId).toBe("account_1")
   expect(Etag("etag_1")).toBe("etag_1")
   expect(PageToken("account_1")).toBe("account_1")
-  expect(IdempotencyKey("request_1")).toBe("request_1")
   expect(CalendarDate("2026-08-20")).toBe("2026-08-20")
   expect(CurrencyCode("USD")).toBe("USD")
   expect(Decimal("1250.00")).toBe("1250.00")
@@ -45,7 +44,6 @@ it("constructs nominally distinct standard values through validated brands", () 
 it("rejects invalid values before branding them", () => {
   expect(() => Etag("")).toThrow()
   expect(() => PageToken("")).toThrow()
-  expect(() => IdempotencyKey("")).toThrow()
   expect(() => RecordId("account")("")).toThrow()
   expect(() => RecordId("account")("legacy:account:1")).toThrow()
   expect(() => CalendarDate("08/20/2026")).toThrow()
