@@ -164,13 +164,16 @@ history and converge source-owned records before serving the corresponding appli
 
 ### Local setup
 
-Create a dedicated local PostgreSQL database, then copy the app-owned example environment and set
-the required authentication values:
+Start the repository-owned local PostgreSQL service and converge the committed schema:
 
 ```sh
-cp apps/company-os/.env.example apps/company-os/.env.local
-pnpm --filter company-os db:deploy
+pnpm setup
 ```
+
+The setup command creates `apps/company-os/.env.local` from the example when it is absent. Set the
+required OIDC values in that file, then use `pnpm dev`. Development reapplies pending migrations
+and converges source-owned records before starting Company OS. Use `pnpm dev:all` when the
+demonstration marketing site and client portal are also needed.
 
 Database commands load `apps/company-os/.env.local` when present and otherwise use `DATABASE_URL`
 from the process environment. TanStack Start also loads that app-local file for development while

@@ -17,6 +17,25 @@ const rootDocument = {
 } as const
 
 export const Route = createRootRoute({
+  errorComponent: ({ error, reset }) => (
+    <main className="mx-auto flex min-h-svh max-w-lg flex-col justify-center p-6">
+      <p className="text-sm font-medium text-destructive">Application error</p>
+      <h1 className="mt-2 text-2xl font-semibold tracking-tight">
+        Company OS could not load this page.
+      </h1>
+      <p className="mt-3 text-sm text-muted-foreground">
+        {error instanceof Error
+          ? error.message
+          : "An unexpected error occurred."}
+      </p>
+      <button
+        className="mt-6 h-9 self-start border px-3 text-sm"
+        onClick={reset}
+      >
+        Try again
+      </button>
+    </main>
+  ),
   head: ({ matches }) => {
     const document = documentHead(resolvePageMetadata(matches) ?? rootDocument)
     const location = canonicalMetadata(matches.at(-1)?.pathname ?? "/")
