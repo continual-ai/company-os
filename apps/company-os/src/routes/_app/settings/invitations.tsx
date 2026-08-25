@@ -1,10 +1,6 @@
 import { Model } from "@company/model"
-import {
-  EmailAddress,
-  RecordId,
-  Timestamp,
-  type RecordId as RecordIdType,
-} from "@company/runtime"
+import { RecordId } from "@company/runtime"
+import { toEffectInputSchema } from "@company/runtime/effect"
 import { Button } from "@company/ui/components/button"
 import {
   Dialog,
@@ -15,16 +11,21 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@company/ui/components/dialog"
+import { Field, FieldError, FieldLabel } from "@company/ui/components/field"
 import { Input } from "@company/ui/components/input"
-import { Label } from "@company/ui/components/label"
 import { createFileRoute } from "@tanstack/react-router"
 import { MailPlusIcon } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 
 import { companyClient } from "@/company-client"
 import { ConfirmActionButton } from "@/components/confirm-action-button"
+import { decodeFormSchema, FormValidationError } from "@/components/form-errors"
+import { FormField } from "@/components/form-field"
 import { ObjectCollection } from "@/components/object-collection"
+import { dateTimeLocalValue } from "@/components/object-form"
+import { ObjectReferenceSelect } from "@/components/object-reference-select"
 import type { ObjectTableRecord } from "@/components/object-table/object-table-config"
+import { useFormSubmission } from "@/components/use-form-submission"
 import { formText } from "@/form-data"
 import { pageOptions } from "@/route-metadata"
 import { PLATFORM_ID } from "@/system-records"
@@ -33,6 +34,35 @@ const page = {
   breadcrumb: "Invitations",
   description: "Invite verified users into a source-owned role.",
   title: "Invitations",
+}
+
+const platformRoleConstraints = [
+  { field: "scopeType", value: Model.root.id },
+] as const
+
+const issueInputSchema = toEffectInputSchema(
+  Model.actions.invitation.issue.input
+)
+
+function decodeIssueInput(data: FormData) {
+  try {
+    const input = {
+      email: formText(data, "email"),
+      expiresAt: new Date(formText(data, "expiresAt")).toISOString(),
+      role: formText(data, "role"),
+      scope: formText(data, "scope"),
+    }
+    return decodeFormSchema(issueInputSchema, input)
+  } catch (cause) {
+    if (cause instanceof FormValidationError) throw cause
+    throw new FormValidationError([
+      {
+        message: "Enter a valid expiration time.",
+        path: ["expiresAt"],
+        reason: "INVALID_TIMESTAMP",
+      },
+    ])
+  }
 }
 
 export const Route = createFileRoute("/_app/settings/invitations")({
@@ -45,31 +75,28 @@ function IssueInvitation({
 }: {
   readonly refresh: () => Promise<void>
 }) {
-  const [roles, setRoles] = useState<
-    ReadonlyArray<{ id: RecordIdType<"role">; name: string }>
-  >([])
-  const [error, setError] = useState<string>()
   const [open, setOpen] = useState(false)
-  const [pending, setPending] = useState(false)
   const [redemptionToken, setRedemptionToken] = useState<string>()
-
-  useEffect(() => {
-    if (!open) return
-    void companyClient.roles
-      .list()
-      .then((response) =>
-        setRoles(
-          response.items.map((role) => ({ id: role.id, name: role.name }))
-        )
+  const submission = useFormSubmission({
+    fallback: "Issuing the invitation failed.",
+    onSubmit: async (data) => {
+      const issued = await companyClient.invitations.issue(
+        decodeIssueInput(data)
       )
-  }, [open])
+      setRedemptionToken(issued.redemptionToken)
+      await refresh().catch(() => undefined)
+    },
+  })
 
   return (
     <Dialog
       open={open}
       onOpenChange={(next) => {
         setOpen(next)
-        if (!next) setRedemptionToken(undefined)
+        if (!next) {
+          setRedemptionToken(undefined)
+          submission.resetErrors()
+        }
       }}
     >
       <DialogTrigger render={<Button size="sm" />}>
@@ -79,35 +106,10 @@ function IssueInvitation({
       <DialogContent>
         {redemptionToken === undefined ? (
           <form
+            noValidate
             className="grid gap-4"
-            onSubmit={(event) => {
-              event.preventDefault()
-              const form = new FormData(event.currentTarget)
-              setPending(true)
-              setError(undefined)
-              const expiresAt = new Date(formText(form, "expiresAt"))
-              void companyClient.invitations
-                .issue({
-                  email: EmailAddress(
-                    formText(form, "email").trim().toLowerCase()
-                  ),
-                  expiresAt: Timestamp(expiresAt.toISOString()),
-                  role: RecordId("role")(formText(form, "role")),
-                  scope: RecordId("authorizationScope")(PLATFORM_ID),
-                })
-                .then((issued) => {
-                  setRedemptionToken(issued.redemptionToken)
-                  return refresh()
-                })
-                .catch((cause: unknown) =>
-                  setError(
-                    cause instanceof Error
-                      ? cause.message
-                      : "Issuing the invitation failed."
-                  )
-                )
-                .finally(() => setPending(false))
-            }}
+            onInput={submission.handleInput}
+            onSubmit={submission.handleSubmit}
           >
             <DialogHeader>
               <DialogTitle>Issue invitation</DialogTitle>
@@ -116,46 +118,76 @@ function IssueInvitation({
                 delivery can be supplied by the deployment environment later.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-1.5">
-              <Label htmlFor="invitation-email">Email</Label>
-              <Input required id="invitation-email" name="email" type="email" />
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="invitation-role">Role</Label>
-              <select
-                required
-                id="invitation-role"
-                name="role"
-                className="h-8 border border-input bg-background px-2 text-xs"
+            <FormField
+              errors={submission.errors}
+              id="invitation-email"
+              label="Email"
+              name="email"
+            >
+              {({ ariaDescribedBy, invalid }) => (
+                <Input
+                  required
+                  id="invitation-email"
+                  name="email"
+                  type="email"
+                  aria-invalid={invalid}
+                  aria-describedby={ariaDescribedBy}
+                />
+              )}
+            </FormField>
+            <Field>
+              <FieldLabel htmlFor="invitation-scope">Scope</FieldLabel>
+              <input type="hidden" name="scope" value={PLATFORM_ID} />
+              <div
+                id="invitation-scope"
+                className="flex h-8 items-center border border-input bg-muted/20 px-2 text-xs"
               >
-                <option value="">Select role</option>
-                {roles.map((role) => (
-                  <option key={role.id} value={role.id}>
-                    {role.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="invitation-expires">Expires</Label>
-              <Input
-                required
-                id="invitation-expires"
-                name="expiresAt"
-                type="datetime-local"
-                defaultValue={new Date(Date.now() + 7 * 86_400_000)
-                  .toISOString()
-                  .slice(0, 16)}
-              />
-            </div>
-            {error === undefined ? null : (
-              <p role="alert" className="text-xs text-destructive">
-                {error}
-              </p>
-            )}
+                {Model.root.name}
+              </div>
+            </Field>
+            <FormField
+              errors={submission.errors}
+              id="invitation-role"
+              label="Role"
+              name="role"
+            >
+              {({ ariaDescribedBy, invalid }) => (
+                <ObjectReferenceSelect
+                  ariaDescribedBy={ariaDescribedBy}
+                  id="invitation-role"
+                  invalid={invalid}
+                  required
+                  name="role"
+                  typeId={Model.objects.role.id}
+                  constraints={platformRoleConstraints}
+                  placeholder="Select a platform role"
+                />
+              )}
+            </FormField>
+            <FormField
+              errors={submission.errors}
+              id="invitation-expires"
+              label="Expires"
+              name="expiresAt"
+            >
+              {({ ariaDescribedBy, invalid }) => (
+                <Input
+                  required
+                  id="invitation-expires"
+                  name="expiresAt"
+                  type="datetime-local"
+                  defaultValue={dateTimeLocalValue(
+                    new Date(Date.now() + 7 * 86_400_000).toISOString()
+                  )}
+                  aria-invalid={invalid}
+                  aria-describedby={ariaDescribedBy}
+                />
+              )}
+            </FormField>
+            <FieldError errors={submission.errors.form} />
             <DialogFooter>
-              <Button type="submit" disabled={pending || roles.length === 0}>
-                {pending ? "Issuing…" : "Issue invitation"}
+              <Button type="submit" disabled={submission.pending}>
+                {submission.pending ? "Issuing…" : "Issue invitation"}
               </Button>
             </DialogFooter>
           </form>

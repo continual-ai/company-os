@@ -28,6 +28,8 @@ import { ServiceAccount } from "./objects/service-account"
 import { User } from "./objects/user"
 import { Platform } from "./platform"
 
+export { modelMetadata } from "./metadata"
+
 export const Model = defineModel({
   actor: Identity,
   id: "operatingSystem",

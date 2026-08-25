@@ -1,5 +1,6 @@
 import { Model } from "@company/model"
-import { RecordId, type RecordId as RecordIdType } from "@company/runtime"
+import { RecordId } from "@company/runtime"
+import { toEffectInputSchema } from "@company/runtime/effect"
 import { Button } from "@company/ui/components/button"
 import {
   Dialog,
@@ -10,16 +11,20 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@company/ui/components/dialog"
+import { FieldError } from "@company/ui/components/field"
 import { Input } from "@company/ui/components/input"
-import { Label } from "@company/ui/components/label"
 import { createFileRoute } from "@tanstack/react-router"
 import { KeyRoundIcon } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 
 import { companyClient } from "@/company-client"
 import { ConfirmActionButton } from "@/components/confirm-action-button"
+import { decodeFormSchema, FormValidationError } from "@/components/form-errors"
+import { FormField } from "@/components/form-field"
 import { ObjectCollection } from "@/components/object-collection"
+import { ObjectReferenceSelect } from "@/components/object-reference-select"
 import type { ObjectTableRecord } from "@/components/object-table/object-table-config"
+import { useFormSubmission } from "@/components/use-form-submission"
 import { formText } from "@/form-data"
 import { pageOptions } from "@/route-metadata"
 
@@ -29,41 +34,65 @@ const page = {
   title: "API keys",
 }
 
+const issuableAccountConstraints = [
+  { field: "status", value: "active" },
+  { field: "systemManaged", value: false },
+] as const
+
+const issueInputSchema = toEffectInputSchema(Model.actions.apiKey.issue.input)
+
+function decodeIssueInput(data: FormData) {
+  const expiresAt = formText(data, "expiresAt")
+  try {
+    const name = formText(data, "name")
+    const serviceAccount = formText(data, "serviceAccount")
+    const input =
+      expiresAt === ""
+        ? { name, serviceAccount }
+        : {
+            expiresAt: new Date(expiresAt).toISOString(),
+            name,
+            serviceAccount,
+          }
+    return decodeFormSchema(issueInputSchema, input)
+  } catch (cause) {
+    if (cause instanceof FormValidationError) throw cause
+    throw new FormValidationError([
+      {
+        message: "Enter a valid expiration time.",
+        path: ["expiresAt"],
+        reason: "INVALID_TIMESTAMP",
+      },
+    ])
+  }
+}
+
 export const Route = createFileRoute("/_app/settings/api-keys")({
   ...pageOptions(page),
   component: ApiKeysSettings,
 })
 
 function IssueApiKey({ refresh }: { readonly refresh: () => Promise<void> }) {
-  const [accounts, setAccounts] = useState<
-    ReadonlyArray<{ id: RecordIdType<"serviceAccount">; name: string }>
-  >([])
-  const [error, setError] = useState<string>()
   const [open, setOpen] = useState(false)
-  const [pending, setPending] = useState(false)
   const [secret, setSecret] = useState<string>()
-
-  useEffect(() => {
-    if (!open) return
-    void companyClient.serviceAccounts
-      .list()
-      .then((response) =>
-        setAccounts(
-          response.items
-            .filter(
-              (account) => account.status === "active" && !account.systemManaged
-            )
-            .map((account) => ({ id: account.id, name: account.name }))
-        )
-      )
-  }, [open])
+  const submission = useFormSubmission({
+    fallback: "Issuing the key failed.",
+    onSubmit: async (data) => {
+      const issued = await companyClient.apiKeys.issue(decodeIssueInput(data))
+      setSecret(issued.secret)
+      await refresh().catch(() => undefined)
+    },
+  })
 
   return (
     <Dialog
       open={open}
       onOpenChange={(next) => {
         setOpen(next)
-        if (!next) setSecret(undefined)
+        if (!next) {
+          setSecret(undefined)
+          submission.resetErrors()
+        }
       }}
     >
       <DialogTrigger render={<Button size="sm" />}>
@@ -73,32 +102,10 @@ function IssueApiKey({ refresh }: { readonly refresh: () => Promise<void> }) {
       <DialogContent>
         {secret === undefined ? (
           <form
+            noValidate
             className="grid gap-4"
-            onSubmit={(event) => {
-              event.preventDefault()
-              const form = new FormData(event.currentTarget)
-              setPending(true)
-              setError(undefined)
-              void companyClient.apiKeys
-                .issue({
-                  name: formText(form, "name"),
-                  serviceAccount: RecordId("serviceAccount")(
-                    formText(form, "serviceAccount")
-                  ),
-                })
-                .then((issued) => {
-                  setSecret(issued.secret)
-                  return refresh()
-                })
-                .catch((cause: unknown) =>
-                  setError(
-                    cause instanceof Error
-                      ? cause.message
-                      : "Issuing the key failed."
-                  )
-                )
-                .finally(() => setPending(false))
-            }}
+            onInput={submission.handleInput}
+            onSubmit={submission.handleSubmit}
           >
             <DialogHeader>
               <DialogTitle>Issue API key</DialogTitle>
@@ -107,39 +114,63 @@ function IssueApiKey({ refresh }: { readonly refresh: () => Promise<void> }) {
                 manager.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-1.5">
-              <Label htmlFor="api-key-account">Service account</Label>
-              <select
-                required
-                id="api-key-account"
-                name="serviceAccount"
-                className="h-8 border border-input bg-background px-2 text-xs"
-              >
-                <option value="">Select service account</option>
-                {accounts.map((account) => (
-                  <option key={account.id} value={account.id}>
-                    {account.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="api-key-name">Name</Label>
-              <Input
-                required
-                id="api-key-name"
-                name="name"
-                placeholder="Production integration"
-              />
-            </div>
-            {error === undefined ? null : (
-              <p role="alert" className="text-xs text-destructive">
-                {error}
-              </p>
-            )}
+            <FormField
+              errors={submission.errors}
+              id="api-key-account"
+              label="Service account"
+              name="serviceAccount"
+            >
+              {({ ariaDescribedBy, invalid }) => (
+                <ObjectReferenceSelect
+                  ariaDescribedBy={ariaDescribedBy}
+                  id="api-key-account"
+                  invalid={invalid}
+                  required
+                  name="serviceAccount"
+                  typeId={Model.objects.serviceAccount.id}
+                  constraints={issuableAccountConstraints}
+                  placeholder="Select an active service account"
+                />
+              )}
+            </FormField>
+            <FormField
+              errors={submission.errors}
+              id="api-key-name"
+              label="Name"
+              name="name"
+            >
+              {({ ariaDescribedBy, invalid }) => (
+                <Input
+                  required
+                  id="api-key-name"
+                  name="name"
+                  placeholder="Production integration"
+                  aria-invalid={invalid}
+                  aria-describedby={ariaDescribedBy}
+                />
+              )}
+            </FormField>
+            <FormField
+              description="Optional. Leave blank for a non-expiring key."
+              errors={submission.errors}
+              id="api-key-expires"
+              label="Expires"
+              name="expiresAt"
+            >
+              {({ ariaDescribedBy, invalid }) => (
+                <Input
+                  id="api-key-expires"
+                  name="expiresAt"
+                  type="datetime-local"
+                  aria-invalid={invalid}
+                  aria-describedby={ariaDescribedBy}
+                />
+              )}
+            </FormField>
+            <FieldError errors={submission.errors.form} />
             <DialogFooter>
-              <Button type="submit" disabled={pending || accounts.length === 0}>
-                {pending ? "Issuing…" : "Issue key"}
+              <Button type="submit" disabled={submission.pending}>
+                {submission.pending ? "Issuing…" : "Issue key"}
               </Button>
             </DialogFooter>
           </form>

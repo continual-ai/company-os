@@ -1,3 +1,4 @@
+/* oxlint-disable anti-slop/no-conditional-empty-object-spread */
 import {
   schema,
   type ObjectType,
@@ -17,11 +18,20 @@ import {
 import { cn } from "@company/ui/lib/utils"
 import {
   createColumnHelper,
+  type ColumnFiltersState,
   type CellContext,
   type HeaderContext,
+  type OnChangeFn,
+  type SortingState,
   useTable,
 } from "@tanstack/react-table"
-import { ArrowDownIcon, ArrowUpIcon, GripVerticalIcon } from "lucide-react"
+import {
+  ArrowDownIcon,
+  ArrowUpIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  GripVerticalIcon,
+} from "lucide-react"
 import { type CSSProperties, useMemo, useState } from "react"
 import type { ReactNode } from "react"
 
@@ -51,6 +61,9 @@ import {
 } from "./object-table-toolbar"
 
 export interface ObjectTableProps {
+  canFilterProperty?: ((property: PropertyDefinition) => boolean) | undefined
+  canSortProperty?: ((property: PropertyDefinition) => boolean) | undefined
+  columnFilters?: ColumnFiltersState | undefined
   object: ObjectType
   onCellCommit?:
     | ((
@@ -64,11 +77,24 @@ export interface ObjectTableProps {
     | ((recordIds: ReadonlyArray<string>) => Promise<void> | void)
     | undefined
   records: ObjectTableRecord[]
+  onColumnFiltersChange?: OnChangeFn<ColumnFiltersState> | undefined
+  onSortingChange?: OnChangeFn<SortingState> | undefined
+  pagination?:
+    | {
+        readonly hasNextPage: boolean
+        readonly hasPreviousPage: boolean
+        readonly loading: boolean
+        readonly onNextPage: () => void
+        readonly onPreviousPage: () => void
+        readonly pageIndex: number
+      }
+    | undefined
   parentLabel?: string | undefined
   renderRecordActions?: ((record: ObjectTableRecord) => ReactNode) | undefined
   toolbarActions?: ReactNode
   resolveImageSrc?: ObjectTableImageResolver | undefined
   resolveRecordLabel?: ObjectTableRecordLabelResolver | undefined
+  sorting?: SortingState | undefined
   visiblePropertyIds?: ReadonlyArray<string>
 }
 
@@ -143,16 +169,23 @@ function propertyColumnSize(
 }
 
 export function ObjectTable({
+  canFilterProperty,
+  canSortProperty,
+  columnFilters,
   object,
   onCellCommit,
   onCreateRecord,
   onDeleteRecords,
   parentLabel,
   records,
+  onColumnFiltersChange,
+  onSortingChange,
+  pagination,
   renderRecordActions,
   toolbarActions,
   resolveImageSrc,
   resolveRecordLabel,
+  sorting,
   visiblePropertyIds,
 }: ObjectTableProps) {
   const [isHorizontallyScrolled, setIsHorizontallyScrolled] = useState(false)
@@ -197,10 +230,10 @@ export function ObjectTable({
 
         return columnHelper.accessor((record) => record[propertyId], {
           id: propertyId,
-          enableColumnFilter: true,
+          enableColumnFilter: canFilterProperty?.(property) ?? true,
           enableHiding: propertyId !== object.display.title,
           enableResizing: true,
-          enableSorting: true,
+          enableSorting: canSortProperty?.(property) ?? true,
           filterFn: "objectProperty",
           sortFn: "objectProperty",
           sortUndefined: "last",
@@ -224,7 +257,7 @@ export function ObjectTable({
         })
       })
     )
-  }, [object, properties])
+  }, [canFilterProperty, canSortProperty, object, properties])
 
   const initialState = useMemo(() => {
     const defaultPropertyIds = new Set(
@@ -260,6 +293,14 @@ export function ObjectTable({
     columnResizeMode: "onChange",
     enableMultiSort: true,
     enableSortingRemoval: true,
+    manualFiltering: onColumnFiltersChange !== undefined,
+    manualSorting: onSortingChange !== undefined,
+    ...(onColumnFiltersChange === undefined ? {} : { onColumnFiltersChange }),
+    ...(onSortingChange === undefined ? {} : { onSortingChange }),
+    state: {
+      ...(columnFilters === undefined ? {} : { columnFilters }),
+      ...(sorting === undefined ? {} : { sorting }),
+    },
   })
 
   const visibleRows = table.getRowModel().rows
@@ -278,8 +319,9 @@ export function ObjectTable({
       ? tableRowHeight * 5
       : tableRowHeight * visibleRows.length) +
     tableFooterHeight
-  const recordCountLabel =
-    visibleRows.length === records.length
+  const recordCountLabel = pagination
+    ? `${records.length} on page ${pagination.pageIndex + 1}`
+    : visibleRows.length === records.length
       ? `${records.length} ${records.length === 1 ? object.name.toLowerCase() : object.pluralName.toLowerCase()}`
       : `${visibleRows.length} of ${records.length} ${object.pluralName.toLowerCase()}`
 
@@ -608,7 +650,34 @@ export function ObjectTable({
               <TableCell
                 className="h-8 border-y border-r bg-background p-0"
                 style={{ width: addColumnWidth }}
-              />
+              >
+                {pagination === undefined ? null : (
+                  <div className="flex h-full items-center justify-end px-1">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-xs"
+                      aria-label="Previous page"
+                      disabled={
+                        pagination.loading || !pagination.hasPreviousPage
+                      }
+                      onClick={pagination.onPreviousPage}
+                    >
+                      <ChevronLeftIcon />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-xs"
+                      aria-label="Next page"
+                      disabled={pagination.loading || !pagination.hasNextPage}
+                      onClick={pagination.onNextPage}
+                    >
+                      <ChevronRightIcon />
+                    </Button>
+                  </div>
+                )}
+              </TableCell>
             </TableRow>
           </TableFooter>
         </Table>

@@ -287,9 +287,11 @@ export function filterOperatorsForProperty(
   property: PropertyDefinition
 ): ReadonlyArray<ObjectTableFilterOperator> {
   const filterFamily = objectTableCellBehavior(property).filterFamily
+  const emptyOperators: ReadonlyArray<ObjectTableFilterOperator> =
+    property.nullable ? ["empty", "notEmpty"] : []
 
   if (filterFamily === "boolean") {
-    return ["equals", "notEquals", "empty", "notEmpty"]
+    return ["equals", "notEquals", ...emptyOperators]
   }
   if (filterFamily === "number") {
     return [
@@ -299,8 +301,7 @@ export function filterOperatorsForProperty(
       "atLeast",
       "lessThan",
       "atMost",
-      "empty",
-      "notEmpty",
+      ...emptyOperators,
     ]
   }
   if (filterFamily === "date") {
@@ -311,12 +312,11 @@ export function filterOperatorsForProperty(
       "onOrBefore",
       "after",
       "onOrAfter",
-      "empty",
-      "notEmpty",
+      ...emptyOperators,
     ]
   }
   if (filterFamily === "recordId") {
-    return ["equals", "notEquals", "empty", "notEmpty"]
+    return ["equals", "notEquals", ...emptyOperators]
   }
   return [
     "contains",
@@ -324,8 +324,7 @@ export function filterOperatorsForProperty(
     "startsWith",
     "equals",
     "notEquals",
-    "empty",
-    "notEmpty",
+    ...emptyOperators,
   ]
 }
 

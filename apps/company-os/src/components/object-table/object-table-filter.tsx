@@ -126,7 +126,10 @@ function InitialFilterValue({
 
   if (property === undefined) return null
   const options = filterOptions(property)
-  const counts = options === null ? null : optionCounts(table, column.id)
+  const counts =
+    options === null || table.options.manualFiltering
+      ? null
+      : optionCounts(table, column.id)
 
   const addScalarFilter = () => {
     const value = draft.trim()
@@ -186,9 +189,11 @@ function InitialFilterValue({
                   }}
                 >
                   <span className="truncate">{option.label}</span>
-                  <span className="ml-auto text-muted-foreground tabular-nums">
-                    {counts?.get(option.value) ?? 0}
-                  </span>
+                  {counts === null ? null : (
+                    <span className="ml-auto text-muted-foreground tabular-nums">
+                      {counts.get(option.value) ?? 0}
+                    </span>
+                  )}
                 </CommandItem>
               ))}
             </CommandGroup>
@@ -386,7 +391,8 @@ function OptionFilterEditor({
   table: ObjectTableInstance
 }) {
   const counts = useMemo(
-    () => optionCounts(table, column.id),
+    () =>
+      table.options.manualFiltering ? null : optionCounts(table, column.id),
     [column.id, table]
   )
 
@@ -413,9 +419,11 @@ function OptionFilterEditor({
                 }}
               >
                 <span className="truncate">{option.label}</span>
-                <span className="ml-auto text-muted-foreground tabular-nums">
-                  {counts.get(option.value) ?? 0}
-                </span>
+                {counts === null ? null : (
+                  <span className="ml-auto text-muted-foreground tabular-nums">
+                    {counts.get(option.value) ?? 0}
+                  </span>
+                )}
               </CommandItem>
             )
           })}
