@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import {
-  generateSecret,
-  hashSecret,
-  secretMatches,
-} from "./secret-token.server"
+import { generateSecret, hashSecret, secretMatches } from "./secret-token"
 
 describe("opaque authentication secrets", () => {
   it("generates independent URL-safe secrets and verifies only their hashes", () => {

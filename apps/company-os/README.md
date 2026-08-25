@@ -17,8 +17,10 @@ external interfaces call the same company capabilities rather than owning separa
 - Internal operating, development, and learning routes
 - Server functions and external API routes
 
-It does not define reusable framework primitives or a second copy of the company contract. Keep
-server-only code under `src/server` or in clearly named `.server.ts` modules.
+It does not define reusable framework primitives or a second copy of the company contract. TanStack
+import protection treats `src/server` as a hard server-only boundary. Reserve `.server.ts` for
+exceptional server-only modules that must remain colocated elsewhere, and use `.functions.ts` for
+client-callable `createServerFn` wrappers.
 
 ## Server organization
 
@@ -144,7 +146,7 @@ another business service.
 
 The app uses `@company/postgres` with the Effect PostgreSQL driver. The portable `Model` is
 the source of truth for objects, properties, interfaces, ownership, links, and uniqueness.
-`src/server/database/schema.server.ts` only instantiates the reusable compiler and exposes its
+`src/server/database/schema.ts` only instantiates the reusable compiler and exposes its
 tables as direct ESM exports because Drizzle Kit does not inspect nested schema objects. Better
 Auth's generated protocol tables are checked in under `src/server/auth` and extended by private
 application-owned authentication tables in the same `auth` schema. Regenerate only the provider
@@ -186,7 +188,7 @@ all remaining records. All three commands are safe to run repeatedly.
 ### Change the pre-deployment baseline
 
 1. Edit the source contract in `packages/company/model`. When registering a new object or interface,
-   expose its generated table from `src/server/database/schema.server.ts` for Drizzle Kit; the
+   expose its generated table from `src/server/database/schema.ts` for Drizzle Kit; the
    schema coverage test fails if that tooling export is missing.
 2. Remove the existing baseline migration directory and generate a new baseline from the repository
    root:

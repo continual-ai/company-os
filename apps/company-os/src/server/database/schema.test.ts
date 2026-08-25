@@ -3,7 +3,7 @@ import { getTableColumns, getTableName, is, Table } from "drizzle-orm"
 import { getTableConfig } from "drizzle-orm/pg-core"
 import { describe, expect, expectTypeOf, it } from "vitest"
 
-import * as DatabaseSchema from "./schema.server"
+import * as DatabaseSchema from "./schema"
 
 const { Storage } = DatabaseSchema
 

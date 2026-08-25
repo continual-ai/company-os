@@ -27,27 +27,21 @@ import { describe, expect, expectTypeOf, it } from "vitest"
 import {
   PLATFORM_ID,
   SYSTEM_SERVICE_ACCOUNT_ID,
-} from "@/server/authorization/well-known-authorization.server"
-import { systemInvocation } from "@/server/invocation-context.server"
-import { DealRepository } from "@/server/objects/deal-repository.server"
-import { InteractionRepository } from "@/server/objects/interaction-repository.server"
-import { LeadRepository } from "@/server/objects/lead-repository.server"
-import { LineItemRepository } from "@/server/objects/line-item-repository.server"
-import { seedSystem } from "@/server/seeds/seed-system.server"
+} from "@/server/authorization/well-known-authorization"
+import { systemInvocation } from "@/server/invocation-context"
+import { DealRepository } from "@/server/objects/deal-repository"
+import { InteractionRepository } from "@/server/objects/interaction-repository"
+import { LeadRepository } from "@/server/objects/lead-repository"
+import { LineItemRepository } from "@/server/objects/line-item-repository"
+import { seedSystem } from "@/server/seeds/seed-system"
 
-import { Database } from "./database.server"
+import { Database } from "./database"
 import {
   makeRecordAliasResolver,
   makeObjectRepository,
   resolveRecordAlias,
-} from "./model-storage.server"
-import {
-  lineItems,
-  recordAliases,
-  objects,
-  parties,
-  relations,
-} from "./schema.server"
+} from "./model-storage"
+import { lineItems, recordAliases, objects, parties, relations } from "./schema"
 
 const migrationsFolder = fileURLToPath(new URL("./migrations", import.meta.url))
 const TestDatabase = PgliteClient.layer()

@@ -43,7 +43,7 @@
           "auth.cli.ts"
         ],
         "ignoreIssues": {
-          "src/server/auth/auth-schema.generated.server.ts": [
+          "src/server/auth/auth-schema.generated.ts": [
             "exports"
           ]
         }

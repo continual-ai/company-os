@@ -1,7 +1,7 @@
 import { Effect } from "effect"
 import { describe, expect, it } from "vitest"
 
-import { withApiErrors } from "./api-error.server"
+import { withApiErrors } from "./api-error"
 
 type TestFailure =
   | Error

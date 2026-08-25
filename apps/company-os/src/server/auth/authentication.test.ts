@@ -9,38 +9,38 @@ import { migrate } from "drizzle-orm/effect-pglite/migrator"
 import { Effect, Layer, Redacted } from "effect"
 import { describe, expect, it } from "vitest"
 
-import { AuthorizationRepository } from "@/server/authorization/authorization-repository.server"
-import { Authorization } from "@/server/authorization/authorization-service.server"
+import { AuthorizationRepository } from "@/server/authorization/authorization-repository"
+import { Authorization } from "@/server/authorization/authorization-service"
 import {
   PLATFORM_ADMIN_ROLE_ID,
   PLATFORM_ID,
-} from "@/server/authorization/well-known-authorization.server"
-import { Database } from "@/server/database/database.server"
+} from "@/server/authorization/well-known-authorization"
+import { Database } from "@/server/database/database"
 import {
   authUser,
   authUserBindings,
   relations,
   roleAssignments,
-} from "@/server/database/schema.server"
-import { ApiKeyRepository } from "@/server/objects/api-key-repository.server"
-import { ApiKeyService } from "@/server/objects/api-key-service.server"
-import { InvitationRepository } from "@/server/objects/invitation-repository.server"
-import { InvitationService } from "@/server/objects/invitation-service.server"
-import { RoleAssignmentRepository } from "@/server/objects/role-assignment-repository.server"
-import { RoleAssignmentService } from "@/server/objects/role-assignment-service.server"
-import { RoleRepository } from "@/server/objects/role-repository.server"
-import { ServiceAccountRepository } from "@/server/objects/service-account-repository.server"
-import { ServiceAccountService } from "@/server/objects/service-account-service.server"
-import { UserRepository } from "@/server/objects/user-repository.server"
-import { UserService } from "@/server/objects/user-service.server"
-import { seedSystem } from "@/server/seeds/seed-system.server"
+} from "@/server/database/schema"
+import { ApiKeyRepository } from "@/server/objects/api-key-repository"
+import { ApiKeyService } from "@/server/objects/api-key-service"
+import { InvitationRepository } from "@/server/objects/invitation-repository"
+import { InvitationService } from "@/server/objects/invitation-service"
+import { RoleAssignmentRepository } from "@/server/objects/role-assignment-repository"
+import { RoleAssignmentService } from "@/server/objects/role-assignment-service"
+import { RoleRepository } from "@/server/objects/role-repository"
+import { ServiceAccountRepository } from "@/server/objects/service-account-repository"
+import { ServiceAccountService } from "@/server/objects/service-account-service"
+import { UserRepository } from "@/server/objects/user-repository"
+import { UserService } from "@/server/objects/user-service"
+import { seedSystem } from "@/server/seeds/seed-system"
 
-import { ApiKeyAuthentication } from "./api-key-authentication.server"
-import { AuthSettings, type AuthConfig } from "./auth-config.server"
-import { AuthProtocol, type AuthUser } from "./auth-protocol.server"
-import { Authentication } from "./authentication.server"
-import { IdentityBindingRepository } from "./identity-binding-repository.server"
-import { UserAuthentication } from "./user-authentication.server"
+import { ApiKeyAuthentication } from "./api-key-authentication"
+import { AuthSettings, type AuthConfig } from "./auth-config"
+import { AuthProtocol, type AuthUser } from "./auth-protocol"
+import { Authentication } from "./authentication"
+import { IdentityBindingRepository } from "./identity-binding-repository"
+import { UserAuthentication } from "./user-authentication"
 
 const migrationsFolder = fileURLToPath(
   new URL("../database/migrations", import.meta.url)

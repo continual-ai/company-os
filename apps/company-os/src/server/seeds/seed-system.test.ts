@@ -13,21 +13,21 @@ import {
   PLATFORM_ID,
   SYSTEM_SERVICE_ACCOUNT_ID,
   SYSTEM_ROLE_ASSIGNMENT_ID,
-} from "@/server/authorization/well-known-authorization.server"
-import { Database } from "@/server/database/database.server"
+} from "@/server/authorization/well-known-authorization"
+import { Database } from "@/server/database/database"
 import {
   objects,
   recordAliases,
   relations,
   roleAssignments,
   roles,
-} from "@/server/database/schema.server"
+} from "@/server/database/schema"
 import {
   authenticatedInvocation,
   ReservedSystemActor,
-} from "@/server/invocation-context.server"
+} from "@/server/invocation-context"
 
-import { seedSystem } from "./seed-system.server"
+import { seedSystem } from "./seed-system"
 
 const migrationsFolder = fileURLToPath(
   new URL("../database/migrations", import.meta.url)

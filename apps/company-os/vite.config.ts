@@ -6,5 +6,17 @@ import { defineConfig } from "vite"
 
 export default defineConfig({
   resolve: { tsconfigPaths: true },
-  plugins: [devtools(), tailwindcss(), tanstackStart(), viteReact()],
+  plugins: [
+    devtools(),
+    tailwindcss(),
+    tanstackStart({
+      importProtection: {
+        behavior: "error",
+        client: {
+          files: ["**/*.server.*", "**/server/**"],
+        },
+      },
+    }),
+    viteReact(),
+  ],
 })

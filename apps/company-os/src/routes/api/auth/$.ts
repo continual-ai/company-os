@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { Effect } from "effect"
 
-import { applicationRuntime } from "@/server/application-runtime.server"
-import { AuthProtocol } from "@/server/auth/auth-protocol.server"
+import { applicationRuntime } from "@/server/application-runtime"
+import { AuthProtocol } from "@/server/auth/auth-protocol"
 
 async function handle(request: Request): Promise<Response> {
   return applicationRuntime.runPromise(

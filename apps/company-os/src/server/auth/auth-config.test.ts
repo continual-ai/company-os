@@ -1,7 +1,7 @@
 import { ConfigProvider, Effect, Redacted } from "effect"
 import { describe, expect, it } from "vitest"
 
-import { loadAuthConfig } from "./auth-config.server"
+import { loadAuthConfig } from "./auth-config"
 
 const validEnvironment = {
   AUTH_BOOTSTRAP_EMAIL: "Owner@Example.com",

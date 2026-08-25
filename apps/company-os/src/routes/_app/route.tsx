@@ -1,7 +1,7 @@
 import { Outlet, createFileRoute, redirect } from "@tanstack/react-router"
 
 import { AppShell } from "@/components/app-shell"
-import { getCurrentSession } from "@/current-session"
+import { getCurrentSession } from "@/current-session.functions"
 
 export const Route = createFileRoute("/_app")({
   beforeLoad: async () => {

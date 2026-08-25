@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { Effect } from "effect"
 
-import { applicationRuntime } from "@/server/application-runtime.server"
-import { CompanyApi } from "@/server/company-api.server"
+import { applicationRuntime } from "@/server/application-runtime"
+import { CompanyApi } from "@/server/company-api"
 
 function handle(request: Request): Promise<Response> {
   return applicationRuntime.runPromise(

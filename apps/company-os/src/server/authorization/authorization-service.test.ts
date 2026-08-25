@@ -10,7 +10,7 @@ import { migrate } from "drizzle-orm/effect-pglite/migrator"
 import { Effect } from "effect"
 import { describe, expect, it } from "vitest"
 
-import { Database } from "@/server/database/database.server"
+import { Database } from "@/server/database/database"
 import {
   authorizationScopes,
   companies,
@@ -24,34 +24,34 @@ import {
   roleAssignments,
   roles,
   users,
-} from "@/server/database/schema.server"
+} from "@/server/database/schema"
 import {
   authenticatedInvocation,
   systemInvocation,
-} from "@/server/invocation-context.server"
-import { CompanyRepository } from "@/server/objects/company-repository.server"
-import { makeObjectService } from "@/server/objects/object-service.server"
-import { RoleAssignmentRepository } from "@/server/objects/role-assignment-repository.server"
+} from "@/server/invocation-context"
+import { CompanyRepository } from "@/server/objects/company-repository"
+import { makeObjectService } from "@/server/objects/object-service"
+import { RoleAssignmentRepository } from "@/server/objects/role-assignment-repository"
 import {
   LastPlatformAdministrator,
   RoleAssignmentService,
   RoleScopeMismatch,
-} from "@/server/objects/role-assignment-service.server"
-import { RoleRepository } from "@/server/objects/role-repository.server"
-import { seedSystem } from "@/server/seeds/seed-system.server"
+} from "@/server/objects/role-assignment-service"
+import { RoleRepository } from "@/server/objects/role-repository"
+import { seedSystem } from "@/server/seeds/seed-system"
 
-import { AuthorizationRepository } from "./authorization-repository.server"
+import { AuthorizationRepository } from "./authorization-repository"
 import {
   Authorization,
   AuthorizationTargetNotFound,
   PermissionDenied,
-} from "./authorization-service.server"
+} from "./authorization-service"
 import {
   PLATFORM_ADMIN_ROLE_ID,
   PLATFORM_ID,
   SYSTEM_SERVICE_ACCOUNT_ID,
   SYSTEM_ROLE_ASSIGNMENT_ID,
-} from "./well-known-authorization.server"
+} from "./well-known-authorization"
 
 const migrationsFolder = fileURLToPath(
   new URL("../database/migrations", import.meta.url)

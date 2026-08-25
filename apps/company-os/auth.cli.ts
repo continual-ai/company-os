@@ -1,7 +1,7 @@
 import { drizzle } from "drizzle-orm/node-postgres"
 import { Redacted } from "effect"
 
-import { createBetterAuth } from "./src/server/auth/better-auth-definition.server"
+import { createBetterAuth } from "./src/server/auth/better-auth-definition"
 
 export const auth = createBetterAuth({
   database: drizzle.mock(),

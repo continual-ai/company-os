@@ -49,13 +49,13 @@ redeclaring its business shape:
 
 1. [`Lead`](packages/company/model/src/objects/lead.ts) defines the portable business object.
 2. [`Model`](packages/company/model/src/index.ts) closes and validates the company contract.
-3. [`Storage`](apps/company-os/src/server/database/schema.server.ts) compiles that contract into
+3. [`Storage`](apps/company-os/src/server/database/schema.ts) compiles that contract into
    the company-owned PostgreSQL projection.
-4. [`LeadRepository`](apps/company-os/src/server/objects/lead-repository.server.ts) binds the shared
+4. [`LeadRepository`](apps/company-os/src/server/objects/lead-repository.ts) binds the shared
    PostgreSQL adapter to the Lead object.
-5. [`LeadService`](apps/company-os/src/server/objects/lead-service.server.ts) adds source-owned
+5. [`LeadService`](apps/company-os/src/server/objects/lead-service.ts) adds source-owned
    authorization to the standard object behavior.
-6. The [composition root](apps/company-os/src/server/composition-root.server.ts) assembles the
+6. The [composition root](apps/company-os/src/server/composition-root.ts) assembles the
    repositories and services and binds the API description and executable HTTP contract derived
    from `Model`.
 

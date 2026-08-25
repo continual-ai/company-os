@@ -11,7 +11,7 @@ import { createFileRoute, redirect } from "@tanstack/react-router"
 import { useState } from "react"
 
 import { authClient } from "@/auth-client"
-import { getCurrentSession } from "@/current-session"
+import { getCurrentSession } from "@/current-session.functions"
 import { pageOptions } from "@/route-metadata"
 
 const page = {

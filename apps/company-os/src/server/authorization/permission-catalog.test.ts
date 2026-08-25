@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { modelPermissions, objectPermission } from "./permission-catalog.server"
+import { modelPermissions, objectPermission } from "./permission-catalog"
 
 describe("authorization permission catalog", () => {
   it("derives only operations enabled by the model", () => {
