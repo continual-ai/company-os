@@ -1,7 +1,7 @@
 import { Model } from "@company/model"
 import { createFileRoute } from "@tanstack/react-router"
 
-import { ObjectBrowser } from "@/components/object-browser"
+import { ObjectCollection } from "@/components/object-collection"
 import { pageOptions } from "@/route-metadata"
 
 const page = {
@@ -12,5 +12,5 @@ const page = {
 
 export const Route = createFileRoute("/_app/contacts")({
   ...pageOptions(page),
-  component: () => <ObjectBrowser object={Model.objects.contact} />,
+  component: () => <ObjectCollection object={Model.objects.contact} />,
 })

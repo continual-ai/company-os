@@ -130,6 +130,8 @@ function resolveSchemaCellType(schema: AnySchema): ObjectTableCellType {
     case "number":
     case "recordId":
       return resolvedSchema.kind
+    case "money":
+      return "readonly"
     case "string":
       return resolvedSchema.format ?? "text"
     case "array": {

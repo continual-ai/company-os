@@ -25,7 +25,6 @@ import {
 import { cn } from "@company/ui/lib/utils"
 import { Link, useMatchRoute } from "@tanstack/react-router"
 import {
-  BarChart3Icon,
   ActivityIcon,
   BookOpenIcon,
   BracesIcon,
@@ -36,7 +35,6 @@ import {
   ContactRoundIcon,
   HandshakeIcon,
   HouseIcon,
-  ListTodoIcon,
   LogOutIcon,
   PackageIcon,
   PaletteIcon,
@@ -58,10 +56,7 @@ const sections = [
   { label: "Develop", to: "/develop" },
 ] as const
 
-const operateNavigation = [
-  { label: "Home", to: "/", icon: HouseIcon },
-  { label: "Tasks", to: "/tasks", icon: ListTodoIcon },
-] as const
+const operateNavigation = [{ label: "Home", to: "/", icon: HouseIcon }] as const
 
 const objectIcons = {
   building: Building2Icon,
@@ -75,7 +70,9 @@ const objectPaths = {
   company: "/companies",
   contact: "/contacts",
   deal: "/deals",
+  interaction: "/interactions",
   lead: "/leads",
+  lineItem: "/line-items",
 } as const
 
 function objectIcon(name: string | undefined) {
@@ -245,23 +242,6 @@ export function AppSidebar() {
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-
-            <SidebarGroup>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      tooltip="Reports"
-                      isActive={Boolean(matchRoute({ to: "/reports" }))}
-                      render={<Link to="/reports" />}
-                    >
-                      <BarChart3Icon />
-                      <span>Reports</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>

@@ -1,4 +1,15 @@
 import type { ObjectType } from "@company/runtime"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@company/ui/components/alert-dialog"
 import { Button } from "@company/ui/components/button"
 import { Checkbox } from "@company/ui/components/checkbox"
 import {
@@ -22,9 +33,11 @@ import {
   CheckIcon,
   Columns3Icon,
   PlusIcon,
+  Trash2Icon,
   XIcon,
 } from "lucide-react"
 import { useMemo, useState } from "react"
+import type { ReactNode } from "react"
 
 import {
   objectTableColumnMeta,
@@ -37,7 +50,11 @@ import { ObjectTableProperty } from "./object-table-property"
 interface ObjectTableToolbarProps {
   object: ObjectType
   onCreateRecord?: (() => Promise<void> | void) | undefined
+  onDeleteRecords?:
+    | ((recordIds: ReadonlyArray<string>) => Promise<void> | void)
+    | undefined
   table: ObjectTableInstance
+  toolbarActions?: ReactNode
 }
 
 function ObjectTableSortMenu({ table }: { table: ObjectTableInstance }) {
@@ -183,9 +200,14 @@ export function ObjectTableColumnMenu({
 export function ObjectTableToolbar({
   object,
   onCreateRecord,
+  onDeleteRecords,
   table,
+  toolbarActions,
 }: ObjectTableToolbarProps) {
   const selectedCount = table.getSelectedRowIds().length
+  const [deleteError, setDeleteError] = useState<string>()
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [deletePending, setDeletePending] = useState(false)
 
   return (
     <>
@@ -207,6 +229,73 @@ export function ObjectTableToolbar({
               >
                 Clear
               </Button>
+              {onDeleteRecords === undefined ? null : (
+                <AlertDialog
+                  open={deleteOpen}
+                  onOpenChange={(open) => {
+                    setDeleteOpen(open)
+                    if (!open) setDeleteError(undefined)
+                  }}
+                >
+                  <AlertDialogTrigger
+                    render={
+                      <Button type="button" variant="destructive" size="sm" />
+                    }
+                  >
+                    <Trash2Icon />
+                    Delete
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>
+                        Delete {selectedCount}{" "}
+                        {selectedCount === 1
+                          ? object.name.toLowerCase()
+                          : object.pluralName.toLowerCase()}
+                        ?
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This removes the selected records and cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    {deleteError === undefined ? null : (
+                      <p role="alert" className="text-xs text-destructive">
+                        {deleteError}
+                      </p>
+                    )}
+                    <AlertDialogFooter>
+                      <AlertDialogCancel disabled={deletePending}>
+                        Cancel
+                      </AlertDialogCancel>
+                      <AlertDialogAction
+                        variant="destructive"
+                        disabled={deletePending}
+                        onClick={() => {
+                          setDeletePending(true)
+                          setDeleteError(undefined)
+                          void Promise.resolve(
+                            onDeleteRecords(table.getSelectedRowIds())
+                          )
+                            .then(() => {
+                              table.resetRowSelection(true)
+                              setDeleteOpen(false)
+                            })
+                            .catch((cause: unknown) =>
+                              setDeleteError(
+                                cause instanceof Error
+                                  ? cause.message
+                                  : "The records could not be deleted."
+                              )
+                            )
+                            .finally(() => setDeletePending(false))
+                        }}
+                      >
+                        {deletePending ? "Deleting…" : "Delete"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
             </div>
           ) : null}
           {onCreateRecord === undefined ? null : (
@@ -219,6 +308,7 @@ export function ObjectTableToolbar({
               New {object.name}
             </Button>
           )}
+          {toolbarActions}
         </div>
       </div>
       <div className="flex h-10 shrink-0 items-center gap-1.5 border-b px-5">

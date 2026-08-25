@@ -1,5 +1,4 @@
 import { Model } from "@company/model"
-import { Button } from "@company/ui/components/button"
 import {
   Card,
   CardContent,
@@ -7,9 +6,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@company/ui/components/card"
-import { createFileRoute } from "@tanstack/react-router"
+import { Link, createFileRoute } from "@tanstack/react-router"
 
-import { operatingTasks } from "@/operate-data"
 import { pageOptions } from "@/route-metadata"
 
 const model = Object.values(Model.objects).map((object) => ({
@@ -17,27 +15,19 @@ const model = Object.values(Model.objects).map((object) => ({
   description: object.description,
 }))
 
-const summaries = [
+const crm = [
   {
-    label: "Business object types",
-    value: model.length,
-    description: "Shared typed definitions",
+    label: "Companies",
+    to: "/companies",
+    description: Model.objects.company.description,
   },
   {
-    label: "Needs attention",
-    value: operatingTasks.length,
-    description: "Items in the operating queue",
+    label: "Contacts",
+    to: "/contacts",
+    description: Model.objects.contact.description,
   },
-  {
-    label: "Developer surfaces",
-    value: 3,
-    description: "Domain model, API, and design system",
-  },
-  {
-    label: "Knowledge collections",
-    value: 3,
-    description: "Company, playbooks, and ways of working",
-  },
+  { label: "Leads", to: "/leads", description: Model.objects.lead.description },
+  { label: "Deals", to: "/deals", description: Model.objects.deal.description },
 ] as const
 
 const page = {
@@ -70,22 +60,22 @@ function OperateHome() {
         </section>
 
         <section className="grid grid-cols-1 gap-4 px-4 sm:grid-cols-2 lg:px-6 @4xl/main:grid-cols-4">
-          {summaries.map((summary) => (
-            <Card key={summary.label} size="sm">
-              <CardHeader>
-                <CardDescription>{summary.label}</CardDescription>
-                <CardTitle className="text-2xl tabular-nums">
-                  {summary.value}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="text-xs text-muted-foreground">
-                {summary.description}
-              </CardContent>
-            </Card>
+          {crm.map((item) => (
+            <Link key={item.to} to={item.to} className="block">
+              <Card
+                size="sm"
+                className="h-full transition-colors hover:bg-muted/30"
+              >
+                <CardHeader>
+                  <CardTitle>{item.label}</CardTitle>
+                  <CardDescription>{item.description}</CardDescription>
+                </CardHeader>
+              </Card>
+            </Link>
           ))}
         </section>
 
-        <section className="grid gap-4 px-4 lg:grid-cols-[minmax(0,1fr)_22rem] lg:px-6">
+        <section className="px-4 lg:px-6">
           <Card>
             <CardHeader className="border-b">
               <CardTitle>Operating model</CardTitle>
@@ -102,27 +92,6 @@ function OperateHome() {
                   </p>
                 </article>
               ))}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="border-b">
-              <CardTitle>Needs attention</CardTitle>
-              <CardDescription>Current operating queue</CardDescription>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="divide-y">
-                {operatingTasks.map((item) => (
-                  <p key={item} className="px-4 py-3 text-sm">
-                    {item}
-                  </p>
-                ))}
-              </div>
-              <div className="border-t p-4">
-                <Button className="w-full" disabled>
-                  Open work queue — coming next
-                </Button>
-              </div>
             </CardContent>
           </Card>
         </section>

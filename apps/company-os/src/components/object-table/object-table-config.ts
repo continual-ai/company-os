@@ -1,4 +1,4 @@
-import type { ImageRef, PropertyDefinition } from "@company/runtime"
+import type { ImageRef, Money, PropertyDefinition } from "@company/runtime"
 import {
   columnFilteringFeature,
   columnPinningFeature,
@@ -21,6 +21,7 @@ import { objectTableCellBehavior } from "./object-table-cell-types"
 export type ObjectTableValue =
   | boolean
   | ImageRef
+  | Money
   | null
   | number
   | ReadonlyArray<string>
@@ -35,6 +36,10 @@ export type ObjectTableImageResolver = (
   image: ImageRef
 ) => string | null | undefined
 
+export type ObjectTableRecordLabelResolver = (
+  recordId: string
+) => string | undefined
+
 export function objectTableImageValue(
   value: ObjectTableValue | undefined
 ): ImageRef | null {
@@ -44,6 +49,22 @@ export function objectTableImageValue(
   return typeof value === "object" && "assetId" in value ? value : null
 }
 
+function objectTableMoneyValue(
+  value: ObjectTableValue | undefined
+): Money | null {
+  if (
+    // ObjectTableValue is the parsed boundary for presentation values.
+    // oxlint-disable-next-line anti-slop/no-runtime-typeof
+    typeof value !== "object" ||
+    value === null ||
+    !("amount" in value) ||
+    !("currency" in value)
+  ) {
+    return null
+  }
+  return value
+}
+
 export function objectTableValueText(
   value: ObjectTableValue | undefined
 ): string {
@@ -51,6 +72,8 @@ export function objectTableValueText(
   if (Array.isArray(value)) return value.join(", ")
   const image = objectTableImageValue(value)
   if (image !== null) return image.assetId
+  const money = objectTableMoneyValue(value)
+  if (money !== null) return `${money.amount} ${money.currency}`
 
   // ObjectTableValue is already parsed; this exhausts its scalar members.
   // oxlint-disable-next-line anti-slop/no-runtime-typeof

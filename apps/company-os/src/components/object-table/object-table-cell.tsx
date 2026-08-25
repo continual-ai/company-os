@@ -63,6 +63,7 @@ import {
 import {
   objectTableImageValue,
   type ObjectTableImageResolver,
+  type ObjectTableRecordLabelResolver,
   type ObjectTableRecord,
   type ObjectTableValue,
 } from "./object-table-config"
@@ -112,6 +113,7 @@ interface ObjectTableCellProps {
   onEditingChange: ObjectTableCellEditingChange
   property: PropertyDefinition
   resolveImageSrc?: ObjectTableImageResolver | undefined
+  resolveRecordLabel?: ObjectTableRecordLabelResolver | undefined
   value: ObjectTableValue
 }
 
@@ -126,6 +128,7 @@ function TextCell({
   onEditingChange,
   property,
   resolveImageSrc,
+  resolveRecordLabel,
   type,
   value,
 }: ObjectTableCellProps & { type: ObjectTableCellType }) {
@@ -224,7 +227,10 @@ function TextCell({
 
   const href = objectTableLinkHref(type, externalValue)
   const opensNewWindow = type === "url"
-  const formattedValue = formatObjectTableCellText(type, externalValue)
+  const formattedValue =
+    type === "recordId"
+      ? (resolveRecordLabel?.(externalValue) ?? externalValue)
+      : formatObjectTableCellText(type, externalValue)
 
   return (
     <ObjectTableCellSurface

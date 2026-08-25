@@ -1,4 +1,8 @@
-import type { ObjectType } from "@company/runtime"
+import {
+  schema,
+  type ObjectType,
+  type PropertyDefinition,
+} from "@company/runtime"
 import { Button } from "@company/ui/components/button"
 import { Checkbox } from "@company/ui/components/checkbox"
 import {
@@ -19,6 +23,7 @@ import {
 } from "@tanstack/react-table"
 import { ArrowDownIcon, ArrowUpIcon, GripVerticalIcon } from "lucide-react"
 import { type CSSProperties, useMemo, useState } from "react"
+import type { ReactNode } from "react"
 
 import { ObjectTableCell } from "./object-table-cell"
 import {
@@ -34,6 +39,7 @@ import {
   objectTableFeatures,
   objectTableValueText,
   type ObjectTableImageResolver,
+  type ObjectTableRecordLabelResolver,
   type ObjectTableRecord,
   type ObjectTableValue,
 } from "./object-table-config"
@@ -54,8 +60,15 @@ export interface ObjectTableProps {
       ) => Promise<void> | void)
     | undefined
   onCreateRecord?: (() => Promise<void> | void) | undefined
+  onDeleteRecords?:
+    | ((recordIds: ReadonlyArray<string>) => Promise<void> | void)
+    | undefined
   records: ObjectTableRecord[]
+  parentLabel?: string | undefined
+  renderRecordActions?: ((record: ObjectTableRecord) => ReactNode) | undefined
+  toolbarActions?: ReactNode
   resolveImageSrc?: ObjectTableImageResolver | undefined
+  resolveRecordLabel?: ObjectTableRecordLabelResolver | undefined
   visiblePropertyIds?: ReadonlyArray<string>
 }
 
@@ -133,13 +146,37 @@ export function ObjectTable({
   object,
   onCellCommit,
   onCreateRecord,
+  onDeleteRecords,
+  parentLabel,
   records,
+  renderRecordActions,
+  toolbarActions,
   resolveImageSrc,
+  resolveRecordLabel,
   visiblePropertyIds,
 }: ObjectTableProps) {
   const [isHorizontallyScrolled, setIsHorizontallyScrolled] = useState(false)
   const properties = useMemo(() => {
-    const entries = Object.entries(object.properties)
+    const entries = [
+      ...(object.parent.kind === "root"
+        ? []
+        : [
+            [
+              "parent",
+              {
+                ...schema.recordId(
+                  { id: object.parent.typeId },
+                  { label: parentLabel ?? "Parent" }
+                ),
+                immutable: true,
+                nullable: false,
+                outputOnly: false,
+                requiredOnCreate: true,
+              } satisfies PropertyDefinition,
+            ] as const,
+          ]),
+      ...Object.entries(object.properties),
+    ]
     const titleEntry = entries.find(
       ([propertyId]) => propertyId === object.display.title
     )
@@ -151,7 +188,7 @@ export function ObjectTable({
             ([propertyId]) => propertyId !== object.display.title
           ),
         ]
-  }, [object.display.title, object.properties])
+  }, [object.display.title, object.parent, object.properties, parentLabel])
   const columns = useMemo(() => {
     return columnHelper.columns(
       properties.map(([propertyId, property]) => {
@@ -255,6 +292,8 @@ export function ObjectTable({
         object={object}
         table={table}
         onCreateRecord={onCreateRecord}
+        onDeleteRecords={onDeleteRecords}
+        toolbarActions={toolbarActions}
       />
 
       <div className="relative min-h-0 flex-1 overflow-hidden">
@@ -519,6 +558,7 @@ export function ObjectTable({
                               }
                               property={meta.property}
                               resolveImageSrc={resolveImageSrc}
+                              resolveRecordLabel={resolveRecordLabel}
                               value={cellValue}
                               onCancelEditing={() =>
                                 navigation.cancelCellEditing(address)
@@ -536,7 +576,13 @@ export function ObjectTable({
                   <TableCell
                     className="h-8 border-r p-0"
                     style={{ width: addColumnWidth }}
-                  />
+                  >
+                    {renderRecordActions === undefined ? null : (
+                      <div className="flex h-full items-center justify-end gap-1 px-1">
+                        {renderRecordActions(row.original)}
+                      </div>
+                    )}
+                  </TableCell>
                 </TableRow>
               ))
             )}
