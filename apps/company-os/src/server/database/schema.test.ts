@@ -29,7 +29,7 @@ describe("PostgreSQL schema", () => {
       Storage.relations.contact.relations.primaryCompany.targetTableName
     ).toEqualTypeOf<"company">()
     expectTypeOf<
-      (typeof Storage.objects.deal)["$inferSelect"]["companyId"]
+      (typeof Storage.objects.deal)["$inferSelect"]["parentId"]
     >().toEqualTypeOf<RecordId<"company">>()
     expectTypeOf<
       (typeof Storage.objects.lineItem)["$inferSelect"]["parentId"]

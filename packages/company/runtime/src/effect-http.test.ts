@@ -56,14 +56,12 @@ const Account = defineObject({
       input: { note: schema.optional(schema.string()) },
       output: { archived: schema.boolean() },
       errors: [ArchiveFailed],
-      http: { path: "/accounts/{id}:archive" },
     },
     archiveAll: {
       scope: "collection",
       name: "Archive all accounts",
       description: "Archives every eligible account.",
       output: { archivedCount: schema.number({ integer: true }) },
-      http: { path: "/accounts:archiveAll" },
     },
   },
 })
@@ -95,14 +93,16 @@ describe("Effect HTTP projection", () => {
       get: { operationId: "listAccounts" },
       post: { operationId: "createAccount" },
     })
-    expect(document.paths["/api/v1/accounts:batchGet"]).toMatchObject({
+    expect(document.paths["/api/v1/accounts/batchGet"]).toMatchObject({
       post: { operationId: "batchGetAccounts" },
     })
-    expect(document.paths["/api/v1/accounts:batchDelete"]).toBeUndefined()
-    expect(document.paths["/api/v1/accounts:archiveAll"]).toMatchObject({
-      post: { operationId: "archiveAllAccounts" },
-    })
-    expect(document.paths["/api/v1/accounts:search"]).toMatchObject({
+    expect(document.paths["/api/v1/accounts/batchDelete"]).toBeUndefined()
+    expect(document.paths["/api/v1/accounts/actions/archiveAll"]).toMatchObject(
+      {
+        post: { operationId: "archiveAllAccounts" },
+      }
+    )
+    expect(document.paths["/api/v1/accounts/search"]).toMatchObject({
       post: { operationId: "searchAccounts" },
     })
     expect(document.paths["/api/v1/accounts/{id}"]).toMatchObject({
@@ -199,7 +199,7 @@ describe("Effect HTTP projection", () => {
     })
     const batchDocument = OpenApi.fromApi(createHttpApi(model))
 
-    expect(batchDocument.paths["/api/v1/deletables:batchDelete"]).toMatchObject(
+    expect(batchDocument.paths["/api/v1/deletables/batchDelete"]).toMatchObject(
       {
         post: {
           operationId: "batchDeleteDeletables",
@@ -222,8 +222,8 @@ describe("Effect HTTP projection", () => {
     )
   })
 
-  it("projects business actions to AIP-style paths and declared errors", () => {
-    const action = document.paths["/api/v1/accounts/{id}:archive"]?.post
+  it("projects business actions to canonical paths and declared errors", () => {
+    const action = document.paths["/api/v1/accounts/{id}/actions/archive"]?.post
 
     expect(action).toMatchObject({
       operationId: "archiveAccount",

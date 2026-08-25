@@ -2,6 +2,7 @@ import { RecordId } from "@company/runtime"
 import { Context, Data, Effect, Layer } from "effect"
 
 import { ApiKeyRepository } from "@/server/objects/api-key-repository"
+import { ServiceAccountRepository } from "@/server/objects/service-account-repository"
 
 import { secretMatches } from "./secret-token"
 
@@ -9,6 +10,7 @@ class InvalidApiKey extends Data.TaggedError("InvalidApiKey")<{}> {}
 
 const make = Effect.gen(function* () {
   const repository = yield* ApiKeyRepository
+  const serviceAccounts = yield* ServiceAccountRepository
 
   const authenticate = Effect.fn("@company/ApiKeyAuthentication.authenticate")(
     function* (authorizationHeader: string) {
@@ -31,6 +33,13 @@ const make = Effect.gen(function* () {
           Date.parse(apiKey.expiresAt) <= Date.now()) ||
         !secretMatches(match[3]!, credential.secretHash)
       ) {
+        return yield* Effect.fail(new InvalidApiKey())
+      }
+
+      const serviceAccount = yield* serviceAccounts
+        .get(apiKey.parent)
+        .pipe(Effect.catch(() => Effect.fail(new InvalidApiKey())))
+      if (serviceAccount.status !== "active") {
         return yield* Effect.fail(new InvalidApiKey())
       }
 

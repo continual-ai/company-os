@@ -8,12 +8,6 @@ import { migrate } from "drizzle-orm/effect-pglite/migrator"
 import { Effect } from "effect"
 import { describe, expect, it } from "vitest"
 
-import {
-  PLATFORM_ADMIN_ROLE_ID,
-  PLATFORM_ID,
-  SYSTEM_SERVICE_ACCOUNT_ID,
-  SYSTEM_ROLE_ASSIGNMENT_ID,
-} from "@/server/authorization/well-known-authorization"
 import { Database } from "@/server/database/database"
 import {
   objects,
@@ -26,6 +20,12 @@ import {
   authenticatedInvocation,
   ReservedSystemActor,
 } from "@/server/invocation-context"
+import {
+  PLATFORM_ADMIN_ROLE_ID,
+  PLATFORM_ID,
+  SYSTEM_SERVICE_ACCOUNT_ID,
+  SYSTEM_ROLE_ASSIGNMENT_ID,
+} from "@/system-records"
 
 import { seedSystem } from "./seed-system"
 

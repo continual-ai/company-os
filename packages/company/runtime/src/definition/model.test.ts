@@ -50,7 +50,6 @@ const Contact = defineObject({
       input: { notify: schema.optional(schema.boolean()) },
       output: { enrolled: schema.boolean() },
       errors: [EnrollmentFailed],
-      http: { path: "/contacts/{id}:enroll" },
     },
   },
 })
@@ -65,28 +64,6 @@ function invalidProperty(property: AnySchema) {
       pluralName: "Examples",
       properties: { value: property },
       display: { title: "value" },
-    })
-}
-
-function objectWithAction(path: `/${string}`, scope: "collection" | "object") {
-  return () =>
-    defineObject({
-      id: "contact",
-      collection: "contacts",
-      name: "Contact",
-      parent: Root,
-      pluralName: "Contacts",
-      properties: { name: schema.string() },
-      display: { title: "name" },
-      actions: {
-        enroll: {
-          scope,
-          name: "Enroll contact",
-          description: "Enrolls contacts.",
-          output: { enrolled: schema.boolean() },
-          http: { path },
-        },
-      },
     })
 }
 
@@ -120,7 +97,10 @@ describe("model definitions", () => {
       id: "enroll",
       objectType: "contact",
       scope: "object",
-      http: { method: "POST", path: "/contacts/{id}:enroll" },
+      http: {
+        method: "POST",
+        path: "/contacts/{id}/actions/enroll",
+      },
     })
     expect(model.actions.contact.enroll.input.properties).toHaveProperty("id")
     expect(model.actions.contact.create).toMatchObject({
@@ -150,7 +130,7 @@ describe("model definitions", () => {
       path: "/contacts/{id}",
     })
     expect(model.actions.contact.batchDelete).toMatchObject({
-      http: { method: "POST", path: "/contacts:batchDelete" },
+      http: { method: "POST", path: "/contacts/batchDelete" },
       input: { properties: { ids: { kind: "array" } } },
       scope: "collection",
     })
@@ -902,20 +882,6 @@ describe("object properties", () => {
   it("rejects output-only object properties", () => {
     expect(invalidProperty(schema.string({ outputOnly: true }))).toThrow(
       /cannot be output-only/
-    )
-  })
-})
-
-describe("action HTTP bindings", () => {
-  it("requires paths to agree with the object collection and scope", () => {
-    expect(objectWithAction("/people/{id}:enroll", "object")).toThrow(
-      /must begin with '\/contacts'/
-    )
-    expect(objectWithAction("/contacts:enroll", "object")).toThrow(
-      /contain '\{id\}' exactly once/
-    )
-    expect(objectWithAction("/contacts/{id}:enroll", "collection")).toThrow(
-      /cannot contain '\{id\}'/
     )
   })
 })

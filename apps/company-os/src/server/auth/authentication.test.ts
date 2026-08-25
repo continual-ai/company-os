@@ -11,10 +11,6 @@ import { describe, expect, it } from "vitest"
 
 import { AuthorizationRepository } from "@/server/authorization/authorization-repository"
 import { Authorization } from "@/server/authorization/authorization-service"
-import {
-  PLATFORM_ADMIN_ROLE_ID,
-  PLATFORM_ID,
-} from "@/server/authorization/well-known-authorization"
 import { Database } from "@/server/database/database"
 import {
   authUser,
@@ -34,6 +30,7 @@ import { ServiceAccountService } from "@/server/objects/service-account-service"
 import { UserRepository } from "@/server/objects/user-repository"
 import { UserService } from "@/server/objects/user-service"
 import { seedSystem } from "@/server/seeds/seed-system"
+import { PLATFORM_ADMIN_ROLE_ID, PLATFORM_ID } from "@/system-records"
 
 import { ApiKeyAuthentication } from "./api-key-authentication"
 import { AuthSettings, type AuthConfig } from "./auth-config"
@@ -210,6 +207,7 @@ describe("authentication", () => {
 
         return yield* Effect.gen(function* () {
           const userAuthentication = yield* UserAuthentication
+          const users = yield* UserService
           const authentication = yield* Authentication
           const owner = yield* userAuthentication.authenticate(
             userHeaders("auth_owner")
@@ -223,6 +221,12 @@ describe("authentication", () => {
           const rejected = yield* userAuthentication
             .authenticate(userHeaders("auth_other"))
             .pipe(Effect.flip)
+          const lastAdministrator = yield* users
+            .suspend(owner.id)
+            .pipe(
+              Effect.provideService(CurrentInvocation, { actorId: owner.id }),
+              Effect.flip
+            )
           const bindings = yield* database.select().from(authUserBindings)
           const administratorAssignments = yield* database
             .select()
@@ -232,6 +236,7 @@ describe("authentication", () => {
           return {
             administratorAssignments,
             bindings,
+            lastAdministrator,
             owner,
             rejected,
             sameOwner,
@@ -255,6 +260,9 @@ describe("authentication", () => {
       ])
     )
     expect(result.rejected).toMatchObject({ _tag: "InvitationRequired" })
+    expect(result.lastAdministrator).toMatchObject({
+      _tag: "LastActivePlatformAdministrator",
+    })
   })
 
   it("optionally restricts the first User by verified email", async () => {
@@ -369,6 +377,22 @@ describe("authentication", () => {
               new Headers({ authorization: "Bearer external-token" })
             )
             .pipe(Effect.flip)
+          yield* serviceAccounts
+            .disable(serviceAccount.id)
+            .pipe(
+              Effect.provideService(CurrentInvocation, { actorId: owner.id })
+            )
+          const disabledAccountKey = yield* apiKeyAuthentication
+            .authenticate(`Bearer ${issued.secret}`)
+            .pipe(Effect.flip)
+          yield* serviceAccounts
+            .enable(serviceAccount.id)
+            .pipe(
+              Effect.provideService(CurrentInvocation, { actorId: owner.id })
+            )
+          const reenabledAccountKey = yield* apiKeyAuthentication.authenticate(
+            `Bearer ${issued.secret}`
+          )
           yield* apiKeys
             .revoke(issued.apiKey)
             .pipe(
@@ -379,7 +403,9 @@ describe("authentication", () => {
             .pipe(Effect.flip)
           return {
             authenticatedKey,
+            disabledAccountKey,
             invocation,
+            reenabledAccountKey,
             revokedKey,
             serviceAccount,
             unsupportedAuthorization,
@@ -392,6 +418,10 @@ describe("authentication", () => {
       result.serviceAccount.id
     )
     expect(result.invocation).toEqual({ actorId: result.serviceAccount.id })
+    expect(result.disabledAccountKey).toMatchObject({ _tag: "InvalidApiKey" })
+    expect(result.reenabledAccountKey.serviceAccountId).toBe(
+      result.serviceAccount.id
+    )
     expect(result.revokedKey).toMatchObject({ _tag: "InvalidApiKey" })
     expect(result.unsupportedAuthorization).toMatchObject({
       _tag: "UnsupportedAuthorization",

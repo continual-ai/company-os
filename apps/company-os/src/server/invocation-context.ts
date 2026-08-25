@@ -5,7 +5,7 @@ import {
 } from "@company/runtime/effect/object-service"
 import { Data, Effect } from "effect"
 
-import { SYSTEM_SERVICE_ACCOUNT_ID } from "./authorization/well-known-authorization"
+import { SYSTEM_SERVICE_ACCOUNT_ID } from "@/system-records"
 
 export class ReservedSystemActor extends Data.TaggedError(
   "ReservedSystemActor"

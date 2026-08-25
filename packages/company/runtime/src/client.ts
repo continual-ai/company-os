@@ -1,3 +1,4 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- parseApiError validates an untrusted JSON boundary. */
 import {
   isStandardActionId,
   type Action,
@@ -5,6 +6,7 @@ import {
   type ActionOutput,
   type StandardActionId,
 } from "./definition/action"
+import type { ApiError } from "./definition/error"
 import {
   type ModelObject,
   type ModelCatalog,
@@ -34,15 +36,39 @@ export interface ApiClientOptions {
 }
 
 export class ApiClientResponseError extends Error {
+  readonly apiError: ApiError | undefined
   readonly body: string
   readonly status: number
 
-  constructor(status: number, body: string) {
-    super(`API request failed with status ${status}.`)
+  constructor(status: number, body: string, apiError?: ApiError) {
+    super(apiError?.message ?? `API request failed with status ${status}.`)
     this.name = "ApiClientResponseError"
+    this.apiError = apiError
     this.status = status
     this.body = body
   }
+}
+
+function parseApiError(body: string): ApiError | undefined {
+  try {
+    const value: unknown = JSON.parse(body)
+    if (
+      typeof value === "object" &&
+      value !== null &&
+      "code" in value &&
+      typeof value.code === "string" &&
+      "message" in value &&
+      typeof value.message === "string"
+    ) {
+      // SAFETY: the portable error contract requires code and message while
+      // endpoint-specific details remain opaque to this generic client.
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+      return value as ApiError
+    }
+  } catch {
+    return undefined
+  }
+  return undefined
 }
 
 type ActionsForObject<TObject extends ObjectType> =
@@ -180,7 +206,12 @@ export function createClient<const TModel extends ModelCatalog>(
     const response = await fetchRequest(url, requestInit)
 
     if (!response.ok) {
-      throw new ApiClientResponseError(response.status, await response.text())
+      const body = await response.text()
+      throw new ApiClientResponseError(
+        response.status,
+        body,
+        parseApiError(body)
+      )
     }
     if (response.status === 204) return undefined
 
@@ -203,7 +234,7 @@ export function createClient<const TModel extends ModelCatalog>(
         return request({
           body: listRequest,
           method: "POST",
-          path: `${collectionPath}:search`,
+          path: `${collectionPath}/search`,
         })
       }
       const query = new URLSearchParams()
@@ -222,7 +253,7 @@ export function createClient<const TModel extends ModelCatalog>(
         request({
           body: { ids: batchRequest.ids },
           method: "POST",
-          path: `${collectionPath}:batchGet`,
+          path: `${collectionPath}/batchGet`,
         })
     )
 
@@ -231,7 +262,7 @@ export function createClient<const TModel extends ModelCatalog>(
         request({
           body: input,
           method: "POST",
-          path: `${collectionPath}:batchDelete`,
+          path: `${collectionPath}/batchDelete`,
         })
       )
     }

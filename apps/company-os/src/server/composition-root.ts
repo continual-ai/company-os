@@ -19,37 +19,32 @@ import { applicationHttpApi } from "./http-contract"
 import { ApiKeyRepository } from "./objects/api-key-repository"
 import { ApiKeyService } from "./objects/api-key-service"
 import { CompanyRepository } from "./objects/company-repository"
-import { CompanyService } from "./objects/company-service"
 import { ContactRepository } from "./objects/contact-repository"
-import { ContactService } from "./objects/contact-service"
 import { DealRepository } from "./objects/deal-repository"
-import { DealService } from "./objects/deal-service"
 import { GroupMembershipRepository } from "./objects/group-membership-repository"
-import { GroupMembershipService } from "./objects/group-membership-service"
 import { GroupRepository } from "./objects/group-repository"
-import { GroupService } from "./objects/group-service"
 import { InteractionRepository } from "./objects/interaction-repository"
-import { InteractionService } from "./objects/interaction-service"
 import { InvitationRepository } from "./objects/invitation-repository"
 import { InvitationService } from "./objects/invitation-service"
 import { LeadRepository } from "./objects/lead-repository"
 import { LeadService } from "./objects/lead-service"
 import { LineItemRepository } from "./objects/line-item-repository"
-import { LineItemService } from "./objects/line-item-service"
 import { RoleAssignmentRepository } from "./objects/role-assignment-repository"
 import { RoleAssignmentService } from "./objects/role-assignment-service"
 import { RoleRepository } from "./objects/role-repository"
-import { RoleService } from "./objects/role-service"
 import { ServiceAccountRepository } from "./objects/service-account-repository"
 import { ServiceAccountService } from "./objects/service-account-service"
+import { StandardObjectServices } from "./objects/standard-object-services"
 import { UserRepository } from "./objects/user-repository"
 import { UserService } from "./objects/user-service"
+import { Readiness } from "./readiness"
 
 const databaseLayer = Database.layer.pipe(Layer.provide(Postgres.layer))
 const authSettingsLayer = AuthSettings.layer
 const authProtocolLayer = AuthProtocol.layer.pipe(
   Layer.provide(authSettingsLayer)
 )
+const readinessLayer = Readiness.layer.pipe(Layer.provide(databaseLayer))
 
 const repositoriesLayer = Layer.mergeAll(
   ApiKeyRepository.layer,
@@ -76,16 +71,9 @@ const authorizationLayer = Authorization.layer.pipe(
 
 const coreObjectServicesLayer = Layer.mergeAll(
   ApiKeyService.layer,
-  CompanyService.layer,
-  ContactService.layer,
-  DealService.layer,
-  GroupMembershipService.layer,
-  GroupService.layer,
-  InteractionService.layer,
+  StandardObjectServices.layer,
   LeadService.layer,
-  LineItemService.layer,
   RoleAssignmentService.layer,
-  RoleService.layer,
   ServiceAccountService.layer,
   UserService.layer
 )
@@ -142,7 +130,8 @@ const applicationLayer = Layer.mergeAll(
   authenticationLayer,
   authProtocolLayer,
   userAuthenticationLayer,
-  companyApiLayer
+  companyApiLayer,
+  readinessLayer
 )
 
 const apiDescription = createApiDescription(Model)

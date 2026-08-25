@@ -78,7 +78,6 @@ export function createBetterAuth({
     session: {
       deferSessionRefresh: true,
       expiresIn: 60 * 60 * 24 * 7,
-      freshAge: 60 * 10,
       updateAge: 60 * 60 * 24,
     },
   })

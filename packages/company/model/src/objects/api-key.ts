@@ -21,7 +21,6 @@ export const ApiKey = defineObject({
       name: "Issue API key",
       description: "Creates an API key and returns its secret exactly once.",
       scope: "collection",
-      http: { path: "/apiKeys:issue" },
       input: {
         expiresAt: schema.optional(schema.timestamp()),
         name: schema.string({ minLength: 1, maxLength: 200 }),
@@ -39,7 +38,6 @@ export const ApiKey = defineObject({
       destructive: true,
       idempotent: true,
       scope: "object",
-      http: { path: "/apiKeys/{id}:revoke" },
       errors: [standardErrors.notFound, standardErrors.permissionDenied],
     },
   },

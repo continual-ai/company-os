@@ -3,15 +3,19 @@ import { modelMetadata } from "@company/model/metadata"
 import type { ObjectInsert } from "@company/runtime/effect/object-repository"
 import { Effect } from "effect"
 
-import { modelPermissions } from "@/server/authorization/permission-catalog"
+import {
+  modelPermissions,
+  operatorPermissions,
+} from "@/server/authorization/permission-catalog"
+import { makeObjectRepository } from "@/server/database/model-storage"
+import { currentActorId } from "@/server/invocation-context"
 import {
   PLATFORM_ADMIN_ROLE_ID,
   PLATFORM_ID,
+  PLATFORM_OPERATOR_ROLE_ID,
   SYSTEM_ROLE_ASSIGNMENT_ID,
   SYSTEM_SERVICE_ACCOUNT_ID,
-} from "@/server/authorization/well-known-authorization"
-import { makeObjectRepository } from "@/server/database/model-storage"
-import { currentActorId } from "@/server/invocation-context"
+} from "@/system-records"
 
 /** Converges source-owned authorization records through repositories. */
 export const seedAuthorization = Effect.fn("@company/seedAuthorization")(
@@ -33,6 +37,7 @@ export const seedAuthorization = Effect.fn("@company/seedAuthorization")(
       id: SYSTEM_SERVICE_ACCOUNT_ID,
       name: "System",
       parent: PLATFORM_ID,
+      status: "active",
       systemManaged: true,
       updatedBy: actorId,
     } satisfies ObjectInsert<(typeof Model.objects)["serviceAccount"]>
@@ -52,6 +57,22 @@ export const seedAuthorization = Effect.fn("@company/seedAuthorization")(
       updatedBy: actorId,
     } satisfies ObjectInsert<(typeof Model.objects)["role"]>
     yield* roleRepository.upsert(systemAdministrator)
+
+    const operator = {
+      aliases: [],
+      metadata: {},
+      createdBy: actorId,
+      description:
+        "Create and manage CRM records without administering identities or access.",
+      id: PLATFORM_OPERATOR_ROLE_ID,
+      name: "Operator",
+      parent: PLATFORM_ID,
+      permissions: operatorPermissions,
+      scopeType: "platform",
+      systemManaged: true,
+      updatedBy: actorId,
+    } satisfies ObjectInsert<(typeof Model.objects)["role"]>
+    yield* roleRepository.upsert(operator)
 
     const systemAdministratorAssignment = {
       aliases: [],

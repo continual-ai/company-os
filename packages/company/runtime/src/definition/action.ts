@@ -23,13 +23,10 @@ export interface ActionHttpBinding {
   path: `/${string}`
 }
 
-interface CustomActionHttpBinding {
-  path: `/${string}`
-}
-
 /**
  * Portable business action authored beside its primary object definition.
  * Object-scoped actions receive a typed record identifier when the action is bound.
+ * The runtime derives one canonical HTTP binding from the object, scope, and action ID.
  */
 export interface ActionDefinition<
   TScope extends ActionScope = ActionScope,
@@ -40,7 +37,6 @@ export interface ActionDefinition<
   description: string
   destructive?: boolean
   errors?: TErrors
-  http: CustomActionHttpBinding
   idempotent?: boolean
   input?: TInput
   name: string
@@ -180,52 +176,6 @@ export function actionKey(action: Action): string {
   return `${action.objectType}.${action.id}`
 }
 
-function placeholderNames(path: string): ReadonlyArray<string> {
-  return [...path.matchAll(/\{([^}/]+)\}/g)].map((match) => match[1] ?? "")
-}
-
-function validateHttpBinding(
-  objectType: string,
-  collection: string,
-  actionId: string,
-  definition: ActionDefinition,
-  input: StructSchema
-): void {
-  const owner = `Action '${objectType}.${actionId}'`
-  const prefix = `/${collection}`
-  const path = definition.http.path
-  if (
-    path !== prefix &&
-    !path.startsWith(`${prefix}/`) &&
-    !path.startsWith(`${prefix}:`)
-  ) {
-    throw new Error(`${owner} HTTP path must begin with '${prefix}'.`)
-  }
-
-  const placeholders = placeholderNames(path)
-  const idCount = placeholders.filter((name) => name === "id").length
-  if (definition.scope === "object" && idCount !== 1) {
-    throw new Error(`${owner} object path must contain '{id}' exactly once.`)
-  }
-  if (definition.scope === "collection" && idCount !== 0) {
-    throw new Error(`${owner} collection path cannot contain '{id}'.`)
-  }
-
-  for (const placeholder of placeholders) {
-    const property = input.properties[placeholder]
-    if (property === undefined) {
-      throw new Error(
-        `${owner} HTTP path placeholder '{${placeholder}}' has no matching input property.`
-      )
-    }
-    if (property.kind !== "recordId" && property.kind !== "string") {
-      throw new Error(
-        `${owner} HTTP path placeholder '{${placeholder}}' must bind a string or record ID input property.`
-      )
-    }
-  }
-}
-
 function standardEnabled(
   definitions: ActionDefinitions | undefined,
   id: StandardActionId
@@ -285,14 +235,6 @@ export function bindActions<
           : definition.input
     const input = schema.object(inputProperties)
     const output = schema.object(definition.output ?? {})
-    validateHttpBinding(
-      object.id,
-      object.collection,
-      actionId,
-      definition,
-      input
-    )
-
     actions[actionId] = {
       kind: "action",
       id: actionId,
@@ -303,7 +245,13 @@ export function bindActions<
       idempotent: definition.idempotent === true,
       scope: definition.scope,
       errors,
-      http: { method: "POST", path: definition.http.path },
+      http: {
+        method: "POST",
+        path:
+          definition.scope === "object"
+            ? `/${object.collection}/{id}/actions/${actionId}`
+            : `/${object.collection}/actions/${actionId}`,
+      },
       input,
       output,
     }
@@ -468,7 +416,7 @@ export function standardActions(
       description: `Deletes multiple ${object.pluralName.toLowerCase()} atomically.`,
       destructive: true,
       idempotent: true,
-      http: { method: "POST", path: `/${object.collection}:batchDelete` },
+      http: { method: "POST", path: `/${object.collection}/batchDelete` },
       input: schema.object({ ids: schema.array(schema.recordId(object)) }),
       output: schema.object({}),
       errors: [],

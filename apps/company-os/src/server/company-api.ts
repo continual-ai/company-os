@@ -21,18 +21,11 @@ import { Authentication } from "./auth/authentication"
 import { UserAuthentication } from "./auth/user-authentication"
 import { applicationHttpApi } from "./http-contract"
 import { ApiKeyService } from "./objects/api-key-service"
-import { CompanyService } from "./objects/company-service"
-import { ContactService } from "./objects/contact-service"
-import { DealService } from "./objects/deal-service"
-import { GroupMembershipService } from "./objects/group-membership-service"
-import { GroupService } from "./objects/group-service"
-import { InteractionService } from "./objects/interaction-service"
 import { InvitationService } from "./objects/invitation-service"
 import { LeadService } from "./objects/lead-service"
-import { LineItemService } from "./objects/line-item-service"
 import { RoleAssignmentService } from "./objects/role-assignment-service"
-import { RoleService } from "./objects/role-service"
 import { ServiceAccountService } from "./objects/service-account-service"
+import { StandardObjectServices } from "./objects/standard-object-services"
 import { UserService } from "./objects/user-service"
 
 class CompanyApiFailure extends Data.TaggedError("CompanyApiFailure")<{
@@ -68,6 +61,20 @@ interface InvitationActions {
 interface ApiKeyActions {
   readonly issue: (input: unknown) => OperationEffect
   readonly revoke: (id: unknown) => OperationEffect
+}
+
+interface ServiceAccountActions {
+  readonly disable: (id: unknown) => OperationEffect
+  readonly enable: (id: unknown) => OperationEffect
+}
+
+interface UserActions {
+  readonly reactivate: (id: unknown) => OperationEffect
+  readonly suspend: (id: unknown) => OperationEffect
+}
+
+interface LeadActions {
+  readonly convert: (id: unknown) => OperationEffect
 }
 
 type DynamicHandler = (
@@ -106,6 +113,27 @@ function asApiKeyActions(service: unknown): ApiKeyActions {
   // ApiKey definition; HTTP schemas validate inputs first.
   // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion
   return service as ApiKeyActions
+}
+
+function asServiceAccountActions(service: unknown): ServiceAccountActions {
+  // SAFETY: these services implement the lifecycle actions declared by their
+  // corresponding closed model definitions.
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion
+  return service as ServiceAccountActions
+}
+
+function asUserActions(service: unknown): UserActions {
+  // SAFETY: UserService implements the lifecycle actions declared by the
+  // closed User definition.
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion
+  return service as UserActions
+}
+
+function asLeadActions(service: unknown): LeadActions {
+  // SAFETY: LeadService implements the conversion action declared by the
+  // closed Lead definition.
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion
+  return service as LeadActions
 }
 
 function requestHeaders(request: HandlerRequest): Headers {
@@ -214,21 +242,28 @@ const make = Effect.gen(function* () {
   const invitations = yield* InvitationService
   const apiKeyActions = asApiKeyActions(apiKeys)
   const invitationActions = asInvitationActions(invitations)
+  const serviceAccounts = yield* ServiceAccountService
+  const users = yield* UserService
+  const serviceAccountActions = asServiceAccountActions(serviceAccounts)
+  const userActions = asUserActions(users)
+  const leads = yield* LeadService
+  const leadActions = asLeadActions(leads)
+  const standard = yield* StandardObjectServices
   const services = {
     apiKey: apiKeys,
-    company: yield* CompanyService,
-    contact: yield* ContactService,
-    deal: yield* DealService,
-    group: yield* GroupService,
-    groupMembership: yield* GroupMembershipService,
-    interaction: yield* InteractionService,
+    company: standard.company,
+    contact: standard.contact,
+    deal: standard.deal,
+    group: standard.group,
+    groupMembership: standard.groupMembership,
+    interaction: standard.interaction,
     invitation: invitations,
-    lead: yield* LeadService,
-    lineItem: yield* LineItemService,
-    role: yield* RoleService,
+    lead: leads,
+    lineItem: standard.lineItem,
+    role: standard.role,
     roleAssignment: yield* RoleAssignmentService,
-    serviceAccount: yield* ServiceAccountService,
-    user: yield* UserService,
+    serviceAccount: serviceAccounts,
+    user: users,
   } satisfies Record<keyof typeof Model.objects, unknown>
 
   const customActionHandlers = {
@@ -269,6 +304,44 @@ const make = Effect.gen(function* () {
         request,
         invitationActions
           .revoke(requestString(request.params, "id"))
+          .pipe(Effect.as({}))
+      ),
+    "serviceAccount.disable": (request) =>
+      authenticated(
+        authentication,
+        request,
+        serviceAccountActions
+          .disable(requestString(request.params, "id"))
+          .pipe(Effect.as({}))
+      ),
+    "lead.convert": (request) =>
+      authenticated(
+        authentication,
+        request,
+        leadActions.convert(requestString(request.params, "id"))
+      ),
+    "serviceAccount.enable": (request) =>
+      authenticated(
+        authentication,
+        request,
+        serviceAccountActions
+          .enable(requestString(request.params, "id"))
+          .pipe(Effect.as({}))
+      ),
+    "user.reactivate": (request) =>
+      authenticated(
+        authentication,
+        request,
+        userActions
+          .reactivate(requestString(request.params, "id"))
+          .pipe(Effect.as({}))
+      ),
+    "user.suspend": (request) =>
+      authenticated(
+        authentication,
+        request,
+        userActions
+          .suspend(requestString(request.params, "id"))
           .pipe(Effect.as({}))
       ),
   } satisfies Readonly<Record<string, DynamicHandler>>

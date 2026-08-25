@@ -39,6 +39,12 @@ import {
 } from "@/server/objects/role-assignment-service"
 import { RoleRepository } from "@/server/objects/role-repository"
 import { seedSystem } from "@/server/seeds/seed-system"
+import {
+  PLATFORM_ADMIN_ROLE_ID,
+  PLATFORM_ID,
+  SYSTEM_SERVICE_ACCOUNT_ID,
+  SYSTEM_ROLE_ASSIGNMENT_ID,
+} from "@/system-records"
 
 import { AuthorizationRepository } from "./authorization-repository"
 import {
@@ -46,12 +52,6 @@ import {
   AuthorizationTargetNotFound,
   PermissionDenied,
 } from "./authorization-service"
-import {
-  PLATFORM_ADMIN_ROLE_ID,
-  PLATFORM_ID,
-  SYSTEM_SERVICE_ACCOUNT_ID,
-  SYSTEM_ROLE_ASSIGNMENT_ID,
-} from "./well-known-authorization"
 
 const migrationsFolder = fileURLToPath(
   new URL("../database/migrations", import.meta.url)

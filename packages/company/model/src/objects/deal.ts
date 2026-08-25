@@ -1,12 +1,12 @@
 import { defineObject, schema } from "@company/runtime"
 
-import { Platform } from "#platform"
+import { Company } from "./company"
 
 export const Deal = defineObject({
   id: "deal",
   collection: "deals",
   name: "Deal",
-  parent: Platform,
+  parent: Company,
   pluralName: "Deals",
   description: "A potential commercial agreement with a company.",
   properties: {

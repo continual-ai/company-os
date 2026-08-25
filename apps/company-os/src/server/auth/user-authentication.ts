@@ -9,10 +9,6 @@ import { CurrentInvocation } from "@company/runtime/effect/object-service"
 import { Context, Data, Effect, Layer } from "effect"
 
 import type { AuthenticatedUser } from "@/authentication"
-import {
-  PLATFORM_ADMIN_ROLE_ID,
-  PLATFORM_ID,
-} from "@/server/authorization/well-known-authorization"
 import { Database } from "@/server/database/database"
 import { makeRecordAliasResolver } from "@/server/database/model-storage"
 import { systemInvocation } from "@/server/invocation-context"
@@ -21,6 +17,7 @@ import { InvitationRepository } from "@/server/objects/invitation-repository"
 import { RoleAssignmentRepository } from "@/server/objects/role-assignment-repository"
 import { RoleAssignmentService } from "@/server/objects/role-assignment-service"
 import { UserService } from "@/server/objects/user-service"
+import { PLATFORM_ADMIN_ROLE_ID, PLATFORM_ID } from "@/system-records"
 
 import { AuthSettings } from "./auth-config"
 import { AuthProtocol, type AuthUser } from "./auth-protocol"
@@ -32,6 +29,8 @@ class FirstUserRejected extends Data.TaggedError("FirstUserRejected")<{}> {}
 class InvitationRequired extends Data.TaggedError("InvitationRequired")<{}> {}
 
 class InvalidSession extends Data.TaggedError("InvalidSession")<{}> {}
+
+class UserSuspended extends Data.TaggedError("UserSuspended")<{}> {}
 
 const make = Effect.gen(function* () {
   const config = yield* AuthSettings
@@ -48,6 +47,9 @@ const make = Effect.gen(function* () {
     "@company/UserAuthentication.getAuthenticatedUser"
   )(function* (userId: RecordId<"user">) {
     const user = yield* users.get({ id: userId })
+    if (user.status === "suspended") {
+      return yield* Effect.fail(new UserSuspended())
+    }
     return {
       email: user.email,
       id: user.id,
@@ -86,7 +88,7 @@ const make = Effect.gen(function* () {
               return yield* Effect.fail(new FirstUserRejected())
             }
 
-            const user = yield* users.create({
+            const user = yield* users.provision({
               email,
               name: authUser.name.trim() || email,
             })
@@ -169,7 +171,7 @@ const make = Effect.gen(function* () {
         const existingUserId = yield* repository.findUserId(authUser.authUserId)
         const user =
           existingUserId === undefined
-            ? yield* users.create({
+            ? yield* users.provision({
                 email,
                 name: authUser.name.trim() || email,
               })

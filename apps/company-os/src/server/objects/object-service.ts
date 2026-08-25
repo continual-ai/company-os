@@ -4,8 +4,8 @@ import * as ObjectService from "@company/runtime/effect/object-service"
 import { Effect } from "effect"
 
 import { Authorization } from "@/server/authorization/authorization-service"
-import { PLATFORM_ID } from "@/server/authorization/well-known-authorization"
 import { makeRecordAliasResolver } from "@/server/database/model-storage"
+import { PLATFORM_ID } from "@/system-records"
 
 /** Applies application policy and identity resolution to an object repository. */
 export function makeObjectService<

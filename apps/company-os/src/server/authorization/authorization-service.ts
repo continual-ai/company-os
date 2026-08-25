@@ -4,13 +4,10 @@ import { type ObjectAccessRequest } from "@company/runtime/effect/object-service
 import { Context, Data, Effect, Layer } from "effect"
 
 import { currentActorId } from "@/server/invocation-context"
+import { PLATFORM_ID, SYSTEM_SERVICE_ACCOUNT_ID } from "@/system-records"
 
 import { AuthorizationRepository } from "./authorization-repository"
 import { objectPermission } from "./permission-catalog"
-import {
-  PLATFORM_ID,
-  SYSTEM_SERVICE_ACCOUNT_ID,
-} from "./well-known-authorization"
 
 export class AuthorizationTargetNotFound extends Data.TaggedError(
   "AuthorizationTargetNotFound"

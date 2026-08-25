@@ -3,11 +3,8 @@ import type { ObjectCreateInput } from "@company/runtime"
 import { Context, Data, Effect, Layer } from "effect"
 
 import { modelPermissions } from "@/server/authorization/permission-catalog"
-import {
-  PLATFORM_ADMIN_ROLE_ID,
-  PLATFORM_ID,
-} from "@/server/authorization/well-known-authorization"
 import { Database } from "@/server/database/database"
+import { PLATFORM_ADMIN_ROLE_ID, PLATFORM_ID } from "@/system-records"
 
 import { makeObjectService } from "./object-service"
 import { RoleAssignmentRepository } from "./role-assignment-repository"

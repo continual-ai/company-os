@@ -24,7 +24,6 @@ export const Invitation = defineObject({
       description:
         "Creates an invitation and its single-use redemption secret.",
       scope: "collection",
-      http: { path: "/invitations:issue" },
       input: {
         email: schema.email({ maxLength: 320 }),
         expiresAt: schema.timestamp(),
@@ -42,7 +41,6 @@ export const Invitation = defineObject({
       description:
         "Consumes an invitation for the authenticated verified email and grants its role.",
       scope: "object",
-      http: { path: "/invitations/{id}:accept" },
       input: { redemptionToken: schema.string({ minLength: 1 }) },
       output: { user: schema.recordId(UserReference) },
       errors: [
@@ -57,7 +55,6 @@ export const Invitation = defineObject({
       destructive: true,
       idempotent: true,
       scope: "object",
-      http: { path: "/invitations/{id}:revoke" },
       errors: [standardErrors.notFound, standardErrors.permissionDenied],
     },
   },

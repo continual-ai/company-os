@@ -39,7 +39,6 @@ const Account = defineObject({
       output: {
         archived: schema.boolean(),
       },
-      http: { path: "/accounts/{id}:archive" },
     },
     archiveAll: {
       scope: "collection",
@@ -47,7 +46,6 @@ const Account = defineObject({
       description: "Archives accounts matching a filter.",
       input: { filter: schema.string() },
       output: { archivedCount: schema.number({ integer: true }) },
-      http: { path: "/accounts:archiveAll" },
     },
   },
 })
@@ -77,10 +75,10 @@ const accountRecord = {
 }
 
 function responseBody(url: string) {
-  if (url.endsWith(":archiveAll")) return { archivedCount: 3 }
-  if (url.endsWith(":archive")) return { archived: true }
-  if (url.endsWith(":batchGet")) return { items: [accountRecord] }
-  if (url.endsWith(":search")) {
+  if (url.endsWith("/actions/archiveAll")) return { archivedCount: 3 }
+  if (url.endsWith("/actions/archive")) return { archived: true }
+  if (url.endsWith("/batchGet")) return { items: [accountRecord] }
+  if (url.endsWith("/search")) {
     return { items: [accountRecord], nextPageToken: "" }
   }
   if (url.includes("?")) {
@@ -155,12 +153,12 @@ describe("inferred API client", () => {
       "https://company.example/api/v1/accounts/hubspot%3Aportal_1%3Acompany%3Aaccount_1",
       "https://company.example/api/v1/accounts/hubspot%3Aportal_1%3Acompany%3Aaccount_1",
       "https://company.example/api/v1/accounts?pageSize=25",
-      "https://company.example/api/v1/accounts:search",
-      "https://company.example/api/v1/accounts:batchGet",
-      "https://company.example/api/v1/accounts:batchDelete",
+      "https://company.example/api/v1/accounts/search",
+      "https://company.example/api/v1/accounts/batchGet",
+      "https://company.example/api/v1/accounts/batchDelete",
       "https://company.example/api/v1/accounts/hubspot%3Aportal_1%3Acompany%3Aaccount_1?etag=etag-1",
-      "https://company.example/api/v1/accounts/hubspot%3Aportal_1%3Acompany%3Aaccount_1:archive",
-      "https://company.example/api/v1/accounts:archiveAll",
+      "https://company.example/api/v1/accounts/hubspot%3Aportal_1%3Acompany%3Aaccount_1/actions/archive",
+      "https://company.example/api/v1/accounts/actions/archiveAll",
     ])
     expect(calls[0]?.init.body).toBe(
       '{"aliases":["hubspot:portal_1:company:account_1"],"name":"Example"}'

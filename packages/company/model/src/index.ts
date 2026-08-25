@@ -5,7 +5,6 @@ import { Identity } from "./interfaces/identity"
 import { Party } from "./interfaces/party"
 import { Principal } from "./interfaces/principal"
 import { ContactPrimaryCompany } from "./links/contact-primary-company"
-import { DealCompany } from "./links/deal-company"
 import { GroupMembershipMember } from "./links/group-membership-member"
 import { InteractionSubject } from "./links/interaction-subject"
 import { InvitationAcceptedBy } from "./links/invitation-accepted-by"
@@ -57,7 +56,6 @@ export const Model = defineModel({
     InvitationRole,
     InvitationAcceptedBy,
     ContactPrimaryCompany,
-    DealCompany,
     InteractionSubject,
   ],
   root: Platform,

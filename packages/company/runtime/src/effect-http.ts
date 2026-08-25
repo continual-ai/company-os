@@ -116,21 +116,11 @@ function pathParameter(object: ObjectType) {
   }
 }
 
-/**
- * Effect's router can escape one literal colon with `::`, but its OpenAPI
- * projection then treats the second colon as a path parameter. A constant
- * regex parameter preserves the public `:verb` route while also giving each
- * collection action a distinct internal route shape.
- */
-function effectActionRoute(path: `/${string}`): `/${string}` {
-  const constantVerbs = path.replace(
-    /:([a-zA-Z][a-zA-Z0-9]*)(?=\/|$)/g,
-    ":$1($1)"
-  )
-  // SAFETY: replacing placeholders and annotating constant verbs preserves the
-  // leading slash required by Effect's route type.
+function effectRoute(path: `/${string}`): `/${string}` {
+  // SAFETY: replacing placeholders preserves the leading slash required by
+  // Effect's route type.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  return constantVerbs.replace(/\{([^}/]+)\}/g, ":$1") as `/${string}`
+  return path.replace(/\{([^}/]+)\}/g, ":$1") as `/${string}`
 }
 
 const pageTokenSchema = Schema.String.pipe(
@@ -279,7 +269,7 @@ function addDefaultEndpoints(
   })
   const searchEndpoint = HttpApiEndpoint.post(
     httpEndpointId("search", object),
-    effectActionRoute(`${collectionPath}:search`),
+    `${collectionPath}/search`,
     {
       payload: Schema.Struct({
         filter: Schema.optionalKey(filterSchema),
@@ -325,7 +315,7 @@ function addDefaultEndpoints(
   })
   const batchEndpoint = HttpApiEndpoint.post(
     httpEndpointId("batchGet", object),
-    effectActionRoute(`${collectionPath}:batchGet`),
+    `${collectionPath}/batchGet`,
     {
       payload: Schema.Struct({
         ids: Schema.Array(
@@ -352,7 +342,7 @@ function addDefaultEndpoints(
   if (object.actions.batchDelete !== undefined) {
     const endpoint = HttpApiEndpoint.post(
       httpEndpointId("batchDelete", object),
-      effectActionRoute(`${collectionPath}:batchDelete`),
+      `${collectionPath}/batchDelete`,
       {
         payload: Schema.Struct({
           ids: Schema.Array(
@@ -488,7 +478,7 @@ function addActionEndpoint(
     )
   )
   const hasBody = Object.keys(bodyProperties).length > 0
-  const route = effectActionRoute(action.http.path)
+  const route = effectRoute(action.http.path)
   // SAFETY: basePath and authored action paths both begin with a slash.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const path = `${basePath}${route}` as `/${string}`

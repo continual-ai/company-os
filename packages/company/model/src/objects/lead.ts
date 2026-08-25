@@ -1,6 +1,12 @@
-import { defineObject, schema } from "@company/runtime"
+import { defineObject, schema, standardErrors } from "@company/runtime"
 
 import { Platform } from "#platform"
+
+import { Company } from "./company"
+import { Contact } from "./contact"
+
+const CompanyReference = { id: "company" } as const
+const ContactReference = { id: "contact" } as const
 
 export const Lead = defineObject({
   id: "lead",
@@ -10,6 +16,24 @@ export const Lead = defineObject({
   pluralName: "Leads",
   description:
     "An unqualified person or organization that may become a customer.",
+  actions: {
+    convert: {
+      name: "Convert lead",
+      description:
+        "Atomically creates a company and contact from a qualified lead.",
+      idempotent: true,
+      scope: "object",
+      output: {
+        company: schema.recordId(CompanyReference),
+        contact: schema.recordId(ContactReference),
+      },
+      errors: [
+        standardErrors.conflict,
+        standardErrors.notFound,
+        standardErrors.permissionDenied,
+      ],
+    },
+  },
   properties: {
     name: schema.string({
       label: "Name",
@@ -43,6 +67,21 @@ export const Lead = defineObject({
         { value: "qualified", label: "Qualified" },
         { value: "disqualified", label: "Disqualified" },
       ],
+    }),
+    convertedCompany: schema.recordId(Company, {
+      label: "Converted company",
+      immutable: true,
+      nullable: true,
+    }),
+    convertedContact: schema.recordId(Contact, {
+      label: "Converted contact",
+      immutable: true,
+      nullable: true,
+    }),
+    convertedAt: schema.timestamp({
+      label: "Converted at",
+      immutable: true,
+      nullable: true,
     }),
   },
   display: {

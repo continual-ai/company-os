@@ -1,7 +1,7 @@
 {
   "version": "8",
   "dialect": "postgres",
-  "id": "6834e354-39a8-48a0-b0e3-7806861877f0",
+  "id": "1ebfbef4-ba0f-4d99-a21b-3837e30325f4",
   "prevIds": ["00000000-0000-0000-0000-000000000000"],
   "ddl": [
     {
@@ -1107,19 +1107,6 @@
       "default": null,
       "generated": null,
       "identity": null,
-      "name": "company_id",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "deals"
-    },
-    {
-      "type": "text",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
       "name": "id",
       "entityType": "columns",
       "schema": "public",
@@ -1576,6 +1563,45 @@
       "generated": null,
       "identity": null,
       "name": "status",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "leads"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "converted_company_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "leads"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "converted_contact_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "leads"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "converted_at",
       "entityType": "columns",
       "schema": "public",
       "table": "leads"
@@ -2040,6 +2066,19 @@
       "typeSchema": null,
       "notNull": true,
       "dimensions": 0,
+      "default": "'active'",
+      "generated": null,
+      "identity": null,
+      "name": "status",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "service_accounts"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
       "default": null,
       "generated": null,
       "identity": null,
@@ -2096,6 +2135,19 @@
       "generated": null,
       "identity": null,
       "name": "image",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "users"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'active'",
+      "generated": null,
+      "identity": null,
+      "name": "status",
       "entityType": "columns",
       "schema": "public",
       "table": "users"
@@ -2292,27 +2344,6 @@
       "method": "btree",
       "concurrently": false,
       "name": "deals_parent_id_idx",
-      "entityType": "indexes",
-      "schema": "public",
-      "table": "deals"
-    },
-    {
-      "nameExplicit": true,
-      "columns": [
-        {
-          "value": "company_id",
-          "isExpression": false,
-          "asc": true,
-          "nullsFirst": false,
-          "opclass": null
-        }
-      ],
-      "isUnique": false,
-      "where": null,
-      "with": "",
-      "method": "btree",
-      "concurrently": false,
-      "name": "deals_company_id_idx",
       "entityType": "indexes",
       "schema": "public",
       "table": "deals"
@@ -2530,6 +2561,48 @@
       "method": "btree",
       "concurrently": false,
       "name": "leads_parent_id_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "leads"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "converted_company_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "leads_converted_company_id_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "leads"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "converted_contact_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "leads_converted_contact_id_idx",
       "entityType": "indexes",
       "schema": "public",
       "table": "leads"
@@ -3071,27 +3144,14 @@
       "table": "deals"
     },
     {
-      "nameExplicit": false,
-      "columns": ["company_id"],
+      "nameExplicit": true,
+      "columns": ["parent_id"],
       "schemaTo": "public",
       "tableTo": "companies",
       "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "RESTRICT",
-      "name": "deals_company_id_companies_id_fkey",
-      "entityType": "fks",
-      "schema": "public",
-      "table": "deals"
-    },
-    {
-      "nameExplicit": true,
-      "columns": ["parent_id"],
-      "schemaTo": "public",
-      "tableTo": "roots",
-      "columnsTo": ["id"],
-      "onUpdate": "NO ACTION",
-      "onDelete": "RESTRICT",
-      "name": "deals_parent_platform_fk",
+      "name": "deals_parent_company_fk",
       "entityType": "fks",
       "schema": "public",
       "table": "deals"
@@ -3352,6 +3412,32 @@
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "name": "leads_id_objects_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "leads"
+    },
+    {
+      "nameExplicit": false,
+      "columns": ["converted_company_id"],
+      "schemaTo": "public",
+      "tableTo": "companies",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "leads_converted_company_id_companies_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "leads"
+    },
+    {
+      "nameExplicit": false,
+      "columns": ["converted_contact_id"],
+      "schemaTo": "public",
+      "tableTo": "contacts",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "leads_converted_contact_id_contacts_id_fkey",
       "entityType": "fks",
       "schema": "public",
       "table": "leads"

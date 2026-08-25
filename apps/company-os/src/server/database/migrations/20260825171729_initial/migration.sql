@@ -101,8 +101,7 @@ CREATE TABLE "deals" (
 	"name" text NOT NULL,
 	"stage" text DEFAULT 'discovery' NOT NULL,
 	"amount" jsonb,
-	"expected_close_date" date,
-	"company_id" text NOT NULL
+	"expected_close_date" date
 );
 --> statement-breakpoint
 CREATE TABLE "group_memberships" (
@@ -159,7 +158,10 @@ CREATE TABLE "leads" (
 	"email" text,
 	"phone" text,
 	"source" text DEFAULT 'unknown' NOT NULL,
-	"status" text DEFAULT 'new' NOT NULL
+	"status" text DEFAULT 'new' NOT NULL,
+	"converted_company_id" text,
+	"converted_contact_id" text,
+	"converted_at" timestamp with time zone
 );
 --> statement-breakpoint
 CREATE TABLE "line_items" (
@@ -224,7 +226,8 @@ CREATE TABLE "service_accounts" (
 	"id" text PRIMARY KEY,
 	"parent_id" text NOT NULL,
 	"name" text NOT NULL,
-	"description" text
+	"description" text,
+	"status" text DEFAULT 'active' NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "users" (
@@ -232,7 +235,8 @@ CREATE TABLE "users" (
 	"parent_id" text NOT NULL,
 	"name" text NOT NULL,
 	"email" text NOT NULL,
-	"image" jsonb
+	"image" jsonb,
+	"status" text DEFAULT 'active' NOT NULL
 );
 --> statement-breakpoint
 CREATE INDEX "api_keys_parent_id_idx" ON "api_keys" ("parent_id");--> statement-breakpoint
@@ -244,7 +248,6 @@ CREATE INDEX "companies_parent_id_idx" ON "companies" ("parent_id");--> statemen
 CREATE INDEX "contacts_parent_id_idx" ON "contacts" ("parent_id");--> statement-breakpoint
 CREATE INDEX "contacts_primary_company_id_idx" ON "contacts" ("primary_company_id");--> statement-breakpoint
 CREATE INDEX "deals_parent_id_idx" ON "deals" ("parent_id");--> statement-breakpoint
-CREATE INDEX "deals_company_id_idx" ON "deals" ("company_id");--> statement-breakpoint
 CREATE INDEX "group_memberships_parent_id_idx" ON "group_memberships" ("parent_id");--> statement-breakpoint
 CREATE INDEX "group_memberships_member_id_idx" ON "group_memberships" ("member_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "group_memberships_membership_unique" ON "group_memberships" ("parent_id","member_id");--> statement-breakpoint
@@ -255,6 +258,8 @@ CREATE INDEX "invitations_parent_id_idx" ON "invitations" ("parent_id");--> stat
 CREATE INDEX "invitations_role_id_idx" ON "invitations" ("role_id");--> statement-breakpoint
 CREATE INDEX "invitations_accepted_by_id_idx" ON "invitations" ("accepted_by_id");--> statement-breakpoint
 CREATE INDEX "leads_parent_id_idx" ON "leads" ("parent_id");--> statement-breakpoint
+CREATE INDEX "leads_converted_company_id_idx" ON "leads" ("converted_company_id");--> statement-breakpoint
+CREATE INDEX "leads_converted_contact_id_idx" ON "leads" ("converted_contact_id");--> statement-breakpoint
 CREATE INDEX "line_items_parent_id_idx" ON "line_items" ("parent_id");--> statement-breakpoint
 CREATE INDEX "objects_object_type_idx" ON "objects" ("object_type");--> statement-breakpoint
 CREATE INDEX "objects_parent_id_idx" ON "objects" ("parent_id");--> statement-breakpoint
@@ -286,8 +291,7 @@ ALTER TABLE "contacts" ADD CONSTRAINT "contacts_primary_company_id_companies_id_
 ALTER TABLE "contacts" ADD CONSTRAINT "contacts_parent_platform_fk" FOREIGN KEY ("parent_id") REFERENCES "roots"("id") ON DELETE RESTRICT;--> statement-breakpoint
 ALTER TABLE "contacts" ADD CONSTRAINT "contacts_object_parent_fk" FOREIGN KEY ("id","parent_id") REFERENCES "objects"("id","parent_id") ON DELETE CASCADE;--> statement-breakpoint
 ALTER TABLE "deals" ADD CONSTRAINT "deals_id_objects_id_fkey" FOREIGN KEY ("id") REFERENCES "objects"("id") ON DELETE CASCADE;--> statement-breakpoint
-ALTER TABLE "deals" ADD CONSTRAINT "deals_company_id_companies_id_fkey" FOREIGN KEY ("company_id") REFERENCES "companies"("id") ON DELETE RESTRICT;--> statement-breakpoint
-ALTER TABLE "deals" ADD CONSTRAINT "deals_parent_platform_fk" FOREIGN KEY ("parent_id") REFERENCES "roots"("id") ON DELETE RESTRICT;--> statement-breakpoint
+ALTER TABLE "deals" ADD CONSTRAINT "deals_parent_company_fk" FOREIGN KEY ("parent_id") REFERENCES "companies"("id") ON DELETE RESTRICT;--> statement-breakpoint
 ALTER TABLE "deals" ADD CONSTRAINT "deals_object_parent_fk" FOREIGN KEY ("id","parent_id") REFERENCES "objects"("id","parent_id") ON DELETE CASCADE;--> statement-breakpoint
 ALTER TABLE "group_memberships" ADD CONSTRAINT "group_memberships_id_objects_id_fkey" FOREIGN KEY ("id") REFERENCES "objects"("id") ON DELETE CASCADE;--> statement-breakpoint
 ALTER TABLE "group_memberships" ADD CONSTRAINT "group_memberships_member_id_interface_identity_id_fkey" FOREIGN KEY ("member_id") REFERENCES "interface_identity"("id") ON DELETE RESTRICT;--> statement-breakpoint
@@ -308,6 +312,8 @@ ALTER TABLE "invitations" ADD CONSTRAINT "invitations_accepted_by_id_users_id_fk
 ALTER TABLE "invitations" ADD CONSTRAINT "invitations_parent_authorization_scope_fk" FOREIGN KEY ("parent_id") REFERENCES "interface_authorization_scope"("id") ON DELETE RESTRICT;--> statement-breakpoint
 ALTER TABLE "invitations" ADD CONSTRAINT "invitations_object_parent_fk" FOREIGN KEY ("id","parent_id") REFERENCES "objects"("id","parent_id") ON DELETE CASCADE;--> statement-breakpoint
 ALTER TABLE "leads" ADD CONSTRAINT "leads_id_objects_id_fkey" FOREIGN KEY ("id") REFERENCES "objects"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "leads" ADD CONSTRAINT "leads_converted_company_id_companies_id_fkey" FOREIGN KEY ("converted_company_id") REFERENCES "companies"("id") ON DELETE RESTRICT;--> statement-breakpoint
+ALTER TABLE "leads" ADD CONSTRAINT "leads_converted_contact_id_contacts_id_fkey" FOREIGN KEY ("converted_contact_id") REFERENCES "contacts"("id") ON DELETE RESTRICT;--> statement-breakpoint
 ALTER TABLE "leads" ADD CONSTRAINT "leads_parent_platform_fk" FOREIGN KEY ("parent_id") REFERENCES "roots"("id") ON DELETE RESTRICT;--> statement-breakpoint
 ALTER TABLE "leads" ADD CONSTRAINT "leads_object_parent_fk" FOREIGN KEY ("id","parent_id") REFERENCES "objects"("id","parent_id") ON DELETE CASCADE;--> statement-breakpoint
 ALTER TABLE "line_items" ADD CONSTRAINT "line_items_id_objects_id_fkey" FOREIGN KEY ("id") REFERENCES "objects"("id") ON DELETE CASCADE;--> statement-breakpoint

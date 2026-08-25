@@ -2,10 +2,6 @@ import type { Model } from "@company/model"
 import { inArray, sql } from "drizzle-orm"
 import { Data, Effect } from "effect"
 
-import {
-  PLATFORM_ID,
-  SYSTEM_SERVICE_ACCOUNT_ID,
-} from "@/server/authorization/well-known-authorization"
 import { Database } from "@/server/database/database"
 import {
   authorizationScopes,
@@ -13,6 +9,7 @@ import {
   objects,
   platforms,
 } from "@/server/database/schema"
+import { PLATFORM_ID, SYSTEM_SERVICE_ACCOUNT_ID } from "@/system-records"
 
 class SystemActorBootstrapConflict extends Data.TaggedError(
   "SystemActorBootstrapConflict"

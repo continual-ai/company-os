@@ -32,3 +32,17 @@ export const modelPermissions: ReadonlyArray<string> = [
       .map((action) => `${action.objectType}.${action.id}`)
   ),
 ]
+
+const operatorObjectTypes = new Set([
+  "company",
+  "contact",
+  "deal",
+  "interaction",
+  "lead",
+  "lineItem",
+])
+
+/** Business-data permissions granted to the built-in non-administrator role. */
+export const operatorPermissions = modelPermissions.filter((permission) =>
+  operatorObjectTypes.has(permission.slice(0, permission.indexOf(".")))
+)

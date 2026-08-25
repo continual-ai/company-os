@@ -12,18 +12,19 @@ import { Context, Data, Effect, Layer, Schema } from "effect"
 
 import { generateSecret, hashSecret } from "@/server/auth/secret-token"
 import { Authorization } from "@/server/authorization/authorization-service"
-import { SYSTEM_SERVICE_ACCOUNT_ID } from "@/server/authorization/well-known-authorization"
 import { Database } from "@/server/database/database"
 import { makeRecordAliasResolver } from "@/server/database/model-storage"
 import { currentActorId } from "@/server/invocation-context"
+import { SYSTEM_SERVICE_ACCOUNT_ID } from "@/system-records"
 
 import { ApiKeyRepository } from "./api-key-repository"
 import { makeObjectService } from "./object-service"
+import { ServiceAccountRepository } from "./service-account-repository"
 
 const issueInputSchema = toEffectInputSchema(Model.actions.apiKey.issue.input)
 
 class InvalidApiKeyRequest extends Data.TaggedError("InvalidApiKeyRequest")<{
-  readonly reason: "expiresAt" | "systemAccount"
+  readonly reason: "disabledAccount" | "expiresAt" | "systemAccount"
 }> {}
 
 function now(): Timestamp {
@@ -34,6 +35,7 @@ const make = Effect.gen(function* () {
   const authorization = yield* Authorization
   const database = yield* Database
   const repository = yield* ApiKeyRepository
+  const serviceAccounts = yield* ServiceAccountRepository
   const resolveAliases = yield* makeRecordAliasResolver
   const base = yield* makeObjectService(Model.objects.apiKey, repository)
 
@@ -76,6 +78,12 @@ const make = Effect.gen(function* () {
           parentId: serviceAccountId,
           parentTypeId: "serviceAccount",
         })
+        const serviceAccount = yield* serviceAccounts.get(serviceAccountId)
+        if (serviceAccount.status !== "active") {
+          return yield* Effect.fail(
+            new InvalidApiKeyRequest({ reason: "disabledAccount" })
+          )
+        }
 
         const actorId = yield* currentActorId
         const id = RecordId("apiKey")(generateRecordId("apiKey"))

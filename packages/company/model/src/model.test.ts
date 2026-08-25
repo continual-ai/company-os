@@ -57,7 +57,7 @@ describe("model contract", () => {
       description.actions
         .filter((action) => action.objectType === "lead")
         .map((action) => action.id)
-    ).toEqual(["create", "update", "delete", "batchDelete"])
+    ).toEqual(["create", "update", "delete", "batchDelete", "convert"])
     expect(description.links.map((link) => link.id)).toEqual([
       "groupMembershipMember",
       "roleAssignmentPrincipal",
@@ -65,7 +65,6 @@ describe("model contract", () => {
       "invitationRole",
       "invitationAcceptedBy",
       "contactPrimaryCompany",
-      "dealCompany",
       "interactionSubject",
     ])
     expect(description.links).toEqual(
@@ -86,23 +85,6 @@ describe("model contract", () => {
             key: "contacts",
             label: "Contacts",
             to: { kind: "object", typeId: "contact" },
-          }),
-        }),
-        expect.objectContaining({
-          id: "dealCompany",
-          forward: expect.objectContaining({
-            cardinality: "one",
-            from: { kind: "object", typeId: "deal" },
-            key: "company",
-            label: "Company",
-            to: { kind: "object", typeId: "company" },
-          }),
-          reverse: expect.objectContaining({
-            cardinality: "many",
-            from: { kind: "object", typeId: "company" },
-            key: "deals",
-            label: "Deals",
-            to: { kind: "object", typeId: "deal" },
           }),
         }),
         expect.objectContaining({
@@ -169,6 +151,10 @@ describe("model contract", () => {
           parent: { kind: "root", typeId: "platform" },
         }),
         expect.objectContaining({
+          id: "deal",
+          parent: { kind: "object", typeId: "company" },
+        }),
+        expect.objectContaining({
           id: "lineItem",
           parent: { kind: "object", typeId: "deal" },
         }),
@@ -191,9 +177,7 @@ describe("model contract", () => {
     expectTypeOf(
       Model.objects.contact.properties.primaryCompany.typeId
     ).toEqualTypeOf<"company">()
-    expectTypeOf(
-      Model.objects.deal.properties.company.typeId
-    ).toEqualTypeOf<"company">()
+    expectTypeOf(Model.objects.deal.parent.typeId).toEqualTypeOf<"company">()
     expectTypeOf<
       InferSchema<typeof Model.objects.interaction.properties.subject>
     >().toEqualTypeOf<RecordId<"company"> | RecordId<"contact">>()

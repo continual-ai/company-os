@@ -126,7 +126,9 @@ const notFoundTags = new Set([
 const conflictTags = new Set([
   "InvitationInvalid",
   "InvitationRoleScopeMismatch",
+  "LastActivePlatformAdministrator",
   "LastPlatformAdministrator",
+  "LeadConversionConflict",
   "ObjectWriteConflict",
   "RecordAliasConflict",
   "RoleScopeMismatch",
@@ -153,6 +155,7 @@ function translateApiError(error: unknown): StandardApiError | undefined {
   if (
     error._tag === "FirstUserRejected" ||
     error._tag === "InvitationRequired" ||
+    error._tag === "UserSuspended" ||
     error._tag === "PermissionDenied"
   ) {
     return permissionDenied("The caller cannot perform this operation.")

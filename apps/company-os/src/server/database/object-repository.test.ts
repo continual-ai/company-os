@@ -24,16 +24,13 @@ import { migrate } from "drizzle-orm/effect-pglite/migrator"
 import { Effect } from "effect"
 import { describe, expect, expectTypeOf, it } from "vitest"
 
-import {
-  PLATFORM_ID,
-  SYSTEM_SERVICE_ACCOUNT_ID,
-} from "@/server/authorization/well-known-authorization"
 import { systemInvocation } from "@/server/invocation-context"
 import { DealRepository } from "@/server/objects/deal-repository"
 import { InteractionRepository } from "@/server/objects/interaction-repository"
 import { LeadRepository } from "@/server/objects/lead-repository"
 import { LineItemRepository } from "@/server/objects/line-item-repository"
 import { seedSystem } from "@/server/seeds/seed-system"
+import { PLATFORM_ID, SYSTEM_SERVICE_ACCOUNT_ID } from "@/system-records"
 
 import { Database } from "./database"
 import {
@@ -315,14 +312,12 @@ describe("Drizzle object repository", () => {
           }
         )
         const deal = yield* dealService.create({
-          company: legacyExample,
           name: "Expansion",
+          parent: legacyExample,
         })
-        const dealsWithCompanies = yield* database.query.deal.findMany({
-          with: { company: true },
-        })
-        type DealWithCompany = (typeof dealsWithCompanies)[number]
-        expectTypeOf<DealWithCompany["company"]["id"]>().toEqualTypeOf<
+        const storedDeals = yield* database.query.deal.findMany()
+        type StoredDeal = (typeof storedDeals)[number]
+        expectTypeOf<StoredDeal["parentId"]>().toEqualTypeOf<
           RecordId<"company">
         >()
         const lineItemRepository = yield* LineItemRepository.make.pipe(
@@ -380,7 +375,7 @@ describe("Drizzle object repository", () => {
           clearedAlias,
           clearedSecond,
           columns,
-          dealsWithCompanies,
+          storedDeals,
           first,
           firstPage,
           filteredByAlias,
@@ -500,10 +495,10 @@ describe("Drizzle object repository", () => {
       parent: "deal_1",
       quantity: 1,
     })
-    expect(result.dealsWithCompanies).toEqual([
+    expect(result.storedDeals).toEqual([
       expect.objectContaining({
-        company: expect.objectContaining({ id: result.first.id }),
         id: "deal_1",
+        parentId: result.first.id,
       }),
     ])
     expect(result.lineItemKindRows).toEqual([
@@ -514,7 +509,9 @@ describe("Drizzle object repository", () => {
     ])
     expect(
       result.lineItemObjectRows.find(({ id }) => id === result.lineItem.id)
-    ).toMatchObject({ ancestorIds: ["deal_1", PLATFORM_ID] })
+    ).toMatchObject({
+      ancestorIds: ["deal_1", result.first.id, PLATFORM_ID],
+    })
     for (const object of Object.values(Model.objects)) {
       expect(
         new Set(

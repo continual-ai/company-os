@@ -155,8 +155,8 @@ referential actions.
 
 Object properties and action inputs and outputs use the same portable schema vocabulary. Custom
 actions are declared beside their primary object; each `actions` entry key supplies the action ID,
-its scope supplies a typed record identifier when needed, and `http` explicitly binds the public
-route:
+and its scope supplies a typed record identifier when needed. The runtime derives one canonical
+HTTP route instead of making domain authors repeat transport configuration:
 
 ```ts
 const Lead = defineObject({
@@ -175,7 +175,6 @@ const Lead = defineObject({
       name: "Qualify lead",
       description: "Qualifies a lead and creates its company and contact.",
       output: { qualified: schema.boolean() },
-      http: { path: "/leads/{id}:qualify" },
     },
   },
 })
@@ -185,8 +184,9 @@ await client.leads.qualify({ id: leadId })
 ```
 
 `list` is the one standard collection query. Simple pagination uses `GET /leads`; filters or
-sorting use the equivalent `POST /leads:search` projection so the transport does not constrain the
-portable request. Filters are typed by property kind, compose with `and`, `or`, and `not`, and
+sorting use the equivalent `POST /leads/search` projection so the transport does not constrain the
+portable request. Object actions use `/leads/{id}/actions/qualify`; collection actions use
+`/leads/actions/qualify`. Filters are typed by property kind, compose with `and`, `or`, and `not`, and
 sorting is ordered and deterministic:
 
 ```ts
