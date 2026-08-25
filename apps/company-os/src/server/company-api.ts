@@ -10,13 +10,16 @@ import {
   type ObjectType,
   type RecordIdentifier,
 } from "@company/runtime"
-import { httpEndpointId } from "@company/runtime/effect/http"
+import {
+  HttpValidationMiddleware,
+  httpEndpointId,
+} from "@company/runtime/effect/http"
 import { CurrentInvocation } from "@company/runtime/effect/object-service"
 import { Context, Data, Effect, Layer } from "effect"
 import { HttpRouter, HttpServer } from "effect/unstable/http"
 import { HttpApiBuilder, type HttpApiEndpoint } from "effect/unstable/httpapi"
 
-import { withApiErrors } from "./api-error"
+import { internalApiError, withApiErrors } from "./api-error"
 import { Authentication } from "./auth/authentication"
 import { UserAuthentication } from "./auth/user-authentication"
 import { applicationHttpApi } from "./http-contract"
@@ -94,46 +97,13 @@ type CompleteHandlers = HttpApiBuilder.Handlers<
   string
 >
 
-function asExecutableService(service: unknown): ExecutableObjectService {
-  // SAFETY: every entry is constructed by makeObjectService for the same closed Model;
-  // the dynamic HTTP compiler invokes only operations enabled by that object definition.
-  // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion
-  return service as ExecutableObjectService
-}
-
-function asInvitationActions(service: unknown): InvitationActions {
-  // SAFETY: InvitationService implements the custom actions declared by the
-  // closed Invitation definition; HTTP schemas validate inputs first.
-  // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion
-  return service as InvitationActions
-}
-
-function asApiKeyActions(service: unknown): ApiKeyActions {
-  // SAFETY: ApiKeyService implements the custom actions declared by the closed
-  // ApiKey definition; HTTP schemas validate inputs first.
-  // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion
-  return service as ApiKeyActions
-}
-
-function asServiceAccountActions(service: unknown): ServiceAccountActions {
-  // SAFETY: these services implement the lifecycle actions declared by their
-  // corresponding closed model definitions.
-  // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion
-  return service as ServiceAccountActions
-}
-
-function asUserActions(service: unknown): UserActions {
-  // SAFETY: UserService implements the lifecycle actions declared by the
-  // closed User definition.
-  // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion
-  return service as UserActions
-}
-
-function asLeadActions(service: unknown): LeadActions {
-  // SAFETY: LeadService implements the conversion action declared by the
-  // closed Lead definition.
-  // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion
-  return service as LeadActions
+// The caller names the closed service contract at this one dynamic compiler boundary.
+// oxlint-disable-next-line typescript/no-unnecessary-type-parameters
+function applicationService<TService>(service: unknown): TService {
+  // SAFETY: every service is selected from the exhaustive closed-model catalog;
+  // generated schemas validate inputs before the compiler invokes it.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  return service as TService
 }
 
 function requestHeaders(request: HandlerRequest): Headers {
@@ -240,14 +210,15 @@ const make = Effect.gen(function* () {
   const userAuthentication = yield* UserAuthentication
   const apiKeys = yield* ApiKeyService
   const invitations = yield* InvitationService
-  const apiKeyActions = asApiKeyActions(apiKeys)
-  const invitationActions = asInvitationActions(invitations)
+  const apiKeyActions = applicationService<ApiKeyActions>(apiKeys)
+  const invitationActions = applicationService<InvitationActions>(invitations)
   const serviceAccounts = yield* ServiceAccountService
   const users = yield* UserService
-  const serviceAccountActions = asServiceAccountActions(serviceAccounts)
-  const userActions = asUserActions(users)
+  const serviceAccountActions =
+    applicationService<ServiceAccountActions>(serviceAccounts)
+  const userActions = applicationService<UserActions>(users)
   const leads = yield* LeadService
-  const leadActions = asLeadActions(leads)
+  const leadActions = applicationService<LeadActions>(leads)
   const standard = yield* StandardObjectServices
   const services = {
     apiKey: apiKeys,
@@ -348,7 +319,9 @@ const make = Effect.gen(function* () {
 
   const groupLayers = modelObjects(Model).map((object) =>
     HttpApiBuilder.group(applicationHttpApi, object.id, (initialHandlers) => {
-      const service = asExecutableService(Reflect.get(services, object.id))
+      const service = applicationService<ExecutableObjectService>(
+        Reflect.get(services, object.id)
+      )
       let handlers = standardHandlers(
         // SAFETY: this compiler registers every endpoint derived from the same
         // object definition before returning a complete handler collection.
@@ -394,6 +367,7 @@ const make = Effect.gen(function* () {
     .reduce((layers, group) => Layer.merge(layers, group), firstGroupLayer)
   const apiLayer = HttpApiBuilder.layer(applicationHttpApi).pipe(
     Layer.provide(groupsLayer),
+    Layer.provide(HttpValidationMiddleware.layer),
     Layer.provide(HttpServer.layerServices)
   )
   const webHandler = yield* Effect.acquireRelease(
@@ -410,7 +384,17 @@ const make = Effect.gen(function* () {
       return yield* Effect.tryPromise({
         try: () => webHandler.handler(request),
         catch: (cause) => new CompanyApiFailure({ cause }),
-      })
+      }).pipe(
+        Effect.catch(({ cause }) =>
+          Effect.logError("Company API handler failed", cause).pipe(
+            Effect.as(
+              Response.json(internalApiError(), {
+                status: 500,
+              })
+            )
+          )
+        )
+      )
     }),
   }
 })

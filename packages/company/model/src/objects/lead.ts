@@ -28,7 +28,7 @@ export const Lead = defineObject({
         contact: schema.recordId(ContactReference),
       },
       errors: [
-        standardErrors.conflict,
+        standardErrors.failedPrecondition,
         standardErrors.notFound,
         standardErrors.permissionDenied,
       ],

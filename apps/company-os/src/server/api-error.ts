@@ -2,17 +2,25 @@
 // This is the single boundary that normalizes independently typed Effect failures
 // into the portable API error contract without leaking infrastructure failures.
 import {
-  type ConflictError,
+  type AbortedError,
+  type AlreadyExistsError,
+  type ApiError,
+  type FailedPreconditionError,
+  type InternalError,
   type NotFoundError,
   type PermissionDeniedError,
   type UnauthenticatedError,
   type ValidationError,
-  type ApiError,
+  type Violation,
 } from "@company/runtime"
+import { schemaErrorToApiError } from "@company/runtime/effect"
 import { Effect, Predicate, Schema } from "effect"
 
 type StandardApiError = ApiError<
-  | typeof ConflictError
+  | typeof AbortedError
+  | typeof AlreadyExistsError
+  | typeof FailedPreconditionError
+  | typeof InternalError
   | typeof NotFoundError
   | typeof PermissionDeniedError
   | typeof UnauthenticatedError
@@ -44,21 +52,42 @@ function firstStringProperty(
   return Predicate.isString(first) ? first : undefined
 }
 
+function stringArrayProperty(
+  error: unknown,
+  property: string
+): ReadonlyArray<string> | undefined {
+  if (!Predicate.hasProperty(error, property)) return undefined
+  const values = error[property]
+  return Array.isArray(values) && values.every(Predicate.isString)
+    ? values
+    : undefined
+}
+
 function unauthenticated(message: string): StandardApiError {
   return {
-    category: "unauthenticated",
-    code: "unauthenticated",
     details: {},
     message,
+    reason: "UNAUTHENTICATED",
+    status: "UNAUTHENTICATED",
   }
 }
 
 function permissionDenied(message: string): StandardApiError {
   return {
-    category: "permissionDenied",
-    code: "permissionDenied",
     details: {},
     message,
+    reason: "PERMISSION_DENIED",
+    status: "PERMISSION_DENIED",
+  }
+}
+
+/** Returns the sanitized envelope for a failure with no safe public meaning. */
+export function internalApiError(): StandardApiError {
+  return {
+    details: {},
+    message: "The server could not complete the request.",
+    reason: "INTERNAL",
+    status: "INTERNAL",
   }
 }
 
@@ -71,49 +100,186 @@ function notFound(error: TaggedFailure): StandardApiError {
     "unknown"
   const objectType = stringProperty(error, "objectType") ?? "record"
   return {
-    category: "notFound",
-    code: "notFound",
     details: {
       resourceId: recordId,
       resourceType: objectType,
     },
     message: "The requested resource does not exist or is not visible.",
+    reason: "NOT_FOUND",
+    status: "NOT_FOUND",
   }
 }
 
-function conflict(error: TaggedFailure): StandardApiError {
+function aborted(_error: TaggedFailure): StandardApiError {
   return {
-    category: "aborted",
-    code: "conflict",
     details: {
       violations: [
         {
-          code: error._tag,
-          message: "The operation conflicts with current state.",
+          message: "The record changed. Reload it and try again.",
+          path: ["etag"],
+          reason: "ETAG_MISMATCH",
         },
       ],
     },
-    message: "The operation conflicts with current state.",
+    message: "The operation was aborted by a concurrent change.",
+    reason: "ABORTED",
+    status: "ABORTED",
   }
 }
 
-function validation(
-  error: TaggedFailure | Schema.SchemaError
-): StandardApiError {
+function alreadyExists(error: TaggedFailure): StandardApiError {
+  const alias = stringProperty(error, "alias")
+  const fields = stringArrayProperty(error, "fields")
+  const violations =
+    fields === undefined
+      ? [
+          {
+            message:
+              alias === undefined
+                ? "The identifier is already in use."
+                : `The alias '${alias}' is already in use.`,
+            path: ["aliases"],
+            reason: "RECORD_ALIAS_ALREADY_EXISTS",
+          },
+        ]
+      : fields.map((field) => ({
+          message: "A record with this value already exists.",
+          path: [field],
+          reason: "NOT_UNIQUE",
+        }))
   return {
-    category: "invalidArgument",
-    code: "validation",
+    details: { violations },
+    message:
+      fields === undefined
+        ? "The requested identifier already exists."
+        : "A record with these values already exists.",
+    reason: "ALREADY_EXISTS",
+    status: "ALREADY_EXISTS",
+  }
+}
+
+function preconditionViolation(error: TaggedFailure): Violation {
+  const reason = stringProperty(error, "reason")
+  switch (error._tag) {
+    case "InvalidApiKeyRequest":
+      return {
+        message: "Select an active service account.",
+        path: ["serviceAccount"],
+        reason: "SERVICE_ACCOUNT_DISABLED",
+      }
+    case "InvitationInvalid": {
+      const invitationReason =
+        reason === "accepted"
+          ? "INVITATION_ALREADY_ACCEPTED"
+          : reason === "emailMismatch"
+            ? "INVITATION_EMAIL_MISMATCH"
+            : reason === "expired"
+              ? "INVITATION_EXPIRED"
+              : reason === "revoked"
+                ? "INVITATION_REVOKED"
+                : reason === "unverifiedEmail"
+                  ? "EMAIL_NOT_VERIFIED"
+                  : "INVITATION_TOKEN_INVALID"
+      return reason === "token"
+        ? {
+            message: "This invitation can no longer be accepted.",
+            path: ["redemptionToken"],
+            reason: invitationReason,
+          }
+        : {
+            message: "This invitation can no longer be accepted.",
+            reason: invitationReason,
+          }
+    }
+    case "InvitationRoleScopeMismatch":
+    case "RoleScopeMismatch":
+      return {
+        message: "The role cannot be assigned at this scope.",
+        path: ["role"],
+        reason: "ROLE_SCOPE_MISMATCH",
+      }
+    case "LastActivePlatformAdministrator":
+      return {
+        message: "Another active platform administrator is required.",
+        reason: "LAST_ACTIVE_PLATFORM_ADMINISTRATOR",
+      }
+    case "LastPlatformAdministrator":
+      return {
+        message: "Another platform administrator is required.",
+        reason: "LAST_PLATFORM_ADMINISTRATOR",
+      }
+    case "LeadConversionConflict":
+      return {
+        message: "The lead has an incomplete prior conversion.",
+        reason: "LEAD_CONVERSION_STATE_INVALID",
+      }
+    default:
+      return {
+        message: "The system state must change before trying again.",
+        reason: "FAILED_PRECONDITION",
+      }
+  }
+}
+
+function failedPrecondition(error: TaggedFailure): StandardApiError {
+  return {
+    details: { violations: [preconditionViolation(error)] },
+    message: "The operation cannot run in the current system state.",
+    reason: "FAILED_PRECONDITION",
+    status: "FAILED_PRECONDITION",
+  }
+}
+
+function validationViolation(error: TaggedFailure): Violation {
+  const reason = stringProperty(error, "reason")
+  switch (error._tag) {
+    case "ImmutablePropertyError":
+      return {
+        message: "This field cannot be changed after creation.",
+        path: [stringProperty(error, "property") ?? "unknown"],
+        reason: "IMMUTABLE_PROPERTY",
+      }
+    case "InvalidApiKeyRequest":
+      if (reason === "expiresAt") {
+        return {
+          message: "Expiration must be in the future.",
+          path: ["expiresAt"],
+          reason: "EXPIRATION_NOT_IN_FUTURE",
+        }
+      }
+      return {
+        message: "Select a service account that can receive API keys.",
+        path: ["serviceAccount"],
+        reason: "SYSTEM_SERVICE_ACCOUNT",
+      }
+    case "InvalidRolePermission":
+      return {
+        message: "The selected role contains an invalid permission.",
+        path: ["role"],
+        reason: "INVALID_ROLE_PERMISSION",
+      }
+    case "ObjectParentTypeMismatch":
+      return {
+        message: "Select a valid parent.",
+        path: ["parent"],
+        reason: "PARENT_TYPE_MISMATCH",
+      }
+    default:
+      return {
+        message: stringProperty(error, "message") ?? "The request is invalid.",
+        reason: "INVALID_REQUEST",
+      }
+  }
+}
+
+function validation(error: TaggedFailure): StandardApiError {
+  return {
     details: {
-      fieldViolations: [],
-      globalViolations: [
-        {
-          code: error._tag,
-          message:
-            error instanceof Error ? error.message : "The request is invalid.",
-        },
-      ],
+      violations: [validationViolation(error)],
     },
     message: "The request is invalid.",
+    reason: "VALIDATION_FAILED",
+    status: "INVALID_ARGUMENT",
   }
 }
 
@@ -123,19 +289,16 @@ const notFoundTags = new Set([
   "ObjectParentNotFound",
   "RecordAliasNotFound",
 ])
-const conflictTags = new Set([
+const failedPreconditionTags = new Set([
   "InvitationInvalid",
   "InvitationRoleScopeMismatch",
   "LastActivePlatformAdministrator",
   "LastPlatformAdministrator",
   "LeadConversionConflict",
-  "ObjectWriteConflict",
-  "RecordAliasConflict",
   "RoleScopeMismatch",
 ])
 const validationTags = new Set([
   "ImmutablePropertyError",
-  "InvalidApiKeyRequest",
   "InvalidBatchRequest",
   "InvalidListRequest",
   "InvalidRolePermission",
@@ -143,7 +306,7 @@ const validationTags = new Set([
 ])
 
 function translateApiError(error: unknown): StandardApiError | undefined {
-  if (Schema.isSchemaError(error)) return validation(error)
+  if (Schema.isSchemaError(error)) return schemaErrorToApiError(error)
   if (!isTaggedFailure(error)) return undefined
   if (
     error._tag === "InvalidApiKey" ||
@@ -161,18 +324,37 @@ function translateApiError(error: unknown): StandardApiError | undefined {
     return permissionDenied("The caller cannot perform this operation.")
   }
   if (notFoundTags.has(error._tag)) return notFound(error)
-  if (conflictTags.has(error._tag)) return conflict(error)
-  if (validationTags.has(error._tag)) return validation(error)
+  if (error._tag === "ObjectWriteConflict") return aborted(error)
+  if (
+    error._tag === "ObjectUniqueConflict" ||
+    error._tag === "RecordAliasConflict"
+  ) {
+    return alreadyExists(error)
+  }
+  if (
+    error._tag === "InvalidApiKeyRequest" &&
+    stringProperty(error, "reason") === "disabledAccount"
+  ) {
+    return failedPrecondition(error)
+  }
+  if (failedPreconditionTags.has(error._tag)) {
+    return failedPrecondition(error)
+  }
+  if (error._tag === "InvalidApiKeyRequest" || validationTags.has(error._tag)) {
+    return validation(error)
+  }
   return undefined
 }
 
-/** Translates deliberate application failures while preserving infrastructure failures. */
+/** Translates application failures and sanitizes unexpected typed failures. */
 export function withApiErrors<A, E, R>(
   effect: Effect.Effect<A, E, R>
-): Effect.Effect<A, E | StandardApiError, R> {
+): Effect.Effect<A, StandardApiError, R> {
   return Effect.catch(effect, (error) => {
     const mapped = translateApiError(error)
-    const failure: E | StandardApiError = mapped ?? error
-    return Effect.fail(failure)
+    if (mapped !== undefined) return Effect.fail(mapped)
+    return Effect.logError("Unhandled Company API failure", error).pipe(
+      Effect.andThen(Effect.fail(internalApiError()))
+    )
   })
 }

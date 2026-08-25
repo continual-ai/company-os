@@ -25,9 +25,9 @@ const Root = defineRoot({
 })
 
 const EnrollmentFailed = defineError({
-  code: "enrollmentFailed",
-  category: "failedPrecondition",
   name: "Enrollment failed",
+  reason: "ENROLLMENT_FAILED",
+  status: "FAILED_PRECONDITION",
   details: schema.object({ reason: schema.string() }),
 })
 

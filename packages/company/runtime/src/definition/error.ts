@@ -1,67 +1,85 @@
-import { definitionId } from "./identity"
 import type { AnySchema, InferSchema } from "./schema"
 
-/** Stable, transport-independent categories derived from canonical API error codes. */
-export const errorCategories = [
-  "cancelled",
-  "unknown",
-  "invalidArgument",
-  "deadlineExceeded",
-  "notFound",
-  "alreadyExists",
-  "permissionDenied",
-  "resourceExhausted",
-  "failedPrecondition",
-  "aborted",
-  "outOfRange",
-  "unimplemented",
-  "internal",
-  "unavailable",
-  "dataLoss",
-  "unauthenticated",
+/** Canonical transport-independent statuses from google.rpc.Code. */
+export const errorStatuses = [
+  "CANCELLED",
+  "UNKNOWN",
+  "INVALID_ARGUMENT",
+  "DEADLINE_EXCEEDED",
+  "NOT_FOUND",
+  "ALREADY_EXISTS",
+  "PERMISSION_DENIED",
+  "RESOURCE_EXHAUSTED",
+  "FAILED_PRECONDITION",
+  "ABORTED",
+  "OUT_OF_RANGE",
+  "UNIMPLEMENTED",
+  "INTERNAL",
+  "UNAVAILABLE",
+  "DATA_LOSS",
+  "UNAUTHENTICATED",
 ] as const
 
-export type ErrorCategory = (typeof errorCategories)[number]
+export type ErrorStatus = (typeof errorStatuses)[number]
+
+const errorReasonPattern = /^[A-Z][A-Z0-9_]{0,61}[A-Z0-9]$/
+
+/** Tests an untrusted value against the stable API error reason format. */
+export function isErrorReason(value: string): boolean {
+  return errorReasonPattern.test(value)
+}
+
+/** Validates the stable machine-readable reason used by an API error. */
+export function errorReason<const TValue extends string>(
+  value: TValue
+): TValue {
+  if (!isErrorReason(value)) {
+    throw new Error(
+      `Error reason '${value}' must be 2-63 UPPER_SNAKE_CASE characters.`
+    )
+  }
+  return value
+}
 
 export interface ErrorType<
-  TCode extends string = string,
-  TCategory extends ErrorCategory = ErrorCategory,
+  TReason extends string = string,
+  TStatus extends ErrorStatus = ErrorStatus,
   TDetails extends AnySchema = AnySchema,
 > {
-  category: TCategory
-  code: TCode
   description?: string
   details: TDetails
   kind: "error"
   name: string
+  reason: TReason
+  status: TStatus
 }
 
 /** The portable value exposed to clients when a declared API error occurs. */
 export type ApiError<TError extends ErrorType = ErrorType> =
   TError extends ErrorType
     ? {
-        readonly category: TError["category"]
-        readonly code: TError["code"]
         readonly details: InferSchema<TError["details"]>
         readonly message: string
+        readonly reason: TError["reason"]
+        readonly status: TError["status"]
       }
     : never
 
 /** Defines a transport-independent error contract that actions may declare. */
 export function defineError<
-  const TCode extends string,
-  const TCategory extends ErrorCategory,
+  const TReason extends string,
+  const TStatus extends ErrorStatus,
   const TDetails extends AnySchema,
 >(definition: {
-  category: TCategory
-  code: TCode
   description?: string
   details: TDetails
   name: string
-}): ErrorType<TCode, TCategory, TDetails> {
+  reason: TReason
+  status: TStatus
+}): ErrorType<TReason, TStatus, TDetails> {
   return {
     kind: "error",
     ...definition,
-    code: definitionId(definition.code),
+    reason: errorReason(definition.reason),
   }
 }

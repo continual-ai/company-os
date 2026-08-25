@@ -92,6 +92,13 @@ Each normalized object's `actions` map contains its complete standard-plus-autho
 REST, clients, and descriptions are projections of that contract rather than separate action
 definitions.
 
+Declared failures use one transport-independent envelope: a canonical status, a stable
+`UPPER_SNAKE_CASE` reason, a user-safe message, and typed details. Standard field and operation
+violations carry Standard Schema-style property paths. Effect owns schema decoding and HTTP
+projection, while application boundaries classify domain failures and storage adapters translate
+only provider failures with stable semantic meaning. Unclassified infrastructure failures remain
+internal rather than becoming accidental public contracts.
+
 An object's optional `uniqueBy` map names durable collection invariants using public field names.
 For example, `{ email: ["email"] }` requires unique non-null email values, while
 `{ membership: ["parent", "member"] }` defines a composite membership identity. Rules may include

@@ -214,9 +214,9 @@ export function bindActions<
       )
     }
     const errors = definition.errors ?? []
-    const errorCodes = errors.map((error) => error.code)
-    const duplicateError = errorCodes.find(
-      (code, index) => errorCodes.indexOf(code) !== index
+    const errorReasons = errors.map((error) => error.reason)
+    const duplicateError = errorReasons.find(
+      (reason, index) => errorReasons.indexOf(reason) !== index
     )
     if (duplicateError !== undefined) {
       throw new Error(

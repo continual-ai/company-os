@@ -29,6 +29,14 @@ export class ObjectWriteConflict extends Data.TaggedError(
   readonly recordId: string
 }> {}
 
+export class ObjectUniqueConflict extends Data.TaggedError(
+  "ObjectUniqueConflict"
+)<{
+  readonly fields: ReadonlyArray<string>
+  readonly objectType: string
+  readonly rule: string
+}> {}
+
 export class ObjectParentNotFound extends Data.TaggedError(
   "ObjectParentNotFound"
 )<{

@@ -10,9 +10,9 @@ import { schema } from "./definition/schema"
 import { createApiReference, createHttpApi } from "./effect-http"
 
 const ArchiveFailed = defineError({
-  code: "archiveFailed",
-  category: "failedPrecondition",
   name: "Archive failed",
+  reason: "ARCHIVE_FAILED",
+  status: "FAILED_PRECONDITION",
   details: schema.object({ reason: schema.string() }),
 })
 
@@ -112,14 +112,14 @@ describe("Effect HTTP projection", () => {
     expect(document.paths["/api/v1/accounts/{id}"]?.delete).toBeUndefined()
     expect(document.paths["/api/v1/accounts"]?.post?.parameters).toEqual([])
     expect(document.paths["/api/v1/accounts"]?.post?.responses).toHaveProperty(
-      "422"
+      "400"
     )
     expect(document.components?.schemas.AccountList).toHaveProperty(
       "required",
       expect.arrayContaining(["items", "nextPageToken"])
     )
     expect(document.components?.schemas).toHaveProperty("NotFoundError")
-    expect(document.components?.schemas).toHaveProperty("ValidationError")
+    expect(document.components?.schemas).toHaveProperty("ValidationFailedError")
     expect(document.components?.schemas).toHaveProperty("AccountStatus")
     expect(document.components?.schemas).toHaveProperty("AccountEmail")
     expect(document.components?.schemas).toHaveProperty("AccountLogo")
@@ -230,7 +230,7 @@ describe("Effect HTTP projection", () => {
       summary: "Archive account",
       responses: {
         "200": { description: "ArchiveAccountOutput" },
-        "400": { description: "ArchiveFailedError" },
+        "400": { description: expect.any(String) },
         "404": {
           description:
             "The requested resource does not exist or is not visible to the caller.",

@@ -1,6 +1,6 @@
-import { Schema, SchemaTransformation } from "effect"
+import { Predicate, Schema, SchemaIssue, SchemaTransformation } from "effect"
 
-import type { ErrorType } from "./definition/error"
+import type { ApiError, ErrorType } from "./definition/error"
 import { Etag, type ObjectRecord, type ObjectType } from "./definition/object"
 import type { PropertyDefinition } from "./definition/property"
 import type {
@@ -24,6 +24,39 @@ import {
   Timestamp,
   WebUrl,
 } from "./definition/schema"
+import type { ValidationError, Violation } from "./definition/standard-error"
+
+const formatSchemaIssues = SchemaIssue.makeFormatterStandardSchemaV1()
+
+/** Preserves Effect Schema issue paths in the portable validation contract. */
+export function schemaErrorViolations(
+  error: Schema.SchemaError
+): ReadonlyArray<Violation> {
+  return formatSchemaIssues(error.issue).issues.map(({ message, path }) => {
+    const segments = (path ?? []).map((segment) => {
+      const key = Predicate.hasProperty(segment, "key") ? segment.key : segment
+      if (Predicate.isString(key) || Predicate.isNumber(key)) {
+        return key
+      }
+      return key.description ?? "symbol"
+    })
+    return segments.length === 0
+      ? { message, reason: "INVALID" }
+      : { message, path: segments, reason: "INVALID" }
+  })
+}
+
+/** Converts Effect Schema failures without exposing Effect-specific error values. */
+export function schemaErrorToApiError(
+  error: Schema.SchemaError
+): ApiError<typeof ValidationError> {
+  return {
+    details: { violations: schemaErrorViolations(error) },
+    message: "The request is invalid.",
+    reason: "VALIDATION_FAILED",
+    status: "INVALID_ARGUMENT",
+  }
+}
 
 const fileRefSchema = Schema.Struct({
   assetId: Schema.String.check(Schema.isNonEmpty()),
@@ -313,6 +346,9 @@ export function toEffectSchema(
   return compile(definition, "output")
 }
 
+export function toEffectInputSchema<TSchema extends AnySchema>(
+  definition: TSchema
+): Schema.Codec<InferSchema<TSchema>, unknown>
 export function toEffectInputSchema(
   definition: AnySchema
 ): Schema.Codec<unknown, unknown> {
@@ -535,23 +571,27 @@ export function toEffectErrorSchema<TError extends ErrorType>(
   error: TError
 ): Schema.Codec<
   {
-    readonly category: TError["category"]
-    readonly code: TError["code"]
     readonly details: InferSchema<TError["details"]>
     readonly message: string
+    readonly reason: TError["reason"]
+    readonly status: TError["status"]
   },
   unknown
 >
 export function toEffectErrorSchema(
   error: ErrorType
 ): Schema.Codec<unknown, unknown> {
+  const identifier = error.reason
+    .split("_")
+    .map((part) => `${part[0]}${part.slice(1).toLowerCase()}`)
+    .join("")
   let value = Schema.Struct({
-    category: Schema.Literal(error.category),
-    code: Schema.Literal(error.code),
     details: compile(error.details, "output"),
     message: Schema.String.check(Schema.isNonEmpty()),
+    reason: Schema.Literal(error.reason),
+    status: Schema.Literal(error.status),
   }).annotate({
-    identifier: `${pascalCase(error.code)}Error`,
+    identifier: `${identifier}Error`,
     title: error.name,
   })
 

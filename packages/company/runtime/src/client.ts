@@ -6,7 +6,7 @@ import {
   type ActionOutput,
   type StandardActionId,
 } from "./definition/action"
-import type { ApiError } from "./definition/error"
+import { errorStatuses, isErrorReason, type ApiError } from "./definition/error"
 import {
   type ModelObject,
   type ModelCatalog,
@@ -55,12 +55,17 @@ function parseApiError(body: string): ApiError | undefined {
     if (
       typeof value === "object" &&
       value !== null &&
-      "code" in value &&
-      typeof value.code === "string" &&
+      "status" in value &&
+      typeof value.status === "string" &&
+      errorStatuses.some((status) => status === value.status) &&
+      "reason" in value &&
+      typeof value.reason === "string" &&
+      isErrorReason(value.reason) &&
+      "details" in value &&
       "message" in value &&
       typeof value.message === "string"
     ) {
-      // SAFETY: the portable error contract requires code and message while
+      // SAFETY: the portable error contract requires status, reason, and message while
       // endpoint-specific details remain opaque to this generic client.
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion
       return value as ApiError

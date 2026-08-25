@@ -1,16 +1,17 @@
-import { Schema } from "effect"
+import { Effect, Schema } from "effect"
 import { HttpRouter } from "effect/unstable/http"
 import {
   HttpApi,
   HttpApiEndpoint,
   HttpApiGroup,
+  HttpApiMiddleware,
   HttpApiScalar,
   HttpApiSchema,
   OpenApi,
 } from "effect/unstable/httpapi"
 
 import { isStandardActionId, type Action } from "./definition/action"
-import type { ErrorCategory, ErrorType } from "./definition/error"
+import type { ErrorStatus, ErrorType } from "./definition/error"
 import { type ModelCatalog, modelObjects } from "./definition/model"
 import { Etag, type ObjectType } from "./definition/object"
 import {
@@ -25,7 +26,10 @@ import {
 } from "./definition/request"
 import { schema } from "./definition/schema"
 import {
-  ConflictError,
+  AbortedError,
+  AlreadyExistsError,
+  FailedPreconditionError,
+  InternalError,
   NotFoundError,
   PermissionDeniedError,
   UnauthenticatedError,
@@ -39,6 +43,7 @@ import {
   toEffectObjectUpdateSchema,
   toEffectRecordIdentifierSchema,
   toEffectSchema,
+  schemaErrorToApiError,
 } from "./effect-schema"
 
 export interface HttpApiOptions {
@@ -60,24 +65,24 @@ type DynamicHttpApi = HttpApi.HttpApi<string, HttpApiGroup.Constraint>
 
 const defaultBasePath = "/api/v1" as const
 
-const errorStatus = {
-  cancelled: 499,
-  unknown: 500,
-  invalidArgument: 422,
-  deadlineExceeded: 504,
-  notFound: 404,
-  alreadyExists: 409,
-  permissionDenied: 403,
-  resourceExhausted: 429,
-  failedPrecondition: 400,
-  aborted: 409,
-  outOfRange: 400,
-  unimplemented: 501,
-  internal: 500,
-  unavailable: 503,
-  dataLoss: 500,
-  unauthenticated: 401,
-} satisfies Readonly<Record<ErrorCategory, number>>
+const httpStatusByErrorStatus = {
+  ABORTED: 409,
+  ALREADY_EXISTS: 409,
+  CANCELLED: 499,
+  DATA_LOSS: 500,
+  DEADLINE_EXCEEDED: 504,
+  FAILED_PRECONDITION: 400,
+  INTERNAL: 500,
+  INVALID_ARGUMENT: 400,
+  NOT_FOUND: 404,
+  OUT_OF_RANGE: 400,
+  PERMISSION_DENIED: 403,
+  RESOURCE_EXHAUSTED: 429,
+  UNAUTHENTICATED: 401,
+  UNAVAILABLE: 503,
+  UNIMPLEMENTED: 501,
+  UNKNOWN: 500,
+} satisfies Readonly<Record<ErrorStatus, number>>
 
 function pascalCase(value: string): string {
   return value
@@ -139,15 +144,37 @@ function errorSchemas(errors: ReadonlyArray<ErrorType>) {
     if (cached !== undefined) return cached
 
     const compiled = toEffectErrorSchema(error).pipe(
-      HttpApiSchema.status(errorStatus[error.category])
+      HttpApiSchema.status(httpStatusByErrorStatus[error.status])
     )
     compiledErrorSchemas.set(error, compiled)
     return compiled
   })
 }
 
-const authorizationErrors = [UnauthenticatedError, PermissionDeniedError]
-const mutationErrors = [...authorizationErrors, ValidationError, ConflictError]
+const authorizationErrors = [
+  UnauthenticatedError,
+  PermissionDeniedError,
+  InternalError,
+]
+const mutationErrors = [
+  ...authorizationErrors,
+  AbortedError,
+  AlreadyExistsError,
+  FailedPreconditionError,
+]
+
+const validationErrorSchema = errorSchemas([ValidationError])[0]!
+
+/** Maps generated request-decoding failures into the portable validation contract. */
+export class HttpValidationMiddleware extends HttpApiMiddleware.Service<HttpValidationMiddleware>()(
+  "@company/runtime/HttpValidationMiddleware",
+  { error: validationErrorSchema }
+) {
+  static readonly layer = HttpApiMiddleware.layerSchemaErrorTransform(
+    this,
+    ({ cause }) => Effect.fail(schemaErrorToApiError(cause))
+  )
+}
 
 function endpointAnnotations(options: {
   readonly description?: string
@@ -586,7 +613,12 @@ export function createHttpApi(
     httpApi = httpApi.add(group)
   }
 
-  return httpApi
+  // SAFETY: middleware changes only Effect's phantom requirements; every
+  // generated server provides HttpValidationMiddleware.layer.
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion
+  return httpApi.middleware(
+    HttpValidationMiddleware
+  ) as unknown as DynamicHttpApi
 }
 
 /** Builds the Fetch handler used to serve Effect's Scalar reference. */

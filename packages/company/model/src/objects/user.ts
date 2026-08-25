@@ -23,7 +23,7 @@ export const User = defineObject({
       idempotent: true,
       scope: "object",
       errors: [
-        standardErrors.conflict,
+        standardErrors.failedPrecondition,
         standardErrors.notFound,
         standardErrors.permissionDenied,
       ],

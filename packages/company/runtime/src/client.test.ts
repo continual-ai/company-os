@@ -202,18 +202,32 @@ describe("inferred API client", () => {
   })
 
   it("preserves non-success response details", async () => {
+    const validationError = {
+      details: {
+        violations: [
+          {
+            message: "Expected a name",
+            path: ["name"],
+            reason: "INVALID",
+          },
+        ],
+      },
+      message: "The request is invalid.",
+      reason: "VALIDATION_FAILED",
+      status: "INVALID_ARGUMENT",
+    }
     const client = createClient(Example, {
       fetch: async () =>
-        new Response('{"code":"validation"}', {
-          status: 422,
+        new Response(JSON.stringify(validationError), {
+          status: 400,
           headers: { "content-type": "application/json" },
         }),
     })
 
     const response = client.accounts.list()
     await expect(response).rejects.toMatchObject({
-      body: '{"code":"validation"}',
-      status: 422,
+      apiError: validationError,
+      status: 400,
     })
     await expect(response).rejects.toBeInstanceOf(ApiClientResponseError)
   })

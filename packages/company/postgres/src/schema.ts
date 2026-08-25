@@ -337,6 +337,13 @@ function snakeCase(value: string): string {
     .toLowerCase()
 }
 
+export function objectUniqueConstraintName(
+  tableName: string,
+  ruleId: string
+): string {
+  return `${tableName}_${snakeCase(ruleId)}_unique`
+}
+
 export function physicalPropertyKey(
   propertyId: string,
   property: AnySchema
@@ -713,7 +720,7 @@ export function makePostgresSchema<const TModel extends ModelCatalog>(
         }
         if (oneToOneReferenceProperties.has(`${object.id}.${propertyId}`)) {
           constraints.push(
-            uniqueIndex(`${tableName}_${snakeCase(columnKey)}_unique`).on(
+            uniqueIndex(objectUniqueConstraintName(tableName, columnKey)).on(
               column
             )
           )
@@ -740,7 +747,7 @@ export function makePostgresSchema<const TModel extends ModelCatalog>(
           )
         }
         constraints.push(
-          uniqueIndex(`${tableName}_${snakeCase(ruleId)}_unique`).on(
+          uniqueIndex(objectUniqueConstraintName(tableName, ruleId)).on(
             first,
             ...uniqueColumns.slice(1)
           )

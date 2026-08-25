@@ -9,8 +9,13 @@ export type {
   ActionScope,
 } from "./definition/action"
 export { isStandardActionId } from "./definition/action"
-export { defineError, errorCategories } from "./definition/error"
-export type { ApiError, ErrorType, ErrorCategory } from "./definition/error"
+export {
+  defineError,
+  errorReason,
+  errorStatuses,
+  isErrorReason,
+} from "./definition/error"
+export type { ApiError, ErrorType, ErrorStatus } from "./definition/error"
 export type {
   InferProperties,
   InferProperty,
@@ -120,12 +125,18 @@ export type {
   StringSchemaOptions,
 } from "./definition/schema"
 export {
-  ConflictError,
+  AbortedError,
+  AlreadyExistsError,
+  FailedPreconditionError,
+  InternalError,
   NotFoundError,
   PermissionDeniedError,
+  standardErrorViolations,
   standardErrors,
   UnauthenticatedError,
   ValidationError,
+  violationSchema,
 } from "./definition/standard-error"
+export type { Violation } from "./definition/standard-error"
 export { API_DESCRIPTION_VERSION, createApiDescription } from "./description"
 export type { ApiDescription } from "./description"

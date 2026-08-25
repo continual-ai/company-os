@@ -34,7 +34,10 @@ export const Invitation = defineObject({
         invitation: schema.recordId(InvitationReference),
         redemptionToken: schema.string({ minLength: 1 }),
       },
-      errors: [standardErrors.conflict, standardErrors.permissionDenied],
+      errors: [
+        standardErrors.failedPrecondition,
+        standardErrors.permissionDenied,
+      ],
     },
     accept: {
       name: "Accept invitation",
@@ -44,7 +47,7 @@ export const Invitation = defineObject({
       input: { redemptionToken: schema.string({ minLength: 1 }) },
       output: { user: schema.recordId(UserReference) },
       errors: [
-        standardErrors.conflict,
+        standardErrors.failedPrecondition,
         standardErrors.notFound,
         standardErrors.unauthenticated,
       ],

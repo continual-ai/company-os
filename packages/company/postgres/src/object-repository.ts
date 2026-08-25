@@ -1,3 +1,4 @@
+/* oxlint-disable anti-slop/no-unknown-parameters, eslint/no-underscore-dangle -- This adapter unwraps structured Effect and Drizzle provider failures at the persistence boundary. */
 import { Buffer } from "node:buffer"
 
 import {
@@ -8,6 +9,7 @@ import {
   type RecordAliasUpdate,
   type ModelCatalog,
   type ModelObjectRef,
+  linkReferenceTraversals,
   PageToken,
   Timestamp,
   type InferProperty,
@@ -23,6 +25,7 @@ import {
 } from "@company/runtime/effect"
 import {
   ObjectNotFound,
+  ObjectUniqueConflict,
   RecordAliasConflict,
   RecordAliasNotFound,
   ObjectParentNotFound,
@@ -42,6 +45,7 @@ import {
   asc,
   desc,
   eq,
+  getTableName,
   getTableColumns,
   gt,
   gte,
@@ -59,17 +63,21 @@ import {
   type AnyRelations,
   type SQL,
 } from "drizzle-orm"
-import type { EffectDrizzleQueryError } from "drizzle-orm/effect-core/errors"
+import { EffectDrizzleQueryError } from "drizzle-orm/effect-core/errors"
 import type { EffectPgDatabase } from "drizzle-orm/effect-postgres"
 import type {
   AnyPgTable,
   PgInsertValue,
   PgUpdateSetSource,
 } from "drizzle-orm/pg-core"
-import { Effect, Schema } from "effect"
-import type { SqlError } from "effect/unstable/sql/SqlError"
+import { Cause, Effect, Option, Schema } from "effect"
+import { isSqlError, type SqlError } from "effect/unstable/sql/SqlError"
 
-import { physicalPropertyKey, type PostgresStorage } from "./schema"
+import {
+  objectUniqueConstraintName,
+  physicalPropertyKey,
+  type PostgresStorage,
+} from "./schema"
 
 type StoragePropertyValues<TObject extends ObjectType> = Partial<
   Readonly<
@@ -108,6 +116,7 @@ export type PostgresRepositoryError =
   | ObjectNotFound
   | ObjectParentNotFound
   | ObjectParentTypeMismatch
+  | ObjectUniqueConflict
   | ObjectWriteConflict
   | Schema.SchemaError
   | SqlError
@@ -129,6 +138,42 @@ interface CursorSort {
 }
 
 type QueryValue = boolean | null | number | string
+
+interface UniqueConstraint {
+  readonly fields: ReadonlyArray<string>
+  readonly rule: string
+}
+
+function wrappedSqlError(error: unknown): SqlError | undefined {
+  if (isSqlError(error)) return error
+  if (Cause.isCause(error)) {
+    return wrappedSqlError(Option.getOrUndefined(Cause.findErrorOption(error)))
+  }
+  return error instanceof EffectDrizzleQueryError
+    ? wrappedSqlError(error.cause)
+    : undefined
+}
+
+function translateUniqueConflict<A, E, R>(
+  effect: Effect.Effect<A, E, R>,
+  object: ObjectType,
+  constraints: ReadonlyMap<string, UniqueConstraint>
+): Effect.Effect<A, E | ObjectUniqueConflict, R> {
+  return Effect.mapError(effect, (error) => {
+    const sqlError = wrappedSqlError(error)
+    const constraint =
+      sqlError?.reason._tag === "UniqueViolation"
+        ? constraints.get(sqlError.reason.constraint)
+        : undefined
+    return constraint === undefined
+      ? error
+      : new ObjectUniqueConflict({
+          fields: constraint.fields,
+          objectType: object.id,
+          rule: constraint.rule,
+        })
+  })
+}
 
 const queryValueSchema = Schema.Union([
   Schema.Boolean,
@@ -343,6 +388,30 @@ export function makeObjectRepository<
       return yield* Effect.die(
         `Object '${object.id}' does not have a PostgreSQL storage table.`
       )
+    }
+    const tableName = getTableName(table)
+    const uniqueConstraints = new Map<string, UniqueConstraint>()
+    for (const [rule, fields] of Object.entries(object.uniqueBy)) {
+      uniqueConstraints.set(objectUniqueConstraintName(tableName, rule), {
+        fields,
+        rule,
+      })
+    }
+    for (const link of Object.values(storage.model.links)) {
+      const reference = linkReferenceTraversals(link)
+      if (
+        reference === undefined ||
+        reference.source.from.typeId !== object.id ||
+        reference.source.cardinality === "many" ||
+        reference.target.cardinality === "many"
+      ) {
+        continue
+      }
+      const field = reference.source.key
+      uniqueConstraints.set(objectUniqueConstraintName(tableName, field), {
+        fields: [field],
+        rule: link.id,
+      })
     }
     const parentInterfaceTable =
       object.parent.kind === "interface"
@@ -912,7 +981,9 @@ export function makeObjectRepository<
             yield* tx.insert(interfaceTable).values(interfaceRow)
           }
           return undefined
-        })
+        }).pipe((effect) =>
+          translateUniqueConflict(effect, object, uniqueConstraints)
+        )
       )
 
       return yield* get(id)
@@ -1073,7 +1144,9 @@ export function makeObjectRepository<
               .onConflictDoNothing()
           }
           return undefined
-        })
+        }).pipe((effect) =>
+          translateUniqueConflict(effect, object, uniqueConstraints)
+        )
       )
 
       return yield* get(id)
@@ -1181,7 +1254,9 @@ export function makeObjectRepository<
             yield* tx.update(table).set(storageChanges).where(eq(idColumn, id))
           }
           return undefined
-        })
+        }).pipe((effect) =>
+          translateUniqueConflict(effect, object, uniqueConstraints)
+        )
       )
 
       return yield* get(id)
