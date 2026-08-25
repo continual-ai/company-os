@@ -9,7 +9,9 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as HealthRouteImport } from './routes/health'
+import { Route as AccessDeniedRouteImport } from './routes/access-denied'
 import { Route as AppRouteRouteImport } from './routes/_app/route'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as ApiOpenapiRouteImport } from './routes/api/openapi'
@@ -26,6 +28,8 @@ import { Route as AppSettingsRouteRouteImport } from './routes/_app/settings/rou
 import { Route as AppDevelopRouteRouteImport } from './routes/_app/develop/route'
 import { Route as AppSettingsIndexRouteImport } from './routes/_app/settings/index'
 import { Route as AppDevelopIndexRouteImport } from './routes/_app/develop/index'
+import { Route as ApiV1SplatRouteImport } from './routes/api/v1/$'
+import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as AppSettingsProfileRouteImport } from './routes/_app/settings/profile'
 import { Route as AppSettingsAppearanceRouteImport } from './routes/_app/settings/appearance'
 import { Route as AppDevelopSdkRouteImport } from './routes/_app/develop/sdk'
@@ -38,9 +42,19 @@ import { Route as AppDevelopDesignSystemFoundationsRouteImport } from './routes/
 import { Route as AppDevelopDesignSystemPatternsObjectTableRouteImport } from './routes/_app/develop/design-system/patterns/object-table'
 import { Route as AppDevelopDesignSystemComponentsComponentIdRouteRouteImport } from './routes/_app/develop/design-system/components/$componentId/route'
 
+const SignInRoute = SignInRouteImport.update({
+  id: '/sign-in',
+  path: '/sign-in',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const HealthRoute = HealthRouteImport.update({
   id: '/health',
   path: '/health',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AccessDeniedRoute = AccessDeniedRouteImport.update({
+  id: '/access-denied',
+  path: '/access-denied',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppRouteRoute = AppRouteRouteImport.update({
@@ -122,6 +136,16 @@ const AppDevelopIndexRoute = AppDevelopIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppDevelopRouteRoute,
 } as any)
+const ApiV1SplatRoute = ApiV1SplatRouteImport.update({
+  id: '/api/v1/$',
+  path: '/api/v1/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
+  id: '/api/auth/$',
+  path: '/api/auth/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppSettingsProfileRoute = AppSettingsProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
@@ -185,7 +209,9 @@ const AppDevelopDesignSystemComponentsComponentIdRouteRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
+  '/access-denied': typeof AccessDeniedRoute
   '/health': typeof HealthRoute
+  '/sign-in': typeof SignInRoute
   '/develop': typeof AppDevelopRouteRouteWithChildren
   '/settings': typeof AppSettingsRouteRouteWithChildren
   '/companies': typeof AppCompaniesRoute
@@ -205,6 +231,8 @@ export interface FileRoutesByFullPath {
   '/develop/sdk': typeof AppDevelopSdkRoute
   '/settings/appearance': typeof AppSettingsAppearanceRoute
   '/settings/profile': typeof AppSettingsProfileRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/v1/$': typeof ApiV1SplatRoute
   '/develop/': typeof AppDevelopIndexRoute
   '/settings/': typeof AppSettingsIndexRoute
   '/develop/design-system/foundations': typeof AppDevelopDesignSystemFoundationsRoute
@@ -213,7 +241,9 @@ export interface FileRoutesByFullPath {
   '/develop/design-system/patterns/object-table': typeof AppDevelopDesignSystemPatternsObjectTableRoute
 }
 export interface FileRoutesByTo {
+  '/access-denied': typeof AccessDeniedRoute
   '/health': typeof HealthRoute
+  '/sign-in': typeof SignInRoute
   '/companies': typeof AppCompaniesRoute
   '/contacts': typeof AppContactsRoute
   '/deals': typeof AppDealsRoute
@@ -231,6 +261,8 @@ export interface FileRoutesByTo {
   '/develop/sdk': typeof AppDevelopSdkRoute
   '/settings/appearance': typeof AppSettingsAppearanceRoute
   '/settings/profile': typeof AppSettingsProfileRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/v1/$': typeof ApiV1SplatRoute
   '/develop': typeof AppDevelopIndexRoute
   '/settings': typeof AppSettingsIndexRoute
   '/develop/design-system/foundations': typeof AppDevelopDesignSystemFoundationsRoute
@@ -241,7 +273,9 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteRouteWithChildren
+  '/access-denied': typeof AccessDeniedRoute
   '/health': typeof HealthRoute
+  '/sign-in': typeof SignInRoute
   '/_app/develop': typeof AppDevelopRouteRouteWithChildren
   '/_app/settings': typeof AppSettingsRouteRouteWithChildren
   '/_app/companies': typeof AppCompaniesRoute
@@ -262,6 +296,8 @@ export interface FileRoutesById {
   '/_app/develop/sdk': typeof AppDevelopSdkRoute
   '/_app/settings/appearance': typeof AppSettingsAppearanceRoute
   '/_app/settings/profile': typeof AppSettingsProfileRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/v1/$': typeof ApiV1SplatRoute
   '/_app/develop/': typeof AppDevelopIndexRoute
   '/_app/settings/': typeof AppSettingsIndexRoute
   '/_app/develop/design-system/foundations': typeof AppDevelopDesignSystemFoundationsRoute
@@ -273,7 +309,9 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/access-denied'
     | '/health'
+    | '/sign-in'
     | '/develop'
     | '/settings'
     | '/companies'
@@ -293,6 +331,8 @@ export interface FileRouteTypes {
     | '/develop/sdk'
     | '/settings/appearance'
     | '/settings/profile'
+    | '/api/auth/$'
+    | '/api/v1/$'
     | '/develop/'
     | '/settings/'
     | '/develop/design-system/foundations'
@@ -301,7 +341,9 @@ export interface FileRouteTypes {
     | '/develop/design-system/patterns/object-table'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/access-denied'
     | '/health'
+    | '/sign-in'
     | '/companies'
     | '/contacts'
     | '/deals'
@@ -319,6 +361,8 @@ export interface FileRouteTypes {
     | '/develop/sdk'
     | '/settings/appearance'
     | '/settings/profile'
+    | '/api/auth/$'
+    | '/api/v1/$'
     | '/develop'
     | '/settings'
     | '/develop/design-system/foundations'
@@ -328,7 +372,9 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/_app'
+    | '/access-denied'
     | '/health'
+    | '/sign-in'
     | '/_app/develop'
     | '/_app/settings'
     | '/_app/companies'
@@ -349,6 +395,8 @@ export interface FileRouteTypes {
     | '/_app/develop/sdk'
     | '/_app/settings/appearance'
     | '/_app/settings/profile'
+    | '/api/auth/$'
+    | '/api/v1/$'
     | '/_app/develop/'
     | '/_app/settings/'
     | '/_app/develop/design-system/foundations'
@@ -359,19 +407,37 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   AppRouteRoute: typeof AppRouteRouteWithChildren
+  AccessDeniedRoute: typeof AccessDeniedRoute
   HealthRoute: typeof HealthRoute
+  SignInRoute: typeof SignInRoute
   ApiDescriptionRoute: typeof ApiDescriptionRoute
   ApiDocsRoute: typeof ApiDocsRoute
   ApiOpenapiRoute: typeof ApiOpenapiRoute
+  ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiV1SplatRoute: typeof ApiV1SplatRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/sign-in': {
+      id: '/sign-in'
+      path: '/sign-in'
+      fullPath: '/sign-in'
+      preLoaderRoute: typeof SignInRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/health': {
       id: '/health'
       path: '/health'
       fullPath: '/health'
       preLoaderRoute: typeof HealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/access-denied': {
+      id: '/access-denied'
+      path: '/access-denied'
+      fullPath: '/access-denied'
+      preLoaderRoute: typeof AccessDeniedRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app': {
@@ -485,6 +551,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/develop/'
       preLoaderRoute: typeof AppDevelopIndexRouteImport
       parentRoute: typeof AppDevelopRouteRoute
+    }
+    '/api/v1/$': {
+      id: '/api/v1/$'
+      path: '/api/v1/$'
+      fullPath: '/api/v1/$'
+      preLoaderRoute: typeof ApiV1SplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/$': {
+      id: '/api/auth/$'
+      path: '/api/auth/$'
+      fullPath: '/api/auth/$'
+      preLoaderRoute: typeof ApiAuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_app/settings/profile': {
       id: '/_app/settings/profile'
@@ -659,10 +739,14 @@ const AppRouteRouteWithChildren = AppRouteRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   AppRouteRoute: AppRouteRouteWithChildren,
+  AccessDeniedRoute: AccessDeniedRoute,
   HealthRoute: HealthRoute,
+  SignInRoute: SignInRoute,
   ApiDescriptionRoute: ApiDescriptionRoute,
   ApiDocsRoute: ApiDocsRoute,
   ApiOpenapiRoute: ApiOpenapiRoute,
+  ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiV1SplatRoute: ApiV1SplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

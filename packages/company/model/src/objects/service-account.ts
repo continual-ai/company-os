@@ -10,8 +10,7 @@ export const ServiceAccount = defineObject({
   name: "Service account",
   parent: Platform,
   pluralName: "Service accounts",
-  description:
-    "A non-human identity used by software, integrations, and agents.",
+  description: "An identity used by software, integrations, and agents.",
   implements: [{ interface: Identity }, { interface: Principal }],
   properties: {
     name: schema.string({ label: "Name", minLength: 1, maxLength: 200 }),

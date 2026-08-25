@@ -1,6 +1,6 @@
 import { defineRule } from "@oxlint/plugins"
 
-const ALLOWED_FRAMEWORK_FILENAMES = new Set(["__root"])
+const ALLOWED_FRAMEWORK_FILENAMES = new Set(["$", "__root"])
 const KEBAB_CASE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 const NUMBERED_MIGRATION =
   /[\\/]migrations[\\/]\d+_[a-z0-9]+(?:-[a-z0-9]+)*\.[cm]?tsx?$/

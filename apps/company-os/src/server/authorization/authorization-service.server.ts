@@ -42,16 +42,33 @@ function isSystemManagedMutation(operation: ObjectAccessRequest["operation"]) {
   )
 }
 
+interface ActionAccessRequest {
+  readonly actionId: string
+  readonly modifiesTarget?: boolean
+  readonly objectType: string
+  readonly parentId?: string
+  readonly parentTypeId?: string
+  readonly recordIds?: ReadonlyArray<string>
+}
+
+interface PermissionRequest {
+  readonly modifiesTarget: boolean
+  readonly objectType: string
+  readonly parentId?: string
+  readonly parentTypeId?: string
+  readonly permission: string
+  readonly recordIds?: ReadonlyArray<string>
+}
+
 const make = Effect.gen(function* () {
   const repository = yield* AuthorizationRepository
 
   // Decisions intentionally read current assignments and group membership so
   // changes earlier in the same transaction take effect without cache repair.
-  const require = Effect.fn("@company/Authorization.require")(function* (
-    request: ObjectAccessRequest
-  ) {
+  const requirePermission = Effect.fn(
+    "@company/Authorization.requirePermission"
+  )(function* (request: PermissionRequest) {
     const actorId = yield* currentActorId
-    const permission = objectPermission(request)
     const targetIds =
       request.recordIds ??
       (request.parentId === undefined ? [PLATFORM_ID] : [request.parentId])
@@ -81,13 +98,13 @@ const make = Effect.gen(function* () {
     const permittedScopeIds = new Set(
       yield* repository.listScopeIdsWithPermission({
         actorId,
-        permission,
+        permission: request.permission,
         scopeIds,
       })
     )
     const denied = targets.find(
       (target) =>
-        (isSystemManagedMutation(request.operation) &&
+        (request.modifiesTarget &&
           target.systemManaged &&
           actorId !== SYSTEM_SERVICE_ACCOUNT_ID) ||
         !permittedAtTarget(target, permittedScopeIds)
@@ -95,14 +112,14 @@ const make = Effect.gen(function* () {
     if (denied === undefined) return undefined
 
     if (request.recordIds !== undefined) {
-      const readCapability = `${request.objectType}.get`
+      const readPermission = `${request.objectType}.get`
       const readableScopeIds =
-        readCapability === permission
+        readPermission === request.permission
           ? permittedScopeIds
           : new Set(
               yield* repository.listScopeIdsWithPermission({
                 actorId,
-                permission: readCapability,
+                permission: readPermission,
                 scopeIds,
               })
             )
@@ -121,11 +138,31 @@ const make = Effect.gen(function* () {
 
     return yield* Effect.fail(
       new PermissionDenied({
-        permission,
+        permission: request.permission,
         recordIds: [denied.id],
       })
     )
   })
+
+  const require = Effect.fn("@company/Authorization.require")(function* (
+    request: ObjectAccessRequest
+  ) {
+    return yield* requirePermission({
+      ...request,
+      modifiesTarget: isSystemManagedMutation(request.operation),
+      permission: objectPermission(request),
+    })
+  })
+
+  const requireAction = Effect.fn("@company/Authorization.requireAction")(
+    function* (request: ActionAccessRequest) {
+      return yield* requirePermission({
+        ...request,
+        modifiesTarget: request.modifiesTarget === true,
+        permission: `${request.objectType}.${request.actionId}`,
+      })
+    }
+  )
 
   const visibleWithin = Effect.fn("@company/Authorization.visibleWithin")(
     function* (request: ObjectAccessRequest) {
@@ -150,7 +187,7 @@ const make = Effect.gen(function* () {
     )
   })
 
-  return { can, require, visibleWithin }
+  return { can, require, requireAction, visibleWithin }
 })
 
 /** The model's hierarchy-based, default-deny authorization policy. */

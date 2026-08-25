@@ -46,7 +46,11 @@ import {
 } from "lucide-react"
 
 import { appMetadata } from "@/app-metadata"
-import { getProfileInitials, useLocalProfile } from "@/components/local-profile"
+import {
+  getUserInitials,
+  useAuthenticatedUser,
+} from "@/components/authenticated-user"
+import { useSignOut } from "@/sign-out"
 
 const sections = [
   { label: "Operate", to: "/" },
@@ -133,7 +137,8 @@ const sectionIndicatorPosition = {
 } as const satisfies Record<Section, string>
 
 export function AppSidebar() {
-  const { profile } = useLocalProfile()
+  const user = useAuthenticatedUser()
+  const { error: signOutError, pending: signOutPending, signOut } = useSignOut()
   const matchRoute = useMatchRoute()
   const activeSection: Section = matchRoute({
     to: "/develop",
@@ -297,14 +302,14 @@ export function AppSidebar() {
                 }
               >
                 <span className="flex size-8 shrink-0 items-center justify-center bg-sidebar-primary text-xs font-semibold text-sidebar-primary-foreground">
-                  {getProfileInitials(profile.displayName)}
+                  {getUserInitials(user.name)}
                 </span>
                 <span className="grid flex-1 text-left leading-tight">
                   <span className="truncate text-xs font-medium">
-                    {profile.displayName}
+                    {user.name}
                   </span>
                   <span className="truncate text-xs text-sidebar-foreground/60">
-                    Signed in locally
+                    {user.email}
                   </span>
                 </span>
                 <ChevronsUpDownIcon className="ml-auto size-4" />
@@ -318,9 +323,9 @@ export function AppSidebar() {
                 <DropdownMenuGroup>
                   <DropdownMenuLabel>
                     <span className="block font-medium text-foreground">
-                      {profile.displayName}
+                      {user.name}
                     </span>
-                    <span className="mt-0.5 block">Signed in locally</span>
+                    <span className="mt-0.5 block">{user.email}</span>
                   </DropdownMenuLabel>
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
@@ -328,9 +333,17 @@ export function AppSidebar() {
                   <SettingsIcon />
                   Account settings
                 </DropdownMenuItem>
-                <DropdownMenuItem disabled variant="destructive">
+                <DropdownMenuItem
+                  variant="destructive"
+                  disabled={signOutPending}
+                  onClick={() => void signOut()}
+                >
                   <LogOutIcon />
-                  Log out
+                  {signOutPending
+                    ? "Logging out…"
+                    : signOutError
+                      ? "Log out failed — retry"
+                      : "Log out"}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

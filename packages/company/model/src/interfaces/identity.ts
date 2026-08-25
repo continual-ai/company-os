@@ -5,5 +5,5 @@ export const Identity = defineInterface({
   name: "Identity",
   pluralName: "Identities",
   description:
-    "A human or non-human identity that may act in this operating system.",
+    "A User or ServiceAccount that may act in this operating system.",
 })

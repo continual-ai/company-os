@@ -144,7 +144,7 @@ describe("Authorization", () => {
           }),
         ])
         yield* database.insert(users).values({
-          email: null,
+          email: "actor@example.com",
           id: userId,
           image: null,
           name: "Ada Lovelace",

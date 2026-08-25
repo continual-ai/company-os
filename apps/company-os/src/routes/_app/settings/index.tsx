@@ -7,10 +7,11 @@ import {
   SettingsSection,
 } from "@/components/settings-page"
 import { pageOptions } from "@/route-metadata"
+import { useSignOut } from "@/sign-out"
 
 const page = {
   breadcrumb: "General",
-  description: "Review the local account and session settings.",
+  description: "Review the authenticated account and session settings.",
   title: "General settings",
 }
 
@@ -20,10 +21,12 @@ export const Route = createFileRoute("/_app/settings/")({
 })
 
 function GeneralSettings() {
+  const { error, pending, signOut } = useSignOut()
+
   return (
     <SettingsPage
       title="General"
-      description="Manage the settings that apply to this local interface."
+      description="Manage the settings that apply to this interface."
     >
       <SettingsSection title="Account">
         <SettingsRow
@@ -41,25 +44,34 @@ function GeneralSettings() {
         </SettingsRow>
         <SettingsRow
           title="Session"
-          description="This scaffold currently uses a local development identity."
+          description="Your browser is authenticated by the configured identity provider."
         >
           <span className="text-xs font-medium text-muted-foreground">
-            Signed in locally
+            Active
           </span>
         </SettingsRow>
       </SettingsSection>
 
       <SettingsSection
         title="Access"
-        description="Authentication and account lifecycle controls belong here when a real identity provider is connected."
+        description="Authentication is managed by the configured identity provider."
       >
-        <SettingsRow
-          title="Log out"
-          description="Unavailable because the local development identity does not create a login session."
-        >
-          <Button variant="outline" size="sm" disabled>
-            Log out
-          </Button>
+        <SettingsRow title="Log out" description="End this browser session.">
+          <div className="space-y-2 text-right">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={pending}
+              onClick={() => void signOut()}
+            >
+              {pending ? "Logging out…" : "Log out"}
+            </Button>
+            {error ? (
+              <p role="alert" className="text-xs text-destructive">
+                {error}
+              </p>
+            ) : null}
+          </div>
         </SettingsRow>
       </SettingsSection>
     </SettingsPage>

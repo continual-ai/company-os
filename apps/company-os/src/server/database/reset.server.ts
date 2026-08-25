@@ -21,6 +21,7 @@ Effect.gen(function* () {
   yield* Effect.log(
     `Resetting local PostgreSQL database '${target.databaseName}' on '${target.host}'.`
   )
+  yield* sql`drop schema if exists auth cascade`
   yield* sql`drop schema if exists drizzle cascade`
   yield* sql`drop schema if exists public cascade`
   yield* sql`create schema public`

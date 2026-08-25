@@ -35,5 +35,19 @@
   "engines": {
     "node": ">=22.12.0",
     "pnpm": ">=11.0.0 <12.0.0"
+  },
+  "knip": {
+    "workspaces": {
+      "apps/company-os": {
+        "entry": [
+          "auth.cli.ts"
+        ],
+        "ignoreIssues": {
+          "src/server/auth/auth-schema.generated.server.ts": [
+            "exports"
+          ]
+        }
+      }
+    }
   }
 }

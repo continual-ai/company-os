@@ -8,15 +8,19 @@ import { ContactPrimaryCompany } from "./links/contact-primary-company"
 import { DealCompany } from "./links/deal-company"
 import { GroupMembershipMember } from "./links/group-membership-member"
 import { InteractionSubject } from "./links/interaction-subject"
+import { InvitationAcceptedBy } from "./links/invitation-accepted-by"
+import { InvitationRole } from "./links/invitation-role"
 import { RoleAssignmentPrincipal } from "./links/role-assignment-principal"
 import { RoleAssignmentRole } from "./links/role-assignment-role"
 import { modelMetadata } from "./metadata"
+import { ApiKey } from "./objects/api-key"
 import { Company } from "./objects/company"
 import { Contact } from "./objects/contact"
 import { Deal } from "./objects/deal"
 import { Group } from "./objects/group"
 import { GroupMembership } from "./objects/group-membership"
 import { Interaction } from "./objects/interaction"
+import { Invitation } from "./objects/invitation"
 import { Lead } from "./objects/lead"
 import { LineItem } from "./objects/line-item"
 import { Role } from "./objects/role"
@@ -33,10 +37,12 @@ export const Model = defineModel({
   objects: [
     User,
     ServiceAccount,
+    ApiKey,
     Group,
     GroupMembership,
     Role,
     RoleAssignment,
+    Invitation,
     Company,
     Contact,
     Lead,
@@ -48,6 +54,8 @@ export const Model = defineModel({
     GroupMembershipMember,
     RoleAssignmentPrincipal,
     RoleAssignmentRole,
+    InvitationRole,
+    InvitationAcceptedBy,
     ContactPrimaryCompany,
     DealCompany,
     InteractionSubject,

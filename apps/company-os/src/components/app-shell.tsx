@@ -6,8 +6,9 @@ import {
 import { TooltipProvider } from "@company/ui/components/tooltip"
 import { useMatchRoute } from "@tanstack/react-router"
 
+import type { AuthenticatedUser } from "@/authentication"
 import { AppSidebar } from "@/components/app-sidebar"
-import { LocalProfileProvider } from "@/components/local-profile"
+import { AuthenticatedUserProvider } from "@/components/authenticated-user"
 import { SettingsSidebar } from "@/components/settings-sidebar"
 import { SiteHeader } from "@/components/site-header"
 
@@ -15,12 +16,18 @@ const sidebarStyle: React.CSSProperties & Record<"--header-height", string> = {
   "--header-height": "3rem",
 }
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({
+  children,
+  user,
+}: {
+  children: React.ReactNode
+  user: AuthenticatedUser
+}) {
   const matchRoute = useMatchRoute()
   const isSettings = Boolean(matchRoute({ to: "/settings", fuzzy: true }))
 
   return (
-    <LocalProfileProvider>
+    <AuthenticatedUserProvider user={user}>
       <TooltipProvider>
         <SidebarProvider
           key={isSettings ? "settings" : "app"}
@@ -48,6 +55,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </SidebarInset>
         </SidebarProvider>
       </TooltipProvider>
-    </LocalProfileProvider>
+    </AuthenticatedUserProvider>
   )
 }

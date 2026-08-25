@@ -14,7 +14,7 @@ export const User = defineObject({
   implements: [{ interface: Identity }, { interface: Principal }],
   properties: {
     name: schema.string({ label: "Name", minLength: 1, maxLength: 200 }),
-    email: schema.email({ label: "Email", maxLength: 320, nullable: true }),
+    email: schema.email({ label: "Email", maxLength: 320 }),
     image: schema.image({ label: "Image", aspectRatio: 1, nullable: true }),
   },
   uniqueBy: { email: ["email"] },

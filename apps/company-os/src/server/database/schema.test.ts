@@ -61,6 +61,16 @@ describe("PostgreSQL schema", () => {
     const kitTables: ReadonlyArray<unknown> = Object.values(
       DatabaseSchema
     ).filter((value) => is(value, Table))
-    expect(new Set(kitTables)).toEqual(new Set(Object.values(Storage.schema)))
+    const expectedKitTables = [
+      ...Object.values(Storage.schema),
+      DatabaseSchema.authAccount,
+      DatabaseSchema.authSession,
+      DatabaseSchema.authUser,
+      DatabaseSchema.authVerification,
+      DatabaseSchema.apiKeyCredentials,
+      DatabaseSchema.authUserBindings,
+      DatabaseSchema.invitationCredentials,
+    ]
+    expect(new Set(kitTables)).toEqual(new Set(expectedKitTables))
   })
 })

@@ -37,7 +37,33 @@ const make = Effect.gen(function* () {
       .for("update")
   })
 
-  return { ...base, getScopeObjectType, lockRoleAssignments }
+  const findAssignment = Effect.fn(
+    "@company/RoleAssignmentRepository.findAssignment"
+  )(function* (input: {
+    readonly principalId: string
+    readonly roleId: string
+    readonly scopeId: string
+  }) {
+    const rows = yield* database
+      .select({ id: roleAssignments.id })
+      .from(roleAssignments)
+      .where(
+        and(
+          eq(roleAssignments.parentId, input.scopeId),
+          eq(roleAssignments.principalId, input.principalId),
+          eq(roleAssignments.roleId, input.roleId)
+        )
+      )
+      .limit(1)
+    return rows[0]
+  })
+
+  return {
+    ...base,
+    findAssignment,
+    getScopeObjectType,
+    lockRoleAssignments,
+  }
 })
 
 export class RoleAssignmentRepository extends Context.Service<RoleAssignmentRepository>()(

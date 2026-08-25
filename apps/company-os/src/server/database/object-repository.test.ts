@@ -231,14 +231,16 @@ describe("Drizzle object repository", () => {
           })
           .pipe(Effect.flip)
         const rollbackId = CompanyId("company_rollback")
-        yield* Database.transaction(
-          repository
-            .insert({
-              ...omitStorageFields(second),
-              id: rollbackId,
-            })
-            .pipe(Effect.andThen(Effect.fail("rollback")))
-        ).pipe(Effect.flip, Effect.provideService(Database, db))
+        yield* db
+          .transaction(() =>
+            repository
+              .insert({
+                ...omitStorageFields(second),
+                id: rollbackId,
+              })
+              .pipe(Effect.andThen(Effect.fail("rollback")))
+          )
+          .pipe(Effect.flip)
         const rolledBack = yield* repository.get(rollbackId).pipe(Effect.flip)
 
         const leadRepository = yield* LeadRepository.make.pipe(
