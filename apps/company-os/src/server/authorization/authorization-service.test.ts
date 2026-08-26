@@ -32,15 +32,15 @@ import {
   currentActorId,
   systemInvocation,
 } from "@/server/invocation-context"
-import { ObjectRepositories } from "@/server/objects/object-repositories"
-import { makeObjectService } from "@/server/objects/object-service"
-import { RecordIdentifierResolver } from "@/server/objects/record-identifier-resolver"
-import { RoleAssignmentRepository } from "@/server/objects/role-assignment-repository"
+import { ObjectRepositories } from "@/server/model/object-repositories"
+import { makeObjectService } from "@/server/model/object-service"
+import { RecordIdentifierResolver } from "@/server/model/record-identifier-resolver"
+import { RoleAssignmentRepository } from "@/server/modules/access/role-assignment-repository"
 import {
   LastAdministrator,
   RoleAssignmentService,
   RoleScopeMismatch,
-} from "@/server/objects/role-assignment-service"
+} from "@/server/modules/access/role-assignment-service"
 import { seedSystem } from "@/server/seeds/seed-system"
 import {
   ALL_CALLERS_PRINCIPAL_SET_ID,

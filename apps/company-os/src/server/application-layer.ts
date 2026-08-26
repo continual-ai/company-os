@@ -1,7 +1,5 @@
 import { Layer } from "effect"
 
-import { ApplicationHttpServer } from "./application-http-server"
-import { ApplicationMcpServer } from "./application-mcp-server"
 import type { AuthSettings } from "./auth/auth-config"
 import { Authentication } from "./auth/authentication"
 import { IdentityBindingRepository } from "./auth/identity-binding-repository"
@@ -9,15 +7,17 @@ import { IdentityProvider } from "./auth/identity-provider"
 import { AuthorizationRepository } from "./authorization/authorization-repository"
 import { Authorization } from "./authorization/authorization-service"
 import type { Database } from "./database/database"
-import { ModelImplementation } from "./model-implementation"
-import { LeadService } from "./objects/lead-service"
-import { ObjectRepositories } from "./objects/object-repositories"
-import { RecordIdentifierResolver } from "./objects/record-identifier-resolver"
-import { RoleAssignmentRepository } from "./objects/role-assignment-repository"
-import { RoleAssignmentService } from "./objects/role-assignment-service"
-import { ServiceAccountService } from "./objects/service-account-service"
-import { UserService } from "./objects/user-service"
+import { ModelImplementation } from "./model/model-implementation"
+import { ObjectRepositories } from "./model/object-repositories"
+import { RecordIdentifierResolver } from "./model/record-identifier-resolver"
+import { RoleAssignmentRepository } from "./modules/access/role-assignment-repository"
+import { RoleAssignmentService } from "./modules/access/role-assignment-service"
+import { ServiceAccountService } from "./modules/access/service-account-service"
+import { UserService } from "./modules/access/user-service"
+import { LeadService } from "./modules/sales/lead-service"
 import { Readiness } from "./readiness"
+import { HttpTransport } from "./transport/http-transport"
+import { McpTransport } from "./transport/mcp-transport"
 
 export interface ApplicationInfrastructure {
   readonly identityProvider?: Layer.Layer<IdentityProvider, unknown>
@@ -76,22 +76,23 @@ export function makeApplicationLayer({
     Layer.provide(repositories),
     Layer.provide(database)
   )
-  const httpServer = ApplicationHttpServer.layer.pipe(
+  const httpTransport = HttpTransport.layer.pipe(
     Layer.provide(
       Layer.mergeAll(authentication, authorization, governedServices)
     )
   )
-  const mcpServer = ApplicationMcpServer.layer.pipe(
+  const mcpTransport = McpTransport.layer.pipe(
     Layer.provide(Layer.merge(authentication, governedServices))
   )
   const readiness = Readiness.layer.pipe(Layer.provide(database))
 
   return Layer.mergeAll(
     authSettings,
+    authorization,
     governedServices,
     authentication,
-    httpServer,
-    mcpServer,
+    httpTransport,
+    mcpTransport,
     readiness
   )
 }

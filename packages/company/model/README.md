@@ -1,6 +1,6 @@
 # @company/model
 
-The source-owned, browser-safe semantic model.
+The browser-safe semantic model that the repository owner can inspect and change.
 
 This package defines the objects, interfaces, links, actions, and shared metadata that give every
 interface the same business meaning. It is model source, not a backend implementation, transport
@@ -17,12 +17,12 @@ remain stable; each application owns its own name and presentation.
 
 The example model defines `Root` as the structural root of its ownership hierarchy and exercises
 both root-level and nested objects, interface-backed polymorphic links, and conventional object
-reads and CRUD actions. Object definitions live under `src/objects`, relationship definitions under
-`src/links`, and `Model` indexes them publicly as objects, links, interfaces, and actions.
-`src/access-definitions.ts` composes actors, identity, and authorization;
-`src/crm-definitions.ts` composes the replaceable starter CRM model. Every object declares
-its canonical parent type independently of its business links; for example, a line item is owned by
-a deal while CRM associations remain ordinary links.
+reads and CRUD actions. Definitions live in capability folders under `src/modules`; each
+`module.ts` explicitly composes its interfaces, objects, and links. `AccessModule` owns actors,
+identity, and authorization definitions, while `SalesModule` owns the starter sales model. `Model`
+composes those modules into one validated catalog. Every object declares its canonical parent type
+independently of its business links; for example, a line item is owned by a deal while sales
+associations remain ordinary links.
 
 Each link defines complete `forward` and `reverse` traversals. The closed `Model` verifies that
 their endpoints mirror each other and derives singular relationship properties such as
@@ -31,7 +31,7 @@ without making storage orientation part of the authoring API.
 
 ## Belongs here
 
-- Source-owned objects, properties, links, and public action contracts
+- Objects, properties, links, and public action contracts owned by this repository
 - The deliberate composition of the model the repository exposes
 - Metadata that multiple consumers genuinely need to interpret the same business meaning
 

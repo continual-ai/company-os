@@ -15,6 +15,9 @@ export default defineConfig({
         client: {
           files: ["**/*.server.*", "**/server/**"],
         },
+        server: {
+          files: ["**/*.client.*", "**/client/**"],
+        },
       },
     }),
     viteReact(),

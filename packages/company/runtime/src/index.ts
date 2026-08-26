@@ -30,6 +30,7 @@ export type {
 } from "./definition/interface"
 export {
   defineModel,
+  modelModules,
   modelObjects,
   modelQueries,
   modelTypeAccepts,
@@ -40,6 +41,8 @@ export type {
   ModelObjectRef,
   RecordIdOf,
 } from "./definition/model"
+export { defineModule } from "./definition/module"
+export type { ModuleDefinition } from "./definition/module"
 export {
   defineLink,
   linkCardinalities,
@@ -153,4 +156,4 @@ export {
 } from "./definition/standard-error"
 export type { Violation } from "./definition/standard-error"
 export { describeModel, MODEL_DESCRIPTION_VERSION } from "./description"
-export type { ModelDescription } from "./description"
+export type { ModelDescription, ModuleDescription } from "./description"

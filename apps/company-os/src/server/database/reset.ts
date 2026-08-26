@@ -28,7 +28,7 @@ Effect.gen(function* () {
   yield* applyMigrations()
   yield* seedSystem()
   yield* Effect.log(
-    "Database reset complete; all committed migrations applied and source-owned records converged."
+    "Database reset complete; all committed migrations applied and required records converged."
   )
 }).pipe(
   Effect.provide(Database.layer),

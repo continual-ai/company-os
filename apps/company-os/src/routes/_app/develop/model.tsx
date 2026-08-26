@@ -1,37 +1,37 @@
 import { Model } from "@company/model"
-import { modelMetadata } from "@company/model/metadata"
 import { createFileRoute } from "@tanstack/react-router"
+import { Schema } from "effect"
 
-import { ModelExplorer } from "@/components/model-explorer"
 import { pageOptions } from "@/route-metadata"
+import { ModelExplorer } from "@/ui/model/model-explorer"
 
 const page = {
   breadcrumb: "Domain model",
   description:
-    "Explore the source-owned object types, properties, links, and governed actions.",
+    "Explore the object types, properties, links, and governed actions.",
   title: "Domain model",
 }
+const ModelBrowserSearch = Schema.Struct({
+  item: Schema.optional(Schema.String),
+})
 
 export const Route = createFileRoute("/_app/develop/model")({
   ...pageOptions(page),
+  validateSearch: Schema.decodeUnknownSync(ModelBrowserSearch),
   component: ModelOverview,
 })
 
 function ModelOverview() {
-  return (
-    <div className="mx-auto w-full max-w-[90rem] px-5 py-10 lg:px-8 lg:py-14">
-      <section className="max-w-3xl">
-        <h1 className="text-3xl font-semibold tracking-tight">
-          {modelMetadata.name} domain model
-        </h1>
-        <p className="mt-3 max-w-2xl leading-7 text-muted-foreground">
-          This domain model is derived from the browser-safe company contract in
-          @company/model. It is a development projection, not a second source of
-          business truth.
-        </p>
-      </section>
+  const { item } = Route.useSearch()
+  const navigate = Route.useNavigate()
 
-      <ModelExplorer model={Model} />
-    </div>
+  return (
+    <ModelExplorer
+      model={Model}
+      {...(item === undefined ? {} : { selectedItem: item })}
+      onSelectedItemChange={(nextItem) => {
+        void navigate({ replace: true, search: { item: nextItem } })
+      }}
+    />
   )
 }

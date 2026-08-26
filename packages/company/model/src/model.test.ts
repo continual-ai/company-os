@@ -23,8 +23,44 @@ describe("model contract", () => {
       actor: { typeId: "actor" },
       model: { name: modelMetadata.name },
       root: { id: "root", kind: "root", name: "Root" },
-      version: "0.28",
+      version: "0.29",
     })
+    expect(description.modules).toEqual([
+      {
+        id: "access",
+        interfaceIds: ["actor", "authorizationScope", "identity", "principal"],
+        linkIds: [
+          "groupMembershipMember",
+          "roleAssignmentPrincipal",
+          "roleAssignmentRole",
+        ],
+        name: "Access",
+        objectIds: [
+          "user",
+          "serviceAccount",
+          "anonymousActor",
+          "group",
+          "principalSet",
+          "groupMembership",
+          "role",
+          "roleAssignment",
+        ],
+      },
+      {
+        id: "sales",
+        interfaceIds: ["party"],
+        linkIds: ["contactPrimaryCompany", "interactionSubject"],
+        name: "Sales",
+        objectIds: [
+          "company",
+          "contact",
+          "lead",
+          "deal",
+          "lineItem",
+          "interaction",
+        ],
+      },
+    ])
     expect(description.objects.map((object) => object.id)).toEqual([
       "user",
       "serviceAccount",

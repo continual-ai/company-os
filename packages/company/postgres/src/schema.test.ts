@@ -2,6 +2,7 @@ import {
   defineLink,
   defineInterface,
   defineModel,
+  defineModule,
   defineObject,
   defineRoot,
   type RecordId,
@@ -76,10 +77,16 @@ describe("makePostgresSchema", () => {
     })
     const model = defineModel({
       actor: Identity,
-      interfaces: [AuthorizationScope, Identity],
-      links: [PermissionScope],
+      modules: [
+        defineModule({
+          id: "scopes",
+          interfaces: [AuthorizationScope, Identity],
+          links: [PermissionScope],
+          name: "Scopes",
+          objects: [Workspace, Permission],
+        }),
+      ],
       name: "Scopes",
-      objects: [Workspace, Permission],
       root: ScopedRoot,
     })
 
@@ -143,10 +150,16 @@ describe("makePostgresSchema", () => {
     })
     const model = defineModel({
       actor: Identity,
-      interfaces: [Identity],
+      modules: [
+        defineModule({
+          id: "teams",
+          interfaces: [Identity],
+          links: [TeamMembership],
+          name: "Teams",
+          objects: [Person, Team],
+        }),
+      ],
       name: "Test",
-      objects: [Person, Team],
-      links: [TeamMembership],
       root: Root,
     })
 
@@ -208,10 +221,16 @@ describe("makePostgresSchema", () => {
     })
     const model = defineModel({
       actor: Identity,
-      interfaces: [Identity],
-      links: [PersonBadge],
+      modules: [
+        defineModule({
+          id: "badges",
+          interfaces: [Identity],
+          links: [PersonBadge],
+          name: "Badges",
+          objects: [Badge, Person],
+        }),
+      ],
       name: "Badges",
-      objects: [Badge, Person],
       root: Root,
     })
 
@@ -236,10 +255,16 @@ describe("makePostgresSchema", () => {
     })
     const model = defineModel({
       actor: Identity,
-      interfaces: [Identity],
+      modules: [
+        defineModule({
+          id: "collisions",
+          interfaces: [Identity],
+          links: [],
+          name: "Collisions",
+          objects: [Collision],
+        }),
+      ],
       name: "Test",
-      objects: [Collision],
-      links: [],
       root: Root,
     })
 
@@ -270,10 +295,16 @@ describe("makePostgresSchema", () => {
     })
     const model = defineModel({
       actor: Identity,
-      interfaces: [Identity],
+      modules: [
+        defineModule({
+          id: "validation",
+          interfaces: [Identity],
+          links: [],
+          name: "Validation",
+          objects: [ValidatedRecord],
+        }),
+      ],
       name: "Test",
-      objects: [ValidatedRecord],
-      links: [],
       root: Root,
     })
 

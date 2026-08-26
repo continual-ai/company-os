@@ -1,12 +1,12 @@
 import { Button } from "@company/ui/components/button"
 import { Link, createFileRoute } from "@tanstack/react-router"
 
+import { pageOptions } from "@/route-metadata"
 import {
   SettingsPage,
   SettingsRow,
   SettingsSection,
-} from "@/components/settings-page"
-import { pageOptions } from "@/route-metadata"
+} from "@/ui/settings/settings-page"
 
 const page = {
   breadcrumb: "General",

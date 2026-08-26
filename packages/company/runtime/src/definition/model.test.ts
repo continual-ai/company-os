@@ -1,11 +1,12 @@
 import { describe, expect, expectTypeOf, it } from "vitest"
 
 import { defineError } from "./error"
-import { defineInterface } from "./interface"
-import { defineLink } from "./link"
+import { defineInterface, type InterfaceType } from "./interface"
+import { defineLink, type LinkType } from "./link"
 import { defineModel, modelTypeAccepts } from "./model"
-import { defineObject } from "./object"
-import { defineRoot } from "./root"
+import { defineModule } from "./module"
+import { defineObject, type ObjectType } from "./object"
+import { defineRoot, type RootType } from "./root"
 import {
   schema,
   type AnySchema,
@@ -54,6 +55,35 @@ const Contact = defineObject({
   },
 })
 
+function defineTestModel<
+  const TRoot extends RootType,
+  const TObjects extends ReadonlyArray<ObjectType>,
+  const TLinks extends ReadonlyArray<LinkType>,
+  const TInterfaces extends ReadonlyArray<InterfaceType>,
+  const TActor extends TInterfaces[number],
+>(definition: {
+  actor: TActor
+  interfaces: TInterfaces
+  links: TLinks
+  name: string
+  objects: TObjects
+  root: TRoot
+}) {
+  const testModule = defineModule({
+    id: "test",
+    interfaces: definition.interfaces,
+    links: definition.links,
+    name: "Test",
+    objects: definition.objects,
+  })
+  return defineModel({
+    actor: definition.actor,
+    modules: [testModule],
+    name: definition.name,
+    root: definition.root,
+  })
+}
+
 function invalidProperty(property: AnySchema) {
   return () =>
     defineObject({
@@ -69,7 +99,7 @@ function invalidProperty(property: AnySchema) {
 
 describe("model definitions", () => {
   it("indexes objects and their first-class actions", () => {
-    const model = defineModel({
+    const model = defineTestModel({
       actor: TestActor,
       interfaces: [TestActor],
       name: "Example",
@@ -78,6 +108,12 @@ describe("model definitions", () => {
       root: Root,
     })
 
+    expect(Object.keys(model.modules)).toEqual(["test"])
+    expect(model.modules.test).toMatchObject({
+      id: "test",
+      kind: "module",
+      name: "Test",
+    })
     expect(Object.keys(model.objects)).toEqual(["contact"])
     expect(model.root).toEqual(Root)
     expect(model.objects.contact.parent).toEqual({
@@ -133,6 +169,25 @@ describe("model definitions", () => {
     expect(model.actions.contact).toBe(model.objects.contact.actions)
   })
 
+  it("rejects duplicate module ids", () => {
+    const module = defineModule({
+      id: "contacts",
+      interfaces: [TestActor],
+      links: [],
+      name: "Contacts",
+      objects: [Contact],
+    })
+
+    expect(() =>
+      defineModel({
+        actor: TestActor,
+        modules: [module, module],
+        name: "Duplicate modules",
+        root: Root,
+      })
+    ).toThrow("Module id 'contacts' is registered more than once.")
+  })
+
   it("allows batch deletion to be disabled independently of deletion", () => {
     const WithoutBatchDelete = defineObject({
       id: "withoutBatchDelete",
@@ -144,7 +199,7 @@ describe("model definitions", () => {
       display: { title: "name" },
       actions: { batchDelete: false },
     })
-    const model = defineModel({
+    const model = defineTestModel({
       actor: TestActor,
       interfaces: [TestActor],
       name: "Without batch delete model",
@@ -172,7 +227,7 @@ describe("model definitions", () => {
       display: { title: "name" },
     })
     expect(() =>
-      defineModel({
+      defineTestModel({
         actor: TestActor,
         interfaces: [TestActor],
         name: "Example",
@@ -192,7 +247,7 @@ describe("model definitions", () => {
       display: { title: "name" },
     })
     expect(() =>
-      defineModel({
+      defineTestModel({
         actor: TestActor,
         interfaces: [TestActor],
         name: "Example",
@@ -216,7 +271,7 @@ describe("model definitions", () => {
     })
 
     expect(() =>
-      defineModel({
+      defineTestModel({
         actor: TestActor,
         interfaces: [TestActor],
         links: [],
@@ -267,7 +322,7 @@ describe("model definitions", () => {
     })
 
     expect(() =>
-      defineModel({
+      defineTestModel({
         actor: TestActor,
         interfaces: [TestActor],
         links: [ProfileAccount],
@@ -285,7 +340,7 @@ describe("model definitions", () => {
       pluralName: "Identities",
     })
     expect(() =>
-      defineModel({
+      defineTestModel({
         actor: Identity,
         interfaces: [TestActor, Identity],
         links: [],
@@ -329,7 +384,7 @@ describe("model definitions", () => {
     })
 
     expectTypeOf(Membership.parent.typeId).toEqualTypeOf<"account">()
-    const completeModel = defineModel({
+    const completeModel = defineTestModel({
       actor: TestActor,
       interfaces: [TestActor],
       name: "Complete",
@@ -344,7 +399,7 @@ describe("model definitions", () => {
     })
 
     expect(() =>
-      defineModel({
+      defineTestModel({
         actor: TestActor,
         interfaces: [TestActor],
         name: "Example",
@@ -438,7 +493,7 @@ describe("model definitions", () => {
       },
     })
 
-    const model = defineModel({
+    const model = defineTestModel({
       actor: TestActor,
       interfaces: [TestActor],
       name: "Example",
@@ -503,7 +558,7 @@ describe("model definitions", () => {
         label: "Company",
       },
     })
-    const model = defineModel({
+    const model = defineTestModel({
       actor: TestActor,
       interfaces: [TestActor],
       links: [CompanyEmployees],
@@ -577,7 +632,7 @@ describe("model definitions", () => {
     })
 
     expect(() =>
-      defineModel({
+      defineTestModel({
         actor: TestActor,
         interfaces: [TestActor, Party],
         links: [InvalidOwner],
@@ -618,7 +673,7 @@ describe("model definitions", () => {
       ],
     })
 
-    const model = defineModel({
+    const model = defineTestModel({
       actor: TestActor,
       name: "Example",
       interfaces: [TestActor, Party],
@@ -734,7 +789,7 @@ describe("root definitions", () => {
         to: Permission,
       },
     })
-    const model = defineModel({
+    const model = defineTestModel({
       actor: TestActor,
       interfaces: [TestActor, AuthorizationScope],
       links: [PermissionScope],
@@ -760,7 +815,7 @@ describe("root definitions", () => {
       false
     )
     expect(() =>
-      defineModel({
+      defineTestModel({
         actor: TestActor,
         interfaces: [TestActor],
         links: [],
@@ -783,7 +838,7 @@ describe("root definitions", () => {
     })
 
     expect(() =>
-      defineModel({
+      defineTestModel({
         actor: TestActor,
         interfaces: [TestActor],
         links: [],
@@ -807,7 +862,7 @@ describe("root definitions", () => {
     })
 
     expect(() =>
-      defineModel({
+      defineTestModel({
         actor: TestActor,
         interfaces: [TestActor],
         links: [],

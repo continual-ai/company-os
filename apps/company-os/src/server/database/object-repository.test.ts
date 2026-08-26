@@ -25,7 +25,7 @@ import { Effect } from "effect"
 import { describe, expect, expectTypeOf, it } from "vitest"
 
 import { systemInvocation } from "@/server/invocation-context"
-import { RecordIdentifierResolver } from "@/server/objects/record-identifier-resolver"
+import { RecordIdentifierResolver } from "@/server/model/record-identifier-resolver"
 import { seedSystem } from "@/server/seeds/seed-system"
 import { ROOT_ID, SYSTEM_SERVICE_ACCOUNT_ID } from "@/system-records"
 

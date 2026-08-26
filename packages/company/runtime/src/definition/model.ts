@@ -11,6 +11,7 @@ import {
   type LinkTraversal,
   type LinkType,
 } from "./link"
+import type { ModuleDefinition } from "./module"
 import type { ObjectRef, ObjectType } from "./object"
 import { normalizeProperties, type Properties } from "./property"
 import { standardQueries, type Query, type StandardQueries } from "./query"
@@ -194,6 +195,19 @@ type QueryRegistry<TObjects extends ReadonlyArray<ObjectType>> = {
   ]: StandardQueries<TObject>
 }
 
+type ModuleInterfaces<TModules extends ReadonlyArray<ModuleDefinition>> =
+  ReadonlyArray<TModules[number]["interfaces"][number]>
+
+type ModuleLinks<TModules extends ReadonlyArray<ModuleDefinition>> =
+  ReadonlyArray<TModules[number]["links"][number]>
+
+type ModuleObjects<TModules extends ReadonlyArray<ModuleDefinition>> =
+  ReadonlyArray<TModules[number]["objects"][number]>
+
+type ModuleRegistry<TModules extends ReadonlyArray<ModuleDefinition>> = {
+  readonly [TModule in TModules[number] as TModule["id"]]: TModule
+}
+
 declare const modelTypes: unique symbol
 
 export interface ModelCatalog {
@@ -208,6 +222,7 @@ export interface ModelCatalog {
   interfaces: Readonly<Record<string, InterfaceType>>
   kind: "model"
   links: Readonly<Record<string, LinkType>>
+  modules: Readonly<Record<string, ModuleDefinition>>
   name: string
   objects: Readonly<Record<string, ObjectType>>
   queries: Readonly<Record<string, Readonly<Record<string, Query>>>>
@@ -216,6 +231,8 @@ export interface ModelCatalog {
 
 export interface Model<
   TRoot extends RootType = RootType,
+  TModules extends ReadonlyArray<ModuleDefinition> =
+    ReadonlyArray<ModuleDefinition>,
   TObjects extends ReadonlyArray<ObjectType> = ReadonlyArray<ObjectType>,
   TLinks extends ReadonlyArray<LinkType> = ReadonlyArray<LinkType>,
   TInterfaces extends ReadonlyArray<InterfaceType> =
@@ -234,6 +251,7 @@ export interface Model<
   interfaces: InterfaceRegistry<TInterfaces>
   kind: "model"
   links: LinkRegistry<TLinks>
+  modules: ModuleRegistry<TModules>
   name: string
   objects: ObjectRegistry<TObjects, TLinks, TRoot, TActor>
   queries: QueryRegistry<TObjects>
@@ -393,19 +411,35 @@ function bindLinkProperties(
 /** Closes, validates, and indexes a portable model. */
 export function defineModel<
   const TRoot extends RootType,
-  const TObjects extends ReadonlyArray<ObjectType>,
-  const TLinks extends ReadonlyArray<LinkType>,
-  const TInterfaces extends ReadonlyArray<InterfaceType>,
-  const TActor extends TInterfaces[number],
+  const TModules extends ReadonlyArray<ModuleDefinition>,
+  const TActor extends ModuleInterfaces<TModules>[number],
 >(definition: {
   actor: TActor
-  interfaces: TInterfaces
-  links: TLinks
+  modules: TModules
   name: string
-  objects: TObjects
   root: TRoot
-}): Model<TRoot, TObjects, TLinks, TInterfaces, TActor> {
-  const objectTypeIds = definition.objects.map((object) => object.id)
+}): Model<
+  TRoot,
+  TModules,
+  ModuleObjects<TModules>,
+  ModuleLinks<TModules>,
+  ModuleInterfaces<TModules>,
+  TActor
+> {
+  const moduleIds = definition.modules.map((module) => module.id)
+  const duplicateModule = duplicateValue(moduleIds)
+  if (duplicateModule !== undefined) {
+    throw new Error(
+      `Module id '${duplicateModule}' is registered more than once.`
+    )
+  }
+
+  const moduleInterfaces = definition.modules.flatMap(
+    (module) => module.interfaces
+  )
+  const moduleLinks = definition.modules.flatMap((module) => module.links)
+  const moduleObjects = definition.modules.flatMap((module) => module.objects)
+  const objectTypeIds = moduleObjects.map((object) => object.id)
   const duplicateObject = duplicateValue(objectTypeIds)
   if (duplicateObject !== undefined) {
     throw new Error(
@@ -413,7 +447,7 @@ export function defineModel<
     )
   }
 
-  const collections = definition.objects.map((object) => object.collection)
+  const collections = moduleObjects.map((object) => object.collection)
   const duplicateCollection = duplicateValue(collections)
   if (duplicateCollection !== undefined) {
     throw new Error(
@@ -421,13 +455,13 @@ export function defineModel<
     )
   }
 
-  const linkIds = definition.links.map((link) => link.id)
+  const linkIds = moduleLinks.map((link) => link.id)
   const duplicateLink = duplicateValue(linkIds)
   if (duplicateLink !== undefined) {
     throw new Error(`Link id '${duplicateLink}' is registered more than once.`)
   }
 
-  const interfaceDefinitions = definition.interfaces
+  const interfaceDefinitions = moduleInterfaces
   const interfaceIds = interfaceDefinitions.map((item) => item.id)
   const duplicateInterface = duplicateValue(interfaceIds)
   if (duplicateInterface !== undefined) {
@@ -469,7 +503,7 @@ export function defineModel<
       )
     }
   }
-  for (const object of definition.objects) {
+  for (const object of moduleObjects) {
     const parentRegistered =
       (object.parent.kind === "root" &&
         object.parent.typeId === definition.root.id) ||
@@ -509,7 +543,7 @@ export function defineModel<
   const actorInterfaceId = definition.actor.id
   const hasActor =
     Object.hasOwn(definition.root.interfaces, actorInterfaceId) ||
-    definition.objects.some((object) =>
+    moduleObjects.some((object) =>
       Object.hasOwn(object.interfaces, actorInterfaceId)
     )
   if (!hasActor) {
@@ -519,9 +553,9 @@ export function defineModel<
   }
 
   const objectsById = new Map(
-    definition.objects.map((object) => [object.id, object])
+    moduleObjects.map((object) => [object.id, object])
   )
-  for (const object of definition.objects) {
+  for (const object of moduleObjects) {
     const ancestry = new Set([object.id])
     let parent = object.parent
     while (parent.kind === "object") {
@@ -537,7 +571,7 @@ export function defineModel<
     }
   }
 
-  for (const link of definition.links) {
+  for (const link of moduleLinks) {
     const reference = linkReferenceTraversals(link)
     if (
       reference !== undefined &&
@@ -587,7 +621,7 @@ export function defineModel<
     }
   }
 
-  const linkMethods = definition.links.flatMap((link) => [
+  const linkMethods = moduleLinks.flatMap((link) => [
     `${link.forward.from.typeId}.${link.forward.key}`,
     `${link.reverse.from.typeId}.${link.reverse.key}`,
   ])
@@ -599,13 +633,13 @@ export function defineModel<
   }
 
   const objects = Object.fromEntries(
-    definition.objects.map((object) => [
+    moduleObjects.map((object) => [
       object.id,
-      bindLinkProperties(object, definition.links),
+      bindLinkProperties(object, moduleLinks),
     ])
   )
   const singularLinkProperties = new Set(
-    definition.links.flatMap((link) => {
+    moduleLinks.flatMap((link) => {
       const reference = linkReferenceTraversals(link)
       return reference === undefined || reference.source.from.kind !== "object"
         ? []
@@ -632,9 +666,7 @@ export function defineModel<
       }
     }
   }
-  const links = Object.fromEntries(
-    definition.links.map((link) => [link.id, link])
-  )
+  const links = Object.fromEntries(moduleLinks.map((link) => [link.id, link]))
   const interfaces = Object.fromEntries(
     interfaceDefinitions.map((item) => [item.id, item])
   )
@@ -643,6 +675,9 @@ export function defineModel<
   )
   const queries = Object.fromEntries(
     Object.values(objects).map((object) => [object.id, standardQueries(object)])
+  )
+  const modules = Object.fromEntries(
+    definition.modules.map((module) => [module.id, module])
   )
 
   // SAFETY: duplicate identifiers were rejected before building the registries.
@@ -653,11 +688,19 @@ export function defineModel<
     interfaces,
     kind: "model",
     links,
+    modules,
     name: definition.name,
     objects,
     queries,
     root: definition.root,
-  } as unknown as Model<TRoot, TObjects, TLinks, TInterfaces, TActor>
+  } as unknown as Model<
+    TRoot,
+    TModules,
+    ModuleObjects<TModules>,
+    ModuleLinks<TModules>,
+    ModuleInterfaces<TModules>,
+    TActor
+  >
 }
 
 export function modelActions(model: ModelCatalog): ReadonlyArray<Action> {
@@ -686,6 +729,12 @@ export function modelTypeAccepts(
 
 export function modelLinks(model: ModelCatalog): ReadonlyArray<LinkType> {
   return Object.values(model.links)
+}
+
+export function modelModules(
+  model: ModelCatalog
+): ReadonlyArray<ModuleDefinition> {
+  return Object.values(model.modules)
 }
 
 export function modelInterfaces(

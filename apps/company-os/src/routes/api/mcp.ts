@@ -1,14 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { Effect } from "effect"
 
-import { ApplicationMcpServer } from "@/server/application-mcp-server"
 import { applicationRuntime } from "@/server/application-runtime"
+import { McpTransport } from "@/server/transport/mcp-transport"
 
 function handle(request: Request): Promise<Response> {
   return applicationRuntime.runPromise(
-    ApplicationMcpServer.pipe(
-      Effect.flatMap((server) => server.handle(request))
-    )
+    McpTransport.pipe(Effect.flatMap((transport) => transport.handle(request)))
   )
 }
 

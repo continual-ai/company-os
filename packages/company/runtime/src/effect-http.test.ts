@@ -4,6 +4,7 @@ import { afterAll, describe, expect, it } from "vitest"
 import { defineError } from "./definition/error"
 import { defineInterface } from "./definition/interface"
 import { defineModel } from "./definition/model"
+import { defineModule } from "./definition/module"
 import { defineObject } from "./definition/object"
 import { defineRoot } from "./definition/root"
 import { schema } from "./definition/schema"
@@ -68,10 +69,16 @@ const Account = defineObject({
 
 const Example = defineModel({
   actor: Identity,
-  interfaces: [Identity],
+  modules: [
+    defineModule({
+      id: "accounts",
+      interfaces: [Identity],
+      links: [],
+      name: "Accounts",
+      objects: [Account],
+    }),
+  ],
   name: "Example",
-  objects: [Account],
-  links: [],
   root: Root,
 })
 
@@ -192,10 +199,16 @@ describe("Effect HTTP projection", () => {
     })
     const model = defineModel({
       actor: Identity,
-      interfaces: [Identity],
+      modules: [
+        defineModule({
+          id: "deletables",
+          interfaces: [Identity],
+          links: [],
+          name: "Deletables",
+          objects: [Deletable],
+        }),
+      ],
       name: "Batch delete example",
-      objects: [Deletable],
-      links: [],
       root: Root,
     })
     const batchDocument = OpenApi.fromApi(createModelHttpApi(model))

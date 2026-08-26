@@ -11,6 +11,7 @@ import {
   defineInterface,
   defineLink,
   defineModel,
+  defineModule,
   defineObject,
   defineRoot,
   type RecordIdOf,
@@ -61,10 +62,16 @@ const Lead = defineObject({
 
 const Model = defineModel({
   actor: Identity,
-  interfaces: [Identity],
-  links: [],
+  modules: [
+    defineModule({
+      id: "sales",
+      interfaces: [Identity],
+      links: [],
+      name: "Sales",
+      objects: [User, Lead],
+    }),
+  ],
   name: "Example",
-  objects: [User, Lead],
   root: Root,
 })
 
@@ -141,7 +148,7 @@ string. Services resolve aliases in ordered batches and validate their expected 
 type before authorization. Stored references, repository calls, events, and returned records always
 use the canonical ID.
 
-Stable source-owned records may use readable well-known canonical IDs such as
+Stable application-managed records may use readable well-known canonical IDs such as
 `service_account_system`. These remain opaque application ABI: prefixes aid diagnostics but never
 determine type, routing, or authorization. Aliases are alternate identifiers, especially identities
 assigned by external systems; they are not required for well-known records.

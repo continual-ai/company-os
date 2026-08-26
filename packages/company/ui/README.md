@@ -1,10 +1,9 @@
 # @company/ui
 
-Source-owned design tokens and application components.
+Design tokens and application components maintained in this repository.
 
 The package keeps applications visually coherent while leaving each app responsible for its
-own pages and product decisions. Components are source-owned shadcn primitives built on Tailwind
-CSS v4.
+own pages and product decisions. Components are editable shadcn primitives built on Tailwind CSS v4.
 
 ```ts
 import { Button } from "@company/ui/components/button"

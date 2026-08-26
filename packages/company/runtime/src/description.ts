@@ -7,6 +7,7 @@ import {
   modelActions,
   modelInterfaces,
   modelLinks,
+  modelModules,
   modelObjects,
   modelQueries,
 } from "./definition/model"
@@ -14,13 +15,22 @@ import type { ObjectType } from "./definition/object"
 import type { Query } from "./definition/query"
 import type { RootType } from "./definition/root"
 
-export const MODEL_DESCRIPTION_VERSION = "0.28" as const
+export const MODEL_DESCRIPTION_VERSION = "0.29" as const
 
 type ObjectDescription = Omit<ObjectType, "actions" | "kind" | "parent"> & {
   parent: {
     readonly kind: "interface" | "object" | "root"
     readonly typeId: string
   }
+}
+
+/** Serializable membership metadata for one declared model module. */
+export interface ModuleDescription {
+  readonly id: string
+  readonly interfaceIds: ReadonlyArray<string>
+  readonly linkIds: ReadonlyArray<string>
+  readonly name: string
+  readonly objectIds: ReadonlyArray<string>
 }
 
 /**
@@ -33,6 +43,7 @@ export interface ModelDescription {
   readonly interfaces: ReadonlyArray<InterfaceType>
   readonly links: ReadonlyArray<LinkType>
   readonly model: { readonly name: string }
+  readonly modules: ReadonlyArray<ModuleDescription>
   readonly objects: ReadonlyArray<ObjectDescription>
   readonly queries: ReadonlyArray<Query>
   readonly root: RootType
@@ -86,6 +97,13 @@ export function describeModel(model: ModelCatalog): ModelDescription {
       },
     })),
     model: { name: model.name },
+    modules: modelModules(model).map((module) => ({
+      id: module.id,
+      interfaceIds: module.interfaces.map((item) => item.id),
+      linkIds: module.links.map((link) => link.id),
+      name: module.name,
+      objectIds: module.objects.map((object) => object.id),
+    })),
     queries: modelQueries(model).map((query) => ({ ...query })),
     root: { ...model.root, interfaces: { ...model.root.interfaces } },
     objects: modelObjects(model).map(describeObject),

@@ -13,7 +13,7 @@ function DevelopOverview() {
         </h1>
         <p className="mt-3 max-w-2xl leading-7 text-muted-foreground">
           Inspect the company domain model and its generated interfaces, then
-          build new company software against the same source-owned contracts.
+          build new company software against the same contracts.
         </p>
       </section>
 
@@ -28,7 +28,7 @@ function DevelopOverview() {
           eyebrow="API"
           title="API reference"
           description="Explore the OpenAPI contract generated from the same domain model used by the runtime."
-          href="/api/docs"
+          to="/develop/api"
         />
         <DeveloperSurface
           eyebrow="TypeScript"
@@ -48,11 +48,6 @@ function DevelopOverview() {
           description="Develop and verify the foundations, components, and operating patterns used across apps."
           to="/develop/design-system"
         />
-        <DeveloperSurface
-          eyebrow="Data"
-          title="Data explorer"
-          description="Governed views over company records belong here as concrete operational needs establish them."
-        />
       </section>
     </div>
   )
@@ -63,17 +58,16 @@ function DeveloperSurface({
   title,
   description,
   to,
-  href,
 }: {
   eyebrow: string
   title: string
   description: string
-  to?:
+  to:
     | "/develop/model"
+    | "/develop/api"
     | "/develop/sdk"
     | "/develop/mcp"
     | "/develop/design-system"
-  href?: string
 }) {
   const content = (
     <>
@@ -82,27 +76,13 @@ function DeveloperSurface({
       <p className="mt-2 text-sm leading-6 text-muted-foreground">
         {description}
       </p>
-      <p className="mt-8 text-xs font-medium">
-        {to || href ? "Open surface →" : "Add when a real slice needs it"}
-      </p>
+      <p className="mt-8 text-xs font-medium">Open surface →</p>
     </>
   )
 
-  if (to) {
-    return (
-      <Link to={to} className="bg-background p-6 hover:bg-muted/50">
-        {content}
-      </Link>
-    )
-  }
-
-  if (href) {
-    return (
-      <a href={href} className="bg-background p-6 hover:bg-muted/50">
-        {content}
-      </a>
-    )
-  }
-
-  return <article className="bg-background p-6">{content}</article>
+  return (
+    <Link to={to} className="bg-background p-6 hover:bg-muted/50">
+      {content}
+    </Link>
+  )
 }

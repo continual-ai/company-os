@@ -67,9 +67,9 @@ export const applicationConfig: ApplicationConfig = {
   },
   home: {
     description:
-      "The same typed definitions and governed capabilities serve people, applications, integrations, and agents.",
-    eyebrow: "Operating overview",
-    headline: "Run the work from shared business context.",
+      "Qualify new interest, coordinate customer context, and move active opportunities toward a clear outcome.",
+    eyebrow: "Sales overview",
+    headline: "Turn interest into durable customer relationships.",
   },
   identity: {
     companyName,

@@ -1,4 +1,3 @@
-import { Model } from "@company/model"
 import {
   Card,
   CardDescription,
@@ -8,21 +7,29 @@ import {
 import { Link } from "@tanstack/react-router"
 import { ArrowRightIcon } from "lucide-react"
 
-import { useCapabilities } from "@/components/use-capabilities"
+import { applicationCapabilities } from "@/capabilities"
 import { applicationConfig } from "@/customization/config"
 import {
-  objectNavigation,
-  objectNavigationChecks,
+  salesNavigation,
+  salesNavigationChecks,
 } from "@/customization/navigation"
+import { useCapabilities } from "@/ui/application/use-capabilities"
 
-const modelObjectCount = Object.keys(Model.objects).length
+const homeCapabilityChecks = [
+  ...salesNavigationChecks,
+  applicationCapabilities.develop,
+]
+const homeObjectIds = new Set(["lead", "company", "deal", "interaction"])
 
 /** Custom first authenticated experience and primary activation surface. */
 export function Home() {
-  const capabilities = useCapabilities(objectNavigationChecks)
-  const accessibleObjects = objectNavigation.filter((item) =>
-    capabilities.can({ permission: `${item.object.id}.list` })
+  const capabilities = useCapabilities(homeCapabilityChecks)
+  const accessibleDestinations = salesNavigation.filter(
+    (item) =>
+      homeObjectIds.has(item.object.id) &&
+      capabilities.can({ permission: `${item.object.id}.list` })
   )
+  const canDevelop = capabilities.can(applicationCapabilities.develop)
 
   return (
     <div className="@container/main flex flex-1 flex-col">
@@ -41,7 +48,7 @@ export function Home() {
 
         {capabilities.loading ? null : (
           <section className="grid grid-cols-1 gap-4 px-4 sm:grid-cols-2 lg:px-6 @4xl/main:grid-cols-4">
-            {accessibleObjects.length === 0 ? (
+            {accessibleDestinations.length === 0 ? (
               <div className="border bg-muted/20 p-4 sm:col-span-2 @4xl/main:col-span-4">
                 <p className="text-sm font-medium">
                   No operations assigned yet
@@ -52,7 +59,7 @@ export function Home() {
                 </p>
               </div>
             ) : (
-              accessibleObjects.slice(0, 4).map((item) => (
+              accessibleDestinations.map((item) => (
                 <Link key={item.to} to={item.to} className="block">
                   <Card
                     size="sm"
@@ -62,10 +69,8 @@ export function Home() {
                       <div className="mb-4 flex size-8 items-center justify-center bg-muted text-muted-foreground">
                         <item.icon className="size-4" />
                       </div>
-                      <CardTitle>{item.object.pluralName}</CardTitle>
-                      <CardDescription>
-                        {item.object.description}
-                      </CardDescription>
+                      <CardTitle>{item.label}</CardTitle>
+                      <CardDescription>{item.description}</CardDescription>
                     </CardHeader>
                   </Card>
                 </Link>
@@ -77,34 +82,61 @@ export function Home() {
         <section className="grid gap-px border-y bg-border lg:grid-cols-2">
           <article className="bg-background px-4 py-6 lg:px-6 lg:py-8">
             <p className="text-xs font-medium text-muted-foreground">
-              Shared foundation
+              How work moves
             </p>
             <h2 className="mt-8 text-lg font-medium">
-              One operating model, not another isolated tool.
+              Keep the whole sales relationship connected.
             </h2>
             <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
-              {modelObjectCount} typed objects currently share identity,
-              authorization, persistence, and governed interfaces. New workflows
-              can build on the same business meaning.
+              Qualify a lead into a company and contact, advance the resulting
+              deal, and keep every interaction attached to the same business
+              context.
             </p>
+            <div className="mt-6 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              {["Lead", "Company + contact", "Deal", "Activity"].map(
+                (step, index) => (
+                  <span key={step} className="contents">
+                    {index === 0 ? null : <ArrowRightIcon className="size-3" />}
+                    <span className="border bg-muted/20 px-2 py-1 text-foreground">
+                      {step}
+                    </span>
+                  </span>
+                )
+              )}
+            </div>
           </article>
 
-          <Link
-            to="/develop"
-            className="group bg-background px-4 py-6 transition-colors hover:bg-muted/30 lg:px-6 lg:py-8"
-          >
-            <p className="text-xs font-medium text-muted-foreground">
-              Build from here
-            </p>
-            <h2 className="mt-8 flex items-center gap-2 text-lg font-medium">
-              Understand and extend the system
-              <ArrowRightIcon className="size-4 transition-transform group-hover:translate-x-1 motion-reduce:transition-none" />
-            </h2>
-            <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
-              Explore the model, generated API, SDK, MCP projection, and
-              source-owned design system behind this first operation.
-            </p>
-          </Link>
+          {canDevelop ? (
+            <Link
+              to="/develop"
+              className="group bg-background px-4 py-6 transition-colors hover:bg-muted/30 lg:px-6 lg:py-8"
+            >
+              <p className="text-xs font-medium text-muted-foreground">
+                Develop this operation
+              </p>
+              <h2 className="mt-8 flex items-center gap-2 text-lg font-medium">
+                Inspect and extend the system
+                <ArrowRightIcon className="size-4 transition-transform group-hover:translate-x-1 motion-reduce:transition-none" />
+              </h2>
+              <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
+                Use the model, API, SDK, MCP projection, and interface patterns
+                behind the sales workflow.
+              </p>
+            </Link>
+          ) : (
+            <article className="bg-background px-4 py-6 lg:px-6 lg:py-8">
+              <p className="text-xs font-medium text-muted-foreground">
+                Shared context
+              </p>
+              <h2 className="mt-8 text-lg font-medium">
+                Work from one current customer record.
+              </h2>
+              <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
+                Companies, contacts, opportunities, and activity stay connected
+                as the relationship changes.
+              </p>
+            </article>
+          )}
         </section>
       </div>
     </div>

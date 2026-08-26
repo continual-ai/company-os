@@ -1,6 +1,5 @@
 import { Model } from "@company/model"
 import { describeModel } from "@company/runtime"
-import { createApiReference } from "@company/runtime/effect/http"
 import { Layer } from "effect"
 import { OpenApi } from "effect/unstable/httpapi"
 
@@ -20,20 +19,10 @@ const applicationLayer = makeApplicationLayer({
 
 const modelDescription = describeModel(Model)
 const openApiDocument = OpenApi.fromApi(applicationHttpApi)
-const apiReference = createApiReference(applicationHttpApi, "/api/docs", {
-  customCss: `
-    .api-reference-toolbar {
-      display: none !important;
-    }
-  `,
-  hideDarkModeToggle: true,
-  showSidebar: false,
-})
 
 export const application = {
   http: {
     document: openApiDocument,
-    reference: apiReference,
   },
   layer: applicationLayer,
   model: {

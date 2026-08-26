@@ -47,7 +47,7 @@ export const capabilityGroup = HttpApiGroup.make("capabilities")
     }).annotateMerge(
       OpenApi.annotations({
         description:
-          "Evaluates model permissions for the caller. Results are advisory; every operation enforces authorization again.",
+          "Evaluates application permissions for the caller. Results are advisory; every operation enforces authorization again.",
         identifier: "checkCapabilities",
         summary: "Check capabilities",
       })

@@ -8,7 +8,7 @@ import * as Postgres from "./postgres"
 
 Effect.gen(function* () {
   yield* seedSystem()
-  yield* Effect.log("Source-owned records converged.")
+  yield* Effect.log("System records converged.")
 }).pipe(
   Effect.provide(Database.layer),
   Effect.provide(Postgres.layer),

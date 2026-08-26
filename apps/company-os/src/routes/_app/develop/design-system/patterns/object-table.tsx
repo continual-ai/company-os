@@ -1,17 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { useCallback, useState } from "react"
 
-import { ObjectTable } from "@/components/object-table/object-table"
+import { pageOptions } from "@/route-metadata"
+import { ObjectTable } from "@/ui/model/object-table/object-table"
 import type {
   ObjectTableRecord,
   ObjectTableValue,
-} from "@/components/object-table/object-table-config"
-import { exampleCompanyRecords } from "@/components/object-table/object-table-example-data"
+} from "@/ui/model/object-table/object-table-config"
+import { exampleCompanyRecords } from "@/ui/model/object-table/object-table-example-data"
 import {
   objectTableExampleVisiblePropertyIds,
   ObjectTableExampleCompany,
-} from "@/components/object-table/object-table-example-object"
-import { pageOptions } from "@/route-metadata"
+} from "@/ui/model/object-table/object-table-example-object"
 
 const page = {
   breadcrumb: "Object table",

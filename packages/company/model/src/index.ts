@@ -1,21 +1,20 @@
 import { defineModel, type RecordIdOf } from "@company/runtime"
 
-import { accessDefinitions } from "./access-definitions"
-import { crmDefinitions } from "./crm-definitions"
-import type { Actor } from "./interfaces/actor"
-import type { Identity } from "./interfaces/identity"
-import type { Principal } from "./interfaces/principal"
 import { modelMetadata } from "./metadata"
+import { Actor } from "./modules/access/actor"
+import type { Identity } from "./modules/access/identity"
+import { AccessModule } from "./modules/access/module"
+import type { Principal } from "./modules/access/principal"
+import { SalesModule } from "./modules/sales/module"
+import { Root } from "./root"
 
 export { modelMetadata } from "./metadata"
 
 export const Model = defineModel({
-  actor: accessDefinitions.actor,
+  actor: Actor,
   name: modelMetadata.name,
-  interfaces: [...accessDefinitions.interfaces, ...crmDefinitions.interfaces],
-  objects: [...accessDefinitions.objects, ...crmDefinitions.objects],
-  links: [...accessDefinitions.links, ...crmDefinitions.links],
-  root: accessDefinitions.root,
+  modules: [AccessModule, SalesModule],
+  root: Root,
 })
 
 /** Canonical ID of a durable audit actor in this model. */

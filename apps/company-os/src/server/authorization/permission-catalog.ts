@@ -23,8 +23,8 @@ export function objectPermission(request: ObjectAccessRequest): string {
   return `${request.objectType}.${permissionOperation(request.operation)}`
 }
 
-/** Every permission currently declared by the closed-world model. */
-export const modelPermissions = capabilityPermissions
+/** Every permission currently recognized by the closed application policy. */
+export const definedPermissions = capabilityPermissions
 
 export interface PermissionDefinition {
   readonly expectedType?: string
@@ -35,6 +35,12 @@ export interface PermissionDefinition {
 }
 
 const permissionDefinitions = new Map<string, PermissionDefinition>()
+
+permissionDefinitions.set("application.develop", {
+  modifiesTarget: false,
+  objectType: "application",
+  permission: "application.develop",
+})
 
 for (const object of modelObjects(Model)) {
   const readPermission = `${object.id}.get`
@@ -88,6 +94,6 @@ const operatorObjectTypes = new Set([
 ])
 
 /** Business-data permissions granted to the built-in non-administrator role. */
-export const operatorPermissions = modelPermissions.filter((permission) =>
+export const operatorPermissions = definedPermissions.filter((permission) =>
   operatorObjectTypes.has(permission.slice(0, permission.indexOf(".")))
 )

@@ -11,9 +11,9 @@ import {
   authenticatedInvocation,
   systemInvocation,
 } from "@/server/invocation-context"
-import { RoleAssignmentService } from "@/server/objects/role-assignment-service"
-import { ServiceAccountService } from "@/server/objects/service-account-service"
-import { UserService } from "@/server/objects/user-service"
+import { RoleAssignmentService } from "@/server/modules/access/role-assignment-service"
+import { ServiceAccountService } from "@/server/modules/access/service-account-service"
+import { UserService } from "@/server/modules/access/user-service"
 import {
   ADMINISTRATOR_ROLE_ID,
   OPERATOR_ROLE_ID,

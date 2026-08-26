@@ -29,7 +29,7 @@ export const Storage = makePostgresSchema(Model)
 The package does not own an application's model, migrations, credentials, Effect service identities,
 authorization, or deployment. The application backend binds its generated storage to a typed Drizzle
 `Database` service and exposes one repository capability per object. Migration SQL remains
-explicit, source-owned history beside that backend.
+explicit, committed history beside that backend.
 
 `makePostgresSchema` is a pure compiler, not an Effect service. Runtime capabilities remain ordinary
 Effect services and Layers at the application composition root: PostgreSQL client, typed database,

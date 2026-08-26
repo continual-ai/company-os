@@ -1,7 +1,6 @@
 import { Model } from "@company/model"
 import {
   ActivityIcon,
-  BoxesIcon,
   Building2Icon,
   ContactRoundIcon,
   HandshakeIcon,
@@ -13,32 +12,47 @@ export const operateNavigation = [
   { label: "Home", to: "/", icon: HouseIcon },
 ] as const
 
-/** The application-owned operating objects shown in navigation and on the starter home. */
-export const objectNavigation = [
+/** Application-owned sales destinations; the model supplies meaning, not route policy. */
+export const salesNavigation = [
   {
+    description: "Qualify new interest and convert it into customer records.",
+    icon: UserRoundSearchIcon,
+    label: "Leads",
+    object: Model.objects.lead,
+    to: "/leads",
+  },
+  {
+    description:
+      "Keep the organizations behind opportunities and customers connected.",
     icon: Building2Icon,
+    label: "Companies",
     object: Model.objects.company,
     to: "/companies",
   },
   {
+    description: "Coordinate the people involved in each relationship.",
     icon: ContactRoundIcon,
+    label: "Contacts",
     object: Model.objects.contact,
     to: "/contacts",
   },
-  { icon: UserRoundSearchIcon, object: Model.objects.lead, to: "/leads" },
-  { icon: HandshakeIcon, object: Model.objects.deal, to: "/deals" },
   {
-    icon: BoxesIcon,
-    object: Model.objects.lineItem,
-    to: "/line-items",
+    description: "Advance active opportunities toward a clear outcome.",
+    icon: HandshakeIcon,
+    label: "Deals",
+    object: Model.objects.deal,
+    to: "/deals",
   },
   {
+    description:
+      "Review the calls, emails, meetings, and notes around the work.",
     icon: ActivityIcon,
+    label: "Activity",
     object: Model.objects.interaction,
     to: "/interactions",
   },
 ] as const
 
-export const objectNavigationChecks = objectNavigation.map(({ object }) => ({
+export const salesNavigationChecks = salesNavigation.map(({ object }) => ({
   permission: `${object.id}.list`,
 }))

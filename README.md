@@ -28,9 +28,9 @@ source changes that can be reviewed, tested, and reversed.
 
 ## Try the included operation
 
-The example company includes a small CRM model with companies, contacts, leads, deals, line items,
-and interactions. It is deliberately compact, but it exercises the same path a larger operation
-uses.
+The example company includes a small Sales module with companies, contacts, leads, deals, line
+items, and interactions. It is deliberately compact, but it exercises the same path a larger
+operation uses.
 
 One useful example is lead conversion:
 
@@ -88,12 +88,13 @@ projects that same implementation.
 
 Follow the working path through the repository:
 
-1. [`Lead`](packages/company/model/src/objects/lead.ts) defines the object and `convert` action.
+1. [`Lead`](packages/company/model/src/modules/sales/lead.ts) defines the object and `convert`
+   action.
 2. [`Model`](packages/company/model/src/index.ts) closes and validates the company contract.
 3. [`Storage`](apps/company-os/src/server/database/schema.ts) compiles the model into PostgreSQL.
-4. [`LeadService`](apps/company-os/src/server/objects/lead-service.ts) implements conversion.
-5. [`ModelImplementation`](apps/company-os/src/server/model-implementation.ts) binds the model to
-   its services.
+4. [`LeadService`](apps/company-os/src/server/modules/sales/lead-service.ts) implements conversion.
+5. [`ModelImplementation`](apps/company-os/src/server/model/model-implementation.ts) binds the
+   model to its services.
 6. HTTP, OpenAPI, the typed client, and MCP derive from that binding.
 
 ## Make it yours
@@ -109,8 +110,8 @@ the parts of the company that change most often:
 - [`home.tsx`](apps/company-os/src/customization/home.tsx) owns the first authenticated screen.
 - [`navigation.ts`](apps/company-os/src/customization/navigation.ts) chooses the visible operating
   surfaces.
-- [`crm-definitions.ts`](packages/company/model/src/crm-definitions.ts) is the replaceable example
-  business model.
+- [`modules/sales`](packages/company/model/src/modules/sales) is the replaceable example business
+  module.
 
 Those files are ordinary source code, not a page schema or plugin system. A real operation should
 extend the model, migrations, business services, interface, and tests together.

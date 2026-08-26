@@ -31,8 +31,8 @@ function SdkPage() {
         </h1>
         <p className="mt-3 max-w-2xl leading-7 text-muted-foreground">
           The Effect client is inferred from the same HttpApi contract served by
-          the backend. That contract is projected from the source-owned model
-          and also generates OpenAPI.
+          the backend. That contract is projected from the shared model and also
+          generates OpenAPI.
         </p>
       </section>
 
@@ -72,7 +72,7 @@ function SdkPage() {
       <section className="mt-8 border p-6">
         <p className="text-xs font-medium text-muted-foreground">Direction</p>
         <h2 className="mt-3 text-lg font-medium">
-          Publish a source-owned package when an external consumer needs it.
+          Publish a package when an external consumer needs it.
         </h2>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
           A future package such as @company/client can publish this same

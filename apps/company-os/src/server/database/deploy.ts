@@ -11,7 +11,7 @@ import * as Postgres from "./postgres"
 Effect.gen(function* () {
   yield* applyMigrations()
   yield* seedSystem()
-  yield* Effect.log("Database migrated and source-owned records converged.")
+  yield* Effect.log("Database migrated and required records converged.")
 }).pipe(
   Effect.provide(Database.layer),
   Effect.provide(Postgres.layer),

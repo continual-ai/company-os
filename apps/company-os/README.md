@@ -25,15 +25,24 @@ client-callable `createServerFn` wrappers.
 
 ## Customization
 
-`src/customization` is the source-owned application overlay. Its config covers shallow product
+`src/customization` is the application-owned customization overlay. Its config covers shallow product
 identity, assets, and first-launch copy; its navigation and home modules own the initial operating
 experience. Core shell, identity-boundary, design-system, table, form, and accessibility behavior
 stay shared. When a use case requires new business behavior, extend the model and governed server
 path rather than encoding policy in the overlay or turning the config into a page schema.
 
-## Server organization
+## Application organization
 
-The server mirrors the ontology without creating aggregate runtime services for navigation areas.
+The application groups code by responsibility without duplicating the model registry:
+
+- `src/routes` owns TanStack URL entry points. Parenthesized directories such as `(sales)` and
+  `(access)` group source by module without adding URL segments.
+- `src/ui/application`, `src/ui/model`, `src/ui/settings`, and `src/ui/<module>` separate shell,
+  generic model UI, application settings, and module-specific workflows.
+- `src/server/model` owns generic model persistence and execution bindings.
+- `src/server/modules/<module>` owns behavior and seeds specific to a declared model module.
+- `src/server/transport` adapts the one governed model implementation to HTTP and MCP.
+
 `ObjectRepositories` derives the ordinary persistence registry from the closed model. Governed
 services reuse that registry; only objects with additional behavior receive a named service. The
 intended request path is:
@@ -192,15 +201,15 @@ as the standard `aliases` set on every public object record. Repository transact
 release those rows with the corresponding object write; the PostgreSQL adapter can therefore
 locate an object by alias without first knowing its object type. The application-owned record
 identifier resolver validates the expected object or interface before returning a canonical ID.
-Well-known source-owned records instead use stable, readable canonical IDs such as
+Well-known application-managed records instead use stable, readable canonical IDs such as
 `service_account_system`; prefixes are
 diagnostic only and code never infers behavior from them. The shared object-service factory uses
 that resolver to canonicalize every reference and then authorizes the request. Repositories and
-stored foreign keys receive canonical IDs only. Files under
-`src/server/objects` keep each object's service beside its repository. Add an object-specific
-repository query only when the standard object query language cannot express the required
-persistence operation. The composition root wires Layers to infrastructure; it does not become
-another business service.
+stored foreign keys receive canonical IDs only. Generic repositories and services live under
+`src/server/model`; behavior specific to Access or Sales lives under the corresponding
+`src/server/modules` directory. Add an object-specific repository query only when the standard
+object query language cannot express the required persistence operation. The composition root
+wires Layers to infrastructure; it does not become another business service.
 
 ## Database workflow
 
@@ -218,7 +227,7 @@ while the snapshot is committed compiler state used to generate and check later 
 edit a snapshot by hand. Before the baseline is pushed or applied anywhere, keep one reviewed
 `initial` migration and replace it whenever the model changes. Once a migration may have reached
 another developer, shared environment, or production database, freeze it and append forward-only
-migrations. Deployments apply the committed history and converge source-owned records before
+migrations. Deployments apply the committed history and converge required records before
 serving the corresponding application revision.
 
 ### Local setup
@@ -233,7 +242,7 @@ The setup command creates `apps/company-os/.env.local` from the example when it 
 identity mode works without an external provider. Start with `pnpm dev`, then choose an
 administrator, operator, or restricted identity on `/sign-in`. Use the account menu to sign out and
 switch identities without restarting the server. Development reapplies pending migrations and
-converges source-owned records before starting Company OS. Use `pnpm dev:all` when the demonstration
+converges required records before starting Company OS. Use `pnpm dev:all` when the demonstration
 marketing site and client portal are also needed.
 
 Each local profile has a stable subject and receives its initial role only when it is first
@@ -309,7 +318,7 @@ exercise the same committed history.
 
 Reset deletes every object in the `public` and Drizzle migration schemas, cleans up the historical
 `auth` schema when present, recreates
-`public`, and then applies the full committed migration history and all source-owned seeds. It
+`public`, and then applies the full committed migration history and all required seeds. It
 accepts only loopback PostgreSQL hosts and requires the exact database name as confirmation:
 
 ```sh
@@ -333,7 +342,7 @@ The deployment sequence is:
 1. Back up the database or verify the provider's restore point and test the migration on a
    production-like copy when risk warrants it.
 2. Run one deployment database job. It applies migrations and then converges the idempotent
-   source-owned seeds. Do not run it concurrently from every application instance.
+   required seeds. Do not run it concurrently from every application instance.
 3. Deploy or promote the compatible application revision only after migration succeeds.
 4. Verify the health endpoint and the affected read/write path.
 
@@ -361,15 +370,14 @@ pnpm --filter company-os dev
 Open <http://localhost:3002>. Useful endpoints:
 
 - `/` — operating overview
-- `/develop` — model, API, data, and design-system surfaces
-- `/learn` — company knowledge and guidance
+- `/develop` — model, API, SDK, MCP, and design-system surfaces
 
 - `GET /health` — process health
 - `/api/v1/*` — governed object reads, mutations, declared actions, and capability checks
 - `POST /api/mcp` — Streamable HTTP MCP projection of the same governed operations
 - `GET /api/description` — serializable API projection of `Model`
 - `GET /api/openapi` — runtime-derived OpenAPI 3.1 contract
-- `GET /api/docs` — generated Scalar API reference
+- `/develop/api` — integrated reference over the generated OpenAPI contract
 
 Set the public deployment origin for canonical URLs and the MCP Host/Origin allowlist:
 
@@ -393,7 +401,7 @@ const page = {
   title: "Companies",
 }
 
-export const Route = createFileRoute("/_app/companies")({
+export const Route = createFileRoute("/_app/(sales)/companies")({
   ...pageOptions(page),
   component: CompaniesPage,
 })
@@ -404,7 +412,7 @@ matched pathname. When metadata depends on params or loaded content, return the 
 from the route loader beside the data used by the component:
 
 ```tsx
-export const Route = createFileRoute("/_app/companies/$companyId")({
+export const Route = createFileRoute("/_app/(sales)/companies/$companyId")({
   loader: async ({ params }) => {
     const company = await loadCompany(params.companyId)
 

@@ -12,6 +12,7 @@ import { describe, expect, it } from "vitest"
 import { defineInterface } from "./definition/interface"
 import { defineModel } from "./definition/model"
 import type { ModelCatalog } from "./definition/model"
+import { defineModule } from "./definition/module"
 import { defineObject } from "./definition/object"
 import { defineRoot } from "./definition/root"
 import { schema } from "./definition/schema"
@@ -50,10 +51,16 @@ const Contact = defineObject({
 })
 const TestModel = defineModel({
   actor: Actor,
-  interfaces: [Actor],
-  links: [],
+  modules: [
+    defineModule({
+      id: "contacts",
+      interfaces: [Actor],
+      links: [],
+      name: "Contacts",
+      objects: [Contact],
+    }),
+  ],
   name: "Test",
-  objects: [Contact],
   root: Root,
 })
 

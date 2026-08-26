@@ -4,16 +4,23 @@ import { modelObjects } from "@company/runtime"
 /** Maximum number of authorization decisions accepted by one public request. */
 export const MAX_CAPABILITY_CHECKS = 200
 
-/** Closed permission vocabulary governed by Company OS authorization. */
-export const capabilityPermissions: ReadonlyArray<string> = modelObjects(
-  Model
-).flatMap((object) => [
+export const applicationCapabilities = {
+  develop: { permission: "application.develop" },
+} as const satisfies Readonly<Record<string, CapabilityCheck>>
+
+const objectPermissions = modelObjects(Model).flatMap((object) => [
   `${object.id}.get`,
   `${object.id}.list`,
   ...Object.values(object.actions).flatMap((action) => {
     return action.id === "batchDelete" ? [] : [`${object.id}.${action.id}`]
   }),
 ])
+
+/** Closed permission vocabulary governed by the application authorization policy. */
+export const capabilityPermissions: ReadonlyArray<string> = [
+  ...objectPermissions,
+  applicationCapabilities.develop.permission,
+]
 
 const capabilityPermissionSet = new Set(capabilityPermissions)
 

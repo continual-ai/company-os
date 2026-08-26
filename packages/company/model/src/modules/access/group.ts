@@ -1,0 +1,24 @@
+import { defineObject, schema } from "@company/runtime"
+
+import { Root } from "#root"
+
+import { Principal } from "./principal"
+
+export const Group = defineObject({
+  id: "group",
+  collection: "groups",
+  name: "Group",
+  parent: Root,
+  pluralName: "Groups",
+  description: "A principal that grants the same access to several identities.",
+  implements: [{ interface: Principal }],
+  properties: {
+    name: schema.string({ label: "Name", minLength: 1, maxLength: 200 }),
+    description: schema.string({
+      label: "Description",
+      maxLength: 2_000,
+      nullable: true,
+    }),
+  },
+  display: { icon: "users", subtitle: "description", title: "name" },
+})

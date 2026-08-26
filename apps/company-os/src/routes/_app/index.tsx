@@ -6,7 +6,7 @@ import { pageOptions } from "@/route-metadata"
 const page = {
   breadcrumb: "Home",
   description:
-    "Run work from shared business context used by people, applications, integrations, and agents.",
+    "Qualify leads, coordinate customer context, and advance active sales opportunities.",
   title: "Home",
 }
 

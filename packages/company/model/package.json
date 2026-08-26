@@ -2,12 +2,11 @@
   "name": "@company/model",
   "version": "0.0.0",
   "private": true,
-  "description": "The source-owned browser-safe semantic model.",
+  "description": "The browser-safe semantic model.",
   "type": "module",
   "sideEffects": false,
   "imports": {
-    "#interfaces/*": "./src/interfaces/*.ts",
-    "#objects/*": "./src/objects/*.ts",
+    "#modules/*": "./src/modules/*.ts",
     "#root": "./src/root.ts"
   },
   "exports": {
