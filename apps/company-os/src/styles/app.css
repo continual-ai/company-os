@@ -1,3 +1,4 @@
 @import "@company/ui/globals.css";
+@import "../company/theme.css";
 
 @source "../**/*.{ts,tsx}";

@@ -1,5 +1,3 @@
-import { Model } from "@company/model"
-import { modelMetadata } from "@company/model/metadata"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,25 +23,24 @@ import {
 import { cn } from "@company/ui/lib/utils"
 import { Link, useMatchRoute } from "@tanstack/react-router"
 import {
-  ActivityIcon,
   BookOpenIcon,
   BracesIcon,
-  Building2Icon,
-  BoxesIcon,
   ChevronsUpDownIcon,
   CodeXmlIcon,
-  ContactRoundIcon,
-  HandshakeIcon,
-  HouseIcon,
+  BoxesIcon,
   LogOutIcon,
   PackageIcon,
   PaletteIcon,
   PlugIcon,
   SettingsIcon,
-  UserRoundSearchIcon,
 } from "lucide-react"
 
-import { appMetadata } from "@/app-metadata"
+import { CompanyMark } from "@/company/brand"
+import { companyConfig } from "@/company/config"
+import {
+  companyObjectNavigation,
+  companyOperateNavigation,
+} from "@/company/navigation"
 import {
   getUserInitials,
   useAuthenticatedUser,
@@ -55,54 +52,6 @@ const sections = [
   { label: "Learn", to: "/learn" },
   { label: "Develop", to: "/develop" },
 ] as const
-
-const operateNavigation = [{ label: "Home", to: "/", icon: HouseIcon }] as const
-
-const objectIcons = {
-  building: Building2Icon,
-  handshake: HandshakeIcon,
-  interaction: ActivityIcon,
-  lead: UserRoundSearchIcon,
-  person: ContactRoundIcon,
-} as const
-
-const objectPaths = {
-  company: "/companies",
-  contact: "/contacts",
-  deal: "/deals",
-  interaction: "/interactions",
-  lead: "/leads",
-  lineItem: "/line-items",
-} as const
-
-function objectIcon(name: string | undefined) {
-  return (
-    Object.entries(objectIcons).find(([iconName]) => iconName === name)?.[1] ??
-    BoxesIcon
-  )
-}
-
-function objectPath(id: string) {
-  return Object.entries(objectPaths).find(
-    ([objectType]) => objectType === id
-  )?.[1]
-}
-
-const operateObjects = Object.values(Model.objects).flatMap((object) => {
-  const to = objectPath(object.id)
-  return to === undefined
-    ? []
-    : [
-        {
-          icon: objectIcon(
-            "icon" in object.display ? object.display.icon : undefined
-          ),
-          id: object.id,
-          label: object.pluralName,
-          to,
-        },
-      ]
-})
 
 const learnNavigation = [
   { label: "Knowledge", to: "/learn", icon: BookOpenIcon },
@@ -155,18 +104,16 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton
               size="lg"
-              tooltip={`${modelMetadata.name} ${appMetadata.name}`}
+              tooltip={companyConfig.identity.productName}
               render={<Link to="/" />}
             >
-              <span className="flex size-8 shrink-0 items-center justify-center bg-primary text-sm font-semibold text-primary-foreground">
-                {modelMetadata.name.slice(0, 1).toUpperCase()}
-              </span>
+              <CompanyMark className="size-8" />
               <span className="grid flex-1 text-left leading-tight">
                 <span className="truncate text-sm font-semibold">
-                  {modelMetadata.name}
+                  {companyConfig.identity.productName}
                 </span>
                 <span className="truncate text-xs text-sidebar-foreground/70">
-                  {appMetadata.name}
+                  {companyConfig.identity.descriptor}
                 </span>
               </span>
             </SidebarMenuButton>
@@ -174,7 +121,7 @@ export function AppSidebar() {
         </SidebarMenu>
 
         <nav
-          aria-label={`${appMetadata.name} sections`}
+          aria-label={`${companyConfig.identity.productName} sections`}
           className="relative isolate grid grid-cols-3"
         >
           <span
@@ -210,7 +157,7 @@ export function AppSidebar() {
             <SidebarGroup>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {operateNavigation.map((item) => (
+                  {companyOperateNavigation.map((item) => (
                     <SidebarMenuItem key={item.label}>
                       <SidebarMenuButton
                         tooltip={item.label}
@@ -230,15 +177,15 @@ export function AppSidebar() {
               <SidebarGroupLabel>Objects</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {operateObjects.map((object) => (
-                    <SidebarMenuItem key={object.id}>
+                  {companyObjectNavigation.map((item) => (
+                    <SidebarMenuItem key={item.object.id}>
                       <SidebarMenuButton
-                        tooltip={object.label}
-                        isActive={Boolean(matchRoute({ to: object.to }))}
-                        render={<Link to={object.to} />}
+                        tooltip={item.object.pluralName}
+                        isActive={Boolean(matchRoute({ to: item.to }))}
+                        render={<Link to={item.to} />}
                       >
-                        <object.icon />
-                        <span>{object.label}</span>
+                        <item.icon />
+                        <span>{item.object.pluralName}</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   ))}

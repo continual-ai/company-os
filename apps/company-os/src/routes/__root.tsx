@@ -1,5 +1,6 @@
 import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router"
 
+import { companyConfig } from "@/company/config"
 import {
   appName,
   canonicalMetadata,
@@ -21,7 +22,7 @@ export const Route = createRootRoute({
     <main className="mx-auto flex min-h-svh max-w-lg flex-col justify-center p-6">
       <p className="text-sm font-medium text-destructive">Application error</p>
       <h1 className="mt-2 text-2xl font-semibold tracking-tight">
-        Company OS could not load this page.
+        {companyConfig.identity.productName} could not load this page.
       </h1>
       <p className="mt-3 text-sm text-muted-foreground">
         {error instanceof Error
@@ -45,13 +46,17 @@ export const Route = createRootRoute({
         { charSet: "utf-8" },
         { name: "viewport", content: "width=device-width, initial-scale=1" },
         { name: "robots", content: "noindex, nofollow" },
-        { name: "theme-color", content: "#ffffff" },
+        { name: "theme-color", content: companyConfig.brand.themeColor },
         ...document.meta,
         ...(location.meta ?? []),
       ],
       links: [
         { rel: "stylesheet", href: appCss },
-        { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
+        {
+          rel: "icon",
+          href: companyConfig.brand.favicon.href,
+          type: companyConfig.brand.favicon.type,
+        },
         ...(location.links ?? []),
       ],
     }

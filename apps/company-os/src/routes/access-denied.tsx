@@ -1,4 +1,3 @@
-import { modelMetadata } from "@company/model/metadata"
 import { Button } from "@company/ui/components/button"
 import {
   Card,
@@ -9,12 +8,13 @@ import {
 } from "@company/ui/components/card"
 import { createFileRoute } from "@tanstack/react-router"
 
+import { companyConfig } from "@/company/config"
 import { pageOptions } from "@/route-metadata"
 import { useSignOut } from "@/sign-out"
 
 const page = {
   breadcrumb: "Access denied",
-  description: `This User does not have access to ${modelMetadata.name}.`,
+  description: `This User does not have access to ${companyConfig.identity.productName}.`,
   title: "Access denied",
 }
 

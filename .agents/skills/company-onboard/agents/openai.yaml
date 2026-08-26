@@ -1,0 +1,4 @@
+interface:
+  display_name: "Company Onboard"
+  short_description: "Adapt Company OS to a company and first use case"
+  default_prompt: "Use $company-onboard to turn this fork into my company's own operating system, fulfill my requested operation end to end, make the first launch feel unmistakably ours, give me something worth sharing with my team, and leave me with a compelling next step to keep building."

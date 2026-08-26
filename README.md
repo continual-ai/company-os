@@ -42,6 +42,24 @@ The current example model separates typed objects, bidirectional links, and gove
 Objects are readable by convention, CRUD actions are available by default, and additional actions
 express business behavior that can change several objects and links together.
 
+## Customize a fork
+
+The scaffold keeps high-frequency company changes in a small source-owned overlay without reducing
+the application to configuration:
+
+- `apps/company-os/src/company/config.ts` owns product identity, brand assets, and first-launch copy.
+- `apps/company-os/src/company/theme.css` maps the company's restrained visual accents onto the
+  shared design system.
+- `apps/company-os/src/company/navigation.ts` chooses the operating surfaces presented in the app.
+- `apps/company-os/src/company/home.tsx` is the company-owned first authenticated experience and can
+  become a real workflow rather than a generic dashboard.
+- `packages/company/model/src/company-composition.ts` composes the replaceable business model on top
+  of the identity, authorization, party, and audit foundation.
+
+Use those files for shallow identity and experience work. A real operation should still be built
+vertically through model definitions, migrations, governed server behavior, routes, and tests. The
+overlay creates upgrade-friendly ownership seams; it is not a plugin or feature-flag system.
+
 ## Follow one company object
 
 The Lead example shows how the current boundaries build on one source-owned definition without
