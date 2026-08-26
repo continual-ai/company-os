@@ -1,6 +1,6 @@
 /* oxlint-disable anti-slop/no-runtime-typeof */
 import { modelMetadata } from "@company/model"
-import type { AnySchema, PropertyDefinition } from "@company/runtime"
+import type { AnySchema, PropertyDefinition, Violation } from "@company/runtime"
 import {
   toEffectObjectCreateSchema,
   toEffectObjectUpdateSchema,
@@ -9,7 +9,11 @@ import {
 import { formText } from "@/form-data"
 
 import { decodeFormSchema, FormValidationError } from "./form-errors"
-import type { ClientValue, ModelObject } from "./object-client"
+import {
+  modelObjectProperty,
+  type ClientValue,
+  type ModelObject,
+} from "./object-client"
 import { objectTablePropertySchema } from "./object-table/object-table-cell-types"
 
 export type ObjectFormMode = "create" | "edit"
@@ -60,6 +64,73 @@ export function isSupportedFormSchema(schema: AnySchema): boolean {
   if (schema.kind !== "array") return false
   const item = objectTablePropertySchema(schema.items)
   return item.kind === "enum" || item.kind === "string"
+}
+
+function semanticFormViolation(
+  object: ModelObject,
+  violation: Violation
+): Violation {
+  const propertyId = violation.path?.[0]
+  if (typeof propertyId !== "string") return violation
+  const property = modelObjectProperty(object, propertyId)
+  if (property === undefined) return violation
+  const schema = objectTablePropertySchema(property)
+  const label = property.label ?? propertyId
+  const nestedProperty = violation.path?.[1]
+
+  if (schema.kind === "money" && nestedProperty === "amount") {
+    return {
+      ...violation,
+      message: `${label} must be a valid decimal amount.`,
+      reason: "INVALID_DECIMAL",
+    }
+  }
+  if (schema.kind === "money" && nestedProperty === "currency") {
+    return {
+      ...violation,
+      message: "Enter a valid three-letter currency code.",
+      reason: "INVALID_CURRENCY",
+    }
+  }
+  if (schema.kind === "number") {
+    return {
+      ...violation,
+      message: `${label} must be a valid number.`,
+      reason: "INVALID_NUMBER",
+    }
+  }
+  if (schema.kind === "decimal") {
+    return {
+      ...violation,
+      message: `${label} must be a valid decimal amount.`,
+      reason: "INVALID_DECIMAL",
+    }
+  }
+  if (schema.kind === "enum") {
+    return {
+      ...violation,
+      message: `Select a valid ${label.toLowerCase()}.`,
+      reason: "INVALID_OPTION",
+    }
+  }
+  if (schema.kind !== "string" || schema.format === undefined) {
+    return { ...violation, message: `${label} is invalid.` }
+  }
+
+  const format = {
+    date: ["date", "INVALID_DATE"],
+    domain: ["domain name", "INVALID_DOMAIN"],
+    email: ["email address", "INVALID_EMAIL"],
+    phone: ["phone number", "INVALID_PHONE"],
+    timestamp: ["date and time", "INVALID_TIMESTAMP"],
+    url: ["HTTP or HTTPS URL", "INVALID_URL"],
+  } as const
+  const [description, reason] = format[schema.format]
+  return {
+    ...violation,
+    message: `Enter a valid ${description}.`,
+    reason,
+  }
 }
 
 function blankValue(
@@ -184,7 +255,17 @@ export function decodeObjectForm(
     mode === "create"
       ? toEffectObjectCreateSchema(object)
       : toEffectObjectUpdateSchema(object)
-  const decoded = decodeFormSchema(schema, input)
+  let decoded: unknown
+  try {
+    decoded = decodeFormSchema(schema, input)
+  } catch (cause) {
+    if (!(cause instanceof FormValidationError)) throw cause
+    throw new FormValidationError(
+      cause.violations.map((violation) =>
+        semanticFormViolation(object, violation)
+      )
+    )
+  }
   // SAFETY: schema is compiled from the object whose properties built input.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   return decoded as ObjectFormInput

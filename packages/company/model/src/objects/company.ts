@@ -19,12 +19,12 @@ export const Company = defineObject({
     },
   ],
   properties: {
-    logo: schema.image({ label: "Logo", aspectRatio: 1, nullable: true }),
     name: schema.string({
       label: "Name",
       minLength: 1,
       maxLength: 200,
     }),
+    logo: schema.image({ label: "Logo", aspectRatio: 1, nullable: true }),
     domain: schema.domain({
       label: "Domain",
       maxLength: 253,

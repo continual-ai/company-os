@@ -55,7 +55,11 @@ describe("object forms", () => {
       expect(cause).toBeInstanceOf(FormValidationError)
       if (!(cause instanceof FormValidationError)) throw cause
       expect(cause.violations).toEqual([
-        expect.objectContaining({ path: ["domain"] }),
+        {
+          message: "Enter a valid domain name.",
+          path: ["domain"],
+          reason: "INVALID_DOMAIN",
+        },
       ])
     }
   })
