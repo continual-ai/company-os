@@ -9,10 +9,13 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SignOutRouteImport } from './routes/sign-out'
+import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as HealthRouteImport } from './routes/health'
 import { Route as AccessDeniedRouteImport } from './routes/access-denied'
 import { Route as AppRouteRouteImport } from './routes/_app/route'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
+import { Route as AuthLocalSessionRouteImport } from './routes/auth/local-session'
 import { Route as ApiOpenapiRouteImport } from './routes/api/openapi'
 import { Route as ApiDocsRouteImport } from './routes/api/docs'
 import { Route as ApiDescriptionRouteImport } from './routes/api/description'
@@ -46,6 +49,16 @@ import { Route as AppDevelopDesignSystemFoundationsRouteImport } from './routes/
 import { Route as AppDevelopDesignSystemPatternsObjectTableRouteImport } from './routes/_app/develop/design-system/patterns/object-table'
 import { Route as AppDevelopDesignSystemComponentsComponentIdRouteRouteImport } from './routes/_app/develop/design-system/components/$componentId/route'
 
+const SignOutRoute = SignOutRouteImport.update({
+  id: '/sign-out',
+  path: '/sign-out',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignInRoute = SignInRouteImport.update({
+  id: '/sign-in',
+  path: '/sign-in',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const HealthRoute = HealthRouteImport.update({
   id: '/health',
   path: '/health',
@@ -64,6 +77,11 @@ const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AppRouteRoute,
+} as any)
+const AuthLocalSessionRoute = AuthLocalSessionRouteImport.update({
+  id: '/auth/local-session',
+  path: '/auth/local-session',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiOpenapiRoute = ApiOpenapiRouteImport.update({
   id: '/api/openapi',
@@ -238,6 +256,8 @@ export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/access-denied': typeof AccessDeniedRoute
   '/health': typeof HealthRoute
+  '/sign-in': typeof SignInRoute
+  '/sign-out': typeof SignOutRoute
   '/develop': typeof AppDevelopRouteRouteWithChildren
   '/settings': typeof AppSettingsRouteRouteWithChildren
   '/companies': typeof AppCompaniesRoute
@@ -250,6 +270,7 @@ export interface FileRoutesByFullPath {
   '/api/description': typeof ApiDescriptionRoute
   '/api/docs': typeof ApiDocsRoute
   '/api/openapi': typeof ApiOpenapiRoute
+  '/auth/local-session': typeof AuthLocalSessionRoute
   '/develop/design-system': typeof AppDevelopDesignSystemRouteRouteWithChildren
   '/develop/api': typeof AppDevelopApiRoute
   '/develop/mcp': typeof AppDevelopMcpRoute
@@ -274,6 +295,8 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/access-denied': typeof AccessDeniedRoute
   '/health': typeof HealthRoute
+  '/sign-in': typeof SignInRoute
+  '/sign-out': typeof SignOutRoute
   '/companies': typeof AppCompaniesRoute
   '/contacts': typeof AppContactsRoute
   '/deals': typeof AppDealsRoute
@@ -284,6 +307,7 @@ export interface FileRoutesByTo {
   '/api/description': typeof ApiDescriptionRoute
   '/api/docs': typeof ApiDocsRoute
   '/api/openapi': typeof ApiOpenapiRoute
+  '/auth/local-session': typeof AuthLocalSessionRoute
   '/': typeof AppIndexRoute
   '/develop/api': typeof AppDevelopApiRoute
   '/develop/mcp': typeof AppDevelopMcpRoute
@@ -310,6 +334,8 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteRouteWithChildren
   '/access-denied': typeof AccessDeniedRoute
   '/health': typeof HealthRoute
+  '/sign-in': typeof SignInRoute
+  '/sign-out': typeof SignOutRoute
   '/_app/develop': typeof AppDevelopRouteRouteWithChildren
   '/_app/settings': typeof AppSettingsRouteRouteWithChildren
   '/_app/companies': typeof AppCompaniesRoute
@@ -322,6 +348,7 @@ export interface FileRoutesById {
   '/api/description': typeof ApiDescriptionRoute
   '/api/docs': typeof ApiDocsRoute
   '/api/openapi': typeof ApiOpenapiRoute
+  '/auth/local-session': typeof AuthLocalSessionRoute
   '/_app/': typeof AppIndexRoute
   '/_app/develop/design-system': typeof AppDevelopDesignSystemRouteRouteWithChildren
   '/_app/develop/api': typeof AppDevelopApiRoute
@@ -350,6 +377,8 @@ export interface FileRouteTypes {
     | '/'
     | '/access-denied'
     | '/health'
+    | '/sign-in'
+    | '/sign-out'
     | '/develop'
     | '/settings'
     | '/companies'
@@ -362,6 +391,7 @@ export interface FileRouteTypes {
     | '/api/description'
     | '/api/docs'
     | '/api/openapi'
+    | '/auth/local-session'
     | '/develop/design-system'
     | '/develop/api'
     | '/develop/mcp'
@@ -386,6 +416,8 @@ export interface FileRouteTypes {
   to:
     | '/access-denied'
     | '/health'
+    | '/sign-in'
+    | '/sign-out'
     | '/companies'
     | '/contacts'
     | '/deals'
@@ -396,6 +428,7 @@ export interface FileRouteTypes {
     | '/api/description'
     | '/api/docs'
     | '/api/openapi'
+    | '/auth/local-session'
     | '/'
     | '/develop/api'
     | '/develop/mcp'
@@ -421,6 +454,8 @@ export interface FileRouteTypes {
     | '/_app'
     | '/access-denied'
     | '/health'
+    | '/sign-in'
+    | '/sign-out'
     | '/_app/develop'
     | '/_app/settings'
     | '/_app/companies'
@@ -433,6 +468,7 @@ export interface FileRouteTypes {
     | '/api/description'
     | '/api/docs'
     | '/api/openapi'
+    | '/auth/local-session'
     | '/_app/'
     | '/_app/develop/design-system'
     | '/_app/develop/api'
@@ -460,14 +496,31 @@ export interface RootRouteChildren {
   AppRouteRoute: typeof AppRouteRouteWithChildren
   AccessDeniedRoute: typeof AccessDeniedRoute
   HealthRoute: typeof HealthRoute
+  SignInRoute: typeof SignInRoute
+  SignOutRoute: typeof SignOutRoute
   ApiDescriptionRoute: typeof ApiDescriptionRoute
   ApiDocsRoute: typeof ApiDocsRoute
   ApiOpenapiRoute: typeof ApiOpenapiRoute
+  AuthLocalSessionRoute: typeof AuthLocalSessionRoute
   ApiV1SplatRoute: typeof ApiV1SplatRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/sign-out': {
+      id: '/sign-out'
+      path: '/sign-out'
+      fullPath: '/sign-out'
+      preLoaderRoute: typeof SignOutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sign-in': {
+      id: '/sign-in'
+      path: '/sign-in'
+      fullPath: '/sign-in'
+      preLoaderRoute: typeof SignInRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/health': {
       id: '/health'
       path: '/health'
@@ -495,6 +548,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRouteRoute
+    }
+    '/auth/local-session': {
+      id: '/auth/local-session'
+      path: '/auth/local-session'
+      fullPath: '/auth/local-session'
+      preLoaderRoute: typeof AuthLocalSessionRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/openapi': {
       id: '/api/openapi'
@@ -830,9 +890,12 @@ const rootRouteChildren: RootRouteChildren = {
   AppRouteRoute: AppRouteRouteWithChildren,
   AccessDeniedRoute: AccessDeniedRoute,
   HealthRoute: HealthRoute,
+  SignInRoute: SignInRoute,
+  SignOutRoute: SignOutRoute,
   ApiDescriptionRoute: ApiDescriptionRoute,
   ApiDocsRoute: ApiDocsRoute,
   ApiOpenapiRoute: ApiOpenapiRoute,
+  AuthLocalSessionRoute: AuthLocalSessionRoute,
   ApiV1SplatRoute: ApiV1SplatRoute,
 }
 export const routeTree = rootRouteImport

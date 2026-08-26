@@ -5,11 +5,31 @@ type BrandAsset = Readonly<{
   src: string
 }>
 
+type EntryMedia =
+  | Readonly<{
+      kind: "image"
+      position?: string
+      src: string
+    }>
+  | Readonly<{
+      kind: "video"
+      position?: string
+      poster: string
+      src: string
+    }>
+
 type CompanyConfig = Readonly<{
   brand: Readonly<{
     favicon: Readonly<{ href: string; type: string }>
     mark: BrandAsset | null
     themeColor: string
+  }>
+  entry: Readonly<{
+    description: string
+    eyebrow: string
+    headline: string
+    highlights: ReadonlyArray<string>
+    media: EntryMedia | null
   }>
   home: Readonly<{
     description: string
@@ -32,6 +52,18 @@ export const companyConfig: CompanyConfig = {
     favicon: { href: "/favicon.svg", type: "image/svg+xml" },
     mark: null,
     themeColor: "#ffffff",
+  },
+  entry: {
+    description:
+      "Bring company context, governed operations, and the tools to keep improving them into one shared system.",
+    eyebrow: `${companyName} OS`,
+    headline: "One place to run the work that matters.",
+    highlights: [
+      "Work from shared company context",
+      "Turn repeatable decisions into governed operations",
+      "Extend the same foundation as the company evolves",
+    ],
+    media: null,
   },
   home: {
     description:

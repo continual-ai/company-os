@@ -93,5 +93,11 @@ export function makeApplicationLayer({
   )
   const readiness = Readiness.layer.pipe(Layer.provide(database))
 
-  return Layer.mergeAll(coreServices, authentication, companyApi, readiness)
+  return Layer.mergeAll(
+    authSettings,
+    coreServices,
+    authentication,
+    companyApi,
+    readiness
+  )
 }

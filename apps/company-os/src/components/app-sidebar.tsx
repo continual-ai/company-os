@@ -31,6 +31,7 @@ import {
   PackageIcon,
   PaletteIcon,
   PlugIcon,
+  LogOutIcon,
   SettingsIcon,
 } from "lucide-react"
 
@@ -264,6 +265,12 @@ export function AppSidebar() {
                 <DropdownMenuItem render={<Link to="/settings" />}>
                   <SettingsIcon />
                   Account settings
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  render={<a href="/sign-out" aria-label="Sign out" />}
+                >
+                  <LogOutIcon />
+                  Sign out
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

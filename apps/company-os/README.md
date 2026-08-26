@@ -120,21 +120,28 @@ sets do not authenticate; authorization expands caller state into the applicable
 
 The standalone deployment reads the identity contract through Effect `Config`:
 
-- `AUTH_MODE=local` JIT-provisions the configured local User for development. `AUTH_LOCAL_SUBJECT`,
-  `AUTH_LOCAL_NAME`, and `AUTH_LOCAL_EMAIL` control its profile.
+- `AUTH_MODE=local` presents a development-only sign-in page with administrator, operator, and
+  restricted Users. A session cookie selects an opaque profile ID; it contains no credentials and
+  this mode is rejected in production. `AUTH_LOCAL_SUBJECT`, `AUTH_LOCAL_NAME`,
+  `AUTH_LOCAL_EMAIL`, and `AUTH_JIT_ROLE` customize the administrator profile.
 - `AUTH_MODE=jwt` verifies the assertion in `AUTH_JWT_HEADER` against `AUTH_JWT_ISSUER`,
   `AUTH_JWT_AUDIENCE`, and `AUTH_JWT_JWKS_URL`. Continual or another trusted gateway may supply it.
   Assertions must contain non-empty `iss`, `sub`, `aud`, `iat`, and `exp` claims, use an explicitly
   allowed asymmetric algorithm, and remain within `AUTH_JWT_MAX_AGE`. The configured
   `identity_type` claim must resolve to `user` or `serviceAccount`; a deployment that only admits one
-  type may set `AUTH_JWT_DEFAULT_IDENTITY_KIND`.
+  type may set `AUTH_JWT_DEFAULT_IDENTITY_KIND`. `AUTH_SIGN_OUT_PATH` names the gateway-owned,
+  same-origin logout route used by the application account menu.
 - `AUTH_MODE=google-iap` fixes the header, issuer, ES256 algorithm, IAP JWK set, clock tolerance, and
   User identity type to Google's signed-header contract. The deployment supplies only the exact
-  `AUTH_IAP_AUDIENCE` shown by IAP and its initial role policy.
-- `AUTH_JIT_ROLE` controls the initial local business role for a newly projected authorization
-  subject. Local development defaults to `administrator`; every deployed mode must choose
-  `administrator`, `operator`, or `none` explicitly. In a delegated invocation, the current actor is
-  projected without inheriting that role merely because it acted for an authorized subject.
+  `AUTH_IAP_AUDIENCE` shown by IAP and its initial role policy. Sign-out uses Google's documented
+  external-identity `?gcp-iap-mode=GCIP_SIGNOUT` handoff by default; `AUTH_SIGN_OUT_PATH` can select
+  another same-origin IAP or proxy session contract.
+- `AUTH_JIT_ROLE` controls the initial role for the customizable local profile and for newly
+  projected authorization subjects in deployed modes. Local development defaults that profile to
+  `administrator`; the built-in operator and restricted profiles remain fixed. Every deployed mode
+  must choose `administrator`, `operator`, or `none` explicitly. In a delegated invocation, the
+  current actor is projected without inheriting that role merely because it acted for an authorized
+  subject.
 
 The generic JWT adapter understands the RFC 8693 `act` claim. Without it, the assertion `sub` is both
 the current actor and authorization subject. With it, `sub` is the identity whose business authority
@@ -212,32 +219,17 @@ pnpm setup
 ```
 
 The setup command creates `apps/company-os/.env.local` from the example when it is absent. Local
-identity mode works without an external provider; adjust its profile values when useful, then use
-`pnpm dev`. Development reapplies pending migrations and converges source-owned records before
-starting Company OS. Use `pnpm dev:all` when the
-demonstration marketing site and client portal are also needed.
+identity mode works without an external provider. Start with `pnpm dev`, then choose an
+administrator, operator, or restricted identity on `/sign-in`. Use the account menu to sign out and
+switch identities without restarting the server. Development reapplies pending migrations and
+converges source-owned records before starting Company OS. Use `pnpm dev:all` when the demonstration
+marketing site and client portal are also needed.
 
-Use a distinct local subject to exercise each initial authorization profile without changing the
-ignored environment file. The role is granted only when that subject is first provisioned:
-
-```sh
-AUTH_LOCAL_SUBJECT=local-operator \
-AUTH_LOCAL_NAME="Local operator" \
-AUTH_LOCAL_EMAIL=local-operator@company.test \
-AUTH_JIT_ROLE=operator \
-pnpm dev
-
-AUTH_LOCAL_SUBJECT=local-restricted \
-AUTH_LOCAL_NAME="Local restricted user" \
-AUTH_LOCAL_EMAIL=local-restricted@company.test \
-AUTH_JIT_ROLE=none \
-pnpm dev
-```
-
-The administrator profile in `.env.local` exercises the full surface, `operator` exercises the
-built-in business-data boundary, and `none` verifies default-deny and fail-closed UI behavior.
-Changing `AUTH_JIT_ROLE` for an existing subject does not reconcile its assignments; use a new
-subject or change its role assignments through the governed application surface.
+Each local profile has a stable subject and receives its initial role only when it is first
+provisioned. The administrator exercises the full surface, the operator exercises the built-in
+business-data boundary, and the restricted User verifies default-deny and fail-closed UI behavior.
+Changing a profile's configured initial role does not reconcile existing assignments; change its
+role assignments through the governed application surface or reset the local database.
 
 Database commands load `apps/company-os/.env.local` when present and otherwise use `DATABASE_URL`
 from the process environment. TanStack Start also loads that app-local file for development while

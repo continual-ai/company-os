@@ -47,7 +47,10 @@ express business behavior that can change several objects and links together.
 The scaffold keeps high-frequency company changes in a small source-owned overlay without reducing
 the application to configuration:
 
-- `apps/company-os/src/company/config.ts` owns product identity, brand assets, and first-launch copy.
+- `apps/company-os/src/company/config.ts` owns product identity, brand assets, and shallow entry and
+  first-launch copy.
+- `apps/company-os/src/company/entry.tsx` presents company recognition beside an app-owned sign-in
+  flow without owning authentication behavior.
 - `apps/company-os/src/company/theme.css` maps the company's restrained visual accents onto the
   shared design system.
 - `apps/company-os/src/company/navigation.ts` chooses the operating surfaces presented in the app.

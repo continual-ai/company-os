@@ -1,14 +1,23 @@
 import { Config, Context, Effect, Layer } from "effect"
 
+import { LOCAL_IDENTITY_COOKIE } from "./local-identity-session"
+
 export type IdentityKind = "serviceAccount" | "user"
-type ProvisioningRole = "administrator" | "none" | "operator"
+export type ProvisioningRole = "administrator" | "none" | "operator"
 type JwtAlgorithm = "EdDSA" | "ES256" | "PS256" | "RS256"
 
-interface LocalIdentityConfig {
+interface LocalIdentityProfile {
   readonly email: string
-  readonly kind: "local"
+  readonly id: string
   readonly name: string
+  readonly provisioningRole: ProvisioningRole
   readonly subject: string
+}
+
+interface LocalIdentityConfig {
+  readonly cookieName: string
+  readonly kind: "local"
+  readonly profiles: ReadonlyArray<LocalIdentityProfile>
 }
 
 interface JwtIdentityConfig {
@@ -23,6 +32,7 @@ interface JwtIdentityConfig {
   readonly kindClaim: string
   readonly maxTokenAge: string
   readonly profile: "google-iap" | "standard"
+  readonly signOutPath: string
 }
 
 export interface AuthConfig {
@@ -86,6 +96,18 @@ function httpUrl(value: URL, name: string): URL {
   return value
 }
 
+function sameOriginPath(value: string, name: string): string {
+  if (!value.startsWith("/") || value.startsWith("//")) {
+    throw new AuthConfigurationError(`${name} must be a same-origin path.`)
+  }
+  const base = new URL("https://company-os.invalid")
+  const url = new URL(value, base)
+  if (url.origin !== base.origin) {
+    throw new AuthConfigurationError(`${name} must be a same-origin path.`)
+  }
+  return `${url.pathname}${url.search}${url.hash}`
+}
+
 const authMode = Config.string("AUTH_MODE").pipe(Config.withDefault("local"))
 
 /** Loads the identity assertion boundary without owning credentials or sessions. */
@@ -119,10 +141,31 @@ export const loadAuthConfig: Effect.Effect<
     })
     return {
       provider: {
-        email: local.email,
+        cookieName: LOCAL_IDENTITY_COOKIE,
         kind: "local",
-        name: local.name,
-        subject: local.subject,
+        profiles: [
+          {
+            email: local.email,
+            id: "administrator",
+            name: local.name,
+            provisioningRole: provisioningRole(local.role),
+            subject: local.subject,
+          },
+          {
+            email: "operator@company.test",
+            id: "operator",
+            name: "Local operator",
+            provisioningRole: "operator",
+            subject: "local-operator",
+          },
+          {
+            email: "restricted@company.test",
+            id: "restricted",
+            name: "Local restricted user",
+            provisioningRole: "none",
+            subject: "local-restricted",
+          },
+        ],
       },
       provisioningRole: provisioningRole(local.role),
     }
@@ -132,6 +175,9 @@ export const loadAuthConfig: Effect.Effect<
     const iap = yield* Config.all({
       audience: Config.nonEmptyString("AUTH_IAP_AUDIENCE"),
       role: Config.nonEmptyString("AUTH_JIT_ROLE"),
+      signOutPath: Config.nonEmptyString("AUTH_SIGN_OUT_PATH").pipe(
+        Config.withDefault("/?gcp-iap-mode=GCIP_SIGNOUT")
+      ),
     })
     return {
       provider: {
@@ -146,6 +192,7 @@ export const loadAuthConfig: Effect.Effect<
         kindClaim: "identity_type",
         maxTokenAge: "11m",
         profile: "google-iap",
+        signOutPath: sameOriginPath(iap.signOutPath, "AUTH_SIGN_OUT_PATH"),
       },
       provisioningRole: provisioningRole(iap.role),
     }
@@ -175,6 +222,7 @@ export const loadAuthConfig: Effect.Effect<
         Config.withDefault("10m")
       ),
       role: Config.nonEmptyString("AUTH_JIT_ROLE"),
+      signOutPath: Config.nonEmptyString("AUTH_SIGN_OUT_PATH"),
     })
     return {
       provider: {
@@ -189,6 +237,7 @@ export const loadAuthConfig: Effect.Effect<
         kindClaim: jwt.kindClaim,
         maxTokenAge: jwt.maxTokenAge,
         profile: "standard",
+        signOutPath: sameOriginPath(jwt.signOutPath, "AUTH_SIGN_OUT_PATH"),
       },
       provisioningRole: provisioningRole(jwt.role),
     }

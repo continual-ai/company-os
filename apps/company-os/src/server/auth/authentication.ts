@@ -21,6 +21,7 @@ import {
 } from "@/system-records"
 
 import { AuthSettings } from "./auth-config"
+import type { ProvisioningRole } from "./auth-config"
 import {
   IdentityBindingRepository,
   type BoundIdentity,
@@ -51,6 +52,22 @@ const make = Effect.gen(function* () {
   const roleAssignments = yield* RoleAssignmentService
   const serviceAccounts = yield* ServiceAccountService
   const users = yield* UserService
+
+  const provisioningRole = (
+    subject: AuthenticatedSubject
+  ): ProvisioningRole => {
+    if (
+      config.provider.kind === "local" &&
+      subject.issuer === "urn:company-os:local"
+    ) {
+      return (
+        config.provider.profiles.find(
+          (profile) => profile.subject === subject.subject
+        )?.provisioningRole ?? "none"
+      )
+    }
+    return config.provisioningRole
+  }
 
   const emailAddress = Effect.fn("@company/Authentication.emailAddress")(
     function* (email: string) {
@@ -137,10 +154,11 @@ const make = Effect.gen(function* () {
                 }))
               )
 
+        const initialRole = provisioningRole(subject)
         const role = grantInitialRole
-          ? config.provisioningRole === "administrator"
+          ? initialRole === "administrator"
             ? PLATFORM_ADMIN_ROLE_ID
-            : config.provisioningRole === "operator"
+            : initialRole === "operator"
               ? PLATFORM_OPERATOR_ROLE_ID
               : undefined
           : undefined

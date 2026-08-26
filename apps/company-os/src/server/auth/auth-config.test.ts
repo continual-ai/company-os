@@ -18,10 +18,31 @@ describe("authentication configuration", () => {
   it("defaults to a local administrator for development", async () => {
     await expect(load({})).resolves.toEqual({
       provider: {
-        email: "developer@company.test",
+        cookieName: "company-os-local-identity",
         kind: "local",
-        name: "Local developer",
-        subject: "developer",
+        profiles: [
+          {
+            email: "developer@company.test",
+            id: "administrator",
+            name: "Local developer",
+            provisioningRole: "administrator",
+            subject: "developer",
+          },
+          {
+            email: "operator@company.test",
+            id: "operator",
+            name: "Local operator",
+            provisioningRole: "operator",
+            subject: "local-operator",
+          },
+          {
+            email: "restricted@company.test",
+            id: "restricted",
+            name: "Local restricted user",
+            provisioningRole: "none",
+            subject: "local-restricted",
+          },
+        ],
       },
       provisioningRole: "administrator",
     })
@@ -35,6 +56,7 @@ describe("authentication configuration", () => {
       AUTH_JWT_ISSUER: "https://identity.example.com",
       AUTH_JWT_JWKS_URL: "https://identity.example.com/.well-known/jwks.json",
       AUTH_MODE: "jwt",
+      AUTH_SIGN_OUT_PATH: "/auth/sign-out",
     })
 
     expect(config).toMatchObject({
@@ -49,6 +71,7 @@ describe("authentication configuration", () => {
         kindClaim: "identity_type",
         maxTokenAge: "10m",
         profile: "standard",
+        signOutPath: "/auth/sign-out",
       },
       provisioningRole: "operator",
     })
@@ -72,6 +95,7 @@ describe("authentication configuration", () => {
         AUTH_JWT_ISSUER: "https://identity.example.com",
         AUTH_JWT_JWKS_URL: "https://identity.example.com/jwks.json",
         AUTH_MODE: "jwt",
+        AUTH_SIGN_OUT_PATH: "/auth/sign-out",
       })
     ).rejects.toThrow("AUTH_JWT_DEFAULT_IDENTITY_KIND")
     await expect(
@@ -81,6 +105,7 @@ describe("authentication configuration", () => {
         AUTH_JWT_ISSUER: "https://identity.example.com",
         AUTH_JWT_JWKS_URL: "file:///tmp/jwks.json",
         AUTH_MODE: "jwt",
+        AUTH_SIGN_OUT_PATH: "/auth/sign-out",
       })
     ).rejects.toThrow("must use HTTP or HTTPS")
   })
@@ -106,6 +131,7 @@ describe("authentication configuration", () => {
         kindClaim: "identity_type",
         maxTokenAge: "11m",
         profile: "google-iap",
+        signOutPath: "/?gcp-iap-mode=GCIP_SIGNOUT",
       },
       provisioningRole: "operator",
     })
@@ -118,7 +144,27 @@ describe("authentication configuration", () => {
         AUTH_JWT_ISSUER: "https://identity.example.com",
         AUTH_JWT_JWKS_URL: "https://identity.example.com/jwks.json",
         AUTH_MODE: "jwt",
+        AUTH_SIGN_OUT_PATH: "/auth/sign-out",
       })
     ).rejects.toThrow("AUTH_JIT_ROLE")
+  })
+
+  it("requires a same-origin sign-out path for a generic gateway", async () => {
+    const environment = {
+      AUTH_JIT_ROLE: "operator",
+      AUTH_JWT_AUDIENCE: "company-os",
+      AUTH_JWT_ISSUER: "https://identity.example.com",
+      AUTH_JWT_JWKS_URL: "https://identity.example.com/jwks.json",
+      AUTH_MODE: "jwt",
+    }
+    await expect(
+      load({
+        ...environment,
+        AUTH_SIGN_OUT_PATH: "https://identity.example.com/sign-out",
+      })
+    ).rejects.toThrow("AUTH_SIGN_OUT_PATH must be a same-origin path")
+    await expect(
+      load({ ...environment, AUTH_SIGN_OUT_PATH: "/\\attacker.example" })
+    ).rejects.toThrow("AUTH_SIGN_OUT_PATH must be a same-origin path")
   })
 })

@@ -186,7 +186,11 @@ decorative video should be muted, looping, inline, non-interactive, and paired w
 poster or still fallback. Under reduced motion, constrained bandwidth, or unsupported playback, the
 fallback must preserve the composition without requiring the animation. If a particular fork still
 owns a sign-in surface, apply the same standards there without making platform attribution the app
-identity or headline.
+identity or headline. Use that surface for recognition and anticipation: populate its company-owned
+entry presentation with a specific identity, broad but grounded headline, supporting outcomes from
+the requested operation, and one deliberate visual system. Do not substitute the authenticated
+home copy or let the entry page become the only branded reveal, because a deployment gateway may
+bypass it entirely.
 
 ## Make the first screen feel built for the work
 

@@ -57,6 +57,7 @@ function provider() {
       kindClaim: "identity_type",
       maxTokenAge: "10m",
       profile: "standard",
+      signOutPath: "/auth/sign-out",
     },
     provisioningRole: "operator",
   }
@@ -102,6 +103,60 @@ function assertion(input?: {
 }
 
 describe("IdentityProvider", () => {
+  it("uses a selected local development profile as the verified subject", async () => {
+    const config: AuthConfig = {
+      provider: {
+        cookieName: "company-os-local-identity",
+        kind: "local",
+        profiles: [
+          {
+            email: "operator@company.test",
+            id: "operator",
+            name: "Local operator",
+            provisioningRole: "operator",
+            subject: "local-operator",
+          },
+        ],
+      },
+      provisioningRole: "administrator",
+    }
+    const identityProvider = await Effect.runPromise(
+      IdentityProvider.pipe(
+        Effect.provide(
+          IdentityProvider.layer.pipe(
+            Layer.provide(Layer.succeed(AuthSettings, config))
+          )
+        )
+      )
+    )
+
+    await expect(
+      Effect.runPromise(identityProvider.identify(new Headers()))
+    ).resolves.toBeNull()
+    await expect(
+      Effect.runPromise(
+        identityProvider.identify(
+          new Headers({ cookie: "company-os-local-identity=operator" })
+        )
+      )
+    ).resolves.toEqual({
+      actor: {
+        email: "operator@company.test",
+        issuer: "urn:company-os:local",
+        kind: "user",
+        name: "Local operator",
+        subject: "local-operator",
+      },
+      authorizationSubject: {
+        email: "operator@company.test",
+        issuer: "urn:company-os:local",
+        kind: "user",
+        name: "Local operator",
+        subject: "local-operator",
+      },
+    })
+  })
+
   it("returns no subject when the gateway assertion is absent", async () => {
     const identityProvider = await Effect.runPromise(provider())
     await expect(

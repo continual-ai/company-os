@@ -2,6 +2,7 @@ import { Context, Data, Effect, Layer, Option, Schema } from "effect"
 import { createRemoteJWKSet, jwtVerify } from "jose"
 
 import { AuthSettings, type IdentityKind } from "./auth-config"
+import { localIdentityProfileId } from "./local-identity-session"
 
 export interface AuthenticatedSubject {
   readonly email: string | undefined
@@ -105,15 +106,19 @@ const make = Effect.gen(function* () {
   const provider = config.provider
 
   if (provider.kind === "local") {
-    const subject = {
-      email: provider.email,
-      issuer: "urn:company-os:local",
-      kind: "user" as const,
-      name: provider.name,
-      subject: provider.subject,
-    } satisfies AuthenticatedSubject
-    const identify: IdentityProviderService["identify"] = (_headers) =>
-      Effect.succeed({ actor: subject, authorizationSubject: subject })
+    const identify: IdentityProviderService["identify"] = (headers) => {
+      const profileId = localIdentityProfileId(headers, provider.cookieName)
+      const profile = provider.profiles.find(({ id }) => id === profileId)
+      if (profile === undefined) return Effect.succeed(null)
+      const subject = {
+        email: profile.email,
+        issuer: "urn:company-os:local",
+        kind: "user" as const,
+        name: profile.name,
+        subject: profile.subject,
+      } satisfies AuthenticatedSubject
+      return Effect.succeed({ actor: subject, authorizationSubject: subject })
+    }
     return { identify } satisfies IdentityProviderService
   }
 

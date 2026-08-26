@@ -35,10 +35,17 @@ const TestDatabase = PgliteClient.layer()
 
 const authConfig: AuthConfig = {
   provider: {
-    email: "owner@example.com",
+    cookieName: "company-os-local-identity",
     kind: "local",
-    name: "Owner",
-    subject: "owner",
+    profiles: [
+      {
+        email: "owner@example.com",
+        id: "owner",
+        name: "Owner",
+        provisioningRole: "administrator",
+        subject: "owner",
+      },
+    ],
   },
   provisioningRole: "administrator",
 }

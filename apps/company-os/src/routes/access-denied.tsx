@@ -1,5 +1,7 @@
+import { Button } from "@company/ui/components/button"
 import {
   Card,
+  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
@@ -27,10 +29,20 @@ function AccessDenied() {
         <CardHeader>
           <CardTitle>Access has not been granted</CardTitle>
           <CardDescription>
-            Authentication is managed by the deployment gateway. Ask its
-            administrator to grant this identity access, then reload the app.
+            This identity is verified but does not have access to this
+            application. Ask an administrator to grant access, or try another
+            account.
           </CardDescription>
         </CardHeader>
+        <CardContent>
+          <Button
+            variant="outline"
+            nativeButton={false}
+            render={<a href="/sign-out" aria-label="Try another account" />}
+          >
+            Try another account
+          </Button>
+        </CardContent>
       </Card>
     </main>
   )
