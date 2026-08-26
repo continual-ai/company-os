@@ -18,9 +18,11 @@ package names, folder names, and imports remain stable. Each app owns its own na
 The example model defines `Platform` as the semantic root of its ownership hierarchy and exercises
 both platform-level and nested objects, interface-backed polymorphic links, and conventional object
 reads and CRUD actions. Object definitions live under `src/objects`, relationship definitions under
-`src/links`, and `Model` indexes them publicly as objects, links, interfaces, and actions. Every
-object declares its canonical parent type independently of its business links; for example, a line
-item is owned by a deal while CRM associations remain ordinary links.
+`src/links`, and `Model` indexes them publicly as objects, links, interfaces, and actions.
+`src/foundation.ts` composes actors, identity, authorization, party, and installation concepts;
+`src/company-composition.ts` composes the replaceable starter business model. Every object declares
+its canonical parent type independently of its business links; for example, a line item is owned by
+a deal while CRM associations remain ordinary links.
 
 Each link defines complete `forward` and `reverse` traversals. The closed `Model` verifies that
 their endpoints mirror each other and derives singular relationship properties such as

@@ -22,6 +22,14 @@ import protection treats `src/server` as a hard server-only boundary. Reserve `.
 exceptional server-only modules that must remain colocated elsewhere, and use `.functions.ts` for
 client-callable `createServerFn` wrappers.
 
+## Company experience
+
+`src/company` is the source-owned customer overlay. Its config and theme cover shallow product
+identity, asset, and token changes; its navigation and home modules own the initial operating
+experience. Core shell, authentication, design-system, table, form, and accessibility behavior stay
+shared. When a use case requires new business behavior, extend the model and governed server path
+rather than encoding policy in the overlay or turning the config into a page schema.
+
 ## Server organization
 
 The server mirrors the ontology without creating aggregate runtime services for navigation areas.
@@ -55,21 +63,31 @@ Effect PostgreSQL client
 - Handlers call the governed service method corresponding to the declared object query or action.
 - Cross-object service methods coordinate governed object services and own their transaction.
 - Object services are the authoritative boundary for authorization, portable schema validation,
-  caller-owned metadata, audit identity, write preconditions, and object-level behavior, regardless
+  caller-owned metadata, audit actors, write preconditions, and object-level behavior, regardless
   of whether the caller is HTTP, MCP, an agent, a job, or another service.
 - Repositories atomically maintain the shared object row, same-ID object-specific row, and declared
   interface membership rows, assign entity tags and storage timestamps, implement all-or-nothing
   batch writes, and own custom persistence queries; only repository implementations access the
   database, and they do not duplicate portable property validation as SQL checks.
 
-Authorization uses the same ontology and storage path as business data. An authenticated identity
-acts as itself and as every group it belongs to. Role assignments grant exact model-derived
-capabilities to a principal at an authorization scope; the grant applies to that scope and its
-ownership descendants. Object services deny by default, authorize batches atomically, conceal
-unreadable records as missing, and constrain lists in SQL before filtering or pagination. The
-authorization repository is a read-optimized projection over those ordinary objects and links,
-not a second policy database. Decisions read current group membership and role assignments with
-set-based SQL rather than caching policy state or issuing queries per target.
+Authorization uses the same ontology and storage path as business data. An identity acts as itself,
+as every group it belongs to, and as the system-defined principal sets implied by its authentication
+state. `allCallers` also applies without credentials; `allAuthenticatedCallers` applies whenever the
+configured authentication boundary accepts credentials, including before a User is admitted.
+Role assignments grant exact model-derived capabilities to a principal at an authorization scope;
+the grant applies to that scope and its ownership descendants. Object services deny by default,
+authorize batches atomically, conceal unreadable records as missing, and constrain lists in SQL
+before filtering or pagination. The authorization repository is a read-optimized projection over
+those ordinary objects and links, not a second policy database. Decisions read current group
+membership and role assignments with set-based SQL rather than caching policy state or issuing
+queries per target.
+
+Clients may batch advisory UI checks through `POST /api/v1/capabilities:check`. Each check names
+one model-derived permission and may name a canonical target; omitting the target asks whether the
+caller has that permission at any scope. The endpoint accepts anonymous requests, validates any
+credentials that are supplied, preserves request order, and returns only `allowed` booleans so
+concealed resources and denied resources remain indistinguishable. It never replaces enforcement:
+CRUD and custom action services evaluate the same policy again inside their transaction.
 
 `systemManaged` is immutable ownership provenance on the shared object row. It does not grant read
 access or replace hierarchy: ordinary actors follow normal role inheritance but cannot update or
@@ -78,15 +96,16 @@ seeds, jobs, and named workflows. It receives permissions through the same role 
 other identities; its only special authority is managing system-owned records, and it still passes
 through validation, transactions, and domain invariants.
 
-An invocation boundary authenticates external credentials, resolves them to a canonical Identity
-record ID, rejects the reserved system actor, and provides `CurrentInvocation` through
-`authenticatedInvocation`. A User authenticates with a Better Auth browser session; a
-ServiceAccount authenticates with one of its Company OS API keys. Both resolve directly to an
-`InvocationContext` whose `actorId` is that Identity. Groups do not authenticate: authorization
-expands the actor to the applicable Principals, including its groups. The server pins the Platform
-root; callers never choose it from request data. Internal entrypoints explicitly use
-`systemInvocation`. HTTP, MCP, jobs, and agents should otherwise differ only in how they establish
-that trusted context before calling the same governed services.
+The request boundary distinguishes anonymous callers, authenticated subjects that have not been
+admitted, and canonical local identities. A User authenticates with a Better Auth browser session
+and a ServiceAccount with a Company OS API key. Those two objects implement `Identity`, while the
+model's audit-only `AnonymousActor` represents operations deliberately allowed without an
+authenticated identity. It is displayed as “Anonymous,” is not a User, Identity, or Principal, and
+cannot receive roles. Groups and principal sets do not authenticate; authorization expands caller
+state into the applicable Principals. The server pins the Platform root, rejects external use of
+the reserved system actor, and uses `systemInvocation` only for trusted internal entrypoints. HTTP,
+MCP, jobs, and agents should otherwise differ only in how they establish that trusted context
+before calling the same governed services.
 
 Better Auth owns only OIDC protocol state and browser sessions in the private `auth` PostgreSQL
 schema. Company OS owns the canonical User, ServiceAccount, Invitation, API key metadata, role
@@ -113,10 +132,11 @@ SDKs and organization models stay outside the application boundary; changing pro
 OIDC configuration. Replacing a provider does not require application-code changes, but an existing
 installation still needs an explicit identity-reconciliation plan before changing issuers.
 
-`IdentityId` and `PrincipalId` are derived from the closed `Model`, so each is the branded union
-of its interface's concrete implementers. `actorId` names an identity in invocation and
-authorization internals; `principal` names the identity-or-group relationship on role assignments.
-There is no separate `ActorId` brand or Actor object.
+`ActorId`, `IdentityId`, and `PrincipalId` are derived from the closed `Model`, so each is the
+branded union of its interface's concrete implementers. `Actor` is `User | ServiceAccount |
+AnonymousActor`; `Identity` is `User | ServiceAccount`; and `Principal` is `User | ServiceAccount |
+Group | PrincipalSet`. Invocation and audit fields use `actorId`; authenticated caller state uses
+`identityId`; role assignments use `principal`.
 
 The portable repository contract and standard service behavior come from `@company/runtime`;
 `@company/postgres` supplies the reusable Drizzle schema compiler and repository implementation.
@@ -128,15 +148,17 @@ metadata. Portable records expose `parent`; generated Drizzle rows use
 remains identical to the generic parent on the shared object row. Ordinary record-reference
 properties use their semantic relationship name plus `Id`, such as `companyId`; ownership always
 uses `parentId` regardless of the parent's concrete type. The shared row also stores complete
-ancestry and references the model-declared Identity interface from its audit actor columns.
+ancestry and references the model-declared Actor interface from its audit actor columns.
 Globally unique opaque aliases live in normalized `record_aliases` rows and are hydrated
 as the standard `aliases` set on every public object record. Repository transactions claim and
-release those rows with the corresponding object write; the model-storage resolver can therefore
-locate an object by alias without first knowing its object type. Well-known source-owned records
-instead use stable, readable canonical IDs such as `service_account_system`; prefixes are
-diagnostic only and code never infers behavior from them. The shared object-service factory
-validates the expected object or interface type, canonicalizes every reference, and then authorizes
-the request. Repositories and stored foreign keys receive canonical IDs only. Files under
+release those rows with the corresponding object write; the PostgreSQL adapter can therefore
+locate an object by alias without first knowing its object type. The application-owned record
+identifier resolver validates the expected object or interface before returning a canonical ID.
+Well-known source-owned records instead use stable, readable canonical IDs such as
+`service_account_system`; prefixes are
+diagnostic only and code never infers behavior from them. The shared object-service factory uses
+that resolver to canonicalize every reference and then authorizes the request. Repositories and
+stored foreign keys receive canonical IDs only. Files under
 `src/server/objects` keep each object's service beside its repository. Add an object-specific
 repository query only when the standard object query language cannot express the required
 persistence operation. The composition root wires Layers to infrastructure; it does not become
@@ -182,10 +204,10 @@ variables may enter browser code; database, Better Auth, OIDC, and bootstrap val
 server-only. The `.env.local` file is ignored and `.env.example` contains no usable secrets.
 
 `db:migrate` applies only migrations not already recorded by
-Drizzle. `db:seed` idempotently converges the built-in Platform, system identity, administrator
-role, and initial role assignment through stable canonical IDs. `db:deploy` performs both in that
+Drizzle. `db:seed` idempotently converges the built-in Platform, system identity, principal sets,
+roles, and initial role assignments through stable canonical IDs. `db:deploy` performs both in that
 order and is the normal setup and release command. Raw persistence establishes only the cyclic
-Platform and audit Identity needed to begin; repositories converge the concrete system account and
+Platform and system Actor needed to begin; repositories converge the concrete system account and
 all remaining records. All three commands are safe to run repeatedly.
 
 ### Change the pre-deployment baseline
@@ -223,7 +245,7 @@ first shared deployment, preserve the baseline and generate a descriptive migrat
 Drizzle does not currently represent PostgreSQL constraint deferrability in its schema definition.
 Any migration that creates or replaces the `objects.created_by_id` or `objects.updated_by_id`
 foreign key must retain `DEFERRABLE INITIALLY DEFERRED`; bootstrapping the mutually dependent
-Platform and system Identity requires those checks to run at transaction commit. The migration
+Platform and system Actor requires those checks to run at transaction commit. The migration
 integration test verifies the resulting PostgreSQL constraints directly.
 
 For SQL that Drizzle cannot derive, generate an empty, tracked migration instead of creating an
@@ -298,7 +320,7 @@ Open <http://localhost:3002>. Useful endpoints:
 - `GET /health` — process health
 - `/sign-in` — OIDC sign-in
 - `/api/auth/*` — Better Auth protocol and callback endpoints
-- `/api/v1/*` — authenticated object reads, mutations, and declared business actions
+- `/api/v1/*` — governed object reads, mutations, declared actions, and capability checks
 - `GET /api/description` — serializable API projection of `Model`
 - `GET /api/openapi` — runtime-derived OpenAPI 3.1 contract
 - `GET /api/docs` — generated Scalar API reference

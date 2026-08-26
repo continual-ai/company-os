@@ -3,7 +3,7 @@ import { and, eq } from "drizzle-orm"
 import { Context, Effect, Layer } from "effect"
 
 import { Database } from "@/server/database/database"
-import { makeObjectRepository } from "@/server/database/model-storage"
+import { makeObjectRepository } from "@/server/database/object-repository"
 import { objects, roleAssignments } from "@/server/database/schema"
 
 const make = Effect.gen(function* () {

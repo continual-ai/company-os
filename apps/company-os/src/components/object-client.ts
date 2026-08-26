@@ -1,4 +1,4 @@
-/* oxlint-disable anti-slop/no-reflect-get */
+/* oxlint-disable anti-slop/no-reflect-get, anti-slop/no-runtime-typeof -- This model adapter validates reflected endpoints before invoking them. */
 import { Model } from "@company/model"
 import {
   modelTypeAccepts,
@@ -6,8 +6,10 @@ import {
   type Page,
   type PropertyDefinition,
 } from "@company/runtime"
+import { httpEndpointId } from "@company/runtime/effect/http"
+import { Effect } from "effect"
 
-import { companyClient } from "@/company-client"
+import { companyApi } from "@/company-client"
 
 import { objectTableValueText } from "./object-table/object-table-config"
 import type { ObjectTableRecord } from "./object-table/object-table-config"
@@ -49,14 +51,81 @@ export interface DynamicObjectClient {
   ) => Promise<ClientRecord>
 }
 
+interface NativeEndpointRequest {
+  readonly params?: { readonly id: string }
+  readonly payload?:
+    | ListRequest
+    | Readonly<Record<string, ClientValue | undefined>>
+    | { readonly ids: ReadonlyArray<string> }
+  readonly query?: ListRequest | { readonly etag?: string }
+}
+
+type NativeEndpoint = (
+  request: NativeEndpointRequest
+) => Effect.Effect<unknown, unknown>
+
+type DynamicObjectClientBuilder = {
+  -readonly [TKey in keyof DynamicObjectClient]: DynamicObjectClient[TKey]
+}
+
+function nativeEndpoint(
+  object: ModelObject,
+  operation: string
+): NativeEndpoint {
+  const group = Reflect.get(companyApi, object.id)
+  const endpoint = Reflect.get(group, httpEndpointId(operation, object))
+  if (typeof endpoint !== "function") {
+    throw new Error(`HTTP endpoint '${object.id}.${operation}' is not defined.`)
+  }
+  // SAFETY: applicationHttpApi and this adapter are projected from the same
+  // closed Model; native HttpApiClient owns request encoding and response decoding.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  return endpoint as NativeEndpoint
+}
+
+async function runEndpoint<TResult>(
+  endpoint: NativeEndpoint,
+  request: NativeEndpointRequest
+): Promise<TResult> {
+  // SAFETY: every endpoint result is decoded by its schema in applicationHttpApi.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  return Effect.runPromise(endpoint(request)) as Promise<TResult>
+}
+
 export function clientFor(object: ModelObject): DynamicObjectClient {
-  // SAFETY: createClient and this adapter consume the same closed Model, so a
-  // collection key always resolves to the corresponding object client.
-  // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion
-  return Reflect.get(
-    companyClient,
-    object.collection
-  ) as unknown as DynamicObjectClient
+  const list = nativeEndpoint(object, "list")
+  const search = nativeEndpoint(object, "search")
+  const client: DynamicObjectClientBuilder = {
+    list(request = {}) {
+      return request.filter === undefined && request.sort === undefined
+        ? runEndpoint(list, { query: request })
+        : runEndpoint(search, { payload: request })
+    },
+  }
+
+  if ("batchDelete" in object.actions) {
+    const endpoint = nativeEndpoint(object, "batchDelete")
+    client.batchDelete = (input) => runEndpoint(endpoint, { payload: input })
+  }
+  if ("create" in object.actions) {
+    const endpoint = nativeEndpoint(object, "create")
+    client.create = (input) => runEndpoint(endpoint, { payload: input })
+  }
+  if ("delete" in object.actions) {
+    const endpoint = nativeEndpoint(object, "delete")
+    client.delete = ({ etag, id }) =>
+      runEndpoint(endpoint, {
+        params: { id },
+        query: etag === undefined ? {} : { etag },
+      })
+  }
+  if ("update" in object.actions) {
+    const endpoint = nativeEndpoint(object, "update")
+    client.update = ({ id, ...payload }) =>
+      runEndpoint(endpoint, { params: { id }, payload })
+  }
+
+  return client
 }
 
 export function modelObjectProperty(

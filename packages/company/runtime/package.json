@@ -7,7 +7,6 @@
   "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",
-    "./client": "./src/client.ts",
     "./effect": "./src/effect-schema.ts",
     "./effect/http": "./src/effect-http.ts",
     "./effect/object-repository": "./src/effect-object-repository.ts",

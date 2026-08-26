@@ -1,7 +1,7 @@
 import { Model } from "@company/model"
 import { Context, Layer } from "effect"
 
-import { makeObjectRepository } from "@/server/database/model-storage"
+import { makeObjectRepository } from "@/server/database/object-repository"
 
 export class GroupMembershipRepository extends Context.Service<GroupMembershipRepository>()(
   "@company/GroupMembershipRepository",

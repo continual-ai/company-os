@@ -19,10 +19,16 @@ import { Context, Data, Effect, Layer } from "effect"
 import { HttpRouter, HttpServer } from "effect/unstable/http"
 import { HttpApiBuilder, type HttpApiEndpoint } from "effect/unstable/httpapi"
 
-import { internalApiError, withApiErrors } from "./api-error"
+import { applicationHttpApi } from "@/http-api"
+
+import {
+  internalApiError,
+  unauthenticatedApiError,
+  withApiErrors,
+} from "./api-error"
 import { Authentication } from "./auth/authentication"
 import { UserAuthentication } from "./auth/user-authentication"
-import { applicationHttpApi } from "./http-contract"
+import { Authorization } from "./authorization/authorization-service"
 import { ApiKeyService } from "./objects/api-key-service"
 import { InvitationService } from "./objects/invitation-service"
 import { LeadService } from "./objects/lead-service"
@@ -126,10 +132,10 @@ function invitationIdentifier(
   return isRecordAlias(value) ? value : RecordId("invitation")(value)
 }
 
-function authenticated(
+function authenticated<A, E>(
   authentication: Authentication["Service"],
   request: HandlerRequest,
-  operation: OperationEffect
+  operation: Effect.Effect<A, E, CurrentInvocation>
 ) {
   return authentication.authenticate(requestHeaders(request)).pipe(
     Effect.flatMap((invocation) =>
@@ -207,6 +213,7 @@ function standardHandlers(
 
 const make = Effect.gen(function* () {
   const authentication = yield* Authentication
+  const authorization = yield* Authorization
   const userAuthentication = yield* UserAuthentication
   const apiKeys = yield* ApiKeyService
   const invitations = yield* InvitationService
@@ -221,6 +228,7 @@ const make = Effect.gen(function* () {
   const leadActions = applicationService<LeadActions>(leads)
   const standard = yield* StandardObjectServices
   const services = {
+    anonymousActor: standard.anonymousActor,
     apiKey: apiKeys,
     company: standard.company,
     contact: standard.contact,
@@ -231,6 +239,7 @@ const make = Effect.gen(function* () {
     invitation: invitations,
     lead: leads,
     lineItem: standard.lineItem,
+    principalSet: standard.principalSet,
     role: standard.role,
     roleAssignment: yield* RoleAssignmentService,
     serviceAccount: serviceAccounts,
@@ -362,9 +371,33 @@ const make = Effect.gen(function* () {
   if (firstGroupLayer === undefined) {
     return yield* Effect.die("The application model contains no API objects.")
   }
-  const groupsLayer = groupLayers
+  const objectGroupsLayer = groupLayers
     .slice(1)
     .reduce((layers, group) => Layer.merge(layers, group), firstGroupLayer)
+  const capabilityGroupLayer = HttpApiBuilder.group(
+    applicationHttpApi,
+    "capabilities",
+    (handlers) =>
+      handlers.handle("checkCapabilities", (request) =>
+        authentication.identify(requestHeaders(request)).pipe(
+          Effect.mapError(() =>
+            unauthenticatedApiError("Authentication credentials are invalid.")
+          ),
+          Effect.flatMap((caller) =>
+            authorization
+              .checkCapabilitiesFor(caller, request.payload.checks)
+              .pipe(
+                Effect.catch((error) =>
+                  Effect.logError("Capability evaluation failed", error).pipe(
+                    Effect.andThen(Effect.fail(internalApiError()))
+                  )
+                )
+              )
+          )
+        )
+      )
+  )
+  const groupsLayer = Layer.merge(objectGroupsLayer, capabilityGroupLayer)
   const apiLayer = HttpApiBuilder.layer(applicationHttpApi).pipe(
     Layer.provide(groupsLayer),
     Layer.provide(HttpValidationMiddleware.layer),

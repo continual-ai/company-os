@@ -1,8 +1,9 @@
 import { Model } from "@company/model"
 import { RecordId } from "@company/runtime"
 import { createFileRoute } from "@tanstack/react-router"
+import { Effect } from "effect"
 
-import { companyClient } from "@/company-client"
+import { companyApi } from "@/company-client"
 import { ConfirmActionButton } from "@/components/confirm-action-button"
 import { ObjectCollection } from "@/components/object-collection"
 import type { ObjectTableRecord } from "@/components/object-table/object-table-config"
@@ -20,13 +21,15 @@ export const Route = createFileRoute("/_app/leads")({
 })
 
 function LeadActions({
+  canConvert,
   record,
   refresh,
 }: {
+  readonly canConvert: boolean
   readonly record: ObjectTableRecord
   readonly refresh: () => Promise<void>
 }) {
-  if (record.convertedAt !== null) return null
+  if (!canConvert || record.convertedAt !== null) return null
   return (
     <ConfirmActionButton
       actionLabel="Convert"
@@ -34,7 +37,11 @@ function LeadActions({
       title="Convert this lead?"
       description="This atomically creates a company and contact linked to the lead."
       onConfirm={async () => {
-        await companyClient.leads.convert({ id: RecordId("lead")(record.id) })
+        await Effect.runPromise(
+          companyApi.lead.convertLead({
+            params: { id: RecordId("lead")(record.id) },
+          })
+        )
         await refresh()
       }}
     />
@@ -45,8 +52,12 @@ function LeadsPage() {
   return (
     <ObjectCollection
       object={Model.objects.lead}
-      renderRecordActions={(record, refresh) => (
-        <LeadActions record={record} refresh={refresh} />
+      renderRecordActions={(record, { can, refresh }) => (
+        <LeadActions
+          canConvert={can("convert")}
+          record={record}
+          refresh={refresh}
+        />
       )}
     />
   )

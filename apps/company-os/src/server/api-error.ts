@@ -63,7 +63,9 @@ function stringArrayProperty(
     : undefined
 }
 
-function unauthenticated(message: string): StandardApiError {
+export function unauthenticatedApiError(
+  message: string
+): ApiError<typeof UnauthenticatedError> {
   return {
     details: {},
     message,
@@ -82,7 +84,7 @@ function permissionDenied(message: string): StandardApiError {
 }
 
 /** Returns the sanitized envelope for a failure with no safe public meaning. */
-export function internalApiError(): StandardApiError {
+export function internalApiError(): ApiError<typeof InternalError> {
   return {
     details: {},
     message: "The server could not complete the request.",
@@ -313,7 +315,9 @@ function translateApiError(error: unknown): StandardApiError | undefined {
     error._tag === "InvalidSession" ||
     error._tag === "UnsupportedAuthorization"
   ) {
-    return unauthenticated("Valid authentication credentials are required.")
+    return unauthenticatedApiError(
+      "Valid authentication credentials are required."
+    )
   }
   if (
     error._tag === "FirstUserRejected" ||

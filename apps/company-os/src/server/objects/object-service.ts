@@ -4,8 +4,9 @@ import * as ObjectService from "@company/runtime/effect/object-service"
 import { Effect } from "effect"
 
 import { Authorization } from "@/server/authorization/authorization-service"
-import { makeRecordAliasResolver } from "@/server/database/model-storage"
 import { PLATFORM_ID } from "@/system-records"
+
+import { RecordIdentifierResolver } from "./record-identifier-resolver"
 
 /** Applies application policy and identity resolution to an object repository. */
 export function makeObjectService<
@@ -18,12 +19,12 @@ export function makeObjectService<
 ) {
   return Effect.gen(function* () {
     const authorization = yield* Authorization
-    const resolveRecordAliases = yield* makeRecordAliasResolver
+    const identifiers = yield* RecordIdentifierResolver
 
     return ObjectService.make(object, repository, {
       authorize: authorization.require,
       rootId: PLATFORM_ID,
-      resolveRecordAliases,
+      resolveRecordAliases: identifiers.resolveAliases,
       visibleWithin: authorization.visibleWithin,
     })
   })

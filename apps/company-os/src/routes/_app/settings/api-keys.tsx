@@ -14,10 +14,11 @@ import {
 import { FieldError } from "@company/ui/components/field"
 import { Input } from "@company/ui/components/input"
 import { createFileRoute } from "@tanstack/react-router"
+import { Effect } from "effect"
 import { KeyRoundIcon } from "lucide-react"
 import { useState } from "react"
 
-import { companyClient } from "@/company-client"
+import { companyApi } from "@/company-client"
 import { ConfirmActionButton } from "@/components/confirm-action-button"
 import { decodeFormSchema, FormValidationError } from "@/components/form-errors"
 import { FormField } from "@/components/form-field"
@@ -78,7 +79,9 @@ function IssueApiKey({ refresh }: { readonly refresh: () => Promise<void> }) {
   const submission = useFormSubmission({
     fallback: "Issuing the key failed.",
     onSubmit: async (data) => {
-      const issued = await companyClient.apiKeys.issue(decodeIssueInput(data))
+      const issued = await Effect.runPromise(
+        companyApi.apiKey.issueApiKeys({ payload: decodeIssueInput(data) })
+      )
       setSecret(issued.secret)
       await refresh().catch(() => undefined)
     },
@@ -201,22 +204,26 @@ function IssueApiKey({ refresh }: { readonly refresh: () => Promise<void> }) {
 }
 
 function ApiKeyActions({
+  canRevoke,
   record,
   refresh,
 }: {
+  readonly canRevoke: boolean
   readonly record: ObjectTableRecord
   readonly refresh: () => Promise<void>
 }) {
-  if (record.revokedAt !== null) return null
+  if (!canRevoke || record.revokedAt !== null) return null
   return (
     <ConfirmActionButton
       actionLabel="Revoke"
       title="Revoke this API key?"
       description="Requests using this key will fail immediately."
       onConfirm={async () => {
-        await companyClient.apiKeys.revoke({
-          id: RecordId("apiKey")(record.id),
-        })
+        await Effect.runPromise(
+          companyApi.apiKey.revokeApiKey({
+            params: { id: RecordId("apiKey")(record.id) },
+          })
+        )
         await refresh()
       }}
     />
@@ -227,9 +234,15 @@ function ApiKeysSettings() {
   return (
     <ObjectCollection
       object={Model.objects.apiKey}
-      renderCollectionActions={(refresh) => <IssueApiKey refresh={refresh} />}
-      renderRecordActions={(record, refresh) => (
-        <ApiKeyActions record={record} refresh={refresh} />
+      renderCollectionActions={({ can, refresh }) =>
+        can("issue") ? <IssueApiKey refresh={refresh} /> : null
+      }
+      renderRecordActions={(record, { can, refresh }) => (
+        <ApiKeyActions
+          canRevoke={can("revoke")}
+          record={record}
+          refresh={refresh}
+        />
       )}
     />
   )

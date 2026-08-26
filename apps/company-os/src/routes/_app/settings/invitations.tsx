@@ -14,10 +14,11 @@ import {
 import { Field, FieldError, FieldLabel } from "@company/ui/components/field"
 import { Input } from "@company/ui/components/input"
 import { createFileRoute } from "@tanstack/react-router"
+import { Effect } from "effect"
 import { MailPlusIcon } from "lucide-react"
 import { useState } from "react"
 
-import { companyClient } from "@/company-client"
+import { companyApi } from "@/company-client"
 import { ConfirmActionButton } from "@/components/confirm-action-button"
 import { decodeFormSchema, FormValidationError } from "@/components/form-errors"
 import { FormField } from "@/components/form-field"
@@ -80,8 +81,10 @@ function IssueInvitation({
   const submission = useFormSubmission({
     fallback: "Issuing the invitation failed.",
     onSubmit: async (data) => {
-      const issued = await companyClient.invitations.issue(
-        decodeIssueInput(data)
+      const issued = await Effect.runPromise(
+        companyApi.invitation.issueInvitations({
+          payload: decodeIssueInput(data),
+        })
       )
       setRedemptionToken(issued.redemptionToken)
       await refresh().catch(() => undefined)
@@ -220,22 +223,26 @@ function IssueInvitation({
 }
 
 function InvitationActions({
+  canRevoke,
   record,
   refresh,
 }: {
+  readonly canRevoke: boolean
   readonly record: ObjectTableRecord
   readonly refresh: () => Promise<void>
 }) {
-  if (record.status !== "pending") return null
+  if (!canRevoke || record.status !== "pending") return null
   return (
     <ConfirmActionButton
       actionLabel="Revoke"
       title="Revoke this invitation?"
       description="The one-time redemption token will stop working immediately."
       onConfirm={async () => {
-        await companyClient.invitations.revoke({
-          id: RecordId("invitation")(record.id),
-        })
+        await Effect.runPromise(
+          companyApi.invitation.revokeInvitation({
+            params: { id: RecordId("invitation")(record.id) },
+          })
+        )
         await refresh()
       }}
     />
@@ -246,11 +253,15 @@ function InvitationsSettings() {
   return (
     <ObjectCollection
       object={Model.objects.invitation}
-      renderCollectionActions={(refresh) => (
-        <IssueInvitation refresh={refresh} />
-      )}
-      renderRecordActions={(record, refresh) => (
-        <InvitationActions record={record} refresh={refresh} />
+      renderCollectionActions={({ can, refresh }) =>
+        can("issue") ? <IssueInvitation refresh={refresh} /> : null
+      }
+      renderRecordActions={(record, { can, refresh }) => (
+        <InvitationActions
+          canRevoke={can("revoke")}
+          record={record}
+          refresh={refresh}
+        />
       )}
     />
   )

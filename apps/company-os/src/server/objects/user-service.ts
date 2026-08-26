@@ -1,6 +1,5 @@
 import { Model } from "@company/model"
 import {
-  isRecordAlias,
   RecordId,
   type ObjectRecord,
   type RecordIdentifier,
@@ -11,11 +10,11 @@ import { Context, Data, Effect, Layer } from "effect"
 import { IdentityBindingRepository } from "@/server/auth/identity-binding-repository"
 import { Authorization } from "@/server/authorization/authorization-service"
 import { Database } from "@/server/database/database"
-import { makeRecordAliasResolver } from "@/server/database/model-storage"
 import { currentActorId } from "@/server/invocation-context"
 import { PLATFORM_ID } from "@/system-records"
 
 import { makeObjectService } from "./object-service"
+import { RecordIdentifierResolver } from "./record-identifier-resolver"
 import { UserRepository } from "./user-repository"
 
 class LastActivePlatformAdministrator extends Data.TaggedError(
@@ -28,16 +27,14 @@ const make = Effect.gen(function* () {
   const authorization = yield* Authorization
   const database = yield* Database
   const identityBindings = yield* IdentityBindingRepository
+  const identifiers = yield* RecordIdentifierResolver
   const repository = yield* UserRepository
-  const resolveAliases = yield* makeRecordAliasResolver
   const base = yield* makeObjectService(Model.objects.user, repository)
 
   const resolveId = Effect.fn("@company/UserService.resolveId")(function* (
     identifier: RecordIdentifier<"user">
   ) {
-    return isRecordAlias(identifier)
-      ? RecordId("user")((yield* resolveAliases("user", [identifier]))[0]!)
-      : RecordId("user")(identifier)
+    return yield* identifiers.resolve("user", identifier)
   })
 
   const provision = Effect.fn("@company/UserService.provision")(function* (
@@ -69,7 +66,6 @@ const make = Effect.gen(function* () {
       Effect.gen(function* () {
         yield* authorization.requireAction({
           actionId: status === "active" ? "reactivate" : "suspend",
-          modifiesTarget: true,
           objectType: "user",
           recordIds: [id],
         })

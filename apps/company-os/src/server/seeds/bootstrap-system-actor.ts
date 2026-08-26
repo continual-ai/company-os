@@ -4,6 +4,7 @@ import { Data, Effect } from "effect"
 
 import { Database } from "@/server/database/database"
 import {
+  actors,
   authorizationScopes,
   identities,
   objects,
@@ -81,6 +82,10 @@ export const bootstrapSystemActor = Effect.fn("@company/bootstrapSystemActor")(
               updatedById: SYSTEM_SERVICE_ACCOUNT_ID,
             },
           })
+        yield* transaction
+          .insert(actors)
+          .values({ id: SYSTEM_SERVICE_ACCOUNT_ID })
+          .onConflictDoNothing()
         yield* transaction
           .insert(identities)
           .values({ id: SYSTEM_SERVICE_ACCOUNT_ID })

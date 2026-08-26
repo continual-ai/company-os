@@ -1,6 +1,7 @@
 import { Model } from "@company/model"
 import { Context, Effect, Layer } from "effect"
 
+import { AnonymousActorRepository } from "./anonymous-actor-repository"
 import { CompanyRepository } from "./company-repository"
 import { ContactRepository } from "./contact-repository"
 import { DealRepository } from "./deal-repository"
@@ -9,10 +10,15 @@ import { GroupRepository } from "./group-repository"
 import { InteractionRepository } from "./interaction-repository"
 import { LineItemRepository } from "./line-item-repository"
 import { makeObjectService } from "./object-service"
+import { PrincipalSetRepository } from "./principal-set-repository"
 import { RoleRepository } from "./role-repository"
 
 const make = Effect.gen(function* () {
   return {
+    anonymousActor: yield* makeObjectService(
+      Model.objects.anonymousActor,
+      yield* AnonymousActorRepository
+    ),
     company: yield* makeObjectService(
       Model.objects.company,
       yield* CompanyRepository
@@ -37,6 +43,10 @@ const make = Effect.gen(function* () {
     lineItem: yield* makeObjectService(
       Model.objects.lineItem,
       yield* LineItemRepository
+    ),
+    principalSet: yield* makeObjectService(
+      Model.objects.principalSet,
+      yield* PrincipalSetRepository
     ),
     role: yield* makeObjectService(Model.objects.role, yield* RoleRepository),
   }

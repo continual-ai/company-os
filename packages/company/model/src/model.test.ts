@@ -10,7 +10,7 @@ import {
 } from "@company/runtime"
 import { describe, expect, expectTypeOf, it } from "vitest"
 
-import { Model, type IdentityId, type PrincipalId } from "./index"
+import { Model, type ActorId, type IdentityId, type PrincipalId } from "./index"
 import { modelMetadata } from "./metadata"
 
 const ContactPrimaryCompany = Model.links.contactPrimaryCompany
@@ -20,16 +20,18 @@ describe("model contract", () => {
     const description = createApiDescription(Model)
 
     expect(description).toMatchObject({
-      actor: { typeId: "identity" },
+      actor: { typeId: "actor" },
       api: { id: "operatingSystem", name: modelMetadata.name },
       root: { id: "platform", kind: "root", name: "Platform" },
-      version: "0.25",
+      version: "0.26",
     })
     expect(description.objects.map((object) => object.id)).toEqual([
       "user",
       "serviceAccount",
+      "anonymousActor",
       "apiKey",
       "group",
+      "principalSet",
       "groupMembership",
       "role",
       "roleAssignment",
@@ -42,6 +44,7 @@ describe("model contract", () => {
       "interaction",
     ])
     expect(description.interfaces.map((item) => item.id)).toEqual([
+      "actor",
       "authorizationScope",
       "identity",
       "party",
@@ -58,6 +61,7 @@ describe("model contract", () => {
         .filter((action) => action.objectType === "lead")
         .map((action) => action.id)
     ).toEqual(["create", "update", "delete", "batchDelete", "convert"])
+    expect(Model.actions.invitation.accept.id).toBe("accept")
     expect(description.links.map((link) => link.id)).toEqual([
       "groupMembershipMember",
       "roleAssignmentPrincipal",
@@ -168,7 +172,7 @@ describe("model contract", () => {
   })
 
   it("preserves model and link literal types", () => {
-    expect(Model.actor.id).toBe("identity")
+    expect(Model.actor.id).toBe("actor")
     expectTypeOf(Model.objects.company.collection).toEqualTypeOf<"companies">()
     expectTypeOf(
       ContactPrimaryCompany.forward.key
@@ -187,12 +191,18 @@ describe("model contract", () => {
     expectTypeOf<IdentityId>().toEqualTypeOf<
       RecordId<"serviceAccount"> | RecordId<"user">
     >()
+    expectTypeOf<ActorId>().toEqualTypeOf<
+      RecordId<"anonymousActor"> | RecordId<"serviceAccount"> | RecordId<"user">
+    >()
     expectTypeOf<PrincipalId>().toEqualTypeOf<
-      RecordId<"group"> | RecordId<"serviceAccount"> | RecordId<"user">
+      | RecordId<"group">
+      | RecordId<"principalSet">
+      | RecordId<"serviceAccount">
+      | RecordId<"user">
     >()
     expectTypeOf<
       ObjectRecord<typeof Model.objects.company>["createdBy"]
-    >().toEqualTypeOf<IdentityId>()
+    >().toEqualTypeOf<ActorId>()
     expectTypeOf<
       ObjectCreateInput<typeof Model.objects.roleAssignment>["parent"]
     >().toEqualTypeOf<
@@ -203,6 +213,7 @@ describe("model contract", () => {
     >().toEqualTypeOf<
       | RecordAlias
       | RecordId<"group">
+      | RecordId<"principalSet">
       | RecordId<"serviceAccount">
       | RecordId<"user">
     >()

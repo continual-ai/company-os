@@ -5,5 +5,5 @@ export const Identity = defineInterface({
   name: "Identity",
   pluralName: "Identities",
   description:
-    "A User or ServiceAccount that may act in this operating system.",
+    "A local User or ServiceAccount backed by authentication credentials.",
 })

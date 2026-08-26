@@ -1,5 +1,5 @@
 import type { ApiError, ValidationError } from "@company/runtime"
-import { ApiClientResponseError } from "@company/runtime/client"
+import { Schema } from "effect"
 import { describe, expect, it } from "vitest"
 
 import {
@@ -41,14 +41,27 @@ describe("form errors", () => {
       reason: "VALIDATION_FAILED",
       status: "INVALID_ARGUMENT",
     }
-    const errors = formErrorsFromCause(
-      new ApiClientResponseError(400, JSON.stringify(apiError), apiError),
-      "Saving failed."
-    )
+    const errors = formErrorsFromCause(apiError, "Saving failed.")
 
     expect(errorsForField(errors, "domain")).toMatchObject([
       { message: "Expected a domain" },
     ])
+    expect(errors.form).toEqual([])
+  })
+
+  it("maps native Effect client encoding failures to fields", () => {
+    const DomainInput = Schema.Struct({
+      domain: Schema.String.check(Schema.isMinLength(4)),
+    })
+    let cause: unknown
+    try {
+      Schema.encodeUnknownSync(DomainInput)({ domain: "bad" })
+    } catch (error) {
+      cause = error
+    }
+
+    const errors = formErrorsFromCause(cause, "Saving failed.")
+    expect(errorsForField(errors, "domain")).toHaveLength(1)
     expect(errors.form).toEqual([])
   })
 
@@ -59,10 +72,7 @@ describe("form errors", () => {
       reason: "ALREADY_EXISTS",
       status: "ALREADY_EXISTS",
     } as const
-    const errors = formErrorsFromCause(
-      new ApiClientResponseError(409, JSON.stringify(apiError), apiError),
-      "Saving failed."
-    )
+    const errors = formErrorsFromCause(apiError, "Saving failed.")
 
     expect(errors.form).toMatchObject([
       { message: apiError.message, reason: apiError.reason },

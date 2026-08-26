@@ -10,6 +10,7 @@ import { migrate } from "drizzle-orm/effect-pglite/migrator"
 import { Effect } from "effect"
 import { describe, expect, it } from "vitest"
 
+import { anonymousCaller, authenticatedCaller } from "@/server/caller"
 import { Database } from "@/server/database/database"
 import {
   authorizationScopes,
@@ -26,11 +27,13 @@ import {
   users,
 } from "@/server/database/schema"
 import {
+  anonymousInvocation,
   authenticatedInvocation,
   systemInvocation,
 } from "@/server/invocation-context"
 import { CompanyRepository } from "@/server/objects/company-repository"
 import { makeObjectService } from "@/server/objects/object-service"
+import { RecordIdentifierResolver } from "@/server/objects/record-identifier-resolver"
 import { RoleAssignmentRepository } from "@/server/objects/role-assignment-repository"
 import {
   LastPlatformAdministrator,
@@ -40,6 +43,8 @@ import {
 import { RoleRepository } from "@/server/objects/role-repository"
 import { seedSystem } from "@/server/seeds/seed-system"
 import {
+  ALL_CALLERS_PRINCIPAL_SET_ID,
+  AUTHENTICATED_CALLER_ROLE_ID,
   PLATFORM_ADMIN_ROLE_ID,
   PLATFORM_ID,
   SYSTEM_SERVICE_ACCOUNT_ID,
@@ -218,7 +223,45 @@ describe("Authorization", () => {
             authorizationRepository
           )
         )
+        const anonymousAdmission = yield* authorization.checkCapabilitiesFor(
+          anonymousCaller,
+          [{ permission: "invitation.accept" }]
+        )
+        const authenticatedAdmission =
+          yield* authorization.checkCapabilitiesFor(authenticatedCaller, [
+            { permission: "invitation.accept" },
+          ])
+        const publicAdmissionAssignmentId = RoleAssignmentId(
+          "role_assignment_public_admission_test"
+        )
+        yield* database.insert(objects).values(
+          objectRow({
+            ancestorIds: [PLATFORM_ID],
+            id: publicAdmissionAssignmentId,
+            objectType: "roleAssignment",
+            parentId: PLATFORM_ID,
+          })
+        )
+        yield* database.insert(roleAssignments).values({
+          id: publicAdmissionAssignmentId,
+          parentId: PLATFORM_ID,
+          principalId: ALL_CALLERS_PRINCIPAL_SET_ID,
+          roleId: AUTHENTICATED_CALLER_ROLE_ID,
+        })
+        const publicAdmission = yield* authorization.checkCapabilitiesFor(
+          anonymousCaller,
+          [{ permission: "invitation.accept" }]
+        )
+        const publicAdmissionFromInvocation = yield* authorization
+          .checkCapabilities([{ permission: "invitation.accept" }])
+          .pipe(Effect.provideService(CurrentInvocation, anonymousInvocation))
+        yield* database
+          .delete(objects)
+          .where(eq(objects.id, publicAdmissionAssignmentId))
         const companyRepository = yield* CompanyRepository.make.pipe(
+          Effect.provideService(Database, database)
+        )
+        const identifiers = yield* RecordIdentifierResolver.make.pipe(
           Effect.provideService(Database, database)
         )
         const companyService = yield* makeObjectService(
@@ -226,7 +269,7 @@ describe("Authorization", () => {
           companyRepository
         ).pipe(
           Effect.provideService(Authorization, authorization),
-          Effect.provideService(Database, database)
+          Effect.provideService(RecordIdentifierResolver, identifiers)
         )
         const userContext = yield* authenticatedInvocation(userId)
         const asUser = <A, E>(effect: Effect.Effect<A, E, CurrentInvocation>) =>
@@ -248,6 +291,14 @@ describe("Authorization", () => {
           companyService
             .batchGet({ ids: [allowedCompanyId, groupCompanyId] })
             .pipe(Effect.flip)
+        )
+        const directCapabilities = yield* asUser(
+          authorization.checkCapabilities([
+            { permission: "company.list" },
+            { permission: "company.get", target: allowedCompanyId },
+            { permission: "company.update", target: allowedCompanyId },
+            { permission: "company.get", target: groupCompanyId },
+          ])
         )
 
         yield* database.insert(objects).values(
@@ -302,9 +353,19 @@ describe("Authorization", () => {
             ids: [allowedCompanyId, groupCompanyId],
           })
         )
+        const groupCapability = yield* asUser(
+          authorization.checkCapabilities([
+            { permission: "company.get", target: groupCompanyId },
+          ])
+        )
 
         yield* database.delete(objects).where(eq(objects.id, membershipId))
         const afterRevocation = yield* asUser(companyService.list())
+        const revokedCapability = yield* asUser(
+          authorization.checkCapabilities([
+            { permission: "company.get", target: groupCompanyId },
+          ])
+        )
 
         const systemList = yield* companyService
           .list()
@@ -324,6 +385,7 @@ describe("Authorization", () => {
           ),
           Effect.provideService(Authorization, authorization),
           Effect.provideService(Database, database),
+          Effect.provideService(RecordIdentifierResolver, identifiers),
           Effect.provideService(
             RoleAssignmentRepository,
             roleAssignmentRepository
@@ -381,14 +443,21 @@ describe("Authorization", () => {
         return {
           afterRevocation,
           allowedBatch,
+          anonymousAdmission,
+          authenticatedAdmission,
           deniedBatch,
           deniedUpdate,
+          directCapabilities,
           directGet,
           directList,
           groupList,
+          groupCapability,
           hiddenGet,
           lastAdministrator,
           protectedSystemAssignment,
+          publicAdmission,
+          publicAdmissionFromInvocation,
+          revokedCapability,
           systemAfterGrantRemoval,
           systemList,
           wrongScope,
@@ -400,9 +469,21 @@ describe("Authorization", () => {
       allowedCompanyId,
     ])
     expect(result.directGet.id).toBe(allowedCompanyId)
+    expect(result.anonymousAdmission.results).toEqual([{ allowed: false }])
+    expect(result.authenticatedAdmission.results).toEqual([{ allowed: true }])
+    expect(result.publicAdmission.results).toEqual([{ allowed: true }])
+    expect(result.publicAdmissionFromInvocation.results).toEqual([
+      { allowed: true },
+    ])
     expect(result.hiddenGet).toBeInstanceOf(AuthorizationTargetNotFound)
     expect(result.deniedUpdate).toBeInstanceOf(PermissionDenied)
     expect(result.deniedBatch).toBeInstanceOf(AuthorizationTargetNotFound)
+    expect(result.directCapabilities.results).toEqual([
+      { allowed: true },
+      { allowed: true },
+      { allowed: false },
+      { allowed: false },
+    ])
     expect(result.groupList.items.map(({ id }) => id)).toEqual(
       expect.arrayContaining([allowedCompanyId, groupCompanyId])
     )
@@ -411,9 +492,11 @@ describe("Authorization", () => {
       allowedCompanyId,
       groupCompanyId,
     ])
+    expect(result.groupCapability.results).toEqual([{ allowed: true }])
     expect(result.afterRevocation.items.map(({ id }) => id)).toEqual([
       allowedCompanyId,
     ])
+    expect(result.revokedCapability.results).toEqual([{ allowed: false }])
     expect(result.systemList.items.map(({ id }) => id)).toEqual(
       expect.arrayContaining([allowedCompanyId, groupCompanyId])
     )

@@ -1,7 +1,6 @@
 import { Model } from "@company/model"
 import {
   EmailAddress,
-  isRecordAlias,
   RecordId,
   Timestamp,
   type ActionInput,
@@ -14,12 +13,12 @@ import { Context, Data, Effect, Layer, Schema } from "effect"
 import { generateSecret, hashSecret } from "@/server/auth/secret-token"
 import { Authorization } from "@/server/authorization/authorization-service"
 import { Database } from "@/server/database/database"
-import { makeRecordAliasResolver } from "@/server/database/model-storage"
 import { currentActorId } from "@/server/invocation-context"
 
 import { InvitationInvalid } from "./invitation-errors"
 import { InvitationRepository } from "./invitation-repository"
 import { makeObjectService } from "./object-service"
+import { RecordIdentifierResolver } from "./record-identifier-resolver"
 import { RoleAssignmentRepository } from "./role-assignment-repository"
 import { RoleRepository } from "./role-repository"
 
@@ -41,10 +40,10 @@ function currentTimestamp(): Timestamp {
 const make = Effect.gen(function* () {
   const authorization = yield* Authorization
   const database = yield* Database
+  const identifiers = yield* RecordIdentifierResolver
   const repository = yield* InvitationRepository
   const roleAssignmentRepository = yield* RoleAssignmentRepository
   const roleRepository = yield* RoleRepository
-  const resolveAliases = yield* makeRecordAliasResolver
   const base = yield* makeObjectService(Model.objects.invitation, repository)
 
   const issue = Effect.fn("@company/InvitationService.issue")(function* (
@@ -57,12 +56,11 @@ const make = Effect.gen(function* () {
     const decoded = decodedValue as ActionInput<
       (typeof Model.actions.invitation)["issue"]
     >
-    const roleId = isRecordAlias(decoded.role)
-      ? RecordId("role")((yield* resolveAliases("role", [decoded.role]))[0]!)
-      : RecordId("role")(decoded.role)
-    const scopeValue = isRecordAlias(decoded.scope)
-      ? (yield* resolveAliases("authorizationScope", [decoded.scope]))[0]!
-      : decoded.scope
+    const roleId = yield* identifiers.resolve("role", decoded.role)
+    const scopeValue = yield* identifiers.resolve(
+      "authorizationScope",
+      decoded.scope
+    )
 
     return yield* database.transaction(() =>
       Effect.gen(function* () {
@@ -74,8 +72,8 @@ const make = Effect.gen(function* () {
           )
         }
         // SAFETY: getScopeObjectType proves this canonical record implements AuthorizationScope.
-        // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-        const scopeId = scopeValue as Parameters<
+        // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion
+        const scopeId = scopeValue as unknown as Parameters<
           typeof repository.insert
         >[0]["parent"]
 
@@ -83,7 +81,6 @@ const make = Effect.gen(function* () {
           actionId: "issue",
           objectType: "invitation",
           parentId: scopeId,
-          parentTypeId: "authorizationScope",
         })
         const role = yield* roleRepository.get(roleId)
         if (role.scopeType !== scopeType) {
@@ -129,14 +126,9 @@ const make = Effect.gen(function* () {
   ) {
     return yield* database.transaction(() =>
       Effect.gen(function* () {
-        const id = isRecordAlias(identifier)
-          ? RecordId("invitation")(
-              (yield* resolveAliases("invitation", [identifier]))[0]!
-            )
-          : RecordId("invitation")(identifier)
+        const id = yield* identifiers.resolve("invitation", identifier)
         yield* authorization.requireAction({
           actionId: "revoke",
-          modifiesTarget: true,
           objectType: "invitation",
           recordIds: [id],
         })

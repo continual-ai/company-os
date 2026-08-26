@@ -22,6 +22,7 @@ import { ApiKeyRepository } from "@/server/objects/api-key-repository"
 import { ApiKeyService } from "@/server/objects/api-key-service"
 import { InvitationRepository } from "@/server/objects/invitation-repository"
 import { InvitationService } from "@/server/objects/invitation-service"
+import { RecordIdentifierResolver } from "@/server/objects/record-identifier-resolver"
 import { RoleAssignmentRepository } from "@/server/objects/role-assignment-repository"
 import { RoleAssignmentService } from "@/server/objects/role-assignment-service"
 import { RoleRepository } from "@/server/objects/role-repository"
@@ -126,28 +127,30 @@ function makeTestApplication(
   const authorizationLayer = Authorization.layer.pipe(
     Layer.provide(repositoriesLayer)
   )
+  const recordIdentifierResolverLayer = RecordIdentifierResolver.layer.pipe(
+    Layer.provide(databaseLayer)
+  )
+  const applicationDependencies = Layer.mergeAll(
+    authorizationLayer,
+    databaseLayer,
+    recordIdentifierResolverLayer,
+    repositoriesLayer
+  )
   const coreServicesLayer = Layer.mergeAll(
     ApiKeyService.layer,
     RoleAssignmentService.layer,
     ServiceAccountService.layer,
     UserService.layer
-  ).pipe(
-    Layer.provide(
-      Layer.mergeAll(authorizationLayer, databaseLayer, repositoriesLayer)
-    )
-  )
+  ).pipe(Layer.provide(applicationDependencies))
   const invitationServiceLayer = InvitationService.layer.pipe(
     Layer.provide(coreServicesLayer),
-    Layer.provide(
-      Layer.mergeAll(authorizationLayer, databaseLayer, repositoriesLayer)
-    )
+    Layer.provide(applicationDependencies)
   )
   const userAuthenticationLayer = UserAuthentication.layer.pipe(
     Layer.provide(Layer.succeed(AuthSettings, config)),
     Layer.provide(Layer.succeed(AuthProtocol, testAuthProtocol)),
     Layer.provide(coreServicesLayer),
-    Layer.provide(repositoriesLayer),
-    Layer.provide(databaseLayer)
+    Layer.provide(applicationDependencies)
   )
   const apiKeyAuthenticationLayer = ApiKeyAuthentication.layer.pipe(
     Layer.provide(repositoriesLayer)
@@ -210,6 +213,10 @@ describe("authentication", () => {
           const userAuthentication = yield* UserAuthentication
           const users = yield* UserService
           const authentication = yield* Authentication
+          const anonymousCaller = yield* authentication.identify(new Headers())
+          const authenticatedCaller = yield* authentication.identify(
+            userHeaders("auth_owner")
+          )
           const owner = yield* userAuthentication.authenticate(
             userHeaders("auth_owner")
           )
@@ -217,6 +224,9 @@ describe("authentication", () => {
             userHeaders("auth_owner")
           )
           const userInvocation = yield* authentication.authenticate(
+            userHeaders("auth_owner")
+          )
+          const identityCaller = yield* authentication.identify(
             userHeaders("auth_owner")
           )
           const rejected = yield* userAuthentication
@@ -236,7 +246,10 @@ describe("authentication", () => {
 
           return {
             administratorAssignments,
+            anonymousCaller,
+            authenticatedCaller,
             bindings,
+            identityCaller,
             lastAdministrator,
             owner,
             rejected,
@@ -248,6 +261,12 @@ describe("authentication", () => {
     )
 
     expect(result.owner).toEqual(result.sameOwner)
+    expect(result.anonymousCaller).toEqual({ kind: "anonymous" })
+    expect(result.authenticatedCaller).toEqual({ kind: "authenticated" })
+    expect(result.identityCaller).toEqual({
+      identityId: result.owner.id,
+      kind: "identity",
+    })
     expect(result.userInvocation).toEqual({ actorId: result.owner.id })
     expect(result.bindings).toEqual([
       expect.objectContaining({ authUserId: "auth_owner" }),

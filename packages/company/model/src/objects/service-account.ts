@@ -1,5 +1,6 @@
 import { defineObject, schema, standardErrors } from "@company/runtime"
 
+import { Actor } from "#interfaces/actor"
 import { Identity } from "#interfaces/identity"
 import { Principal } from "#interfaces/principal"
 import { Platform } from "#platform"
@@ -31,7 +32,11 @@ export const ServiceAccount = defineObject({
       errors: [standardErrors.notFound, standardErrors.permissionDenied],
     },
   },
-  implements: [{ interface: Identity }, { interface: Principal }],
+  implements: [
+    { interface: Actor },
+    { interface: Identity },
+    { interface: Principal },
+  ],
   properties: {
     name: schema.string({ label: "Name", minLength: 1, maxLength: 200 }),
     description: schema.string({

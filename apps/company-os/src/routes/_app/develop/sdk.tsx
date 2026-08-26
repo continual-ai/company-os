@@ -2,11 +2,12 @@ import { createFileRoute } from "@tanstack/react-router"
 
 import { pageOptions } from "@/route-metadata"
 
-const sdkExample = `import { Model } from "@company/model"
-import { createClient } from "@company/runtime/client"
+const sdkExample = `import { Effect } from "effect"
+import { companyApi } from "@/company-client"
 
-const client = createClient(Model)
-const companies = await client.companies.list()`
+const companies = await Effect.runPromise(
+  companyApi.company.listCompanies({ query: {} })
+)`
 
 const page = {
   breadcrumb: "SDK",
@@ -29,9 +30,9 @@ function SdkPage() {
           Use the operating model from TypeScript.
         </h1>
         <p className="mt-3 max-w-2xl leading-7 text-muted-foreground">
-          The current client is inferred directly from the source-owned domain
-          model. It calls the same governed HTTP capabilities used by the
-          application without introducing a second API definition.
+          The Effect client is inferred from the same HttpApi contract served by
+          the backend. That contract is projected from the source-owned model
+          and also generates OpenAPI.
         </p>
       </section>
 
@@ -40,10 +41,10 @@ function SdkPage() {
           <p className="text-xs font-medium text-muted-foreground">
             TypeScript
           </p>
-          <h2 className="mt-8 text-lg font-medium">Model-inferred client</h2>
+          <h2 className="mt-8 text-lg font-medium">Effect HttpApi client</h2>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            Import the portable model and browser-safe runtime client directly
-            inside this source workspace.
+            Use the application client derived from its complete HTTP contract.
+            Effect owns request encoding, response decoding, and typed errors.
           </p>
           <pre className="mt-6 overflow-x-auto border bg-muted/50 p-4 text-xs leading-6">
             <code>{sdkExample}</code>
@@ -74,10 +75,9 @@ function SdkPage() {
           Publish a source-owned package when an external consumer needs it.
         </h2>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-          A future package such as @company/client can bind the model,
-          authentication, and deployment URL behind a smaller import. Today that
-          package does not exist; the source model and generic runtime client
-          are the authoritative implementation.
+          A future package such as @company/client can publish this same
+          contract-derived client with authentication and a deployment URL.
+          Today the app-local HttpApi value remains authoritative.
         </p>
       </section>
     </div>

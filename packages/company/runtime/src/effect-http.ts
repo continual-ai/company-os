@@ -1,5 +1,6 @@
 import { Effect, Schema } from "effect"
 import { HttpRouter } from "effect/unstable/http"
+import type { HttpClientError } from "effect/unstable/http"
 import {
   HttpApi,
   HttpApiEndpoint,
@@ -10,21 +11,47 @@ import {
   OpenApi,
 } from "effect/unstable/httpapi"
 
-import { isStandardActionId, type Action } from "./definition/action"
-import type { ErrorStatus, ErrorType } from "./definition/error"
-import { type ModelCatalog, modelObjects } from "./definition/model"
-import { Etag, type ObjectType } from "./definition/object"
 import {
+  isStandardActionId,
+  type Action,
+  type StandardActionId,
+} from "./definition/action"
+import type { ApiError, ErrorStatus, ErrorType } from "./definition/error"
+import {
+  type ModelCatalog,
+  type ModelObject,
+  modelObjects,
+} from "./definition/model"
+import {
+  Etag,
+  type ObjectBatchDeleteInput,
+  type ObjectBatchGetInput,
+  type ObjectCreateInput,
+  type ObjectDeleteInput,
+  type ObjectRecord,
+  type ObjectType,
+  type ObjectUpdateInput,
+} from "./definition/object"
+import {
+  type Batch,
   DEFAULT_PAGE_SIZE,
   filterOperators,
+  type ListRequest,
   MAX_BATCH_DELETE_SIZE,
   MAX_BATCH_GET_SIZE,
   MAX_PAGE_SIZE,
   nullPlacements,
+  type Page,
   PageToken,
   sortDirections,
 } from "./definition/request"
 import { schema } from "./definition/schema"
+import type {
+  InferInputSchema,
+  InferSchema,
+  RecordIdentifier,
+  StructSchema,
+} from "./definition/schema"
 import {
   AbortedError,
   AlreadyExistsError,
@@ -62,6 +89,160 @@ type DynamicGroup = HttpApiGroup.HttpApiGroup<
   boolean
 >
 type DynamicHttpApi = HttpApi.HttpApi<string, HttpApiGroup.Constraint>
+
+type OperationId<
+  TOperation extends string,
+  TObject extends ObjectType,
+  TScope extends "collection" | "object",
+> = `${TOperation}${Capitalize<
+  TScope extends "collection" ? TObject["collection"] : TObject["id"]
+>}`
+
+type ListQuery = Pick<ListRequest, "pageSize" | "pageToken">
+type UpdatePayload<TObject extends ObjectType> = Omit<
+  ObjectUpdateInput<TObject>,
+  "id"
+>
+type DeleteQuery<TObject extends ObjectType> = Pick<
+  ObjectDeleteInput<TObject>,
+  "etag"
+>
+
+type NonEmpty<T> = keyof T extends never ? never : T
+
+type InputOf<TAction extends Action> =
+  TAction extends Action<
+    string,
+    string,
+    "collection" | "object",
+    infer TInput extends StructSchema
+  >
+    ? InferInputSchema<TInput>
+    : never
+
+type OutputOf<TAction extends Action> =
+  TAction extends Action<
+    string,
+    string,
+    "collection" | "object",
+    StructSchema,
+    infer TOutput extends StructSchema
+  >
+    ? InferSchema<TOutput>
+    : never
+
+type ClientRequestPart<TKey extends string, TValue> = [TValue] extends [never]
+  ? object
+  : { readonly [TPart in TKey]: TValue }
+
+type ClientMethod<TRequest, TOutput> = (
+  request: TRequest
+) => Effect.Effect<
+  TOutput,
+  ApiError | HttpClientError.HttpClientError | Schema.SchemaError
+>
+
+type StandardClient<TObject extends ObjectType> = {
+  readonly [TId in OperationId<"list", TObject, "collection">]: ClientMethod<
+    { readonly query: ListQuery },
+    Page<ObjectRecord<TObject>>
+  >
+} & {
+  readonly [TId in OperationId<"search", TObject, "collection">]: ClientMethod<
+    { readonly payload: ListRequest<TObject> },
+    Page<ObjectRecord<TObject>>
+  >
+} & {
+  readonly [
+    TId in OperationId<"batchGet", TObject, "collection">
+  ]: ClientMethod<
+    { readonly payload: ObjectBatchGetInput<TObject> },
+    Batch<ObjectRecord<TObject>>
+  >
+} & ("batchDelete" extends keyof TObject["actions"]
+    ? {
+        readonly [
+          TId in OperationId<"batchDelete", TObject, "collection">
+        ]: ClientMethod<
+          { readonly payload: ObjectBatchDeleteInput<TObject> },
+          void
+        >
+      }
+    : object) &
+  ("create" extends keyof TObject["actions"]
+    ? {
+        readonly [
+          TId in OperationId<"create", TObject, "object">
+        ]: ClientMethod<
+          { readonly payload: ObjectCreateInput<TObject> },
+          ObjectRecord<TObject>
+        >
+      }
+    : object) & {
+    readonly [TId in OperationId<"get", TObject, "object">]: ClientMethod<
+      { readonly params: { readonly id: RecordIdentifier<TObject["id"]> } },
+      ObjectRecord<TObject>
+    >
+  } & ("update" extends keyof TObject["actions"]
+    ? {
+        readonly [
+          TId in OperationId<"update", TObject, "object">
+        ]: ClientMethod<
+          {
+            readonly params: Pick<ObjectUpdateInput<TObject>, "id">
+            readonly payload: UpdatePayload<TObject>
+          },
+          ObjectRecord<TObject>
+        >
+      }
+    : object) &
+  ("delete" extends keyof TObject["actions"]
+    ? {
+        readonly [
+          TId in OperationId<"delete", TObject, "object">
+        ]: ClientMethod<
+          {
+            readonly params: Pick<ObjectDeleteInput<TObject>, "id">
+            readonly query: DeleteQuery<TObject>
+          },
+          void
+        >
+      }
+    : object)
+
+type ActionClientMethod<
+  TObject extends ObjectType,
+  TAction extends Action,
+> = ClientMethod<
+  ClientRequestPart<
+    "params",
+    TAction["scope"] extends "object"
+      ? { readonly id: RecordIdentifier<TObject["id"]> }
+      : never
+  > &
+    ClientRequestPart<"payload", NonEmpty<Omit<InputOf<TAction>, "id">>>,
+  OutputOf<TAction>
+>
+
+type ActionClient<TObject extends ObjectType> = {
+  readonly [
+    TAction in TObject["actions"][keyof TObject["actions"]] as TAction extends Action
+      ? TAction["id"] extends StandardActionId
+        ? never
+        : OperationId<TAction["id"], TObject, TAction["scope"]>
+      : never
+  ]: TAction extends Action ? ActionClientMethod<TObject, TAction> : never
+}
+
+type ObjectHttpClient<TObject extends ObjectType> = StandardClient<TObject> &
+  ActionClient<TObject>
+
+/** Typed decoded-only view of Effect's native HttpApiClient for a model. */
+export type ModelHttpClient<TModel extends ModelCatalog> = {
+  readonly [
+    TObject in ModelObject<TModel> as TObject["id"]
+  ]: ObjectHttpClient<TObject>
+}
 
 const defaultBasePath = "/api/v1" as const
 
@@ -104,8 +285,8 @@ export function httpEndpointId(
     operation === "search" ||
     operation === "batchGet" ||
     operation === "batchDelete"
-      ? object.pluralName
-      : object.name
+      ? object.collection
+      : object.id
   return `${operation}${pascalCase(target)}`
 }
 
@@ -139,7 +320,8 @@ const etagSchema = Schema.String.pipe(Schema.fromBrand("Etag", Etag)).annotate({
 const compiledErrorSchemas = new WeakMap<ErrorType, Schema.Top>()
 
 function errorSchemas(errors: ReadonlyArray<ErrorType>) {
-  return errors.map((error) => {
+  const uniqueErrors = new Map(errors.map((error) => [error.reason, error]))
+  return [...uniqueErrors.values()].map((error) => {
     const cached = compiledErrorSchemas.get(error)
     if (cached !== undefined) return cached
 
@@ -622,8 +804,11 @@ export function createHttpApi(
 }
 
 /** Builds the Fetch handler used to serve Effect's Scalar reference. */
-export function createApiReference(
-  httpApi: DynamicHttpApi,
+export function createApiReference<
+  TId extends string,
+  TGroups extends HttpApiGroup.Constraint,
+>(
+  httpApi: HttpApi.HttpApi<TId, TGroups>,
   path: `/${string}` = "/api/docs",
   scalar: HttpApiScalar.ScalarConfig = {}
 ): ApiReference {

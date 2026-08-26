@@ -1,8 +1,9 @@
 import { Model } from "@company/model"
 import { RecordId } from "@company/runtime"
 import { createFileRoute } from "@tanstack/react-router"
+import { Effect } from "effect"
 
-import { companyClient } from "@/company-client"
+import { companyApi } from "@/company-client"
 import { ConfirmActionButton } from "@/components/confirm-action-button"
 import { ObjectCollection } from "@/components/object-collection"
 import type { ObjectTableRecord } from "@/components/object-table/object-table-config"
@@ -20,12 +21,15 @@ export const Route = createFileRoute("/_app/settings/users")({
 })
 
 function UserLifecycleAction({
+  canRun,
   record,
   refresh,
 }: {
+  readonly canRun: boolean
   readonly record: ObjectTableRecord
   readonly refresh: () => Promise<void>
 }) {
+  if (!canRun) return null
   const suspended = record.status === "suspended"
   const actionLabel = suspended ? "Reactivate" : "Suspend"
   return (
@@ -40,10 +44,10 @@ function UserLifecycleAction({
       }
       onConfirm={() => {
         const id = RecordId("user")(record.id)
-        return (
+        return Effect.runPromise(
           suspended
-            ? companyClient.users.reactivate({ id })
-            : companyClient.users.suspend({ id })
+            ? companyApi.user.reactivateUser({ params: { id } })
+            : companyApi.user.suspendUser({ params: { id } })
         ).then(refresh)
       }}
     />
@@ -54,8 +58,12 @@ function UsersSettings() {
   return (
     <ObjectCollection
       object={Model.objects.user}
-      renderRecordActions={(record, refresh) => (
-        <UserLifecycleAction record={record} refresh={refresh} />
+      renderRecordActions={(record, { can, refresh }) => (
+        <UserLifecycleAction
+          canRun={can(record.status === "suspended" ? "reactivate" : "suspend")}
+          record={record}
+          refresh={refresh}
+        />
       )}
     />
   )

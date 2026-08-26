@@ -1,5 +1,15 @@
 CREATE SCHEMA "auth";
 --> statement-breakpoint
+CREATE TABLE "interface_actor" (
+	"id" text PRIMARY KEY
+);
+--> statement-breakpoint
+CREATE TABLE "anonymous_actors" (
+	"id" text PRIMARY KEY,
+	"parent_id" text NOT NULL,
+	"name" text NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE "auth"."api_key_credential" (
 	"api_key_id" text PRIMARY KEY,
 	"secret_hash" text NOT NULL,
@@ -184,7 +194,7 @@ CREATE TABLE "objects" (
 	"created_by_id" text NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_by_id" text NOT NULL,
-	CONSTRAINT "objects_object_type_check" CHECK ("object_type" in ('platform', 'user', 'serviceAccount', 'apiKey', 'group', 'groupMembership', 'role', 'roleAssignment', 'invitation', 'company', 'contact', 'lead', 'deal', 'lineItem', 'interaction')),
+	CONSTRAINT "objects_object_type_check" CHECK ("object_type" in ('platform', 'user', 'serviceAccount', 'anonymousActor', 'apiKey', 'group', 'principalSet', 'groupMembership', 'role', 'roleAssignment', 'invitation', 'company', 'contact', 'lead', 'deal', 'lineItem', 'interaction')),
 	CONSTRAINT "objects_parent_required" CHECK (("object_type" = 'platform' and "parent_id" is null)
           or ("object_type" <> 'platform' and "parent_id" is not null))
 );
@@ -195,6 +205,14 @@ CREATE TABLE "interface_party" (
 --> statement-breakpoint
 CREATE TABLE "roots" (
 	"id" text PRIMARY KEY
+);
+--> statement-breakpoint
+CREATE TABLE "principal_sets" (
+	"id" text PRIMARY KEY,
+	"parent_id" text NOT NULL,
+	"kind" text NOT NULL,
+	"name" text NOT NULL,
+	"description" text
 );
 --> statement-breakpoint
 CREATE TABLE "interface_principal" (
@@ -239,6 +257,7 @@ CREATE TABLE "users" (
 	"status" text DEFAULT 'active' NOT NULL
 );
 --> statement-breakpoint
+CREATE INDEX "anonymous_actors_parent_id_idx" ON "anonymous_actors" ("parent_id");--> statement-breakpoint
 CREATE INDEX "api_keys_parent_id_idx" ON "api_keys" ("parent_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "account_issuer_accountId_uidx" ON "auth"."account" ("issuer","account_id");--> statement-breakpoint
 CREATE INDEX "account_userId_idx" ON "auth"."account" ("user_id");--> statement-breakpoint
@@ -265,6 +284,8 @@ CREATE INDEX "objects_object_type_idx" ON "objects" ("object_type");--> statemen
 CREATE INDEX "objects_parent_id_idx" ON "objects" ("parent_id");--> statement-breakpoint
 CREATE INDEX "objects_ancestor_ids_idx" ON "objects" USING gin ("ancestor_ids");--> statement-breakpoint
 CREATE UNIQUE INDEX "objects_id_parent_id_unique" ON "objects" ("id","parent_id");--> statement-breakpoint
+CREATE INDEX "principal_sets_parent_id_idx" ON "principal_sets" ("parent_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "principal_sets_kind_unique" ON "principal_sets" ("kind");--> statement-breakpoint
 CREATE INDEX "record_aliases_object_id_idx" ON "record_aliases" ("object_id");--> statement-breakpoint
 CREATE INDEX "role_assignments_parent_id_idx" ON "role_assignments" ("parent_id");--> statement-breakpoint
 CREATE INDEX "role_assignments_principal_id_idx" ON "role_assignments" ("principal_id");--> statement-breakpoint
@@ -274,6 +295,10 @@ CREATE INDEX "roles_parent_id_idx" ON "roles" ("parent_id");--> statement-breakp
 CREATE INDEX "service_accounts_parent_id_idx" ON "service_accounts" ("parent_id");--> statement-breakpoint
 CREATE INDEX "users_parent_id_idx" ON "users" ("parent_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "users_email_unique" ON "users" ("email");--> statement-breakpoint
+ALTER TABLE "interface_actor" ADD CONSTRAINT "interface_actor_id_objects_id_fkey" FOREIGN KEY ("id") REFERENCES "objects"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "anonymous_actors" ADD CONSTRAINT "anonymous_actors_id_objects_id_fkey" FOREIGN KEY ("id") REFERENCES "objects"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "anonymous_actors" ADD CONSTRAINT "anonymous_actors_parent_platform_fk" FOREIGN KEY ("parent_id") REFERENCES "roots"("id") ON DELETE RESTRICT;--> statement-breakpoint
+ALTER TABLE "anonymous_actors" ADD CONSTRAINT "anonymous_actors_object_parent_fk" FOREIGN KEY ("id","parent_id") REFERENCES "objects"("id","parent_id") ON DELETE CASCADE;--> statement-breakpoint
 ALTER TABLE "auth"."api_key_credential" ADD CONSTRAINT "api_key_credential_api_key_id_api_keys_id_fkey" FOREIGN KEY ("api_key_id") REFERENCES "api_keys"("id") ON DELETE CASCADE;--> statement-breakpoint
 ALTER TABLE "api_keys" ADD CONSTRAINT "api_keys_id_objects_id_fkey" FOREIGN KEY ("id") REFERENCES "objects"("id") ON DELETE CASCADE;--> statement-breakpoint
 ALTER TABLE "api_keys" ADD CONSTRAINT "api_keys_parent_service_account_fk" FOREIGN KEY ("parent_id") REFERENCES "service_accounts"("id") ON DELETE RESTRICT;--> statement-breakpoint
@@ -320,10 +345,13 @@ ALTER TABLE "line_items" ADD CONSTRAINT "line_items_id_objects_id_fkey" FOREIGN 
 ALTER TABLE "line_items" ADD CONSTRAINT "line_items_parent_deal_fk" FOREIGN KEY ("parent_id") REFERENCES "deals"("id") ON DELETE RESTRICT;--> statement-breakpoint
 ALTER TABLE "line_items" ADD CONSTRAINT "line_items_object_parent_fk" FOREIGN KEY ("id","parent_id") REFERENCES "objects"("id","parent_id") ON DELETE CASCADE;--> statement-breakpoint
 ALTER TABLE "objects" ADD CONSTRAINT "objects_parent_id_objects_id_fkey" FOREIGN KEY ("parent_id") REFERENCES "objects"("id") ON DELETE RESTRICT;--> statement-breakpoint
-ALTER TABLE "objects" ADD CONSTRAINT "objects_created_by_id_interface_identity_id_fkey" FOREIGN KEY ("created_by_id") REFERENCES "interface_identity"("id") ON DELETE RESTRICT DEFERRABLE INITIALLY DEFERRED;--> statement-breakpoint
-ALTER TABLE "objects" ADD CONSTRAINT "objects_updated_by_id_interface_identity_id_fkey" FOREIGN KEY ("updated_by_id") REFERENCES "interface_identity"("id") ON DELETE RESTRICT DEFERRABLE INITIALLY DEFERRED;--> statement-breakpoint
+ALTER TABLE "objects" ADD CONSTRAINT "objects_created_by_id_interface_actor_id_fkey" FOREIGN KEY ("created_by_id") REFERENCES "interface_actor"("id") ON DELETE RESTRICT DEFERRABLE INITIALLY DEFERRED;--> statement-breakpoint
+ALTER TABLE "objects" ADD CONSTRAINT "objects_updated_by_id_interface_actor_id_fkey" FOREIGN KEY ("updated_by_id") REFERENCES "interface_actor"("id") ON DELETE RESTRICT DEFERRABLE INITIALLY DEFERRED;--> statement-breakpoint
 ALTER TABLE "interface_party" ADD CONSTRAINT "interface_party_id_objects_id_fkey" FOREIGN KEY ("id") REFERENCES "objects"("id") ON DELETE CASCADE;--> statement-breakpoint
 ALTER TABLE "roots" ADD CONSTRAINT "roots_id_objects_id_fkey" FOREIGN KEY ("id") REFERENCES "objects"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "principal_sets" ADD CONSTRAINT "principal_sets_id_objects_id_fkey" FOREIGN KEY ("id") REFERENCES "objects"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "principal_sets" ADD CONSTRAINT "principal_sets_parent_platform_fk" FOREIGN KEY ("parent_id") REFERENCES "roots"("id") ON DELETE RESTRICT;--> statement-breakpoint
+ALTER TABLE "principal_sets" ADD CONSTRAINT "principal_sets_object_parent_fk" FOREIGN KEY ("id","parent_id") REFERENCES "objects"("id","parent_id") ON DELETE CASCADE;--> statement-breakpoint
 ALTER TABLE "interface_principal" ADD CONSTRAINT "interface_principal_id_objects_id_fkey" FOREIGN KEY ("id") REFERENCES "objects"("id") ON DELETE CASCADE;--> statement-breakpoint
 ALTER TABLE "record_aliases" ADD CONSTRAINT "record_aliases_object_id_objects_id_fkey" FOREIGN KEY ("object_id") REFERENCES "objects"("id") ON DELETE CASCADE;--> statement-breakpoint
 ALTER TABLE "role_assignments" ADD CONSTRAINT "role_assignments_id_objects_id_fkey" FOREIGN KEY ("id") REFERENCES "objects"("id") ON DELETE CASCADE;--> statement-breakpoint

@@ -13,6 +13,7 @@ export {
   defineError,
   errorReason,
   errorStatuses,
+  isApiError,
   isErrorReason,
 } from "./definition/error"
 export type { ApiError, ErrorType, ErrorStatus } from "./definition/error"

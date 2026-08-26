@@ -1,19 +1,24 @@
 import {
   EmailAddress,
-  isRecordAlias,
-  RecordId,
   Timestamp,
+  type RecordId,
   type RecordIdentifier,
 } from "@company/runtime"
 import { CurrentInvocation } from "@company/runtime/effect/object-service"
 import { Context, Data, Effect, Layer } from "effect"
 
 import type { AuthenticatedUser } from "@/authentication"
+import { Authorization } from "@/server/authorization/authorization-service"
+import {
+  anonymousCaller,
+  authenticatedCaller,
+  identityCaller,
+} from "@/server/caller"
 import { Database } from "@/server/database/database"
-import { makeRecordAliasResolver } from "@/server/database/model-storage"
 import { systemInvocation } from "@/server/invocation-context"
 import { InvitationInvalid } from "@/server/objects/invitation-errors"
 import { InvitationRepository } from "@/server/objects/invitation-repository"
+import { RecordIdentifierResolver } from "@/server/objects/record-identifier-resolver"
 import { RoleAssignmentRepository } from "@/server/objects/role-assignment-repository"
 import { RoleAssignmentService } from "@/server/objects/role-assignment-service"
 import { UserService } from "@/server/objects/user-service"
@@ -35,13 +40,14 @@ class UserSuspended extends Data.TaggedError("UserSuspended")<{}> {}
 const make = Effect.gen(function* () {
   const config = yield* AuthSettings
   const auth = yield* AuthProtocol
+  const authorization = yield* Authorization
   const database = yield* Database
   const repository = yield* IdentityBindingRepository
   const roleAssignments = yield* RoleAssignmentService
   const roleAssignmentRepository = yield* RoleAssignmentRepository
   const users = yield* UserService
   const invitations = yield* InvitationRepository
-  const resolveAliases = yield* makeRecordAliasResolver
+  const identifiers = yield* RecordIdentifierResolver
 
   const getAuthenticatedUser = Effect.fn(
     "@company/UserAuthentication.getAuthenticatedUser"
@@ -110,6 +116,19 @@ const make = Effect.gen(function* () {
     }
   )
 
+  const identify = Effect.fn("@company/UserAuthentication.identify")(function* (
+    headers: Headers
+  ) {
+    const authUser = yield* auth.session(headers)
+    if (authUser === null) return anonymousCaller
+    const userId = yield* repository.findUserId(authUser.authUserId)
+    if (userId === undefined) return authenticatedCaller
+    const user = yield* getAuthenticatedUser(userId).pipe(
+      Effect.provideService(CurrentInvocation, systemInvocation)
+    )
+    return identityCaller(user.id)
+  })
+
   const authenticate = Effect.fn("@company/UserAuthentication.authenticate")(
     function* (headers: Headers) {
       return yield* resolveUser(yield* requireAuthUser(headers))
@@ -126,11 +145,15 @@ const make = Effect.gen(function* () {
     const authUser = yield* requireAuthUser(headers)
     return yield* database.transaction(() =>
       Effect.gen(function* () {
-        const invitationId = isRecordAlias(identifier)
-          ? RecordId("invitation")(
-              (yield* resolveAliases("invitation", [identifier]))[0]!
-            )
-          : RecordId("invitation")(identifier)
+        const invitationId = yield* identifiers.resolve(
+          "invitation",
+          identifier
+        )
+        yield* authorization.requireActionFor(authenticatedCaller, {
+          actionId: "accept",
+          objectType: "invitation",
+          recordIds: [invitationId],
+        })
         const credential = yield* invitations.lockCredential(invitationId)
         if (
           credential === undefined ||
@@ -208,7 +231,7 @@ const make = Effect.gen(function* () {
     )
   })
 
-  return { acceptInvitation, authenticate }
+  return { acceptInvitation, authenticate, identify }
 })
 
 /** Authenticates browser sessions and resolves them to canonical User identities. */

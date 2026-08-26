@@ -1,6 +1,5 @@
 import { Model } from "@company/model"
 import {
-  isRecordAlias,
   RecordId,
   Timestamp,
   type ActionInput,
@@ -13,12 +12,12 @@ import { Context, Data, Effect, Layer, Schema } from "effect"
 import { generateSecret, hashSecret } from "@/server/auth/secret-token"
 import { Authorization } from "@/server/authorization/authorization-service"
 import { Database } from "@/server/database/database"
-import { makeRecordAliasResolver } from "@/server/database/model-storage"
 import { currentActorId } from "@/server/invocation-context"
 import { SYSTEM_SERVICE_ACCOUNT_ID } from "@/system-records"
 
 import { ApiKeyRepository } from "./api-key-repository"
 import { makeObjectService } from "./object-service"
+import { RecordIdentifierResolver } from "./record-identifier-resolver"
 import { ServiceAccountRepository } from "./service-account-repository"
 
 const issueInputSchema = toEffectInputSchema(Model.actions.apiKey.issue.input)
@@ -34,9 +33,9 @@ function now(): Timestamp {
 const make = Effect.gen(function* () {
   const authorization = yield* Authorization
   const database = yield* Database
+  const identifiers = yield* RecordIdentifierResolver
   const repository = yield* ApiKeyRepository
   const serviceAccounts = yield* ServiceAccountRepository
-  const resolveAliases = yield* makeRecordAliasResolver
   const base = yield* makeObjectService(Model.objects.apiKey, repository)
 
   const issue = Effect.fn("@company/ApiKeyService.issue")(function* (
@@ -49,13 +48,10 @@ const make = Effect.gen(function* () {
     const decoded = decodedValue as ActionInput<
       (typeof Model.actions.apiKey)["issue"]
     >
-    const serviceAccountId = isRecordAlias(decoded.serviceAccount)
-      ? RecordId("serviceAccount")(
-          (yield* resolveAliases("serviceAccount", [
-            decoded.serviceAccount,
-          ]))[0]!
-        )
-      : RecordId("serviceAccount")(decoded.serviceAccount)
+    const serviceAccountId = yield* identifiers.resolve(
+      "serviceAccount",
+      decoded.serviceAccount
+    )
     if (serviceAccountId === SYSTEM_SERVICE_ACCOUNT_ID) {
       return yield* Effect.fail(
         new InvalidApiKeyRequest({ reason: "systemAccount" })
@@ -76,7 +72,6 @@ const make = Effect.gen(function* () {
           actionId: "issue",
           objectType: "apiKey",
           parentId: serviceAccountId,
-          parentTypeId: "serviceAccount",
         })
         const serviceAccount = yield* serviceAccounts.get(serviceAccountId)
         if (serviceAccount.status !== "active") {
@@ -111,14 +106,11 @@ const make = Effect.gen(function* () {
   const revoke = Effect.fn("@company/ApiKeyService.revoke")(function* (
     identifier: RecordIdentifier<"apiKey">
   ) {
-    const id = isRecordAlias(identifier)
-      ? RecordId("apiKey")((yield* resolveAliases("apiKey", [identifier]))[0]!)
-      : RecordId("apiKey")(identifier)
+    const id = yield* identifiers.resolve("apiKey", identifier)
     return yield* database.transaction(() =>
       Effect.gen(function* () {
         yield* authorization.requireAction({
           actionId: "revoke",
-          modifiesTarget: true,
           objectType: "apiKey",
           recordIds: [id],
         })

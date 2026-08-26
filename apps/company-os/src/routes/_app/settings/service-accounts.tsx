@@ -1,8 +1,9 @@
 import { Model } from "@company/model"
 import { RecordId } from "@company/runtime"
 import { createFileRoute } from "@tanstack/react-router"
+import { Effect } from "effect"
 
-import { companyClient } from "@/company-client"
+import { companyApi } from "@/company-client"
 import { ConfirmActionButton } from "@/components/confirm-action-button"
 import { ObjectCollection } from "@/components/object-collection"
 import type { ObjectTableRecord } from "@/components/object-table/object-table-config"
@@ -20,13 +21,15 @@ export const Route = createFileRoute("/_app/settings/service-accounts")({
 })
 
 function ServiceAccountLifecycleAction({
+  canRun,
   record,
   refresh,
 }: {
+  readonly canRun: boolean
   readonly record: ObjectTableRecord
   readonly refresh: () => Promise<void>
 }) {
-  if (record.systemManaged === true) return null
+  if (!canRun || record.systemManaged === true) return null
   const disabled = record.status === "disabled"
   const actionLabel = disabled ? "Enable" : "Disable"
   return (
@@ -41,10 +44,14 @@ function ServiceAccountLifecycleAction({
       }
       onConfirm={() => {
         const id = RecordId("serviceAccount")(record.id)
-        return (
+        return Effect.runPromise(
           disabled
-            ? companyClient.serviceAccounts.enable({ id })
-            : companyClient.serviceAccounts.disable({ id })
+            ? companyApi.serviceAccount.enableServiceAccount({
+                params: { id },
+              })
+            : companyApi.serviceAccount.disableServiceAccount({
+                params: { id },
+              })
         ).then(refresh)
       }}
     />
@@ -55,8 +62,12 @@ function ServiceAccountsSettings() {
   return (
     <ObjectCollection
       object={Model.objects.serviceAccount}
-      renderRecordActions={(record, refresh) => (
-        <ServiceAccountLifecycleAction record={record} refresh={refresh} />
+      renderRecordActions={(record, { can, refresh }) => (
+        <ServiceAccountLifecycleAction
+          canRun={can(record.status === "disabled" ? "enable" : "disable")}
+          record={record}
+          refresh={refresh}
+        />
       )}
     />
   )

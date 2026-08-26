@@ -1,21 +1,16 @@
 import { Model } from "@company/model"
-import {
-  isRecordAlias,
-  RecordId,
-  Timestamp,
-  type RecordIdentifier,
-} from "@company/runtime"
+import { Timestamp, type RecordIdentifier } from "@company/runtime"
 import { Context, Data, Effect, Layer } from "effect"
 
 import { Authorization } from "@/server/authorization/authorization-service"
 import { Database } from "@/server/database/database"
-import { makeRecordAliasResolver } from "@/server/database/model-storage"
 import { currentActorId } from "@/server/invocation-context"
 
 import { CompanyRepository } from "./company-repository"
 import { ContactRepository } from "./contact-repository"
 import { LeadRepository } from "./lead-repository"
 import { makeObjectService } from "./object-service"
+import { RecordIdentifierResolver } from "./record-identifier-resolver"
 
 class LeadConversionConflict extends Data.TaggedError(
   "LeadConversionConflict"
@@ -24,10 +19,10 @@ class LeadConversionConflict extends Data.TaggedError(
 const make = Effect.gen(function* () {
   const authorization = yield* Authorization
   const database = yield* Database
+  const identifiers = yield* RecordIdentifierResolver
   const repository = yield* LeadRepository
   const companyRepository = yield* CompanyRepository
   const contactRepository = yield* ContactRepository
-  const resolveAliases = yield* makeRecordAliasResolver
   const base = yield* makeObjectService(Model.objects.lead, repository)
   const companies = yield* makeObjectService(
     Model.objects.company,
@@ -41,14 +36,11 @@ const make = Effect.gen(function* () {
   const convert = Effect.fn("@company/LeadService.convert")(function* (
     identifier: RecordIdentifier<"lead">
   ) {
-    const id = isRecordAlias(identifier)
-      ? RecordId("lead")((yield* resolveAliases("lead", [identifier]))[0]!)
-      : RecordId("lead")(identifier)
+    const id = yield* identifiers.resolve("lead", identifier)
     return yield* database.transaction(() =>
       Effect.gen(function* () {
         yield* authorization.requireAction({
           actionId: "convert",
-          modifiesTarget: true,
           objectType: "lead",
           recordIds: [id],
         })

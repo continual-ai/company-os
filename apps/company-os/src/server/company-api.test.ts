@@ -1,13 +1,17 @@
 /* oxlint-disable anti-slop/no-runtime-typeof */
 import { fileURLToPath } from "node:url"
 
-import { Model } from "@company/model"
-import { createClient } from "@company/runtime/client"
 import { PgliteClient } from "@effect/sql-pglite"
 import * as PgliteDrizzle from "drizzle-orm/effect-pglite"
 import { migrate } from "drizzle-orm/effect-pglite/migrator"
 import { Effect, Layer, ManagedRuntime, Redacted } from "effect"
+import { FetchHttpClient } from "effect/unstable/http"
+import { HttpApiClient } from "effect/unstable/httpapi"
 import { describe, expect, it } from "vitest"
+
+import type { CompanyApiClient } from "@/company-client"
+import { applicationHttpApi } from "@/http-api"
+import { PLATFORM_ID } from "@/system-records"
 
 import { makeApplicationLayer } from "./application-layer"
 import { AuthSettings, type AuthConfig } from "./auth/auth-config"
@@ -39,13 +43,17 @@ const authConfig: AuthConfig = {
 
 const testAuthProtocol = {
   handle: (_request: Request) => Effect.die("Not used by Company API tests"),
-  session: (_headers: Headers) =>
-    Effect.succeed({
-      authUserId: "auth_owner",
-      email: "owner@example.com",
-      emailVerified: true,
-      name: "Owner",
-    }),
+  session: (headers: Headers) =>
+    Effect.succeed(
+      headers.has("x-test-anonymous")
+        ? null
+        : {
+            authUserId: "auth_owner",
+            email: "owner@example.com",
+            emailVerified: true,
+            name: "Owner",
+          }
+    ),
 } satisfies typeof AuthProtocol.Service
 
 function asDatabase(
@@ -96,6 +104,26 @@ describe("Company API", () => {
           runtime.runPromise(userAuthentication.authenticate(new Headers()))
         )
         const api = yield* Effect.promise(() => runtime.runPromise(CompanyApi))
+        const anonymousCapabilities = yield* Effect.promise(() =>
+          runtime.runPromise(
+            api.handle(
+              new Request("http://company.test/api/v1/capabilities:check", {
+                body: JSON.stringify({
+                  checks: [{ permission: "invitation.accept" }],
+                }),
+                headers: {
+                  "content-type": "application/json",
+                  "x-test-anonymous": "true",
+                },
+                method: "POST",
+              })
+            )
+          )
+        )
+        expect(anonymousCapabilities.status).toBe(200)
+        expect(
+          yield* Effect.promise(() => anonymousCapabilities.json())
+        ).toEqual({ results: [{ allowed: false }] })
         const invalidCompany = yield* Effect.promise(() =>
           runtime.runPromise(
             api.handle(
@@ -123,35 +151,56 @@ describe("Company API", () => {
           status: "INVALID_ARGUMENT",
         })
 
-        const client = createClient(Model, {
-          baseUrl: "http://company.test/api/v1",
-          fetch: async (input, init) => {
-            const url =
-              typeof input === "string"
-                ? input
-                : input instanceof URL
-                  ? input.href
-                  : input.url
-            const response = await runtime.runPromise(
-              api.handle(new Request(url, init))
+        const fetchApi: typeof globalThis.fetch = async (input, init) => {
+          const url =
+            typeof input === "string"
+              ? input
+              : input instanceof URL
+                ? input.href
+                : input.url
+          const response = await runtime.runPromise(
+            api.handle(new Request(url, init))
+          )
+          if (response.status >= 500) {
+            throw new Error(
+              `Company API returned ${response.status}: ${await response.text()}`
             )
-            if (response.status >= 500) {
-              throw new Error(
-                `Company API returned ${response.status}: ${await response.text()}`
-              )
-            }
-            return response
-          },
-        })
+          }
+          return response
+        }
+        const nativeClient = yield* HttpApiClient.make(applicationHttpApi, {
+          baseUrl: "http://company.test",
+        }).pipe(Effect.provide(FetchHttpClient.layer))
+        // SAFETY: applicationHttpApi is projected from the same closed Model
+        // represented by CompanyApiClient.
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+        const client = nativeClient as CompanyApiClient
+        const useTestFetch = <A, E>(effect: Effect.Effect<A, E>) =>
+          effect.pipe(Effect.provideService(FetchHttpClient.Fetch, fetchApi))
 
-        const initial = yield* Effect.promise(() =>
-          client.companies.list({ pageSize: 10 })
+        const capabilities = yield* useTestFetch(
+          client.capabilities.checkCapabilities({
+            payload: {
+              checks: [
+                { permission: "company.create", target: PLATFORM_ID },
+                { permission: "lead.convert", target: "missing-lead" },
+              ],
+            },
+          })
+        )
+        expect(capabilities.results).toEqual([
+          { allowed: true },
+          { allowed: false },
+        ])
+
+        const initial = yield* useTestFetch(
+          client.company.listCompanies({ query: { pageSize: 10 } })
         )
         expect(initial).toEqual({ items: [], nextPageToken: "" })
 
-        const created = yield* Effect.promise(() =>
-          client.companies.create({
-            name: "Northstar",
+        const created = yield* useTestFetch(
+          client.company.createCompany({
+            payload: { name: "Northstar" },
           })
         )
         expect(created).toMatchObject({
@@ -159,19 +208,25 @@ describe("Company API", () => {
           name: "Northstar",
         })
 
-        const listed = yield* Effect.promise(() =>
-          client.companies.list({ pageSize: 10 })
+        const listed = yield* useTestFetch(
+          client.company.listCompanies({ query: { pageSize: 10 } })
         )
         expect(listed.items).toHaveLength(1)
 
-        const serviceAccount = yield* Effect.promise(() =>
-          client.serviceAccounts.create({ name: "Import worker" })
+        const serviceAccount = yield* useTestFetch(
+          client.serviceAccount.createServiceAccount({
+            payload: { name: "Import worker" },
+          })
         )
-        yield* Effect.promise(() =>
-          client.serviceAccounts.disable({ id: serviceAccount.id })
+        yield* useTestFetch(
+          client.serviceAccount.disableServiceAccount({
+            params: { id: serviceAccount.id },
+          })
         )
-        const disabled = yield* Effect.promise(() =>
-          client.serviceAccounts.get({ id: serviceAccount.id })
+        const disabled = yield* useTestFetch(
+          client.serviceAccount.getServiceAccount({
+            params: { id: serviceAccount.id },
+          })
         )
         expect(disabled.status).toBe("disabled")
 

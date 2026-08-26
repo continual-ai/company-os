@@ -4,12 +4,13 @@ import { createApiReference } from "@company/runtime/effect/http"
 import { Layer } from "effect"
 import { OpenApi } from "effect/unstable/httpapi"
 
+import { applicationHttpApi } from "@/http-api"
+
 import { makeApplicationLayer } from "./application-layer"
 import { AuthSettings } from "./auth/auth-config"
 import { AuthProtocol } from "./auth/auth-protocol"
 import { Database } from "./database/database"
 import * as Postgres from "./database/postgres"
-import { applicationHttpApi } from "./http-contract"
 
 const databaseLayer = Database.layer.pipe(Layer.provide(Postgres.layer))
 const authSettingsLayer = AuthSettings.layer

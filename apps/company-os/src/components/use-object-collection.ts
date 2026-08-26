@@ -6,10 +6,18 @@ import {
   type OnChangeFn,
   type SortingState,
 } from "@tanstack/react-table"
+import { Effect } from "effect"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
+import { capabilityKey, MAX_CAPABILITY_CHECKS } from "@/capabilities"
+import { companyApi } from "@/company-client"
 import { PLATFORM_ID } from "@/system-records"
 
+import {
+  allowedCapabilityKeys,
+  objectCapabilityCheck,
+  objectCapabilityChecks,
+} from "./object-capabilities"
 import {
   clientFor,
   recordLabel,
@@ -97,6 +105,9 @@ export function useObjectCollection(object: ModelObject) {
   >([undefined])
   const [nextPageToken, setNextPageToken] = useState<PageToken | "">("")
   const [records, setRecords] = useState<ReadonlyArray<ClientRecord>>([])
+  const [allowedCapabilities, setAllowedCapabilities] = useState<
+    ReadonlySet<string>
+  >(new Set())
   const [referenceLabels, setReferenceLabels] = useState<
     ReadonlyMap<string, string>
   >(new Map([[PLATFORM_ID, Model.root.name]]))
@@ -109,13 +120,32 @@ export function useObjectCollection(object: ModelObject) {
     const currentRequest = ++requestId.current
     setLoading(true)
     setError(undefined)
+    setAllowedCapabilities(new Set())
     try {
       const page = await client.list(
         objectListRequest(object, columnFilters, sorting, pageToken)
       )
-      const labels = await loadReferenceLabels(object, page.items)
+      const checks = objectCapabilityChecks(
+        object,
+        page.items.map(({ id }) => id)
+      )
+      const [labels, capabilityResults] = await Promise.all([
+        loadReferenceLabels(object, page.items),
+        checks.length === 0
+          ? Promise.resolve([])
+          : Promise.all(
+              chunks(checks, MAX_CAPABILITY_CHECKS).map((batch) =>
+                Effect.runPromise(
+                  companyApi.capabilities.checkCapabilities({
+                    payload: { checks: batch },
+                  })
+                )
+              )
+            ).then((responses) => responses.flatMap(({ results }) => results)),
+      ])
       if (requestId.current !== currentRequest) return
       setRecords(page.items)
+      setAllowedCapabilities(allowedCapabilityKeys(checks, capabilityResults))
       setNextPageToken(page.nextPageToken)
       setReferenceLabels(labels)
     } catch (cause) {
@@ -193,10 +223,19 @@ export function useObjectCollection(object: ModelObject) {
     setPageIndex((current) => current + 1)
   }
 
+  const can = (actionId: string, target?: string) => {
+    const check = objectCapabilityCheck(object, actionId, target)
+    return check !== undefined && allowedCapabilities.has(capabilityKey(check))
+  }
+
   return {
-    canCreate: client.create !== undefined,
-    canDelete: client.delete !== undefined || client.batchDelete !== undefined,
-    canUpdate: client.update !== undefined,
+    can,
+    canCreate: client.create !== undefined && can("create"),
+    canDelete: (recordId: string) =>
+      (client.delete !== undefined || client.batchDelete !== undefined) &&
+      can("delete", recordId),
+    canUpdate: (recordId: string) =>
+      client.update !== undefined && can("update", recordId),
     columnFilters,
     create,
     deleteRecords,

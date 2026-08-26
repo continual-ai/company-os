@@ -1,5 +1,6 @@
 import { Context, Data, Effect, Layer } from "effect"
 
+import { identityCaller } from "@/server/caller"
 import { authenticatedInvocation } from "@/server/invocation-context"
 
 import { ApiKeyAuthentication } from "./api-key-authentication"
@@ -29,7 +30,19 @@ const make = Effect.gen(function* () {
     }
   )
 
-  return { authenticate }
+  const identify = Effect.fn("@company/Authentication.identify")(function* (
+    headers: Headers
+  ) {
+    const authorizationHeader = headers.get("authorization")
+    if (authorizationHeader === null) return yield* users.identify(headers)
+    if (!authorizationHeader.startsWith("Bearer cos_")) {
+      return yield* Effect.fail(new UnsupportedAuthorization())
+    }
+    const key = yield* apiKeys.authenticate(authorizationHeader)
+    return identityCaller(key.serviceAccountId)
+  })
+
+  return { authenticate, identify }
 })
 
 /** Authenticates a User session or ServiceAccount API key into one invocation. */

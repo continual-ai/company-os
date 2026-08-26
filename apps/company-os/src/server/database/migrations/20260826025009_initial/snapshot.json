@@ -1,12 +1,24 @@
 {
   "version": "8",
   "dialect": "postgres",
-  "id": "1ebfbef4-ba0f-4d99-a21b-3837e30325f4",
+  "id": "564c21e2-b631-4da0-a36b-faa26cbc2d38",
   "prevIds": ["00000000-0000-0000-0000-000000000000"],
   "ddl": [
     {
       "name": "auth",
       "entityType": "schemas"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "interface_actor",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "anonymous_actors",
+      "entityType": "tables",
+      "schema": "public"
     },
     {
       "isRlsEnabled": false,
@@ -142,6 +154,12 @@
     },
     {
       "isRlsEnabled": false,
+      "name": "principal_sets",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
       "name": "interface_principal",
       "entityType": "tables",
       "schema": "public"
@@ -175,6 +193,58 @@
       "name": "users",
       "entityType": "tables",
       "schema": "public"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "interface_actor"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "anonymous_actors"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "parent_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "anonymous_actors"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "name",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "anonymous_actors"
     },
     {
       "type": "text",
@@ -1851,6 +1921,71 @@
       "name": "id",
       "entityType": "columns",
       "schema": "public",
+      "table": "principal_sets"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "parent_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "principal_sets"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "kind",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "principal_sets"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "name",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "principal_sets"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "description",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "principal_sets"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
       "table": "interface_principal"
     },
     {
@@ -2151,6 +2286,27 @@
       "entityType": "columns",
       "schema": "public",
       "table": "users"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "parent_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "anonymous_actors_parent_id_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "anonymous_actors"
     },
     {
       "nameExplicit": true,
@@ -2723,6 +2879,48 @@
       "nameExplicit": true,
       "columns": [
         {
+          "value": "parent_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "principal_sets_parent_id_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "principal_sets"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "kind",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "principal_sets_kind_unique",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "principal_sets"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
           "value": "object_id",
           "isExpression": false,
           "asc": true,
@@ -2921,6 +3119,58 @@
       "entityType": "indexes",
       "schema": "public",
       "table": "users"
+    },
+    {
+      "nameExplicit": false,
+      "columns": ["id"],
+      "schemaTo": "public",
+      "tableTo": "objects",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "interface_actor_id_objects_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "interface_actor"
+    },
+    {
+      "nameExplicit": false,
+      "columns": ["id"],
+      "schemaTo": "public",
+      "tableTo": "objects",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "anonymous_actors_id_objects_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "anonymous_actors"
+    },
+    {
+      "nameExplicit": true,
+      "columns": ["parent_id"],
+      "schemaTo": "public",
+      "tableTo": "roots",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "anonymous_actors_parent_platform_fk",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "anonymous_actors"
+    },
+    {
+      "nameExplicit": true,
+      "columns": ["id", "parent_id"],
+      "schemaTo": "public",
+      "tableTo": "objects",
+      "columnsTo": ["id", "parent_id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "anonymous_actors_object_parent_fk",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "anonymous_actors"
     },
     {
       "nameExplicit": false,
@@ -3524,11 +3774,11 @@
       "nameExplicit": false,
       "columns": ["created_by_id"],
       "schemaTo": "public",
-      "tableTo": "interface_identity",
+      "tableTo": "interface_actor",
       "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "RESTRICT",
-      "name": "objects_created_by_id_interface_identity_id_fkey",
+      "name": "objects_created_by_id_interface_actor_id_fkey",
       "entityType": "fks",
       "schema": "public",
       "table": "objects"
@@ -3537,11 +3787,11 @@
       "nameExplicit": false,
       "columns": ["updated_by_id"],
       "schemaTo": "public",
-      "tableTo": "interface_identity",
+      "tableTo": "interface_actor",
       "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "RESTRICT",
-      "name": "objects_updated_by_id_interface_identity_id_fkey",
+      "name": "objects_updated_by_id_interface_actor_id_fkey",
       "entityType": "fks",
       "schema": "public",
       "table": "objects"
@@ -3571,6 +3821,45 @@
       "entityType": "fks",
       "schema": "public",
       "table": "roots"
+    },
+    {
+      "nameExplicit": false,
+      "columns": ["id"],
+      "schemaTo": "public",
+      "tableTo": "objects",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "principal_sets_id_objects_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "principal_sets"
+    },
+    {
+      "nameExplicit": true,
+      "columns": ["parent_id"],
+      "schemaTo": "public",
+      "tableTo": "roots",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "principal_sets_parent_platform_fk",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "principal_sets"
+    },
+    {
+      "nameExplicit": true,
+      "columns": ["id", "parent_id"],
+      "schemaTo": "public",
+      "tableTo": "objects",
+      "columnsTo": ["id", "parent_id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "principal_sets_object_parent_fk",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "principal_sets"
     },
     {
       "nameExplicit": false,
@@ -3781,6 +4070,22 @@
       "table": "users"
     },
     {
+      "columns": ["id"],
+      "nameExplicit": false,
+      "name": "interface_actor_pkey",
+      "schema": "public",
+      "table": "interface_actor",
+      "entityType": "pks"
+    },
+    {
+      "columns": ["id"],
+      "nameExplicit": false,
+      "name": "anonymous_actors_pkey",
+      "schema": "public",
+      "table": "anonymous_actors",
+      "entityType": "pks"
+    },
+    {
       "columns": ["api_key_id"],
       "nameExplicit": false,
       "name": "api_key_credential_pkey",
@@ -3959,6 +4264,14 @@
     {
       "columns": ["id"],
       "nameExplicit": false,
+      "name": "principal_sets_pkey",
+      "schema": "public",
+      "table": "principal_sets",
+      "entityType": "pks"
+    },
+    {
+      "columns": ["id"],
+      "nameExplicit": false,
       "name": "interface_principal_pkey",
       "schema": "public",
       "table": "interface_principal",
@@ -4032,7 +4345,7 @@
       "entityType": "uniques"
     },
     {
-      "value": "\"object_type\" in ('platform', 'user', 'serviceAccount', 'apiKey', 'group', 'groupMembership', 'role', 'roleAssignment', 'invitation', 'company', 'contact', 'lead', 'deal', 'lineItem', 'interaction')",
+      "value": "\"object_type\" in ('platform', 'user', 'serviceAccount', 'anonymousActor', 'apiKey', 'group', 'principalSet', 'groupMembership', 'role', 'roleAssignment', 'invitation', 'company', 'contact', 'lead', 'deal', 'lineItem', 'interaction')",
       "name": "objects_object_type_check",
       "entityType": "checks",
       "schema": "public",

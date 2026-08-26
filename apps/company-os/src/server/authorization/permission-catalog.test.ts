@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest"
 
-import { modelPermissions, objectPermission } from "./permission-catalog"
+import {
+  modelPermissions,
+  objectPermission,
+  permissionDefinition,
+} from "./permission-catalog"
 
 describe("authorization permission catalog", () => {
   it("derives only operations enabled by the model", () => {
@@ -12,7 +16,9 @@ describe("authorization permission catalog", () => {
     expect(modelPermissions).not.toContain("role.update")
     expect(modelPermissions).not.toContain("role.delete")
     expect(modelPermissions).not.toContain("roleAssignment.update")
+    expect(modelPermissions).toContain("invitation.accept")
     expect(new Set(modelPermissions).size).toBe(modelPermissions.length)
+    expect(() => modelPermissions.map(permissionDefinition)).not.toThrow()
   })
 
   it("uses one permission for singular and batch forms", () => {

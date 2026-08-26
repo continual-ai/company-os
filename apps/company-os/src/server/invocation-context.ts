@@ -1,11 +1,11 @@
-import type { IdentityId } from "@company/model"
+import type { ActorId, IdentityId } from "@company/model"
 import {
   CurrentInvocation,
   type InvocationContext,
 } from "@company/runtime/effect/object-service"
 import { Data, Effect } from "effect"
 
-import { SYSTEM_SERVICE_ACCOUNT_ID } from "@/system-records"
+import { ANONYMOUS_ACTOR_ID, SYSTEM_SERVICE_ACCOUNT_ID } from "@/system-records"
 
 export class ReservedSystemActor extends Data.TaggedError(
   "ReservedSystemActor"
@@ -26,16 +26,18 @@ export const systemInvocation = {
   actorId: SYSTEM_SERVICE_ACCOUNT_ID,
 } satisfies InvocationContext
 
-/** Model-specific actor ID, narrowed at the trusted context boundary. */
-export const currentActorId: Effect.Effect<
-  IdentityId,
-  never,
-  CurrentInvocation
-> = CurrentInvocation.pipe(
-  Effect.map(({ actorId }) => {
-    // SAFETY: every external invocation context is constructed in this module
-    // after resolving the actor to an Identity implementation.
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-    return actorId as IdentityId
-  })
-)
+/** Context for operations deliberately exposed to callers without an identity. */
+export const anonymousInvocation = {
+  actorId: ANONYMOUS_ACTOR_ID,
+} satisfies InvocationContext
+
+/** Model-specific audit actor ID, narrowed at the trusted context boundary. */
+export const currentActorId: Effect.Effect<ActorId, never, CurrentInvocation> =
+  CurrentInvocation.pipe(
+    Effect.map(({ actorId }) => {
+      // SAFETY: every external invocation context is constructed in this module
+      // after resolving the actor to an Actor implementation.
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+      return actorId as ActorId
+    })
+  )

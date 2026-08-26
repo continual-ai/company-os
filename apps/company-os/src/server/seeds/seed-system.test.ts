@@ -10,7 +10,10 @@ import { describe, expect, it } from "vitest"
 
 import { Database } from "@/server/database/database"
 import {
+  actors,
+  anonymousActors,
   objects,
+  principalSets,
   recordAliases,
   relations,
   roleAssignments,
@@ -21,6 +24,11 @@ import {
   ReservedSystemActor,
 } from "@/server/invocation-context"
 import {
+  ALL_AUTHENTICATED_CALLERS_PRINCIPAL_SET_ID,
+  ALL_CALLERS_PRINCIPAL_SET_ID,
+  ANONYMOUS_ACTOR_ID,
+  AUTHENTICATED_CALLER_ROLE_ASSIGNMENT_ID,
+  AUTHENTICATED_CALLER_ROLE_ID,
   PLATFORM_ADMIN_ROLE_ID,
   PLATFORM_ID,
   SYSTEM_SERVICE_ACCOUNT_ID,
@@ -70,8 +78,8 @@ describe("Company OS seeds", () => {
                 condeferred as "initiallyDeferred"
               from pg_constraint
               where conname in (
-                'objects_created_by_id_interface_identity_id_fkey',
-                'objects_updated_by_id_interface_identity_id_fkey'
+                'objects_created_by_id_interface_actor_id_fkey',
+                'objects_updated_by_id_interface_actor_id_fkey'
               )
               order by conname`,
           "objects"
@@ -99,6 +107,7 @@ describe("Company OS seeds", () => {
             inArray(objects.id, [
               PLATFORM_ID,
               SYSTEM_SERVICE_ACCOUNT_ID,
+              ANONYMOUS_ACTOR_ID,
               PLATFORM_ADMIN_ROLE_ID,
               SYSTEM_ROLE_ASSIGNMENT_ID,
             ])
@@ -107,6 +116,26 @@ describe("Company OS seeds", () => {
           .select({ name: roles.name, permissions: roles.permissions })
           .from(roles)
           .where(eq(roles.id, PLATFORM_ADMIN_ROLE_ID))
+          .limit(1)
+        const callerSets = yield* database
+          .select({ id: principalSets.id, kind: principalSets.kind })
+          .from(principalSets)
+          .orderBy(principalSets.id)
+        const anonymousActor = yield* database
+          .select({ actorId: actors.id, id: anonymousActors.id })
+          .from(anonymousActors)
+          .innerJoin(actors, eq(actors.id, anonymousActors.id))
+          .where(eq(anonymousActors.id, ANONYMOUS_ACTOR_ID))
+          .limit(1)
+        const callerAssignment = yield* database
+          .select({
+            principalId: roleAssignments.principalId,
+            roleId: roleAssignments.roleId,
+          })
+          .from(roleAssignments)
+          .where(
+            eq(roleAssignments.id, AUTHENTICATED_CALLER_ROLE_ASSIGNMENT_ID)
+          )
           .limit(1)
         const assignment = yield* database
           .select({
@@ -139,8 +168,11 @@ describe("Company OS seeds", () => {
 
         return {
           aliases,
+          anonymousActor,
           assignment,
           auditConstraints,
+          callerAssignment,
+          callerSets,
           impersonation,
           role,
           seededObjects,
@@ -153,19 +185,23 @@ describe("Company OS seeds", () => {
       expect.arrayContaining([
         PLATFORM_ID,
         SYSTEM_SERVICE_ACCOUNT_ID,
+        ANONYMOUS_ACTOR_ID,
         PLATFORM_ADMIN_ROLE_ID,
         SYSTEM_ROLE_ASSIGNMENT_ID,
       ])
     )
-    expect(result.seededObjects).toHaveLength(4)
+    expect(result.seededObjects).toHaveLength(5)
+    expect(result.anonymousActor).toEqual([
+      { actorId: ANONYMOUS_ACTOR_ID, id: ANONYMOUS_ACTOR_ID },
+    ])
     expect(result.auditConstraints).toEqual([
       {
-        constraintName: "objects_created_by_id_interface_identity_id_fkey",
+        constraintName: "objects_created_by_id_interface_actor_id_fkey",
         deferrable: true,
         initiallyDeferred: true,
       },
       {
-        constraintName: "objects_updated_by_id_interface_identity_id_fkey",
+        constraintName: "objects_updated_by_id_interface_actor_id_fkey",
         deferrable: true,
         initiallyDeferred: true,
       },
@@ -174,6 +210,17 @@ describe("Company OS seeds", () => {
       result.seededObjects.every(({ systemManaged }) => systemManaged)
     ).toBe(true)
     expect(result.role[0]?.name).toBe("Platform administrator")
+    expect(result.callerSets).toEqual([
+      {
+        id: ALL_AUTHENTICATED_CALLERS_PRINCIPAL_SET_ID,
+        kind: "allAuthenticatedCallers",
+      },
+      { id: ALL_CALLERS_PRINCIPAL_SET_ID, kind: "allCallers" },
+    ])
+    expect(result.callerAssignment[0]).toEqual({
+      principalId: ALL_AUTHENTICATED_CALLERS_PRINCIPAL_SET_ID,
+      roleId: AUTHENTICATED_CALLER_ROLE_ID,
+    })
     expect(Array.isArray(result.role[0]?.permissions)).toBe(true)
     expect(result.assignment[0]).toEqual({
       principalId: SYSTEM_SERVICE_ACCOUNT_ID,

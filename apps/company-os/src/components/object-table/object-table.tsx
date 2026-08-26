@@ -61,8 +61,10 @@ import {
 } from "./object-table-toolbar"
 
 export interface ObjectTableProps {
+  canDeleteRecord?: ((recordId: string) => boolean) | undefined
   canFilterProperty?: ((property: PropertyDefinition) => boolean) | undefined
   canSortProperty?: ((property: PropertyDefinition) => boolean) | undefined
+  canUpdateRecord?: ((recordId: string) => boolean) | undefined
   columnFilters?: ColumnFiltersState | undefined
   object: ObjectType
   onCellCommit?:
@@ -131,6 +133,7 @@ function SelectionHeader({
     <div className="flex size-full items-center justify-center">
       <Checkbox
         aria-label="Select all rows"
+        disabled={!table.getRowModel().rows.some((row) => row.getCanSelect())}
         checked={table.getIsAllRowsSelected()}
         indeterminate={
           !table.getIsAllRowsSelected() && table.getIsSomeRowsSelected()
@@ -149,6 +152,7 @@ function SelectionCell({
       <Checkbox
         aria-label={`Select row ${row.getDisplayIndex() + 1}`}
         checked={row.getIsSelected()}
+        disabled={!row.getCanSelect()}
         onClick={(event) => event.stopPropagation()}
         onDoubleClick={(event) => event.stopPropagation()}
         onCheckedChange={(checked) => row.toggleSelected(checked)}
@@ -169,8 +173,10 @@ function propertyColumnSize(
 }
 
 export function ObjectTable({
+  canDeleteRecord,
   canFilterProperty,
   canSortProperty,
+  canUpdateRecord,
   columnFilters,
   object,
   onCellCommit,
@@ -292,6 +298,10 @@ export function ObjectTable({
     initialState,
     columnResizeMode: "onChange",
     enableMultiSort: true,
+    enableRowSelection:
+      canDeleteRecord === undefined
+        ? true
+        : (row) => canDeleteRecord(row.original.id),
     enableSortingRemoval: true,
     manualFiltering: onColumnFiltersChange !== undefined,
     manualSorting: onSortingChange !== undefined,
@@ -512,6 +522,8 @@ export function ObjectTable({
                     )
                     const commitCell =
                       onCellCommit === undefined ||
+                      (canUpdateRecord !== undefined &&
+                        !canUpdateRecord(row.original.id)) ||
                       !isObjectTableCellEditable(meta.property)
                         ? undefined
                         : (nextValue: ObjectTableValue) =>

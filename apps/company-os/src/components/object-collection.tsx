@@ -14,6 +14,16 @@ import { ObjectTable } from "./object-table/object-table"
 import type { ObjectTableRecord } from "./object-table/object-table-config"
 import { useObjectCollection } from "./use-object-collection"
 
+export interface CollectionActionContext {
+  readonly can: (actionId: string, target?: string) => boolean
+  readonly refresh: () => Promise<void>
+}
+
+export interface RecordActionContext {
+  readonly can: (actionId: string) => boolean
+  readonly refresh: () => Promise<void>
+}
+
 export function ObjectCollection({
   object,
   renderRecordActions,
@@ -21,10 +31,10 @@ export function ObjectCollection({
 }: {
   readonly object: ModelObject
   readonly renderRecordActions?:
-    | ((record: ObjectTableRecord, refresh: () => Promise<void>) => ReactNode)
+    | ((record: ObjectTableRecord, context: RecordActionContext) => ReactNode)
     | undefined
   readonly renderCollectionActions?:
-    | ((refresh: () => Promise<void>) => ReactNode)
+    | ((context: CollectionActionContext) => ReactNode)
     | undefined
 }) {
   const collection = useObjectCollection(object)
@@ -71,13 +81,17 @@ export function ObjectCollection({
         resolveRecordLabel={(recordId) =>
           collection.referenceLabels.get(recordId)
         }
-        onCellCommit={collection.canUpdate ? collection.updateCell : undefined}
+        onCellCommit={collection.updateCell}
+        canUpdateRecord={collection.canUpdate}
         onCreateRecord={
           collection.canCreate ? () => setCreateOpen(true) : undefined
         }
         onDeleteRecords={
-          collection.canDelete ? collection.deleteRecords : undefined
+          collection.records.some(({ id }) => collection.canDelete(id))
+            ? collection.deleteRecords
+            : undefined
         }
+        canDeleteRecord={collection.canDelete}
         pagination={{
           hasNextPage: collection.hasNextPage,
           hasPreviousPage: collection.hasPreviousPage,
@@ -86,12 +100,15 @@ export function ObjectCollection({
           onPreviousPage: collection.previousPage,
           pageIndex: collection.pageIndex,
         }}
-        toolbarActions={renderCollectionActions?.(collection.load)}
+        toolbarActions={renderCollectionActions?.({
+          can: collection.can,
+          refresh: collection.load,
+        })}
         renderRecordActions={(record) => {
           const source = collection.records.find(({ id }) => id === record.id)
           return (
             <>
-              {collection.canUpdate && source !== undefined ? (
+              {collection.canUpdate(record.id) && source !== undefined ? (
                 <Button
                   type="button"
                   variant="ghost"
@@ -102,7 +119,10 @@ export function ObjectCollection({
                   <PencilIcon />
                 </Button>
               ) : null}
-              {renderRecordActions?.(record, collection.load)}
+              {renderRecordActions?.(record, {
+                can: (actionId) => collection.can(actionId, record.id),
+                refresh: collection.load,
+              })}
             </>
           )
         }}

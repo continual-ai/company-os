@@ -12,7 +12,7 @@ import {
 import type { ObjectType } from "./definition/object"
 import type { RootType } from "./definition/root"
 
-export const API_DESCRIPTION_VERSION = "0.25" as const
+export const API_DESCRIPTION_VERSION = "0.26" as const
 
 type ObjectDescription = Omit<ObjectType, "actions" | "kind" | "parent"> & {
   parent: {

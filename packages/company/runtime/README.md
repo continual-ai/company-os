@@ -2,9 +2,9 @@
 
 Vendored, portable machinery for describing and projecting an operating model contract.
 
-Company packages may use the portable root surface for definitions. Browser clients and
-Effect-based server projections are separate public subpaths so consumers do not acquire unrelated
-runtime assumptions.
+Company packages may use the portable root surface for definitions. Effect-based schema, HTTP, and
+execution projections are separate public subpaths so consumers do not acquire unrelated runtime
+assumptions.
 
 ```ts
 import {
@@ -16,8 +16,9 @@ import {
   type RecordIdOf,
   schema,
 } from "@company/runtime"
-import { createClient } from "@company/runtime/client"
 import { Context, Effect, Layer } from "effect"
+import { FetchHttpClient } from "effect/unstable/http"
+import { HttpApiClient } from "effect/unstable/httpapi"
 import { toEffectSchema } from "@company/runtime/effect"
 import { createHttpApi } from "@company/runtime/effect/http"
 import type { Repository } from "@company/runtime/effect/object-repository"
@@ -186,8 +187,15 @@ const Lead = defineObject({
   },
 })
 
-await client.leads.create({ name: "New lead" })
-await client.leads.qualify({ id: leadId })
+const httpApi = createHttpApi(Model)
+const client = Effect.runSync(
+  HttpApiClient.make(httpApi).pipe(Effect.provide(FetchHttpClient.layer))
+)
+
+await Effect.runPromise(
+  client.lead.createLead({ payload: { name: "New lead" } })
+)
+await Effect.runPromise(client.lead.qualifyLead({ params: { id: leadId } }))
 ```
 
 `list` is the one standard collection query. Simple pagination uses `GET /leads`; filters or
@@ -196,20 +204,28 @@ portable request. Object actions use `/leads/{id}/actions/qualify`; collection a
 `/leads/actions/qualify`. Filters are typed by property kind, compose with `and`, `or`, and `not`, and
 sorting is ordered and deterministic:
 
+Every action is permission-governed. Applications may model universal caller sets as principals
+when anonymous or authenticated callers need capabilities before they resolve to a durable actor;
+the portable action contract does not introduce a parallel authorization mode.
+
 ```ts
-await client.leads.list({
-  filter: {
-    and: [
-      { field: "status", operator: "eq", value: "new" },
-      { field: "email", operator: "contains", value: "@example.com" },
-    ],
-  },
-  sort: [
-    { field: "createdAt", direction: "desc" },
-    { field: "name", direction: "asc" },
-  ],
-  pageSize: 50,
-})
+await Effect.runPromise(
+  client.lead.searchLeads({
+    payload: {
+      filter: {
+        and: [
+          { field: "status", operator: "eq", value: "new" },
+          { field: "email", operator: "contains", value: "@example.com" },
+        ],
+      },
+      sort: [
+        { field: "createdAt", direction: "desc" },
+        { field: "name", direction: "asc" },
+      ],
+      pageSize: 50,
+    },
+  })
+)
 ```
 
 The backend resolves fields through the declared object schema, validates values by semantic type,
@@ -242,13 +258,13 @@ export class CompanyRepository extends Context.Service<CompanyRepository>()(
 
 const makeCompanyService = Effect.gen(function* () {
   const authorization = yield* Authorization
+  const identifiers = yield* RecordIdentifierResolver
   const repository = yield* CompanyRepository
-  const resolveRecordAliases = yield* makeRecordAliasResolver
 
   return ObjectService.make(Model.objects.company, repository, {
     authorize: authorization.require,
     rootId: PLATFORM_ID,
-    resolveRecordAliases,
+    resolveRecordAliases: identifiers.resolveAliases,
     visibleWithin: authorization.visibleWithin,
   })
 })
@@ -297,7 +313,7 @@ capability, `CompanyService` is the governed application capability, and an HTTP
 thin transport adapter over that service. Routers partition the semantic input mechanically—such
 as `id` in the path, delete `etag` in the query, and update values in the body—then merge those parts
 back into the same service request object. They do not authorize, validate business rules, supply
-audit identity, generate stored versions, or call repositories directly. There is no separate
+audit actors, generate stored versions, or call repositories directly. There is no separate
 controller layer unless a transport has substantial protocol-specific behavior worth naming.
 
 ## Owns

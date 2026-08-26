@@ -30,15 +30,12 @@ import { DealRepository } from "@/server/objects/deal-repository"
 import { InteractionRepository } from "@/server/objects/interaction-repository"
 import { LeadRepository } from "@/server/objects/lead-repository"
 import { LineItemRepository } from "@/server/objects/line-item-repository"
+import { RecordIdentifierResolver } from "@/server/objects/record-identifier-resolver"
 import { seedSystem } from "@/server/seeds/seed-system"
 import { PLATFORM_ID, SYSTEM_SERVICE_ACCOUNT_ID } from "@/system-records"
 
 import { Database } from "./database"
-import {
-  makeRecordAliasResolver,
-  makeObjectRepository,
-  resolveRecordAlias,
-} from "./model-storage"
+import { makeObjectRepository } from "./object-repository"
 import { lineItems, recordAliases, objects, parties, relations } from "./schema"
 
 const migrationsFolder = fileURLToPath(new URL("./migrations", import.meta.url))
@@ -97,7 +94,7 @@ describe("Drizzle object repository", () => {
 
         const db = asDatabase(database)
         yield* seedSystem().pipe(Effect.provideService(Database, db))
-        const resolveTypedRecordAliases = yield* makeRecordAliasResolver.pipe(
+        const identifiers = yield* RecordIdentifierResolver.make.pipe(
           Effect.provideService(Database, db)
         )
         const repository = yield* makeObjectRepository(
@@ -107,7 +104,7 @@ describe("Drizzle object repository", () => {
           authorize: () => Effect.void,
           generateRecordId: () => `company_${++nextId}`,
           rootId: platform,
-          resolveRecordAliases: resolveTypedRecordAliases,
+          resolveRecordAliases: identifiers.resolveAliases,
           visibleWithin: () => Effect.succeed([platform]),
         })
 
@@ -145,14 +142,14 @@ describe("Drizzle object repository", () => {
           })
           .pipe(Effect.flip)
         const secondAfterConflict = yield* service.get({ id: second.id })
-        const resolvedAlias = yield* resolveRecordAlias(legacyExample).pipe(
-          Effect.provideService(Database, db)
+        const resolvedAlias = yield* identifiers.resolve(
+          "company",
+          legacyExample
         )
         const foundByAlias = yield* service.get({ id: legacyExample })
-        const removedAlias = yield* resolveRecordAlias(hubspotExample).pipe(
-          Effect.flip,
-          Effect.provideService(Database, db)
-        )
+        const removedAlias = yield* identifiers
+          .resolve("company", hubspotExample)
+          .pipe(Effect.flip)
         const batch = yield* service.batchGet({
           ids: [hubspotBravo, legacyExample],
         })
@@ -160,10 +157,9 @@ describe("Drizzle object repository", () => {
           aliases: [],
           id: second.id,
         })
-        const clearedAlias = yield* resolveRecordAlias(hubspotBravo).pipe(
-          Effect.flip,
-          Effect.provideService(Database, db)
-        )
+        const clearedAlias = yield* identifiers
+          .resolve("company", hubspotBravo)
+          .pipe(Effect.flip)
         const firstPage = yield* service.list({ pageSize: 1 })
         if (firstPage.nextPageToken === "") {
           return yield* Effect.die("Expected another page")
@@ -271,7 +267,7 @@ describe("Drizzle object repository", () => {
             authorize: () => Effect.void,
             generateRecordId: () => "lead_1",
             rootId: platform,
-            resolveRecordAliases: resolveTypedRecordAliases,
+            resolveRecordAliases: identifiers.resolveAliases,
             visibleWithin: () => Effect.succeed([platform]),
           }
         )
@@ -301,7 +297,7 @@ describe("Drizzle object repository", () => {
             authorize: () => Effect.void,
             generateRecordId: () => `interaction_${++nextInteractionId}`,
             rootId: platform,
-            resolveRecordAliases: resolveTypedRecordAliases,
+            resolveRecordAliases: identifiers.resolveAliases,
             visibleWithin: () => Effect.succeed([platform]),
           }
         )
@@ -334,7 +330,7 @@ describe("Drizzle object repository", () => {
             authorize: () => Effect.void,
             generateRecordId: () => "deal_1",
             rootId: platform,
-            resolveRecordAliases: resolveTypedRecordAliases,
+            resolveRecordAliases: identifiers.resolveAliases,
             visibleWithin: () => Effect.succeed([platform]),
           }
         )
@@ -357,7 +353,7 @@ describe("Drizzle object repository", () => {
             authorize: () => Effect.void,
             generateRecordId: () => "line_item_1",
             rootId: platform,
-            resolveRecordAliases: resolveTypedRecordAliases,
+            resolveRecordAliases: identifiers.resolveAliases,
             visibleWithin: () => Effect.succeed([platform]),
           }
         )
@@ -459,10 +455,7 @@ describe("Drizzle object repository", () => {
     expect(result.secondAfterConflict.aliases).toEqual([
       "hubspot:portal_1:company:bravo",
     ])
-    expect(result.resolvedAlias).toEqual({
-      id: result.first.id,
-      objectType: "company",
-    })
+    expect(result.resolvedAlias).toBe(result.first.id)
     expect(result.foundByAlias.id).toBe(result.first.id)
     expect(result.removedAlias).toBeInstanceOf(RecordAliasNotFound)
     expect(result.clearedSecond.aliases).toEqual([])

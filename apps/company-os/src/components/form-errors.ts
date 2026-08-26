@@ -1,5 +1,8 @@
-import { standardErrorViolations, type Violation } from "@company/runtime"
-import { ApiClientResponseError } from "@company/runtime/client"
+import {
+  isApiError,
+  standardErrorViolations,
+  type Violation,
+} from "@company/runtime"
 import { schemaErrorViolations } from "@company/runtime/effect"
 import { Schema } from "effect"
 
@@ -78,15 +81,18 @@ export function formErrorsFromCause(
   if (cause instanceof FormValidationError) {
     return formErrorsFromViolations(cause.violations)
   }
-  if (cause instanceof ApiClientResponseError) {
-    const violations = standardErrorViolations(cause.apiError)
+  if (Schema.isSchemaError(cause)) {
+    return formErrorsFromViolations(schemaErrorViolations(cause))
+  }
+  if (isApiError(cause)) {
+    const violations = standardErrorViolations(cause)
     if (violations !== undefined && violations.length > 0) {
       return formErrorsFromViolations(violations)
     }
     return formErrorsFromViolations([
       {
-        message: cause.apiError?.message ?? fallback,
-        reason: cause.apiError?.reason ?? "REQUEST_FAILED",
+        message: cause.message,
+        reason: cause.reason,
       },
     ])
   }

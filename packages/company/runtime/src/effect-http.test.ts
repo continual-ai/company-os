@@ -102,6 +102,9 @@ describe("Effect HTTP projection", () => {
         post: { operationId: "archiveAllAccounts" },
       }
     )
+    expect(
+      document.paths["/api/v1/accounts/actions/archiveAll"]?.post?.responses
+    ).toHaveProperty("403")
     expect(document.paths["/api/v1/accounts/search"]).toMatchObject({
       post: { operationId: "searchAccounts" },
     })
@@ -235,6 +238,7 @@ describe("Effect HTTP projection", () => {
           description:
             "The requested resource does not exist or is not visible to the caller.",
         },
+        "403": { description: expect.any(String) },
       },
     })
     expect(action?.parameters).toContainEqual(

@@ -10,6 +10,7 @@ import { AuthorizationRepository } from "./authorization/authorization-repositor
 import { Authorization } from "./authorization/authorization-service"
 import { CompanyApi } from "./company-api"
 import type { Database } from "./database/database"
+import { AnonymousActorRepository } from "./objects/anonymous-actor-repository"
 import { ApiKeyRepository } from "./objects/api-key-repository"
 import { ApiKeyService } from "./objects/api-key-service"
 import { CompanyRepository } from "./objects/company-repository"
@@ -23,6 +24,8 @@ import { InvitationService } from "./objects/invitation-service"
 import { LeadRepository } from "./objects/lead-repository"
 import { LeadService } from "./objects/lead-service"
 import { LineItemRepository } from "./objects/line-item-repository"
+import { PrincipalSetRepository } from "./objects/principal-set-repository"
+import { RecordIdentifierResolver } from "./objects/record-identifier-resolver"
 import { RoleAssignmentRepository } from "./objects/role-assignment-repository"
 import { RoleAssignmentService } from "./objects/role-assignment-service"
 import { RoleRepository } from "./objects/role-repository"
@@ -46,6 +49,7 @@ export function makeApplicationLayer({
   database,
 }: ApplicationInfrastructure) {
   const repositories = Layer.mergeAll(
+    AnonymousActorRepository.layer,
     ApiKeyRepository.layer,
     AuthorizationRepository.layer,
     IdentityBindingRepository.layer,
@@ -58,6 +62,7 @@ export function makeApplicationLayer({
     InvitationRepository.layer,
     LeadRepository.layer,
     LineItemRepository.layer,
+    PrincipalSetRepository.layer,
     RoleAssignmentRepository.layer,
     RoleRepository.layer,
     ServiceAccountRepository.layer,
@@ -65,9 +70,13 @@ export function makeApplicationLayer({
   ).pipe(Layer.provide(database))
 
   const authorization = Authorization.layer.pipe(Layer.provide(repositories))
+  const recordIdentifierResolver = RecordIdentifierResolver.layer.pipe(
+    Layer.provide(database)
+  )
   const applicationDependencies = Layer.mergeAll(
     authorization,
     database,
+    recordIdentifierResolver,
     repositories
   )
   const coreServices = Layer.mergeAll(
@@ -87,8 +96,10 @@ export function makeApplicationLayer({
   const userAuthentication = UserAuthentication.layer.pipe(
     Layer.provide(authSettings),
     Layer.provide(authProtocol),
+    Layer.provide(authorization),
     Layer.provide(coreServices),
     Layer.provide(repositories),
+    Layer.provide(recordIdentifierResolver),
     Layer.provide(database)
   )
   const apiKeyAuthentication = ApiKeyAuthentication.layer.pipe(
@@ -99,7 +110,12 @@ export function makeApplicationLayer({
   )
   const companyApi = CompanyApi.layer.pipe(
     Layer.provide(
-      Layer.mergeAll(authentication, companyServices, userAuthentication)
+      Layer.mergeAll(
+        authentication,
+        authorization,
+        companyServices,
+        userAuthentication
+      )
     )
   )
   const readiness = Readiness.layer.pipe(Layer.provide(database))

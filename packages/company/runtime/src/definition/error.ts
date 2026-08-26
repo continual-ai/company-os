@@ -1,3 +1,4 @@
+/* oxlint-disable anti-slop/no-runtime-typeof, anti-slop/no-unknown-parameters -- isApiError validates an untrusted transport failure. */
 import type { AnySchema, InferSchema } from "./schema"
 
 /** Canonical transport-independent statuses from google.rpc.Code. */
@@ -64,6 +65,23 @@ export type ApiError<TError extends ErrorType = ErrorType> =
         readonly status: TError["status"]
       }
     : never
+
+/** Narrows an unknown boundary failure to the portable API error envelope. */
+export function isApiError(value: unknown): value is ApiError {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "details" in value &&
+    "message" in value &&
+    typeof value.message === "string" &&
+    "reason" in value &&
+    typeof value.reason === "string" &&
+    isErrorReason(value.reason) &&
+    "status" in value &&
+    typeof value.status === "string" &&
+    errorStatuses.some((status) => status === value.status)
+  )
+}
 
 /** Defines a transport-independent error contract that actions may declare. */
 export function defineError<
