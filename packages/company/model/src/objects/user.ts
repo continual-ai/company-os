@@ -17,6 +17,7 @@ export const User = defineObject({
     create: false,
     delete: false,
     batchDelete: false,
+    update: false,
   },
   implements: [
     { interface: Actor },
@@ -25,7 +26,7 @@ export const User = defineObject({
   ],
   properties: {
     name: schema.string({ label: "Name", minLength: 1, maxLength: 200 }),
-    email: schema.email({ label: "Email", maxLength: 320, immutable: true }),
+    email: schema.email({ label: "Email", maxLength: 320 }),
     image: schema.image({ label: "Image", aspectRatio: 1, nullable: true }),
     status: schema.select({
       label: "Status",
@@ -37,7 +38,6 @@ export const User = defineObject({
       ],
     }),
   },
-  uniqueBy: { email: ["email"] },
   display: {
     icon: "person",
     image: "image",

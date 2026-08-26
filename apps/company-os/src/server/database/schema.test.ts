@@ -51,7 +51,7 @@ describe("PostgreSQL schema", () => {
       getTableConfig(Storage.objects.user).indexes.map(
         ({ config }) => config.name
       )
-    ).toContain("users_email_unique")
+    ).not.toContain("users_email_unique")
     expect(
       getTableConfig(Storage.objects.lineItem).foreignKeys.map((key) =>
         key.getName()

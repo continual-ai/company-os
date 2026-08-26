@@ -325,6 +325,7 @@ describe("ObjectService", () => {
       service.create({ name: "Example", slug: "example" }).pipe(
         Effect.provideService(ObjectService.CurrentInvocation, {
           actorId: UserId("user_1"),
+          authorizationActorId: UserId("user_1"),
         })
       )
     )
@@ -340,6 +341,7 @@ describe("ObjectService", () => {
     const repository = makeRepository(aliasOwners)
     const context = {
       actorId: UserId("user_1"),
+      authorizationActorId: UserId("user_1"),
     }
     const rootId = PlatformId("platform_1")
     const service = ObjectService.make(Account, repository, {

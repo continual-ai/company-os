@@ -1,7 +1,7 @@
 {
   "version": "8",
   "dialect": "postgres",
-  "id": "cbd2ecc6-e2c5-4a57-973a-aaaf79352ea5",
+  "id": "58bf891b-9459-47bb-b652-47e9788a3d0e",
   "prevIds": ["00000000-0000-0000-0000-000000000000"],
   "ddl": [
     {
@@ -2127,27 +2127,6 @@
       "method": "btree",
       "concurrently": false,
       "name": "users_parent_id_idx",
-      "entityType": "indexes",
-      "schema": "public",
-      "table": "users"
-    },
-    {
-      "nameExplicit": true,
-      "columns": [
-        {
-          "value": "email",
-          "isExpression": false,
-          "asc": true,
-          "nullsFirst": false,
-          "opclass": null
-        }
-      ],
-      "isUnique": true,
-      "where": null,
-      "with": "",
-      "method": "btree",
-      "concurrently": false,
-      "name": "users_email_unique",
       "entityType": "indexes",
       "schema": "public",
       "table": "users"

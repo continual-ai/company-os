@@ -46,13 +46,17 @@ afterAll(async () => {
 function provider() {
   const config: AuthConfig = {
     provider: {
+      algorithms: ["RS256"],
       audience: "company-os",
+      clockToleranceSeconds: 30,
       defaultIdentityKind: undefined,
       header: "x-company-identity",
       issuer: "https://identity.example.com",
       jwksUrl,
       kind: "jwt",
-      kindClaim: "actor_kind",
+      kindClaim: "identity_type",
+      maxTokenAge: "10m",
+      profile: "standard",
     },
     provisioningRole: "operator",
   }
@@ -66,21 +70,35 @@ function provider() {
 }
 
 function assertion(input?: {
+  readonly actor?: {
+    readonly kind?: string
+    readonly subject: string
+  }
   readonly audience?: string
   readonly kind?: string
+  readonly omitIssuedAt?: boolean
+  readonly subject?: string
 }) {
-  return new SignJWT({
-    actor_kind: input?.kind ?? "user",
+  let token = new SignJWT({
+    act:
+      input?.actor === undefined
+        ? undefined
+        : {
+            identity_type: input.actor.kind ?? "serviceAccount",
+            name: "Portfolio agent",
+            sub: input.actor.subject,
+          },
     email: "ada@example.com",
+    identity_type: input?.kind ?? "user",
     name: "Ada Lovelace",
   })
     .setProtectedHeader({ alg: "RS256", kid: "test" })
-    .setIssuedAt()
     .setExpirationTime("5m")
     .setIssuer("https://identity.example.com")
     .setAudience(input?.audience ?? "company-os")
-    .setSubject("user_ada")
-    .sign(privateKey)
+    .setSubject(input?.subject ?? "user_ada")
+  if (input?.omitIssuedAt !== true) token = token.setIssuedAt()
+  return token.sign(privateKey)
 }
 
 describe("IdentityProvider", () => {
@@ -99,11 +117,39 @@ describe("IdentityProvider", () => {
         identityProvider.identify(new Headers({ "x-company-identity": token }))
       )
     ).resolves.toEqual({
-      email: "ada@example.com",
-      issuer: "https://identity.example.com",
-      kind: "user",
-      name: "Ada Lovelace",
-      subject: "user_ada",
+      actor: {
+        email: "ada@example.com",
+        issuer: "https://identity.example.com",
+        kind: "user",
+        name: "Ada Lovelace",
+        subject: "user_ada",
+      },
+      authorizationSubject: {
+        email: "ada@example.com",
+        issuer: "https://identity.example.com",
+        kind: "user",
+        name: "Ada Lovelace",
+        subject: "user_ada",
+      },
+    })
+  })
+
+  it("preserves RFC 8693 delegated actor and subject identities", async () => {
+    const identityProvider = await Effect.runPromise(provider())
+    const token = await assertion({
+      actor: { subject: "service_portfolio_agent" },
+    })
+    await expect(
+      Effect.runPromise(
+        identityProvider.identify(new Headers({ "x-company-identity": token }))
+      )
+    ).resolves.toMatchObject({
+      actor: {
+        kind: "serviceAccount",
+        name: "Portfolio agent",
+        subject: "service_portfolio_agent",
+      },
+      authorizationSubject: { kind: "user", subject: "user_ada" },
     })
   })
 
@@ -123,6 +169,28 @@ describe("IdentityProvider", () => {
         identityProvider.identify(
           new Headers({
             "x-company-identity": await assertion({ kind: "robot" }),
+          })
+        )
+      )
+    ).rejects.toMatchObject({ _tag: "InvalidIdentityAssertion" })
+  })
+
+  it("requires issued-at and non-empty subject claims", async () => {
+    const identityProvider = await Effect.runPromise(provider())
+    await expect(
+      Effect.runPromise(
+        identityProvider.identify(
+          new Headers({
+            "x-company-identity": await assertion({ omitIssuedAt: true }),
+          })
+        )
+      )
+    ).rejects.toMatchObject({ _tag: "InvalidIdentityAssertion" })
+    await expect(
+      Effect.runPromise(
+        identityProvider.identify(
+          new Headers({
+            "x-company-identity": await assertion({ subject: " " }),
           })
         )
       )

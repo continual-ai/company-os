@@ -14,7 +14,6 @@ import {
   RecordAliasNotFound,
   ObjectNotFound,
   ObjectParentTypeMismatch,
-  ObjectUniqueConflict,
   ObjectWriteConflict,
 } from "@company/runtime/effect/object-repository"
 import * as ObjectService from "@company/runtime/effect/object-service"
@@ -237,13 +236,11 @@ describe("Drizzle object repository", () => {
           ...userRecord,
           id: RecordId("user")("user_unique_1"),
         })
-        const uniqueConflict = yield* userRepository
-          .insert({
-            ...userRecord,
-            id: RecordId("user")("user_unique_2"),
-            name: "Second User",
-          })
-          .pipe(Effect.flip)
+        const userWithSharedEmail = yield* userRepository.insert({
+          ...userRecord,
+          id: RecordId("user")("user_unique_2"),
+          name: "Second User",
+        })
         const rollbackId = CompanyId("company_rollback")
         yield* db
           .transaction(() =>
@@ -424,7 +421,7 @@ describe("Drizzle object repository", () => {
           sortedSecondPage,
           staleWrite,
           updated,
-          uniqueConflict,
+          userWithSharedEmail,
           wrongParent,
           wrongTypeAlias,
         }
@@ -485,13 +482,10 @@ describe("Drizzle object repository", () => {
     expect(result.mismatchedCursor).toBeInstanceOf(InvalidListRequest)
     expect(result.invalidFilterValue).toBeInstanceOf(InvalidListRequest)
     expect(result.staleWrite).toBeInstanceOf(ObjectWriteConflict)
-    expect(result.uniqueConflict).toMatchObject({
-      _tag: "ObjectUniqueConflict",
-      fields: ["email"],
-      objectType: "user",
-      rule: "email",
+    expect(result.userWithSharedEmail).toMatchObject({
+      email: "unique@example.example",
+      name: "Second User",
     })
-    expect(result.uniqueConflict).toBeInstanceOf(ObjectUniqueConflict)
     expect(result.wrongParent).toBeInstanceOf(ObjectParentTypeMismatch)
     expect(result.wrongTypeAlias).toBeInstanceOf(RecordAliasNotFound)
     expect(result.rolledBack).toBeInstanceOf(ObjectNotFound)

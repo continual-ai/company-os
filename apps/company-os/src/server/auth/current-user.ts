@@ -4,8 +4,8 @@ import { applicationRuntime } from "@/server/application-runtime"
 
 import { Authentication } from "./authentication"
 
-/** Resolves the current browser User while preserving infrastructure failures. */
-export function readCurrentSession(headers: Headers) {
+/** Resolves the browser User represented by the current verified request. */
+export function readCurrentUser(headers: Headers) {
   return applicationRuntime.runPromise(
     Effect.gen(function* () {
       const authentication = yield* Authentication

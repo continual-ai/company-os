@@ -2,6 +2,7 @@ import { Config, Context, Effect, Layer } from "effect"
 
 export type IdentityKind = "serviceAccount" | "user"
 type ProvisioningRole = "administrator" | "none" | "operator"
+type JwtAlgorithm = "EdDSA" | "ES256" | "PS256" | "RS256"
 
 interface LocalIdentityConfig {
   readonly email: string
@@ -11,13 +12,17 @@ interface LocalIdentityConfig {
 }
 
 interface JwtIdentityConfig {
+  readonly algorithms: ReadonlyArray<JwtAlgorithm>
   readonly audience: string
+  readonly clockToleranceSeconds: number
   readonly defaultIdentityKind: IdentityKind | undefined
   readonly header: string
   readonly issuer: string
   readonly jwksUrl: URL
   readonly kind: "jwt"
   readonly kindClaim: string
+  readonly maxTokenAge: string
+  readonly profile: "google-iap" | "standard"
 }
 
 export interface AuthConfig {
@@ -44,6 +49,34 @@ function provisioningRole(value: string): ProvisioningRole {
   throw new AuthConfigurationError(
     "AUTH_JIT_ROLE must be 'administrator', 'operator', or 'none'."
   )
+}
+
+function algorithms(value: string): ReadonlyArray<JwtAlgorithm> {
+  const configured = [...new Set(value.split(",").map((item) => item.trim()))]
+  const result: Array<JwtAlgorithm> = []
+  for (const algorithm of configured) {
+    if (
+      algorithm !== "EdDSA" &&
+      algorithm !== "ES256" &&
+      algorithm !== "PS256" &&
+      algorithm !== "RS256"
+    ) {
+      throw new AuthConfigurationError(
+        "AUTH_JWT_ALGORITHMS must contain only EdDSA, ES256, PS256, or RS256."
+      )
+    }
+    result.push(algorithm)
+  }
+  return result
+}
+
+function clockTolerance(value: number): number {
+  if (value < 0 || value > 300) {
+    throw new AuthConfigurationError(
+      "AUTH_JWT_CLOCK_TOLERANCE_SECONDS must be between 0 and 300."
+    )
+  }
+  return value
 }
 
 function httpUrl(value: URL, name: string): URL {
@@ -95,9 +128,38 @@ export const loadAuthConfig: Effect.Effect<
     }
   }
 
+  if (mode === "google-iap") {
+    const iap = yield* Config.all({
+      audience: Config.nonEmptyString("AUTH_IAP_AUDIENCE"),
+      role: Config.nonEmptyString("AUTH_JIT_ROLE"),
+    })
+    return {
+      provider: {
+        algorithms: ["ES256"],
+        audience: iap.audience,
+        clockToleranceSeconds: 30,
+        defaultIdentityKind: "user",
+        header: "x-goog-iap-jwt-assertion",
+        issuer: "https://cloud.google.com/iap",
+        jwksUrl: new URL("https://www.gstatic.com/iap/verify/public_key-jwk"),
+        kind: "jwt",
+        kindClaim: "identity_type",
+        maxTokenAge: "11m",
+        profile: "google-iap",
+      },
+      provisioningRole: provisioningRole(iap.role),
+    }
+  }
+
   if (mode === "jwt") {
     const jwt = yield* Config.all({
+      algorithms: Config.nonEmptyString("AUTH_JWT_ALGORITHMS").pipe(
+        Config.withDefault("RS256,ES256,EdDSA")
+      ),
       audience: Config.nonEmptyString("AUTH_JWT_AUDIENCE"),
+      clockToleranceSeconds: Config.int(
+        "AUTH_JWT_CLOCK_TOLERANCE_SECONDS"
+      ).pipe(Config.withDefault(30)),
       defaultIdentityKind: Config.string("AUTH_JWT_DEFAULT_IDENTITY_KIND").pipe(
         Config.withDefault("")
       ),
@@ -107,25 +169,34 @@ export const loadAuthConfig: Effect.Effect<
       issuer: Config.nonEmptyString("AUTH_JWT_ISSUER"),
       jwksUrl: Config.url("AUTH_JWT_JWKS_URL"),
       kindClaim: Config.nonEmptyString("AUTH_JWT_KIND_CLAIM").pipe(
-        Config.withDefault("actor_kind")
+        Config.withDefault("identity_type")
       ),
-      role: Config.string("AUTH_JIT_ROLE").pipe(Config.withDefault("operator")),
+      maxTokenAge: Config.nonEmptyString("AUTH_JWT_MAX_AGE").pipe(
+        Config.withDefault("10m")
+      ),
+      role: Config.nonEmptyString("AUTH_JIT_ROLE"),
     })
     return {
       provider: {
+        algorithms: algorithms(jwt.algorithms),
         audience: jwt.audience,
+        clockToleranceSeconds: clockTolerance(jwt.clockToleranceSeconds),
         defaultIdentityKind: identityKind(jwt.defaultIdentityKind),
         header: jwt.header.toLowerCase(),
         issuer: jwt.issuer,
         jwksUrl: httpUrl(jwt.jwksUrl, "AUTH_JWT_JWKS_URL"),
         kind: "jwt",
         kindClaim: jwt.kindClaim,
+        maxTokenAge: jwt.maxTokenAge,
+        profile: "standard",
       },
       provisioningRole: provisioningRole(jwt.role),
     }
   }
 
-  throw new AuthConfigurationError("AUTH_MODE must be 'local' or 'jwt'.")
+  throw new AuthConfigurationError(
+    "AUTH_MODE must be 'local', 'jwt', or 'google-iap'."
+  )
 })
 
 /** Validated deployment settings for local development or verified JWT assertions. */

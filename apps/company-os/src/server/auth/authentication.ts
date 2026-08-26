@@ -28,6 +28,7 @@ import {
 import {
   IdentityProvider,
   type AuthenticatedSubject,
+  type VerifiedIdentityInvocation,
 } from "./identity-provider"
 
 class IdentityInactive extends Data.TaggedError("IdentityInactive")<{
@@ -51,23 +52,51 @@ const make = Effect.gen(function* () {
   const serviceAccounts = yield* ServiceAccountService
   const users = yield* UserService
 
+  const emailAddress = Effect.fn("@company/Authentication.emailAddress")(
+    function* (email: string) {
+      return yield* Effect.try({
+        try: () => EmailAddress(email.trim().toLowerCase()),
+        catch: () => new IdentityProvisioningRequired({ reason: "email" }),
+      })
+    }
+  )
+
   const requireActive = Effect.fn("@company/Authentication.requireActive")(
-    function* (identity: BoundIdentity) {
-      const record =
-        identity.kind === "user"
-          ? yield* users.get({ id: identity.id })
-          : yield* serviceAccounts.get({ id: identity.id })
-      if (record.status !== "active") {
-        return yield* Effect.fail(
-          new IdentityInactive({ identityId: identity.id })
-        )
+    function* (identity: BoundIdentity, subject: AuthenticatedSubject) {
+      if (identity.kind === "user") {
+        const record = yield* users.get({ id: identity.id })
+        if (record.status !== "active") {
+          return yield* Effect.fail(
+            new IdentityInactive({ identityId: identity.id })
+          )
+        }
+        yield* users.reconcile({
+          email:
+            subject.email === undefined
+              ? record.email
+              : yield* emailAddress(subject.email),
+          id: identity.id,
+          name: subject.name?.trim() || record.name,
+        })
+      } else {
+        const record = yield* serviceAccounts.get({ id: identity.id })
+        if (record.status !== "active") {
+          return yield* Effect.fail(
+            new IdentityInactive({ identityId: identity.id })
+          )
+        }
+        yield* serviceAccounts.reconcile({
+          id: identity.id,
+          name: subject.name?.trim() || record.name,
+        })
       }
       return identity
     }
   )
 
   const provision = Effect.fn("@company/Authentication.provision")(function* (
-    subject: AuthenticatedSubject
+    subject: AuthenticatedSubject,
+    grantInitialRole: boolean
   ) {
     if (subject.kind === undefined) {
       return yield* Effect.fail(
@@ -78,7 +107,9 @@ const make = Effect.gen(function* () {
     return yield* database.transaction(() =>
       Effect.gen(function* () {
         const concurrent = yield* bindings.find(subject.issuer, subject.subject)
-        if (concurrent !== undefined) return yield* requireActive(concurrent)
+        if (concurrent !== undefined) {
+          return yield* requireActive(concurrent, subject)
+        }
 
         const identity = yield* subject.kind === "user"
           ? Effect.gen(function* () {
@@ -87,11 +118,7 @@ const make = Effect.gen(function* () {
                   new IdentityProvisioningRequired({ reason: "email" })
                 )
               }
-              const email = yield* Effect.try({
-                try: () => EmailAddress(subject.email!.trim().toLowerCase()),
-                catch: () =>
-                  new IdentityProvisioningRequired({ reason: "email" }),
-              })
+              const email = yield* emailAddress(subject.email)
               const user = yield* users.provision({
                 email,
                 name: subject.name?.trim() || email,
@@ -110,12 +137,13 @@ const make = Effect.gen(function* () {
                 }))
               )
 
-        const role =
-          config.provisioningRole === "administrator"
+        const role = grantInitialRole
+          ? config.provisioningRole === "administrator"
             ? PLATFORM_ADMIN_ROLE_ID
             : config.provisioningRole === "operator"
               ? PLATFORM_OPERATOR_ROLE_ID
               : undefined
+          : undefined
         if (role !== undefined) {
           yield* roleAssignments.create({
             parent: PLATFORM_ID,
@@ -134,37 +162,67 @@ const make = Effect.gen(function* () {
   })
 
   const resolve = Effect.fn("@company/Authentication.resolve")(function* (
-    subject: AuthenticatedSubject
+    subject: AuthenticatedSubject,
+    grantInitialRole: boolean
   ) {
     const existing = yield* bindings.find(subject.issuer, subject.subject)
     return existing === undefined
-      ? yield* provision(subject)
-      : yield* requireActive(existing).pipe(
+      ? yield* provision(subject, grantInitialRole)
+      : yield* requireActive(existing, subject).pipe(
           Effect.provideService(CurrentInvocation, systemInvocation)
         )
+  })
+
+  const resolveInvocation = Effect.fn(
+    "@company/Authentication.resolveInvocation"
+  )(function* (verified: VerifiedIdentityInvocation) {
+    const authorizationIdentity = yield* resolve(
+      verified.authorizationSubject,
+      true
+    )
+    if (
+      verified.actor.issuer === verified.authorizationSubject.issuer &&
+      verified.actor.subject === verified.authorizationSubject.subject
+    ) {
+      return {
+        actor: authorizationIdentity,
+        authorizationIdentity,
+      }
+    }
+    return {
+      actor: yield* resolve(verified.actor, false),
+      authorizationIdentity,
+    }
   })
 
   const identify = Effect.fn("@company/Authentication.identify")(function* (
     headers: Headers
   ) {
-    const subject = yield* provider.identify(headers)
-    if (subject === null) return anonymousCaller
-    return identityCaller((yield* resolve(subject)).id)
+    const verified = yield* provider.identify(headers)
+    if (verified === null) return anonymousCaller
+    return identityCaller(
+      (yield* resolveInvocation(verified)).authorizationIdentity.id
+    )
   })
 
   const invocation = Effect.fn("@company/Authentication.invocation")(function* (
     headers: Headers
   ) {
-    const subject = yield* provider.identify(headers)
-    if (subject === null) return anonymousInvocation
-    return yield* authenticatedInvocation((yield* resolve(subject)).id)
+    const verified = yield* provider.identify(headers)
+    if (verified === null) return anonymousInvocation
+    const resolved = yield* resolveInvocation(verified)
+    return yield* authenticatedInvocation(
+      resolved.actor.id,
+      resolved.authorizationIdentity.id
+    )
   })
 
   const currentUser = Effect.fn("@company/Authentication.currentUser")(
     function* (headers: Headers) {
-      const subject = yield* provider.identify(headers)
-      if (subject === null) return null
-      const identity = yield* resolve(subject)
+      const verified = yield* provider.identify(headers)
+      if (verified === null) return null
+      const identity = (yield* resolveInvocation(verified))
+        .authorizationIdentity
       if (identity.kind !== "user") {
         return yield* Effect.fail(new UserInterfaceRequired())
       }

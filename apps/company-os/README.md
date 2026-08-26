@@ -99,10 +99,12 @@ through validation, transactions, and domain invariants.
 
 The request boundary distinguishes callers without credentials, verified external subjects, and
 canonical local identities. The deployment gateway owns login, sessions, invitations, credentials,
-API keys, and provider-specific directory administration. Company OS verifies its signed identity
-assertion, maps stable `(issuer, subject)` values through `identity_bindings`, and JIT-provisions a
-minimal local `User` or `ServiceAccount` projection when configured to do so. Email is profile data,
-not an account-linking key; issuer changes require explicit reconciliation.
+API keys, provider-specific directory administration, and any delegation it asserts. Company OS
+verifies its signed identity assertion, maps stable `(issuer, subject)` values through
+`identity_bindings`, and JIT-provisions a minimal local `User` or `ServiceAccount` projection when
+configured to do so. Email is mutable profile data, never an account-linking key or local uniqueness
+constraint; issuer changes require explicit reconciliation. Trusted asserted names and email
+addresses refresh the projection after a stable binding resolves.
 
 `User` and `ServiceAccount` implement `Identity`, while the audit-only `AnonymousActor` represents
 operations deliberately allowed without an authenticated identity. It is displayed as “Anonymous,”
@@ -116,16 +118,34 @@ The standalone deployment reads the identity contract through Effect `Config`:
 - `AUTH_MODE=local` JIT-provisions the configured local User for development. `AUTH_LOCAL_SUBJECT`,
   `AUTH_LOCAL_NAME`, and `AUTH_LOCAL_EMAIL` control its profile.
 - `AUTH_MODE=jwt` verifies the assertion in `AUTH_JWT_HEADER` against `AUTH_JWT_ISSUER`,
-  `AUTH_JWT_AUDIENCE`, and `AUTH_JWT_JWKS_URL`. Continual, Google IAP, or another trusted gateway may
-  supply it. The configured kind claim must resolve to `user` or `serviceAccount`; a deployment that
-  only admits one kind may set `AUTH_JWT_DEFAULT_IDENTITY_KIND`.
-- `AUTH_JIT_ROLE` controls the initial local business role for a newly projected identity. Local
-  development defaults to `administrator`; verified JWT deployments default to `operator`.
+  `AUTH_JWT_AUDIENCE`, and `AUTH_JWT_JWKS_URL`. Continual or another trusted gateway may supply it.
+  Assertions must contain non-empty `iss`, `sub`, `aud`, `iat`, and `exp` claims, use an explicitly
+  allowed asymmetric algorithm, and remain within `AUTH_JWT_MAX_AGE`. The configured
+  `identity_type` claim must resolve to `user` or `serviceAccount`; a deployment that only admits one
+  type may set `AUTH_JWT_DEFAULT_IDENTITY_KIND`.
+- `AUTH_MODE=google-iap` fixes the header, issuer, ES256 algorithm, IAP JWK set, clock tolerance, and
+  User identity type to Google's signed-header contract. The deployment supplies only the exact
+  `AUTH_IAP_AUDIENCE` shown by IAP and its initial role policy.
+- `AUTH_JIT_ROLE` controls the initial local business role for a newly projected authorization
+  subject. Local development defaults to `administrator`; every deployed mode must choose
+  `administrator`, `operator`, or `none` explicitly. In a delegated invocation, the current actor is
+  projected without inheriting that role merely because it acted for an authorized subject.
+
+The generic JWT adapter understands the RFC 8693 `act` claim. Without it, the assertion `sub` is both
+the current actor and authorization subject. With it, `sub` is the identity whose business authority
+is evaluated and the outermost `act` identity is the actor durably written to `createdBy` and
+`updatedBy`. The trusted gateway must authorize the delegation before issuing the assertion; Company
+OS still requires both local identities to be active and applies its business authorization to the
+subject. Nested prior actors are ignored by access control. Identity type is only a transient
+assertion-edge discriminator used to instantiate the closed `User | ServiceAccount` model; it is not
+a durable `kind` property on either object.
 
 Do not expose the application directly while relying on a gateway assertion header. The JWT is
 still verified by this app, and the gateway or ingress must prevent clients from bypassing its own
-authentication and membership checks. Replacing providers changes the assertion adapter and
-bindings, not Company OS business services or authorization policy.
+authentication and membership checks. Unsigned convenience headers are never trusted. Replacing
+providers changes the assertion adapter and bindings, not Company OS business services or
+authorization policy. A provider that does not emit a verifiable JWT should supply its own
+`IdentityProvider` adapter rather than weakening this boundary.
 
 `ActorId`, `IdentityId`, and `PrincipalId` are derived from the closed `Model`, so each is the
 branded union of its interface's concrete implementers. `Actor` is `User | ServiceAccount |

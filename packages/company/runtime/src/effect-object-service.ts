@@ -55,7 +55,10 @@ export class InvalidBatchRequest extends Data.TaggedError(
 }> {}
 
 export interface InvocationContext {
+  /** Actor durably attributed to writes performed by this invocation. */
   readonly actorId: RecordId
+  /** Actor whose business authority is evaluated for this invocation. */
+  readonly authorizationActorId: RecordId
 }
 
 /** Actor selected by a trusted invocation boundary. */

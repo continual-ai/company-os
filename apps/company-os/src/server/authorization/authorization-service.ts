@@ -5,7 +5,7 @@ import { Context, Data, Effect, Layer } from "effect"
 
 import type { CapabilityCheck } from "@/capabilities"
 import { callerForActor, type Caller } from "@/server/caller"
-import { currentActorId } from "@/server/invocation-context"
+import { currentAuthorizationActorId } from "@/server/invocation-context"
 import {
   ALL_AUTHENTICATED_CALLERS_PRINCIPAL_SET_ID,
   ALL_CALLERS_PRINCIPAL_SET_ID,
@@ -199,7 +199,7 @@ const make = Effect.gen(function* () {
   const requirePermission = Effect.fn(
     "@company/Authorization.requirePermission"
   )(function* (request: PermissionRequest) {
-    const actorId = yield* currentActorId
+    const actorId = yield* currentAuthorizationActorId
     return yield* requirePermissionFor(callerForActor(actorId), request)
   })
 
@@ -246,7 +246,7 @@ const make = Effect.gen(function* () {
 
   const visibleWithin = Effect.fn("@company/Authorization.visibleWithin")(
     function* (request: ObjectAccessRequest) {
-      const actorId = yield* currentActorId
+      const actorId = yield* currentAuthorizationActorId
       const permission = objectPermission(request)
       const caller = callerForActor(actorId)
       const grants = yield* repository.listGrants({
@@ -281,7 +281,7 @@ const make = Effect.gen(function* () {
   const checkCapabilities = Effect.fn(
     "@company/Authorization.checkCapabilities"
   )(function* (checks: ReadonlyArray<CapabilityCheck>) {
-    const actorId = yield* currentActorId
+    const actorId = yield* currentAuthorizationActorId
     return yield* checkCapabilitiesFor(callerForActor(actorId), checks)
   })
 

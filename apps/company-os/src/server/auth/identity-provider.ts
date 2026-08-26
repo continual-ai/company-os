@@ -1,5 +1,5 @@
 import { Context, Data, Effect, Layer, Option, Schema } from "effect"
-import { createRemoteJWKSet, jwtVerify, type JWTPayload } from "jose"
+import { createRemoteJWKSet, jwtVerify } from "jose"
 
 import { AuthSettings, type IdentityKind } from "./auth-config"
 
@@ -11,6 +11,13 @@ export interface AuthenticatedSubject {
   readonly subject: string
 }
 
+export interface VerifiedIdentityInvocation {
+  /** Current identity that performs and is durably attributed to the operation. */
+  readonly actor: AuthenticatedSubject
+  /** Identity whose business authority is used, equal to actor unless delegated. */
+  readonly authorizationSubject: AuthenticatedSubject
+}
+
 class InvalidIdentityAssertion extends Data.TaggedError(
   "InvalidIdentityAssertion"
 )<{ readonly cause?: unknown; readonly reason: string }> {}
@@ -18,17 +25,31 @@ class InvalidIdentityAssertion extends Data.TaggedError(
 interface IdentityProviderService {
   readonly identify: (
     headers: Headers
-  ) => Effect.Effect<AuthenticatedSubject | null, InvalidIdentityAssertion>
+  ) => Effect.Effect<
+    VerifiedIdentityInvocation | null,
+    InvalidIdentityAssertion
+  >
 }
 
-function stringClaim(payload: JWTPayload, claim: string): string | undefined {
+type Claims = ReadonlyMap<string, unknown>
+
+function stringClaim(payload: Claims, claim: string): string | undefined {
   return Option.match(
-    Schema.decodeUnknownOption(Schema.String)(payload[claim]),
+    Schema.decodeUnknownOption(Schema.String)(payload.get(claim)),
     {
       onNone: () => undefined,
       onSome: (value) => value.trim() || undefined,
     }
   )
+}
+
+function objectClaim(payload: Claims, claim: string): Claims | undefined {
+  const decoded = Option.getOrUndefined(
+    Schema.decodeUnknownOption(Schema.Record(Schema.String, Schema.Unknown))(
+      payload.get(claim)
+    )
+  )
+  return decoded === undefined ? undefined : new Map(Object.entries(decoded))
 }
 
 function assertionToken(headers: Headers, header: string): string | undefined {
@@ -40,19 +61,59 @@ function assertionToken(headers: Headers, header: string): string | undefined {
   return value
 }
 
+function identityKind(
+  claims: Claims,
+  kindClaim: string,
+  fallback: IdentityKind | undefined
+): IdentityKind | undefined {
+  const assertedKind = stringClaim(claims, kindClaim)
+  if (
+    assertedKind !== undefined &&
+    assertedKind !== "user" &&
+    assertedKind !== "serviceAccount"
+  ) {
+    throw new InvalidIdentityAssertion({
+      reason: `The '${kindClaim}' claim is not a supported identity kind.`,
+    })
+  }
+  return assertedKind ?? fallback
+}
+
+function identity(
+  claims: Claims,
+  fallbackIssuer: string,
+  kindClaim: string,
+  defaultIdentityKind: IdentityKind | undefined
+): AuthenticatedSubject {
+  const subject = stringClaim(claims, "sub")
+  if (subject === undefined) {
+    throw new InvalidIdentityAssertion({
+      reason: "The identity assertion has no non-empty subject.",
+    })
+  }
+  return {
+    email: stringClaim(claims, "email"),
+    issuer: stringClaim(claims, "iss") ?? fallbackIssuer,
+    kind: identityKind(claims, kindClaim, defaultIdentityKind),
+    name: stringClaim(claims, "name"),
+    subject,
+  }
+}
+
 const make = Effect.gen(function* () {
   const config = yield* AuthSettings
   const provider = config.provider
 
   if (provider.kind === "local") {
+    const subject = {
+      email: provider.email,
+      issuer: "urn:company-os:local",
+      kind: "user" as const,
+      name: provider.name,
+      subject: provider.subject,
+    } satisfies AuthenticatedSubject
     const identify: IdentityProviderService["identify"] = (_headers) =>
-      Effect.succeed({
-        email: provider.email,
-        issuer: "urn:company-os:local",
-        kind: "user" as const,
-        name: provider.name,
-        subject: provider.subject,
-      } satisfies AuthenticatedSubject)
+      Effect.succeed({ actor: subject, authorizationSubject: subject })
     return { identify } satisfies IdentityProviderService
   }
 
@@ -74,8 +135,12 @@ const make = Effect.gen(function* () {
     const { payload } = yield* Effect.tryPromise({
       try: () =>
         jwtVerify(token, jwks, {
+          algorithms: [...provider.algorithms],
           audience: provider.audience,
+          clockTolerance: provider.clockToleranceSeconds,
           issuer: provider.issuer,
+          maxTokenAge: provider.maxTokenAge,
+          requiredClaims: ["exp", "iat", "sub"],
         }),
       catch: (cause) =>
         new InvalidIdentityAssertion({
@@ -83,37 +148,50 @@ const make = Effect.gen(function* () {
           reason: "The identity assertion could not be verified.",
         }),
     })
-    if (payload.sub === undefined) {
-      return yield* Effect.fail(
-        new InvalidIdentityAssertion({
-          reason: "The identity assertion has no subject.",
-        })
-      )
-    }
 
-    const assertedKind = stringClaim(payload, provider.kindClaim)
-    if (
-      assertedKind !== undefined &&
-      assertedKind !== "user" &&
-      assertedKind !== "serviceAccount"
-    ) {
-      return yield* Effect.fail(
-        new InvalidIdentityAssertion({
-          reason: `The '${provider.kindClaim}' claim is not a supported identity kind.`,
-        })
-      )
-    }
-
-    const email = stringClaim(payload, "email")
-    const kind = assertedKind ?? provider.defaultIdentityKind
-    const name = stringClaim(payload, "name")
-    return {
-      email,
-      issuer: provider.issuer,
-      kind,
-      name,
-      subject: payload.sub,
-    } satisfies AuthenticatedSubject
+    return yield* Effect.try({
+      try: () => {
+        const claims = new Map(Object.entries(payload))
+        const authorizationSubject = identity(
+          claims,
+          provider.issuer,
+          provider.kindClaim,
+          provider.defaultIdentityKind
+        )
+        if (claims.has("act") && objectClaim(claims, "act") === undefined) {
+          throw new InvalidIdentityAssertion({
+            reason: "The 'act' claim must be an object.",
+          })
+        }
+        const actorClaims = objectClaim(claims, "act")
+        const actorIssuer =
+          actorClaims === undefined
+            ? undefined
+            : stringClaim(actorClaims, "iss")
+        if (actorIssuer !== undefined && actorIssuer !== provider.issuer) {
+          throw new InvalidIdentityAssertion({
+            reason: "The 'act.iss' claim must match the assertion issuer.",
+          })
+        }
+        const actor =
+          actorClaims === undefined
+            ? authorizationSubject
+            : identity(
+                actorClaims,
+                provider.issuer,
+                provider.kindClaim,
+                provider.defaultIdentityKind
+              )
+        return { actor, authorizationSubject }
+      },
+      catch: (cause) =>
+        cause instanceof InvalidIdentityAssertion
+          ? cause
+          : new InvalidIdentityAssertion({
+              cause,
+              reason: "The identity assertion claims are invalid.",
+            }),
+    })
   })
   return { identify } satisfies IdentityProviderService
 })

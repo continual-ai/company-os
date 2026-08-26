@@ -41,7 +41,20 @@ const make = Effect.gen(function* () {
     }
   )
 
-  return { ...base, provision }
+  const reconcile = Effect.fn("@company/ServiceAccountService.reconcile")(
+    function* (input: Pick<ServiceAccountRecord, "id" | "name">) {
+      const current = yield* repository.get(input.id)
+      if (current.name === input.name) return current
+      return yield* repository.update({
+        etag: current.etag,
+        id: current.id,
+        name: input.name,
+        updatedBy: yield* currentActorId,
+      })
+    }
+  )
+
+  return { ...base, provision, reconcile }
 })
 
 /** Governed ServiceAccount projections plus trusted JIT provisioning. */

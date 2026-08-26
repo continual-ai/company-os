@@ -1,18 +1,18 @@
 import { Outlet, createFileRoute, redirect } from "@tanstack/react-router"
 
 import { AppShell } from "@/components/app-shell"
-import { getCurrentSession } from "@/current-session.functions"
+import { getCurrentUser } from "@/current-user.functions"
 
 export const Route = createFileRoute("/_app")({
   beforeLoad: async () => {
-    const session = await getCurrentSession()
-    if (session.status === "unauthenticated") {
+    const currentUser = await getCurrentUser()
+    if (currentUser.status === "unauthenticated") {
       throw redirect({ to: "/access-denied" })
     }
-    if (session.status === "forbidden") {
+    if (currentUser.status === "forbidden") {
       throw redirect({ to: "/access-denied" })
     }
-    return { authenticatedUser: session.user }
+    return { authenticatedUser: currentUser.user }
   },
   component: CompanyAppLayout,
 })

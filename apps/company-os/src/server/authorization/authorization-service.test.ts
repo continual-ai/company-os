@@ -29,6 +29,7 @@ import {
 import {
   anonymousInvocation,
   authenticatedInvocation,
+  currentActorId,
   systemInvocation,
 } from "@/server/invocation-context"
 import { CompanyRepository } from "@/server/objects/company-repository"
@@ -63,6 +64,7 @@ const migrationsFolder = fileURLToPath(
 const TestDatabase = PgliteClient.layer()
 const now = Timestamp("2026-08-23T00:00:00.000Z")
 const UserId = RecordId("user")
+const ServiceAccountId = RecordId("serviceAccount")
 const CompanyId = RecordId("company")
 const GroupId = RecordId("group")
 const GroupMembershipId = RecordId("groupMembership")
@@ -273,6 +275,13 @@ describe("Authorization", () => {
           Effect.provideService(RecordIdentifierResolver, identifiers)
         )
         const userContext = yield* authenticatedInvocation(userId)
+        const delegatedActorId = ServiceAccountId(
+          "serviceAccount_0000000000000000000001"
+        )
+        const delegatedContext = yield* authenticatedInvocation(
+          delegatedActorId,
+          userId
+        )
         const asUser = <A, E>(effect: Effect.Effect<A, E, CurrentInvocation>) =>
           effect.pipe(Effect.provideService(CurrentInvocation, userContext))
 
@@ -300,6 +309,14 @@ describe("Authorization", () => {
             { permission: "company.update", target: allowedCompanyId },
             { permission: "company.get", target: groupCompanyId },
           ])
+        )
+        const delegatedCapabilities = yield* authorization
+          .checkCapabilities([
+            { permission: "company.get", target: allowedCompanyId },
+          ])
+          .pipe(Effect.provideService(CurrentInvocation, delegatedContext))
+        const attributedActor = yield* currentActorId.pipe(
+          Effect.provideService(CurrentInvocation, delegatedContext)
         )
 
         yield* database.insert(objects).values(
@@ -446,9 +463,11 @@ describe("Authorization", () => {
           allowedBatch,
           anonymousAdmission,
           authenticatedAdmission,
+          attributedActor,
           deniedBatch,
           deniedUpdate,
           directCapabilities,
+          delegatedCapabilities,
           directGet,
           directList,
           groupList,
@@ -485,6 +504,8 @@ describe("Authorization", () => {
       { allowed: false },
       { allowed: false },
     ])
+    expect(result.delegatedCapabilities.results).toEqual([{ allowed: true }])
+    expect(result.attributedActor).toBe("serviceAccount_0000000000000000000001")
     expect(result.groupList.items.map(({ id }) => id)).toEqual(
       expect.arrayContaining([allowedCompanyId, groupCompanyId])
     )

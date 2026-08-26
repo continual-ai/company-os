@@ -204,7 +204,6 @@ CREATE UNIQUE INDEX "role_assignments_assignment_unique" ON "role_assignments" (
 CREATE INDEX "roles_parent_id_idx" ON "roles" ("parent_id");--> statement-breakpoint
 CREATE INDEX "service_accounts_parent_id_idx" ON "service_accounts" ("parent_id");--> statement-breakpoint
 CREATE INDEX "users_parent_id_idx" ON "users" ("parent_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "users_email_unique" ON "users" ("email");--> statement-breakpoint
 ALTER TABLE "interface_actor" ADD CONSTRAINT "interface_actor_id_objects_id_fkey" FOREIGN KEY ("id") REFERENCES "objects"("id") ON DELETE CASCADE;--> statement-breakpoint
 ALTER TABLE "anonymous_actors" ADD CONSTRAINT "anonymous_actors_id_objects_id_fkey" FOREIGN KEY ("id") REFERENCES "objects"("id") ON DELETE CASCADE;--> statement-breakpoint
 ALTER TABLE "anonymous_actors" ADD CONSTRAINT "anonymous_actors_parent_platform_fk" FOREIGN KEY ("parent_id") REFERENCES "roots"("id") ON DELETE RESTRICT;--> statement-breakpoint

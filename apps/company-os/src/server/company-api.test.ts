@@ -2,9 +2,10 @@
 import { fileURLToPath } from "node:url"
 
 import { PgliteClient } from "@effect/sql-pglite"
+import { eq } from "drizzle-orm"
 import * as PgliteDrizzle from "drizzle-orm/effect-pglite"
 import { migrate } from "drizzle-orm/effect-pglite/migrator"
-import { Effect, Layer, ManagedRuntime } from "effect"
+import { Effect, Layer, ManagedRuntime, Schema } from "effect"
 import { FetchHttpClient } from "effect/unstable/http"
 import { HttpApiClient } from "effect/unstable/httpapi"
 import { describe, expect, it } from "vitest"
@@ -18,7 +19,13 @@ import { AuthSettings, type AuthConfig } from "./auth/auth-config"
 import { IdentityProvider } from "./auth/identity-provider"
 import { CompanyApi } from "./company-api"
 import { Database } from "./database/database"
-import { relations } from "./database/schema"
+import {
+  identityBindings,
+  objects,
+  relations,
+  roleAssignments,
+  users,
+} from "./database/schema"
 import { seedSystem } from "./seeds/seed-system"
 
 const migrationsFolder = fileURLToPath(
@@ -37,18 +44,30 @@ const authConfig: AuthConfig = {
 }
 
 const testIdentityProvider = {
-  identify: (headers: Headers) =>
-    Effect.succeed(
-      headers.has("x-test-anonymous")
-        ? null
-        : {
-            email: "owner@example.com",
+  identify: (headers: Headers) => {
+    if (headers.has("x-test-anonymous")) return Effect.succeed(null)
+    const authorizationSubject = {
+      email: headers.has("x-test-renamed")
+        ? "renamed@example.com"
+        : "owner@example.com",
+      issuer: "https://identity.example.com",
+      kind: "user" as const,
+      name: headers.has("x-test-renamed") ? "Renamed Owner" : "Owner",
+      subject: "owner",
+    }
+    return Effect.succeed({
+      actor: headers.has("x-test-delegated")
+        ? {
+            email: undefined,
             issuer: "https://identity.example.com",
-            kind: "user" as const,
-            name: "Owner",
-            subject: "owner",
+            kind: "serviceAccount" as const,
+            name: "Portfolio agent",
+            subject: "portfolio-agent",
           }
-    ),
+        : authorizationSubject,
+      authorizationSubject,
+    })
+  },
 } satisfies typeof IdentityProvider.Service
 
 function asDatabase(
@@ -179,15 +198,80 @@ describe("Company API", () => {
           name: "Northstar",
         })
 
-        const users = yield* useTestFetch(
+        const listedUsers = yield* useTestFetch(
           client.user.listUsers({ query: { pageSize: 10 } })
         )
-        expect(users.items).toEqual([
+        expect(listedUsers.items).toEqual([
           expect.objectContaining({
             email: "owner@example.com",
             name: "Owner",
           }),
         ])
+
+        const delegatedResponse = yield* Effect.promise(() =>
+          runtime.runPromise(
+            api.handle(
+              new Request("http://company.test/api/v1/companies", {
+                body: JSON.stringify({ name: "Delegated Company" }),
+                headers: {
+                  "content-type": "application/json",
+                  "x-test-delegated": "true",
+                },
+                method: "POST",
+              })
+            )
+          )
+        )
+        expect(delegatedResponse.status).toBe(201)
+        const delegated = Schema.decodeUnknownSync(
+          Schema.Struct({ id: Schema.String })
+        )(yield* Effect.promise(() => delegatedResponse.json()))
+        const [actorBinding] = yield* database
+          .select({ identityId: identityBindings.identityId })
+          .from(identityBindings)
+          .where(eq(identityBindings.subject, "portfolio-agent"))
+        expect(actorBinding).toBeDefined()
+        const actorIdentityId = Schema.decodeUnknownSync(Schema.String)(
+          actorBinding?.identityId
+        )
+        const [delegatedObject] = yield* database
+          .select({ createdById: objects.createdById })
+          .from(objects)
+          .where(eq(objects.id, delegated.id))
+        expect(delegatedObject?.createdById).toBe(actorIdentityId)
+        const actorRoles = yield* database
+          .select({ id: roleAssignments.id })
+          .from(roleAssignments)
+          .where(eq(roleAssignments.principalId, actorIdentityId))
+        expect(actorRoles).toEqual([])
+
+        const renamedResponse = yield* Effect.promise(() =>
+          runtime.runPromise(
+            api.handle(
+              new Request("http://company.test/api/v1/capabilities:check", {
+                body: JSON.stringify({
+                  checks: [
+                    { permission: "company.create", target: PLATFORM_ID },
+                  ],
+                }),
+                headers: {
+                  "content-type": "application/json",
+                  "x-test-renamed": "true",
+                },
+                method: "POST",
+              })
+            )
+          )
+        )
+        expect(renamedResponse.status).toBe(200)
+        const [reconciledUser] = yield* database
+          .select({ email: users.email, name: users.name })
+          .from(users)
+          .where(eq(users.id, created.createdBy))
+        expect(reconciledUser).toEqual({
+          email: "renamed@example.com",
+          name: "Renamed Owner",
+        })
 
         yield* Effect.promise(() => runtime.dispose())
       })

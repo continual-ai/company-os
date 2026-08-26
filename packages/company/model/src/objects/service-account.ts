@@ -17,6 +17,7 @@ export const ServiceAccount = defineObject({
     create: false,
     delete: false,
     batchDelete: false,
+    update: false,
   },
   implements: [
     { interface: Actor },
