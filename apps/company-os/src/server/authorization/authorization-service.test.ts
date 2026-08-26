@@ -44,7 +44,6 @@ import { RoleRepository } from "@/server/objects/role-repository"
 import { seedSystem } from "@/server/seeds/seed-system"
 import {
   ALL_CALLERS_PRINCIPAL_SET_ID,
-  AUTHENTICATED_CALLER_ROLE_ID,
   PLATFORM_ADMIN_ROLE_ID,
   PLATFORM_ID,
   SYSTEM_SERVICE_ACCOUNT_ID,
@@ -225,11 +224,11 @@ describe("Authorization", () => {
         )
         const anonymousAdmission = yield* authorization.checkCapabilitiesFor(
           anonymousCaller,
-          [{ permission: "invitation.accept" }]
+          [{ permission: "company.get", target: allowedCompanyId }]
         )
         const authenticatedAdmission =
           yield* authorization.checkCapabilitiesFor(authenticatedCaller, [
-            { permission: "invitation.accept" },
+            { permission: "company.get", target: allowedCompanyId },
           ])
         const publicAdmissionAssignmentId = RoleAssignmentId(
           "role_assignment_public_admission_test"
@@ -246,14 +245,16 @@ describe("Authorization", () => {
           id: publicAdmissionAssignmentId,
           parentId: PLATFORM_ID,
           principalId: ALL_CALLERS_PRINCIPAL_SET_ID,
-          roleId: AUTHENTICATED_CALLER_ROLE_ID,
+          roleId: PLATFORM_ADMIN_ROLE_ID,
         })
         const publicAdmission = yield* authorization.checkCapabilitiesFor(
           anonymousCaller,
-          [{ permission: "invitation.accept" }]
+          [{ permission: "company.get", target: allowedCompanyId }]
         )
         const publicAdmissionFromInvocation = yield* authorization
-          .checkCapabilities([{ permission: "invitation.accept" }])
+          .checkCapabilities([
+            { permission: "company.get", target: allowedCompanyId },
+          ])
           .pipe(Effect.provideService(CurrentInvocation, anonymousInvocation))
         yield* database
           .delete(objects)
@@ -470,7 +471,7 @@ describe("Authorization", () => {
     ])
     expect(result.directGet.id).toBe(allowedCompanyId)
     expect(result.anonymousAdmission.results).toEqual([{ allowed: false }])
-    expect(result.authenticatedAdmission.results).toEqual([{ allowed: true }])
+    expect(result.authenticatedAdmission.results).toEqual([{ allowed: false }])
     expect(result.publicAdmission.results).toEqual([{ allowed: true }])
     expect(result.publicAdmissionFromInvocation.results).toEqual([
       { allowed: true },

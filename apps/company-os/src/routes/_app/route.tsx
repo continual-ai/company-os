@@ -7,7 +7,7 @@ export const Route = createFileRoute("/_app")({
   beforeLoad: async () => {
     const session = await getCurrentSession()
     if (session.status === "unauthenticated") {
-      throw redirect({ to: "/sign-in" })
+      throw redirect({ to: "/access-denied" })
     }
     if (session.status === "forbidden") {
       throw redirect({ to: "/access-denied" })

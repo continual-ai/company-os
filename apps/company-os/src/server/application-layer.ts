@@ -1,26 +1,20 @@
 import { Layer } from "effect"
 
-import { ApiKeyAuthentication } from "./auth/api-key-authentication"
 import type { AuthSettings } from "./auth/auth-config"
-import type { AuthProtocol } from "./auth/auth-protocol"
 import { Authentication } from "./auth/authentication"
 import { IdentityBindingRepository } from "./auth/identity-binding-repository"
-import { UserAuthentication } from "./auth/user-authentication"
+import { IdentityProvider } from "./auth/identity-provider"
 import { AuthorizationRepository } from "./authorization/authorization-repository"
 import { Authorization } from "./authorization/authorization-service"
 import { CompanyApi } from "./company-api"
 import type { Database } from "./database/database"
 import { AnonymousActorRepository } from "./objects/anonymous-actor-repository"
-import { ApiKeyRepository } from "./objects/api-key-repository"
-import { ApiKeyService } from "./objects/api-key-service"
 import { CompanyRepository } from "./objects/company-repository"
 import { ContactRepository } from "./objects/contact-repository"
 import { DealRepository } from "./objects/deal-repository"
 import { GroupMembershipRepository } from "./objects/group-membership-repository"
 import { GroupRepository } from "./objects/group-repository"
 import { InteractionRepository } from "./objects/interaction-repository"
-import { InvitationRepository } from "./objects/invitation-repository"
-import { InvitationService } from "./objects/invitation-service"
 import { LeadRepository } from "./objects/lead-repository"
 import { LeadService } from "./objects/lead-service"
 import { LineItemRepository } from "./objects/line-item-repository"
@@ -37,20 +31,19 @@ import { UserService } from "./objects/user-service"
 import { Readiness } from "./readiness"
 
 export interface ApplicationInfrastructure {
-  readonly authProtocol: Layer.Layer<AuthProtocol, unknown>
+  readonly identityProvider?: Layer.Layer<IdentityProvider, unknown>
   readonly authSettings: Layer.Layer<AuthSettings, unknown>
   readonly database: Layer.Layer<Database, unknown>
 }
 
 /** Assembles the application from replaceable infrastructure capabilities. */
 export function makeApplicationLayer({
-  authProtocol,
   authSettings,
   database,
+  identityProvider: suppliedIdentityProvider,
 }: ApplicationInfrastructure) {
   const repositories = Layer.mergeAll(
     AnonymousActorRepository.layer,
-    ApiKeyRepository.layer,
     AuthorizationRepository.layer,
     IdentityBindingRepository.layer,
     CompanyRepository.layer,
@@ -59,7 +52,6 @@ export function makeApplicationLayer({
     GroupMembershipRepository.layer,
     GroupRepository.layer,
     InteractionRepository.layer,
-    InvitationRepository.layer,
     LeadRepository.layer,
     LineItemRepository.layer,
     PrincipalSetRepository.layer,
@@ -80,52 +72,26 @@ export function makeApplicationLayer({
     repositories
   )
   const coreServices = Layer.mergeAll(
-    ApiKeyService.layer,
     StandardObjectServices.layer,
     LeadService.layer,
     RoleAssignmentService.layer,
     ServiceAccountService.layer,
     UserService.layer
   ).pipe(Layer.provide(applicationDependencies))
-  const invitationService = InvitationService.layer.pipe(
-    Layer.provide(coreServices),
-    Layer.provide(applicationDependencies)
-  )
-  const companyServices = Layer.merge(coreServices, invitationService)
-
-  const userAuthentication = UserAuthentication.layer.pipe(
+  const identityProvider =
+    suppliedIdentityProvider ??
+    IdentityProvider.layer.pipe(Layer.provide(authSettings))
+  const authentication = Authentication.layer.pipe(
     Layer.provide(authSettings),
-    Layer.provide(authProtocol),
-    Layer.provide(authorization),
+    Layer.provide(identityProvider),
     Layer.provide(coreServices),
     Layer.provide(repositories),
-    Layer.provide(recordIdentifierResolver),
     Layer.provide(database)
   )
-  const apiKeyAuthentication = ApiKeyAuthentication.layer.pipe(
-    Layer.provide(repositories)
-  )
-  const authentication = Authentication.layer.pipe(
-    Layer.provide(Layer.merge(userAuthentication, apiKeyAuthentication))
-  )
   const companyApi = CompanyApi.layer.pipe(
-    Layer.provide(
-      Layer.mergeAll(
-        authentication,
-        authorization,
-        companyServices,
-        userAuthentication
-      )
-    )
+    Layer.provide(Layer.mergeAll(authentication, authorization, coreServices))
   )
   const readiness = Readiness.layer.pipe(Layer.provide(database))
 
-  return Layer.mergeAll(
-    companyServices,
-    authentication,
-    authProtocol,
-    userAuthentication,
-    companyApi,
-    readiness
-  )
+  return Layer.mergeAll(coreServices, authentication, companyApi, readiness)
 }

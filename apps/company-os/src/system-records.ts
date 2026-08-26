@@ -16,12 +16,6 @@ export const PLATFORM_ADMIN_ROLE_ID = RecordId("role")("role_platform_admin")
 export const PLATFORM_OPERATOR_ROLE_ID = RecordId("role")(
   "role_platform_operator"
 )
-export const AUTHENTICATED_CALLER_ROLE_ID = RecordId("role")(
-  "role_authenticated_caller"
-)
 export const SYSTEM_ROLE_ASSIGNMENT_ID = RecordId("roleAssignment")(
   "role_assignment_system_platform_admin"
 )
-export const AUTHENTICATED_CALLER_ROLE_ASSIGNMENT_ID = RecordId(
-  "roleAssignment"
-)("role_assignment_authenticated_callers_platform")

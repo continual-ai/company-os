@@ -13,8 +13,6 @@ import {
   ALL_AUTHENTICATED_CALLERS_PRINCIPAL_SET_ID,
   ALL_CALLERS_PRINCIPAL_SET_ID,
   ANONYMOUS_ACTOR_ID,
-  AUTHENTICATED_CALLER_ROLE_ASSIGNMENT_ID,
-  AUTHENTICATED_CALLER_ROLE_ID,
   PLATFORM_ADMIN_ROLE_ID,
   PLATFORM_ID,
   PLATFORM_OPERATOR_ROLE_ID,
@@ -122,22 +120,6 @@ export const seedAuthorization = Effect.fn("@company/seedAuthorization")(
     } satisfies ObjectInsert<(typeof Model.objects)["role"]>
     yield* roleRepository.upsert(operator)
 
-    const authenticatedCaller = {
-      aliases: [],
-      metadata: {},
-      createdBy: actorId,
-      description:
-        "Capabilities available before an authenticated caller becomes a local identity.",
-      id: AUTHENTICATED_CALLER_ROLE_ID,
-      name: "Authenticated caller",
-      parent: PLATFORM_ID,
-      permissions: ["invitation.accept"],
-      scopeType: "platform",
-      systemManaged: true,
-      updatedBy: actorId,
-    } satisfies ObjectInsert<(typeof Model.objects)["role"]>
-    yield* roleRepository.upsert(authenticatedCaller)
-
     const systemAdministratorAssignment = {
       aliases: [],
       metadata: {},
@@ -150,18 +132,5 @@ export const seedAuthorization = Effect.fn("@company/seedAuthorization")(
       updatedBy: actorId,
     } satisfies ObjectInsert<(typeof Model.objects)["roleAssignment"]>
     yield* roleAssignmentRepository.upsert(systemAdministratorAssignment)
-
-    const authenticatedCallerAssignment = {
-      aliases: [],
-      metadata: {},
-      createdBy: actorId,
-      id: AUTHENTICATED_CALLER_ROLE_ASSIGNMENT_ID,
-      parent: PLATFORM_ID,
-      principal: ALL_AUTHENTICATED_CALLERS_PRINCIPAL_SET_ID,
-      role: AUTHENTICATED_CALLER_ROLE_ID,
-      systemManaged: true,
-      updatedBy: actorId,
-    } satisfies ObjectInsert<(typeof Model.objects)["roleAssignment"]>
-    yield* roleAssignmentRepository.upsert(authenticatedCallerAssignment)
   }
 )

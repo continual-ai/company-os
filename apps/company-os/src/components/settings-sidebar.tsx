@@ -13,9 +13,6 @@ import { Link, useMatchRoute } from "@tanstack/react-router"
 import {
   ArrowLeftIcon,
   BotIcon,
-  KeyRoundIcon,
-  MailPlusIcon,
-  MonitorSmartphoneIcon,
   PaletteIcon,
   SettingsIcon,
   ShieldCheckIcon,
@@ -30,18 +27,12 @@ const settingsSections = [
       { label: "General", to: "/settings", icon: SettingsIcon },
       { label: "Profile", to: "/settings/profile", icon: UserRoundIcon },
       { label: "Appearance", to: "/settings/appearance", icon: PaletteIcon },
-      {
-        label: "Sessions",
-        to: "/settings/sessions",
-        icon: MonitorSmartphoneIcon,
-      },
     ],
   },
   {
     label: "Administration",
     items: [
       { label: "Users", to: "/settings/users", icon: UserRoundIcon },
-      { label: "Invitations", to: "/settings/invitations", icon: MailPlusIcon },
       { label: "Roles", to: "/settings/roles", icon: ShieldCheckIcon },
       {
         label: "Role assignments",
@@ -59,7 +50,6 @@ const settingsSections = [
         to: "/settings/service-accounts",
         icon: BotIcon,
       },
-      { label: "API keys", to: "/settings/api-keys", icon: KeyRoundIcon },
     ],
   },
 ] as const

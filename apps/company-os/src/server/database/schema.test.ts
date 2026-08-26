@@ -63,13 +63,7 @@ describe("PostgreSQL schema", () => {
     ).filter((value) => is(value, Table))
     const expectedKitTables = [
       ...Object.values(Storage.schema),
-      DatabaseSchema.authAccount,
-      DatabaseSchema.authSession,
-      DatabaseSchema.authUser,
-      DatabaseSchema.authVerification,
-      DatabaseSchema.apiKeyCredentials,
-      DatabaseSchema.authUserBindings,
-      DatabaseSchema.invitationCredentials,
+      DatabaseSchema.identityBindings,
     ]
     expect(new Set(kitTables)).toEqual(new Set(expectedKitTables))
   })

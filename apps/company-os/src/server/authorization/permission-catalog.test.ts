@@ -16,7 +16,7 @@ describe("authorization permission catalog", () => {
     expect(modelPermissions).not.toContain("role.update")
     expect(modelPermissions).not.toContain("role.delete")
     expect(modelPermissions).not.toContain("roleAssignment.update")
-    expect(modelPermissions).toContain("invitation.accept")
+    expect(modelPermissions).toContain("lead.convert")
     expect(new Set(modelPermissions).size).toBe(modelPermissions.length)
     expect(() => modelPermissions.map(permissionDefinition)).not.toThrow()
   })

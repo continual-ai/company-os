@@ -161,49 +161,12 @@ function alreadyExists(error: TaggedFailure): StandardApiError {
 }
 
 function preconditionViolation(error: TaggedFailure): Violation {
-  const reason = stringProperty(error, "reason")
   switch (error._tag) {
-    case "InvalidApiKeyRequest":
-      return {
-        message: "Select an active service account.",
-        path: ["serviceAccount"],
-        reason: "SERVICE_ACCOUNT_DISABLED",
-      }
-    case "InvitationInvalid": {
-      const invitationReason =
-        reason === "accepted"
-          ? "INVITATION_ALREADY_ACCEPTED"
-          : reason === "emailMismatch"
-            ? "INVITATION_EMAIL_MISMATCH"
-            : reason === "expired"
-              ? "INVITATION_EXPIRED"
-              : reason === "revoked"
-                ? "INVITATION_REVOKED"
-                : reason === "unverifiedEmail"
-                  ? "EMAIL_NOT_VERIFIED"
-                  : "INVITATION_TOKEN_INVALID"
-      return reason === "token"
-        ? {
-            message: "This invitation can no longer be accepted.",
-            path: ["redemptionToken"],
-            reason: invitationReason,
-          }
-        : {
-            message: "This invitation can no longer be accepted.",
-            reason: invitationReason,
-          }
-    }
-    case "InvitationRoleScopeMismatch":
     case "RoleScopeMismatch":
       return {
         message: "The role cannot be assigned at this scope.",
         path: ["role"],
         reason: "ROLE_SCOPE_MISMATCH",
-      }
-    case "LastActivePlatformAdministrator":
-      return {
-        message: "Another active platform administrator is required.",
-        reason: "LAST_ACTIVE_PLATFORM_ADMINISTRATOR",
       }
     case "LastPlatformAdministrator":
       return {
@@ -233,26 +196,12 @@ function failedPrecondition(error: TaggedFailure): StandardApiError {
 }
 
 function validationViolation(error: TaggedFailure): Violation {
-  const reason = stringProperty(error, "reason")
   switch (error._tag) {
     case "ImmutablePropertyError":
       return {
         message: "This field cannot be changed after creation.",
         path: [stringProperty(error, "property") ?? "unknown"],
         reason: "IMMUTABLE_PROPERTY",
-      }
-    case "InvalidApiKeyRequest":
-      if (reason === "expiresAt") {
-        return {
-          message: "Expiration must be in the future.",
-          path: ["expiresAt"],
-          reason: "EXPIRATION_NOT_IN_FUTURE",
-        }
-      }
-      return {
-        message: "Select a service account that can receive API keys.",
-        path: ["serviceAccount"],
-        reason: "SYSTEM_SERVICE_ACCOUNT",
       }
     case "InvalidRolePermission":
       return {
@@ -292,9 +241,6 @@ const notFoundTags = new Set([
   "RecordAliasNotFound",
 ])
 const failedPreconditionTags = new Set([
-  "InvitationInvalid",
-  "InvitationRoleScopeMismatch",
-  "LastActivePlatformAdministrator",
   "LastPlatformAdministrator",
   "LeadConversionConflict",
   "RoleScopeMismatch",
@@ -311,18 +257,16 @@ function translateApiError(error: unknown): StandardApiError | undefined {
   if (Schema.isSchemaError(error)) return schemaErrorToApiError(error)
   if (!isTaggedFailure(error)) return undefined
   if (
-    error._tag === "InvalidApiKey" ||
-    error._tag === "InvalidSession" ||
-    error._tag === "UnsupportedAuthorization"
+    error._tag === "IdentityProvisioningRequired" ||
+    error._tag === "InvalidIdentityAssertion"
   ) {
     return unauthenticatedApiError(
       "Valid authentication credentials are required."
     )
   }
   if (
-    error._tag === "FirstUserRejected" ||
-    error._tag === "InvitationRequired" ||
-    error._tag === "UserSuspended" ||
+    error._tag === "IdentityInactive" ||
+    error._tag === "UserInterfaceRequired" ||
     error._tag === "PermissionDenied"
   ) {
     return permissionDenied("The caller cannot perform this operation.")
@@ -335,16 +279,10 @@ function translateApiError(error: unknown): StandardApiError | undefined {
   ) {
     return alreadyExists(error)
   }
-  if (
-    error._tag === "InvalidApiKeyRequest" &&
-    stringProperty(error, "reason") === "disabledAccount"
-  ) {
-    return failedPrecondition(error)
-  }
   if (failedPreconditionTags.has(error._tag)) {
     return failedPrecondition(error)
   }
-  if (error._tag === "InvalidApiKeyRequest" || validationTags.has(error._tag)) {
+  if (validationTags.has(error._tag)) {
     return validation(error)
   }
   return undefined

@@ -1,7 +1,5 @@
-import { Button } from "@company/ui/components/button"
 import {
   Card,
-  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
@@ -10,7 +8,6 @@ import { createFileRoute } from "@tanstack/react-router"
 
 import { companyConfig } from "@/company/config"
 import { pageOptions } from "@/route-metadata"
-import { useSignOut } from "@/sign-out"
 
 const page = {
   breadcrumb: "Access denied",
@@ -24,33 +21,16 @@ export const Route = createFileRoute("/access-denied")({
 })
 
 function AccessDenied() {
-  const { error, pending, signOut } = useSignOut()
-
   return (
     <main className="flex min-h-svh items-center justify-center bg-muted/30 p-6">
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Access has not been granted</CardTitle>
           <CardDescription>
-            Ask an administrator for an invitation. On an unclaimed
-            installation, the first verified User to sign in becomes
-            administrator unless a bootstrap email is configured.
+            Authentication is managed by the deployment gateway. Ask its
+            administrator to grant this identity access, then reload the app.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <Button
-            variant="outline"
-            disabled={pending}
-            onClick={() => void signOut()}
-          >
-            {pending ? "Signing out…" : "Sign in with another account"}
-          </Button>
-          {error ? (
-            <p role="alert" className="text-sm text-destructive">
-              {error}
-            </p>
-          ) : null}
-        </CardContent>
       </Card>
     </main>
   )

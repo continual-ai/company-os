@@ -28,7 +28,6 @@ import {
   ChevronsUpDownIcon,
   CodeXmlIcon,
   BoxesIcon,
-  LogOutIcon,
   PackageIcon,
   PaletteIcon,
   PlugIcon,
@@ -45,7 +44,6 @@ import {
   getUserInitials,
   useAuthenticatedUser,
 } from "@/components/authenticated-user"
-import { useSignOut } from "@/sign-out"
 
 const sections = [
   { label: "Operate", to: "/" },
@@ -84,7 +82,6 @@ const sectionIndicatorPosition = {
 
 export function AppSidebar() {
   const user = useAuthenticatedUser()
-  const { error: signOutError, pending: signOutPending, signOut } = useSignOut()
   const matchRoute = useMatchRoute()
   const activeSection: Section = matchRoute({
     to: "/develop",
@@ -259,18 +256,6 @@ export function AppSidebar() {
                 <DropdownMenuItem render={<Link to="/settings" />}>
                   <SettingsIcon />
                   Account settings
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  variant="destructive"
-                  disabled={signOutPending}
-                  onClick={() => void signOut()}
-                >
-                  <LogOutIcon />
-                  {signOutPending
-                    ? "Logging out…"
-                    : signOutError
-                      ? "Log out failed — retry"
-                      : "Log out"}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

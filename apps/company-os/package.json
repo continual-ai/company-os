@@ -4,7 +4,6 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "auth:schema:generate": "auth generate --config auth.cli.ts --output src/server/auth/auth-schema.generated.ts --yes && oxfmt src/server/auth/auth-schema.generated.ts",
     "build": "vite build",
     "db:check": "drizzle-kit check --config drizzle.config.ts",
     "db:deploy": "tsx --env-file-if-exists=.env.local src/server/database/deploy.ts",
@@ -19,7 +18,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@better-auth/drizzle-adapter": "catalog:",
     "@company/model": "workspace:*",
     "@company/postgres": "workspace:*",
     "@company/runtime": "workspace:*",
@@ -30,9 +28,9 @@
     "@tanstack/react-router": "catalog:",
     "@tanstack/react-start": "catalog:",
     "@tanstack/react-table": "catalog:",
-    "better-auth": "catalog:",
     "drizzle-orm": "catalog:",
     "effect": "catalog:",
+    "jose": "catalog:",
     "lucide-react": "catalog:",
     "pg": "catalog:",
     "react": "catalog:",
@@ -46,7 +44,6 @@
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "catalog:",
-    "auth": "catalog:",
     "drizzle-kit": "catalog:",
     "tsx": "catalog:",
     "typescript": "catalog:",

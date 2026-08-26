@@ -25,18 +25,18 @@ function ProfileSettings() {
   return (
     <SettingsPage
       title="Profile"
-      description="The canonical Company OS user bound to your login."
+      description="The local User projection resolved from your authenticated identity."
     >
       <SettingsSection
         title="Personal information"
-        description="Verified identity-provider data is copied when the Company OS User is created."
+        description="Identity-provider data is projected locally for display, attribution, and authorization."
       >
         <SettingsRow title="Name" description="Shown throughout this app.">
           <span className="text-sm text-foreground">{user.name}</span>
         </SettingsRow>
         <SettingsRow
           title="Email"
-          description="Verified by the configured identity provider."
+          description="Provided by the configured identity boundary."
         >
           <span className="text-sm text-foreground">{user.email}</span>
         </SettingsRow>

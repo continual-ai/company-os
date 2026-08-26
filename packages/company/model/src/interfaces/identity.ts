@@ -5,5 +5,5 @@ export const Identity = defineInterface({
   name: "Identity",
   pluralName: "Identities",
   description:
-    "A local User or ServiceAccount backed by authentication credentials.",
+    "A canonical local User or ServiceAccount resolved by a trusted authentication boundary.",
 })

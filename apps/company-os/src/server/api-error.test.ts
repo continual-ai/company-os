@@ -25,12 +25,11 @@ function translate(error: TestFailure) {
 
 describe("API error translation", () => {
   it.each([
-    ["InvalidSession", "UNAUTHENTICATED"],
+    ["InvalidIdentityAssertion", "UNAUTHENTICATED"],
     ["PermissionDenied", "PERMISSION_DENIED"],
     ["ObjectWriteConflict", "ABORTED"],
     ["RecordAliasConflict", "ALREADY_EXISTS"],
     ["LastPlatformAdministrator", "FAILED_PRECONDITION"],
-    ["InvalidApiKeyRequest", "INVALID_ARGUMENT"],
   ])("maps %s to canonical status %s", async (_tag, status) => {
     await expect(translate({ _tag })).resolves.toMatchObject({ status })
   })
@@ -68,16 +67,6 @@ describe("API error translation", () => {
     })
   })
 
-  it("maps deliberate validation failures to their form fields", async () => {
-    await expect(
-      translate({ _tag: "InvalidApiKeyRequest", reason: "expiresAt" })
-    ).resolves.toMatchObject({
-      details: {
-        violations: [{ path: ["expiresAt"] }],
-      },
-    })
-  })
-
   it("maps model uniqueness failures to every participating field", async () => {
     await expect(
       translate({
@@ -93,22 +82,6 @@ describe("API error translation", () => {
       },
       reason: "ALREADY_EXISTS",
       status: "ALREADY_EXISTS",
-    })
-  })
-
-  it("distinguishes state-dependent failures from invalid arguments", async () => {
-    await expect(
-      translate({ _tag: "InvalidApiKeyRequest", reason: "disabledAccount" })
-    ).resolves.toMatchObject({
-      details: {
-        violations: [
-          {
-            path: ["serviceAccount"],
-            reason: "SERVICE_ACCOUNT_DISABLED",
-          },
-        ],
-      },
-      status: "FAILED_PRECONDITION",
     })
   })
 

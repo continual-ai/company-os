@@ -9,7 +9,6 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as HealthRouteImport } from './routes/health'
 import { Route as AccessDeniedRouteImport } from './routes/access-denied'
 import { Route as AppRouteRouteImport } from './routes/_app/route'
@@ -29,18 +28,14 @@ import { Route as AppDevelopRouteRouteImport } from './routes/_app/develop/route
 import { Route as AppSettingsIndexRouteImport } from './routes/_app/settings/index'
 import { Route as AppDevelopIndexRouteImport } from './routes/_app/develop/index'
 import { Route as ApiV1SplatRouteImport } from './routes/api/v1/$'
-import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as AppSettingsUsersRouteImport } from './routes/_app/settings/users'
-import { Route as AppSettingsSessionsRouteImport } from './routes/_app/settings/sessions'
 import { Route as AppSettingsServiceAccountsRouteImport } from './routes/_app/settings/service-accounts'
 import { Route as AppSettingsRolesRouteImport } from './routes/_app/settings/roles'
 import { Route as AppSettingsRoleAssignmentsRouteImport } from './routes/_app/settings/role-assignments'
 import { Route as AppSettingsProfileRouteImport } from './routes/_app/settings/profile'
-import { Route as AppSettingsInvitationsRouteImport } from './routes/_app/settings/invitations'
 import { Route as AppSettingsGroupsRouteImport } from './routes/_app/settings/groups'
 import { Route as AppSettingsGroupMembershipsRouteImport } from './routes/_app/settings/group-memberships'
 import { Route as AppSettingsAppearanceRouteImport } from './routes/_app/settings/appearance'
-import { Route as AppSettingsApiKeysRouteImport } from './routes/_app/settings/api-keys'
 import { Route as AppDevelopSdkRouteImport } from './routes/_app/develop/sdk'
 import { Route as AppDevelopModelRouteImport } from './routes/_app/develop/model'
 import { Route as AppDevelopMcpRouteImport } from './routes/_app/develop/mcp'
@@ -51,11 +46,6 @@ import { Route as AppDevelopDesignSystemFoundationsRouteImport } from './routes/
 import { Route as AppDevelopDesignSystemPatternsObjectTableRouteImport } from './routes/_app/develop/design-system/patterns/object-table'
 import { Route as AppDevelopDesignSystemComponentsComponentIdRouteRouteImport } from './routes/_app/develop/design-system/components/$componentId/route'
 
-const SignInRoute = SignInRouteImport.update({
-  id: '/sign-in',
-  path: '/sign-in',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const HealthRoute = HealthRouteImport.update({
   id: '/health',
   path: '/health',
@@ -150,19 +140,9 @@ const ApiV1SplatRoute = ApiV1SplatRouteImport.update({
   path: '/api/v1/$',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
-  id: '/api/auth/$',
-  path: '/api/auth/$',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AppSettingsUsersRoute = AppSettingsUsersRouteImport.update({
   id: '/users',
   path: '/users',
-  getParentRoute: () => AppSettingsRouteRoute,
-} as any)
-const AppSettingsSessionsRoute = AppSettingsSessionsRouteImport.update({
-  id: '/sessions',
-  path: '/sessions',
   getParentRoute: () => AppSettingsRouteRoute,
 } as any)
 const AppSettingsServiceAccountsRoute =
@@ -187,11 +167,6 @@ const AppSettingsProfileRoute = AppSettingsProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => AppSettingsRouteRoute,
 } as any)
-const AppSettingsInvitationsRoute = AppSettingsInvitationsRouteImport.update({
-  id: '/invitations',
-  path: '/invitations',
-  getParentRoute: () => AppSettingsRouteRoute,
-} as any)
 const AppSettingsGroupsRoute = AppSettingsGroupsRouteImport.update({
   id: '/groups',
   path: '/groups',
@@ -206,11 +181,6 @@ const AppSettingsGroupMembershipsRoute =
 const AppSettingsAppearanceRoute = AppSettingsAppearanceRouteImport.update({
   id: '/appearance',
   path: '/appearance',
-  getParentRoute: () => AppSettingsRouteRoute,
-} as any)
-const AppSettingsApiKeysRoute = AppSettingsApiKeysRouteImport.update({
-  id: '/api-keys',
-  path: '/api-keys',
   getParentRoute: () => AppSettingsRouteRoute,
 } as any)
 const AppDevelopSdkRoute = AppDevelopSdkRouteImport.update({
@@ -268,7 +238,6 @@ export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/access-denied': typeof AccessDeniedRoute
   '/health': typeof HealthRoute
-  '/sign-in': typeof SignInRoute
   '/develop': typeof AppDevelopRouteRouteWithChildren
   '/settings': typeof AppSettingsRouteRouteWithChildren
   '/companies': typeof AppCompaniesRoute
@@ -286,18 +255,14 @@ export interface FileRoutesByFullPath {
   '/develop/mcp': typeof AppDevelopMcpRoute
   '/develop/model': typeof AppDevelopModelRoute
   '/develop/sdk': typeof AppDevelopSdkRoute
-  '/settings/api-keys': typeof AppSettingsApiKeysRoute
   '/settings/appearance': typeof AppSettingsAppearanceRoute
   '/settings/group-memberships': typeof AppSettingsGroupMembershipsRoute
   '/settings/groups': typeof AppSettingsGroupsRoute
-  '/settings/invitations': typeof AppSettingsInvitationsRoute
   '/settings/profile': typeof AppSettingsProfileRoute
   '/settings/role-assignments': typeof AppSettingsRoleAssignmentsRoute
   '/settings/roles': typeof AppSettingsRolesRoute
   '/settings/service-accounts': typeof AppSettingsServiceAccountsRoute
-  '/settings/sessions': typeof AppSettingsSessionsRoute
   '/settings/users': typeof AppSettingsUsersRoute
-  '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/v1/$': typeof ApiV1SplatRoute
   '/develop/': typeof AppDevelopIndexRoute
   '/settings/': typeof AppSettingsIndexRoute
@@ -309,7 +274,6 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/access-denied': typeof AccessDeniedRoute
   '/health': typeof HealthRoute
-  '/sign-in': typeof SignInRoute
   '/companies': typeof AppCompaniesRoute
   '/contacts': typeof AppContactsRoute
   '/deals': typeof AppDealsRoute
@@ -325,18 +289,14 @@ export interface FileRoutesByTo {
   '/develop/mcp': typeof AppDevelopMcpRoute
   '/develop/model': typeof AppDevelopModelRoute
   '/develop/sdk': typeof AppDevelopSdkRoute
-  '/settings/api-keys': typeof AppSettingsApiKeysRoute
   '/settings/appearance': typeof AppSettingsAppearanceRoute
   '/settings/group-memberships': typeof AppSettingsGroupMembershipsRoute
   '/settings/groups': typeof AppSettingsGroupsRoute
-  '/settings/invitations': typeof AppSettingsInvitationsRoute
   '/settings/profile': typeof AppSettingsProfileRoute
   '/settings/role-assignments': typeof AppSettingsRoleAssignmentsRoute
   '/settings/roles': typeof AppSettingsRolesRoute
   '/settings/service-accounts': typeof AppSettingsServiceAccountsRoute
-  '/settings/sessions': typeof AppSettingsSessionsRoute
   '/settings/users': typeof AppSettingsUsersRoute
-  '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/v1/$': typeof ApiV1SplatRoute
   '/develop': typeof AppDevelopIndexRoute
   '/settings': typeof AppSettingsIndexRoute
@@ -350,7 +310,6 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteRouteWithChildren
   '/access-denied': typeof AccessDeniedRoute
   '/health': typeof HealthRoute
-  '/sign-in': typeof SignInRoute
   '/_app/develop': typeof AppDevelopRouteRouteWithChildren
   '/_app/settings': typeof AppSettingsRouteRouteWithChildren
   '/_app/companies': typeof AppCompaniesRoute
@@ -369,18 +328,14 @@ export interface FileRoutesById {
   '/_app/develop/mcp': typeof AppDevelopMcpRoute
   '/_app/develop/model': typeof AppDevelopModelRoute
   '/_app/develop/sdk': typeof AppDevelopSdkRoute
-  '/_app/settings/api-keys': typeof AppSettingsApiKeysRoute
   '/_app/settings/appearance': typeof AppSettingsAppearanceRoute
   '/_app/settings/group-memberships': typeof AppSettingsGroupMembershipsRoute
   '/_app/settings/groups': typeof AppSettingsGroupsRoute
-  '/_app/settings/invitations': typeof AppSettingsInvitationsRoute
   '/_app/settings/profile': typeof AppSettingsProfileRoute
   '/_app/settings/role-assignments': typeof AppSettingsRoleAssignmentsRoute
   '/_app/settings/roles': typeof AppSettingsRolesRoute
   '/_app/settings/service-accounts': typeof AppSettingsServiceAccountsRoute
-  '/_app/settings/sessions': typeof AppSettingsSessionsRoute
   '/_app/settings/users': typeof AppSettingsUsersRoute
-  '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/v1/$': typeof ApiV1SplatRoute
   '/_app/develop/': typeof AppDevelopIndexRoute
   '/_app/settings/': typeof AppSettingsIndexRoute
@@ -395,7 +350,6 @@ export interface FileRouteTypes {
     | '/'
     | '/access-denied'
     | '/health'
-    | '/sign-in'
     | '/develop'
     | '/settings'
     | '/companies'
@@ -413,18 +367,14 @@ export interface FileRouteTypes {
     | '/develop/mcp'
     | '/develop/model'
     | '/develop/sdk'
-    | '/settings/api-keys'
     | '/settings/appearance'
     | '/settings/group-memberships'
     | '/settings/groups'
-    | '/settings/invitations'
     | '/settings/profile'
     | '/settings/role-assignments'
     | '/settings/roles'
     | '/settings/service-accounts'
-    | '/settings/sessions'
     | '/settings/users'
-    | '/api/auth/$'
     | '/api/v1/$'
     | '/develop/'
     | '/settings/'
@@ -436,7 +386,6 @@ export interface FileRouteTypes {
   to:
     | '/access-denied'
     | '/health'
-    | '/sign-in'
     | '/companies'
     | '/contacts'
     | '/deals'
@@ -452,18 +401,14 @@ export interface FileRouteTypes {
     | '/develop/mcp'
     | '/develop/model'
     | '/develop/sdk'
-    | '/settings/api-keys'
     | '/settings/appearance'
     | '/settings/group-memberships'
     | '/settings/groups'
-    | '/settings/invitations'
     | '/settings/profile'
     | '/settings/role-assignments'
     | '/settings/roles'
     | '/settings/service-accounts'
-    | '/settings/sessions'
     | '/settings/users'
-    | '/api/auth/$'
     | '/api/v1/$'
     | '/develop'
     | '/settings'
@@ -476,7 +421,6 @@ export interface FileRouteTypes {
     | '/_app'
     | '/access-denied'
     | '/health'
-    | '/sign-in'
     | '/_app/develop'
     | '/_app/settings'
     | '/_app/companies'
@@ -495,18 +439,14 @@ export interface FileRouteTypes {
     | '/_app/develop/mcp'
     | '/_app/develop/model'
     | '/_app/develop/sdk'
-    | '/_app/settings/api-keys'
     | '/_app/settings/appearance'
     | '/_app/settings/group-memberships'
     | '/_app/settings/groups'
-    | '/_app/settings/invitations'
     | '/_app/settings/profile'
     | '/_app/settings/role-assignments'
     | '/_app/settings/roles'
     | '/_app/settings/service-accounts'
-    | '/_app/settings/sessions'
     | '/_app/settings/users'
-    | '/api/auth/$'
     | '/api/v1/$'
     | '/_app/develop/'
     | '/_app/settings/'
@@ -520,23 +460,14 @@ export interface RootRouteChildren {
   AppRouteRoute: typeof AppRouteRouteWithChildren
   AccessDeniedRoute: typeof AccessDeniedRoute
   HealthRoute: typeof HealthRoute
-  SignInRoute: typeof SignInRoute
   ApiDescriptionRoute: typeof ApiDescriptionRoute
   ApiDocsRoute: typeof ApiDocsRoute
   ApiOpenapiRoute: typeof ApiOpenapiRoute
-  ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiV1SplatRoute: typeof ApiV1SplatRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/sign-in': {
-      id: '/sign-in'
-      path: '/sign-in'
-      fullPath: '/sign-in'
-      preLoaderRoute: typeof SignInRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/health': {
       id: '/health'
       path: '/health'
@@ -670,25 +601,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiV1SplatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/auth/$': {
-      id: '/api/auth/$'
-      path: '/api/auth/$'
-      fullPath: '/api/auth/$'
-      preLoaderRoute: typeof ApiAuthSplatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/_app/settings/users': {
       id: '/_app/settings/users'
       path: '/users'
       fullPath: '/settings/users'
       preLoaderRoute: typeof AppSettingsUsersRouteImport
-      parentRoute: typeof AppSettingsRouteRoute
-    }
-    '/_app/settings/sessions': {
-      id: '/_app/settings/sessions'
-      path: '/sessions'
-      fullPath: '/settings/sessions'
-      preLoaderRoute: typeof AppSettingsSessionsRouteImport
       parentRoute: typeof AppSettingsRouteRoute
     }
     '/_app/settings/service-accounts': {
@@ -719,13 +636,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsProfileRouteImport
       parentRoute: typeof AppSettingsRouteRoute
     }
-    '/_app/settings/invitations': {
-      id: '/_app/settings/invitations'
-      path: '/invitations'
-      fullPath: '/settings/invitations'
-      preLoaderRoute: typeof AppSettingsInvitationsRouteImport
-      parentRoute: typeof AppSettingsRouteRoute
-    }
     '/_app/settings/groups': {
       id: '/_app/settings/groups'
       path: '/groups'
@@ -745,13 +655,6 @@ declare module '@tanstack/react-router' {
       path: '/appearance'
       fullPath: '/settings/appearance'
       preLoaderRoute: typeof AppSettingsAppearanceRouteImport
-      parentRoute: typeof AppSettingsRouteRoute
-    }
-    '/_app/settings/api-keys': {
-      id: '/_app/settings/api-keys'
-      path: '/api-keys'
-      fullPath: '/settings/api-keys'
-      preLoaderRoute: typeof AppSettingsApiKeysRouteImport
       parentRoute: typeof AppSettingsRouteRoute
     }
     '/_app/develop/sdk': {
@@ -867,31 +770,25 @@ const AppDevelopRouteRouteWithChildren = AppDevelopRouteRoute._addFileChildren(
 )
 
 interface AppSettingsRouteRouteChildren {
-  AppSettingsApiKeysRoute: typeof AppSettingsApiKeysRoute
   AppSettingsAppearanceRoute: typeof AppSettingsAppearanceRoute
   AppSettingsGroupMembershipsRoute: typeof AppSettingsGroupMembershipsRoute
   AppSettingsGroupsRoute: typeof AppSettingsGroupsRoute
-  AppSettingsInvitationsRoute: typeof AppSettingsInvitationsRoute
   AppSettingsProfileRoute: typeof AppSettingsProfileRoute
   AppSettingsRoleAssignmentsRoute: typeof AppSettingsRoleAssignmentsRoute
   AppSettingsRolesRoute: typeof AppSettingsRolesRoute
   AppSettingsServiceAccountsRoute: typeof AppSettingsServiceAccountsRoute
-  AppSettingsSessionsRoute: typeof AppSettingsSessionsRoute
   AppSettingsUsersRoute: typeof AppSettingsUsersRoute
   AppSettingsIndexRoute: typeof AppSettingsIndexRoute
 }
 
 const AppSettingsRouteRouteChildren: AppSettingsRouteRouteChildren = {
-  AppSettingsApiKeysRoute: AppSettingsApiKeysRoute,
   AppSettingsAppearanceRoute: AppSettingsAppearanceRoute,
   AppSettingsGroupMembershipsRoute: AppSettingsGroupMembershipsRoute,
   AppSettingsGroupsRoute: AppSettingsGroupsRoute,
-  AppSettingsInvitationsRoute: AppSettingsInvitationsRoute,
   AppSettingsProfileRoute: AppSettingsProfileRoute,
   AppSettingsRoleAssignmentsRoute: AppSettingsRoleAssignmentsRoute,
   AppSettingsRolesRoute: AppSettingsRolesRoute,
   AppSettingsServiceAccountsRoute: AppSettingsServiceAccountsRoute,
-  AppSettingsSessionsRoute: AppSettingsSessionsRoute,
   AppSettingsUsersRoute: AppSettingsUsersRoute,
   AppSettingsIndexRoute: AppSettingsIndexRoute,
 }
@@ -933,11 +830,9 @@ const rootRouteChildren: RootRouteChildren = {
   AppRouteRoute: AppRouteRouteWithChildren,
   AccessDeniedRoute: AccessDeniedRoute,
   HealthRoute: HealthRoute,
-  SignInRoute: SignInRoute,
   ApiDescriptionRoute: ApiDescriptionRoute,
   ApiDocsRoute: ApiDocsRoute,
   ApiOpenapiRoute: ApiOpenapiRoute,
-  ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiV1SplatRoute: ApiV1SplatRoute,
 }
 export const routeTree = rootRouteImport

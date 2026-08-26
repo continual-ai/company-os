@@ -27,8 +27,6 @@ import {
   ALL_AUTHENTICATED_CALLERS_PRINCIPAL_SET_ID,
   ALL_CALLERS_PRINCIPAL_SET_ID,
   ANONYMOUS_ACTOR_ID,
-  AUTHENTICATED_CALLER_ROLE_ASSIGNMENT_ID,
-  AUTHENTICATED_CALLER_ROLE_ID,
   PLATFORM_ADMIN_ROLE_ID,
   PLATFORM_ID,
   SYSTEM_SERVICE_ACCOUNT_ID,
@@ -127,16 +125,6 @@ describe("Company OS seeds", () => {
           .innerJoin(actors, eq(actors.id, anonymousActors.id))
           .where(eq(anonymousActors.id, ANONYMOUS_ACTOR_ID))
           .limit(1)
-        const callerAssignment = yield* database
-          .select({
-            principalId: roleAssignments.principalId,
-            roleId: roleAssignments.roleId,
-          })
-          .from(roleAssignments)
-          .where(
-            eq(roleAssignments.id, AUTHENTICATED_CALLER_ROLE_ASSIGNMENT_ID)
-          )
-          .limit(1)
         const assignment = yield* database
           .select({
             principalId: roleAssignments.principalId,
@@ -171,7 +159,6 @@ describe("Company OS seeds", () => {
           anonymousActor,
           assignment,
           auditConstraints,
-          callerAssignment,
           callerSets,
           impersonation,
           role,
@@ -217,10 +204,6 @@ describe("Company OS seeds", () => {
       },
       { id: ALL_CALLERS_PRINCIPAL_SET_ID, kind: "allCallers" },
     ])
-    expect(result.callerAssignment[0]).toEqual({
-      principalId: ALL_AUTHENTICATED_CALLERS_PRINCIPAL_SET_ID,
-      roleId: AUTHENTICATED_CALLER_ROLE_ID,
-    })
     expect(Array.isArray(result.role[0]?.permissions)).toBe(true)
     expect(result.assignment[0]).toEqual({
       principalId: SYSTEM_SERVICE_ACCOUNT_ID,

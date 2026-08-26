@@ -29,13 +29,11 @@ describe("model contract", () => {
       "user",
       "serviceAccount",
       "anonymousActor",
-      "apiKey",
       "group",
       "principalSet",
       "groupMembership",
       "role",
       "roleAssignment",
-      "invitation",
       "company",
       "contact",
       "lead",
@@ -61,13 +59,10 @@ describe("model contract", () => {
         .filter((action) => action.objectType === "lead")
         .map((action) => action.id)
     ).toEqual(["create", "update", "delete", "batchDelete", "convert"])
-    expect(Model.actions.invitation.accept.id).toBe("accept")
     expect(description.links.map((link) => link.id)).toEqual([
       "groupMembershipMember",
       "roleAssignmentPrincipal",
       "roleAssignmentRole",
-      "invitationRole",
-      "invitationAcceptedBy",
       "contactPrimaryCompany",
       "interactionSubject",
     ])

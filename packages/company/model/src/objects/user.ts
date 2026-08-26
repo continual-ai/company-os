@@ -1,4 +1,4 @@
-import { defineObject, schema, standardErrors } from "@company/runtime"
+import { defineObject, schema } from "@company/runtime"
 
 import { Actor } from "#interfaces/actor"
 import { Identity } from "#interfaces/identity"
@@ -11,31 +11,12 @@ export const User = defineObject({
   name: "User",
   parent: Platform,
   pluralName: "Users",
-  description: "A person with authenticated access to this operating system.",
+  description:
+    "The local projection of a person resolved by the deployment identity provider.",
   actions: {
     create: false,
     delete: false,
     batchDelete: false,
-    suspend: {
-      name: "Suspend user",
-      description:
-        "Prevents a user from authenticating and revokes their active sessions.",
-      destructive: true,
-      idempotent: true,
-      scope: "object",
-      errors: [
-        standardErrors.failedPrecondition,
-        standardErrors.notFound,
-        standardErrors.permissionDenied,
-      ],
-    },
-    reactivate: {
-      name: "Reactivate user",
-      description: "Restores a suspended user's access.",
-      idempotent: true,
-      scope: "object",
-      errors: [standardErrors.notFound, standardErrors.permissionDenied],
-    },
   },
   implements: [
     { interface: Actor },

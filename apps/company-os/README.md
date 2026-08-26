@@ -5,13 +5,14 @@ The repository's central backend and operating application in one TanStack Start
 This app is the repository's private composition root. It projects the semantic contract from
 `@company/model` into Drizzle storage, API descriptions, OpenAPI, and one executable HTTP API over
 the assembled Effect repository and service layers. OIDC browser sessions and service-account API
-keys both resolve to the same governed invocation context. The operating application, agents, and
-external interfaces call the same company capabilities rather than owning separate business logic.
+credentials remain outside this app; verified deployment assertions resolve to the same governed
+invocation context. The operating application, agents, and external interfaces call the same
+company capabilities rather than owning separate business logic.
 
 ## Owns
 
 - Private business implementations and orchestration
-- Authentication and authorization enforcement
+- Identity assertion verification and business authorization enforcement
 - Persistence, migrations, and transactions
 - Provider adapters and runtime configuration
 - Internal operating, development, and learning routes
@@ -26,9 +27,9 @@ client-callable `createServerFn` wrappers.
 
 `src/company` is the source-owned customer overlay. Its config and theme cover shallow product
 identity, asset, and token changes; its navigation and home modules own the initial operating
-experience. Core shell, authentication, design-system, table, form, and accessibility behavior stay
-shared. When a use case requires new business behavior, extend the model and governed server path
-rather than encoding policy in the overlay or turning the config into a page schema.
+experience. Core shell, identity-boundary, design-system, table, form, and accessibility behavior
+stay shared. When a use case requires new business behavior, extend the model and governed server
+path rather than encoding policy in the overlay or turning the config into a page schema.
 
 ## Server organization
 
@@ -40,7 +41,7 @@ capability. The intended request path is:
 HTTP / MCP / agents
         |
         v
-authenticate and provide CurrentInvocation
+verify identity assertion and provide CurrentInvocation
         |
         v
 thin protocol handlers
@@ -73,7 +74,7 @@ Effect PostgreSQL client
 Authorization uses the same ontology and storage path as business data. An identity acts as itself,
 as every group it belongs to, and as the system-defined principal sets implied by its authentication
 state. `allCallers` also applies without credentials; `allAuthenticatedCallers` applies whenever the
-configured authentication boundary accepts credentials, including before a User is admitted.
+configured authentication boundary accepts a verified assertion.
 Role assignments grant exact model-derived capabilities to a principal at an authorization scope;
 the grant applies to that scope and its ownership descendants. Object services deny by default,
 authorize batches atomically, conceal unreadable records as missing, and constrain lists in SQL
@@ -96,41 +97,35 @@ seeds, jobs, and named workflows. It receives permissions through the same role 
 other identities; its only special authority is managing system-owned records, and it still passes
 through validation, transactions, and domain invariants.
 
-The request boundary distinguishes anonymous callers, authenticated subjects that have not been
-admitted, and canonical local identities. A User authenticates with a Better Auth browser session
-and a ServiceAccount with a Company OS API key. Those two objects implement `Identity`, while the
-model's audit-only `AnonymousActor` represents operations deliberately allowed without an
-authenticated identity. It is displayed as “Anonymous,” is not a User, Identity, or Principal, and
-cannot receive roles. Groups and principal sets do not authenticate; authorization expands caller
-state into the applicable Principals. The server pins the Platform root, rejects external use of
-the reserved system actor, and uses `systemInvocation` only for trusted internal entrypoints. HTTP,
-MCP, jobs, and agents should otherwise differ only in how they establish that trusted context
-before calling the same governed services.
+The request boundary distinguishes callers without credentials, verified external subjects, and
+canonical local identities. The deployment gateway owns login, sessions, invitations, credentials,
+API keys, and provider-specific directory administration. Company OS verifies its signed identity
+assertion, maps stable `(issuer, subject)` values through `identity_bindings`, and JIT-provisions a
+minimal local `User` or `ServiceAccount` projection when configured to do so. Email is profile data,
+not an account-linking key; issuer changes require explicit reconciliation.
 
-Better Auth owns only OIDC protocol state and browser sessions in the private `auth` PostgreSQL
-schema. Company OS owns the canonical User, ServiceAccount, Invitation, API key metadata, role
-assignments, and User provisioning policy as ordinary application behavior and objects. Private
-bindings and hashed credentials also live in `auth`; raw invitation and API-key secrets are
-returned once and are never stored. The first verified User to sign in atomically becomes a
-Platform administrator. A deployment may optionally restrict that first User with
-`AUTH_BOOTSTRAP_EMAIL`. After a User administrator exists, unbound sessions require an invitation;
-changing the bootstrap setting cannot replace or elevate an existing administrator.
+`User` and `ServiceAccount` implement `Identity`, while the audit-only `AnonymousActor` represents
+operations deliberately allowed without an authenticated identity. It is displayed as “Anonymous,”
+is not a User, Identity, or Principal, and cannot receive roles. Public permissions belong to an
+`allCallers` PrincipalSet rather than to the anonymous actor. The well-known System identity is a
+system-managed ServiceAccount because it performs authorized non-human work. Groups and principal
+sets do not authenticate; authorization expands caller state into the applicable Principals.
 
-The standalone deployment reads the authentication contract through Effect `Config`. Continual may
-act as the configured OIDC issuer and inject the same environment values for a hosted deployment,
-but Company OS still owns its Users, ServiceAccounts, bindings, and authorization policy:
+The standalone deployment reads the identity contract through Effect `Config`:
 
-- `BETTER_AUTH_URL` is the public origin of this app.
-- `BETTER_AUTH_SECRET` is an installation-specific random value of at least 32 characters.
-- `AUTH_OIDC_DISCOVERY_URL`, `AUTH_OIDC_CLIENT_ID`, and `AUTH_OIDC_CLIENT_SECRET` configure any
-  standards-compliant OIDC provider; `AUTH_OIDC_NAME` is its optional display name.
-- `AUTH_BOOTSTRAP_EMAIL` optionally restricts which verified User may claim an installation with no
-  User administrator. When omitted, the first verified User to sign in claims it.
+- `AUTH_MODE=local` JIT-provisions the configured local User for development. `AUTH_LOCAL_SUBJECT`,
+  `AUTH_LOCAL_NAME`, and `AUTH_LOCAL_EMAIL` control its profile.
+- `AUTH_MODE=jwt` verifies the assertion in `AUTH_JWT_HEADER` against `AUTH_JWT_ISSUER`,
+  `AUTH_JWT_AUDIENCE`, and `AUTH_JWT_JWKS_URL`. Continual, Google IAP, or another trusted gateway may
+  supply it. The configured kind claim must resolve to `user` or `serviceAccount`; a deployment that
+  only admits one kind may set `AUTH_JWT_DEFAULT_IDENTITY_KIND`.
+- `AUTH_JIT_ROLE` controls the initial local business role for a newly projected identity. Local
+  development defaults to `administrator`; verified JWT deployments default to `operator`.
 
-Register `${BETTER_AUTH_URL}/api/auth/callback/oidc` as the provider callback URL. Provider-specific
-SDKs and organization models stay outside the application boundary; changing providers only changes
-OIDC configuration. Replacing a provider does not require application-code changes, but an existing
-installation still needs an explicit identity-reconciliation plan before changing issuers.
+Do not expose the application directly while relying on a gateway assertion header. The JWT is
+still verified by this app, and the gateway or ingress must prevent clients from bypassing its own
+authentication and membership checks. Replacing providers changes the assertion adapter and
+bindings, not Company OS business services or authorization policy.
 
 `ActorId`, `IdentityId`, and `PrincipalId` are derived from the closed `Model`, so each is the
 branded union of its interface's concrete implementers. `Actor` is `User | ServiceAccount |
@@ -169,12 +164,10 @@ another business service.
 The app uses `@company/postgres` with the Effect PostgreSQL driver. The portable `Model` is
 the source of truth for objects, properties, interfaces, ownership, links, and uniqueness.
 `src/server/database/schema.ts` only instantiates the reusable compiler and exposes its
-tables as direct ESM exports because Drizzle Kit does not inspect nested schema objects. Better
-Auth's generated protocol tables are checked in under `src/server/auth` and extended by private
-application-owned authentication tables in the same `auth` schema. Regenerate only the provider
-tables with `pnpm --filter company-os auth:schema:generate`, then review the result and replace the
-pre-deployment migration baseline. A schema test ensures those static tooling exports cover the
-complete generated projection. There is no
+tables as direct ESM exports because Drizzle Kit does not inspect nested schema objects. The app
+adds only the provider-neutral `identity_bindings` table beside that generated projection;
+it stores no credentials or sessions. A schema test ensures the static tooling exports cover the
+complete projection. There is no
 handwritten second copy of the company model. Drizzle Kit reads the
 projection and generates explicit SQL under `src/server/database/migrations`. Each migration also
 contains Drizzle's machine-generated schema snapshot: the SQL is the reviewed executable history,
@@ -192,16 +185,17 @@ Start the repository-owned local PostgreSQL service and converge the committed s
 pnpm setup
 ```
 
-The setup command creates `apps/company-os/.env.local` from the example when it is absent. Set the
-required OIDC values in that file, then use `pnpm dev`. Development reapplies pending migrations
-and converges source-owned records before starting Company OS. Use `pnpm dev:all` when the
+The setup command creates `apps/company-os/.env.local` from the example when it is absent. Local
+identity mode works without an external provider; adjust its profile values when useful, then use
+`pnpm dev`. Development reapplies pending migrations and converges source-owned records before
+starting Company OS. Use `pnpm dev:all` when the
 demonstration marketing site and client portal are also needed.
 
 Database commands load `apps/company-os/.env.local` when present and otherwise use `DATABASE_URL`
 from the process environment. TanStack Start also loads that app-local file for development while
 production supplies the same contract through deployment environment injection. Only `VITE_`
-variables may enter browser code; database, Better Auth, OIDC, and bootstrap values remain
-server-only. The `.env.local` file is ignored and `.env.example` contains no usable secrets.
+variables may enter browser code; database and identity assertion configuration remain server-only.
+The `.env.local` file is ignored and `.env.example` contains no usable credentials.
 
 `db:migrate` applies only migrations not already recorded by
 Drizzle. `db:seed` idempotently converges the built-in Platform, system identity, principal sets,
@@ -261,7 +255,8 @@ exercise the same committed history.
 
 ### Reset local development
 
-Reset deletes every object in the `auth`, `public`, and Drizzle migration schemas, recreates
+Reset deletes every object in the `public` and Drizzle migration schemas, cleans up the historical
+`auth` schema when present, recreates
 `public`, and then applies the full committed migration history and all source-owned seeds. It
 accepts only loopback PostgreSQL hosts and requires the exact database name as confirmation:
 
@@ -318,8 +313,6 @@ Open <http://localhost:3002>. Useful endpoints:
 - `/learn` — company knowledge and guidance
 
 - `GET /health` — process health
-- `/sign-in` — OIDC sign-in
-- `/api/auth/*` — Better Auth protocol and callback endpoints
 - `/api/v1/*` — governed object reads, mutations, declared actions, and capability checks
 - `GET /api/description` — serializable API projection of `Model`
 - `GET /api/openapi` — runtime-derived OpenAPI 3.1 contract

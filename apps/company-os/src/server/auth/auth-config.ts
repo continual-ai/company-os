@@ -1,105 +1,134 @@
-import { EmailAddress } from "@company/runtime"
-import { Config, Context, Effect, Layer, Redacted } from "effect"
+import { Config, Context, Effect, Layer } from "effect"
+
+export type IdentityKind = "serviceAccount" | "user"
+type ProvisioningRole = "administrator" | "none" | "operator"
+
+interface LocalIdentityConfig {
+  readonly email: string
+  readonly kind: "local"
+  readonly name: string
+  readonly subject: string
+}
+
+interface JwtIdentityConfig {
+  readonly audience: string
+  readonly defaultIdentityKind: IdentityKind | undefined
+  readonly header: string
+  readonly issuer: string
+  readonly jwksUrl: URL
+  readonly kind: "jwt"
+  readonly kindClaim: string
+}
 
 export interface AuthConfig {
-  readonly baseUrl: string
-  readonly bootstrapEmail: EmailAddress | undefined
-  readonly cookiePrefix: string
-  readonly oidc: {
-    readonly clientId: string
-    readonly clientSecret: Redacted.Redacted
-    readonly discoveryUrl: string
-    readonly name: string
-  }
-  readonly secret: Redacted.Redacted
+  readonly provider: LocalIdentityConfig | JwtIdentityConfig
+  readonly provisioningRole: ProvisioningRole
 }
 
 export class AuthConfigurationError extends Error {
   override readonly name = "AuthConfigurationError"
 }
 
-function requiredSecret(
-  value: Redacted.Redacted,
-  name: string
-): Redacted.Redacted {
-  if (!Redacted.value(value).trim()) {
-    throw new AuthConfigurationError(`${name} is required.`)
+function identityKind(value: string): IdentityKind | undefined {
+  if (value === "") return undefined
+  if (value === "user" || value === "serviceAccount") return value
+  throw new AuthConfigurationError(
+    "AUTH_JWT_DEFAULT_IDENTITY_KIND must be 'user' or 'serviceAccount'."
+  )
+}
+
+function provisioningRole(value: string): ProvisioningRole {
+  if (value === "administrator" || value === "none" || value === "operator") {
+    return value
+  }
+  throw new AuthConfigurationError(
+    "AUTH_JIT_ROLE must be 'administrator', 'operator', or 'none'."
+  )
+}
+
+function httpUrl(value: URL, name: string): URL {
+  if (value.protocol !== "http:" && value.protocol !== "https:") {
+    throw new AuthConfigurationError(`${name} must use HTTP or HTTPS.`)
   }
   return value
 }
 
-function httpUrl(value: URL, name: string): string {
-  if (value.protocol !== "http:" && value.protocol !== "https:") {
-    throw new AuthConfigurationError(`${name} must use HTTP or HTTPS.`)
-  }
-  return value.toString().replace(/\/$/, "")
-}
+const authMode = Config.string("AUTH_MODE").pipe(Config.withDefault("local"))
 
-const deploymentConfig = Config.all({
-  baseUrl: Config.url("BETTER_AUTH_URL"),
-  bootstrapEmail: Config.string("AUTH_BOOTSTRAP_EMAIL").pipe(
-    Config.withDefault("")
-  ),
-  cookiePrefix: Config.nonEmptyString("AUTH_COOKIE_PREFIX").pipe(
-    Config.withDefault("company_os")
-  ),
-  oidc: Config.all({
-    clientId: Config.nonEmptyString("AUTH_OIDC_CLIENT_ID"),
-    clientSecret: Config.redacted("AUTH_OIDC_CLIENT_SECRET"),
-    discoveryUrl: Config.url("AUTH_OIDC_DISCOVERY_URL"),
-    name: Config.nonEmptyString("AUTH_OIDC_NAME").pipe(
-      Config.withDefault("Single sign-on")
-    ),
-  }),
-  secret: Config.redacted("BETTER_AUTH_SECRET"),
-})
-
-/** Loads and validates the standalone deployment contract that Continual may also inject. */
+/** Loads the identity assertion boundary without owning credentials or sessions. */
 export const loadAuthConfig: Effect.Effect<
   AuthConfig,
   Config.ConfigError | AuthConfigurationError
 > = Effect.gen(function* () {
-  const config = yield* deploymentConfig
-  const secret = requiredSecret(config.secret, "BETTER_AUTH_SECRET")
-  if (Redacted.value(secret).length < 32) {
-    throw new AuthConfigurationError(
-      "BETTER_AUTH_SECRET must contain at least 32 characters."
-    )
+  const mode = yield* authMode
+  const environment = yield* Config.string("NODE_ENV").pipe(
+    Config.withDefault("development")
+  )
+  if (mode === "local") {
+    if (environment === "production") {
+      throw new AuthConfigurationError(
+        "AUTH_MODE=local is not allowed when NODE_ENV=production."
+      )
+    }
+    const local = yield* Config.all({
+      email: Config.nonEmptyString("AUTH_LOCAL_EMAIL").pipe(
+        Config.withDefault("developer@company.test")
+      ),
+      name: Config.nonEmptyString("AUTH_LOCAL_NAME").pipe(
+        Config.withDefault("Local developer")
+      ),
+      role: Config.string("AUTH_JIT_ROLE").pipe(
+        Config.withDefault("administrator")
+      ),
+      subject: Config.nonEmptyString("AUTH_LOCAL_SUBJECT").pipe(
+        Config.withDefault("developer")
+      ),
+    })
+    return {
+      provider: {
+        email: local.email,
+        kind: "local",
+        name: local.name,
+        subject: local.subject,
+      },
+      provisioningRole: provisioningRole(local.role),
+    }
   }
 
-  return yield* Effect.try({
-    try: () => {
-      const bootstrapEmail = config.bootstrapEmail.trim().toLowerCase()
-      return {
-        baseUrl: httpUrl(config.baseUrl, "BETTER_AUTH_URL"),
-        bootstrapEmail:
-          bootstrapEmail === "" ? undefined : EmailAddress(bootstrapEmail),
-        cookiePrefix: config.cookiePrefix,
-        oidc: {
-          clientId: config.oidc.clientId,
-          clientSecret: requiredSecret(
-            config.oidc.clientSecret,
-            "AUTH_OIDC_CLIENT_SECRET"
-          ),
-          discoveryUrl: httpUrl(
-            config.oidc.discoveryUrl,
-            "AUTH_OIDC_DISCOVERY_URL"
-          ),
-          name: config.oidc.name,
-        },
-        secret,
-      }
-    },
-    catch: (error) =>
-      error instanceof AuthConfigurationError
-        ? error
-        : new AuthConfigurationError(
-            "Authentication configuration is invalid."
-          ),
-  })
+  if (mode === "jwt") {
+    const jwt = yield* Config.all({
+      audience: Config.nonEmptyString("AUTH_JWT_AUDIENCE"),
+      defaultIdentityKind: Config.string("AUTH_JWT_DEFAULT_IDENTITY_KIND").pipe(
+        Config.withDefault("")
+      ),
+      header: Config.nonEmptyString("AUTH_JWT_HEADER").pipe(
+        Config.withDefault("x-company-identity")
+      ),
+      issuer: Config.nonEmptyString("AUTH_JWT_ISSUER"),
+      jwksUrl: Config.url("AUTH_JWT_JWKS_URL"),
+      kindClaim: Config.nonEmptyString("AUTH_JWT_KIND_CLAIM").pipe(
+        Config.withDefault("actor_kind")
+      ),
+      role: Config.string("AUTH_JIT_ROLE").pipe(Config.withDefault("operator")),
+    })
+    return {
+      provider: {
+        audience: jwt.audience,
+        defaultIdentityKind: identityKind(jwt.defaultIdentityKind),
+        header: jwt.header.toLowerCase(),
+        issuer: jwt.issuer,
+        jwksUrl: httpUrl(jwt.jwksUrl, "AUTH_JWT_JWKS_URL"),
+        kind: "jwt",
+        kindClaim: jwt.kindClaim,
+      },
+      provisioningRole: provisioningRole(jwt.role),
+    }
+  }
+
+  throw new AuthConfigurationError("AUTH_MODE must be 'local' or 'jwt'.")
 })
 
-/** Validated authentication settings supplied by the deployment boundary. */
+/** Validated deployment settings for local development or verified JWT assertions. */
 export class AuthSettings extends Context.Service<AuthSettings>()(
   "@company/AuthSettings",
   { make: loadAuthConfig }

@@ -23,13 +23,6 @@ describe("object capabilities", () => {
         { permission: "lead.convert", target: "lead_1" },
       ])
     )
-    expect(
-      objectCapabilityChecks(Model.objects.invitation, ["invitation_1"])
-    ).toEqual(
-      expect.arrayContaining([
-        { permission: "invitation.accept", target: "invitation_1" },
-      ])
-    )
   })
 
   it("keeps ordered responses aligned with their checks", () => {

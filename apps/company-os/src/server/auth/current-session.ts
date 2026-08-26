@@ -2,26 +2,29 @@ import { Effect } from "effect"
 
 import { applicationRuntime } from "@/server/application-runtime"
 
-import { UserAuthentication } from "./user-authentication"
+import { Authentication } from "./authentication"
 
-/** Returns expected User authentication outcomes while preserving infrastructure failures. */
+/** Resolves the current browser User while preserving infrastructure failures. */
 export function readCurrentSession(headers: Headers) {
   return applicationRuntime.runPromise(
     Effect.gen(function* () {
-      const authentication = yield* UserAuthentication
-      const user = yield* authentication.authenticate(headers)
+      const authentication = yield* Authentication
+      const user = yield* authentication.currentUser(headers)
+      if (user === null) return { status: "unauthenticated" as const }
       return {
         status: "authenticated" as const,
         user,
       }
     }).pipe(
       Effect.catchTags({
-        FirstUserRejected: () =>
+        IdentityInactive: () =>
           Effect.succeed({ status: "forbidden" as const }),
-        InvitationRequired: () =>
+        IdentityProvisioningRequired: () =>
           Effect.succeed({ status: "forbidden" as const }),
-        InvalidSession: () =>
+        InvalidIdentityAssertion: () =>
           Effect.succeed({ status: "unauthenticated" as const }),
+        UserInterfaceRequired: () =>
+          Effect.succeed({ status: "forbidden" as const }),
       })
     )
   )

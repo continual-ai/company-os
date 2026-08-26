@@ -1,47 +1,9 @@
 @theme inline {
   --color-company-brand: var(--company-brand);
   --color-company-brand-foreground: var(--company-brand-foreground);
-  --color-company-brand-field: var(--company-brand-field);
-  --color-company-brand-field-foreground: var(--company-brand-field-foreground);
-  --color-company-brand-field-muted: var(--company-brand-field-muted);
 }
 
 :root {
   --company-brand: oklch(0.205 0 0);
   --company-brand-foreground: oklch(0.985 0 0);
-  --company-brand-field: oklch(0.18 0.015 255);
-  --company-brand-field-foreground: oklch(0.985 0 0);
-  --company-brand-field-muted: oklch(0.78 0.018 255);
-}
-
-.company-sign-in-field {
-  background:
-    radial-gradient(
-      circle at 78% 18%,
-      color-mix(in oklab, var(--company-brand) 75%, transparent),
-      transparent 34%
-    ),
-    radial-gradient(
-      circle at 18% 86%,
-      color-mix(in oklab, var(--company-brand-field-muted) 20%, transparent),
-      transparent 38%
-    ),
-    var(--company-brand-field);
-}
-
-.company-sign-in-grid {
-  background-image:
-    linear-gradient(
-      color-mix(in oklab, var(--company-brand-field-foreground) 9%, transparent)
-        1px,
-      transparent 1px
-    ),
-    linear-gradient(
-      90deg,
-      color-mix(in oklab, var(--company-brand-field-foreground) 9%, transparent)
-        1px,
-      transparent 1px
-    );
-  background-size: 4rem 4rem;
-  mask-image: linear-gradient(to bottom right, black, transparent 72%);
 }

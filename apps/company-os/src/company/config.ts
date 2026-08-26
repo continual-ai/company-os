@@ -5,24 +5,10 @@ type BrandAsset = Readonly<{
   src: string
 }>
 
-type SignInMedia =
-  | Readonly<{
-      alt: string
-      kind: "image"
-      src: string
-    }>
-  | Readonly<{
-      kind: "video"
-      poster: string
-      src: string
-    }>
-
 type CompanyConfig = Readonly<{
   brand: Readonly<{
     favicon: Readonly<{ href: string; type: string }>
-    logo: BrandAsset | null
     mark: BrandAsset | null
-    signInMedia: SignInMedia | null
     themeColor: string
   }>
   home: Readonly<{
@@ -36,11 +22,6 @@ type CompanyConfig = Readonly<{
     monogram: string
     productName: string
   }>
-  signIn: Readonly<{
-    description: string
-    headline: string
-    highlights: ReadonlyArray<string>
-  }>
 }>
 
 const companyName = modelMetadata.name
@@ -49,9 +30,7 @@ const companyName = modelMetadata.name
 export const companyConfig: CompanyConfig = {
   brand: {
     favicon: { href: "/favicon.svg", type: "image/svg+xml" },
-    logo: null,
     mark: null,
-    signInMedia: null,
     themeColor: "#ffffff",
   },
   home: {
@@ -65,15 +44,5 @@ export const companyConfig: CompanyConfig = {
     descriptor: "Company operating system",
     monogram: companyName.slice(0, 1).toUpperCase(),
     productName: `${companyName} OS`,
-  },
-  signIn: {
-    description:
-      "Start with one important operation, then build outward on the same source-owned foundation.",
-    headline: "Run the work from one shared operating system.",
-    highlights: [
-      "Company data and relationships share one typed model.",
-      "People, applications, integrations, and agents use governed actions.",
-      "The source and operating history remain under the company’s control.",
-    ],
   },
 }

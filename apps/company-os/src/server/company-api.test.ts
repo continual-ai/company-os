@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url"
 import { PgliteClient } from "@effect/sql-pglite"
 import * as PgliteDrizzle from "drizzle-orm/effect-pglite"
 import { migrate } from "drizzle-orm/effect-pglite/migrator"
-import { Effect, Layer, ManagedRuntime, Redacted } from "effect"
+import { Effect, Layer, ManagedRuntime } from "effect"
 import { FetchHttpClient } from "effect/unstable/http"
 import { HttpApiClient } from "effect/unstable/httpapi"
 import { describe, expect, it } from "vitest"
@@ -15,11 +15,10 @@ import { PLATFORM_ID } from "@/system-records"
 
 import { makeApplicationLayer } from "./application-layer"
 import { AuthSettings, type AuthConfig } from "./auth/auth-config"
-import { AuthProtocol } from "./auth/auth-protocol"
-import { UserAuthentication } from "./auth/user-authentication"
+import { IdentityProvider } from "./auth/identity-provider"
 import { CompanyApi } from "./company-api"
 import { Database } from "./database/database"
-import { authUser, relations } from "./database/schema"
+import { relations } from "./database/schema"
 import { seedSystem } from "./seeds/seed-system"
 
 const migrationsFolder = fileURLToPath(
@@ -28,33 +27,29 @@ const migrationsFolder = fileURLToPath(
 const TestDatabase = PgliteClient.layer()
 
 const authConfig: AuthConfig = {
-  baseUrl: "http://company.test",
-  bootstrapEmail: undefined,
-  cookiePrefix: "company_os_test",
-  oidc: {
-    clientId: "client-id",
-    clientSecret: Redacted.make("client-secret"),
-    discoveryUrl:
-      "https://accounts.example.com/.well-known/openid-configuration",
-    name: "Single sign-on",
+  provider: {
+    email: "owner@example.com",
+    kind: "local",
+    name: "Owner",
+    subject: "owner",
   },
-  secret: Redacted.make("a-secure-value-with-at-least-32-characters"),
+  provisioningRole: "administrator",
 }
 
-const testAuthProtocol = {
-  handle: (_request: Request) => Effect.die("Not used by Company API tests"),
-  session: (headers: Headers) =>
+const testIdentityProvider = {
+  identify: (headers: Headers) =>
     Effect.succeed(
       headers.has("x-test-anonymous")
         ? null
         : {
-            authUserId: "auth_owner",
             email: "owner@example.com",
-            emailVerified: true,
+            issuer: "https://identity.example.com",
+            kind: "user" as const,
             name: "Owner",
+            subject: "owner",
           }
     ),
-} satisfies typeof AuthProtocol.Service
+} satisfies typeof IdentityProvider.Service
 
 function asDatabase(
   database: Effect.Success<
@@ -73,35 +68,23 @@ function run<A, E>(effect: Effect.Effect<A, E, PgliteClient.PgliteClient>) {
 }
 
 describe("Company API", () => {
-  it("assembles generated CRUD and custom actions into one Fetch handler", async () => {
+  it("assembles generated CRUD, JIT identity, and anonymous authorization", async () => {
     await run(
       Effect.gen(function* () {
         const pglite = yield* PgliteDrizzle.makeWithDefaults({ relations })
         yield* migrate(pglite, { migrationsFolder })
         const database = asDatabase(pglite)
         yield* seedSystem().pipe(Effect.provideService(Database, database))
-        const now = new Date()
-        yield* database.insert(authUser).values({
-          createdAt: now,
-          email: "owner@example.com",
-          emailVerified: true,
-          id: "auth_owner",
-          name: "Owner",
-          updatedAt: now,
-        })
 
         const runtime = ManagedRuntime.make(
           makeApplicationLayer({
-            authProtocol: Layer.succeed(AuthProtocol, testAuthProtocol),
             authSettings: Layer.succeed(AuthSettings, authConfig),
             database: Layer.succeed(Database, database),
+            identityProvider: Layer.succeed(
+              IdentityProvider,
+              testIdentityProvider
+            ),
           })
-        )
-        const userAuthentication = yield* Effect.promise(() =>
-          runtime.runPromise(UserAuthentication)
-        )
-        yield* Effect.promise(() =>
-          runtime.runPromise(userAuthentication.authenticate(new Headers()))
         )
         const api = yield* Effect.promise(() => runtime.runPromise(CompanyApi))
         const anonymousCapabilities = yield* Effect.promise(() =>
@@ -109,7 +92,9 @@ describe("Company API", () => {
             api.handle(
               new Request("http://company.test/api/v1/capabilities:check", {
                 body: JSON.stringify({
-                  checks: [{ permission: "invitation.accept" }],
+                  checks: [
+                    { permission: "company.create", target: PLATFORM_ID },
+                  ],
                 }),
                 headers: {
                   "content-type": "application/json",
@@ -124,6 +109,7 @@ describe("Company API", () => {
         expect(
           yield* Effect.promise(() => anonymousCapabilities.json())
         ).toEqual({ results: [{ allowed: false }] })
+
         const invalidCompany = yield* Effect.promise(() =>
           runtime.runPromise(
             api.handle(
@@ -140,12 +126,7 @@ describe("Company API", () => {
           yield* Effect.promise(() => invalidCompany.json())
         ).toMatchObject({
           details: {
-            violations: [
-              {
-                path: ["domain"],
-                reason: "INVALID",
-              },
-            ],
+            violations: [{ path: ["domain"], reason: "INVALID" }],
           },
           reason: "VALIDATION_FAILED",
           status: "INVALID_ARGUMENT",
@@ -158,15 +139,7 @@ describe("Company API", () => {
               : input instanceof URL
                 ? input.href
                 : input.url
-          const response = await runtime.runPromise(
-            api.handle(new Request(url, init))
-          )
-          if (response.status >= 500) {
-            throw new Error(
-              `Company API returned ${response.status}: ${await response.text()}`
-            )
-          }
-          return response
+          return runtime.runPromise(api.handle(new Request(url, init)))
         }
         const nativeClient = yield* HttpApiClient.make(applicationHttpApi, {
           baseUrl: "http://company.test",
@@ -199,36 +172,22 @@ describe("Company API", () => {
         expect(initial).toEqual({ items: [], nextPageToken: "" })
 
         const created = yield* useTestFetch(
-          client.company.createCompany({
-            payload: { name: "Northstar" },
-          })
+          client.company.createCompany({ payload: { name: "Northstar" } })
         )
         expect(created).toMatchObject({
           lifecycleStage: "prospect",
           name: "Northstar",
         })
 
-        const listed = yield* useTestFetch(
-          client.company.listCompanies({ query: { pageSize: 10 } })
+        const users = yield* useTestFetch(
+          client.user.listUsers({ query: { pageSize: 10 } })
         )
-        expect(listed.items).toHaveLength(1)
-
-        const serviceAccount = yield* useTestFetch(
-          client.serviceAccount.createServiceAccount({
-            payload: { name: "Import worker" },
-          })
-        )
-        yield* useTestFetch(
-          client.serviceAccount.disableServiceAccount({
-            params: { id: serviceAccount.id },
-          })
-        )
-        const disabled = yield* useTestFetch(
-          client.serviceAccount.getServiceAccount({
-            params: { id: serviceAccount.id },
-          })
-        )
-        expect(disabled.status).toBe("disabled")
+        expect(users.items).toEqual([
+          expect.objectContaining({
+            email: "owner@example.com",
+            name: "Owner",
+          }),
+        ])
 
         yield* Effect.promise(() => runtime.dispose())
       })

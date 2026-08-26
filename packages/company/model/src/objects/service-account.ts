@@ -1,4 +1,4 @@
-import { defineObject, schema, standardErrors } from "@company/runtime"
+import { defineObject, schema } from "@company/runtime"
 
 import { Actor } from "#interfaces/actor"
 import { Identity } from "#interfaces/identity"
@@ -11,26 +11,12 @@ export const ServiceAccount = defineObject({
   name: "Service account",
   parent: Platform,
   pluralName: "Service accounts",
-  description: "An identity used by software, integrations, and agents.",
+  description:
+    "The local projection of an identity used by software, integrations, and agents.",
   actions: {
+    create: false,
     delete: false,
     batchDelete: false,
-    disable: {
-      name: "Disable service account",
-      description:
-        "Immediately prevents every API key for this service account from authenticating.",
-      destructive: true,
-      idempotent: true,
-      scope: "object",
-      errors: [standardErrors.notFound, standardErrors.permissionDenied],
-    },
-    enable: {
-      name: "Enable service account",
-      description: "Restores API key authentication for a service account.",
-      idempotent: true,
-      scope: "object",
-      errors: [standardErrors.notFound, standardErrors.permissionDenied],
-    },
   },
   implements: [
     { interface: Actor },

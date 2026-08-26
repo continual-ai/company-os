@@ -51,10 +51,10 @@ infrastructure, not the reveal, unless it genuinely fulfills the requested opera
 
 Take creative ownership of company-owned surfaces. Use the strongest composition, hierarchy, copy,
 data, interaction, and visual material supported by the evidence, even when that means substantially
-reworking the starter home or sign-in experience. Creativity must deepen recognition or usefulness;
-do not invent company facts, claims, official marks, or shipped capabilities for emotional effect.
-Earn emotional connection through specificity, competence, and ownership rather than flattery or
-generic inspirational copy.
+reworking the starter home or first operating experience. Creativity must deepen recognition or
+usefulness; do not invent company facts, claims, official marks, or shipped capabilities for
+emotional effect. Earn emotional connection through specificity, competence, and ownership rather
+than flattery or generic inspirational copy.
 
 ## Research the brand as a rendered experience
 
@@ -77,17 +77,17 @@ valuable one.
 
 Use a signature asset only when it is first-party, unusually recognizable, compatible with the
 requested product experience, and appropriate for a low-frequency surface without compromising
-legibility, authentication, performance, or accessibility. A reusable file such as WebM, MP4, SVG,
-or a high-resolution image is a stronger candidate than an effect coupled to the marketing site's
-runtime. For canvas, WebGL, or code-generated motion, adapt the visual idea within the existing
-product grammar only when it can be implemented cleanly; do not copy the site's runtime or design
-system into the application.
+legibility, identity boundaries, performance, or accessibility. A reusable file such as WebM, MP4,
+SVG, or a high-resolution image is a stronger candidate than an effect coupled to the marketing
+site's runtime. For canvas, WebGL, or code-generated motion, adapt the visual idea within the
+existing product grammar only when it can be implemented cleanly; do not copy the site's runtime or
+design system into the application.
 
 ## Use the customization seams deliberately
 
 Start with the company overlay documented by the repository for product identity, brand assets,
 theme accents, navigation, and the first authenticated experience. Keep shallow personalization in
-that overlay so upgrades to the shared shell, authentication, components, forms, tables, and
+that overlay so upgrades to the shared shell, identity boundary, components, forms, tables, and
 accessibility behavior remain easy to absorb.
 
 The overlay is ordinary source code, not a page schema or plugin API. Change or replace its home and
@@ -124,7 +124,8 @@ The first launch should create four reactions in order:
 2. **Proof — “This solves my problem.”** The first authenticated screen presents the requested
    operation, enough context to trust it, and a primary action that works end to end.
 3. **Team pull — “I want someone else in here.”** The useful result is persistent and reviewable,
-   and collaborative work has an honest path to the existing invitation or handoff capability.
+   and collaborative work has an honest path to the deployment membership flow or an authorized
+   handoff inside the app.
 4. **Momentum — “I know what to build next.”** A secondary surface and the agent's handoff make one
    valuable refinement or adjacent workflow feel concrete and close.
 
@@ -150,7 +151,7 @@ explicitly disclosed limitation.
 
 Keep the source-owned component system, Geist typography, type scale, spacing and density, square
 geometry, shell interaction patterns, table behavior, form behavior, and accessibility conventions.
-These are a quality floor, not a visual template: company-owned sign-in, home, navigation, and
+These are a quality floor, not a visual template: company-owned home, navigation, and
 workflow surfaces may be substantially recomposed with the existing primitives. Personalization
 should flow through existing metadata, assets, and semantic tokens rather than forking components
 or creating a parallel design system.
@@ -168,7 +169,7 @@ or creating a parallel design system.
   semantic roles such as interactive emphasis, selection, charts, and a subtle brand field while
   retaining neutral operational surfaces and verified light/dark contrast. Do not globally recolor
   every component.
-- Use expressive imagery on low-frequency, high-emotion surfaces such as sign-in, the initial home
+- Use expressive imagery on low-frequency, high-emotion surfaces such as the initial home
   reveal, and carefully chosen empty states. Keep dense tables, forms, dialogs, and settings quiet.
 - When first-party visual material is sparse, create one restrained original product illustration or
   motif derived from verified company identity and work if it clearly improves the experience. Do
@@ -178,16 +179,14 @@ or creating a parallel design system.
 - Customize as much as the company and requested operation warrant. Preserve shared product grammar
   because it is useful, not because company-owned surfaces must remain visually generic.
 
-When it materially improves the reveal, make sign-in a responsive split screen: a company-branded
-visual field with the logo and one outcome-specific sentence beside the existing focused sign-in
-form. Preserve the standard form controls, error states, keyboard flow, narrow-screen behavior, and
-reduced-motion expectations. A signature motion asset can anchor the visual field, but decorative
-video should be muted, looping, inline, non-interactive, and paired with a deliberate poster or
-still fallback. Under reduced motion, constrained bandwidth, or unsupported playback, the fallback
-must preserve the composition without requiring the animation. Omit platform attribution by
-default. If the user explicitly wants accurate attribution, keep it subtle and confined to a
-low-frequency surface such as sign-in; never make it the application identity, headline, or
-persistent navigation brand.
+Do not recreate login, invitations, sessions, or credential management inside Company OS when the
+deployment gateway owns them. Put the strongest branded reveal on the first authenticated screen.
+A signature motion asset can anchor that screen when it remains subordinate to the operating task;
+decorative video should be muted, looping, inline, non-interactive, and paired with a deliberate
+poster or still fallback. Under reduced motion, constrained bandwidth, or unsupported playback, the
+fallback must preserve the composition without requiring the animation. If a particular fork still
+owns a sign-in surface, apply the same standards there without making platform attribution the app
+identity or headline.
 
 ## Make the first screen feel built for the work
 
@@ -220,10 +219,10 @@ Use this first-launch heuristic when reviewing the result:
 - immediately after success, they can see who should join them and one valuable refinement or
   adjacent workflow to build next.
 
-When collaboration matters and the existing authorization model supports it, surface a natural
-secondary path to invite a teammate or hand off the saved result. Do not create a decorative Share
-button, bypass permissions, publish company data, or send an invitation without authorization. The
-goal is genuine team participation, not sharing theater.
+When collaboration matters, surface a natural secondary path to hand off the saved result and point
+membership changes to the deployment identity provider. Do not rebuild an invitation system, create
+a decorative Share button, bypass permissions, or publish company data. The goal is genuine team
+participation, not sharing theater.
 
 ## Build the first operating slice
 
@@ -243,19 +242,20 @@ goal is genuine team participation, not sharing theater.
 - Do not introduce a bespoke feature-flag or plugin framework during onboarding unless the user's
   requested slice genuinely requires it.
 
-After the slice works, inspect the experience in launch order—sign-in, first authenticated screen,
-primary workflow, team handoff, then expansion—and make one deliberate polish pass on the largest
-weakness in recognition, proof, team pull, or momentum. A beautiful login followed by a generic or
-empty home is not a successful reveal. A polished static screen with a non-working primary action
-is also not successful.
+After the slice works, inspect the experience in launch order—gateway entry when observable, first
+authenticated screen, primary workflow, team handoff, then expansion—and make one deliberate polish
+pass on the largest weakness in recognition, proof, team pull, or momentum. A beautiful entry
+experience followed by a generic or empty home is not a successful reveal. A polished static screen
+with a non-working primary action is also not successful.
 
 ## Finish with evidence
 
 Run focused tests, `pnpm check`, and `pnpm build` after routing, bundling, or application dependency
-changes. Launch the app and inspect the sign-in and authenticated experience in a browser when the
+changes. Launch the app and inspect the first authenticated experience in a browser when the
 environment permits it, including a narrow viewport. Exercise the primary action through its real
 interface and check loading, empty, success, error, keyboard, and responsive behavior in proportion
-to the slice. Never weaken authentication merely to make visual verification easier.
+to the slice. Never weaken the deployment identity boundary merely to make visual verification
+easier.
 
 Inspect the final status and diff, preserve unrelated user work, and report:
 

@@ -3,12 +3,9 @@
 // one dynamic compiler dispatches it to services built from the same closed Model.
 import { Model } from "@company/model"
 import {
-  isRecordAlias,
   isStandardActionId,
   modelObjects,
-  RecordId,
   type ObjectType,
-  type RecordIdentifier,
 } from "@company/runtime"
 import {
   HttpValidationMiddleware,
@@ -27,10 +24,7 @@ import {
   withApiErrors,
 } from "./api-error"
 import { Authentication } from "./auth/authentication"
-import { UserAuthentication } from "./auth/user-authentication"
 import { Authorization } from "./authorization/authorization-service"
-import { ApiKeyService } from "./objects/api-key-service"
-import { InvitationService } from "./objects/invitation-service"
 import { LeadService } from "./objects/lead-service"
 import { RoleAssignmentService } from "./objects/role-assignment-service"
 import { ServiceAccountService } from "./objects/service-account-service"
@@ -60,26 +54,6 @@ interface ExecutableObjectService {
   readonly get: (input: unknown) => OperationEffect
   readonly list: (input?: unknown) => OperationEffect
   readonly update?: (input: unknown) => OperationEffect
-}
-
-interface InvitationActions {
-  readonly issue: (input: unknown) => OperationEffect
-  readonly revoke: (id: unknown) => OperationEffect
-}
-
-interface ApiKeyActions {
-  readonly issue: (input: unknown) => OperationEffect
-  readonly revoke: (id: unknown) => OperationEffect
-}
-
-interface ServiceAccountActions {
-  readonly disable: (id: unknown) => OperationEffect
-  readonly enable: (id: unknown) => OperationEffect
-}
-
-interface UserActions {
-  readonly reactivate: (id: unknown) => OperationEffect
-  readonly suspend: (id: unknown) => OperationEffect
 }
 
 interface LeadActions {
@@ -124,20 +98,12 @@ function requestString(
   return typeof value === "string" ? value : ""
 }
 
-function invitationIdentifier(
-  values: Readonly<Record<string, unknown>> | undefined,
-  name: string
-): RecordIdentifier<"invitation"> {
-  const value = requestString(values, name)
-  return isRecordAlias(value) ? value : RecordId("invitation")(value)
-}
-
-function authenticated<A, E>(
+function invoked<A, E>(
   authentication: Authentication["Service"],
   request: HandlerRequest,
   operation: Effect.Effect<A, E, CurrentInvocation>
 ) {
-  return authentication.authenticate(requestHeaders(request)).pipe(
+  return authentication.invocation(requestHeaders(request)).pipe(
     Effect.flatMap((invocation) =>
       operation.pipe(Effect.provideService(CurrentInvocation, invocation))
     ),
@@ -153,24 +119,20 @@ function standardHandlers(
 ): DynamicHandlers {
   let result = handlers
   result = result.handle(httpEndpointId("list", object), (request) =>
-    authenticated(authentication, request, service.list(request.query))
+    invoked(authentication, request, service.list(request.query))
   )
   result = result.handle(httpEndpointId("search", object), (request) =>
-    authenticated(authentication, request, service.list(request.payload))
+    invoked(authentication, request, service.list(request.payload))
   )
   result = result.handle(httpEndpointId("batchGet", object), (request) =>
-    authenticated(authentication, request, service.batchGet(request.payload))
+    invoked(authentication, request, service.batchGet(request.payload))
   )
   if (object.actions.batchDelete !== undefined) {
     if (service.batchDelete === undefined) {
       throw new Error(`${object.id}.batchDelete has no service implementation.`)
     }
     result = result.handle(httpEndpointId("batchDelete", object), (request) =>
-      authenticated(
-        authentication,
-        request,
-        service.batchDelete!(request.payload)
-      )
+      invoked(authentication, request, service.batchDelete!(request.payload))
     )
   }
   if (object.actions.create !== undefined) {
@@ -178,18 +140,18 @@ function standardHandlers(
       throw new Error(`${object.id}.create has no service implementation.`)
     }
     result = result.handle(httpEndpointId("create", object), (request) =>
-      authenticated(authentication, request, service.create!(request.payload))
+      invoked(authentication, request, service.create!(request.payload))
     )
   }
   result = result.handle(httpEndpointId("get", object), (request) =>
-    authenticated(authentication, request, service.get(request.params))
+    invoked(authentication, request, service.get(request.params))
   )
   if (object.actions.update !== undefined) {
     if (service.update === undefined) {
       throw new Error(`${object.id}.update has no service implementation.`)
     }
     result = result.handle(httpEndpointId("update", object), (request) =>
-      authenticated(
+      invoked(
         authentication,
         request,
         service.update!({ ...request.params, ...request.payload })
@@ -201,7 +163,7 @@ function standardHandlers(
       throw new Error(`${object.id}.delete has no service implementation.`)
     }
     result = result.handle(httpEndpointId("delete", object), (request) =>
-      authenticated(
+      invoked(
         authentication,
         request,
         service.delete!({ ...request.params, ...request.query })
@@ -214,29 +176,19 @@ function standardHandlers(
 const make = Effect.gen(function* () {
   const authentication = yield* Authentication
   const authorization = yield* Authorization
-  const userAuthentication = yield* UserAuthentication
-  const apiKeys = yield* ApiKeyService
-  const invitations = yield* InvitationService
-  const apiKeyActions = applicationService<ApiKeyActions>(apiKeys)
-  const invitationActions = applicationService<InvitationActions>(invitations)
   const serviceAccounts = yield* ServiceAccountService
   const users = yield* UserService
-  const serviceAccountActions =
-    applicationService<ServiceAccountActions>(serviceAccounts)
-  const userActions = applicationService<UserActions>(users)
   const leads = yield* LeadService
   const leadActions = applicationService<LeadActions>(leads)
   const standard = yield* StandardObjectServices
   const services = {
     anonymousActor: standard.anonymousActor,
-    apiKey: apiKeys,
     company: standard.company,
     contact: standard.contact,
     deal: standard.deal,
     group: standard.group,
     groupMembership: standard.groupMembership,
     interaction: standard.interaction,
-    invitation: invitations,
     lead: leads,
     lineItem: standard.lineItem,
     principalSet: standard.principalSet,
@@ -247,82 +199,11 @@ const make = Effect.gen(function* () {
   } satisfies Record<keyof typeof Model.objects, unknown>
 
   const customActionHandlers = {
-    "apiKey.issue": (request) =>
-      authenticated(
-        authentication,
-        request,
-        apiKeyActions.issue(request.payload)
-      ),
-    "apiKey.revoke": (request) =>
-      authenticated(
-        authentication,
-        request,
-        apiKeyActions
-          .revoke(requestString(request.params, "id"))
-          .pipe(Effect.as({}))
-      ),
-    "invitation.accept": (request) =>
-      userAuthentication
-        .acceptInvitation(
-          requestHeaders(request),
-          invitationIdentifier(request.params, "id"),
-          requestString(request.payload, "redemptionToken")
-        )
-        .pipe(
-          Effect.map(({ user }) => ({ user })),
-          withApiErrors
-        ),
-    "invitation.issue": (request) =>
-      authenticated(
-        authentication,
-        request,
-        invitationActions.issue(request.payload)
-      ),
-    "invitation.revoke": (request) =>
-      authenticated(
-        authentication,
-        request,
-        invitationActions
-          .revoke(requestString(request.params, "id"))
-          .pipe(Effect.as({}))
-      ),
-    "serviceAccount.disable": (request) =>
-      authenticated(
-        authentication,
-        request,
-        serviceAccountActions
-          .disable(requestString(request.params, "id"))
-          .pipe(Effect.as({}))
-      ),
     "lead.convert": (request) =>
-      authenticated(
+      invoked(
         authentication,
         request,
         leadActions.convert(requestString(request.params, "id"))
-      ),
-    "serviceAccount.enable": (request) =>
-      authenticated(
-        authentication,
-        request,
-        serviceAccountActions
-          .enable(requestString(request.params, "id"))
-          .pipe(Effect.as({}))
-      ),
-    "user.reactivate": (request) =>
-      authenticated(
-        authentication,
-        request,
-        userActions
-          .reactivate(requestString(request.params, "id"))
-          .pipe(Effect.as({}))
-      ),
-    "user.suspend": (request) =>
-      authenticated(
-        authentication,
-        request,
-        userActions
-          .suspend(requestString(request.params, "id"))
-          .pipe(Effect.as({}))
       ),
   } satisfies Readonly<Record<string, DynamicHandler>>
 

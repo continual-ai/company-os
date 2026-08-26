@@ -1,66 +1,50 @@
 import { Model } from "@company/model"
-import { type ObjectRecord, type RecordIdentifier } from "@company/runtime"
+import { RecordId, type ObjectRecord } from "@company/runtime"
+import { generateRecordId } from "@company/runtime/effect/object-service"
 import { Context, Effect, Layer } from "effect"
 
-import { Authorization } from "@/server/authorization/authorization-service"
-import { Database } from "@/server/database/database"
 import { currentActorId } from "@/server/invocation-context"
+import { PLATFORM_ID } from "@/system-records"
 
 import { makeObjectService } from "./object-service"
-import { RecordIdentifierResolver } from "./record-identifier-resolver"
 import { ServiceAccountRepository } from "./service-account-repository"
 
+type ServiceAccountRecord = ObjectRecord<
+  (typeof Model.objects)["serviceAccount"]
+>
+
 const make = Effect.gen(function* () {
-  const authorization = yield* Authorization
-  const database = yield* Database
-  const identifiers = yield* RecordIdentifierResolver
   const repository = yield* ServiceAccountRepository
   const base = yield* makeObjectService(
     Model.objects.serviceAccount,
     repository
   )
 
-  const setStatus = Effect.fn("@company/ServiceAccountService.setStatus")(
+  const provision = Effect.fn("@company/ServiceAccountService.provision")(
     function* (
-      identifier: RecordIdentifier<"serviceAccount">,
-      status: ObjectRecord<(typeof Model.objects)["serviceAccount"]>["status"]
+      input: Pick<ServiceAccountRecord, "name"> &
+        Partial<Pick<ServiceAccountRecord, "description">>
     ) {
-      const id = yield* identifiers.resolve("serviceAccount", identifier)
-      return yield* database.transaction(() =>
-        Effect.gen(function* () {
-          yield* authorization.requireAction({
-            actionId: status === "active" ? "enable" : "disable",
-            objectType: "serviceAccount",
-            recordIds: [id],
-          })
-          const serviceAccount = yield* repository.get(id)
-          if (serviceAccount.status === status) return serviceAccount
-          return yield* repository.update({
-            etag: serviceAccount.etag,
-            id,
-            status,
-            updatedBy: yield* currentActorId,
-          })
-        })
-      )
+      const actorId = yield* currentActorId
+      return yield* repository.insert({
+        aliases: [],
+        createdBy: actorId,
+        description: input.description ?? null,
+        id: RecordId("serviceAccount")(generateRecordId("serviceAccount")),
+        metadata: {},
+        name: input.name,
+        parent: PLATFORM_ID,
+        status: "active",
+        systemManaged: false,
+        updatedBy: actorId,
+      })
     }
   )
 
-  const disable = Effect.fn("@company/ServiceAccountService.disable")(
-    function* (identifier: RecordIdentifier<"serviceAccount">) {
-      return yield* setStatus(identifier, "disabled")
-    }
-  )
-
-  const enable = Effect.fn("@company/ServiceAccountService.enable")(function* (
-    identifier: RecordIdentifier<"serviceAccount">
-  ) {
-    return yield* setStatus(identifier, "active")
-  })
-
-  return { ...base, disable, enable }
+  return { ...base, provision }
 })
 
+/** Governed ServiceAccount projections plus trusted JIT provisioning. */
 export class ServiceAccountService extends Context.Service<ServiceAccountService>()(
   "@company/ServiceAccountService",
   { make }
