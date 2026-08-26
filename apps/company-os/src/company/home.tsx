@@ -9,12 +9,21 @@ import { Link } from "@tanstack/react-router"
 import { ArrowRightIcon } from "lucide-react"
 
 import { companyConfig } from "@/company/config"
-import { companyObjectNavigation } from "@/company/navigation"
+import {
+  companyObjectNavigation,
+  companyObjectNavigationChecks,
+} from "@/company/navigation"
+import { useCapabilities } from "@/components/use-capabilities"
 
 const modelObjectCount = Object.keys(Model.objects).length
 
 /** Company-owned first authenticated experience and primary activation surface. */
 export function CompanyHome() {
+  const capabilities = useCapabilities(companyObjectNavigationChecks)
+  const accessibleObjects = companyObjectNavigation.filter((item) =>
+    capabilities.can({ permission: `${item.object.id}.list` })
+  )
+
   return (
     <div className="@container/main flex flex-1 flex-col">
       <div className="flex flex-col gap-6 py-6 md:gap-8 md:py-8">
@@ -30,24 +39,40 @@ export function CompanyHome() {
           </p>
         </section>
 
-        <section className="grid grid-cols-1 gap-4 px-4 sm:grid-cols-2 lg:px-6 @4xl/main:grid-cols-4">
-          {companyObjectNavigation.slice(0, 4).map((item) => (
-            <Link key={item.to} to={item.to} className="block">
-              <Card
-                size="sm"
-                className="h-full transition-colors hover:bg-muted/30"
-              >
-                <CardHeader>
-                  <div className="mb-4 flex size-8 items-center justify-center bg-muted text-muted-foreground">
-                    <item.icon className="size-4" />
-                  </div>
-                  <CardTitle>{item.object.pluralName}</CardTitle>
-                  <CardDescription>{item.object.description}</CardDescription>
-                </CardHeader>
-              </Card>
-            </Link>
-          ))}
-        </section>
+        {capabilities.loading ? null : (
+          <section className="grid grid-cols-1 gap-4 px-4 sm:grid-cols-2 lg:px-6 @4xl/main:grid-cols-4">
+            {accessibleObjects.length === 0 ? (
+              <div className="border bg-muted/20 p-4 sm:col-span-2 @4xl/main:col-span-4">
+                <p className="text-sm font-medium">
+                  No operations assigned yet
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Operating surfaces will appear here when this identity
+                  receives access.
+                </p>
+              </div>
+            ) : (
+              accessibleObjects.slice(0, 4).map((item) => (
+                <Link key={item.to} to={item.to} className="block">
+                  <Card
+                    size="sm"
+                    className="h-full transition-colors hover:bg-muted/30"
+                  >
+                    <CardHeader>
+                      <div className="mb-4 flex size-8 items-center justify-center bg-muted text-muted-foreground">
+                        <item.icon className="size-4" />
+                      </div>
+                      <CardTitle>{item.object.pluralName}</CardTitle>
+                      <CardDescription>
+                        {item.object.description}
+                      </CardDescription>
+                    </CardHeader>
+                  </Card>
+                </Link>
+              ))
+            )}
+          </section>
+        )}
 
         <section className="grid gap-px border-y bg-border lg:grid-cols-2">
           <article className="bg-background px-4 py-6 lg:px-6 lg:py-8">

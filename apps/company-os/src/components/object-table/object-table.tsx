@@ -314,6 +314,7 @@ export function ObjectTable({
   })
 
   const visibleRows = table.getRowModel().rows
+  const hasActiveFilters = table.state.columnFilters.length > 0
   const visibleColumns = table.getVisibleLeafColumns()
   const navigableColumns = visibleColumns.filter(
     (column) => column.columnDef.meta?.property !== undefined
@@ -464,10 +465,16 @@ export function ObjectTable({
                   className="h-40 text-center"
                 >
                   <p className="font-medium">
-                    No matching {object.pluralName.toLowerCase()}
+                    {hasActiveFilters
+                      ? `No matching ${object.pluralName.toLowerCase()}`
+                      : `No ${object.pluralName.toLowerCase()} to show`}
                   </p>
                   <p className="mt-1 text-muted-foreground">
-                    Change or clear the current filters.
+                    {hasActiveFilters
+                      ? "Change or clear the current filters."
+                      : onCreateRecord === undefined
+                        ? "Records will appear here when they are available."
+                        : `Create the first ${object.name.toLowerCase()} to get started.`}
                   </p>
                 </TableCell>
               </TableRow>

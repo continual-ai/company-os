@@ -38,12 +38,14 @@ import { CompanyMark } from "@/company/brand"
 import { companyConfig } from "@/company/config"
 import {
   companyObjectNavigation,
+  companyObjectNavigationChecks,
   companyOperateNavigation,
 } from "@/company/navigation"
 import {
   getUserInitials,
   useAuthenticatedUser,
 } from "@/components/authenticated-user"
+import { useCapabilities } from "@/components/use-capabilities"
 
 const sections = [
   { label: "Operate", to: "/" },
@@ -82,6 +84,7 @@ const sectionIndicatorPosition = {
 
 export function AppSidebar() {
   const user = useAuthenticatedUser()
+  const capabilities = useCapabilities(companyObjectNavigationChecks)
   const matchRoute = useMatchRoute()
   const activeSection: Section = matchRoute({
     to: "/develop",
@@ -93,6 +96,9 @@ export function AppSidebar() {
       : "Operate"
   const activeNavigation =
     activeSection === "Develop" ? developerNavigation : learnNavigation
+  const accessibleObjectNavigation = companyObjectNavigation.filter((item) =>
+    capabilities.can({ permission: `${item.object.id}.list` })
+  )
 
   return (
     <Sidebar variant="sidebar" collapsible="offcanvas">
@@ -170,25 +176,27 @@ export function AppSidebar() {
               </SidebarGroupContent>
             </SidebarGroup>
 
-            <SidebarGroup>
-              <SidebarGroupLabel>Objects</SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {companyObjectNavigation.map((item) => (
-                    <SidebarMenuItem key={item.object.id}>
-                      <SidebarMenuButton
-                        tooltip={item.object.pluralName}
-                        isActive={Boolean(matchRoute({ to: item.to }))}
-                        render={<Link to={item.to} />}
-                      >
-                        <item.icon />
-                        <span>{item.object.pluralName}</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
+            {accessibleObjectNavigation.length === 0 ? null : (
+              <SidebarGroup>
+                <SidebarGroupLabel>Objects</SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {accessibleObjectNavigation.map((item) => (
+                      <SidebarMenuItem key={item.object.id}>
+                        <SidebarMenuButton
+                          tooltip={item.object.pluralName}
+                          isActive={Boolean(matchRoute({ to: item.to }))}
+                          render={<Link to={item.to} />}
+                        >
+                          <item.icon />
+                          <span>{item.object.pluralName}</span>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            )}
           </>
         ) : (
           <SidebarGroup>

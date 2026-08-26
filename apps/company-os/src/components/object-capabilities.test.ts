@@ -1,10 +1,10 @@
 import { Model } from "@company/model"
 import { describe, expect, it } from "vitest"
 
+import { allowedCapabilityKeys } from "@/capabilities"
 import { PLATFORM_ID } from "@/system-records"
 
 import {
-  allowedCapabilityKeys,
   objectCapabilityCheck,
   objectCapabilityChecks,
 } from "./object-capabilities"

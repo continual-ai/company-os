@@ -6,15 +6,13 @@ import {
   type OnChangeFn,
   type SortingState,
 } from "@tanstack/react-table"
-import { Effect } from "effect"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
-import { capabilityKey, MAX_CAPABILITY_CHECKS } from "@/capabilities"
-import { companyApi } from "@/company-client"
+import { capabilityKey } from "@/capabilities"
 import { PLATFORM_ID } from "@/system-records"
 
+import { loadAllowedCapabilities } from "./load-capabilities"
 import {
-  allowedCapabilityKeys,
   objectCapabilityCheck,
   objectCapabilityChecks,
 } from "./object-capabilities"
@@ -129,23 +127,13 @@ export function useObjectCollection(object: ModelObject) {
         object,
         page.items.map(({ id }) => id)
       )
-      const [labels, capabilityResults] = await Promise.all([
+      const [labels, nextAllowedCapabilities] = await Promise.all([
         loadReferenceLabels(object, page.items),
-        checks.length === 0
-          ? Promise.resolve([])
-          : Promise.all(
-              chunks(checks, MAX_CAPABILITY_CHECKS).map((batch) =>
-                Effect.runPromise(
-                  companyApi.capabilities.checkCapabilities({
-                    payload: { checks: batch },
-                  })
-                )
-              )
-            ).then((responses) => responses.flatMap(({ results }) => results)),
+        loadAllowedCapabilities(checks),
       ])
       if (requestId.current !== currentRequest) return
       setRecords(page.items)
-      setAllowedCapabilities(allowedCapabilityKeys(checks, capabilityResults))
+      setAllowedCapabilities(nextAllowedCapabilities)
       setNextPageToken(page.nextPageToken)
       setReferenceLabels(labels)
     } catch (cause) {

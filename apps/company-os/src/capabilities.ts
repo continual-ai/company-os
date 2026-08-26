@@ -37,6 +37,20 @@ export function capabilityKey(check: CapabilityCheck): string {
   return `${check.permission}\u0000${check.target ?? ""}`
 }
 
+export function allowedCapabilityKeys(
+  checks: ReadonlyArray<CapabilityCheck>,
+  results: ReadonlyArray<{ readonly allowed: boolean }>
+): ReadonlySet<string> {
+  if (checks.length !== results.length) {
+    throw new Error("Capability response does not match the request.")
+  }
+  return new Set(
+    checks.flatMap((check, index) =>
+      results[index]?.allowed === true ? [capabilityKey(check)] : []
+    )
+  )
+}
+
 /** Returns the permission represented by a model action, when it is governed. */
 export function actionPermission(
   objectType: string,

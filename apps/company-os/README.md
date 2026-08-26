@@ -90,6 +90,11 @@ credentials that are supplied, preserves request order, and returns only `allowe
 concealed resources and denied resources remain indistinguishable. It never replaces enforcement:
 CRUD and custom action services evaluate the same policy again inside their transaction.
 
+Interactive surfaces fail closed: mutation controls appear only after an affirmative capability
+result. Generic object collections derive checks from model actions and pass a `can` predicate to
+custom collection and record actions. New custom UI should follow that same pattern, while server
+services remain the authority even when a client has just received an allowed result.
+
 `systemManaged` is immutable ownership provenance on the shared object row. It does not grant read
 access or replace hierarchy: ordinary actors follow normal role inheritance but cannot update or
 delete a system-managed record. The well-known system service account is reserved for internal
@@ -192,10 +197,11 @@ handwritten second copy of the company model. Drizzle Kit reads the
 projection and generates explicit SQL under `src/server/database/migrations`. Each migration also
 contains Drizzle's machine-generated schema snapshot: the SQL is the reviewed executable history,
 while the snapshot is committed compiler state used to generate and check later migrations. Never
-edit a snapshot by hand. While the baseline is still pre-deployment, keep one reviewed `initial`
-migration and replace it whenever the model changes. Once any shared or production database depends
-on that baseline, freeze it and append forward-only migrations. Deployments apply the committed
-history and converge source-owned records before serving the corresponding application revision.
+edit a snapshot by hand. Before the baseline is pushed or applied anywhere, keep one reviewed
+`initial` migration and replace it whenever the model changes. Once a migration may have reached
+another developer, shared environment, or production database, freeze it and append forward-only
+migrations. Deployments apply the committed history and converge source-owned records before
+serving the corresponding application revision.
 
 ### Local setup
 
@@ -211,6 +217,28 @@ identity mode works without an external provider; adjust its profile values when
 starting Company OS. Use `pnpm dev:all` when the
 demonstration marketing site and client portal are also needed.
 
+Use a distinct local subject to exercise each initial authorization profile without changing the
+ignored environment file. The role is granted only when that subject is first provisioned:
+
+```sh
+AUTH_LOCAL_SUBJECT=local-operator \
+AUTH_LOCAL_NAME="Local operator" \
+AUTH_LOCAL_EMAIL=local-operator@company.test \
+AUTH_JIT_ROLE=operator \
+pnpm dev
+
+AUTH_LOCAL_SUBJECT=local-restricted \
+AUTH_LOCAL_NAME="Local restricted user" \
+AUTH_LOCAL_EMAIL=local-restricted@company.test \
+AUTH_JIT_ROLE=none \
+pnpm dev
+```
+
+The administrator profile in `.env.local` exercises the full surface, `operator` exercises the
+built-in business-data boundary, and `none` verifies default-deny and fail-closed UI behavior.
+Changing `AUTH_JIT_ROLE` for an existing subject does not reconcile its assignments; use a new
+subject or change its role assignments through the governed application surface.
+
 Database commands load `apps/company-os/.env.local` when present and otherwise use `DATABASE_URL`
 from the process environment. TanStack Start also loads that app-local file for development while
 production supplies the same contract through deployment environment injection. Only `VITE_`
@@ -224,7 +252,7 @@ order and is the normal setup and release command. Raw persistence establishes o
 Platform and system Actor needed to begin; repositories converge the concrete system account and
 all remaining records. All three commands are safe to run repeatedly.
 
-### Change the pre-deployment baseline
+### Change an unshared baseline
 
 1. Edit the source contract in `packages/company/model`. When registering a new object or interface,
    expose its generated table from `src/server/database/schema.ts` for Drizzle Kit; the
@@ -252,9 +280,10 @@ all remaining records. All three commands are safe to run repeatedly.
    CONFIRM_DATABASE_RESET=company_os pnpm --filter company-os db:reset
    ```
 
-This replacement workflow is deliberately limited to the current pre-deployment phase. After the
-first shared deployment, preserve the baseline and generate a descriptive migration such as
-`pnpm --filter company-os db:generate --name add_company_owner` for every subsequent schema change.
+This replacement workflow is limited to a baseline that has never been pushed or applied outside
+your disposable local database. After that point, preserve it and generate a descriptive migration
+such as `pnpm --filter company-os db:generate --name add_company_owner` for every subsequent schema
+change.
 
 Drizzle does not currently represent PostgreSQL constraint deferrability in its schema definition.
 Any migration that creates or replaces the `objects.created_by_id` or `objects.updated_by_id`

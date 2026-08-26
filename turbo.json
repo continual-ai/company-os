@@ -22,6 +22,7 @@
     "dev": {
       "cache": false,
       "env": ["VITE_CLIENT_PORTAL_URL", "VITE_COMPANY_OS_URL"],
+      "passThroughEnv": ["AUTH_*", "DATABASE_URL"],
       "persistent": true
     }
   }

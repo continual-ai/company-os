@@ -38,3 +38,7 @@ export const companyObjectNavigation = [
     to: "/interactions",
   },
 ] as const
+
+export const companyObjectNavigationChecks = companyObjectNavigation.map(
+  ({ object }) => ({ permission: `${object.id}.list` })
+)

@@ -44,17 +44,3 @@ export function objectCapabilityChecks(
   }
   return [...checks.values()]
 }
-
-export function allowedCapabilityKeys(
-  checks: ReadonlyArray<CapabilityCheck>,
-  results: ReadonlyArray<{ readonly allowed: boolean }>
-): ReadonlySet<string> {
-  if (checks.length !== results.length) {
-    throw new Error("Capability response does not match the request.")
-  }
-  return new Set(
-    checks.flatMap((check, index) =>
-      results[index]?.allowed === true ? [capabilityKey(check)] : []
-    )
-  )
-}
