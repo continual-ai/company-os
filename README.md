@@ -1,151 +1,200 @@
 # Company OS
 
-The source-owned software a company runs on.
+**Build the software your company runs on.**
 
-Company OS is a standalone TypeScript scaffold for defining a company's business model and
-implementing governed capabilities for internal software, customer experiences, integrations, and
-agents.
+Company OS is a working TypeScript application for turning a business process into software your
+team can run and change. It keeps the business model, PostgreSQL data, permissions, audited
+actions, internal interface, HTTP API, typed client, and MCP tools in one repository.
 
-The checked-in model name is **Example**. Change it in
-[`metadata.ts`](packages/company/model/src/metadata.ts). The `@company/*` namespace is a stable
-source-ownership boundary, so a fork does not rename package imports. Everything required to run
-the system is vendored here; the hosted Continual platform is an optional operator, not a runtime
-dependency.
+People, applications, integrations, and agents use the same actions. You keep the code and data.
+The goal is simple: operations that keep moving on their own, while people stay in control of the
+decisions that matter.
 
-A cloned repository is the declarative source for one project and may contain several apps. That
-mapping matters at integration boundaries; it does not need to become a pervasive product noun in
-the code.
+## What this repository does
 
-The scaffold is intentionally early. Current APIs and package shapes are working experiments, not
-a frozen product specification. Code and tests describe current behavior; the repository skills
-capture only product and ownership context that cannot be recovered from code.
+A business operation starts with work: a new lead, an order, a support request, an invoice, or an
+incident. Company OS provides the durable system around that work:
 
-## Mental model
+- typed business records and relationships;
+- rules, permissions, and actions in TypeScript;
+- PostgreSQL persistence and explicit migrations;
+- an application for the people doing the work;
+- generated OpenAPI, a typed client, and MCP tools; and
+- one implementation of each action, regardless of who calls it.
 
-```text
-@company/model             browser-safe semantic model
-    +
-@company/runtime           portable definition and projection machinery
-    |
-@company/postgres          PostgreSQL storage adapter
-    |
-apps/company-os            backend, operating application, and composition root
-    |
-    +-- client portal, marketing site, integrations, agents, and future apps
+Code handles the parts that must be predictable. AI can handle interpretation, research,
+planning, and exceptions. People decide which actions require approval. Changes remain ordinary
+source changes that can be reviewed, tested, and reversed.
+
+## Try the included operation
+
+The example company includes a small CRM model with companies, contacts, leads, deals, line items,
+and interactions. It is deliberately compact, but it exercises the same path a larger operation
+uses.
+
+One useful example is lead conversion:
+
+1. Create a lead in the application.
+2. Choose **Convert** from the lead's row menu.
+3. Company OS checks the caller's permission.
+4. One transaction creates the company and contact and records the conversion on the lead.
+5. The same action is available through the application, HTTP API, typed client, and MCP.
+
+The interface, API, and agent tools do not maintain separate copies of the business rule. They all
+call the same implementation.
+
+## Quick start
+
+You need Docker, Node.js 22.12 or newer, and pnpm 11. The repository includes a `mise.toml` if you
+use [mise](https://mise.jdx.dev/); run `mise trust && mise install` to install the pinned versions.
+
+```sh
+pnpm install
+pnpm setup
+pnpm dev
 ```
 
-The working product hypothesis is that these interfaces should share governed business meaning
-rather than grow into independent authorities. The exact semantic model, protocols, client shape,
-and runtime boundaries remain open to evidence from real slices.
+Open <http://localhost:3002>, choose the local administrator identity, and create or convert a
+lead. The **Develop** section shows the model, generated API, SDK, MCP surface, and design system
+behind the operation.
 
-The current example model separates typed objects, bidirectional links, and governed actions.
-Objects are readable by convention, CRUD actions are available by default, and additional actions
-express business behavior that can change several objects and links together.
+`pnpm dev` starts the Company OS application. Use `pnpm dev:all` to also start the example client
+portal at <http://localhost:3001> and marketing site at <http://localhost:3000>.
 
-## Customize a fork
+## How it works
 
-The scaffold keeps high-frequency company changes in a small source-owned overlay without reducing
-the application to configuration:
+```text
+people      applications      integrations      agents
+   \              |                 |              /
+    +-------------+-----------------+-------------+
+                          |
+                    UI / HTTP / MCP
+                          |
+                 model queries and actions
+                          |
+              authorization and business services
+                          |
+                       PostgreSQL
+```
 
-- `apps/company-os/src/company/config.ts` owns product identity, brand assets, and shallow entry and
-  first-launch copy.
-- `apps/company-os/src/company/entry.tsx` presents company recognition beside an app-owned sign-in
-  flow without owning authentication behavior.
-- `apps/company-os/src/company/theme.css` maps the company's restrained visual accents onto the
-  shared design system.
-- `apps/company-os/src/company/navigation.ts` chooses the operating surfaces presented in the app.
-- `apps/company-os/src/company/home.tsx` is the company-owned first authenticated experience and can
-  become a real workflow rather than a generic dashboard.
-- `packages/company/model/src/company-composition.ts` composes the replaceable business model on top
-  of the identity, authorization, party, and audit foundation.
+The model declares the company's objects, relationships, queries, and actions. The application
+binds that contract to authorization and business services, then derives its HTTP, OpenAPI, typed
+client, and MCP surfaces from the same definition. PostgreSQL remains the authority for durable
+records.
 
-Use those files for shallow identity and experience work. A real operation should still be built
-vertically through model definitions, migrations, governed server behavior, routes, and tests. The
-overlay creates upgrade-friendly ownership seams; it is not a plugin or feature-flag system.
+The included `convert` action demonstrates the boundary: its public definition lives beside the
+Lead model, its implementation owns the permission check and transaction, and every interface
+projects that same implementation.
 
-## Follow one company object
+Follow the working path through the repository:
 
-The Lead example shows how the current boundaries build on one source-owned definition without
-redeclaring its business shape:
-
-1. [`Lead`](packages/company/model/src/objects/lead.ts) defines the portable business object.
+1. [`Lead`](packages/company/model/src/objects/lead.ts) defines the object and `convert` action.
 2. [`Model`](packages/company/model/src/index.ts) closes and validates the company contract.
-3. [`Storage`](apps/company-os/src/server/database/schema.ts) compiles that contract into
-   the company-owned PostgreSQL projection.
-4. [`LeadRepository`](apps/company-os/src/server/objects/lead-repository.ts) binds the shared
-   PostgreSQL adapter to the Lead object.
-5. [`LeadService`](apps/company-os/src/server/objects/lead-service.ts) adds source-owned
-   authorization to the standard object behavior.
-6. The [composition root](apps/company-os/src/server/composition-root.ts) assembles the
-   repositories and services and binds the API description and executable HTTP contract derived
-   from `Model`.
+3. [`Storage`](apps/company-os/src/server/database/schema.ts) compiles the model into PostgreSQL.
+4. [`LeadService`](apps/company-os/src/server/objects/lead-service.ts) implements conversion.
+5. [`ModelImplementation`](apps/company-os/src/server/model-implementation.ts) binds the model to
+   its services.
+6. HTTP, OpenAPI, the typed client, and MCP derive from that binding.
 
-This is a guide to the working slice, not a requirement that every future capability add the same
-layers. Each boundary should continue to earn its place through a concrete responsibility.
+## Make it yours
+
+A fork is meant to become one company's software, not a generic multi-tenant instance. Start with
+the parts of the company that change most often:
+
+- [`metadata.ts`](packages/company/model/src/metadata.ts) names the company model.
+- [`config.ts`](apps/company-os/src/customization/config.ts) owns product identity and first-launch
+  copy.
+- [`entry.tsx`](apps/company-os/src/customization/entry.tsx) owns the company-specific entry
+  experience.
+- [`home.tsx`](apps/company-os/src/customization/home.tsx) owns the first authenticated screen.
+- [`navigation.ts`](apps/company-os/src/customization/navigation.ts) chooses the visible operating
+  surfaces.
+- [`crm-definitions.ts`](packages/company/model/src/crm-definitions.ts) is the replaceable example
+  business model.
+
+Those files are ordinary source code, not a page schema or plugin system. A real operation should
+extend the model, migrations, business services, interface, and tests together.
+
+### Build with a coding agent
+
+The repository includes skills for coding agents that understand its ownership and architecture:
+
+- `$company-onboard` adapts a fresh fork to a company and its first operation.
+- `$company-customize` changes an established fork without splitting business rules across the UI,
+  API, and agents.
+- `$company-upgrade` brings upstream improvements into a customized fork.
+
+For example:
+
+```text
+Use $company-onboard to adapt this repository to Acme and build our customer onboarding process.
+Track the customer, implementation milestones, owners, blockers, and launch date. Let an agent
+prepare follow-ups, but require a person to approve anything sent to the customer.
+```
+
+The agent changes the same source, migrations, application, and tests that a developer would. The
+result is not trapped in a prompt or a hosted editor.
+
+## Build with Continual
+
+[Continual](https://continual.ai) can take a description of your company and the operation you want
+and turn it into a customized, running version of this repository. It adds prompt-based building,
+deployment, upgrades, connections, and operated agents around the codebase.
+
+Company OS does not require Continual. You can run and change it yourself, and the company's
+business rules and records remain in its application and database rather than becoming a second
+copy inside the hosted platform.
 
 ## Repository
 
 ```text
 apps/
-  company-os/       Core backend and operating application
-  client-portal/    Customer-facing application
-  marketing-site/   Public website
+  company-os/       Backend and operating application
+  client-portal/    Example customer-facing application
+  marketing-site/   Example public website
 
 packages/
   company/
-    model/          Source-owned browser-safe semantic model
-    postgres/       Reusable PostgreSQL storage adapter
-    runtime/        Reusable definitions and projections
-    ui/             Source-owned components and design tokens
+    model/          Browser-safe company model
+    postgres/       PostgreSQL storage adapter
+    runtime/        Portable definitions and projections
+    ui/             Components and design tokens
 ```
 
-Each boundary has a focused README:
+The package and application READMEs document their boundaries:
 
 - [`apps/company-os`](apps/company-os/README.md)
 - [`apps/client-portal`](apps/client-portal/README.md)
 - [`apps/marketing-site`](apps/marketing-site/README.md)
 - [`packages/company/model`](packages/company/model/README.md)
-- [`packages/company/ui`](packages/company/ui/README.md)
 - [`packages/company/postgres`](packages/company/postgres/README.md)
 - [`packages/company/runtime`](packages/company/runtime/README.md)
+- [`packages/company/ui`](packages/company/ui/README.md)
 
-Repository-wide constraints live in [`AGENTS.md`](AGENTS.md). The `$company-os` and `$continual`
-skills are optional design context, not implementation specifications.
-
-## Quick start
-
-Requirements: Node.js 22.12 or newer and pnpm 11.
-
-```sh
-mise install
-pnpm install
-pnpm check
-pnpm dev
-```
-
-| App            | URL                     |
-| -------------- | ----------------------- |
-| Marketing site | <http://localhost:3000> |
-| Client portal  | <http://localhost:3001> |
-| Company OS     | <http://localhost:3002> |
-
-The Company OS app is the heart of the repository. It includes Operate, Develop, and Learn sections
-along with the governed backend, persistence, and generated contract/reference endpoints. The
-other apps demonstrate focused experiences built on that authority.
-
-Run one app with `pnpm --filter <app> dev`, for example:
-
-```sh
-pnpm --filter company-os dev
-```
+Repository-wide constraints live in [`AGENTS.md`](AGENTS.md). Product and ownership context for
+coding agents lives in [`.agents/skills`](.agents/skills).
 
 ## Commands
 
 | Command                   | Purpose                                                  |
 | ------------------------- | -------------------------------------------------------- |
-| `pnpm dev`                | Run all apps                                             |
+| `pnpm setup`              | Start PostgreSQL and apply migrations and seeds          |
+| `pnpm dev`                | Run Company OS                                           |
+| `pnpm dev:all`            | Run all three example applications                       |
 | `pnpm check`              | Check formatting, lint, boundaries, dead code, and types |
 | `pnpm test`               | Run repository tests                                     |
+| `pnpm build`              | Build every application                                  |
 | `pnpm format`             | Format the repository                                    |
-| `pnpm build`              | Build every app                                          |
-| `pnpm ui:add <component>` | Add a source-owned shadcn primitive to `@company/ui`     |
+| `pnpm ui:add <component>` | Add a shared shadcn component                            |
+
+## Project status
+
+Company OS is under active development. The application and example operation work today, but the
+model APIs and package boundaries are not yet stable. Code and tests define current behavior;
+future ideas in issues or agent skills are not shipped features.
+
+## License
+
+Company OS is available under the [Elastic License 2.0](LICENSE.md). You may use, modify, and
+redistribute it subject to that license, including its restriction on providing the software to
+third parties as a hosted or managed service.

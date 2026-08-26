@@ -3,15 +3,20 @@
 This reference frames ownership questions for a platform that may build, run, or govern a
 customer-owned Company OS. It does not describe guaranteed product capability.
 
-## Working hypothesis
+## Direction
 
-Continual may provide shared operational capabilities around a Company OS while the customer keeps
-its business source and data. The useful boundary could include some combination of identity,
-agents, connections, infrastructure, delivery, controls, and audit, but that scope is unsettled and
-must be earned capability by capability.
+Continual can turn a description of a company and an operation into a customized, running Company
+OS. It may research the company, change its model and application, test the result, deploy it, apply
+upgrades, manage connections, and operate agents. Each capability must still be verified against
+the current hosted product before it is promised or integrated.
+
+The customer's fork holds its business source and policy. Its application and database remain the
+authority for business records. Continual may own build conversations, deployment state,
+credentials, agent execution, and observability when it operates those capabilities, but it should
+not become a hidden second implementation of the business.
 
 The standalone repository must remain coherent without hosted Continual. A hosted service may be
-the best implementation for a requirement without becoming part of the semantic business model.
+the best way to build or run a capability without becoming part of the company's business model.
 
 ## Ownership questions
 
@@ -24,7 +29,8 @@ For each proposed platform responsibility, decide:
 - What happens to committed company work when the platform is unavailable?
 - Can the dependency be removed or replaced without reconstructing the business model?
 
-Avoid fixed customer/platform ownership tables until real operations establish the split.
+State the ownership split in ordinary language for each real capability; do not rely on broad
+claims that the customer or platform "owns everything."
 
 ## Tentative vocabulary
 

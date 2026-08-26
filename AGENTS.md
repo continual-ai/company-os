@@ -1,6 +1,8 @@
 # Working in Company OS
 
-This is the canonical standalone Company OS scaffold. Keep it useful without the Continual hosted
+This is the canonical standalone Company OS. It should help turn real business processes into
+software that maintains durable state, enforces rules, and gives people, applications,
+integrations, and agents the same safe actions. Keep it useful without the Continual hosted
 platform.
 
 ## Design posture
@@ -8,6 +10,11 @@ platform.
 The product and architecture are still being designed. Treat code and tests as the authority for
 current behavior, not proof that a design should become permanent. Recommend stronger alternatives
 when a concrete slice provides better evidence.
+
+Prefer work that makes one real operation run end to end. Identify the incoming work, desired
+outcome, authoritative records, deterministic rules, places where AI may exercise judgment, human
+decisions, failure behavior, and evidence of success. Do not let the repository collapse into a
+generic CRUD scaffold, a page generator, or an agent-only automation layer.
 
 Keep guidance in the narrowest authoritative place:
 

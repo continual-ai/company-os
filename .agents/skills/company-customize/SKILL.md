@@ -41,6 +41,10 @@ resolved from the requested outcome and repository.
 - For external work, decide whether the transaction must fail before commit or should commit
   durable intent for retryable processing afterward. Make retries, idempotency, cancellation, and
   repair behavior explicit when they matter.
+- When increasing automation, identify what starts the work, the outcome it should produce, which
+  steps are deterministic, where AI may exercise judgment, which decisions require a person, how
+  failures surface, and what evidence records success. Do not create a privileged agent-only path;
+  reuse the same governed actions available to other authorized callers.
 - Keep branding in the existing tokens and public asset conventions. Preserve provenance for newly
   downloaded assets.
 - Update or remove documentation in the same change that makes it inaccurate, but do not add
