@@ -1,7 +1,6 @@
 import { Actor } from "./interfaces/actor"
 import { AuthorizationScope } from "./interfaces/authorization-scope"
 import { Identity } from "./interfaces/identity"
-import { Party } from "./interfaces/party"
 import { Principal } from "./interfaces/principal"
 import { GroupMembershipMember } from "./links/group-membership-member"
 import { RoleAssignmentPrincipal } from "./links/role-assignment-principal"
@@ -14,11 +13,11 @@ import { Role } from "./objects/role"
 import { RoleAssignment } from "./objects/role-assignment"
 import { ServiceAccount } from "./objects/service-account"
 import { User } from "./objects/user"
-import { Platform } from "./platform"
+import { Root } from "./root"
 
-export const foundation = {
+export const accessDefinitions = {
   actor: Actor,
-  interfaces: [Actor, AuthorizationScope, Identity, Party, Principal],
+  interfaces: [Actor, AuthorizationScope, Identity, Principal],
   links: [GroupMembershipMember, RoleAssignmentPrincipal, RoleAssignmentRole],
   objects: [
     User,
@@ -30,5 +29,5 @@ export const foundation = {
     Role,
     RoleAssignment,
   ],
-  root: Platform,
+  root: Root,
 } as const

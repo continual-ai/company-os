@@ -2,7 +2,7 @@
 
 Vendored, portable machinery for describing and projecting an operating model contract.
 
-Company packages may use the portable root surface for definitions. Effect-based schema, HTTP, and
+Workspace packages may use the portable root surface for definitions. Effect-based schema, HTTP, and
 execution projections are separate public subpaths so consumers do not acquire unrelated runtime
 assumptions.
 
@@ -16,17 +16,18 @@ import {
   type RecordIdOf,
   schema,
 } from "@company/runtime"
-import { Context, Effect, Layer } from "effect"
+import { Effect } from "effect"
 import { FetchHttpClient } from "effect/unstable/http"
 import { HttpApiClient } from "effect/unstable/httpapi"
 import { toEffectSchema } from "@company/runtime/effect"
-import { createHttpApi } from "@company/runtime/effect/http"
-import type { Repository } from "@company/runtime/effect/object-repository"
-import * as ObjectService from "@company/runtime/effect/object-service"
+import { createModelHttpApi } from "@company/runtime/effect/http"
+import { createModelHttpHandlers } from "@company/runtime/effect/http"
+import { createModelMcpHandler } from "@company/runtime/effect/mcp"
+import { implementModel } from "@company/runtime/effect/model-implementation"
 ```
 
 Every model defines one semantic root, and its objects form one explicit ownership hierarchy below
-it. For example, a standalone application can name that root `Platform`:
+it:
 
 ```ts
 const Identity = defineInterface({
@@ -35,13 +36,13 @@ const Identity = defineInterface({
   pluralName: "Identities",
 })
 
-const Platform = defineRoot({ id: "platform", name: "Platform" })
+const Root = defineRoot({ id: "root", name: "Root" })
 
 const User = defineObject({
   id: "user",
   collection: "users",
   name: "User",
-  parent: Platform,
+  parent: Root,
   pluralName: "Users",
   properties: { name: schema.string({ label: "Name" }) },
   display: { title: "name" },
@@ -52,7 +53,7 @@ const Lead = defineObject({
   id: "lead",
   collection: "leads",
   name: "Lead",
-  parent: Platform,
+  parent: Root,
   pluralName: "Leads",
   properties: { name: schema.string({ label: "Name" }) },
   display: { title: "name" },
@@ -60,12 +61,11 @@ const Lead = defineObject({
 
 const Model = defineModel({
   actor: Identity,
-  id: "company",
   interfaces: [Identity],
   links: [],
-  name: "Company",
+  name: "Example",
   objects: [User, Lead],
-  root: Platform,
+  root: Root,
 })
 
 export type IdentityId = RecordIdOf<typeof Model, typeof Identity>
@@ -76,22 +76,23 @@ marker interfaces, such as an authorization scope, but does not acquire configur
 actions; model-specific configuration belongs in ordinary child objects.
 
 Every object definition declares its parent type. Creates directly beneath the model root inherit
-the company service's configured root record; nested creates supply a typed `parent`. This parent
+the application service's configured root record; nested creates supply a typed `parent`. This parent
 is the canonical authorization and administrative containment edge; ordinary business
 relationships remain links.
 Every model also selects a registered interface as its `actor`. The IDs represented by that
 interface become the exact `createdBy` and `updatedBy` types for every bound object record.
 `RecordIdOf` derives similarly branded ID unions for any registered interface, object, or root, so
-company APIs can publish names such as `IdentityId` and `PrincipalId` without defining parallel
+applications can publish names such as `IdentityId` and `PrincipalId` without defining parallel
 brands.
-Objects are readable through `get`, `list`, and `batchGet` by convention. They provide `create`,
+Objects are readable through `get`, `list`, and `batchGet` as first-class model queries. They provide `create`,
 `update`, `delete`, and atomic `batchDelete` actions by default; set a write to `false` to disable
 it, and declare additional actions for business behavior. Disabling `delete` also disables
 `batchDelete`; it may be disabled independently when single-record deletion should remain.
-Each normalized object's `actions` map contains its complete standard-plus-authored action catalog.
-`defineModel` indexes those same maps alongside the model root, objects, links, and interfaces;
-REST, clients, and descriptions are projections of that contract rather than separate action
-definitions.
+Each normalized object contains its complete standard-plus-authored action catalog. `defineModel`
+indexes query and action maps alongside the model root, objects, links, and interfaces. A server
+calls `implementModel(Model, services)` once to bind that catalog exhaustively to its governed
+services. HTTP handlers, OpenAPI, typed clients, MCP tools, and descriptions project the binding;
+there is no separate executor or protocol-specific business handler registry.
 
 Declared failures use one transport-independent envelope: a canonical status, a stable
 `UPPER_SNAKE_CASE` reason, a user-safe message, and typed details. Standard field and operation
@@ -147,7 +148,7 @@ assigned by external systems; they are not required for well-known records.
 
 Every returned record also carries the output-only `systemManaged` field. It identifies records
 whose ordinary mutations are reserved for trusted system workflows; it does not grant access or
-change hierarchy. The company-owned authorization policy decides which invocation is trusted to
+change hierarchy. The application authorization policy decides which invocation is trusted to
 manage them.
 
 Interfaces name polymorphic roles such as `Party`, so links and other contracts can target a role
@@ -158,7 +159,7 @@ target, local traversal `key`, label, and cardinality. `defineModel` derives a t
 property for the singular traversal, so standard object creates, updates, filters, and reads use the
 same reference without authors repeating it. Many traversals remain link collections rather than
 embedded record fields. The portable contract does not expose which traversal owns a foreign key
-or whether a backend uses a join table; the company backend derives that projection and its
+or whether a backend uses a join table; the storage adapter derives that projection and its
 referential actions.
 
 Object properties and action inputs and outputs use the same portable schema vocabulary. Custom
@@ -171,7 +172,7 @@ const Lead = defineObject({
   id: "lead",
   collection: "leads",
   name: "Lead",
-  parent: Platform,
+  parent: Root,
   pluralName: "Leads",
   properties: {
     name: schema.string({ label: "Name" }),
@@ -187,7 +188,7 @@ const Lead = defineObject({
   },
 })
 
-const httpApi = createHttpApi(Model)
+const httpApi = createModelHttpApi(Model)
 const client = Effect.runSync(
   HttpApiClient.make(httpApi).pipe(Effect.provide(FetchHttpClient.layer))
 )
@@ -245,42 +246,24 @@ second description.
 
 Server implementations derive standard object behavior without making Effect part of the portable
 definition. `Repository` is the narrow persistence contract consumed by `ObjectService`; the
-company backend owns its physical schema and repository implementation. Company code gives each
-repository and service its stable Effect identity:
+application owns its physical schema, policies, and service composition. A model-derived repository
+registry removes one Effect service declaration per ordinary object, while the model binding stays
+an explicit, exhaustive map:
 
 ```ts
-export class CompanyRepository extends Context.Service<CompanyRepository>()(
-  "@company/CompanyRepository",
-  { make: makeObjectRepository(Model.objects.company) }
-) {
-  static readonly layer = Layer.effect(this, this.make)
-}
-
-const makeCompanyService = Effect.gen(function* () {
-  const authorization = yield* Authorization
-  const identifiers = yield* RecordIdentifierResolver
-  const repository = yield* CompanyRepository
-
-  return ObjectService.make(Model.objects.company, repository, {
-    authorize: authorization.require,
-    rootId: PLATFORM_ID,
-    resolveRecordAliases: identifiers.resolveAliases,
-    visibleWithin: authorization.visibleWithin,
+const make = Effect.gen(function* () {
+  const repositories = yield* ObjectRepositories
+  return implementModel(Model, {
+    user: yield* makeObjectService(Model.objects.user, repositories.user),
+    lead: yield* LeadService,
   })
 })
-
-export class CompanyService extends Context.Service<CompanyService>()(
-  "@company/CompanyService",
-  { make: makeCompanyService }
-) {
-  static readonly layer = Layer.effect(this, this.make)
-}
 ```
 
 The runtime does not impose an ORM, table layout, or migration system. A repository adapter must
 preserve its own atomicity and hierarchy invariants. In particular, `batchDelete` must delete every
 supplied record version in one transaction or leave all of them unchanged. `@company/postgres`
-provides the optional shared PostgreSQL implementation; company backends still own their adapter
+provides the optional shared PostgreSQL implementation; application backends still own their adapter
 choice, migrations, credentials, and service composition. These physical choices never become
 part of the portable semantic model. Public clients, custom actions, and
 governed services accept one schema-aligned request object. Repositories accept canonical IDs
@@ -301,16 +284,17 @@ its invocation context. The repository compares the current `etag`, generates th
 uses its storage clock for `createdAt` and `updatedAt`, and persists those values in the same atomic
 write. This applies equally to calls from HTTP, MCP, agents, jobs, tests, and other services.
 Transport decoding is an additional protocol boundary, not the only validation layer. Each
-invocation supplies `CurrentInvocation` from a trusted boundary; the company service supplies its
-root configuration. The runtime never reads either value from operation input. Company services
+invocation supplies `CurrentInvocation` from a trusted boundary; the application service supplies its
+root configuration. The runtime never reads either value from operation input. Application services
 must add authorization and business behavior before a transport is bound. Repositories
 receive validated values and own persistence translation, concurrency, and atomicity rather than
 reimplementing semantic validation. Custom actions coordinate object services rather than reaching
 through them to repositories.
 
-Use one naming pattern in company backends: `CompanyRepository` is the object-specific persistence
-capability, `CompanyService` is the governed application capability, and an HTTP or MCP handler is a
-thin transport adapter over that service. Routers partition the semantic input mechanically—such
+Use one naming pattern in application backends: repositories own persistence, services own
+governed application behavior, and `ModelImplementation` exhaustively binds the closed model to
+those services. It validates and dispatches the binding but does not add another business execution
+layer. HTTP and MCP servers are thin transport adapters over that binding. Routers partition the semantic input mechanically—such
 as `id` in the path, delete `etag` in the query, and update values in the body—then merge those parts
 back into the same service request object. They do not authorize, validate business rules, supply
 audit actors, generate stored versions, or call repositories directly. There is no separate
@@ -318,13 +302,13 @@ controller layer unless a transport has substantial protocol-specific behavior w
 
 ## Owns
 
-- Company-neutral object, link, and action definitions with type inference
+- Application-neutral object, link, and action definitions with type inference
 - Mechanical descriptions or projections that preserve the source contract
-- Reusable execution or transport behavior proven common across company slices
+- Reusable execution or transport behavior proven common across application slices
 
 ## Does not own
 
-- Company nouns, policy, handlers, persistence, provider configuration, or UI
+- Application nouns, policy, handlers, persistence, provider configuration, or UI
 - A hosted-platform requirement
 - Independent business implementations for each transport
 

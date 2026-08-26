@@ -1,12 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { Effect } from "effect"
 
+import { ApplicationHttpServer } from "@/server/application-http-server"
 import { applicationRuntime } from "@/server/application-runtime"
-import { CompanyApi } from "@/server/company-api"
 
 function handle(request: Request): Promise<Response> {
   return applicationRuntime.runPromise(
-    CompanyApi.pipe(Effect.flatMap((api) => api.handle(request)))
+    ApplicationHttpServer.pipe(
+      Effect.flatMap((server) => server.handle(request))
+    )
   )
 }
 

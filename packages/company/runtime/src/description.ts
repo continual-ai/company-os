@@ -8,11 +8,13 @@ import {
   modelInterfaces,
   modelLinks,
   modelObjects,
+  modelQueries,
 } from "./definition/model"
 import type { ObjectType } from "./definition/object"
+import type { Query } from "./definition/query"
 import type { RootType } from "./definition/root"
 
-export const API_DESCRIPTION_VERSION = "0.26" as const
+export const MODEL_DESCRIPTION_VERSION = "0.28" as const
 
 type ObjectDescription = Omit<ObjectType, "actions" | "kind" | "parent"> & {
   parent: {
@@ -25,15 +27,16 @@ type ObjectDescription = Omit<ObjectType, "actions" | "kind" | "parent"> & {
  * Serializable, public description derived from an API contract. Consumers
  * never maintain this projection by hand.
  */
-export interface ApiDescription {
+export interface ModelDescription {
   readonly actions: ReadonlyArray<Action>
   readonly actor: { readonly typeId: string }
-  readonly api: { readonly id: string; readonly name: string }
   readonly interfaces: ReadonlyArray<InterfaceType>
   readonly links: ReadonlyArray<LinkType>
+  readonly model: { readonly name: string }
   readonly objects: ReadonlyArray<ObjectDescription>
+  readonly queries: ReadonlyArray<Query>
   readonly root: RootType
-  readonly version: typeof API_DESCRIPTION_VERSION
+  readonly version: typeof MODEL_DESCRIPTION_VERSION
 }
 
 function describeObject({
@@ -62,13 +65,12 @@ function describeInterface(item: ReturnType<typeof modelInterfaces>[number]) {
   }
 }
 
-/** Derives transport- and UI-safe API metadata from the company model. */
-export function createApiDescription(model: ModelCatalog): ApiDescription {
+/** Derives transport- and UI-safe metadata from a portable model. */
+export function describeModel(model: ModelCatalog): ModelDescription {
   return {
-    version: API_DESCRIPTION_VERSION,
+    version: MODEL_DESCRIPTION_VERSION,
     actions: modelActions(model).map((action) => ({ ...action })),
     actor: { typeId: model.actor.id },
-    api: { id: model.id, name: model.name },
     interfaces: modelInterfaces(model).map(describeInterface),
     links: modelLinks(model).map((link) => ({
       ...link,
@@ -83,6 +85,8 @@ export function createApiDescription(model: ModelCatalog): ApiDescription {
         to: { ...link.reverse.to },
       },
     })),
+    model: { name: model.name },
+    queries: modelQueries(model).map((query) => ({ ...query })),
     root: { ...model.root, interfaces: { ...model.root.interfaces } },
     objects: modelObjects(model).map(describeObject),
   }

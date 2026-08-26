@@ -1,7 +1,7 @@
 import { defineModel, type RecordIdOf } from "@company/runtime"
 
-import { companyComposition } from "./company-composition"
-import { foundation } from "./foundation"
+import { accessDefinitions } from "./access-definitions"
+import { crmDefinitions } from "./crm-definitions"
 import type { Actor } from "./interfaces/actor"
 import type { Identity } from "./interfaces/identity"
 import type { Principal } from "./interfaces/principal"
@@ -10,13 +10,12 @@ import { modelMetadata } from "./metadata"
 export { modelMetadata } from "./metadata"
 
 export const Model = defineModel({
-  actor: foundation.actor,
-  id: "operatingSystem",
+  actor: accessDefinitions.actor,
   name: modelMetadata.name,
-  interfaces: foundation.interfaces,
-  objects: [...foundation.objects, ...companyComposition.objects],
-  links: [...foundation.links, ...companyComposition.links],
-  root: foundation.root,
+  interfaces: [...accessDefinitions.interfaces, ...crmDefinitions.interfaces],
+  objects: [...accessDefinitions.objects, ...crmDefinitions.objects],
+  links: [...accessDefinitions.links, ...crmDefinitions.links],
+  root: accessDefinitions.root,
 })
 
 /** Canonical ID of a durable audit actor in this model. */

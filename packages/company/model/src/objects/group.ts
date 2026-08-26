@@ -1,13 +1,13 @@
 import { defineObject, schema } from "@company/runtime"
 
 import { Principal } from "#interfaces/principal"
-import { Platform } from "#platform"
+import { Root } from "#root"
 
 export const Group = defineObject({
   id: "group",
   collection: "groups",
   name: "Group",
-  parent: Platform,
+  parent: Root,
   pluralName: "Groups",
   description: "A principal that grants the same access to several identities.",
   implements: [{ interface: Principal }],

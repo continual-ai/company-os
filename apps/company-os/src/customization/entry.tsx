@@ -1,7 +1,7 @@
-import { companyConfig } from "@/company/config"
+import { applicationConfig } from "@/customization/config"
 
-/** Company-owned recognition surface shown beside an application-owned sign-in flow. */
-export function CompanyEntryPanel() {
+/** Custom recognition surface shown beside the application-owned sign-in flow. */
+export function EntryPanel() {
   return (
     <aside
       aria-labelledby="company-entry-title"
@@ -11,20 +11,20 @@ export function CompanyEntryPanel() {
 
       <div className="relative z-10 w-full max-w-2xl p-10 xl:p-12">
         <p className="text-xs font-medium tracking-[0.16em] text-background/60 uppercase">
-          {companyConfig.entry.eyebrow}
+          {applicationConfig.entry.eyebrow}
         </p>
         <h2
           id="company-entry-title"
           className="mt-5 max-w-xl text-[clamp(2.75rem,4vw,4.75rem)] leading-[0.96] font-medium tracking-[-0.05em] text-balance"
         >
-          {companyConfig.entry.headline}
+          {applicationConfig.entry.headline}
         </h2>
         <p className="mt-6 max-w-lg text-sm/relaxed text-background/65">
-          {companyConfig.entry.description}
+          {applicationConfig.entry.description}
         </p>
 
         <ul className="mt-10 max-w-xl border-t border-background/15 text-sm/relaxed text-background/75">
-          {companyConfig.entry.highlights.map((highlight) => (
+          {applicationConfig.entry.highlights.map((highlight) => (
             <li
               key={highlight}
               className="flex items-start gap-4 border-b border-background/15 py-4"
@@ -43,7 +43,7 @@ export function CompanyEntryPanel() {
 }
 
 function EntryBackdrop() {
-  const media = companyConfig.entry.media
+  const media = applicationConfig.entry.media
 
   return (
     <div aria-hidden="true" className="absolute inset-0">
@@ -58,7 +58,7 @@ function EntryBackdrop() {
 function EntryMedia({
   media,
 }: {
-  media: NonNullable<(typeof companyConfig.entry)["media"]>
+  media: NonNullable<(typeof applicationConfig.entry)["media"]>
 }) {
   const style = media.position ? { objectPosition: media.position } : undefined
 

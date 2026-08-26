@@ -1,13 +1,13 @@
 import { defineObject, schema } from "@company/runtime"
 
 import { Actor } from "#interfaces/actor"
-import { Platform } from "#platform"
+import { Root } from "#root"
 
 export const AnonymousActor = defineObject({
   id: "anonymousActor",
   collection: "anonymousActors",
   name: "Anonymous actor",
-  parent: Platform,
+  parent: Root,
   pluralName: "Anonymous actors",
   description:
     "The system-managed audit actor used when a request has no authenticated identity.",

@@ -1,7 +1,7 @@
 import { Model } from "@company/model"
 import { InternalError, UnauthenticatedError } from "@company/runtime"
 import { toEffectErrorSchema } from "@company/runtime/effect"
-import { createHttpApi } from "@company/runtime/effect/http"
+import { createModelHttpApi } from "@company/runtime/effect/http"
 import { Schema } from "effect"
 import {
   HttpApiEndpoint,
@@ -10,6 +10,7 @@ import {
   OpenApi,
 } from "effect/unstable/httpapi"
 
+import { applicationMetadata } from "@/application-metadata"
 import { isCapabilityPermission, MAX_CAPABILITY_CHECKS } from "@/capabilities"
 
 const permissionSchema = Schema.String.check(
@@ -60,4 +61,7 @@ export const capabilityGroup = HttpApiGroup.make("capabilities")
   )
 
 /** The one HTTP contract used by handlers, clients, OpenAPI, and documentation. */
-export const applicationHttpApi = createHttpApi(Model).add(capabilityGroup)
+export const applicationHttpApi = createModelHttpApi(Model, {
+  id: applicationMetadata.id,
+  version: applicationMetadata.version,
+}).add(capabilityGroup)

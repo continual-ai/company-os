@@ -4,7 +4,7 @@ import * as ObjectService from "@company/runtime/effect/object-service"
 import { Effect } from "effect"
 
 import { Authorization } from "@/server/authorization/authorization-service"
-import { PLATFORM_ID } from "@/system-records"
+import { ROOT_ID } from "@/system-records"
 
 import { RecordIdentifierResolver } from "./record-identifier-resolver"
 
@@ -23,7 +23,7 @@ export function makeObjectService<
 
     return ObjectService.make(object, repository, {
       authorize: authorization.require,
-      rootId: PLATFORM_ID,
+      rootId: ROOT_ID,
       resolveRecordAliases: identifiers.resolveAliases,
       visibleWithin: authorization.visibleWithin,
     })

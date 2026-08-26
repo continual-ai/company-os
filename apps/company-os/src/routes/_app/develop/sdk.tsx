@@ -3,10 +3,10 @@ import { createFileRoute } from "@tanstack/react-router"
 import { pageOptions } from "@/route-metadata"
 
 const sdkExample = `import { Effect } from "effect"
-import { companyApi } from "@/company-client"
+import { httpClient } from "@/http-client"
 
 const companies = await Effect.runPromise(
-  companyApi.company.listCompanies({ query: {} })
+  httpClient.company.listCompanies({ query: {} })
 )`
 
 const page = {

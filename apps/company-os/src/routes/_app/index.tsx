@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router"
 
-import { CompanyHome } from "@/company/home"
+import { Home } from "@/customization/home"
 import { pageOptions } from "@/route-metadata"
 
 const page = {
@@ -12,5 +12,5 @@ const page = {
 
 export const Route = createFileRoute("/_app/")({
   ...pageOptions(page),
-  component: CompanyHome,
+  component: Home,
 })

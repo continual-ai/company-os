@@ -1,3 +1,9 @@
+import { Model } from "@company/model"
+import type { ApiError, FailedPreconditionError } from "@company/runtime"
+import {
+  executableModelOperation,
+  type ExecutableModelOperation,
+} from "@company/runtime/effect/model-implementation"
 import { Effect, Logger, Schema } from "effect"
 import { describe, expect, it } from "vitest"
 
@@ -14,9 +20,12 @@ type TestFailure =
       readonly reason?: string
     }
 
-function translate(error: TestFailure) {
+function translate(
+  error: TestFailure | ApiError<typeof FailedPreconditionError>,
+  operation?: ExecutableModelOperation
+) {
   return Effect.runPromise(
-    withApiErrors(Effect.fail(error)).pipe(
+    withApiErrors(Effect.fail(error), operation).pipe(
       Effect.flip,
       Effect.provide(Logger.layer([Logger.make(() => undefined)]))
     )
@@ -29,7 +38,7 @@ describe("API error translation", () => {
     ["PermissionDenied", "PERMISSION_DENIED"],
     ["ObjectWriteConflict", "ABORTED"],
     ["RecordAliasConflict", "ALREADY_EXISTS"],
-    ["LastPlatformAdministrator", "FAILED_PRECONDITION"],
+    ["LastAdministrator", "FAILED_PRECONDITION"],
   ])("maps %s to canonical status %s", async (_tag, status) => {
     await expect(translate({ _tag })).resolves.toMatchObject({ status })
   })
@@ -89,6 +98,23 @@ describe("API error translation", () => {
     const failure = new Error("database unavailable")
     await expect(translate(failure)).resolves.toMatchObject({
       details: {},
+      reason: "INTERNAL",
+      status: "INTERNAL",
+    })
+  })
+
+  it("preserves declared portable errors and conceals undeclared ones", async () => {
+    const error = {
+      details: { violations: [] },
+      message: "The lead cannot be converted.",
+      reason: "FAILED_PRECONDITION",
+      status: "FAILED_PRECONDITION",
+    } satisfies ApiError<typeof FailedPreconditionError>
+    const convert = executableModelOperation(Model, "lead", "convert")
+    const list = executableModelOperation(Model, "lead", "list")
+
+    await expect(translate(error, convert)).resolves.toEqual(error)
+    await expect(translate(error, list)).resolves.toMatchObject({
       reason: "INTERNAL",
       status: "INTERNAL",
     })

@@ -4,17 +4,17 @@ import { generateRecordId } from "@company/runtime/effect/object-service"
 import { Context, Effect, Layer } from "effect"
 
 import { currentActorId } from "@/server/invocation-context"
-import { PLATFORM_ID } from "@/system-records"
+import { ROOT_ID } from "@/system-records"
 
+import { ObjectRepositories } from "./object-repositories"
 import { makeObjectService } from "./object-service"
-import { ServiceAccountRepository } from "./service-account-repository"
 
 type ServiceAccountRecord = ObjectRecord<
   (typeof Model.objects)["serviceAccount"]
 >
 
 const make = Effect.gen(function* () {
-  const repository = yield* ServiceAccountRepository
+  const repository = (yield* ObjectRepositories).serviceAccount
   const base = yield* makeObjectService(
     Model.objects.serviceAccount,
     repository
@@ -33,7 +33,7 @@ const make = Effect.gen(function* () {
         id: RecordId("serviceAccount")(generateRecordId("serviceAccount")),
         metadata: {},
         name: input.name,
-        parent: PLATFORM_ID,
+        parent: ROOT_ID,
         status: "active",
         systemManaged: false,
         updatedBy: actorId,

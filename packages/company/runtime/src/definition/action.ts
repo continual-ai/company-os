@@ -18,15 +18,9 @@ export function isStandardActionId(id: string): id is StandardActionId {
   return standardActionIds.some((standardId) => standardId === id)
 }
 
-export interface ActionHttpBinding {
-  method: "DELETE" | "PATCH" | "POST"
-  path: `/${string}`
-}
-
 /**
  * Portable business action authored beside its primary object definition.
  * Object-scoped actions receive a typed record identifier when the action is bound.
- * The runtime derives one canonical HTTP binding from the object, scope, and action ID.
  */
 export interface ActionDefinition<
   TScope extends ActionScope = ActionScope,
@@ -78,7 +72,6 @@ export interface Action<
   description: string
   destructive: boolean
   errors: TErrors
-  http: ActionHttpBinding
   id: TId
   idempotent: boolean
   input: TInput
@@ -245,13 +238,6 @@ export function bindActions<
       idempotent: definition.idempotent === true,
       scope: definition.scope,
       errors,
-      http: {
-        method: "POST",
-        path:
-          definition.scope === "object"
-            ? `/${object.collection}/{id}/actions/${actionId}`
-            : `/${object.collection}/actions/${actionId}`,
-      },
       input,
       output,
     }
@@ -354,7 +340,6 @@ export function standardActions(
       description: `Creates a ${object.name.toLowerCase()}.`,
       destructive: false,
       idempotent: false,
-      http: { method: "POST", path: `/${object.collection}` },
       input: schema.object({
         aliases: schema.optional(aliasesSchema()),
         metadata: schema.optional(schema.map(schema.string())),
@@ -375,7 +360,6 @@ export function standardActions(
       description: `Updates a ${object.name.toLowerCase()}.`,
       destructive: false,
       idempotent: true,
-      http: { method: "PATCH", path: `/${object.collection}/{id}` },
       input: schema.object({
         id: schema.recordId(object),
         aliases: schema.optional(aliasUpdateSchema()),
@@ -397,7 +381,6 @@ export function standardActions(
       description: `Deletes a ${object.name.toLowerCase()}.`,
       destructive: true,
       idempotent: true,
-      http: { method: "DELETE", path: `/${object.collection}/{id}` },
       input: schema.object({
         id: schema.recordId(object),
         etag: schema.optional(schema.string()),
@@ -416,7 +399,6 @@ export function standardActions(
       description: `Deletes multiple ${object.pluralName.toLowerCase()} atomically.`,
       destructive: true,
       idempotent: true,
-      http: { method: "POST", path: `/${object.collection}/batchDelete` },
       input: schema.object({ ids: schema.array(schema.recordId(object)) }),
       output: schema.object({}),
       errors: [],

@@ -562,7 +562,7 @@ function assertImmutableFields<TObject extends ObjectType>(
 
 /**
  * Adds authorization, portable-schema validation, and common record fields
- * to a repository. Company code supplies the authorization policy; there is no
+ * to a repository. Application code supplies the authorization policy; there is no
  * permissive default.
  */
 export function make<

@@ -2,13 +2,13 @@ import { defineObject, schema } from "@company/runtime"
 
 import { AuthorizationScope } from "#interfaces/authorization-scope"
 import { Party } from "#interfaces/party"
-import { Platform } from "#platform"
+import { Root } from "#root"
 
 export const Company = defineObject({
   id: "company",
   collection: "companies",
   name: "Company",
-  parent: Platform,
+  parent: Root,
   pluralName: "Companies",
   description: "An organization that is a customer, prospect, or partner.",
   implements: [

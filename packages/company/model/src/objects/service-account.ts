@@ -3,13 +3,13 @@ import { defineObject, schema } from "@company/runtime"
 import { Actor } from "#interfaces/actor"
 import { Identity } from "#interfaces/identity"
 import { Principal } from "#interfaces/principal"
-import { Platform } from "#platform"
+import { Root } from "#root"
 
 export const ServiceAccount = defineObject({
   id: "serviceAccount",
   collection: "serviceAccounts",
   name: "Service account",
-  parent: Platform,
+  parent: Root,
   pluralName: "Service accounts",
   description:
     "The local projection of an identity used by software, integrations, and agents.",

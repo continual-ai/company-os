@@ -18,10 +18,10 @@ const Identity = defineInterface({
   name: "Identity",
   pluralName: "Identities",
 })
-const Platform = defineRoot({
-  id: "platform",
+const Root = defineRoot({
+  id: "root",
   implements: [{ interface: Identity }],
-  name: "Platform",
+  name: "Root",
 })
 
 describe("makePostgresSchema", () => {
@@ -31,10 +31,10 @@ describe("makePostgresSchema", () => {
       name: "Authorization scope",
       pluralName: "Authorization scopes",
     })
-    const ScopedPlatform = defineRoot({
-      id: "platform",
+    const ScopedRoot = defineRoot({
+      id: "root",
       implements: [{ interface: AuthorizationScope }, { interface: Identity }],
-      name: "Platform",
+      name: "Root",
     })
     const Workspace = defineObject({
       id: "workspace",
@@ -42,7 +42,7 @@ describe("makePostgresSchema", () => {
       display: { title: "name" },
       implements: [{ interface: AuthorizationScope }],
       name: "Workspace",
-      parent: ScopedPlatform,
+      parent: ScopedRoot,
       pluralName: "Workspaces",
       properties: { name: schema.string() },
     })
@@ -51,7 +51,7 @@ describe("makePostgresSchema", () => {
       collection: "permissions",
       display: { title: "name" },
       name: "Permission",
-      parent: ScopedPlatform,
+      parent: ScopedRoot,
       pluralName: "Permissions",
       properties: { name: schema.string() },
       uniqueBy: { scopeName: ["scope", "name"] },
@@ -76,12 +76,11 @@ describe("makePostgresSchema", () => {
     })
     const model = defineModel({
       actor: Identity,
-      id: "scopes",
       interfaces: [AuthorizationScope, Identity],
       links: [PermissionScope],
       name: "Scopes",
       objects: [Workspace, Permission],
-      root: ScopedPlatform,
+      root: ScopedRoot,
     })
 
     const storage = makePostgresSchema(model)
@@ -91,13 +90,13 @@ describe("makePostgresSchema", () => {
     )
     expectTypeOf<
       typeof storage.interfaces.authorizationScope.$inferSelect.id
-    >().toEqualTypeOf<RecordId<"platform"> | RecordId<"workspace">>()
+    >().toEqualTypeOf<RecordId<"root"> | RecordId<"workspace">>()
     expectTypeOf<
       typeof storage.objects.permission.$inferSelect.scopeId
-    >().toEqualTypeOf<RecordId<"platform"> | RecordId<"workspace">>()
+    >().toEqualTypeOf<RecordId<"root"> | RecordId<"workspace">>()
     expectTypeOf<
       typeof storage.objects.workspace.$inferSelect.parentId
-    >().toEqualTypeOf<RecordId<"platform">>()
+    >().toEqualTypeOf<RecordId<"root">>()
     expect(
       getTableConfig(storage.objects.permission).indexes.map(
         ({ config }) => config.name
@@ -110,7 +109,7 @@ describe("makePostgresSchema", () => {
       id: "person",
       collection: "people",
       name: "Person",
-      parent: Platform,
+      parent: Root,
       pluralName: "People",
       properties: { name: schema.string() },
       display: { title: "name" },
@@ -119,7 +118,7 @@ describe("makePostgresSchema", () => {
       id: "team",
       collection: "teams",
       name: "Team",
-      parent: Platform,
+      parent: Root,
       pluralName: "Teams",
       properties: { name: schema.string() },
       display: { title: "name" },
@@ -144,12 +143,11 @@ describe("makePostgresSchema", () => {
     })
     const model = defineModel({
       actor: Identity,
-      id: "test",
       interfaces: [Identity],
       name: "Test",
       objects: [Person, Team],
       links: [TeamMembership],
-      root: Platform,
+      root: Root,
     })
 
     const storage = makePostgresSchema(model)
@@ -177,7 +175,7 @@ describe("makePostgresSchema", () => {
       collection: "people",
       display: { title: "name" },
       name: "Person",
-      parent: Platform,
+      parent: Root,
       pluralName: "People",
       properties: { name: schema.string() },
     })
@@ -186,7 +184,7 @@ describe("makePostgresSchema", () => {
       collection: "badges",
       display: { title: "name" },
       name: "Badge",
-      parent: Platform,
+      parent: Root,
       pluralName: "Badges",
       properties: { name: schema.string() },
     })
@@ -210,12 +208,11 @@ describe("makePostgresSchema", () => {
     })
     const model = defineModel({
       actor: Identity,
-      id: "badges",
       interfaces: [Identity],
       links: [PersonBadge],
       name: "Badges",
       objects: [Badge, Person],
-      root: Platform,
+      root: Root,
     })
 
     const storage = makePostgresSchema(model)
@@ -232,19 +229,18 @@ describe("makePostgresSchema", () => {
       id: "collision",
       collection: "objects",
       name: "Collision",
-      parent: Platform,
+      parent: Root,
       pluralName: "Collisions",
       properties: { name: schema.string() },
       display: { title: "name" },
     })
     const model = defineModel({
       actor: Identity,
-      id: "test",
       interfaces: [Identity],
       name: "Test",
       objects: [Collision],
       links: [],
-      root: Platform,
+      root: Root,
     })
 
     expect(() => makePostgresSchema(model)).toThrow(
@@ -257,7 +253,7 @@ describe("makePostgresSchema", () => {
       id: "validatedRecord",
       collection: "validatedRecords",
       name: "Validated record",
-      parent: Platform,
+      parent: Root,
       pluralName: "Validated records",
       properties: {
         count: schema.number({ maximum: 10, minimum: 1 }),
@@ -274,12 +270,11 @@ describe("makePostgresSchema", () => {
     })
     const model = defineModel({
       actor: Identity,
-      id: "test",
       interfaces: [Identity],
       name: "Test",
       objects: [ValidatedRecord],
       links: [],
-      root: Platform,
+      root: Root,
     })
 
     const storage = makePostgresSchema(model)

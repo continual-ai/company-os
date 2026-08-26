@@ -12,15 +12,15 @@ import { Model } from "@company/model"
 
 ## Model metadata
 
-Edit [`src/metadata.ts`](src/metadata.ts) to set the model's display name. Model identifiers,
-package names, folder names, and imports remain stable. Each app owns its own name and presentation.
+Edit [`src/metadata.ts`](src/metadata.ts) to set the model's display name. Package names and imports
+remain stable; each application owns its own name and presentation.
 
-The example model defines `Platform` as the semantic root of its ownership hierarchy and exercises
-both platform-level and nested objects, interface-backed polymorphic links, and conventional object
+The example model defines `Root` as the structural root of its ownership hierarchy and exercises
+both root-level and nested objects, interface-backed polymorphic links, and conventional object
 reads and CRUD actions. Object definitions live under `src/objects`, relationship definitions under
 `src/links`, and `Model` indexes them publicly as objects, links, interfaces, and actions.
-`src/foundation.ts` composes actors, identity, authorization, party, and installation concepts;
-`src/company-composition.ts` composes the replaceable starter business model. Every object declares
+`src/access-definitions.ts` composes actors, identity, and authorization;
+`src/crm-definitions.ts` composes the replaceable starter CRM model. Every object declares
 its canonical parent type independently of its business links; for example, a line item is owned by
 a deal while CRM associations remain ordinary links.
 

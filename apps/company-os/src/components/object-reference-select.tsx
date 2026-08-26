@@ -16,7 +16,7 @@ import {
 import { CheckIcon, ChevronsUpDownIcon } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 
-import { PLATFORM_ID } from "@/system-records"
+import { ROOT_ID } from "@/system-records"
 
 import {
   clientFor,
@@ -103,7 +103,7 @@ async function findOptions(
     }))
   )
   if (modelTypeAccepts(Model, Model.root.id, typeId)) {
-    options.unshift({ id: PLATFORM_ID, label: Model.root.name })
+    options.unshift({ id: ROOT_ID, label: Model.root.name })
   }
   return options
 }

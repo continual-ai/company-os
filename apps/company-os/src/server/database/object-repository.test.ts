@@ -25,13 +25,9 @@ import { Effect } from "effect"
 import { describe, expect, expectTypeOf, it } from "vitest"
 
 import { systemInvocation } from "@/server/invocation-context"
-import { DealRepository } from "@/server/objects/deal-repository"
-import { InteractionRepository } from "@/server/objects/interaction-repository"
-import { LeadRepository } from "@/server/objects/lead-repository"
-import { LineItemRepository } from "@/server/objects/line-item-repository"
 import { RecordIdentifierResolver } from "@/server/objects/record-identifier-resolver"
 import { seedSystem } from "@/server/seeds/seed-system"
-import { PLATFORM_ID, SYSTEM_SERVICE_ACCOUNT_ID } from "@/system-records"
+import { ROOT_ID, SYSTEM_SERVICE_ACCOUNT_ID } from "@/system-records"
 
 import { Database } from "./database"
 import { makeObjectRepository } from "./object-repository"
@@ -56,7 +52,7 @@ function omitStorageFields<
   } = record
   return insert
 }
-const PlatformId = RecordId("platform")
+const RootId = RecordId("root")
 
 function snakeCase(value: string): string {
   return value.replaceAll(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase()
@@ -83,7 +79,7 @@ describe("Drizzle object repository", () => {
   it("migrates and preserves object invariants across standard methods", async () => {
     let nextId = 0
     let nextInteractionId = 0
-    const platform = PLATFORM_ID
+    const root = ROOT_ID
     const context = systemInvocation
     const result = await run(
       Effect.gen(function* () {
@@ -102,9 +98,9 @@ describe("Drizzle object repository", () => {
         const service = ObjectService.make(Model.objects.company, repository, {
           authorize: () => Effect.void,
           generateRecordId: () => `company_${++nextId}`,
-          rootId: platform,
+          rootId: root,
           resolveRecordAliases: identifiers.resolveAliases,
-          visibleWithin: () => Effect.succeed([platform]),
+          visibleWithin: () => Effect.succeed([root]),
         })
 
         const hubspotExample = RecordAlias("hubspot:portal_1:company:example")
@@ -214,7 +210,7 @@ describe("Drizzle object repository", () => {
           .insert({
             ...omitStorageFields(first),
             id: CompanyId("company_3"),
-            parent: PlatformId(first.id),
+            parent: RootId(first.id),
           })
           .pipe(Effect.flip)
         const userRepository = yield* makeObjectRepository(
@@ -227,7 +223,7 @@ describe("Drizzle object repository", () => {
           image: null,
           metadata: {},
           name: "First User",
-          parent: platform,
+          parent: root,
           status: "active" as const,
           systemManaged: false,
           updatedBy: SYSTEM_SERVICE_ACCOUNT_ID,
@@ -254,18 +250,18 @@ describe("Drizzle object repository", () => {
           .pipe(Effect.flip)
         const rolledBack = yield* repository.get(rollbackId).pipe(Effect.flip)
 
-        const leadRepository = yield* LeadRepository.make.pipe(
-          Effect.provideService(Database, db)
-        )
+        const leadRepository = yield* makeObjectRepository(
+          Model.objects.lead
+        ).pipe(Effect.provideService(Database, db))
         const leadService = ObjectService.make(
           Model.objects.lead,
           leadRepository,
           {
             authorize: () => Effect.void,
             generateRecordId: () => "lead_1",
-            rootId: platform,
+            rootId: root,
             resolveRecordAliases: identifiers.resolveAliases,
-            visibleWithin: () => Effect.succeed([platform]),
+            visibleWithin: () => Effect.succeed([root]),
           }
         )
         yield* leadService.create({
@@ -284,18 +280,18 @@ describe("Drizzle object repository", () => {
           .get({ id: legacyExample })
           .pipe(Effect.flip)
 
-        const interactionRepository = yield* InteractionRepository.make.pipe(
-          Effect.provideService(Database, db)
-        )
+        const interactionRepository = yield* makeObjectRepository(
+          Model.objects.interaction
+        ).pipe(Effect.provideService(Database, db))
         const interactionService = ObjectService.make(
           Model.objects.interaction,
           interactionRepository,
           {
             authorize: () => Effect.void,
             generateRecordId: () => `interaction_${++nextInteractionId}`,
-            rootId: platform,
+            rootId: root,
             resolveRecordAliases: identifiers.resolveAliases,
-            visibleWithin: () => Effect.succeed([platform]),
+            visibleWithin: () => Effect.succeed([root]),
           }
         )
         yield* interactionService.create({
@@ -317,18 +313,18 @@ describe("Drizzle object repository", () => {
           sort: [{ direction: "desc", field: "occurredAt" }],
         })
 
-        const dealRepository = yield* DealRepository.make.pipe(
-          Effect.provideService(Database, db)
-        )
+        const dealRepository = yield* makeObjectRepository(
+          Model.objects.deal
+        ).pipe(Effect.provideService(Database, db))
         const dealService = ObjectService.make(
           Model.objects.deal,
           dealRepository,
           {
             authorize: () => Effect.void,
             generateRecordId: () => "deal_1",
-            rootId: platform,
+            rootId: root,
             resolveRecordAliases: identifiers.resolveAliases,
-            visibleWithin: () => Effect.succeed([platform]),
+            visibleWithin: () => Effect.succeed([root]),
           }
         )
         const deal = yield* dealService.create({
@@ -340,18 +336,18 @@ describe("Drizzle object repository", () => {
         expectTypeOf<StoredDeal["parentId"]>().toEqualTypeOf<
           RecordId<"company">
         >()
-        const lineItemRepository = yield* LineItemRepository.make.pipe(
-          Effect.provideService(Database, db)
-        )
+        const lineItemRepository = yield* makeObjectRepository(
+          Model.objects.lineItem
+        ).pipe(Effect.provideService(Database, db))
         const lineItemService = ObjectService.make(
           Model.objects.lineItem,
           lineItemRepository,
           {
             authorize: () => Effect.void,
             generateRecordId: () => "line_item_1",
-            rootId: platform,
+            rootId: root,
             resolveRecordAliases: identifiers.resolveAliases,
-            visibleWithin: () => Effect.succeed([platform]),
+            visibleWithin: () => Effect.succeed([root]),
           }
         )
         const lineItem = yield* lineItemService.create({
@@ -360,7 +356,7 @@ describe("Drizzle object repository", () => {
         })
         const inconsistentParent = yield* database
           .update(objects)
-          .set({ parentId: platform })
+          .set({ parentId: root })
           .where(eq(objects.id, lineItem.id))
           .pipe(Effect.flip)
         const batchDeleteFailure = yield* service
@@ -434,7 +430,7 @@ describe("Drizzle object repository", () => {
       id: "company_1",
       lifecycleStage: "prospect",
       name: "Example",
-      parent: PLATFORM_ID,
+      parent: ROOT_ID,
     })
     expect(result.updated).toMatchObject({
       id: result.first.id,
@@ -532,7 +528,7 @@ describe("Drizzle object repository", () => {
     expect(
       result.lineItemObjectRows.find(({ id }) => id === result.lineItem.id)
     ).toMatchObject({
-      ancestorIds: ["deal_1", result.first.id, PLATFORM_ID],
+      ancestorIds: ["deal_1", result.first.id, ROOT_ID],
     })
     for (const object of Object.values(Model.objects)) {
       expect(

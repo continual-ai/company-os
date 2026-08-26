@@ -30,15 +30,15 @@ import {
 } from "./effect-object-repository"
 import * as ObjectService from "./effect-object-service"
 
-const Platform = defineRoot({ id: "platform", name: "Platform" })
-const PlatformId = RecordId("platform")
+const Root = defineRoot({ id: "root", name: "Root" })
+const RootId = RecordId("root")
 const UserId = RecordId("user")
 
 const Account = defineObject({
   id: "account",
   collection: "accounts",
   name: "Account",
-  parent: Platform,
+  parent: Root,
   pluralName: "Accounts",
   properties: {
     email: schema.email({ nullable: true }),
@@ -59,7 +59,7 @@ const ReadOnlyAccount = defineObject({
   id: "readOnlyAccount",
   collection: "readOnlyAccounts",
   name: "Read-only account",
-  parent: Platform,
+  parent: Root,
   pluralName: "Read-only accounts",
   actions: {
     batchDelete: false,
@@ -307,7 +307,7 @@ describe("ObjectService", () => {
   })
 
   it("generates sortable TypeIDs by default", async () => {
-    const rootId = PlatformId("platform_1")
+    const rootId = RootId("root_1")
     const service = ObjectService.make(Account, makeRepository(new Map()), {
       authorize: () => Effect.void,
       rootId,
@@ -343,7 +343,7 @@ describe("ObjectService", () => {
       actorId: UserId("user_1"),
       authorizationActorId: UserId("user_1"),
     }
-    const rootId = PlatformId("platform_1")
+    const rootId = RootId("root_1")
     const service = ObjectService.make(Account, repository, {
       authorize: (request) => {
         accessRequests.push(request)
@@ -520,7 +520,7 @@ describe("ObjectService", () => {
       id: "account_1",
       name: "Example",
       systemManaged: false,
-      parent: "platform_1",
+      parent: "root_1",
       slug: "example",
       status: "active",
     })
@@ -585,8 +585,8 @@ describe("ObjectService", () => {
     expect(accessRequests[0]).toEqual({
       objectType: "account",
       operation: "create",
-      parentId: "platform_1",
-      parentTypeId: "platform",
+      parentId: "root_1",
+      parentTypeId: "root",
     })
     expect(accessRequests.at(-1)).toEqual({
       objectType: "account",

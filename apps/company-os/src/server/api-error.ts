@@ -7,6 +7,7 @@ import {
   type ApiError,
   type FailedPreconditionError,
   type InternalError,
+  isApiError,
   type NotFoundError,
   type PermissionDeniedError,
   type UnauthenticatedError,
@@ -14,6 +15,10 @@ import {
   type Violation,
 } from "@company/runtime"
 import { schemaErrorToApiError } from "@company/runtime/effect"
+import {
+  type ExecutableModelOperation,
+  modelOperationErrors,
+} from "@company/runtime/effect/model-implementation"
 import { Effect, Predicate, Schema } from "effect"
 
 type StandardApiError = ApiError<
@@ -168,10 +173,10 @@ function preconditionViolation(error: TaggedFailure): Violation {
         path: ["role"],
         reason: "ROLE_SCOPE_MISMATCH",
       }
-    case "LastPlatformAdministrator":
+    case "LastAdministrator":
       return {
-        message: "Another platform administrator is required.",
-        reason: "LAST_PLATFORM_ADMINISTRATOR",
+        message: "Another administrator is required.",
+        reason: "LAST_ADMINISTRATOR",
       }
     case "LeadConversionConflict":
       return {
@@ -241,7 +246,7 @@ const notFoundTags = new Set([
   "RecordAliasNotFound",
 ])
 const failedPreconditionTags = new Set([
-  "LastPlatformAdministrator",
+  "LastAdministrator",
   "LeadConversionConflict",
   "RoleScopeMismatch",
 ])
@@ -253,7 +258,8 @@ const validationTags = new Set([
   "ObjectParentTypeMismatch",
 ])
 
-function translateApiError(error: unknown): StandardApiError | undefined {
+function translateApiError(error: unknown): ApiError | undefined {
+  if (isApiError(error)) return error
   if (Schema.isSchemaError(error)) return schemaErrorToApiError(error)
   if (!isTaggedFailure(error)) return undefined
   if (
@@ -290,12 +296,23 @@ function translateApiError(error: unknown): StandardApiError | undefined {
 
 /** Translates application failures and sanitizes unexpected typed failures. */
 export function withApiErrors<A, E, R>(
-  effect: Effect.Effect<A, E, R>
-): Effect.Effect<A, StandardApiError, R> {
+  effect: Effect.Effect<A, E, R>,
+  operation?: ExecutableModelOperation
+): Effect.Effect<A, ApiError, R> {
   return Effect.catch(effect, (error) => {
     const mapped = translateApiError(error)
-    if (mapped !== undefined) return Effect.fail(mapped)
-    return Effect.logError("Unhandled Company API failure", error).pipe(
+    if (mapped !== undefined) {
+      const declared =
+        operation === undefined ||
+        modelOperationErrors(operation).some(
+          ({ reason }) => reason === mapped.reason
+        )
+      if (declared) return Effect.fail(mapped)
+      return Effect.logError(
+        `Operation '${operation.key}' produced undeclared API error '${mapped.reason}'.`
+      ).pipe(Effect.andThen(Effect.fail(internalApiError())))
+    }
+    return Effect.logError("Unhandled API failure", error).pipe(
       Effect.andThen(Effect.fail(internalApiError()))
     )
   })

@@ -9,7 +9,7 @@ import {
 import { httpEndpointId } from "@company/runtime/effect/http"
 import { Effect } from "effect"
 
-import { companyApi } from "@/company-client"
+import { httpClient } from "@/http-client"
 
 import { objectTableValueText } from "./object-table/object-table-config"
 import type { ObjectTableRecord } from "./object-table/object-table-config"
@@ -72,7 +72,7 @@ function nativeEndpoint(
   object: ModelObject,
   operation: string
 ): NativeEndpoint {
-  const group = Reflect.get(companyApi, object.id)
+  const group = Reflect.get(httpClient, object.id)
   const endpoint = Reflect.get(group, httpEndpointId(operation, object))
   if (typeof endpoint !== "function") {
     throw new Error(`HTTP endpoint '${object.id}.${operation}' is not defined.`)

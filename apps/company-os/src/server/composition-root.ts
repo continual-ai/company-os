@@ -1,5 +1,5 @@
 import { Model } from "@company/model"
-import { createApiDescription } from "@company/runtime"
+import { describeModel } from "@company/runtime"
 import { createApiReference } from "@company/runtime/effect/http"
 import { Layer } from "effect"
 import { OpenApi } from "effect/unstable/httpapi"
@@ -18,7 +18,7 @@ const applicationLayer = makeApplicationLayer({
   database: databaseLayer,
 })
 
-const apiDescription = createApiDescription(Model)
+const modelDescription = describeModel(Model)
 const openApiDocument = OpenApi.fromApi(applicationHttpApi)
 const apiReference = createApiReference(applicationHttpApi, "/api/docs", {
   customCss: `
@@ -31,12 +31,14 @@ const apiReference = createApiReference(applicationHttpApi, "/api/docs", {
 })
 
 export const application = {
-  api: {
-    description: apiDescription,
+  http: {
     document: openApiDocument,
     reference: apiReference,
   },
   layer: applicationLayer,
+  model: {
+    description: modelDescription,
+  },
 }
 
 // Repositories, governed services, provider adapters, and executable

@@ -1,13 +1,13 @@
 import { defineObject, schema } from "@company/runtime"
 
 import { Principal } from "#interfaces/principal"
-import { Platform } from "#platform"
+import { Root } from "#root"
 
 export const PrincipalSet = defineObject({
   id: "principalSet",
   collection: "principalSets",
   name: "Principal set",
-  parent: Platform,
+  parent: Root,
   pluralName: "Principal sets",
   description:
     "A system-defined set of callers whose membership follows authentication state.",

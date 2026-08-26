@@ -1,6 +1,6 @@
 import { defineObject, schema, standardErrors } from "@company/runtime"
 
-import { Platform } from "#platform"
+import { Root } from "#root"
 
 import { Company } from "./company"
 import { Contact } from "./contact"
@@ -12,7 +12,7 @@ export const Lead = defineObject({
   id: "lead",
   collection: "leads",
   name: "Lead",
-  parent: Platform,
+  parent: Root,
   pluralName: "Leads",
   description:
     "An unqualified person or organization that may become a customer.",
@@ -28,9 +28,9 @@ export const Lead = defineObject({
         contact: schema.recordId(ContactReference),
       },
       errors: [
+        standardErrors.aborted,
+        standardErrors.alreadyExists,
         standardErrors.failedPrecondition,
-        standardErrors.notFound,
-        standardErrors.permissionDenied,
       ],
     },
   },

@@ -1,14 +1,12 @@
 import { Model } from "@company/model"
-import { Timestamp, type RecordIdentifier } from "@company/runtime"
+import { Timestamp, type ObjectGetInput } from "@company/runtime"
 import { Context, Data, Effect, Layer } from "effect"
 
 import { Authorization } from "@/server/authorization/authorization-service"
 import { Database } from "@/server/database/database"
 import { currentActorId } from "@/server/invocation-context"
 
-import { CompanyRepository } from "./company-repository"
-import { ContactRepository } from "./contact-repository"
-import { LeadRepository } from "./lead-repository"
+import { ObjectRepositories } from "./object-repositories"
 import { makeObjectService } from "./object-service"
 import { RecordIdentifierResolver } from "./record-identifier-resolver"
 
@@ -20,23 +18,22 @@ const make = Effect.gen(function* () {
   const authorization = yield* Authorization
   const database = yield* Database
   const identifiers = yield* RecordIdentifierResolver
-  const repository = yield* LeadRepository
-  const companyRepository = yield* CompanyRepository
-  const contactRepository = yield* ContactRepository
+  const repositories = yield* ObjectRepositories
+  const repository = repositories.lead
   const base = yield* makeObjectService(Model.objects.lead, repository)
   const companies = yield* makeObjectService(
     Model.objects.company,
-    companyRepository
+    repositories.company
   )
   const contacts = yield* makeObjectService(
     Model.objects.contact,
-    contactRepository
+    repositories.contact
   )
 
   const convert = Effect.fn("@company/LeadService.convert")(function* (
-    identifier: RecordIdentifier<"lead">
+    input: ObjectGetInput<typeof Model.objects.lead>
   ) {
-    const id = yield* identifiers.resolve("lead", identifier)
+    const id = yield* identifiers.resolve("lead", input.id)
     return yield* database.transaction(() =>
       Effect.gen(function* () {
         yield* authorization.requireAction({

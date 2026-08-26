@@ -8,7 +8,7 @@
   "imports": {
     "#interfaces/*": "./src/interfaces/*.ts",
     "#objects/*": "./src/objects/*.ts",
-    "#platform": "./src/platform.ts"
+    "#root": "./src/root.ts"
   },
   "exports": {
     ".": "./src/index.ts",

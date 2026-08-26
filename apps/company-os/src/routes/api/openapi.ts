@@ -5,7 +5,7 @@ import { application } from "@/server/composition-root"
 export const Route = createFileRoute("/api/openapi")({
   server: {
     handlers: {
-      GET: () => Response.json(application.api.document),
+      GET: () => Response.json(application.http.document),
     },
   },
 })

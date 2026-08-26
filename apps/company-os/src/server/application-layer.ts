@@ -1,32 +1,21 @@
 import { Layer } from "effect"
 
+import { ApplicationHttpServer } from "./application-http-server"
+import { ApplicationMcpServer } from "./application-mcp-server"
 import type { AuthSettings } from "./auth/auth-config"
 import { Authentication } from "./auth/authentication"
 import { IdentityBindingRepository } from "./auth/identity-binding-repository"
 import { IdentityProvider } from "./auth/identity-provider"
 import { AuthorizationRepository } from "./authorization/authorization-repository"
 import { Authorization } from "./authorization/authorization-service"
-import { CompanyApi } from "./company-api"
 import type { Database } from "./database/database"
-import { AnonymousActorRepository } from "./objects/anonymous-actor-repository"
-import { CompanyRepository } from "./objects/company-repository"
-import { ContactRepository } from "./objects/contact-repository"
-import { DealRepository } from "./objects/deal-repository"
-import { GroupMembershipRepository } from "./objects/group-membership-repository"
-import { GroupRepository } from "./objects/group-repository"
-import { InteractionRepository } from "./objects/interaction-repository"
-import { LeadRepository } from "./objects/lead-repository"
+import { ModelImplementation } from "./model-implementation"
 import { LeadService } from "./objects/lead-service"
-import { LineItemRepository } from "./objects/line-item-repository"
-import { PrincipalSetRepository } from "./objects/principal-set-repository"
+import { ObjectRepositories } from "./objects/object-repositories"
 import { RecordIdentifierResolver } from "./objects/record-identifier-resolver"
 import { RoleAssignmentRepository } from "./objects/role-assignment-repository"
 import { RoleAssignmentService } from "./objects/role-assignment-service"
-import { RoleRepository } from "./objects/role-repository"
-import { ServiceAccountRepository } from "./objects/service-account-repository"
 import { ServiceAccountService } from "./objects/service-account-service"
-import { StandardObjectServices } from "./objects/standard-object-services"
-import { UserRepository } from "./objects/user-repository"
 import { UserService } from "./objects/user-service"
 import { Readiness } from "./readiness"
 
@@ -42,23 +31,18 @@ export function makeApplicationLayer({
   database,
   identityProvider: suppliedIdentityProvider,
 }: ApplicationInfrastructure) {
+  const objectRepositories = ObjectRepositories.layer.pipe(
+    Layer.provide(database)
+  )
+  const roleAssignmentRepository = RoleAssignmentRepository.layer.pipe(
+    Layer.provide(database),
+    Layer.provide(objectRepositories)
+  )
   const repositories = Layer.mergeAll(
-    AnonymousActorRepository.layer,
     AuthorizationRepository.layer,
     IdentityBindingRepository.layer,
-    CompanyRepository.layer,
-    ContactRepository.layer,
-    DealRepository.layer,
-    GroupMembershipRepository.layer,
-    GroupRepository.layer,
-    InteractionRepository.layer,
-    LeadRepository.layer,
-    LineItemRepository.layer,
-    PrincipalSetRepository.layer,
-    RoleAssignmentRepository.layer,
-    RoleRepository.layer,
-    ServiceAccountRepository.layer,
-    UserRepository.layer
+    objectRepositories,
+    roleAssignmentRepository
   ).pipe(Layer.provide(database))
 
   const authorization = Authorization.layer.pipe(Layer.provide(repositories))
@@ -71,33 +55,43 @@ export function makeApplicationLayer({
     recordIdentifierResolver,
     repositories
   )
-  const coreServices = Layer.mergeAll(
-    StandardObjectServices.layer,
+  const specializedServices = Layer.mergeAll(
     LeadService.layer,
     RoleAssignmentService.layer,
     ServiceAccountService.layer,
     UserService.layer
   ).pipe(Layer.provide(applicationDependencies))
+  const modelImplementation = ModelImplementation.layer.pipe(
+    Layer.provide(applicationDependencies),
+    Layer.provide(specializedServices)
+  )
+  const governedServices = Layer.merge(specializedServices, modelImplementation)
   const identityProvider =
     suppliedIdentityProvider ??
     IdentityProvider.layer.pipe(Layer.provide(authSettings))
   const authentication = Authentication.layer.pipe(
     Layer.provide(authSettings),
     Layer.provide(identityProvider),
-    Layer.provide(coreServices),
+    Layer.provide(governedServices),
     Layer.provide(repositories),
     Layer.provide(database)
   )
-  const companyApi = CompanyApi.layer.pipe(
-    Layer.provide(Layer.mergeAll(authentication, authorization, coreServices))
+  const httpServer = ApplicationHttpServer.layer.pipe(
+    Layer.provide(
+      Layer.mergeAll(authentication, authorization, governedServices)
+    )
+  )
+  const mcpServer = ApplicationMcpServer.layer.pipe(
+    Layer.provide(Layer.merge(authentication, governedServices))
   )
   const readiness = Readiness.layer.pipe(Layer.provide(database))
 
   return Layer.mergeAll(
     authSettings,
-    coreServices,
+    governedServices,
     authentication,
-    companyApi,
+    httpServer,
+    mcpServer,
     readiness
   )
 }

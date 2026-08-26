@@ -32,21 +32,20 @@ import {
   currentActorId,
   systemInvocation,
 } from "@/server/invocation-context"
-import { CompanyRepository } from "@/server/objects/company-repository"
+import { ObjectRepositories } from "@/server/objects/object-repositories"
 import { makeObjectService } from "@/server/objects/object-service"
 import { RecordIdentifierResolver } from "@/server/objects/record-identifier-resolver"
 import { RoleAssignmentRepository } from "@/server/objects/role-assignment-repository"
 import {
-  LastPlatformAdministrator,
+  LastAdministrator,
   RoleAssignmentService,
   RoleScopeMismatch,
 } from "@/server/objects/role-assignment-service"
-import { RoleRepository } from "@/server/objects/role-repository"
 import { seedSystem } from "@/server/seeds/seed-system"
 import {
   ALL_CALLERS_PRINCIPAL_SET_ID,
-  PLATFORM_ADMIN_ROLE_ID,
-  PLATFORM_ID,
+  ADMINISTRATOR_ROLE_ID,
+  ROOT_ID,
   SYSTEM_SERVICE_ACCOUNT_ID,
   SYSTEM_ROLE_ASSIGNMENT_ID,
 } from "@/system-records"
@@ -122,31 +121,34 @@ describe("Authorization", () => {
         yield* migrate(pglite, { migrationsFolder })
         const database = asDatabase(pglite)
         yield* seedSystem().pipe(Effect.provideService(Database, database))
+        const objectRepositories = yield* ObjectRepositories.make.pipe(
+          Effect.provideService(Database, database)
+        )
 
         yield* database.insert(objects).values([
           objectRow({
-            ancestorIds: [PLATFORM_ID],
+            ancestorIds: [ROOT_ID],
             id: userId,
             objectType: "user",
-            parentId: PLATFORM_ID,
+            parentId: ROOT_ID,
           }),
           objectRow({
-            ancestorIds: [PLATFORM_ID],
+            ancestorIds: [ROOT_ID],
             id: allowedCompanyId,
             objectType: "company",
-            parentId: PLATFORM_ID,
+            parentId: ROOT_ID,
           }),
           objectRow({
-            ancestorIds: [PLATFORM_ID],
+            ancestorIds: [ROOT_ID],
             id: groupCompanyId,
             objectType: "company",
-            parentId: PLATFORM_ID,
+            parentId: ROOT_ID,
           }),
           objectRow({
-            ancestorIds: [PLATFORM_ID],
+            ancestorIds: [ROOT_ID],
             id: readerRoleId,
             objectType: "role",
-            parentId: PLATFORM_ID,
+            parentId: ROOT_ID,
           }),
         ])
         yield* database.insert(users).values({
@@ -154,7 +156,7 @@ describe("Authorization", () => {
           id: userId,
           image: null,
           name: "Ada Lovelace",
-          parentId: PLATFORM_ID,
+          parentId: ROOT_ID,
         })
         yield* database.insert(identities).values({ id: userId })
         yield* database.insert(principals).values({ id: userId })
@@ -166,7 +168,7 @@ describe("Authorization", () => {
             lifecycleStage: "prospect",
             logo: null,
             name: "Allowed",
-            parentId: PLATFORM_ID,
+            parentId: ROOT_ID,
             website: null,
           },
           {
@@ -176,7 +178,7 @@ describe("Authorization", () => {
             lifecycleStage: "prospect",
             logo: null,
             name: "Via group",
-            parentId: PLATFORM_ID,
+            parentId: ROOT_ID,
             website: null,
           },
         ])
@@ -192,7 +194,7 @@ describe("Authorization", () => {
           id: readerRoleId,
           name: "Company reader",
           permissions: ["company.get", "company.list"],
-          parentId: PLATFORM_ID,
+          parentId: ROOT_ID,
           scopeType: "company",
         })
 
@@ -201,7 +203,7 @@ describe("Authorization", () => {
         )
         yield* database.insert(objects).values(
           objectRow({
-            ancestorIds: [allowedCompanyId, PLATFORM_ID],
+            ancestorIds: [allowedCompanyId, ROOT_ID],
             id: directAssignmentId,
             objectType: "roleAssignment",
             parentId: allowedCompanyId,
@@ -237,17 +239,17 @@ describe("Authorization", () => {
         )
         yield* database.insert(objects).values(
           objectRow({
-            ancestorIds: [PLATFORM_ID],
+            ancestorIds: [ROOT_ID],
             id: publicAdmissionAssignmentId,
             objectType: "roleAssignment",
-            parentId: PLATFORM_ID,
+            parentId: ROOT_ID,
           })
         )
         yield* database.insert(roleAssignments).values({
           id: publicAdmissionAssignmentId,
-          parentId: PLATFORM_ID,
+          parentId: ROOT_ID,
           principalId: ALL_CALLERS_PRINCIPAL_SET_ID,
-          roleId: PLATFORM_ADMIN_ROLE_ID,
+          roleId: ADMINISTRATOR_ROLE_ID,
         })
         const publicAdmission = yield* authorization.checkCapabilitiesFor(
           anonymousCaller,
@@ -261,9 +263,7 @@ describe("Authorization", () => {
         yield* database
           .delete(objects)
           .where(eq(objects.id, publicAdmissionAssignmentId))
-        const companyRepository = yield* CompanyRepository.make.pipe(
-          Effect.provideService(Database, database)
-        )
+        const companyRepository = objectRepositories.company
         const identifiers = yield* RecordIdentifierResolver.make.pipe(
           Effect.provideService(Database, database)
         )
@@ -321,22 +321,22 @@ describe("Authorization", () => {
 
         yield* database.insert(objects).values(
           objectRow({
-            ancestorIds: [PLATFORM_ID],
+            ancestorIds: [ROOT_ID],
             id: groupId,
             objectType: "group",
-            parentId: PLATFORM_ID,
+            parentId: ROOT_ID,
           })
         )
         yield* database.insert(groups).values({
           description: null,
           id: groupId,
           name: "Sales",
-          parentId: PLATFORM_ID,
+          parentId: ROOT_ID,
         })
         yield* database.insert(principals).values({ id: groupId })
         yield* database.insert(objects).values(
           objectRow({
-            ancestorIds: [groupId, PLATFORM_ID],
+            ancestorIds: [groupId, ROOT_ID],
             id: membershipId,
             objectType: "groupMembership",
             parentId: groupId,
@@ -352,7 +352,7 @@ describe("Authorization", () => {
         )
         yield* database.insert(objects).values(
           objectRow({
-            ancestorIds: [groupCompanyId, PLATFORM_ID],
+            ancestorIds: [groupCompanyId, ROOT_ID],
             id: groupAssignmentId,
             objectType: "roleAssignment",
             parentId: groupCompanyId,
@@ -389,12 +389,10 @@ describe("Authorization", () => {
           .list()
           .pipe(Effect.provideService(CurrentInvocation, systemInvocation))
 
-        const roleRepository = yield* RoleRepository.make.pipe(
-          Effect.provideService(Database, database)
-        )
         const roleAssignmentRepository =
           yield* RoleAssignmentRepository.make.pipe(
-            Effect.provideService(Database, database)
+            Effect.provideService(Database, database),
+            Effect.provideService(ObjectRepositories, objectRepositories)
           )
         const roleAssignmentService = yield* RoleAssignmentService.make.pipe(
           Effect.provideService(
@@ -408,24 +406,24 @@ describe("Authorization", () => {
             RoleAssignmentRepository,
             roleAssignmentRepository
           ),
-          Effect.provideService(RoleRepository, roleRepository)
+          Effect.provideService(ObjectRepositories, objectRepositories)
         )
         const userAdministratorAssignmentId = RoleAssignmentId(
-          "role_assignment_user_platform_admin"
+          "role_assignment_user_root_admin"
         )
         yield* database.insert(objects).values(
           objectRow({
-            ancestorIds: [PLATFORM_ID],
+            ancestorIds: [ROOT_ID],
             id: userAdministratorAssignmentId,
             objectType: "roleAssignment",
-            parentId: PLATFORM_ID,
+            parentId: ROOT_ID,
           })
         )
         yield* database.insert(roleAssignments).values({
-          parentId: PLATFORM_ID,
+          parentId: ROOT_ID,
           id: userAdministratorAssignmentId,
           principalId: userId,
-          roleId: PLATFORM_ADMIN_ROLE_ID,
+          roleId: ADMINISTRATOR_ROLE_ID,
         })
         const protectedSystemAssignment = yield* asUser(
           roleAssignmentService
@@ -437,7 +435,7 @@ describe("Authorization", () => {
           .pipe(Effect.provideService(CurrentInvocation, systemInvocation))
         const wrongScope = yield* roleAssignmentService
           .create({
-            parent: PLATFORM_ID,
+            parent: ROOT_ID,
             principal: userId,
             role: readerRoleId,
           })
@@ -526,6 +524,6 @@ describe("Authorization", () => {
     expect(result.systemAfterGrantRemoval.items).toEqual([])
     expect(result.wrongScope).toBeInstanceOf(RoleScopeMismatch)
     expect(result.protectedSystemAssignment).toBeInstanceOf(PermissionDenied)
-    expect(result.lastAdministrator).toBeInstanceOf(LastPlatformAdministrator)
+    expect(result.lastAdministrator).toBeInstanceOf(LastAdministrator)
   })
 })

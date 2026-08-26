@@ -1,14 +1,14 @@
-import { Model } from "@company/model"
 import { and, eq } from "drizzle-orm"
 import { Context, Effect, Layer } from "effect"
 
 import { Database } from "@/server/database/database"
-import { makeObjectRepository } from "@/server/database/object-repository"
 import { objects, roleAssignments } from "@/server/database/schema"
+
+import { ObjectRepositories } from "./object-repositories"
 
 const make = Effect.gen(function* () {
   const database = yield* Database
-  const base = yield* makeObjectRepository(Model.objects.roleAssignment)
+  const base = (yield* ObjectRepositories).roleAssignment
 
   const getScopeObjectType = Effect.fn(
     "@company/RoleAssignmentRepository.getScopeObjectType"

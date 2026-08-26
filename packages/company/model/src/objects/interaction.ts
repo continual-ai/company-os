@@ -1,12 +1,12 @@
 import { defineObject, schema } from "@company/runtime"
 
-import { Platform } from "#platform"
+import { Root } from "#root"
 
 export const Interaction = defineObject({
   id: "interaction",
   collection: "interactions",
   name: "Interaction",
-  parent: Platform,
+  parent: Root,
   pluralName: "Interactions",
   description: "A call, email, meeting, or note involving a business party.",
   properties: {

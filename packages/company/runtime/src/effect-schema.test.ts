@@ -29,13 +29,13 @@ import {
 } from "./effect-schema"
 
 const AccountId = RecordId("account")
-const Platform = defineRoot({ id: "platform", name: "Platform" })
+const Root = defineRoot({ id: "root", name: "Root" })
 
 const Account = defineObject({
   id: "account",
   collection: "accounts",
   name: "Account",
-  parent: Platform,
+  parent: Root,
   pluralName: "Accounts",
   properties: {
     logo: schema.image({ aspectRatio: 1, nullable: true }),
@@ -75,7 +75,7 @@ describe("Effect Schema projection", () => {
       createdAt: "2026-08-18T12:00:00Z",
       createdBy: "user_1",
       etag: "v1",
-      parent: "platform_1",
+      parent: "root_1",
       systemManaged: false,
       updatedAt: "2026-08-18T13:00:00.123Z",
       updatedBy: "user_1",
@@ -179,9 +179,7 @@ describe("Effect Schema projection", () => {
       ReadonlyArray<RecordAliasType> | undefined
     >()
     expectTypeOf<Create["parent"]>().toEqualTypeOf<undefined>()
-    expectTypeOf<AccountRecord["parent"]>().toEqualTypeOf<
-      RecordId<"platform">
-    >()
+    expectTypeOf<AccountRecord["parent"]>().toEqualTypeOf<RecordId<"root">>()
     expectTypeOf<Update["email"]>().toEqualTypeOf<
       EmailAddress | null | undefined
     >()

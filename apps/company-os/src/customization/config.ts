@@ -18,7 +18,7 @@ type EntryMedia =
       src: string
     }>
 
-type CompanyConfig = Readonly<{
+type ApplicationConfig = Readonly<{
   brand: Readonly<{
     favicon: Readonly<{ href: string; type: string }>
     mark: BrandAsset | null
@@ -46,8 +46,8 @@ type CompanyConfig = Readonly<{
 
 const companyName = modelMetadata.name
 
-/** Shallow company identity and first-launch copy; workflows remain ordinary source code. */
-export const companyConfig: CompanyConfig = {
+/** Shallow application identity and first-launch copy; workflows remain source code. */
+export const applicationConfig: ApplicationConfig = {
   brand: {
     favicon: { href: "/favicon.svg", type: "image/svg+xml" },
     mark: null,

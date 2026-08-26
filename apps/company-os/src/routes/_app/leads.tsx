@@ -3,10 +3,10 @@ import { RecordId } from "@company/runtime"
 import { createFileRoute } from "@tanstack/react-router"
 import { Effect } from "effect"
 
-import { companyApi } from "@/company-client"
 import { ConfirmActionButton } from "@/components/confirm-action-button"
 import { ObjectCollection } from "@/components/object-collection"
 import type { ObjectTableRecord } from "@/components/object-table/object-table-config"
+import { httpClient } from "@/http-client"
 import { pageOptions } from "@/route-metadata"
 
 const page = {
@@ -38,7 +38,7 @@ function LeadActions({
       description="This atomically creates a company and contact linked to the lead."
       onConfirm={async () => {
         await Effect.runPromise(
-          companyApi.lead.convertLead({
+          httpClient.lead.convertLead({
             params: { id: RecordId("lead")(record.id) },
           })
         )

@@ -8,9 +8,9 @@ import {
   authorizationScopes,
   identities,
   objects,
-  platforms,
+  roots,
 } from "@/server/database/schema"
-import { PLATFORM_ID, SYSTEM_SERVICE_ACCOUNT_ID } from "@/system-records"
+import { ROOT_ID, SYSTEM_SERVICE_ACCOUNT_ID } from "@/system-records"
 
 class SystemActorBootstrapConflict extends Data.TaggedError(
   "SystemActorBootstrapConflict"
@@ -37,15 +37,15 @@ export const bootstrapSystemActor = Effect.fn("@company/bootstrapSystemActor")(
     const database = yield* Database
     yield* database.transaction((transaction) =>
       Effect.gen(function* () {
-        const platform = objectRow({
+        const root = objectRow({
           ancestorIds: [],
-          id: PLATFORM_ID,
-          objectType: "platform",
+          id: ROOT_ID,
+          objectType: "root",
           parentId: null,
         })
         yield* transaction
           .insert(objects)
-          .values(platform)
+          .values(root)
           .onConflictDoUpdate({
             target: objects.id,
             set: {
@@ -56,19 +56,19 @@ export const bootstrapSystemActor = Effect.fn("@company/bootstrapSystemActor")(
             },
           })
         yield* transaction
-          .insert(platforms)
-          .values({ id: PLATFORM_ID })
+          .insert(roots)
+          .values({ id: ROOT_ID })
           .onConflictDoNothing()
         yield* transaction
           .insert(authorizationScopes)
-          .values({ id: PLATFORM_ID })
+          .values({ id: ROOT_ID })
           .onConflictDoNothing()
 
         const systemAccount = objectRow({
-          ancestorIds: [PLATFORM_ID],
+          ancestorIds: [ROOT_ID],
           id: SYSTEM_SERVICE_ACCOUNT_ID,
           objectType: "serviceAccount",
-          parentId: PLATFORM_ID,
+          parentId: ROOT_ID,
         })
         yield* transaction
           .insert(objects)
@@ -94,15 +94,15 @@ export const bootstrapSystemActor = Effect.fn("@company/bootstrapSystemActor")(
         const expectedObjects = [
           {
             ancestorIds: [],
-            id: PLATFORM_ID,
-            objectType: "platform",
+            id: ROOT_ID,
+            objectType: "root",
             parentId: null,
           },
           {
-            ancestorIds: [PLATFORM_ID],
+            ancestorIds: [ROOT_ID],
             id: SYSTEM_SERVICE_ACCOUNT_ID,
             objectType: "serviceAccount",
-            parentId: PLATFORM_ID,
+            parentId: ROOT_ID,
           },
         ] as const
         const storedObjects = yield* transaction

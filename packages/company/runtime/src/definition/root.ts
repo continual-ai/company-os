@@ -19,7 +19,7 @@ export interface RootType<
 }
 
 /**
- * Defines the one structural root of a portable company model. A root may
+ * Defines the one structural root of a portable model. A root may
  * implement marker interfaces but remains outside ordinary object CRUD.
  */
 export function defineRoot<

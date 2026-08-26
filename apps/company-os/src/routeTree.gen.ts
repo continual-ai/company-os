@@ -17,6 +17,7 @@ import { Route as AppRouteRouteImport } from './routes/_app/route'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AuthLocalSessionRouteImport } from './routes/auth/local-session'
 import { Route as ApiOpenapiRouteImport } from './routes/api/openapi'
+import { Route as ApiMcpRouteImport } from './routes/api/mcp'
 import { Route as ApiDocsRouteImport } from './routes/api/docs'
 import { Route as ApiDescriptionRouteImport } from './routes/api/description'
 import { Route as AppLineItemsRouteImport } from './routes/_app/line-items'
@@ -86,6 +87,11 @@ const AuthLocalSessionRoute = AuthLocalSessionRouteImport.update({
 const ApiOpenapiRoute = ApiOpenapiRouteImport.update({
   id: '/api/openapi',
   path: '/api/openapi',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiMcpRoute = ApiMcpRouteImport.update({
+  id: '/api/mcp',
+  path: '/api/mcp',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiDocsRoute = ApiDocsRouteImport.update({
@@ -269,6 +275,7 @@ export interface FileRoutesByFullPath {
   '/line-items': typeof AppLineItemsRoute
   '/api/description': typeof ApiDescriptionRoute
   '/api/docs': typeof ApiDocsRoute
+  '/api/mcp': typeof ApiMcpRoute
   '/api/openapi': typeof ApiOpenapiRoute
   '/auth/local-session': typeof AuthLocalSessionRoute
   '/develop/design-system': typeof AppDevelopDesignSystemRouteRouteWithChildren
@@ -306,6 +313,7 @@ export interface FileRoutesByTo {
   '/line-items': typeof AppLineItemsRoute
   '/api/description': typeof ApiDescriptionRoute
   '/api/docs': typeof ApiDocsRoute
+  '/api/mcp': typeof ApiMcpRoute
   '/api/openapi': typeof ApiOpenapiRoute
   '/auth/local-session': typeof AuthLocalSessionRoute
   '/': typeof AppIndexRoute
@@ -347,6 +355,7 @@ export interface FileRoutesById {
   '/_app/line-items': typeof AppLineItemsRoute
   '/api/description': typeof ApiDescriptionRoute
   '/api/docs': typeof ApiDocsRoute
+  '/api/mcp': typeof ApiMcpRoute
   '/api/openapi': typeof ApiOpenapiRoute
   '/auth/local-session': typeof AuthLocalSessionRoute
   '/_app/': typeof AppIndexRoute
@@ -390,6 +399,7 @@ export interface FileRouteTypes {
     | '/line-items'
     | '/api/description'
     | '/api/docs'
+    | '/api/mcp'
     | '/api/openapi'
     | '/auth/local-session'
     | '/develop/design-system'
@@ -427,6 +437,7 @@ export interface FileRouteTypes {
     | '/line-items'
     | '/api/description'
     | '/api/docs'
+    | '/api/mcp'
     | '/api/openapi'
     | '/auth/local-session'
     | '/'
@@ -467,6 +478,7 @@ export interface FileRouteTypes {
     | '/_app/line-items'
     | '/api/description'
     | '/api/docs'
+    | '/api/mcp'
     | '/api/openapi'
     | '/auth/local-session'
     | '/_app/'
@@ -500,6 +512,7 @@ export interface RootRouteChildren {
   SignOutRoute: typeof SignOutRoute
   ApiDescriptionRoute: typeof ApiDescriptionRoute
   ApiDocsRoute: typeof ApiDocsRoute
+  ApiMcpRoute: typeof ApiMcpRoute
   ApiOpenapiRoute: typeof ApiOpenapiRoute
   AuthLocalSessionRoute: typeof AuthLocalSessionRoute
   ApiV1SplatRoute: typeof ApiV1SplatRoute
@@ -561,6 +574,13 @@ declare module '@tanstack/react-router' {
       path: '/api/openapi'
       fullPath: '/api/openapi'
       preLoaderRoute: typeof ApiOpenapiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/mcp': {
+      id: '/api/mcp'
+      path: '/api/mcp'
+      fullPath: '/api/mcp'
+      preLoaderRoute: typeof ApiMcpRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/docs': {
@@ -894,6 +914,7 @@ const rootRouteChildren: RootRouteChildren = {
   SignOutRoute: SignOutRoute,
   ApiDescriptionRoute: ApiDescriptionRoute,
   ApiDocsRoute: ApiDocsRoute,
+  ApiMcpRoute: ApiMcpRoute,
   ApiOpenapiRoute: ApiOpenapiRoute,
   AuthLocalSessionRoute: AuthLocalSessionRoute,
   ApiV1SplatRoute: ApiV1SplatRoute,

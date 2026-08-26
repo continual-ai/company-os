@@ -1,8 +1,12 @@
-import { Effect, Schema } from "effect"
+/* oxlint-disable anti-slop/no-chained-type-assertions, anti-slop/no-unknown-parameters, anti-slop/no-unsafe-dictionary-type, typescript/no-unsafe-type-assertion */
+// Effect's HttpApi builder is statically keyed while a Model is intentionally
+// data-driven. This module contains the one dynamic bridge between them.
+import { Effect, Layer, Schema } from "effect"
 import { HttpRouter } from "effect/unstable/http"
 import type { HttpClientError } from "effect/unstable/http"
 import {
   HttpApi,
+  HttpApiBuilder,
   HttpApiEndpoint,
   HttpApiGroup,
   HttpApiMiddleware,
@@ -32,18 +36,15 @@ import {
   type ObjectType,
   type ObjectUpdateInput,
 } from "./definition/object"
+import { standardQueries } from "./definition/query"
 import {
   type Batch,
   DEFAULT_PAGE_SIZE,
-  filterOperators,
   type ListRequest,
   MAX_BATCH_DELETE_SIZE,
-  MAX_BATCH_GET_SIZE,
   MAX_PAGE_SIZE,
-  nullPlacements,
   type Page,
   PageToken,
-  sortDirections,
 } from "./definition/request"
 import { schema } from "./definition/schema"
 import type {
@@ -52,21 +53,25 @@ import type {
   RecordIdentifier,
   StructSchema,
 } from "./definition/schema"
+import { ValidationError } from "./definition/standard-error"
 import {
-  AbortedError,
-  AlreadyExistsError,
-  FailedPreconditionError,
-  InternalError,
-  NotFoundError,
-  PermissionDeniedError,
-  UnauthenticatedError,
-  ValidationError,
-} from "./definition/standard-error"
+  executableModelOperation,
+  type ExecutableModelOperation,
+  modelOperation,
+  modelOperationErrors,
+} from "./effect-model-implementation"
+import {
+  objectBatchGetInputSchema,
+  objectBatchOutputSchema,
+  objectListInputSchema,
+  objectPageOutputSchema,
+  objectRecordOutputSchema,
+} from "./effect-model-schemas"
+import type { CurrentInvocation } from "./effect-object-service"
 import {
   toEffectErrorSchema,
   toEffectInputSchema,
   toEffectObjectCreateSchema,
-  toEffectObjectSchema,
   toEffectObjectUpdateSchema,
   toEffectRecordIdentifierSchema,
   toEffectSchema,
@@ -75,6 +80,7 @@ import {
 
 export interface HttpApiOptions {
   readonly basePath?: `/${string}`
+  readonly id?: string
   readonly version?: string
 }
 
@@ -83,12 +89,51 @@ export interface ApiReference {
   readonly handler: (request: Request) => Promise<Response>
 }
 
+export interface ModelHttpRequest {
+  readonly params?: Readonly<Record<string, unknown>>
+  readonly payload?: Readonly<Record<string, unknown>>
+  readonly query?: Readonly<Record<string, unknown>>
+  readonly request: {
+    readonly headers: Readonly<Record<string, string>>
+  }
+}
+
+export type ModelHttpOperation = Effect.Effect<
+  unknown,
+  unknown,
+  CurrentInvocation
+>
+
+export type ModelHttpInvoke = (
+  request: ModelHttpRequest,
+  descriptor: ExecutableModelOperation,
+  operation: ModelHttpOperation
+) => Effect.Effect<unknown, unknown>
+
 type DynamicGroup = HttpApiGroup.HttpApiGroup<
   string,
   HttpApiEndpoint.Constraint,
   boolean
 >
 type DynamicHttpApi = HttpApi.HttpApi<string, HttpApiGroup.Constraint>
+
+type DynamicHandlers = {
+  readonly handle: (
+    identifier: string,
+    handler: (request: ModelHttpRequest) => Effect.Effect<unknown, unknown>
+  ) => DynamicHandlers
+}
+
+type CompleteHandlers = HttpApiBuilder.Handlers<
+  never,
+  Record<string, HttpApiEndpoint.Constraint>,
+  string
+>
+
+type ExecutableModelImplementation = {
+  readonly model: ModelCatalog
+  readonly services: Readonly<Record<string, object>>
+}
 
 type OperationId<
   TOperation extends string,
@@ -302,13 +347,6 @@ function pathParameter(object: ObjectType) {
   }
 }
 
-function effectRoute(path: `/${string}`): `/${string}` {
-  // SAFETY: replacing placeholders preserves the leading slash required by
-  // Effect's route type.
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  return path.replace(/\{([^}/]+)\}/g, ":$1") as `/${string}`
-}
-
 const pageTokenSchema = Schema.String.pipe(
   Schema.fromBrand("PageToken", PageToken)
 )
@@ -333,19 +371,24 @@ function errorSchemas(errors: ReadonlyArray<ErrorType>) {
   })
 }
 
-const authorizationErrors = [
-  UnauthenticatedError,
-  PermissionDeniedError,
-  InternalError,
-]
-const mutationErrors = [
-  ...authorizationErrors,
-  AbortedError,
-  AlreadyExistsError,
-  FailedPreconditionError,
-]
-
 const validationErrorSchema = errorSchemas([ValidationError])[0]!
+
+function projectedErrorSchemas(
+  object: ObjectType,
+  definition:
+    | Action
+    | ReturnType<typeof standardQueries>[keyof ReturnType<
+        typeof standardQueries
+      >]
+) {
+  return errorSchemas(
+    modelOperationErrors({
+      definition,
+      key: `${object.id}.${definition.id}`,
+      object,
+    })
+  )
+}
 
 /** Maps generated request-decoding failures into the portable validation contract. */
 export class HttpValidationMiddleware extends HttpApiMiddleware.Service<HttpValidationMiddleware>()(
@@ -374,28 +417,16 @@ function addDefaultEndpoints(
   const collectionPath = `${basePath}/${object.collection}` as const
   const parameter = pathParameter(object)
   const recordPath = `${collectionPath}/:${parameter.name}` as const
-  const record = toEffectObjectSchema(object)
+  const record = objectRecordOutputSchema(object)
   const createInput = toEffectObjectCreateSchema(object)
   const updateInput = toEffectObjectUpdateSchema(object)
-  const readErrors = errorSchemas(authorizationErrors)
-  const notFoundErrors = errorSchemas([...authorizationErrors, NotFoundError])
-  const writeErrors = errorSchemas(mutationErrors)
-  const recordWriteErrors = errorSchemas([...mutationErrors, NotFoundError])
+  const queries = standardQueries(object)
+  const listErrors = projectedErrorSchemas(object, queries.list)
+  const getErrors = projectedErrorSchemas(object, queries.get)
+  const batchGetErrors = projectedErrorSchemas(object, queries.batchGet)
   let result = group
 
-  const listResponse = Schema.Struct({
-    items: Schema.Array(record),
-    nextPageToken: Schema.Union([
-      Schema.Literal(""),
-      pageTokenSchema.annotate({
-        description:
-          "Opaque continuation token; empty when there is no next page.",
-      }),
-    ]),
-  }).annotate({
-    identifier: `${pascalCase(object.id)}List`,
-    title: object.pluralName,
-  })
+  const listResponse = objectPageOutputSchema(object)
   const listEndpoint = HttpApiEndpoint.get(
     httpEndpointId("list", object),
     collectionPath,
@@ -419,7 +450,7 @@ function addDefaultEndpoints(
         ),
       },
       success: listResponse,
-      error: readErrors,
+      error: listErrors,
     }
   ).annotateMerge(
     endpointAnnotations({
@@ -429,82 +460,13 @@ function addDefaultEndpoints(
   )
   result = result.add(listEndpoint)
 
-  const filterFields = [
-    "createdAt",
-    "createdBy",
-    "id",
-    "parent",
-    "systemManaged",
-    "updatedAt",
-    "updatedBy",
-    ...Object.keys(object.properties),
-  ]
-  const fieldSchema = Schema.Literals(filterFields).annotate({
-    description: `A declared ${object.name.toLowerCase()} property or standard record field.`,
-    identifier: `${pascalCase(object.id)}FilterField`,
-  })
-  const filterOperatorSchema = Schema.Literals(filterOperators).annotate({
-    identifier: `${pascalCase(object.id)}FilterOperator`,
-  })
-  const sortDirectionSchema = Schema.Literals(sortDirections).annotate({
-    identifier: "SortDirection",
-  })
-  const nullPlacementSchema = Schema.Literals(nullPlacements).annotate({
-    identifier: "NullPlacement",
-  })
-  let filterSchema: Schema.Codec<unknown, unknown>
-  filterSchema = Schema.suspend(() =>
-    Schema.Union([
-      Schema.Struct({ and: Schema.Array(filterSchema) }).annotate({
-        identifier: `${pascalCase(object.id)}AndFilter`,
-      }),
-      Schema.Struct({ not: filterSchema }).annotate({
-        identifier: `${pascalCase(object.id)}NotFilter`,
-      }),
-      Schema.Struct({ or: Schema.Array(filterSchema) }).annotate({
-        identifier: `${pascalCase(object.id)}OrFilter`,
-      }),
-      Schema.Struct({
-        field: fieldSchema,
-        operator: filterOperatorSchema,
-        value: Schema.optionalKey(Schema.Unknown),
-      }).annotate({
-        identifier: `${pascalCase(object.id)}FieldFilter`,
-      }),
-    ]).annotate({ identifier: `${pascalCase(object.id)}FilterExpression` })
-  ).annotate({
-    identifier: `${pascalCase(object.id)}Filter`,
-    title: `${object.name} filter`,
-  })
   const searchEndpoint = HttpApiEndpoint.post(
     httpEndpointId("search", object),
     `${collectionPath}/search`,
     {
-      payload: Schema.Struct({
-        filter: Schema.optionalKey(filterSchema),
-        pageSize: Schema.optionalKey(
-          Schema.Number.check(
-            Schema.isInt(),
-            Schema.isGreaterThanOrEqualTo(1),
-            Schema.isLessThanOrEqualTo(MAX_PAGE_SIZE)
-          )
-        ),
-        pageToken: Schema.optionalKey(pageTokenSchema),
-        sort: Schema.optionalKey(
-          Schema.Array(
-            Schema.Struct({
-              direction: sortDirectionSchema,
-              field: fieldSchema,
-              nulls: Schema.optionalKey(nullPlacementSchema),
-            })
-          )
-        ),
-      }).annotate({
-        identifier: `${pascalCase(object.id)}SearchInput`,
-        title: `Search ${object.pluralName.toLowerCase()}`,
-      }),
+      payload: objectListInputSchema(object),
       success: listResponse,
-      error: readErrors,
+      error: listErrors,
     }
   ).annotateMerge(
     endpointAnnotations({
@@ -516,28 +478,14 @@ function addDefaultEndpoints(
   )
   result = result.add(searchEndpoint)
 
-  const batchResponse = Schema.Struct({
-    items: Schema.Array(record),
-  }).annotate({
-    identifier: `${pascalCase(object.id)}Batch`,
-    title: `${object.pluralName} batch`,
-  })
+  const batchResponse = objectBatchOutputSchema(object)
   const batchEndpoint = HttpApiEndpoint.post(
     httpEndpointId("batchGet", object),
     `${collectionPath}/batchGet`,
     {
-      payload: Schema.Struct({
-        ids: Schema.Array(
-          toEffectRecordIdentifierSchema(object.id).annotate({
-            title: `${object.name} ID or alias`,
-          })
-        ).check(Schema.isMinLength(1), Schema.isMaxLength(MAX_BATCH_GET_SIZE)),
-      }).annotate({
-        identifier: `${pascalCase(object.id)}BatchGetInput`,
-        title: `Batch get ${object.pluralName.toLowerCase()}`,
-      }),
+      payload: objectBatchGetInputSchema(object),
       success: batchResponse,
-      error: notFoundErrors,
+      error: batchGetErrors,
     }
   ).annotateMerge(
     endpointAnnotations({
@@ -571,7 +519,7 @@ function addDefaultEndpoints(
           title: `Batch delete ${object.pluralName.toLowerCase()}`,
         }),
         success: HttpApiSchema.NoContent,
-        error: recordWriteErrors,
+        error: projectedErrorSchemas(object, object.actions.batchDelete),
       }
     ).annotateMerge(
       endpointAnnotations({
@@ -593,7 +541,7 @@ function addDefaultEndpoints(
       {
         payload: createInput,
         success: createdRecord,
-        error: writeErrors,
+        error: projectedErrorSchemas(object, object.actions.create),
       }
     ).annotateMerge(
       endpointAnnotations({
@@ -610,7 +558,7 @@ function addDefaultEndpoints(
     {
       params: parameter.schema,
       success: record,
-      error: notFoundErrors,
+      error: getErrors,
     }
   ).annotateMerge(
     endpointAnnotations({
@@ -628,7 +576,7 @@ function addDefaultEndpoints(
         params: parameter.schema,
         payload: updateInput,
         success: record,
-        error: recordWriteErrors,
+        error: projectedErrorSchemas(object, object.actions.update),
       }
     ).annotateMerge(
       endpointAnnotations({
@@ -654,7 +602,7 @@ function addDefaultEndpoints(
           ),
         },
         success: HttpApiSchema.NoContent,
-        error: recordWriteErrors,
+        error: projectedErrorSchemas(object, object.actions.delete),
       }
     ).annotateMerge(
       endpointAnnotations({
@@ -675,9 +623,7 @@ function addActionEndpoint(
   basePath: `/${string}`
 ): DynamicGroup {
   const identifier = httpEndpointId(action.id, object, action.scope)
-  const placeholders = [...action.http.path.matchAll(/\{([^}/]+)\}/g)].map(
-    (match) => match[1] ?? ""
-  )
+  const placeholders = action.scope === "object" ? ["id"] : []
   const pathProperties = Object.fromEntries(
     placeholders.map((name) => [name, action.input.properties[name]!])
   )
@@ -687,15 +633,11 @@ function addActionEndpoint(
     )
   )
   const hasBody = Object.keys(bodyProperties).length > 0
-  const route = effectRoute(action.http.path)
-  // SAFETY: basePath and authored action paths both begin with a slash.
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  const path = `${basePath}${route}` as `/${string}`
-  const error = errorSchemas([
-    ...mutationErrors,
-    ...(action.scope === "object" ? [NotFoundError] : []),
-    ...action.errors,
-  ])
+  const path =
+    action.scope === "object"
+      ? (`${basePath}/${object.collection}/:id/actions/${action.id}` as const)
+      : (`${basePath}/${object.collection}/actions/${action.id}` as const)
+  const error = projectedErrorSchemas(object, action)
   const payload = toEffectInputSchema(schema.object(bodyProperties)).annotate({
     identifier: `${pascalCase(identifier)}Input`,
     title: `${action.name} input`,
@@ -754,13 +696,13 @@ const restoreActionPaths: (typeof OpenApi.Transform)["Service"] = (
   }
 }
 
-/** Compiles a portable company model into the Effect v4 HTTP contract. */
-export function createHttpApi(
+/** Compiles a portable model into an Effect v4 HTTP contract. */
+export function createModelHttpApi(
   model: ModelCatalog,
   options: HttpApiOptions = {}
 ): DynamicHttpApi {
   const basePath = options.basePath ?? defaultBasePath
-  const initialApi = HttpApi.make(model.id).annotateMerge(
+  const initialApi = HttpApi.make(options.id ?? "model").annotateMerge(
     OpenApi.annotations({
       description: `Generated HTTP API for ${model.name}.`,
       title: `${model.name} API`,
@@ -801,6 +743,102 @@ export function createHttpApi(
   return httpApi.middleware(
     HttpValidationMiddleware
   ) as unknown as DynamicHttpApi
+}
+
+function standardHandlers(
+  initial: DynamicHandlers,
+  implementation: ExecutableModelImplementation,
+  object: ReturnType<typeof modelObjects>[number],
+  invoke: ModelHttpInvoke
+): DynamicHandlers {
+  let handlers = initial
+  const call = (id: string, input: unknown) =>
+    modelOperation(implementation, object.id, id)(input)
+  const descriptor = (id: string) =>
+    executableModelOperation(implementation.model, object.id, id)
+
+  handlers = handlers.handle(httpEndpointId("list", object), (request) =>
+    invoke(request, descriptor("list"), call("list", request.query))
+  )
+  handlers = handlers.handle(httpEndpointId("search", object), (request) =>
+    invoke(request, descriptor("list"), call("list", request.payload))
+  )
+  handlers = handlers.handle(httpEndpointId("batchGet", object), (request) =>
+    invoke(request, descriptor("batchGet"), call("batchGet", request.payload))
+  )
+
+  for (const action of Object.values(object.actions)) {
+    if (!isStandardActionId(action.id)) continue
+    handlers = handlers.handle(httpEndpointId(action.id, object), (request) =>
+      invoke(
+        request,
+        descriptor(action.id),
+        call(action.id, {
+          ...request.params,
+          ...request.query,
+          ...request.payload,
+        })
+      )
+    )
+  }
+  return handlers
+}
+
+/** Binds every model-derived HTTP endpoint to the corresponding service method. */
+export function createModelHttpHandlers(
+  api: unknown,
+  implementation: ExecutableModelImplementation,
+  invoke: ModelHttpInvoke
+) {
+  // SAFETY: callers provide an Effect HttpApi containing groups generated from
+  // implementation.model; the dynamic compiler validates those same keys.
+  const dynamicApi = api as DynamicHttpApi
+  const groupLayers = modelObjects(implementation.model).map((object) =>
+    HttpApiBuilder.group(dynamicApi, object.id, (initialHandlers) => {
+      // SAFETY: Effect decoded these handlers from the model-derived group.
+      let handlers = standardHandlers(
+        initialHandlers as unknown as DynamicHandlers,
+        implementation,
+        object,
+        invoke
+      )
+
+      for (const action of Object.values(object.actions)) {
+        if (isStandardActionId(action.id)) continue
+        handlers = handlers.handle(
+          httpEndpointId(action.id, object, action.scope),
+          (request) =>
+            invoke(
+              request,
+              executableModelOperation(
+                implementation.model,
+                object.id,
+                action.id
+              ),
+              modelOperation(
+                implementation,
+                object.id,
+                action.id
+              )({
+                ...request.params,
+                ...request.payload,
+              })
+            )
+        )
+      }
+
+      // SAFETY: every endpoint generated for the group was registered above.
+      return handlers as unknown as CompleteHandlers
+    })
+  )
+
+  const first = groupLayers[0]
+  if (first === undefined) {
+    throw new Error("A model must contain at least one object.")
+  }
+  return groupLayers
+    .slice(1)
+    .reduce((layers, group) => Layer.merge(layers, group), first)
 }
 
 /** Builds the Fetch handler used to serve Effect's Scalar reference. */

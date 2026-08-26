@@ -27,8 +27,8 @@ import {
   ALL_AUTHENTICATED_CALLERS_PRINCIPAL_SET_ID,
   ALL_CALLERS_PRINCIPAL_SET_ID,
   ANONYMOUS_ACTOR_ID,
-  PLATFORM_ADMIN_ROLE_ID,
-  PLATFORM_ID,
+  ADMINISTRATOR_ROLE_ID,
+  ROOT_ID,
   SYSTEM_SERVICE_ACCOUNT_ID,
   SYSTEM_ROLE_ASSIGNMENT_ID,
 } from "@/system-records"
@@ -87,11 +87,11 @@ describe("Company OS seeds", () => {
         yield* database
           .update(roles)
           .set({ name: "Drifted", permissions: [] })
-          .where(eq(roles.id, PLATFORM_ADMIN_ROLE_ID))
+          .where(eq(roles.id, ADMINISTRATOR_ROLE_ID))
         yield* database
           .update(objects)
           .set({ systemManaged: false })
-          .where(eq(objects.id, PLATFORM_ADMIN_ROLE_ID))
+          .where(eq(objects.id, ADMINISTRATOR_ROLE_ID))
         yield* database
           .delete(objects)
           .where(eq(objects.id, SYSTEM_ROLE_ASSIGNMENT_ID))
@@ -103,17 +103,17 @@ describe("Company OS seeds", () => {
           .from(objects)
           .where(
             inArray(objects.id, [
-              PLATFORM_ID,
+              ROOT_ID,
               SYSTEM_SERVICE_ACCOUNT_ID,
               ANONYMOUS_ACTOR_ID,
-              PLATFORM_ADMIN_ROLE_ID,
+              ADMINISTRATOR_ROLE_ID,
               SYSTEM_ROLE_ASSIGNMENT_ID,
             ])
           )
         const role = yield* database
           .select({ name: roles.name, permissions: roles.permissions })
           .from(roles)
-          .where(eq(roles.id, PLATFORM_ADMIN_ROLE_ID))
+          .where(eq(roles.id, ADMINISTRATOR_ROLE_ID))
           .limit(1)
         const callerSets = yield* database
           .select({ id: principalSets.id, kind: principalSets.kind })
@@ -140,14 +140,14 @@ describe("Company OS seeds", () => {
         const unknownActor = yield* database
           .insert(objects)
           .values({
-            ancestorIds: [PLATFORM_ID],
+            ancestorIds: [ROOT_ID],
             metadata: {},
             createdAt: "2026-08-24T00:00:00.000Z",
             createdById: "identity_missing",
             etag: Etag("invalid-actor"),
             id: "company_invalid_actor",
             objectType: "company",
-            parentId: PLATFORM_ID,
+            parentId: ROOT_ID,
             systemManaged: false,
             updatedAt: "2026-08-24T00:00:00.000Z",
             updatedById: SYSTEM_SERVICE_ACCOUNT_ID,
@@ -170,10 +170,10 @@ describe("Company OS seeds", () => {
 
     expect(result.seededObjects.map(({ id }) => id)).toEqual(
       expect.arrayContaining([
-        PLATFORM_ID,
+        ROOT_ID,
         SYSTEM_SERVICE_ACCOUNT_ID,
         ANONYMOUS_ACTOR_ID,
-        PLATFORM_ADMIN_ROLE_ID,
+        ADMINISTRATOR_ROLE_ID,
         SYSTEM_ROLE_ASSIGNMENT_ID,
       ])
     )
@@ -196,7 +196,7 @@ describe("Company OS seeds", () => {
     expect(
       result.seededObjects.every(({ systemManaged }) => systemManaged)
     ).toBe(true)
-    expect(result.role[0]?.name).toBe("Platform administrator")
+    expect(result.role[0]?.name).toBe("Administrator")
     expect(result.callerSets).toEqual([
       {
         id: ALL_AUTHENTICATED_CALLERS_PRINCIPAL_SET_ID,
@@ -207,7 +207,7 @@ describe("Company OS seeds", () => {
     expect(Array.isArray(result.role[0]?.permissions)).toBe(true)
     expect(result.assignment[0]).toEqual({
       principalId: SYSTEM_SERVICE_ACCOUNT_ID,
-      roleId: PLATFORM_ADMIN_ROLE_ID,
+      roleId: ADMINISTRATOR_ROLE_ID,
     })
     expect(result.aliases).toEqual([])
     expect(result.impersonation).toBeInstanceOf(ReservedSystemActor)

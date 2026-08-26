@@ -1,4 +1,4 @@
-import { companyConfig } from "@/company/config"
+import { applicationConfig } from "@/customization/config"
 
 export type PageMetadata = {
   breadcrumb: string
@@ -13,7 +13,7 @@ export type DocumentMetadata = {
   title: string
 }
 
-export const appName = companyConfig.identity.productName
+export const appName = applicationConfig.identity.productName
 
 declare module "@tanstack/react-router" {
   interface StaticDataRouteOption {

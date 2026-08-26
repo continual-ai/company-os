@@ -7,15 +7,15 @@ import { HttpApiClient } from "effect/unstable/httpapi"
 import { applicationHttpApi } from "./http-api"
 import type { capabilityGroup } from "./http-api"
 
-export type CompanyApiClient = ModelHttpClient<typeof Model> &
+export type ApplicationHttpClient = ModelHttpClient<typeof Model> &
   HttpApiClient.Client<typeof capabilityGroup>
 
-/** Native Effect client derived from the same contract served by the backend. */
+/** Native Effect client derived from the same HTTP contract as the server. */
 // SAFETY: Model generates the widened portion of applicationHttpApi at runtime;
 // ModelHttpClient restores that same closed definition's static method shape.
 // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion, typescript/no-unsafe-type-assertion
-export const companyApi = Effect.runSync(
+export const httpClient = Effect.runSync(
   HttpApiClient.make(applicationHttpApi).pipe(
     Effect.provide(FetchHttpClient.layer)
   )
-) as CompanyApiClient
+) as ApplicationHttpClient

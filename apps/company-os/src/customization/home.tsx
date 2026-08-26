@@ -8,19 +8,19 @@ import {
 import { Link } from "@tanstack/react-router"
 import { ArrowRightIcon } from "lucide-react"
 
-import { companyConfig } from "@/company/config"
-import {
-  companyObjectNavigation,
-  companyObjectNavigationChecks,
-} from "@/company/navigation"
 import { useCapabilities } from "@/components/use-capabilities"
+import { applicationConfig } from "@/customization/config"
+import {
+  objectNavigation,
+  objectNavigationChecks,
+} from "@/customization/navigation"
 
 const modelObjectCount = Object.keys(Model.objects).length
 
-/** Company-owned first authenticated experience and primary activation surface. */
-export function CompanyHome() {
-  const capabilities = useCapabilities(companyObjectNavigationChecks)
-  const accessibleObjects = companyObjectNavigation.filter((item) =>
+/** Custom first authenticated experience and primary activation surface. */
+export function Home() {
+  const capabilities = useCapabilities(objectNavigationChecks)
+  const accessibleObjects = objectNavigation.filter((item) =>
     capabilities.can({ permission: `${item.object.id}.list` })
   )
 
@@ -29,13 +29,13 @@ export function CompanyHome() {
       <div className="flex flex-col gap-6 py-6 md:gap-8 md:py-8">
         <section className="px-4 lg:px-6">
           <p className="text-sm font-medium text-muted-foreground">
-            {companyConfig.home.eyebrow}
+            {applicationConfig.home.eyebrow}
           </p>
           <h1 className="mt-2 max-w-3xl text-3xl font-semibold tracking-tight text-balance">
-            {companyConfig.home.headline}
+            {applicationConfig.home.headline}
           </h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-            {companyConfig.home.description}
+            {applicationConfig.home.description}
           </p>
         </section>
 

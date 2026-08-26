@@ -10,14 +10,15 @@ import { FetchHttpClient } from "effect/unstable/http"
 import { HttpApiClient } from "effect/unstable/httpapi"
 import { describe, expect, it } from "vitest"
 
-import type { CompanyApiClient } from "@/company-client"
 import { applicationHttpApi } from "@/http-api"
-import { PLATFORM_ID } from "@/system-records"
+import type { ApplicationHttpClient } from "@/http-client"
+import { ROOT_ID } from "@/system-records"
 
+import { ApplicationHttpServer } from "./application-http-server"
 import { makeApplicationLayer } from "./application-layer"
+import { ApplicationMcpServer } from "./application-mcp-server"
 import { AuthSettings, type AuthConfig } from "./auth/auth-config"
 import { IdentityProvider } from "./auth/identity-provider"
-import { CompanyApi } from "./company-api"
 import { Database } from "./database/database"
 import {
   identityBindings,
@@ -93,7 +94,7 @@ function run<A, E>(effect: Effect.Effect<A, E, PgliteClient.PgliteClient>) {
   )
 }
 
-describe("Company API", () => {
+describe("application HTTP server", () => {
   it("assembles generated CRUD, JIT identity, and anonymous authorization", async () => {
     await run(
       Effect.gen(function* () {
@@ -112,15 +113,76 @@ describe("Company API", () => {
             ),
           })
         )
-        const api = yield* Effect.promise(() => runtime.runPromise(CompanyApi))
+        const api = yield* Effect.promise(() =>
+          runtime.runPromise(ApplicationHttpServer)
+        )
+        const mcp = yield* Effect.promise(() =>
+          runtime.runPromise(ApplicationMcpServer)
+        )
+        const rejectedMcpOrigin = yield* Effect.promise(() =>
+          runtime.runPromise(
+            mcp.handle(
+              new Request("http://localhost/api/mcp", {
+                body: JSON.stringify({
+                  id: 1,
+                  jsonrpc: "2.0",
+                  method: "tools/list",
+                }),
+                headers: {
+                  accept: "application/json, text/event-stream",
+                  "content-type": "application/json",
+                  host: "localhost",
+                  origin: "https://attacker.example",
+                },
+                method: "POST",
+              })
+            )
+          )
+        )
+        expect(rejectedMcpOrigin.status).toBe(403)
+
+        const listedMcpTools = yield* Effect.promise(() =>
+          runtime.runPromise(
+            mcp.handle(
+              new Request("http://localhost/api/mcp", {
+                body: JSON.stringify({
+                  id: 2,
+                  jsonrpc: "2.0",
+                  method: "tools/list",
+                }),
+                headers: {
+                  accept: "application/json, text/event-stream",
+                  "content-type": "application/json",
+                  host: "localhost",
+                },
+                method: "POST",
+              })
+            )
+          )
+        )
+        expect(listedMcpTools.status).toBe(200)
+        const listedMcpBody = yield* Effect.promise(() => listedMcpTools.text())
+        const listedMcpJson = listedMcpBody
+          .split("\n")
+          .find((line) => line.startsWith("data:"))
+          ?.slice("data:".length)
+          .trim()
+        const listedMcpPayload = Schema.decodeUnknownSync(
+          Schema.Struct({
+            result: Schema.Struct({
+              tools: Schema.Array(Schema.Struct({ name: Schema.String })),
+            }),
+          })
+        )(JSON.parse(listedMcpJson ?? listedMcpBody))
+        expect(listedMcpPayload.result.tools.map(({ name }) => name)).toContain(
+          "lead.convert"
+        )
         const anonymousCapabilities = yield* Effect.promise(() =>
           runtime.runPromise(
             api.handle(
               new Request("http://company.test/api/v1/capabilities:check", {
                 body: JSON.stringify({
-                  checks: [
-                    { permission: "company.create", target: PLATFORM_ID },
-                  ],
+                  checks: [{ permission: "company.create", target: ROOT_ID }],
                 }),
                 headers: {
                   "content-type": "application/json",
@@ -171,9 +233,9 @@ describe("Company API", () => {
           baseUrl: "http://company.test",
         }).pipe(Effect.provide(FetchHttpClient.layer))
         // SAFETY: applicationHttpApi is projected from the same closed Model
-        // represented by CompanyApiClient.
+        // represented by ApplicationHttpClient.
         // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-        const client = nativeClient as CompanyApiClient
+        const client = nativeClient as ApplicationHttpClient
         const useTestFetch = <A, E>(effect: Effect.Effect<A, E>) =>
           effect.pipe(Effect.provideService(FetchHttpClient.Fetch, fetchApi))
 
@@ -181,7 +243,7 @@ describe("Company API", () => {
           client.capabilities.checkCapabilities({
             payload: {
               checks: [
-                { permission: "company.create", target: PLATFORM_ID },
+                { permission: "company.create", target: ROOT_ID },
                 { permission: "lead.convert", target: "missing-lead" },
               ],
             },
@@ -257,9 +319,7 @@ describe("Company API", () => {
             api.handle(
               new Request("http://company.test/api/v1/capabilities:check", {
                 body: JSON.stringify({
-                  checks: [
-                    { permission: "company.create", target: PLATFORM_ID },
-                  ],
+                  checks: [{ permission: "company.create", target: ROOT_ID }],
                 }),
                 headers: {
                   "content-type": "application/json",

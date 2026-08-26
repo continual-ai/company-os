@@ -3,8 +3,8 @@
 The repository's central backend and operating application in one TanStack Start deployment.
 
 This app is the repository's private composition root. It projects the semantic contract from
-`@company/model` into Drizzle storage, API descriptions, OpenAPI, and one executable HTTP API over
-the assembled Effect repository and service layers. OIDC browser sessions and service-account API
+`@company/model` into Drizzle storage, model metadata, OpenAPI, HTTP, and MCP over the assembled
+Effect repository and service layers. OIDC browser sessions and service-account API
 credentials remain outside this app; verified deployment assertions resolve to the same governed
 invocation context. The operating application, agents, and external interfaces call the same
 company capabilities rather than owning separate business logic.
@@ -23,10 +23,10 @@ import protection treats `src/server` as a hard server-only boundary. Reserve `.
 exceptional server-only modules that must remain colocated elsewhere, and use `.functions.ts` for
 client-callable `createServerFn` wrappers.
 
-## Company experience
+## Customization
 
-`src/company` is the source-owned customer overlay. Its config and theme cover shallow product
-identity, asset, and token changes; its navigation and home modules own the initial operating
+`src/customization` is the source-owned application overlay. Its config covers shallow product
+identity, assets, and first-launch copy; its navigation and home modules own the initial operating
 experience. Core shell, identity-boundary, design-system, table, form, and accessibility behavior
 stay shared. When a use case requires new business behavior, extend the model and governed server
 path rather than encoding policy in the overlay or turning the config into a page schema.
@@ -34,8 +34,9 @@ path rather than encoding policy in the overlay or turning the config into a pag
 ## Server organization
 
 The server mirrors the ontology without creating aggregate runtime services for navigation areas.
-Each implemented object has one replaceable repository capability and one governed service
-capability. The intended request path is:
+`ObjectRepositories` derives the ordinary persistence registry from the closed model. Governed
+services reuse that registry; only objects with additional behavior receive a named service. The
+intended request path is:
 
 ```text
 HTTP / MCP / agents
@@ -62,6 +63,10 @@ Effect PostgreSQL client
 - A custom action belongs in the public model only when a corresponding service implementation and
   transport binding exist.
 - Handlers call the governed service method corresponding to the declared object query or action.
+- `ModelImplementation` exhaustively binds the closed model to those services; it validates the
+  projection boundary but does not add another execution layer.
+- HTTP groups, OpenAPI operations, clients, and MCP tools derive from that binding rather than
+  maintaining protocol-specific operation registries.
 - Cross-object service methods coordinate governed object services and own their transaction.
 - Object services are the authoritative boundary for authorization, portable schema validation,
   caller-owned metadata, audit actors, write preconditions, and object-level behavior, regardless
@@ -94,6 +99,12 @@ Interactive surfaces fail closed: mutation controls appear only after an affirma
 result. Generic object collections derive checks from model actions and pass a `can` predicate to
 custom collection and record actions. New custom UI should follow that same pattern, while server
 services remain the authority even when a client has just received an allowed result.
+
+The standard Streamable HTTP MCP endpoint is `/api/mcp`. It authenticates through the same
+application boundary as `/api/v1`, establishes the same `CurrentInvocation`, and exposes every
+model query and action as a tool named `<object>.<operation>`. Tool schemas and read-only,
+destructive, and idempotent hints derive from the model. Deployment-specific MCP authorization
+discovery can be added at the identity edge without changing model services or tool definitions.
 
 `systemManaged` is immutable ownership provenance on the shared object row. It does not grant read
 access or replace hierarchy: ordinary actors follow normal role inheritance but cannot update or
@@ -238,10 +249,10 @@ variables may enter browser code; database and identity assertion configuration 
 The `.env.local` file is ignored and `.env.example` contains no usable credentials.
 
 `db:migrate` applies only migrations not already recorded by
-Drizzle. `db:seed` idempotently converges the built-in Platform, system identity, principal sets,
+Drizzle. `db:seed` idempotently converges the built-in Root, system identity, principal sets,
 roles, and initial role assignments through stable canonical IDs. `db:deploy` performs both in that
 order and is the normal setup and release command. Raw persistence establishes only the cyclic
-Platform and system Actor needed to begin; repositories converge the concrete system account and
+Root and system Actor needed to begin; repositories converge the concrete system account and
 all remaining records. All three commands are safe to run repeatedly.
 
 ### Change an unshared baseline
@@ -280,7 +291,7 @@ change.
 Drizzle does not currently represent PostgreSQL constraint deferrability in its schema definition.
 Any migration that creates or replaces the `objects.created_by_id` or `objects.updated_by_id`
 foreign key must retain `DEFERRABLE INITIALLY DEFERRED`; bootstrapping the mutually dependent
-Platform and system Actor requires those checks to run at transaction commit. The migration
+Root and system Actor requires those checks to run at transaction commit. The migration
 integration test verifies the resulting PostgreSQL constraints directly.
 
 For SQL that Drizzle cannot derive, generate an empty, tracked migration instead of creating an
@@ -355,11 +366,12 @@ Open <http://localhost:3002>. Useful endpoints:
 
 - `GET /health` — process health
 - `/api/v1/*` — governed object reads, mutations, declared actions, and capability checks
+- `POST /api/mcp` — Streamable HTTP MCP projection of the same governed operations
 - `GET /api/description` — serializable API projection of `Model`
 - `GET /api/openapi` — runtime-derived OpenAPI 3.1 contract
 - `GET /api/docs` — generated Scalar API reference
 
-Set the public deployment origin when generating canonical URLs:
+Set the public deployment origin for canonical URLs and the MCP Host/Origin allowlist:
 
 ```sh
 VITE_COMPANY_OS_URL=https://os.example.com

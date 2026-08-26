@@ -7,7 +7,7 @@ import { defineModel } from "./definition/model"
 import { defineObject } from "./definition/object"
 import { defineRoot } from "./definition/root"
 import { schema } from "./definition/schema"
-import { createApiReference, createHttpApi } from "./effect-http"
+import { createApiReference, createModelHttpApi } from "./effect-http"
 
 const ArchiveFailed = defineError({
   name: "Archive failed",
@@ -21,17 +21,17 @@ const Identity = defineInterface({
   name: "Identity",
   pluralName: "Identities",
 })
-const Platform = defineRoot({
-  id: "platform",
+const Root = defineRoot({
+  id: "root",
   implements: [{ interface: Identity }],
-  name: "Platform",
+  name: "Root",
 })
 
 const Account = defineObject({
   id: "account",
   collection: "accounts",
   name: "Account",
-  parent: Platform,
+  parent: Root,
   pluralName: "Accounts",
   properties: {
     email: schema.email(),
@@ -68,15 +68,14 @@ const Account = defineObject({
 
 const Example = defineModel({
   actor: Identity,
-  id: "example",
   interfaces: [Identity],
   name: "Example",
   objects: [Account],
   links: [],
-  root: Platform,
+  root: Root,
 })
 
-const httpApi = createHttpApi(Example)
+const httpApi = createModelHttpApi(Example)
 const document = OpenApi.fromApi(httpApi)
 const reference = createApiReference(httpApi)
 
@@ -117,7 +116,7 @@ describe("Effect HTTP projection", () => {
     expect(document.paths["/api/v1/accounts"]?.post?.responses).toHaveProperty(
       "400"
     )
-    expect(document.components?.schemas.AccountList).toHaveProperty(
+    expect(document.components?.schemas.AccountPage).toHaveProperty(
       "required",
       expect.arrayContaining(["items", "nextPageToken"])
     )
@@ -186,21 +185,20 @@ describe("Effect HTTP projection", () => {
       id: "deletable",
       collection: "deletables",
       name: "Deletable",
-      parent: Platform,
+      parent: Root,
       pluralName: "Deletables",
       properties: { name: schema.string() },
       display: { title: "name" },
     })
     const model = defineModel({
       actor: Identity,
-      id: "batchDeleteExample",
       interfaces: [Identity],
       name: "Batch delete example",
       objects: [Deletable],
       links: [],
-      root: Platform,
+      root: Root,
     })
-    const batchDocument = OpenApi.fromApi(createHttpApi(model))
+    const batchDocument = OpenApi.fromApi(createModelHttpApi(model))
 
     expect(batchDocument.paths["/api/v1/deletables/batchDelete"]).toMatchObject(
       {

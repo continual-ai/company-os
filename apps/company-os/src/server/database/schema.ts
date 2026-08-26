@@ -8,7 +8,7 @@ export const Storage = makePostgresSchema(Model)
 // aliases expose the generated projection without duplicating its definition.
 export const objects = Storage.core.objects
 export const recordAliases = Storage.core.recordAliases
-export const platforms = Storage.core.roots
+export const roots = Storage.core.roots
 export const actors = Storage.interfaces.actor
 export const authorizationScopes = Storage.interfaces.authorizationScope
 export const identities = Storage.interfaces.identity

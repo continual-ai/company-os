@@ -367,7 +367,7 @@ export function resolveRecordAliases<
 
 /**
  * Builds the standard repository for one semantic object and its Drizzle
- * storage table. Company-specific repositories may add typed queries to the
+ * storage table. Application-specific repositories may add typed queries to the
  * returned capability without bypassing its hydration and write invariants.
  */
 export function makeObjectRepository<

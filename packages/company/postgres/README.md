@@ -4,7 +4,7 @@ Vendored PostgreSQL storage for an operating semantic model.
 
 This server-only adapter compiles a portable `@company/runtime` model into deterministic Drizzle
 tables and provides the standard PostgreSQL object repository implementation. It owns mechanical
-storage behavior shared by company backends: object hierarchy, interface membership, links,
+storage behavior shared by application backends: object hierarchy, interface membership, links,
 aliases, filtering, pagination, optimistic writes, and transactional invariants.
 
 PostgreSQL is authoritative for record timestamps: inserts use column defaults and updates set
@@ -26,8 +26,8 @@ import { makePostgresSchema } from "@company/postgres"
 export const Storage = makePostgresSchema(Model)
 ```
 
-The package does not own a company's model, migrations, credentials, Effect service identities,
-authorization, or deployment. The company backend binds its generated storage to a typed Drizzle
+The package does not own an application's model, migrations, credentials, Effect service identities,
+authorization, or deployment. The application backend binds its generated storage to a typed Drizzle
 `Database` service and exposes one repository capability per object. Migration SQL remains
 explicit, source-owned history beside that backend.
 

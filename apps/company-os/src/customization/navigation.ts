@@ -9,12 +9,12 @@ import {
   UserRoundSearchIcon,
 } from "lucide-react"
 
-export const companyOperateNavigation = [
+export const operateNavigation = [
   { label: "Home", to: "/", icon: HouseIcon },
 ] as const
 
-/** The company-owned operating objects presented in navigation and on the starter home. */
-export const companyObjectNavigation = [
+/** The application-owned operating objects shown in navigation and on the starter home. */
+export const objectNavigation = [
   {
     icon: Building2Icon,
     object: Model.objects.company,
@@ -39,6 +39,6 @@ export const companyObjectNavigation = [
   },
 ] as const
 
-export const companyObjectNavigationChecks = companyObjectNavigation.map(
-  ({ object }) => ({ permission: `${object.id}.list` })
-)
+export const objectNavigationChecks = objectNavigation.map(({ object }) => ({
+  permission: `${object.id}.list`,
+}))

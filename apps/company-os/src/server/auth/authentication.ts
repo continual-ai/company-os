@@ -15,9 +15,9 @@ import { RoleAssignmentService } from "@/server/objects/role-assignment-service"
 import { ServiceAccountService } from "@/server/objects/service-account-service"
 import { UserService } from "@/server/objects/user-service"
 import {
-  PLATFORM_ADMIN_ROLE_ID,
-  PLATFORM_ID,
-  PLATFORM_OPERATOR_ROLE_ID,
+  ADMINISTRATOR_ROLE_ID,
+  OPERATOR_ROLE_ID,
+  ROOT_ID,
 } from "@/system-records"
 
 import { AuthSettings } from "./auth-config"
@@ -157,14 +157,14 @@ const make = Effect.gen(function* () {
         const initialRole = provisioningRole(subject)
         const role = grantInitialRole
           ? initialRole === "administrator"
-            ? PLATFORM_ADMIN_ROLE_ID
+            ? ADMINISTRATOR_ROLE_ID
             : initialRole === "operator"
-              ? PLATFORM_OPERATOR_ROLE_ID
+              ? OPERATOR_ROLE_ID
               : undefined
           : undefined
         if (role !== undefined) {
           yield* roleAssignments.create({
-            parent: PLATFORM_ID,
+            parent: ROOT_ID,
             principal: identity.id,
             role,
           })

@@ -9,7 +9,7 @@ import { currentAuthorizationActorId } from "@/server/invocation-context"
 import {
   ALL_AUTHENTICATED_CALLERS_PRINCIPAL_SET_ID,
   ALL_CALLERS_PRINCIPAL_SET_ID,
-  PLATFORM_ID,
+  ROOT_ID,
   SYSTEM_SERVICE_ACCOUNT_ID,
 } from "@/system-records"
 
@@ -209,7 +209,7 @@ const make = Effect.gen(function* () {
     const definition = permissionDefinition(objectPermission(request))
     const targetIds =
       request.recordIds ??
-      (request.parentId === undefined ? [PLATFORM_ID] : [request.parentId])
+      (request.parentId === undefined ? [ROOT_ID] : [request.parentId])
     return yield* requirePermission({
       ...definition,
       targetIds,
@@ -225,7 +225,7 @@ const make = Effect.gen(function* () {
         ...definition,
         targetIds:
           request.recordIds ??
-          (request.parentId === undefined ? [PLATFORM_ID] : [request.parentId]),
+          (request.parentId === undefined ? [ROOT_ID] : [request.parentId]),
       })
     }
   )
@@ -239,7 +239,7 @@ const make = Effect.gen(function* () {
         ...definition,
         targetIds:
           request.recordIds ??
-          (request.parentId === undefined ? [PLATFORM_ID] : [request.parentId]),
+          (request.parentId === undefined ? [ROOT_ID] : [request.parentId]),
       })
     }
   )

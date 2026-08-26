@@ -4,11 +4,11 @@ import { Context, Data, Effect, Layer } from "effect"
 
 import { modelPermissions } from "@/server/authorization/permission-catalog"
 import { Database } from "@/server/database/database"
-import { PLATFORM_ADMIN_ROLE_ID, PLATFORM_ID } from "@/system-records"
+import { ADMINISTRATOR_ROLE_ID, ROOT_ID } from "@/system-records"
 
+import { ObjectRepositories } from "./object-repositories"
 import { makeObjectService } from "./object-service"
 import { RoleAssignmentRepository } from "./role-assignment-repository"
-import { RoleRepository } from "./role-repository"
 
 export class RoleScopeMismatch extends Data.TaggedError("RoleScopeMismatch")<{
   readonly actualScopeType: string
@@ -21,14 +21,14 @@ class InvalidRolePermission extends Data.TaggedError("InvalidRolePermission")<{
   readonly roleId: string
 }> {}
 
-export class LastPlatformAdministrator extends Data.TaggedError(
-  "LastPlatformAdministrator"
+export class LastAdministrator extends Data.TaggedError(
+  "LastAdministrator"
 )<{}> {}
 
 const make = Effect.gen(function* () {
   const database = yield* Database
   const repository = yield* RoleAssignmentRepository
-  const roleRepository = yield* RoleRepository
+  const roleRepository = (yield* ObjectRepositories).role
   const base = yield* makeObjectService(
     Model.objects.roleAssignment,
     repository
@@ -81,14 +81,14 @@ const make = Effect.gen(function* () {
         Effect.gen(function* () {
           const assignment = yield* base.get(input)
           if (
-            assignment.parent === PLATFORM_ID &&
-            assignment.role === PLATFORM_ADMIN_ROLE_ID &&
+            assignment.parent === ROOT_ID &&
+            assignment.role === ADMINISTRATOR_ROLE_ID &&
             (yield* repository.lockRoleAssignments({
-              roleId: PLATFORM_ADMIN_ROLE_ID,
-              scopeId: PLATFORM_ID,
+              roleId: ADMINISTRATOR_ROLE_ID,
+              scopeId: ROOT_ID,
             })).length === 1
           ) {
-            return yield* Effect.fail(new LastPlatformAdministrator())
+            return yield* Effect.fail(new LastAdministrator())
           }
           return yield* base.delete(input)
         })

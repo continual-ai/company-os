@@ -5,7 +5,7 @@ import { application } from "@/server/composition-root"
 export const Route = createFileRoute("/api/description")({
   server: {
     handlers: {
-      GET: () => Response.json(application.api.description),
+      GET: () => Response.json(application.model.description),
     },
   },
 })

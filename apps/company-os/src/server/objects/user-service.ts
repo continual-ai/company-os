@@ -4,15 +4,15 @@ import { generateRecordId } from "@company/runtime/effect/object-service"
 import { Context, Effect, Layer } from "effect"
 
 import { currentActorId } from "@/server/invocation-context"
-import { PLATFORM_ID } from "@/system-records"
+import { ROOT_ID } from "@/system-records"
 
+import { ObjectRepositories } from "./object-repositories"
 import { makeObjectService } from "./object-service"
-import { UserRepository } from "./user-repository"
 
 type UserRecord = ObjectRecord<(typeof Model.objects)["user"]>
 
 const make = Effect.gen(function* () {
-  const repository = yield* UserRepository
+  const repository = (yield* ObjectRepositories).user
   const base = yield* makeObjectService(Model.objects.user, repository)
 
   const provision = Effect.fn("@company/UserService.provision")(function* (
@@ -28,7 +28,7 @@ const make = Effect.gen(function* () {
       image: input.image ?? null,
       metadata: {},
       name: input.name,
-      parent: PLATFORM_ID,
+      parent: ROOT_ID,
       status: "active",
       systemManaged: false,
       updatedBy: actorId,

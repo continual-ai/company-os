@@ -8,12 +8,12 @@ import {
 } from "@company/ui/components/card"
 import { createFileRoute } from "@tanstack/react-router"
 
-import { companyConfig } from "@/company/config"
+import { applicationConfig } from "@/customization/config"
 import { pageOptions } from "@/route-metadata"
 
 const page = {
   breadcrumb: "Access denied",
-  description: `This User does not have access to ${companyConfig.identity.productName}.`,
+  description: `This User does not have access to ${applicationConfig.identity.productName}.`,
   title: "Access denied",
 }
 

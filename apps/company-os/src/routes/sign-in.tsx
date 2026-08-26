@@ -14,14 +14,14 @@ import { ArrowRightIcon, CheckIcon } from "lucide-react"
 
 import { safeReturnTo } from "@/auth-navigation"
 import { getAuthenticationExperience } from "@/authentication-experience.functions"
-import { CompanyMark } from "@/company/brand"
-import { companyConfig } from "@/company/config"
-import { CompanyEntryPanel } from "@/company/entry"
+import { BrandMark } from "@/customization/brand"
+import { applicationConfig } from "@/customization/config"
+import { EntryPanel } from "@/customization/entry"
 import { pageOptions } from "@/route-metadata"
 
 const page = {
   breadcrumb: "Sign in",
-  description: `Sign in to ${companyConfig.identity.productName}.`,
+  description: `Sign in to ${applicationConfig.identity.productName}.`,
   title: "Sign in",
 }
 
@@ -51,13 +51,13 @@ function SignIn() {
     <main className="grid min-h-svh bg-background lg:grid-cols-2">
       <section className="relative flex min-h-svh items-center justify-center p-6 sm:p-10">
         <div className="absolute top-6 left-6 flex items-center gap-3 sm:top-8 sm:left-8">
-          <CompanyMark />
+          <BrandMark />
           <div>
             <p className="text-sm font-semibold">
-              {companyConfig.identity.productName}
+              {applicationConfig.identity.productName}
             </p>
             <p className="text-xs text-muted-foreground">
-              {companyConfig.identity.descriptor}
+              {applicationConfig.identity.descriptor}
             </p>
           </div>
         </div>
@@ -69,7 +69,7 @@ function SignIn() {
                 <CardTitle>Continue to sign in</CardTitle>
                 <CardDescription>
                   Your deployment gateway verifies your identity before
-                  returning you to {companyConfig.identity.productName}.
+                  returning you to {applicationConfig.identity.productName}.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -162,7 +162,7 @@ function SignIn() {
         </div>
       </section>
 
-      <CompanyEntryPanel />
+      <EntryPanel />
     </main>
   )
 }

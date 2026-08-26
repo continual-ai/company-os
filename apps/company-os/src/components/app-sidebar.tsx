@@ -35,18 +35,18 @@ import {
   SettingsIcon,
 } from "lucide-react"
 
-import { CompanyMark } from "@/company/brand"
-import { companyConfig } from "@/company/config"
-import {
-  companyObjectNavigation,
-  companyObjectNavigationChecks,
-  companyOperateNavigation,
-} from "@/company/navigation"
 import {
   getUserInitials,
   useAuthenticatedUser,
 } from "@/components/authenticated-user"
 import { useCapabilities } from "@/components/use-capabilities"
+import { BrandMark } from "@/customization/brand"
+import { applicationConfig } from "@/customization/config"
+import {
+  objectNavigation,
+  objectNavigationChecks,
+  operateNavigation,
+} from "@/customization/navigation"
 
 const sections = [
   { label: "Operate", to: "/" },
@@ -85,7 +85,7 @@ const sectionIndicatorPosition = {
 
 export function AppSidebar() {
   const user = useAuthenticatedUser()
-  const capabilities = useCapabilities(companyObjectNavigationChecks)
+  const capabilities = useCapabilities(objectNavigationChecks)
   const matchRoute = useMatchRoute()
   const activeSection: Section = matchRoute({
     to: "/develop",
@@ -97,7 +97,7 @@ export function AppSidebar() {
       : "Operate"
   const activeNavigation =
     activeSection === "Develop" ? developerNavigation : learnNavigation
-  const accessibleObjectNavigation = companyObjectNavigation.filter((item) =>
+  const accessibleObjectNavigation = objectNavigation.filter((item) =>
     capabilities.can({ permission: `${item.object.id}.list` })
   )
 
@@ -108,16 +108,16 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton
               size="lg"
-              tooltip={companyConfig.identity.productName}
+              tooltip={applicationConfig.identity.productName}
               render={<Link to="/" />}
             >
-              <CompanyMark className="size-8" />
+              <BrandMark className="size-8" />
               <span className="grid flex-1 text-left leading-tight">
                 <span className="truncate text-sm font-semibold">
-                  {companyConfig.identity.productName}
+                  {applicationConfig.identity.productName}
                 </span>
                 <span className="truncate text-xs text-sidebar-foreground/70">
-                  {companyConfig.identity.descriptor}
+                  {applicationConfig.identity.descriptor}
                 </span>
               </span>
             </SidebarMenuButton>
@@ -125,7 +125,7 @@ export function AppSidebar() {
         </SidebarMenu>
 
         <nav
-          aria-label={`${companyConfig.identity.productName} sections`}
+          aria-label={`${applicationConfig.identity.productName} sections`}
           className="relative isolate grid grid-cols-3"
         >
           <span
@@ -161,7 +161,7 @@ export function AppSidebar() {
             <SidebarGroup>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {companyOperateNavigation.map((item) => (
+                  {operateNavigation.map((item) => (
                     <SidebarMenuItem key={item.label}>
                       <SidebarMenuButton
                         tooltip={item.label}

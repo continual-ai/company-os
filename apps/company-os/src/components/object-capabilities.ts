@@ -3,7 +3,7 @@ import {
   capabilityKey,
   type CapabilityCheck,
 } from "@/capabilities"
-import { PLATFORM_ID } from "@/system-records"
+import { ROOT_ID } from "@/system-records"
 
 import type { ModelObject } from "./object-client"
 
@@ -18,7 +18,7 @@ export function objectCapabilityCheck(
   const resolvedTarget =
     target ??
     (actionId === "create" && object.parent.kind === "root"
-      ? PLATFORM_ID
+      ? ROOT_ID
       : undefined)
   return resolvedTarget === undefined
     ? { permission }

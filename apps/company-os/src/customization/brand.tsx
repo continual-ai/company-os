@@ -1,9 +1,9 @@
 import { cn } from "@company/ui/lib/utils"
 
-import { companyConfig } from "@/company/config"
+import { applicationConfig } from "@/customization/config"
 
-export function CompanyMark({ className }: { className?: string | undefined }) {
-  const mark = companyConfig.brand.mark
+export function BrandMark({ className }: { className?: string | undefined }) {
+  const mark = applicationConfig.brand.mark
 
   if (mark) {
     return (
@@ -23,7 +23,7 @@ export function CompanyMark({ className }: { className?: string | undefined }) {
         className
       )}
     >
-      {companyConfig.identity.monogram}
+      {applicationConfig.identity.monogram}
     </span>
   )
 }

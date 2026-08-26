@@ -9,7 +9,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import { capabilityKey } from "@/capabilities"
-import { PLATFORM_ID } from "@/system-records"
+import { ROOT_ID } from "@/system-records"
 
 import { loadAllowedCapabilities } from "./load-capabilities"
 import {
@@ -70,12 +70,12 @@ async function loadReferenceLabels(
     )
   }
 
-  const labels = new Map<string, string>([[PLATFORM_ID, Model.root.name]])
+  const labels = new Map<string, string>([[ROOT_ID, Model.root.name]])
   await Promise.all(
     [...references].flatMap(([typeId, values]) =>
       recordObjectTypes(typeId).flatMap((referencedObject) =>
         chunks(
-          [...values].filter((id) => id !== PLATFORM_ID),
+          [...values].filter((id) => id !== ROOT_ID),
           MAX_PAGE_SIZE
         ).map(async (ids) => {
           if (ids.length === 0) return
@@ -108,7 +108,7 @@ export function useObjectCollection(object: ModelObject) {
   >(new Set())
   const [referenceLabels, setReferenceLabels] = useState<
     ReadonlyMap<string, string>
-  >(new Map([[PLATFORM_ID, Model.root.name]]))
+  >(new Map([[ROOT_ID, Model.root.name]]))
   const [error, setError] = useState<string>()
   const [loading, setLoading] = useState(true)
   const requestId = useRef(0)

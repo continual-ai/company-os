@@ -3,7 +3,6 @@ export type {
   ActionDefinition,
   ActionDefinitions,
   ActionError,
-  ActionHttpBinding,
   ActionInput,
   ActionOutput,
   ActionScope,
@@ -29,7 +28,12 @@ export type {
   InterfaceImplementation,
   InterfaceType,
 } from "./definition/interface"
-export { defineModel, modelObjects, modelTypeAccepts } from "./definition/model"
+export {
+  defineModel,
+  modelObjects,
+  modelQueries,
+  modelTypeAccepts,
+} from "./definition/model"
 export type {
   Model,
   ModelCatalog,
@@ -67,6 +71,15 @@ export type {
 } from "./definition/object"
 export { defineRoot } from "./definition/root"
 export type { RootType } from "./definition/root"
+export { queryKey, standardQueries, standardQueryIds } from "./definition/query"
+export type {
+  Query,
+  QueryInput,
+  QueryOutput,
+  QueryScope,
+  StandardQueries,
+  StandardQueryId,
+} from "./definition/query"
 export {
   DEFAULT_PAGE_SIZE,
   filterOperators,
@@ -139,5 +152,5 @@ export {
   violationSchema,
 } from "./definition/standard-error"
 export type { Violation } from "./definition/standard-error"
-export { API_DESCRIPTION_VERSION, createApiDescription } from "./description"
-export type { ApiDescription } from "./description"
+export { describeModel, MODEL_DESCRIPTION_VERSION } from "./description"
+export type { ModelDescription } from "./description"

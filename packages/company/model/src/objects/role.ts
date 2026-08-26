@@ -1,12 +1,12 @@
 import { defineObject, schema } from "@company/runtime"
 
-import { Platform } from "#platform"
+import { Root } from "#root"
 
 export const Role = defineObject({
   id: "role",
   collection: "roles",
   name: "Role",
-  parent: Platform,
+  parent: Root,
   pluralName: "Roles",
   description:
     "A source-owned set of exact permissions assignable at one scope type.",

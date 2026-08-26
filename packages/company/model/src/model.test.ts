@@ -1,5 +1,5 @@
 import {
-  createApiDescription,
+  describeModel,
   type InferSchema,
   type ModelObjectRef,
   type ObjectCreateInput,
@@ -17,13 +17,13 @@ const ContactPrimaryCompany = Model.links.contactPrimaryCompany
 
 describe("model contract", () => {
   it("publishes a serializable closed-world description", () => {
-    const description = createApiDescription(Model)
+    const description = describeModel(Model)
 
     expect(description).toMatchObject({
       actor: { typeId: "actor" },
-      api: { id: "operatingSystem", name: modelMetadata.name },
-      root: { id: "platform", kind: "root", name: "Platform" },
-      version: "0.26",
+      model: { name: modelMetadata.name },
+      root: { id: "root", kind: "root", name: "Root" },
+      version: "0.28",
     })
     expect(description.objects.map((object) => object.id)).toEqual([
       "user",
@@ -45,8 +45,8 @@ describe("model contract", () => {
       "actor",
       "authorizationScope",
       "identity",
-      "party",
       "principal",
+      "party",
     ])
     expect(description.interfaces).toContainEqual(
       expect.objectContaining({
@@ -59,6 +59,11 @@ describe("model contract", () => {
         .filter((action) => action.objectType === "lead")
         .map((action) => action.id)
     ).toEqual(["create", "update", "delete", "batchDelete", "convert"])
+    expect(
+      description.queries
+        .filter((query) => query.objectType === "lead")
+        .map((query) => query.id)
+    ).toEqual(["get", "list", "batchGet"])
     expect(description.links.map((link) => link.id)).toEqual([
       "groupMembershipMember",
       "roleAssignmentPrincipal",
@@ -147,7 +152,7 @@ describe("model contract", () => {
       expect.arrayContaining([
         expect.objectContaining({
           id: "company",
-          parent: { kind: "root", typeId: "platform" },
+          parent: { kind: "root", typeId: "root" },
         }),
         expect.objectContaining({
           id: "deal",
@@ -200,9 +205,7 @@ describe("model contract", () => {
     >().toEqualTypeOf<ActorId>()
     expectTypeOf<
       ObjectCreateInput<typeof Model.objects.roleAssignment>["parent"]
-    >().toEqualTypeOf<
-      RecordAlias | RecordId<"company"> | RecordId<"platform">
-    >()
+    >().toEqualTypeOf<RecordAlias | RecordId<"company"> | RecordId<"root">>()
     expectTypeOf<
       ObjectCreateInput<typeof Model.objects.roleAssignment>["principal"]
     >().toEqualTypeOf<

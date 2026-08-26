@@ -303,7 +303,7 @@ const reservedPropertyIds = new Set([
 type ParentDefinition = InterfaceType | ObjectType | RootType
 
 /**
- * Defines a portable company object and derives its enabled standard actions.
+ * Defines a portable model object and derives its enabled standard actions.
  * `parent` is the canonical ownership hierarchy; ordinary business
  * relationships belong in links.
  */
