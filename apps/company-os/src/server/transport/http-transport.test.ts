@@ -1,13 +1,17 @@
 /* oxlint-disable anti-slop/no-runtime-typeof */
 import { fileURLToPath } from "node:url"
 
+import { Model } from "@company/model"
+import { isStandardActionId } from "@company/runtime"
+import { httpEndpointId } from "@company/runtime/effect/http"
+import { executableModelOperations } from "@company/runtime/effect/model-implementation"
 import { PgliteClient } from "@effect/sql-pglite"
 import { eq } from "drizzle-orm"
 import * as PgliteDrizzle from "drizzle-orm/effect-pglite"
 import { migrate } from "drizzle-orm/effect-pglite/migrator"
 import { Effect, Layer, ManagedRuntime, Schema } from "effect"
 import { FetchHttpClient } from "effect/unstable/http"
-import { HttpApiClient } from "effect/unstable/httpapi"
+import { HttpApiClient, OpenApi } from "effect/unstable/httpapi"
 import { describe, expect, it } from "vitest"
 
 import { applicationHttpApi } from "@/http-api"
@@ -94,6 +98,27 @@ function run<A, E>(effect: Effect.Effect<A, E, PgliteClient.PgliteClient>) {
   )
 }
 
+const modelProjectionContract = executableModelOperations(Model).map(
+  ({ definition, key, object }) => ({
+    httpOperationId: httpEndpointId(
+      definition.id,
+      object,
+      definition.kind === "action" && !isStandardActionId(definition.id)
+        ? definition.scope
+        : undefined
+    ),
+    mcpToolName: key,
+  })
+)
+
+const httpOperationIds = new Set(
+  Object.values(OpenApi.fromApi(applicationHttpApi).paths).flatMap((path) =>
+    [path.delete, path.get, path.patch, path.post, path.put].flatMap(
+      (operation) => operation?.operationId ?? []
+    )
+  )
+)
+
 describe("application HTTP server", () => {
   it("assembles generated CRUD, JIT identity, and anonymous authorization", async () => {
     await run(
@@ -174,9 +199,19 @@ describe("application HTTP server", () => {
             }),
           })
         )(JSON.parse(listedMcpJson ?? listedMcpBody))
-        expect(listedMcpPayload.result.tools.map(({ name }) => name)).toContain(
-          "lead.convert"
+        const mcpToolNames = new Set(
+          listedMcpPayload.result.tools.map(({ name }) => name)
         )
+        expect(
+          modelProjectionContract.filter(
+            ({ mcpToolName }) => !mcpToolNames.has(mcpToolName)
+          )
+        ).toEqual([])
+        expect(
+          modelProjectionContract.filter(
+            ({ httpOperationId }) => !httpOperationIds.has(httpOperationId)
+          )
+        ).toEqual([])
         const anonymousCapabilities = yield* Effect.promise(() =>
           runtime.runPromise(
             api.handle(
