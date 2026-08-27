@@ -26,10 +26,7 @@ function isPackage(specifier: string, packageName: string): boolean {
 
 function isServerSourceFile(filename: string): boolean {
   const normalizedFilename = filename.replaceAll("\\", "/")
-  return (
-    normalizedFilename.includes("/src/server/") ||
-    /\.server\.[cm]?[jt]sx?$/.test(normalizedFilename)
-  )
+  return normalizedFilename.includes("/src/server/")
 }
 
 function forbiddenReason(

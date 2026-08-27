@@ -13,7 +13,7 @@ export default defineConfig({
       importProtection: {
         behavior: "error",
         client: {
-          files: ["**/*.server.*", "**/server/**"],
+          files: ["**/server/**"],
         },
         server: {
           files: ["**/*.client.*", "**/client/**"],
