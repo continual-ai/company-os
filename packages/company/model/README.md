@@ -24,10 +24,16 @@ composes those modules into one validated catalog. Every object declares its can
 independently of its business links; for example, a line item is owned by a deal while sales
 associations remain ordinary links.
 
-Each link defines complete `forward` and `reverse` traversals. The closed `Model` verifies that
-their endpoints mirror each other and derives singular relationship properties such as
-`deal.company` and `contact.primaryCompany`, keeping object write schemas and link semantics aligned
-without making storage orientation part of the authoring API.
+Each Link defines complete `forward` and `reverse` traversals. The closed `Model` verifies that
+their endpoints mirror each other and derives the corresponding traversal APIs without making
+storage orientation part of the authoring contract. Links remain separate from object properties,
+so changing a relationship's cardinality does not silently change the object representation.
+
+Use `parent` only for durable ownership and authorization hierarchy. Use a record-reference property
+for directional state that belongs inline on one Object and must participate directly in filtering
+or uniqueness. Use a Link when both directions are shared business vocabulary. When a relationship
+needs its own attributes, lifecycle, audit history, or authorization, model it as an Object with
+references to its participants.
 
 ## Belongs here
 

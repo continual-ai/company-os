@@ -128,10 +128,10 @@ object, interface, or structured input. A **field** is a query, sort, or validat
 name either a property or a standard record field such as `id` and `createdAt`. A **key** is a local
 programmatic member name, such as a link traversal key; it is not another form of canonical `id`.
 
-Public relationship properties use the relationship noun without an `Id` suffix: `company`,
-`parent`, `createdBy`, and `updatedBy`. Their unexpanded value is a canonical record ID, and the
-stable noun leaves room for a transport to expand that same property later. Definition-time
-validation rejects record-reference properties that violate this rule. A record's own `id`,
+Public record-reference properties use the relationship noun without an `Id` suffix: `company`,
+`principal`, `createdBy`, and `updatedBy`. Their value is a canonical record ID, and the stable noun
+leaves room for a transport to expand that same property later. Definition-time validation rejects
+record-reference properties that violate this rule. A record's own `id`,
 plural selector inputs such as `ids`, and genuinely opaque identifiers such as `externalId` or
 `assetId` retain the suffix. Internal authorization requests and physical storage columns use
 explicit names such as `recordIds`, `companyId`, and `company_id` when distinguishing a scalar ID
@@ -158,16 +158,24 @@ whose ordinary mutations are reserved for trusted system workflows; it does not 
 change hierarchy. The application authorization policy decides which invocation is trusted to
 manage them.
 
-Interfaces name polymorphic roles such as `Party`, so links and other contracts can target a role
+Interfaces name polymorphic roles such as `Party`, so Links and other contracts can target a role
 without choosing one concrete object type. An interface may be a marker capability with no
 properties or a shared projection whose properties implementing objects map through an explicit
 `propertyMapping`. A link defines complete `forward` and `reverse` traversals, each with its source,
-target, local traversal `key`, label, and cardinality. `defineModel` derives a typed `${key}`
-property for the singular traversal, so standard object creates, updates, filters, and reads use the
-same reference without authors repeating it. Many traversals remain link collections rather than
-embedded record fields. The portable contract does not expose which traversal owns a foreign key
-or whether a backend uses a join table; the storage adapter derives that projection and its
+target, local traversal `key`, label, and cardinality. Traversals remain separate APIs rather than
+embedded record fields. Standard create may establish singular Links and canonical writable-many
+Links atomically through its `links` envelope; non-writable reverse collections are not create
+inputs. `one` means exactly one, `zeroOrOne` means optional singular, and `many` means zero or more.
+The canonical writable traversal supplies idempotent `link` and eligible `unlink` Actions, while
+both traversals supply a `list` Query. Re-linking a compatible singular endpoint replaces its prior
+edge atomically, and deleting a target cannot orphan a required `one` traversal. The portable
+contract does not expose storage orientation; the storage adapter derives its projection and
 referential actions.
+
+Use `parent` only for ownership and authorization hierarchy. Use a record-reference property for
+directional inline state. Use a Link for a bidirectional edge without independent identity. Use an
+Object when the relationship itself has attributes, lifecycle, history, or distinct policy. Do not
+encode the same fact simultaneously as a property and a Link.
 
 Object properties and action inputs and outputs use the same portable schema vocabulary. Custom
 actions are declared beside their primary object; each `actions` entry key supplies the action ID,

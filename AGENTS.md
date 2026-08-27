@@ -86,8 +86,26 @@ and `turbo boundaries` enforce these conventions.
   `.layerMemory`; do not use the v3 `.Default` or an ambiguous `Live` suffix. Capabilities supplied
   by an outer boundary may remain layerless.
 - Use source-owned shadcn components and Tailwind CSS v4 tokens from `@company/ui`.
+- Use TanStack Form through each application's source-owned form hook and field components. Keep
+  Effect Schema as the authoritative decoder and map canonical API violations into form errors at
+  one application boundary.
 - Use `pnpm` and Turborepo. Do not add another frontend framework or component library.
 - Preserve an ordinary Fetch-compatible runtime boundary where practical.
+
+## Application clients and forms
+
+- Feature code should consume the semantic client derived from the model contract. Keep the native
+  Effect HTTP client inside the application client assembly and expose non-model API groups through
+  purpose-named operations or a deliberate semantic namespace.
+- Forms own interactive state in TanStack Form, decode transformed submission values with Effect
+  Schema, and render server failures from the standard violation paths. Use the regular React Form
+  package when submission already goes through the generated Effect client; TanStack Start server
+  form helpers are for applications that actually use that transport.
+
+Common mistakes are exporting both semantic and transport clients for feature code to choose
+between, hand-writing endpoint-specific fetch clients, creating one-off pending/error/touched form
+hooks, duplicating schema rules in components, or reducing typed server failures to a generic status
+message. Remove the competing path instead of documenting two supported ways to do the same thing.
 
 ## Boundaries around dependencies
 
@@ -96,6 +114,14 @@ it isolates provider types, expresses stable company semantics, protects a trust
 boundary, or supports a meaningful alternate implementation. Name capabilities in company terms
 and concrete adapters after their provider. A product-visible installation lifecycle may justify
 a richer connector.
+
+## Modeling relationships
+
+Use `parent` only for durable ownership and authorization hierarchy. Use a record-reference property
+for directional state that belongs inline on one Object. Use a Link for a bidirectional relationship
+without independent identity. Use an Object when the relationship has attributes, lifecycle,
+history, or distinct authorization. Do not encode one fact as both a property and a Link, and do not
+declare exact cardinality unless services, storage, deletion behavior, and tests preserve it.
 
 ## Verification
 

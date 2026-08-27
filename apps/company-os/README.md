@@ -19,9 +19,8 @@ company capabilities rather than owning separate business logic.
 - Server functions and external API routes
 
 It does not define reusable framework primitives or a second copy of the company contract. TanStack
-import protection treats `src/server` as a hard server-only boundary. Reserve `.server.ts` for
-exceptional server-only modules that must remain colocated elsewhere, and use `.functions.ts` for
-client-callable `createServerFn` wrappers.
+import protection treats `src/server` as the hard server-only boundary; server code belongs there.
+Use `.functions.ts` for client-callable `createServerFn` wrappers.
 
 ## Customization
 
@@ -38,7 +37,16 @@ The application groups code by responsibility without duplicating the model regi
 - `src/routes` owns TanStack URL entry points. Parenthesized directories such as `(sales)` and
   `(access)` group source by module without adding URL segments.
 - `src/ui/application`, `src/ui/model`, `src/ui/settings`, and `src/ui/<module>` separate shell,
-  generic model UI, application settings, and module-specific workflows.
+  generic model UI, application settings, and module-specific workflows. Generic model UI keeps
+  record editing separate from immediate relationship mutations. Every model-backed reference
+  picker uses the closed model as its registry and may open the same capability-gated creation
+  dialog used by collection pages; nested creation selects the new record without introducing a
+  second form or client path.
+- `src/client.ts` exposes the semantic browser client derived from the same application HTTP
+  contract; its native Effect transport client remains an assembly detail.
+- `src/ui/forms` owns the TanStack Form hook, uniform field and submit components, and the single
+  adapter from Effect Schema or API violations into field and form errors. Form submissions continue
+  through the generated Effect client rather than a parallel server-function form transport.
 - `src/server/model` owns generic model persistence and execution bindings.
 - `src/server/modules/<module>` owns behavior and seeds specific to a declared model module.
 - `src/server/transport` adapts the one governed model implementation to HTTP and MCP.
@@ -76,10 +84,12 @@ Effect PostgreSQL client
   projection boundary but does not add another execution layer.
 - HTTP groups, OpenAPI operations, clients, and MCP tools derive from that binding rather than
   maintaining protocol-specific operation registries.
-- Cross-object service methods coordinate governed object services and own their transaction.
-- Object services are the authoritative boundary for authorization, portable schema validation,
-  caller-owned metadata, audit actors, write preconditions, and object-level behavior, regardless
-  of whether the caller is HTTP, MCP, an agent, a job, or another service.
+- A custom Action authorizes its business capability once, owns one transaction, and uses internal
+  object and Link writers that preserve schema validation, audit attribution, identifiers, and
+  repository invariants without recursively applying unrelated CRUD permissions.
+- Governed object services are the authoritative public boundary for authorization, portable schema
+  validation, caller-owned metadata, audit actors, write preconditions, and object-level behavior,
+  regardless of whether the caller is HTTP, MCP, an agent, or a job.
 - Repositories atomically maintain the shared object row, same-ID object-specific row, and declared
   interface membership rows, assign entity tags and storage timestamps, implement all-or-nothing
   batch writes, and own custom persistence queries; only repository implementations access the
