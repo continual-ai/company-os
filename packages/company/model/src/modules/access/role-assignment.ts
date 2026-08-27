@@ -1,6 +1,8 @@
-import { defineObject } from "@company/runtime"
+import { defineObject, schema } from "@company/runtime"
 
 import { AuthorizationScope } from "./authorization-scope"
+import { Principal } from "./principal"
+import { Role } from "./role"
 
 export const RoleAssignment = defineObject({
   id: "roleAssignment",
@@ -10,7 +12,10 @@ export const RoleAssignment = defineObject({
   pluralName: "Role assignments",
   description: "One role granted to one principal at one authorization scope.",
   actions: { batchDelete: false, update: false },
-  properties: {},
+  properties: {
+    principal: schema.recordId(Principal, { label: "Principal" }),
+    role: schema.recordId(Role, { label: "Role" }),
+  },
   uniqueBy: { assignment: ["parent", "principal", "role"] },
   display: { icon: "shieldCheck", title: "id" },
 })

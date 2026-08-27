@@ -7,7 +7,7 @@ import {
 import { Link } from "@tanstack/react-router"
 import { ArrowRightIcon } from "lucide-react"
 
-import { applicationCapabilities } from "@/capabilities"
+import { applicationCapabilities, capabilityPermission } from "@/capabilities"
 import { applicationConfig } from "@/customization/config"
 import {
   salesNavigation,
@@ -27,7 +27,9 @@ export function Home() {
   const accessibleDestinations = salesNavigation.filter(
     (item) =>
       homeObjectIds.has(item.object.id) &&
-      capabilities.can({ permission: `${item.object.id}.list` })
+      capabilities.can({
+        permission: capabilityPermission(`${item.object.id}.list`),
+      })
   )
   const canDevelop = capabilities.can(applicationCapabilities.develop)
 

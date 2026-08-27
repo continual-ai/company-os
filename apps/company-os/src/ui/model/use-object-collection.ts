@@ -164,12 +164,6 @@ export function useObjectCollection(object: ModelObject) {
     resetPagination()
   }
 
-  const create = async (input: ObjectFormInput) => {
-    if (client.create === undefined)
-      throw new Error("Creation is not available.")
-    await client.create(input)
-    await load()
-  }
   const update = async (record: ClientRecord, changes: ObjectFormInput) => {
     if (client.update === undefined)
       throw new Error("Updates are not available.")
@@ -225,7 +219,6 @@ export function useObjectCollection(object: ModelObject) {
     canUpdate: (recordId: string) =>
       client.update !== undefined && can("update", recordId),
     columnFilters,
-    create,
     deleteRecords,
     error,
     load,

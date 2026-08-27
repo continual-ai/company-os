@@ -1,7 +1,7 @@
 import { Model } from "@company/model"
 import { describe, expect, it } from "vitest"
 
-import { allowedCapabilityKeys } from "@/capabilities"
+import { allowedCapabilityKeys, type CapabilityCheck } from "@/capabilities"
 import { ROOT_ID } from "@/system-records"
 
 import {
@@ -29,7 +29,7 @@ describe("object capabilities", () => {
     const checks = [
       { permission: "company.create", target: ROOT_ID },
       { permission: "company.update", target: "company_1" },
-    ]
+    ] satisfies ReadonlyArray<CapabilityCheck>
     const allowed = allowedCapabilityKeys(checks, [
       { allowed: true },
       { allowed: false },

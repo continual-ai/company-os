@@ -1,42 +1,17 @@
-import {
-  type Action,
-  actionKey,
-  isStandardActionId,
-  standardActions,
-} from "./action"
+import { type Action, actionKey, isStandardActionId } from "./action"
 import type { InterfaceType } from "./interface"
-import {
-  linkReferenceTraversals,
-  type LinkCardinality,
-  type LinkTraversal,
-  type LinkType,
-} from "./link"
+import type { LinkTraversal, LinkType } from "./link"
 import type { ModuleDefinition } from "./module"
-import type { ObjectRef, ObjectType } from "./object"
-import { normalizeProperties, type Properties } from "./property"
+import type { ObjectCreateInput, ObjectRef, ObjectType } from "./object"
 import { standardQueries, type Query, type StandardQueries } from "./query"
 import type { RootType } from "./root"
-import {
-  schema,
-  type AnySchema,
-  type InferSchema,
-  type RecordId,
-  type RecordIdSchema,
+import type {
+  AnySchema,
+  RecordAlias,
+  RecordId,
+  RecordIdSchema,
+  RecordIdentifier,
 } from "./schema"
-
-type Simplify<TValue> = { [TKey in keyof TValue]: TValue[TKey] } & {}
-
-type LinkReferenceProperty<
-  TTargetTypeId extends string,
-  TRecordTypeId extends string,
-  TCardinality extends Exclude<LinkCardinality, "many">,
-> = RecordIdSchema<TTargetTypeId, TRecordTypeId> & {
-  readonly _Value?: InferSchema<RecordIdSchema<TTargetTypeId, TRecordTypeId>>
-  immutable: false
-  nullable: TCardinality extends "zeroOrOne" ? true : false
-  outputOnly: false
-  requiredOnCreate: TCardinality extends "one" ? true : false
-}
 
 type InterfaceImplementerId<
   TObjects extends ReadonlyArray<ObjectType>,
@@ -55,83 +30,38 @@ type InterfaceImplementerIdFor<
     : never
   : never
 
-type LinkTargetRecordId<
-  TTarget extends LinkTraversal,
-  TObjects extends ReadonlyArray<ObjectType>,
-  TRoot extends RootType,
-> = TTarget["from"]["kind"] extends "interface"
-  ? InterfaceImplementerId<TObjects, TRoot, TTarget["from"]["typeId"]>
-  : TTarget["from"]["typeId"]
-
-type StoredLinkProperty<
-  TObjectType extends string,
-  TOwner extends LinkTraversal,
-  TTarget extends LinkTraversal,
-  TObjects extends ReadonlyArray<ObjectType>,
-  TRoot extends RootType,
-> = TOwner["from"]["typeId"] extends TObjectType
-  ? {
-      readonly [TKey in TOwner["key"]]: LinkReferenceProperty<
-        TTarget["from"]["typeId"],
-        LinkTargetRecordId<TTarget, TObjects, TRoot>,
-        Exclude<TOwner["cardinality"], "many">
-      >
-    }
-  : object
-
-type LinkPropertyFor<
-  TObjectType extends string,
-  TLink extends LinkType,
+type BoundProperty<
+  TProperty,
   TObjects extends ReadonlyArray<ObjectType>,
   TRoot extends RootType,
 > =
-  TLink extends LinkType<string, infer TForward, infer TReverse>
-    ? TForward["cardinality"] extends "many"
-      ? TReverse["cardinality"] extends "many"
-        ? object
-        : StoredLinkProperty<TObjectType, TReverse, TForward, TObjects, TRoot>
-      : TReverse["cardinality"] extends "many"
-        ? StoredLinkProperty<TObjectType, TForward, TReverse, TObjects, TRoot>
-        : TForward["from"]["kind"] extends "object"
-          ? StoredLinkProperty<TObjectType, TForward, TReverse, TObjects, TRoot>
-          : StoredLinkProperty<TObjectType, TReverse, TForward, TObjects, TRoot>
-    : object
-
-type UnionToIntersection<TValue> = (
-  TValue extends unknown ? (value: TValue) => void : never
-) extends (value: infer TIntersection) => void
-  ? TIntersection
-  : never
-
-type LinkPropertiesFor<
-  TObjectType extends string,
-  TLinks extends ReadonlyArray<LinkType>,
-  TObjects extends ReadonlyArray<ObjectType>,
-  TRoot extends RootType,
-> = [TLinks[number]] extends [never]
-  ? object
-  : Simplify<
-      UnionToIntersection<
-        LinkPropertyFor<TObjectType, TLinks[number], TObjects, TRoot>
-      >
-    >
+  TProperty extends RecordIdSchema<infer TTargetTypeId, infer _TRecordTypeId>
+    ? TTargetTypeId extends TObjects[number]["id"] | TRoot["id"]
+      ? TProperty
+      : Omit<TProperty, "_Type" | "_Value"> & {
+          readonly _Type?: RecordIds<
+            InterfaceImplementerId<TObjects, TRoot, TTargetTypeId>
+          >
+          readonly _Value?: RecordIds<
+            InterfaceImplementerId<TObjects, TRoot, TTargetTypeId>
+          >
+        }
+    : TProperty
 
 type BoundProperties<
-  TObjectType extends string,
-  TObjectProperties extends Properties,
-  TLinks extends ReadonlyArray<LinkType>,
+  TProperties extends ObjectType["properties"],
   TObjects extends ReadonlyArray<ObjectType>,
   TRoot extends RootType,
-> =
-  Simplify<
-    TObjectProperties & LinkPropertiesFor<TObjectType, TLinks, TObjects, TRoot>
-  > extends infer TResult extends Properties
-    ? TResult
-    : never
+> = {
+  readonly [TKey in keyof TProperties]: BoundProperty<
+    TProperties[TKey],
+    TObjects,
+    TRoot
+  >
+}
 
 type BoundObject<
   TObject extends ObjectType,
-  TLinks extends ReadonlyArray<LinkType>,
   TObjects extends ReadonlyArray<ObjectType>,
   TRoot extends RootType,
   TActor extends InterfaceType,
@@ -150,7 +80,7 @@ type BoundObject<
     ? ObjectType<
         TId,
         TCollection,
-        BoundProperties<TId, TProperties, TLinks, TObjects, TRoot>,
+        BoundProperties<TProperties, TObjects, TRoot>,
         TActions,
         TParentTypeId,
         TParentKind,
@@ -164,13 +94,11 @@ type BoundObject<
 
 type ObjectRegistry<
   TObjects extends ReadonlyArray<ObjectType>,
-  TLinks extends ReadonlyArray<LinkType>,
   TRoot extends RootType,
   TActor extends InterfaceType,
 > = {
   readonly [TObject in TObjects[number] as TObject["id"]]: BoundObject<
     TObject,
-    TLinks,
     TObjects,
     TRoot,
     TActor
@@ -243,7 +171,7 @@ export interface Model<
     readonly links: TLinks
     readonly interfaces: TInterfaces
     readonly objects: ReadonlyArray<
-      BoundObject<TObjects[number], TLinks, TObjects, TRoot, TActor>
+      BoundObject<TObjects[number], TObjects, TRoot, TActor>
     >
   }
   actions: ActionRegistry<TObjects>
@@ -253,7 +181,7 @@ export interface Model<
   links: LinkRegistry<TLinks>
   modules: ModuleRegistry<TModules>
   name: string
-  objects: ObjectRegistry<TObjects, TLinks, TRoot, TActor>
+  objects: ObjectRegistry<TObjects, TRoot, TActor>
   queries: QueryRegistry<TObjects>
   root: TRoot
 }
@@ -309,6 +237,142 @@ export type ModelObjectRef<TModel extends ModelCatalog> = ObjectRef<
   ModelObject<TModel>["id"]
 >
 
+/** Concrete object discriminator represented by one Link endpoint. */
+export type ModelEndpointObjectTypeId<
+  TModel extends ModelCatalog,
+  TEndpoint extends LinkType["forward"]["from"],
+> = TEndpoint["kind"] extends "object"
+  ? TEndpoint["typeId"] & (ModelObject<TModel>["id"] | TModel["root"]["id"])
+  : TEndpoint["typeId"] extends keyof TModel["interfaces"] & string
+    ?
+        | ModelInterfaceObjectTypeId<TModel, TEndpoint["typeId"]>
+        | (TEndpoint["typeId"] extends keyof TModel["root"]["interfaces"]
+            ? TModel["root"]["id"]
+            : never)
+    : never
+
+type EndpointIdentifier<
+  TModel extends ModelCatalog,
+  TEndpoint extends LinkType["forward"]["from"],
+> = TEndpoint["kind"] extends "interface"
+  ? TEndpoint["typeId"] extends keyof TModel["interfaces"] & string
+    ?
+        | RecordIdOf<TModel, TModel["interfaces"][TEndpoint["typeId"]]>
+        | RecordAlias
+    : never
+  : RecordIdentifier<TEndpoint["typeId"]>
+
+type ObjectAcceptsEndpoint<
+  TObject extends ObjectType,
+  TEndpoint extends LinkType["forward"]["from"],
+> = TEndpoint["kind"] extends "object"
+  ? TEndpoint["typeId"] extends TObject["id"]
+    ? true
+    : false
+  : TEndpoint["typeId"] extends keyof TObject["interfaces"]
+    ? true
+    : false
+
+type LinkSideForObject<TObject extends ObjectType, TLink> =
+  TLink extends LinkType<string, infer TForward, infer TReverse>
+    ?
+        | (ObjectAcceptsEndpoint<TObject, TForward["from"]> extends true
+            ? {
+                readonly link: TLink
+                readonly side: TForward
+                readonly target: TReverse
+              }
+            : never)
+        | (ObjectAcceptsEndpoint<TObject, TReverse["from"]> extends true
+            ? {
+                readonly link: TLink
+                readonly side: TReverse
+                readonly target: TForward
+              }
+            : never)
+    : never
+
+type ModelLinkSide<
+  TModel extends ModelCatalog,
+  TObject extends ObjectType,
+> = TModel["links"][keyof TModel["links"]] extends infer TLink
+  ? LinkSideForObject<TObject, TLink>
+  : never
+
+type InitialLinkSide<TSide> = TSide extends {
+  readonly link: infer TLink extends LinkType
+  readonly side: infer TTraversal extends LinkTraversal
+}
+  ? TTraversal["cardinality"] extends "many"
+    ? TLink["writeFrom"] extends TTraversal["key"]
+      ? TSide
+      : never
+    : TSide
+  : never
+
+type InitialLinkValue<
+  TModel extends ModelCatalog,
+  TSide extends LinkTraversal,
+  TTarget extends LinkTraversal,
+> = TSide["cardinality"] extends "many"
+  ? ReadonlyArray<EndpointIdentifier<TModel, TTarget["from"]>>
+  : EndpointIdentifier<TModel, TTarget["from"]>
+
+type RequiredInitialLinks<
+  TModel extends ModelCatalog,
+  TObject extends ObjectType,
+> = {
+  readonly [
+    TSide in InitialLinkSide<
+      ModelLinkSide<TModel, TObject>
+    > as TSide["side"]["cardinality"] extends "one"
+      ? TSide["side"]["key"]
+      : never
+  ]: InitialLinkValue<TModel, TSide["side"], TSide["target"]>
+}
+
+type OptionalInitialLinks<
+  TModel extends ModelCatalog,
+  TObject extends ObjectType,
+> = {
+  readonly [
+    TSide in InitialLinkSide<
+      ModelLinkSide<TModel, TObject>
+    > as TSide["side"]["cardinality"] extends "one"
+      ? never
+      : TSide["side"]["key"]
+  ]?: InitialLinkValue<TModel, TSide["side"], TSide["target"]>
+}
+
+type InitialLinksFor<
+  TModel extends ModelCatalog,
+  TObject extends ObjectType,
+> = RequiredInitialLinks<TModel, TObject> &
+  OptionalInitialLinks<TModel, TObject>
+
+/** Standard create input plus the object's model-derived initial Links. */
+export type ModelObjectCreateInput<
+  TModel extends ModelCatalog,
+  TObject extends ModelObject<TModel>,
+> = ObjectCreateInput<TObject> &
+  (keyof RequiredInitialLinks<TModel, TObject> extends never
+    ? { readonly links?: InitialLinksFor<TModel, TObject> }
+    : { readonly links: InitialLinksFor<TModel, TObject> })
+
+export type LinkDirection = "forward" | "reverse"
+
+/** One Link traversal projected onto a concrete object that can own an API route. */
+export interface ModelLinkTraversal {
+  readonly direction: LinkDirection
+  /** Whether standard create may establish this traversal atomically. */
+  readonly initializable: boolean
+  readonly link: LinkType
+  readonly source: ObjectType
+  readonly traversal: LinkType[LinkDirection]
+  readonly target: LinkType[LinkDirection]
+  readonly writable: boolean
+}
+
 function referencedTypeIds(definition: AnySchema): ReadonlyArray<string> {
   switch (definition.kind) {
     case "array":
@@ -347,66 +411,7 @@ function duplicateValue(values: ReadonlyArray<string>): string | undefined {
   return values.find((value, index) => values.indexOf(value) !== index)
 }
 
-interface LinkReferenceOptions {
-  description?: string
-  label: string
-  nullable?: true
-}
-
-function bindLinkProperties(
-  object: ObjectType,
-  links: ReadonlyArray<LinkType>
-): ObjectType {
-  const generated = Object.fromEntries(
-    links.flatMap((link) => {
-      const reference = linkReferenceTraversals(link)
-      if (
-        reference === undefined ||
-        reference.source.from.typeId !== object.id
-      ) {
-        return []
-      }
-
-      const propertyId = reference.source.key
-      if (Object.hasOwn(object.properties, propertyId)) {
-        throw new Error(
-          `Object '${object.id}' property '${propertyId}' duplicates link '${link.id}'; the model derives singular link properties automatically.`
-        )
-      }
-      const options: LinkReferenceOptions = { label: reference.source.label }
-      if (reference.source.description !== undefined) {
-        options.description = reference.source.description
-      }
-      if (reference.source.cardinality === "zeroOrOne") options.nullable = true
-      return [
-        [
-          propertyId,
-          schema.recordId({ id: reference.target.from.typeId }, options),
-        ] as const,
-      ]
-    })
-  )
-  const properties = {
-    ...object.properties,
-    ...normalizeProperties(generated),
-  }
-  const standardSettings = {
-    batchDelete: Object.hasOwn(object.actions, "batchDelete"),
-    create: Object.hasOwn(object.actions, "create"),
-    delete: Object.hasOwn(object.actions, "delete"),
-    update: Object.hasOwn(object.actions, "update"),
-  }
-  const customActions = Object.values(object.actions).filter(
-    (action) => !isStandardActionId(action.id)
-  )
-  const actions = Object.fromEntries(
-    [
-      ...standardActions({ ...object, properties }, standardSettings),
-      ...customActions,
-    ].map((action) => [action.id, action])
-  )
-  return { ...object, actions, properties }
-}
+const generatedQueryMethodIds = new Set(["batchGet", "get", "list", "search"])
 
 /** Closes, validates, and indexes a portable model. */
 export function defineModel<
@@ -532,6 +537,14 @@ export function defineModel<
       }
     }
     for (const action of Object.values(object.actions)) {
+      if (
+        !isStandardActionId(action.id) &&
+        generatedQueryMethodIds.has(action.id)
+      ) {
+        throw new Error(
+          `Action '${actionKey(action)}' conflicts with a generated Query method.`
+        )
+      }
       assertReferencesRegistered(
         `Action '${actionKey(action)}'`,
         [action.input, action.output],
@@ -572,15 +585,6 @@ export function defineModel<
   }
 
   for (const link of moduleLinks) {
-    const reference = linkReferenceTraversals(link)
-    if (
-      reference !== undefined &&
-      !registeredObjectTypeIds.has(reference.source.from.typeId)
-    ) {
-      throw new Error(
-        `Link '${link.id}' derives its singular '${reference.source.key}' property on interface '${reference.source.from.typeId}'; singular link references must resolve to an object.`
-      )
-    }
     for (const traversal of [link.forward, link.reverse]) {
       const endpoint = traversal.from
       if (!registeredTypeIds.has(endpoint.typeId)) {
@@ -631,20 +635,43 @@ export function defineModel<
       `Link traversal '${duplicateLinkMethod}' is registered more than once in model '${definition.name}'.`
     )
   }
+  for (const object of moduleObjects) {
+    const traversals = moduleLinks.flatMap((link) =>
+      [link.forward, link.reverse].filter(
+        ({ from }) =>
+          (from.kind === "object" && from.typeId === object.id) ||
+          (from.kind === "interface" &&
+            Object.hasOwn(object.interfaces, from.typeId))
+      )
+    )
+    const duplicateTraversal = duplicateValue(traversals.map(({ key }) => key))
+    if (duplicateTraversal !== undefined) {
+      throw new Error(
+        `Object '${object.id}' receives Link traversal '${duplicateTraversal}' more than once in model '${definition.name}'.`
+      )
+    }
+    const propertyConflict = traversals.find(({ key }) =>
+      Object.hasOwn(object.properties, key)
+    )
+    if (propertyConflict !== undefined) {
+      throw new Error(
+        `Link traversal '${object.id}.${propertyConflict.key}' conflicts with an object property.`
+      )
+    }
+    const methodIds = new Set([
+      ...generatedQueryMethodIds,
+      ...Object.keys(object.actions),
+    ])
+    const methodConflict = traversals.find(({ key }) => methodIds.has(key))
+    if (methodConflict !== undefined) {
+      throw new Error(
+        `Link traversal '${object.id}.${methodConflict.key}' conflicts with a generated Query or Action method.`
+      )
+    }
+  }
 
   const objects = Object.fromEntries(
-    moduleObjects.map((object) => [
-      object.id,
-      bindLinkProperties(object, moduleLinks),
-    ])
-  )
-  const singularLinkProperties = new Set(
-    moduleLinks.flatMap((link) => {
-      const reference = linkReferenceTraversals(link)
-      return reference === undefined || reference.source.from.kind !== "object"
-        ? []
-        : [`${reference.source.from.typeId}.${reference.source.key}`]
-    })
+    moduleObjects.map((object) => [object.id, object])
   )
   for (const object of Object.values(objects)) {
     for (const [ruleId, fields] of Object.entries(object.uniqueBy)) {
@@ -654,15 +681,6 @@ export function defineModel<
             `Object '${object.id}' unique rule '${ruleId}' references unknown field '${field}'.`
           )
         }
-      }
-      const onlyField = fields.length === 1 ? fields[0] : undefined
-      if (
-        onlyField !== undefined &&
-        singularLinkProperties.has(`${object.id}.${onlyField}`)
-      ) {
-        throw new Error(
-          `Object '${object.id}' unique rule '${ruleId}' defines relationship cardinality; express single-link uniqueness on the link.`
-        )
       }
     }
   }
@@ -729,6 +747,33 @@ export function modelTypeAccepts(
 
 export function modelLinks(model: ModelCatalog): ReadonlyArray<LinkType> {
   return Object.values(model.links)
+}
+
+/** Expands interface endpoints onto each concrete implementing object. */
+export function modelObjectLinkTraversals(
+  model: ModelCatalog,
+  object: ObjectType
+): ReadonlyArray<ModelLinkTraversal> {
+  return modelLinks(model).flatMap((link) =>
+    (["forward", "reverse"] as const).flatMap((direction) => {
+      const traversal = link[direction]
+      if (!modelTypeAccepts(model, object.id, traversal.from.typeId)) return []
+      const opposite = direction === "forward" ? "reverse" : "forward"
+      return [
+        {
+          direction,
+          initializable:
+            traversal.cardinality !== "many" ||
+            link.writeFrom === traversal.key,
+          link,
+          source: object,
+          target: link[opposite],
+          traversal,
+          writable: link.writeFrom === traversal.key,
+        },
+      ]
+    })
+  )
 }
 
 export function modelModules(

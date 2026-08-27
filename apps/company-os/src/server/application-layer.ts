@@ -7,6 +7,7 @@ import { IdentityProvider } from "./auth/identity-provider"
 import { AuthorizationRepository } from "./authorization/authorization-repository"
 import { Authorization } from "./authorization/authorization-service"
 import type { Database } from "./database/database"
+import { Links } from "./model/link-service"
 import { ModelImplementation } from "./model/model-implementation"
 import { ObjectRepositories } from "./model/object-repositories"
 import { RecordIdentifierResolver } from "./model/record-identifier-resolver"
@@ -55,17 +56,23 @@ export function makeApplicationLayer({
     recordIdentifierResolver,
     repositories
   )
+  const links = Links.layer.pipe(Layer.provide(applicationDependencies))
+  const modelDependencies = Layer.merge(applicationDependencies, links)
   const specializedServices = Layer.mergeAll(
     LeadService.layer,
     RoleAssignmentService.layer,
     ServiceAccountService.layer,
     UserService.layer
-  ).pipe(Layer.provide(applicationDependencies))
+  ).pipe(Layer.provide(modelDependencies))
   const modelImplementation = ModelImplementation.layer.pipe(
-    Layer.provide(applicationDependencies),
+    Layer.provide(modelDependencies),
     Layer.provide(specializedServices)
   )
-  const governedServices = Layer.merge(specializedServices, modelImplementation)
+  const governedServices = Layer.mergeAll(
+    links,
+    specializedServices,
+    modelImplementation
+  )
   const identityProvider =
     suppliedIdentityProvider ??
     IdentityProvider.layer.pipe(Layer.provide(authSettings))

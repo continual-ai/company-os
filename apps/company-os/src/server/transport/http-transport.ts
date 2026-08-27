@@ -9,6 +9,7 @@ import { Context, Data, Effect, Layer } from "effect"
 import { HttpRouter, HttpServer } from "effect/unstable/http"
 import { HttpApiBuilder } from "effect/unstable/httpapi"
 
+import { capabilityPermission } from "@/capabilities"
 import { applicationHttpApi } from "@/http-api"
 import { Authentication } from "@/server/auth/authentication"
 import { Authorization } from "@/server/authorization/authorization-service"
@@ -61,7 +62,13 @@ const make = Effect.gen(function* () {
           ),
           Effect.flatMap((caller) =>
             authorization
-              .checkCapabilitiesFor(caller, request.payload.checks)
+              .checkCapabilitiesFor(
+                caller,
+                request.payload.checks.map((check) => ({
+                  ...check,
+                  permission: capabilityPermission(check.permission),
+                }))
+              )
               .pipe(
                 Effect.catch((error) =>
                   Effect.logError("Capability evaluation failed", error).pipe(

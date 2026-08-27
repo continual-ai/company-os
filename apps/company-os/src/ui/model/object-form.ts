@@ -1,38 +1,60 @@
 /* oxlint-disable anti-slop/no-runtime-typeof */
-import { modelMetadata } from "@company/model"
-import type { AnySchema, PropertyDefinition, Violation } from "@company/runtime"
+import { Model, modelMetadata } from "@company/model"
 import {
-  toEffectObjectCreateSchema,
+  modelObjectLinkTraversals,
+  type AnySchema,
+  type ModelLinkTraversal,
+  type PropertyDefinition,
+  type Violation,
+} from "@company/runtime"
+import {
+  toEffectModelObjectCreateSchema,
   toEffectObjectUpdateSchema,
 } from "@company/runtime/effect"
 
-import { formText } from "@/form-data"
+import { decodeFormSchema, FormValidationError } from "@/ui/forms/form-errors"
+import type { FormValue, FormValueObject } from "@/ui/forms/form-value"
 
-import { decodeFormSchema, FormValidationError } from "./form-errors"
 import {
   modelObjectProperty,
+  type ClientRecord,
   type ClientValue,
   type ModelObject,
 } from "./object-client"
 import { objectTablePropertySchema } from "./object-table/object-table-cell-types"
 
 export type ObjectFormMode = "create" | "edit"
-type ObjectFormValue =
+export interface ObjectFormValues {
+  readonly [property: string]: FormValue
+}
+type ObjectFormInputValue =
   | boolean
   | null
   | number
   | string
-  | ReadonlyArray<string>
+  | ReadonlyArray<ObjectFormInputValue>
+  | { readonly [property: string]: ObjectFormInputValue | undefined }
   | { readonly alt?: string; readonly assetId: string }
   | { readonly amount: string; readonly currency: string }
 export interface ObjectFormInput {
-  readonly [property: string]: ObjectFormValue
+  readonly [property: string]: ObjectFormInputValue | undefined
 }
 
 export interface ObjectFormProperty {
   readonly id: string
   readonly property: PropertyDefinition
   readonly schema: AnySchema
+}
+
+export function objectFormLinks(
+  object: ModelObject,
+  mode: ObjectFormMode
+): ReadonlyArray<ModelLinkTraversal> {
+  return mode === "create"
+    ? modelObjectLinkTraversals(Model, object).filter(
+        ({ initializable }) => initializable
+      )
+    : []
 }
 
 export function objectFormProperties(
@@ -150,19 +172,18 @@ function blankValue(
 }
 
 function scalarValue(
-  form: FormData,
+  values: ObjectFormValues,
   propertyId: string,
   property: PropertyDefinition,
   schema: AnySchema,
   mode: ObjectFormMode
-): ObjectFormValue | undefined {
-  if (schema.kind === "boolean") return form.has(propertyId)
+): FormValue | undefined {
+  const raw = values[propertyId]
+  if (schema.kind === "boolean") return raw === true
 
   if (schema.kind === "money") {
-    const amount = formText(form, `${propertyId}.amount`).trim()
-    const currency = formText(form, `${propertyId}.currency`)
-      .trim()
-      .toUpperCase()
+    const amount = nestedString(raw, "amount").trim()
+    const currency = nestedString(raw, "currency").trim().toUpperCase()
     if (amount === "") return blankValue(propertyId, property, mode)
     return { amount, currency: currency || modelMetadata.defaultCurrency }
   }
@@ -172,14 +193,14 @@ function scalarValue(
     schema.kind === "image" ||
     schema.kind === "media"
   ) {
-    const assetId = formText(form, `${propertyId}.assetId`).trim()
+    const assetId = nestedString(raw, "assetId").trim()
     if (assetId === "") return blankValue(propertyId, property, mode)
-    const alt = formText(form, `${propertyId}.alt`).trim()
+    const alt = nestedString(raw, "alt").trim()
     return alt === "" ? { assetId } : { alt, assetId }
   }
 
   if (schema.kind === "array") {
-    const value = formText(form, propertyId).trim()
+    const value = stringValue(raw).trim()
     if (value === "") return []
     return value
       .split(/[\n,]/)
@@ -187,7 +208,7 @@ function scalarValue(
       .filter((item) => item.length > 0)
   }
 
-  const value = formText(form, propertyId).trim()
+  const value = stringValue(raw).trim()
   if (value === "") return blankValue(propertyId, property, mode)
   if (schema.kind === "number") {
     const number = Number(value)
@@ -220,12 +241,12 @@ function scalarValue(
 
 export function decodeObjectForm(
   object: ModelObject,
-  form: FormData,
+  values: ObjectFormValues,
   mode: ObjectFormMode
 ): ObjectFormInput {
-  const input: Record<string, ObjectFormValue> = {}
+  const input: Record<string, FormValue> = {}
   if (mode === "create" && object.parent.kind !== "root") {
-    const parent = formText(form, "parent").trim()
+    const parent = stringValue(values.parent).trim()
     if (parent === "") {
       throw new FormValidationError([
         {
@@ -248,12 +269,38 @@ export function decodeObjectForm(
         },
       ])
     }
-    const value = scalarValue(form, id, property, schema, mode)
+    const value = scalarValue(values, id, property, schema, mode)
     if (value !== undefined) input[id] = value
+  }
+  if (mode === "create") {
+    const links: Record<string, string | ReadonlyArray<string>> = {}
+    const linkValues = values.links
+    for (const { traversal } of objectFormLinks(object, mode)) {
+      const rawValue = nestedFormValue(linkValues, traversal.key)
+      const targets =
+        traversal.cardinality === "many"
+          ? stringArrayValue(rawValue)
+          : [stringValue(rawValue).trim()].filter((value) => value !== "")
+      if (targets.length === 0) {
+        if (traversal.cardinality === "one") {
+          throw new FormValidationError([
+            {
+              message: `${traversal.label} is required.`,
+              path: ["links", traversal.key],
+              reason: "REQUIRED",
+            },
+          ])
+        }
+        continue
+      }
+      links[traversal.key] =
+        traversal.cardinality === "many" ? targets : targets[0]!
+    }
+    if (Object.keys(links).length > 0) input.links = links
   }
   const schema =
     mode === "create"
-      ? toEffectObjectCreateSchema(object)
+      ? toEffectModelObjectCreateSchema(Model, object)
       : toEffectObjectUpdateSchema(object)
   let decoded: unknown
   try {
@@ -271,6 +318,105 @@ export function decodeObjectForm(
   return decoded as ObjectFormInput
 }
 
+function nestedString(value: FormValue | undefined, key: string): string {
+  return isObjectFormObject(value) ? stringValue(value[key]) : ""
+}
+
+function nestedFormValue(
+  value: FormValue | undefined,
+  key: string
+): FormValue | undefined {
+  return isObjectFormObject(value) ? value[key] : undefined
+}
+
+function stringArrayValue(value: FormValue | undefined): ReadonlyArray<string> {
+  return Array.isArray(value)
+    ? value.map((item) => item.trim()).filter((item) => item.length > 0)
+    : []
+}
+
+function isObjectFormObject(
+  value: FormValue | undefined
+): value is FormValueObject {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+}
+
+function initialValue(
+  property: PropertyDefinition,
+  record: ClientRecord | undefined,
+  propertyId: string
+): ClientValue | undefined {
+  if (record !== undefined) return record[propertyId]
+  // SAFETY: portable property defaults are JSON-compatible values by schema.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  return property.default as ClientValue | undefined
+}
+
+export function objectFormDefaultValues(
+  object: ModelObject,
+  mode: ObjectFormMode,
+  record?: ClientRecord
+): ObjectFormValues {
+  const values: Record<string, FormValue> = {}
+  if (mode === "create" && object.parent.kind !== "root") values.parent = ""
+
+  for (const { id, property, schema } of objectFormProperties(object, mode)) {
+    const value = initialValue(property, record, id)
+    if (schema.kind === "boolean") {
+      values[id] = value === true
+      continue
+    }
+    if (schema.kind === "money") {
+      const money =
+        typeof value === "object" &&
+        value !== null &&
+        "amount" in value &&
+        "currency" in value
+          ? value
+          : undefined
+      values[id] = {
+        amount: stringValue(money?.amount),
+        currency: stringValue(money?.currency) || modelMetadata.defaultCurrency,
+      }
+      continue
+    }
+    if (
+      schema.kind === "file" ||
+      schema.kind === "image" ||
+      schema.kind === "media"
+    ) {
+      const media =
+        typeof value === "object" && value !== null && "assetId" in value
+          ? value
+          : undefined
+      values[id] = {
+        alt:
+          media !== undefined && "alt" in media ? stringValue(media.alt) : "",
+        assetId: stringValue(media?.assetId),
+      }
+      continue
+    }
+    if (schema.kind === "array") {
+      values[id] = Array.isArray(value) ? value.join("\n") : ""
+      continue
+    }
+    if (schema.kind === "string" && schema.format === "timestamp") {
+      values[id] = dateTimeLocalValue(value)
+      continue
+    }
+    values[id] = typeof value === "number" ? String(value) : stringValue(value)
+  }
+
+  if (mode === "create") {
+    const links: Record<string, string | ReadonlyArray<string>> = {}
+    for (const { traversal } of objectFormLinks(object, mode)) {
+      links[traversal.key] = traversal.cardinality === "many" ? [] : ""
+    }
+    if (Object.keys(links).length > 0) values.links = links
+  }
+  return values
+}
+
 export function dateTimeLocalValue(value: ClientValue | undefined): string {
   if (typeof value !== "string" || value === "") return ""
   const date = new Date(value)
@@ -279,6 +425,8 @@ export function dateTimeLocalValue(value: ClientValue | undefined): string {
   return local.toISOString().slice(0, 16)
 }
 
-export function stringValue(value: ClientValue | undefined): string {
+export function stringValue(
+  value: ClientValue | FormValue | undefined
+): string {
   return typeof value === "string" ? value : ""
 }

@@ -39,6 +39,7 @@ describe("API error translation", () => {
     ["ObjectWriteConflict", "ABORTED"],
     ["RecordAliasConflict", "ALREADY_EXISTS"],
     ["LastAdministrator", "FAILED_PRECONDITION"],
+    ["ObjectDeleteRestricted", "FAILED_PRECONDITION"],
   ])("maps %s to canonical status %s", async (_tag, status) => {
     await expect(translate({ _tag })).resolves.toMatchObject({ status })
   })

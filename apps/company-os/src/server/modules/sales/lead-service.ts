@@ -4,9 +4,12 @@ import { Context, Data, Effect, Layer } from "effect"
 
 import { Authorization } from "@/server/authorization/authorization-service"
 import { Database } from "@/server/database/database"
-import { currentActorId } from "@/server/invocation-context"
+import { makeLinkWriter } from "@/server/model/link-service"
 import { ObjectRepositories } from "@/server/model/object-repositories"
-import { makeObjectService } from "@/server/model/object-service"
+import {
+  makeObjectService,
+  makeObjectWriter,
+} from "@/server/model/object-service"
 import { RecordIdentifierResolver } from "@/server/model/record-identifier-resolver"
 
 class LeadConversionConflict extends Data.TaggedError(
@@ -20,14 +23,16 @@ const make = Effect.gen(function* () {
   const repositories = yield* ObjectRepositories
   const repository = repositories.lead
   const base = yield* makeObjectService(Model.objects.lead, repository)
-  const companies = yield* makeObjectService(
+  const companies = yield* makeObjectWriter(
     Model.objects.company,
     repositories.company
   )
-  const contacts = yield* makeObjectService(
+  const contacts = yield* makeObjectWriter(
     Model.objects.contact,
     repositories.contact
   )
+  const leads = yield* makeObjectWriter(Model.objects.lead, repository)
+  const links = yield* makeLinkWriter
 
   const convert = Effect.fn("@company/LeadService.convert")(function* (
     input: ObjectGetInput<typeof Model.objects.lead>
@@ -60,15 +65,16 @@ const make = Effect.gen(function* () {
           email: lead.email,
           name: lead.name,
           phone: lead.phone,
+        })
+        yield* links.initialize(Model.objects.contact, contact.id, {
           primaryCompany: company.id,
         })
-        yield* repository.update({
+        yield* leads.update({
           convertedAt: Timestamp(new Date().toISOString()),
           convertedCompany: company.id,
           convertedContact: contact.id,
           etag: lead.etag,
           id,
-          updatedBy: yield* currentActorId,
         })
         return { company: company.id, contact: contact.id }
       })

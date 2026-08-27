@@ -1,28 +1,86 @@
 import { Model } from "@company/model"
-import { modelObjects } from "@company/runtime"
+import {
+  type Action,
+  type ModelObject,
+  type ObjectType,
+  modelObjects,
+} from "@company/runtime"
 
 /** Maximum number of authorization decisions accepted by one public request. */
 export const MAX_CAPABILITY_CHECKS = 200
 
 export const applicationCapabilities = {
   develop: { permission: "application.develop" },
-} as const satisfies Readonly<Record<string, CapabilityCheck>>
+} as const
+
+type ActionPermissionId<TObject extends ObjectType> =
+  TObject["actions"][keyof TObject["actions"]] extends infer TAction
+    ? TAction extends Action
+      ? TAction["id"] extends "batchDelete"
+        ? never
+        : TAction["id"]
+      : never
+    : never
+
+type ObjectCapabilityPermission<TObject> = TObject extends ObjectType
+  ?
+      | `${TObject["id"]}.get`
+      | `${TObject["id"]}.list`
+      | `${TObject["id"]}.${ActionPermissionId<TObject>}`
+  : never
+
+type ModelCapabilityPermission = ObjectCapabilityPermission<
+  ModelObject<typeof Model>
+>
+
+type ApplicationCapabilityPermission =
+  (typeof applicationCapabilities)[keyof typeof applicationCapabilities]["permission"]
+
+/** Closed permission vocabulary governed by the application authorization policy. */
+export type CapabilityPermission =
+  | ApplicationCapabilityPermission
+  | ModelCapabilityPermission
 
 const objectPermissions = modelObjects(Model).flatMap((object) => [
   `${object.id}.get`,
   `${object.id}.list`,
-  ...Object.values(object.actions).flatMap((action) => {
-    return action.id === "batchDelete" ? [] : [`${object.id}.${action.id}`]
-  }),
+  ...Object.values(object.actions).flatMap((action) =>
+    action.id === "batchDelete" ? [] : [`${object.id}.${action.id}`]
+  ),
 ])
 
-/** Closed permission vocabulary governed by the application authorization policy. */
-export const capabilityPermissions: ReadonlyArray<string> = [
-  ...objectPermissions,
+function isModelCapabilityPermission(
+  value: string
+): value is ModelCapabilityPermission {
+  const [objectId, operation, extra] = value.split(".")
+  if (
+    objectId === undefined ||
+    operation === undefined ||
+    extra !== undefined
+  ) {
+    return false
+  }
+  const object = modelObjects(Model).find(({ id }) => id === objectId)
+  if (object === undefined) return false
+  if (operation === "get" || operation === "list") return true
+  return Object.values(object.actions).some(
+    (action) => action.id !== "batchDelete" && action.id === operation
+  )
+}
+
+const modelCapabilityPermissions = objectPermissions.map((permission) => {
+  if (!isModelCapabilityPermission(permission)) {
+    throw new Error(`Model generated unknown permission '${permission}'.`)
+  }
+  return permission
+})
+
+export const capabilityPermissions: ReadonlyArray<CapabilityPermission> = [
+  ...modelCapabilityPermissions,
   applicationCapabilities.develop.permission,
 ]
 
-const capabilityPermissionSet = new Set(capabilityPermissions)
+const capabilityPermissionSet = new Set<string>(capabilityPermissions)
 
 export function isCapabilityPermission(
   value: string
@@ -30,9 +88,11 @@ export function isCapabilityPermission(
   return capabilityPermissionSet.has(value)
 }
 
-// The exact vocabulary is derived from the model and validated at the HTTP
-// boundary; keeping this structural avoids duplicating the model in types.
-export type CapabilityPermission = string
+/** Narrows a model-derived permission and fails if code references no capability. */
+export function capabilityPermission(value: string): CapabilityPermission {
+  if (isCapabilityPermission(value)) return value
+  throw new Error(`Unknown capability permission '${value}'.`)
+}
 
 export interface CapabilityCheck {
   readonly permission: CapabilityPermission

@@ -19,10 +19,11 @@ import type { ApiError } from "./definition/error"
 import type { ModelCatalog } from "./definition/model"
 import type { ObjectType } from "./definition/object"
 import type { Query } from "./definition/query"
+import type { LinkService } from "./effect-link-service"
 import {
   executableModelOperations,
+  executeModelOperation,
   type ExecutableModelOperation,
-  modelOperation,
 } from "./effect-model-implementation"
 import {
   objectBatchGetInputSchema,
@@ -33,7 +34,11 @@ import {
   objectRecordOutputSchema,
 } from "./effect-model-schemas"
 import type { CurrentInvocation } from "./effect-object-service"
-import { toEffectInputSchema, toEffectSchema } from "./effect-schema"
+import {
+  toEffectInputSchema,
+  toEffectRecordIdentifierSchema,
+  toEffectSchema,
+} from "./effect-schema"
 
 export type ModelMcpOperation = Effect.Effect<
   unknown,
@@ -47,6 +52,7 @@ export type ModelMcpResult =
 
 export interface ModelMcpBinding {
   readonly implementation: {
+    readonly links: LinkService<unknown, CurrentInvocation>
     readonly model: ModelCatalog
     readonly services: Readonly<Record<string, object>>
   }
@@ -153,6 +159,53 @@ export function createModelMcpServer({
 
   for (const descriptor of executableModelOperations(implementation.model)) {
     const { definition, object } = descriptor
+    if (descriptor.linkTraversal !== undefined) {
+      const traversal = descriptor.linkTraversal
+      const input = Schema.Struct({
+        id: toEffectRecordIdentifierSchema(object.id),
+        ...(definition.id === "list"
+          ? {
+              pageSize: Schema.optionalKey(Schema.Number),
+              pageToken: Schema.optionalKey(Schema.String),
+            }
+          : {
+              target: toEffectRecordIdentifierSchema(
+                traversal.target.from.typeId
+              ),
+            }),
+      })
+      const output =
+        definition.id === "list"
+          ? Schema.Struct({
+              items: Schema.Array(
+                Schema.Struct({ id: Schema.String, objectType: Schema.String })
+              ),
+              nextPageToken: Schema.String,
+            })
+          : Schema.Struct({})
+      server.registerTool(
+        descriptor.key,
+        {
+          title: definition.name,
+          inputSchema: mcpSchema(input),
+          outputSchema: mcpSchema(output),
+          annotations: {
+            destructiveHint: definition.id === "unlink",
+            idempotentHint: definition.id !== "list",
+            openWorldHint: false,
+            readOnlyHint: definition.kind === "query",
+          },
+        },
+        async (toolInput: unknown) =>
+          toolResponse(
+            await run(
+              descriptor,
+              executeModelOperation(implementation, descriptor, toolInput)
+            )
+          )
+      )
+      continue
+    }
     if (definition.kind === "query") {
       const query = definition
       const schemas = querySchemas(object, query)
@@ -174,7 +227,7 @@ export function createModelMcpServer({
           toolResponse(
             await run(
               descriptor,
-              modelOperation(implementation, object.id, query.id)(input)
+              executeModelOperation(implementation, descriptor, input)
             )
           )
       )
@@ -201,7 +254,7 @@ export function createModelMcpServer({
         toolResponse(
           await run(
             descriptor,
-            modelOperation(implementation, object.id, action.id)(input)
+            executeModelOperation(implementation, descriptor, input)
           )
         )
     )

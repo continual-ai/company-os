@@ -34,6 +34,10 @@ export interface LinkType<
   TId extends string = string,
   TForward extends LinkTraversal = LinkTraversal,
   TReverse extends LinkTraversal = LinkTraversal,
+  TWriteFrom extends TForward["key"] | TReverse["key"] | false =
+    | TForward["key"]
+    | TReverse["key"]
+    | false,
 > {
   description?: string
   forward: TForward
@@ -41,38 +45,13 @@ export interface LinkType<
   kind: "link"
   name: string
   reverse: TReverse
-}
-
-export interface LinkReferenceTraversals {
-  readonly source: LinkTraversal
-  readonly target: LinkTraversal
-}
-
-/**
- * Returns the singular traversal represented by a derived `${key}Id`
- * property and its target. Many-to-many links have no reference traversal.
- */
-export function linkReferenceTraversals(
-  link: LinkType
-): LinkReferenceTraversals | undefined {
-  const { forward, reverse } = link
-  if (forward.cardinality === "many") {
-    return reverse.cardinality === "many"
-      ? undefined
-      : { source: reverse, target: forward }
-  }
-  if (reverse.cardinality === "many") {
-    return { source: forward, target: reverse }
-  }
-  return forward.from.kind === "object"
-    ? { source: forward, target: reverse }
-    : { source: reverse, target: forward }
+  /** Key of the one traversal that owns public mutations, or false when immutable. */
+  writeFrom: TWriteFrom
 }
 
 /**
  * Defines both named traversals of a portable business relationship. The
- * contract leaves storage unspecified and derives its reference-bearing
- * traversal from cardinalities rather than authoring order.
+ * contract leaves storage and protocol projection unspecified.
  */
 export function defineLink<
   const TId extends string,
@@ -82,6 +61,7 @@ export function defineLink<
   const TForwardCardinality extends LinkCardinality,
   const TReverseKey extends string,
   const TReverseCardinality extends LinkCardinality,
+  const TWriteFrom extends TForwardKey | TReverseKey | false,
 >(definition: {
   description?: string
   forward: {
@@ -102,6 +82,7 @@ export function defineLink<
     label: string
     to: TForwardFrom
   }
+  writeFrom: TWriteFrom
 }): LinkType<
   TId,
   LinkTraversal<
@@ -115,7 +96,8 @@ export function defineLink<
     LinkEndpoint<TForwardFrom["id"], TForwardFrom["kind"]>,
     TReverseKey,
     TReverseCardinality
-  >
+  >,
+  TWriteFrom
 > {
   const { forward, reverse } = definition
 
@@ -129,6 +111,15 @@ export function defineLink<
   ) {
     throw new Error(
       `Link '${definition.id}' reverse traversal must mirror its forward endpoints.`
+    )
+  }
+  if (
+    definition.writeFrom !== false &&
+    definition.writeFrom !== forward.key &&
+    definition.writeFrom !== reverse.key
+  ) {
+    throw new Error(
+      `Link '${definition.id}' writeFrom must name one of its traversal keys.`
     )
   }
 
@@ -145,7 +136,8 @@ export function defineLink<
       LinkEndpoint<TForwardFrom["id"], TForwardFrom["kind"]>,
       TReverseKey,
       TReverseCardinality
-    >
+    >,
+    TWriteFrom
   > = {
     kind: "link",
     id: definitionId(definition.id),
@@ -164,6 +156,7 @@ export function defineLink<
       label: reverse.label,
       to: { kind: reverse.to.kind, typeId: reverse.to.id },
     },
+    writeFrom: definition.writeFrom,
   }
   if (forward.description !== undefined) {
     link.forward.description = forward.description

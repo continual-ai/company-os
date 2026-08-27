@@ -3,7 +3,6 @@ import {
   type InferSchema,
   type LinkTraversal,
   type LinkType,
-  linkReferenceTraversals,
   type ModelCatalog,
   type ObjectType,
   type RecordId,
@@ -125,38 +124,22 @@ type InterfaceTables<TModel extends ModelCatalog> = {
 type LinkTable<TModel extends ModelCatalog, TLink> =
   TLink extends LinkType<string, infer TForward, infer TReverse>
     ? AnyPgTable & {
-        readonly [
-          TKey in `${TForward["key"]}Id` | `${TReverse["key"]}Id`
-        ]: AnyPgColumn
+        readonly forwardId: AnyPgColumn
+        readonly reverseId: AnyPgColumn
       } & {
         readonly $inferSelect: {
-          readonly [TKey in `${TForward["key"]}Id`]: TraversalRecordId<
-            TModel,
-            TForward
-          >
+          readonly forwardId: TraversalRecordId<TModel, TForward>
         } & {
-          readonly [TKey in `${TReverse["key"]}Id`]: TraversalRecordId<
-            TModel,
-            TReverse
-          >
+          readonly reverseId: TraversalRecordId<TModel, TReverse>
         }
       }
     : never
 
 type LinkTables<TModel extends ModelCatalog> = {
-  readonly [
-    TLinkId in keyof TModel["links"] as TModel["links"][TLinkId] extends LinkType<
-      string,
-      infer TForward,
-      infer TReverse
-    >
-      ? TForward["cardinality"] extends "many"
-        ? TReverse["cardinality"] extends "many"
-          ? TLinkId
-          : never
-        : never
-      : never
-  ]: LinkTable<TModel, TModel["links"][TLinkId]>
+  readonly [TLinkId in keyof TModel["links"]]: LinkTable<
+    TModel,
+    TModel["links"][TLinkId]
+  >
 }
 
 type SchemaTables<TModel extends ModelCatalog> = {
@@ -508,82 +491,24 @@ function makeRelations(
     const config: Record<string, Record<string, AnyRelation>> = {}
 
     for (const link of Object.values(model.links)) {
-      const reference = linkReferenceTraversals(link)
-      if (reference !== undefined) {
-        const { source, target } = reference
-        const ownerTable = relationTable(relations, source.from.typeId)
-        const targetTable = relationTable(relations, target.from.typeId)
-        const ownerColumn = relationColumn(ownerTable, `${source.key}Id`)
-        const targetId = relationColumn(targetTable, "id")
-        const ownerFactory = relations.one[target.from.typeId]
-        if (ownerFactory === undefined) {
-          throw new Error(`Link '${link.id}' does not have a valid owner.`)
-        }
-        addRelation(
-          config,
-          source.from.typeId,
-          source.key,
-          ownerFactory({
-            alias: link.id,
-            from: ownerColumn,
-            optional: source.cardinality === "zeroOrOne",
-            to: targetId,
-          })
-        )
-
-        if (target.cardinality === "many") {
-          const inverseFactory = relations.many[source.from.typeId]
-          if (inverseFactory === undefined) {
-            throw new Error(`Link '${link.id}' does not have a valid inverse.`)
-          }
-          addRelation(
-            config,
-            target.from.typeId,
-            target.key,
-            inverseFactory({
-              alias: link.id,
-              from: targetId,
-              to: ownerColumn,
-            })
-          )
-        } else {
-          const inverseFactory = relations.one[source.from.typeId]
-          if (inverseFactory === undefined) {
-            throw new Error(`Link '${link.id}' does not have a valid inverse.`)
-          }
-          addRelation(
-            config,
-            target.from.typeId,
-            target.key,
-            inverseFactory({
-              alias: link.id,
-              from: targetId,
-              optional: target.cardinality === "zeroOrOne",
-              to: ownerColumn,
-            })
-          )
-        }
-        continue
-      }
-
       const forwardTable = relationTable(relations, link.forward.from.typeId)
       const reverseTable = relationTable(relations, link.reverse.from.typeId)
       const junctionId = `__link_${link.id}`
       const junction = relationTable(relations, junctionId)
       const forwardId = relationColumn(forwardTable, "id")
       const reverseId = relationColumn(reverseTable, "id")
-      const forwardJunctionColumn = relationColumn(
-        junction,
-        `${link.forward.key}Id`
-      )
-      const reverseJunctionColumn = relationColumn(
-        junction,
-        `${link.reverse.key}Id`
-      )
-      const forwardFactory = relations.many[link.reverse.from.typeId]
-      const reverseFactory = relations.many[link.forward.from.typeId]
+      const forwardJunctionColumn = relationColumn(junction, "forwardId")
+      const reverseJunctionColumn = relationColumn(junction, "reverseId")
+      const forwardFactory =
+        link.forward.cardinality === "many"
+          ? relations.many[link.reverse.from.typeId]
+          : relations.one[link.reverse.from.typeId]
+      const reverseFactory =
+        link.reverse.cardinality === "many"
+          ? relations.many[link.forward.from.typeId]
+          : relations.one[link.forward.from.typeId]
       if (forwardFactory === undefined || reverseFactory === undefined) {
-        throw new Error(`Many-to-many link '${link.id}' is incomplete.`)
+        throw new Error(`Link '${link.id}' is incomplete.`)
       }
       addRelation(
         config,
@@ -592,6 +517,7 @@ function makeRelations(
         forwardFactory({
           alias: link.id,
           from: forwardId.through(forwardJunctionColumn),
+          optional: link.forward.cardinality === "zeroOrOne",
           to: reverseId.through(reverseJunctionColumn),
         })
       )
@@ -602,6 +528,7 @@ function makeRelations(
         reverseFactory({
           alias: link.id,
           from: reverseId.through(reverseJunctionColumn),
+          optional: link.reverse.cardinality === "zeroOrOne",
           to: forwardId.through(forwardJunctionColumn),
         })
       )
@@ -654,19 +581,6 @@ export function makePostgresSchema<const TModel extends ModelCatalog>(
   actorTable = interfaceTables[actorInterface.id]
 
   const objectTables: Record<string, AnyPgTable> = {}
-  const oneToOneReferenceProperties = new Set(
-    Object.values(model.links).flatMap((link) => {
-      const reference = linkReferenceTraversals(link)
-      if (
-        reference !== undefined &&
-        reference.source.cardinality !== "many" &&
-        reference.target.cardinality !== "many"
-      ) {
-        return [`${reference.source.from.typeId}.${reference.source.key}`]
-      }
-      return []
-    })
-  )
   const tableForType = (typeId: string): AnyPgTable => {
     if (typeId === model.root.id) return roots
     const table = objectTables[typeId] ?? interfaceTables[typeId]
@@ -718,13 +632,6 @@ export function makePostgresSchema<const TModel extends ModelCatalog>(
             index(`${tableName}_${snakeCase(columnKey)}_idx`).on(column)
           )
         }
-        if (oneToOneReferenceProperties.has(`${object.id}.${propertyId}`)) {
-          constraints.push(
-            uniqueIndex(objectUniqueConstraintName(tableName, columnKey)).on(
-              column
-            )
-          )
-        }
       }
       for (const [ruleId, fields] of Object.entries(object.uniqueBy)) {
         const uniqueColumns = fields.map((field) => {
@@ -759,40 +666,50 @@ export function makePostgresSchema<const TModel extends ModelCatalog>(
 
   const linkTables: Record<string, AnyPgTable> = {}
   for (const link of Object.values(model.links)) {
-    if (
-      link.forward.cardinality !== "many" ||
-      link.reverse.cardinality !== "many"
-    ) {
-      continue
-    }
     const tableName = snakeCase(link.id)
     claimTableName(tableName, `link '${link.id}'`)
-    const forwardColumn = `${link.forward.key}Id`
-    const reverseColumn = `${link.reverse.key}Id`
+    const forwardColumn = "forwardId"
+    const reverseColumn = "reverseId"
     linkTables[link.id] = pgTable(
       tableName,
       {
         [forwardColumn]: text()
           .notNull()
           .references(() => columnId(tableForType(link.forward.from.typeId)), {
-            onDelete: "cascade",
+            onDelete:
+              link.reverse.cardinality === "one" ? "restrict" : "cascade",
           }),
         [reverseColumn]: text()
           .notNull()
           .references(() => columnId(tableForType(link.reverse.from.typeId)), {
-            onDelete: "cascade",
+            onDelete:
+              link.forward.cardinality === "one" ? "restrict" : "cascade",
           }),
       },
       (table) => [
         primaryKey({
-          columns: [table[forwardColumn]!, table[reverseColumn]!],
+          columns: [table[forwardColumn], table[reverseColumn]],
         }),
         index(`${tableName}_${snakeCase(forwardColumn)}_idx`).on(
-          table[forwardColumn]!
+          table[forwardColumn]
         ),
         index(`${tableName}_${snakeCase(reverseColumn)}_idx`).on(
-          table[reverseColumn]!
+          table[reverseColumn]
         ),
+        ...(link.forward.cardinality === "many"
+          ? []
+          : [
+              uniqueIndex(`${tableName}_${snakeCase(forwardColumn)}_unique`).on(
+                table[forwardColumn]
+              ),
+            ]),
+        ...(link.reverse.cardinality === "many"
+          ? []
+          : [
+              uniqueIndex(`${tableName}_${snakeCase(reverseColumn)}_unique`).on(
+                table[reverseColumn]
+              ),
+            ]),
       ]
     )
   }

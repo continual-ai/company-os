@@ -1,6 +1,7 @@
-import { defineObject } from "@company/runtime"
+import { defineObject, schema } from "@company/runtime"
 
 import { Group } from "./group"
+import { Identity } from "./identity"
 
 export const GroupMembership = defineObject({
   id: "groupMembership",
@@ -10,7 +11,9 @@ export const GroupMembership = defineObject({
   pluralName: "Group memberships",
   description: "One identity's membership in a group.",
   actions: { update: false },
-  properties: {},
+  properties: {
+    member: schema.recordId(Identity, { label: "Member" }),
+  },
   uniqueBy: { membership: ["parent", "member"] },
   display: { icon: "userRoundPlus", title: "id" },
 })

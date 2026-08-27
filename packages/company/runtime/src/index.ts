@@ -30,6 +30,7 @@ export type {
 } from "./definition/interface"
 export {
   defineModel,
+  modelObjectLinkTraversals,
   modelModules,
   modelObjects,
   modelQueries,
@@ -38,21 +39,21 @@ export {
 export type {
   Model,
   ModelCatalog,
+  ModelEndpointObjectTypeId,
+  ModelObject,
   ModelObjectRef,
+  ModelLinkTraversal,
+  LinkDirection,
+  ModelObjectCreateInput,
   RecordIdOf,
 } from "./definition/model"
 export { defineModule } from "./definition/module"
 export type { ModuleDefinition } from "./definition/module"
-export {
-  defineLink,
-  linkCardinalities,
-  linkReferenceTraversals,
-} from "./definition/link"
+export { defineLink, linkCardinalities } from "./definition/link"
 export type {
   LinkType,
   LinkCardinality,
   LinkEndpoint,
-  LinkReferenceTraversals,
   LinkTraversal,
 } from "./definition/link"
 export { defineObject, Etag } from "./definition/object"

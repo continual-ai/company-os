@@ -10,9 +10,15 @@ import {
   isStandardActionId,
 } from "./definition/action"
 import type { ErrorType } from "./definition/error"
-import { type ModelCatalog, modelObjects } from "./definition/model"
+import {
+  type ModelCatalog,
+  type ModelLinkTraversal,
+  modelObjectLinkTraversals,
+  modelObjects,
+} from "./definition/model"
 import type { ObjectType } from "./definition/object"
 import { type Query } from "./definition/query"
+import { schema } from "./definition/schema"
 import {
   AbortedError,
   AlreadyExistsError,
@@ -23,6 +29,8 @@ import {
   UnauthenticatedError,
   ValidationError,
 } from "./definition/standard-error"
+import type { LinkService } from "./effect-link-service"
+import type { LinkListInput, LinkMutationInput } from "./effect-link-service"
 import type { CurrentInvocation, Service } from "./effect-object-service"
 
 type CustomActionService<TObject extends ObjectType> = {
@@ -57,6 +65,7 @@ export type ModelServiceMap<TModel extends ModelCatalog> = {
 
 /** A portable model exhaustively bound to its existing governed services. */
 export interface ModelImplementation<TModel extends ModelCatalog> {
+  readonly links: LinkService<unknown, CurrentInvocation>
   readonly model: TModel
   readonly services: ModelServiceMap<TModel>
 }
@@ -64,6 +73,7 @@ export interface ModelImplementation<TModel extends ModelCatalog> {
 export interface ExecutableModelOperation {
   readonly definition: Action | Query
   readonly key: string
+  readonly linkTraversal?: ModelLinkTraversal
   readonly object: ObjectType
 }
 
@@ -71,18 +81,69 @@ export interface ExecutableModelOperation {
 export function executableModelOperations(
   model: ModelCatalog
 ): ReadonlyArray<ExecutableModelOperation> {
-  return modelObjects(model).flatMap((object) => [
-    ...Object.values(model.queries[object.id]!).map((definition) => ({
-      definition,
-      key: `${object.id}.${definition.id}`,
-      object,
-    })),
-    ...Object.values(object.actions).map((definition) => ({
-      definition,
-      key: `${object.id}.${definition.id}`,
-      object,
-    })),
-  ])
+  return modelObjects(model).flatMap((object) => {
+    const objectOperations: ReadonlyArray<ExecutableModelOperation> = [
+      ...Object.values(model.queries[object.id]!).map((definition) => ({
+        definition,
+        key: `${object.id}.${definition.id}`,
+        object,
+      })),
+      ...Object.values(object.actions).map((definition) => ({
+        definition,
+        key: `${object.id}.${definition.id}`,
+        object,
+      })),
+    ]
+    const linkCapabilities = modelObjectLinkTraversals(model, object).flatMap(
+      (linkTraversal): ReadonlyArray<ExecutableModelOperation> => {
+        const prefix = `${object.id}.${linkTraversal.traversal.key}`
+        const list: ExecutableModelOperation = {
+          definition: {
+            description:
+              linkTraversal.traversal.description ??
+              `Lists ${linkTraversal.traversal.label.toLowerCase()}.`,
+            id: "list",
+            kind: "query",
+            name: `List ${linkTraversal.traversal.label.toLowerCase()}`,
+            objectType: object.id,
+            scope: "object",
+          },
+          key: `${prefix}.list`,
+          linkTraversal,
+          object,
+        }
+        if (!linkTraversal.writable) return [list]
+        const mutation = (id: "link" | "unlink"): ExecutableModelOperation => ({
+          definition: {
+            description: `${id === "link" ? "Links" : "Unlinks"} ${linkTraversal.traversal.label.toLowerCase()}.`,
+            destructive: id === "unlink",
+            errors: [],
+            id,
+            idempotent: true,
+            input: schema.object({
+              id: schema.recordId(object),
+              target: schema.recordId({
+                id: linkTraversal.target.from.typeId,
+              }),
+            }),
+            kind: "action",
+            name: `${id === "link" ? "Link" : "Unlink"} ${linkTraversal.traversal.label.toLowerCase()}`,
+            objectType: object.id,
+            output: schema.object({}),
+            scope: "object",
+          },
+          key: `${prefix}.${id}`,
+          linkTraversal,
+          object,
+        })
+        return linkTraversal.traversal.cardinality === "one" ||
+          linkTraversal.target.cardinality === "one"
+          ? [list, mutation("link")]
+          : [list, mutation("link"), mutation("unlink")]
+      }
+    )
+    return [...objectOperations, ...linkCapabilities]
+  })
 }
 
 /** Resolves one operation from the normalized closed-model catalog. */
@@ -92,8 +153,10 @@ export function executableModelOperation(
   operationId: string
 ): ExecutableModelOperation {
   const descriptor = executableModelOperations(model).find(
-    ({ definition, object }) =>
-      object.id === objectType && definition.id === operationId
+    ({ definition, linkTraversal, object }) =>
+      object.id === objectType &&
+      linkTraversal === undefined &&
+      definition.id === operationId
   )
   if (descriptor === undefined) {
     throw new Error(
@@ -115,6 +178,17 @@ export function modelOperationErrors(
   descriptor: ExecutableModelOperation
 ): ReadonlyArray<ErrorType> {
   const { definition } = descriptor
+  if (descriptor.linkTraversal !== undefined) {
+    return definition.kind === "query"
+      ? [...universalErrors, NotFoundError]
+      : [
+          ...universalErrors,
+          AbortedError,
+          AlreadyExistsError,
+          FailedPreconditionError,
+          NotFoundError,
+        ]
+  }
   if (definition.kind === "query") {
     return definition.id === "list"
       ? universalErrors
@@ -145,7 +219,8 @@ function operation(service: object, name: string): unknown {
 /** Validates and binds a closed model to the services that already execute it. */
 export function implementModel<TModel extends ModelCatalog>(
   model: TModel,
-  services: ModelServiceMap<TModel>
+  services: ModelServiceMap<TModel>,
+  links: LinkService<unknown, CurrentInvocation>
 ): ModelImplementation<TModel> {
   const descriptors = executableModelOperations(model)
   for (const object of modelObjects(model)) {
@@ -156,7 +231,8 @@ export function implementModel<TModel extends ModelCatalog>(
     }
 
     for (const descriptor of descriptors.filter(
-      ({ object: candidate }) => candidate.id === object.id
+      ({ linkTraversal, object: candidate }) =>
+        linkTraversal === undefined && candidate.id === object.id
     )) {
       if (typeof operation(service, descriptor.definition.id) !== "function") {
         throw new Error(
@@ -166,7 +242,7 @@ export function implementModel<TModel extends ModelCatalog>(
     }
   }
 
-  return { model, services }
+  return { links, model, services }
 }
 
 /** Internal dynamic dispatch used by transport projections after model validation. */
@@ -189,4 +265,34 @@ export function modelOperation(
   return method.bind(service) as (
     input: unknown
   ) => Effect.Effect<unknown, unknown, CurrentInvocation>
+}
+
+/** Dispatches an already validated object or Link operation. */
+export function executeModelOperation(
+  implementation: {
+    readonly links: LinkService<unknown, CurrentInvocation>
+    readonly services: Readonly<Record<string, object>>
+  },
+  descriptor: ExecutableModelOperation,
+  input: unknown
+): Effect.Effect<unknown, unknown, CurrentInvocation> {
+  const traversal = descriptor.linkTraversal
+  if (traversal === undefined) {
+    return modelOperation(
+      implementation,
+      descriptor.object.id,
+      descriptor.definition.id
+    )(input)
+  }
+  if (descriptor.definition.id === "list") {
+    // SAFETY: each protocol compiler decoded input from this generated list operation.
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+    return implementation.links.list(traversal, input as LinkListInput)
+  }
+  // SAFETY: each protocol compiler decoded input from this generated mutation.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  const mutation = input as LinkMutationInput
+  return descriptor.definition.id === "link"
+    ? implementation.links.link(traversal, mutation)
+    : implementation.links.unlink(traversal, mutation)
 }

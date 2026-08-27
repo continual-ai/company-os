@@ -29,6 +29,13 @@ export class ObjectWriteConflict extends Data.TaggedError(
   readonly recordId: string
 }> {}
 
+export class ObjectDeleteRestricted extends Data.TaggedError(
+  "ObjectDeleteRestricted"
+)<{
+  readonly objectType: string
+  readonly recordIds: ReadonlyArray<string>
+}> {}
+
 export class ObjectUniqueConflict extends Data.TaggedError(
   "ObjectUniqueConflict"
 )<{

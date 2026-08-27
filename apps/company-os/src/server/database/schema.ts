@@ -28,6 +28,8 @@ export const roleAssignments = Storage.objects.roleAssignment
 export const roles = Storage.objects.role
 export const serviceAccounts = Storage.objects.serviceAccount
 export const users = Storage.objects.user
+export const contactPrimaryCompanies = Storage.linkTables.contactPrimaryCompany
+export const interactionRegarding = Storage.linkTables.interactionRegarding
 export const relations = Storage.relations
 
 /** Stable external-subject mappings; credentials and sessions remain outside Company OS. */

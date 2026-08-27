@@ -1,5 +1,7 @@
+import { Model } from "@company/model"
+import { modelObjectLinkTraversals } from "@company/runtime"
 import { Button } from "@company/ui/components/button"
-import { PencilIcon } from "lucide-react"
+import { LinkIcon, PencilIcon } from "lucide-react"
 import { useState, type ReactNode } from "react"
 
 import { CapabilityBoundary } from "@/ui/application/capability-boundary"
@@ -11,7 +13,9 @@ import {
   type ModelObject,
 } from "./object-client"
 import { canFilterProperty, canSortProperty } from "./object-collection-query"
+import { useObjectCreate } from "./object-create-context"
 import { ObjectRecordDialog } from "./object-record-dialog"
+import { ObjectRelationshipsDialog } from "./object-relationships-dialog"
 import { ObjectTable } from "./object-table/object-table"
 import type { ObjectTableRecord } from "./object-table/object-table-config"
 import { useObjectCollection } from "./use-object-collection"
@@ -54,8 +58,10 @@ function AuthorizedObjectCollection({
   renderCollectionActions,
 }: ObjectCollectionProps) {
   const collection = useObjectCollection(object)
-  const [createOpen, setCreateOpen] = useState(false)
+  const openObjectCreate = useObjectCreate()
   const [editing, setEditing] = useState<ClientRecord>()
+  const [relating, setRelating] = useState<ClientRecord>()
+  const hasRelationships = modelObjectLinkTraversals(Model, object).length > 0
 
   if (collection.loading && collection.records.length === 0) {
     return (
@@ -100,7 +106,12 @@ function AuthorizedObjectCollection({
         onCellCommit={collection.updateCell}
         canUpdateRecord={collection.canUpdate}
         onCreateRecord={
-          collection.canCreate ? () => setCreateOpen(true) : undefined
+          collection.canCreate
+            ? () =>
+                openObjectCreate(object, {
+                  onCreated: () => void collection.load(),
+                })
+            : undefined
         }
         onDeleteRecords={
           collection.records.some(({ id }) => collection.canDelete(id))
@@ -135,6 +146,19 @@ function AuthorizedObjectCollection({
                   <PencilIcon />
                 </Button>
               ) : null}
+              {hasRelationships &&
+              source !== undefined &&
+              collection.can("get", record.id) ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-xs"
+                  aria-label={`Manage ${object.name.toLowerCase()} relationships`}
+                  onClick={() => setRelating(source)}
+                >
+                  <LinkIcon />
+                </Button>
+              ) : null}
               {renderRecordActions?.(record, {
                 can: (actionId) => collection.can(actionId, record.id),
                 refresh: collection.load,
@@ -144,17 +168,6 @@ function AuthorizedObjectCollection({
         }}
       />
 
-      {collection.canCreate ? (
-        <ObjectRecordDialog
-          key={`${object.id}-create`}
-          mode="create"
-          object={object}
-          open={createOpen}
-          onOpenChange={setCreateOpen}
-          onSave={collection.create}
-          referenceLabels={collection.referenceLabels}
-        />
-      ) : null}
       {editing === undefined ? null : (
         <ObjectRecordDialog
           key={editing.id}
@@ -165,6 +178,16 @@ function AuthorizedObjectCollection({
           onOpenChange={(open) => !open && setEditing(undefined)}
           onSave={(changes) => collection.update(editing, changes)}
           referenceLabels={collection.referenceLabels}
+        />
+      )}
+      {relating === undefined ? null : (
+        <ObjectRelationshipsDialog
+          key={`${relating.id}-relationships`}
+          canUpdate={collection.canUpdate(relating.id)}
+          object={object}
+          open
+          record={relating}
+          onOpenChange={(open) => !open && setRelating(undefined)}
         />
       )}
     </>

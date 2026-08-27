@@ -3,16 +3,15 @@ import { describe, expect, expectTypeOf, it } from "vitest"
 import { defineError } from "./error"
 import { defineInterface, type InterfaceType } from "./interface"
 import { defineLink, type LinkType } from "./link"
-import { defineModel, modelTypeAccepts } from "./model"
+import {
+  defineModel,
+  modelObjectLinkTraversals,
+  modelTypeAccepts,
+} from "./model"
 import { defineModule } from "./module"
 import { defineObject, type ObjectType } from "./object"
 import { defineRoot, type RootType } from "./root"
-import {
-  schema,
-  type AnySchema,
-  type InferSchema,
-  type RecordId,
-} from "./schema"
+import { schema, type AnySchema } from "./schema"
 
 const TestActor = defineInterface({
   id: "testActor",
@@ -304,6 +303,7 @@ describe("model definitions", () => {
     })
     const ProfileAccount = defineLink({
       id: "profileAccount",
+      writeFrom: "account",
       forward: {
         cardinality: "one",
         from: Profile,
@@ -330,7 +330,7 @@ describe("model definitions", () => {
         objects: [Account, Profile],
         root: Root,
       })
-    ).toThrow(/express single-link uniqueness on the link/)
+    ).toThrow(/references unknown field 'account'/)
   })
 
   it("requires the declared actor interface to have an implementer", () => {
@@ -476,6 +476,7 @@ describe("model definitions", () => {
     })
     const Contacts = defineLink({
       id: "companyContacts",
+      writeFrom: "company",
       name: "Company contacts",
       forward: {
         from: CompanyContact,
@@ -512,12 +513,81 @@ describe("model definitions", () => {
     expectTypeOf(
       model.links.companyContacts.reverse.key
     ).toEqualTypeOf<"contacts">()
-    expect(model.objects.companyContact.properties.company).toMatchObject({
-      kind: "recordId",
-      label: "Company",
-      requiredOnCreate: true,
-      typeId: "company",
+    expect(model.objects.companyContact.properties).not.toHaveProperty(
+      "company"
+    )
+    expect(
+      modelObjectLinkTraversals(model, model.objects.companyContact)[0]
+        ?.traversal.key
+    ).toBe("company")
+  })
+
+  it("keeps generated Query, Action, and Link method names unambiguous", () => {
+    const ConflictingAction = defineObject({
+      id: "conflictingAction",
+      collection: "conflictingActions",
+      name: "Conflicting action",
+      parent: Root,
+      pluralName: "Conflicting actions",
+      properties: { name: schema.string() },
+      display: { title: "name" },
+      actions: {
+        list: {
+          description: "Conflicts with the generated list Query.",
+          name: "List",
+          scope: "collection",
+        },
+      },
     })
+    expect(() =>
+      defineTestModel({
+        actor: TestActor,
+        interfaces: [TestActor],
+        links: [],
+        name: "Conflicting action",
+        objects: [ConflictingAction],
+        root: Root,
+      })
+    ).toThrow(/Action 'conflictingAction\.list'.*generated Query method/)
+
+    const Account = defineObject({
+      id: "account",
+      collection: "accounts",
+      name: "Account",
+      parent: Root,
+      pluralName: "Accounts",
+      properties: { name: schema.string() },
+      display: { title: "name" },
+    })
+    const ConflictingLink = defineLink({
+      id: "conflictingLink",
+      writeFrom: false,
+      name: "Conflicting link",
+      forward: {
+        cardinality: "many",
+        from: Contact,
+        key: "get",
+        label: "Accounts",
+        to: Account,
+      },
+      reverse: {
+        cardinality: "many",
+        from: Account,
+        key: "contacts",
+        label: "Contacts",
+        to: Contact,
+      },
+    })
+    expect(() =>
+      defineTestModel({
+        actor: TestActor,
+        interfaces: [TestActor],
+        links: [ConflictingLink],
+        name: "Conflicting Link",
+        objects: [Account, Contact],
+        root: Root,
+      })
+    ).toThrow(/Link traversal 'contact\.get'.*Query or Action method/)
   })
 
   it("derives singular reference ownership independently of direction", () => {
@@ -542,6 +612,7 @@ describe("model definitions", () => {
 
     const CompanyEmployees = defineLink({
       id: "companyEmployees",
+      writeFrom: "employees",
       name: "Company employees",
       forward: {
         from: Company,
@@ -567,14 +638,12 @@ describe("model definitions", () => {
       root: Root,
     })
 
-    expect(model.objects.employee.properties.company).toMatchObject({
-      kind: "recordId",
-      typeId: "company",
-    })
+    expect(model.objects.employee.properties).not.toHaveProperty("company")
 
     expect(() =>
       defineLink({
         id: "invalidReverse",
+        writeFrom: "employees",
         name: "Invalid reverse",
         forward: {
           cardinality: "many",
@@ -595,7 +664,7 @@ describe("model definitions", () => {
     ).toThrow(/reverse traversal must mirror/)
   })
 
-  it("requires a singular reference property to belong to an object", () => {
+  it("allows interface endpoints without deriving hidden properties", () => {
     const Party = defineInterface({
       id: "party",
       name: "Party",
@@ -614,6 +683,7 @@ describe("model definitions", () => {
     })
     const InvalidOwner = defineLink({
       id: "invalidOwner",
+      writeFrom: "activity",
       name: "Invalid owner",
       forward: {
         from: Party,
@@ -631,16 +701,15 @@ describe("model definitions", () => {
       },
     })
 
-    expect(() =>
-      defineTestModel({
-        actor: TestActor,
-        interfaces: [TestActor, Party],
-        links: [InvalidOwner],
-        name: "Test",
-        objects: [Activity],
-        root: Root,
-      })
-    ).toThrow(/singular link references must resolve to an object/)
+    const model = defineTestModel({
+      actor: TestActor,
+      interfaces: [TestActor, Party],
+      links: [InvalidOwner],
+      name: "Test",
+      objects: [Activity],
+      root: Root,
+    })
+    expect(model.links.invalidOwner.forward.from.kind).toBe("interface")
   })
 
   it("registers portable interfaces and validates exact object mappings", () => {
@@ -773,6 +842,7 @@ describe("root definitions", () => {
     })
     const PermissionScope = defineLink({
       id: "permissionScope",
+      writeFrom: "scope",
       forward: {
         cardinality: "one",
         from: Permission,
@@ -804,9 +874,11 @@ describe("root definitions", () => {
       interfaceId: "authorizationScope",
       propertyMapping: {},
     })
-    expectTypeOf<
-      InferSchema<typeof model.objects.permission.properties.scope>
-    >().toEqualTypeOf<RecordId<"root"> | RecordId<"workspace">>()
+    expect(model.objects.permission.properties).not.toHaveProperty("scope")
+    expect(
+      modelObjectLinkTraversals(model, model.objects.permission)[0]?.target.from
+        .typeId
+    ).toBe("authorizationScope")
     expect(modelTypeAccepts(model, "root", "authorizationScope")).toBe(true)
     expect(modelTypeAccepts(model, "workspace", "authorizationScope")).toBe(
       true

@@ -1,15 +1,17 @@
 /* oxlint-disable anti-slop/no-reflect-get, anti-slop/no-runtime-typeof -- This model adapter validates reflected endpoints before invoking them. */
 import { Model } from "@company/model"
 import {
+  type Batch,
+  type ModelLinkTraversal,
   modelTypeAccepts,
   type ListRequest,
+  type ObjectRef,
   type Page,
   type PropertyDefinition,
 } from "@company/runtime"
-import { httpEndpointId } from "@company/runtime/effect/http"
 import { Effect } from "effect"
 
-import { httpClient } from "@/http-client"
+import { client } from "@/client"
 
 import { objectTableValueText } from "./object-table/object-table-config"
 import type { ObjectTableRecord } from "./object-table/object-table-config"
@@ -32,6 +34,9 @@ export interface ClientRecord {
 }
 
 export interface DynamicObjectClient {
+  readonly batchGet: (
+    input: DynamicRecordIdsInput
+  ) => Promise<Batch<ClientRecord>>
   readonly batchDelete?: (input: {
     readonly ids: ReadonlyArray<string>
   }) => Promise<void>
@@ -42,6 +47,7 @@ export interface DynamicObjectClient {
     readonly etag?: string
     readonly id: string
   }) => Promise<void>
+  readonly get: (input: DynamicRecordInput) => Promise<ClientRecord>
   readonly list: (request?: ListRequest) => Promise<Page<ClientRecord>>
   readonly update?: (
     input: Readonly<Record<string, ClientValue | undefined>> & {
@@ -51,81 +57,145 @@ export interface DynamicObjectClient {
   ) => Promise<ClientRecord>
 }
 
-interface NativeEndpointRequest {
-  readonly params?: { readonly id: string }
-  readonly payload?:
-    | ListRequest
-    | Readonly<Record<string, ClientValue | undefined>>
-    | { readonly ids: ReadonlyArray<string> }
-  readonly query?: ListRequest | { readonly etag?: string }
+export interface DynamicLinkClient {
+  readonly link?: (input: DynamicLinkMutationInput) => Promise<void>
+  readonly list: (input: DynamicLinkListInput) => Promise<Page<ObjectRef>>
+  readonly unlink?: (input: DynamicLinkMutationInput) => Promise<void>
 }
 
-type NativeEndpoint = (
-  request: NativeEndpointRequest
+interface DynamicRecordInput {
+  readonly id: string
+}
+
+interface DynamicRecordIdsInput {
+  readonly ids: ReadonlyArray<string>
+}
+
+export interface DynamicLinkListInput extends DynamicRecordInput {
+  readonly pageSize?: number
+  readonly pageToken?: string
+}
+
+interface DynamicLinkMutationInput extends DynamicRecordInput {
+  readonly target: string
+}
+
+type ModelClientRequest =
+  | DynamicLinkListInput
+  | DynamicLinkMutationInput
+  | DynamicRecordIdsInput
+  | ListRequest
+  | Readonly<Record<string, ClientValue | undefined>>
+type ModelMethod = (
+  request: ModelClientRequest
 ) => Effect.Effect<unknown, unknown>
 
 type DynamicObjectClientBuilder = {
   -readonly [TKey in keyof DynamicObjectClient]: DynamicObjectClient[TKey]
 }
 
-function nativeEndpoint(
-  object: ModelObject,
-  operation: string
-): NativeEndpoint {
-  const group = Reflect.get(httpClient, object.id)
-  const endpoint = Reflect.get(group, httpEndpointId(operation, object))
-  if (typeof endpoint !== "function") {
-    throw new Error(`HTTP endpoint '${object.id}.${operation}' is not defined.`)
-  }
-  // SAFETY: applicationHttpApi and this adapter are projected from the same
-  // closed Model; native HttpApiClient owns request encoding and response decoding.
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  return endpoint as NativeEndpoint
+interface DynamicLinkClientBuilder {
+  link?: NonNullable<DynamicLinkClient["link"]>
+  list: DynamicLinkClient["list"]
+  unlink?: NonNullable<DynamicLinkClient["unlink"]>
 }
 
-async function runEndpoint<TResult>(
-  endpoint: NativeEndpoint,
-  request: NativeEndpointRequest
-): Promise<TResult> {
-  // SAFETY: every endpoint result is decoded by its schema in applicationHttpApi.
+function modelMethod(object: ModelObject, operation: string): ModelMethod {
+  const group = Reflect.get(client, object.id)
+  const method = Reflect.get(group, operation)
+  if (typeof method !== "function") {
+    throw new Error(
+      `Model client method '${object.id}.${operation}' is missing.`
+    )
+  }
+  // SAFETY: client and this adapter are projected from the same closed Model.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  return Effect.runPromise(endpoint(request)) as Promise<TResult>
+  return method as ModelMethod
+}
+
+function linkMethod(
+  object: ModelObject,
+  traversal: ModelLinkTraversal,
+  operation: string
+): ModelMethod | undefined {
+  const group = Reflect.get(client, object.id)
+  const links = Reflect.get(group, traversal.traversal.key)
+  if (typeof links !== "object" || links === null) {
+    throw new Error(
+      `Model client Link '${object.id}.${traversal.traversal.key}' is missing.`
+    )
+  }
+  const method = Reflect.get(links, operation)
+  if (method === undefined) return undefined
+  if (typeof method !== "function") {
+    throw new Error(
+      `Model client Link method '${object.id}.${traversal.traversal.key}.${operation}' is invalid.`
+    )
+  }
+  // SAFETY: client and this adapter are projected from the same closed Model.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  return method as ModelMethod
+}
+
+async function runMethod<TResult>(effect: Effect.Effect<unknown, unknown>) {
+  // SAFETY: every result is decoded by the generated native Effect client.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  return Effect.runPromise(effect) as Promise<TResult>
 }
 
 export function clientFor(object: ModelObject): DynamicObjectClient {
-  const list = nativeEndpoint(object, "list")
-  const search = nativeEndpoint(object, "search")
-  const client: DynamicObjectClientBuilder = {
-    list(request = {}) {
-      return request.filter === undefined && request.sort === undefined
-        ? runEndpoint(list, { query: request })
-        : runEndpoint(search, { payload: request })
-    },
+  const batchGet = modelMethod(object, "batchGet")
+  const get = modelMethod(object, "get")
+  const list = modelMethod(object, "list")
+  const adapter: DynamicObjectClientBuilder = {
+    batchGet: (input) => runMethod(batchGet(input)),
+    get: (input) => runMethod(get(input)),
+    list: (request = {}) => runMethod(list(request)),
   }
 
   if ("batchDelete" in object.actions) {
-    const endpoint = nativeEndpoint(object, "batchDelete")
-    client.batchDelete = (input) => runEndpoint(endpoint, { payload: input })
+    const method = modelMethod(object, "batchDelete")
+    adapter.batchDelete = (input) => runMethod(method(input))
   }
   if ("create" in object.actions) {
-    const endpoint = nativeEndpoint(object, "create")
-    client.create = (input) => runEndpoint(endpoint, { payload: input })
+    const method = modelMethod(object, "create")
+    adapter.create = (input) => runMethod(method(input))
   }
   if ("delete" in object.actions) {
-    const endpoint = nativeEndpoint(object, "delete")
-    client.delete = ({ etag, id }) =>
-      runEndpoint(endpoint, {
-        params: { id },
-        query: etag === undefined ? {} : { etag },
-      })
+    const method = modelMethod(object, "delete")
+    adapter.delete = (input) => runMethod(method(input))
   }
   if ("update" in object.actions) {
-    const endpoint = nativeEndpoint(object, "update")
-    client.update = ({ id, ...payload }) =>
-      runEndpoint(endpoint, { params: { id }, payload })
+    const method = modelMethod(object, "update")
+    adapter.update = (input) => runMethod(method(input))
   }
 
-  return client
+  return adapter
+}
+
+/** Dynamic adapter used only by model-generated relationship UI. */
+export function linkClientFor(
+  object: ModelObject,
+  traversal: ModelLinkTraversal
+): DynamicLinkClient {
+  const list = linkMethod(object, traversal, "list")
+  if (list === undefined) {
+    throw new Error(
+      `Model client Link method '${object.id}.${traversal.traversal.key}.list' is missing.`
+    )
+  }
+  const link = linkMethod(object, traversal, "link")
+  const unlink = linkMethod(object, traversal, "unlink")
+  const adapter: DynamicLinkClientBuilder = {
+    list: (input) => runMethod(list(input)),
+  }
+  if (link !== undefined) {
+    adapter.link = (input) => runMethod<void>(link(input))
+  }
+  if (unlink !== undefined) {
+    adapter.unlink = (input) => runMethod<void>(unlink(input))
+  }
+  return adapter
 }
 
 export function modelObjectProperty(

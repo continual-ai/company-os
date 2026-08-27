@@ -1,37 +1,30 @@
 import { Model } from "@company/model"
-import { RecordId, type ObjectRecord } from "@company/runtime"
-import { generateRecordId } from "@company/runtime/effect/object-service"
+import type { ObjectCreateInput, ObjectRecord } from "@company/runtime"
 import { Context, Effect, Layer } from "effect"
 
-import { currentActorId } from "@/server/invocation-context"
 import { ObjectRepositories } from "@/server/model/object-repositories"
-import { makeObjectService } from "@/server/model/object-service"
-import { ROOT_ID } from "@/system-records"
+import {
+  makeBaseObjectService,
+  makeObjectWriter,
+} from "@/server/model/object-service"
 
 type UserRecord = ObjectRecord<(typeof Model.objects)["user"]>
+type UserCreateInput = ObjectCreateInput<(typeof Model.objects)["user"]>
 
 const make = Effect.gen(function* () {
   const repository = (yield* ObjectRepositories).user
-  const base = yield* makeObjectService(Model.objects.user, repository)
+  const base = yield* makeBaseObjectService(Model.objects.user, repository)
+  const writer = yield* makeObjectWriter(Model.objects.user, repository)
 
   const provision = Effect.fn("@company/UserService.provision")(function* (
     input: Pick<UserRecord, "email" | "name"> &
       Partial<Pick<UserRecord, "image">>
   ) {
-    const actorId = yield* currentActorId
-    return yield* repository.insert({
-      aliases: [],
-      createdBy: actorId,
-      email: input.email,
-      id: RecordId("user")(generateRecordId("user")),
-      image: input.image ?? null,
-      metadata: {},
-      name: input.name,
-      parent: ROOT_ID,
-      status: "active",
-      systemManaged: false,
-      updatedBy: actorId,
-    })
+    const createInput: UserCreateInput =
+      input.image === undefined
+        ? { email: input.email, name: input.name }
+        : { email: input.email, image: input.image, name: input.name }
+    return yield* writer.create(createInput)
   })
 
   const reconcile = Effect.fn("@company/UserService.reconcile")(function* (
@@ -41,12 +34,11 @@ const make = Effect.gen(function* () {
     if (current.email === input.email && current.name === input.name) {
       return current
     }
-    return yield* repository.update({
+    return yield* writer.update({
       email: input.email,
       etag: current.etag,
       id: current.id,
       name: input.name,
-      updatedBy: yield* currentActorId,
     })
   })
 

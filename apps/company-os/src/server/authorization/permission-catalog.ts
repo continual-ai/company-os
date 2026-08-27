@@ -3,7 +3,9 @@ import { modelObjects } from "@company/runtime"
 import type { ObjectAccessRequest } from "@company/runtime/effect/object-service"
 
 import {
+  capabilityPermission,
   capabilityPermissions,
+  isCapabilityPermission,
   type CapabilityPermission,
 } from "@/capabilities"
 
@@ -19,8 +21,12 @@ function permissionOperation(operation: string): string {
 }
 
 /** Maps a runtime object operation to the model's exact permission vocabulary. */
-export function objectPermission(request: ObjectAccessRequest): string {
-  return `${request.objectType}.${permissionOperation(request.operation)}`
+export function objectPermission(
+  request: ObjectAccessRequest
+): CapabilityPermission {
+  return capabilityPermission(
+    `${request.objectType}.${permissionOperation(request.operation)}`
+  )
 }
 
 /** Every permission currently recognized by the closed application policy. */
@@ -43,7 +49,7 @@ permissionDefinitions.set("application.develop", {
 })
 
 for (const object of modelObjects(Model)) {
-  const readPermission = `${object.id}.get`
+  const readPermission = capabilityPermission(`${object.id}.get`)
   permissionDefinitions.set(readPermission, {
     expectedType: object.id,
     modifiesTarget: false,
@@ -51,15 +57,16 @@ for (const object of modelObjects(Model)) {
     permission: readPermission,
     readPermission,
   })
-  permissionDefinitions.set(`${object.id}.list`, {
+  const listPermission = capabilityPermission(`${object.id}.list`)
+  permissionDefinitions.set(listPermission, {
     modifiesTarget: false,
     objectType: object.id,
-    permission: `${object.id}.list`,
+    permission: listPermission,
   })
 
   for (const action of Object.values(object.actions)) {
     const permission = `${object.id}.${permissionOperation(action.id)}`
-    if (!capabilityPermissions.includes(permission)) continue
+    if (!isCapabilityPermission(permission)) continue
     if (permissionDefinitions.has(permission)) continue
 
     const objectScoped = action.scope === "object"

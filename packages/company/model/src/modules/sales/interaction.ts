@@ -8,7 +8,7 @@ export const Interaction = defineObject({
   name: "Interaction",
   parent: Root,
   pluralName: "Interactions",
-  description: "A call, email, meeting, or note involving a business party.",
+  description: "A call, email, meeting, or note concerning a business party.",
   properties: {
     kind: schema.select({
       label: "Kind",

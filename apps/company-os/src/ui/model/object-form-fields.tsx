@@ -1,26 +1,26 @@
 /* oxlint-disable anti-slop/no-runtime-typeof */
-import { modelMetadata } from "@company/model"
 import type { PropertyDefinition } from "@company/runtime"
-import { Field, FieldError, FieldLabel } from "@company/ui/components/field"
+import { FieldError } from "@company/ui/components/field"
 import { Input } from "@company/ui/components/input"
 import { Textarea } from "@company/ui/components/textarea"
 
-import { errorsForField, type FormErrors } from "./form-errors"
-import { FormField } from "./form-field"
+import { useTypedAppFormContext } from "@/ui/forms/app-form"
+import type { FormValue, FormValueObject } from "@/ui/forms/form-value"
+
+import { parentName, type ModelObject } from "./object-client"
 import {
-  parentName,
-  type ClientValue,
-  type ClientRecord,
-  type ModelObject,
-} from "./object-client"
-import {
-  dateTimeLocalValue,
   isSupportedFormSchema,
+  objectFormLinks,
   objectFormProperties,
   stringValue,
   type ObjectFormMode,
+  type ObjectFormValues,
 } from "./object-form"
+import { ObjectReferenceMultiSelect } from "./object-reference-multi-select"
 import { ObjectReferenceSelect } from "./object-reference-select"
+
+const emptyObjectFormValues: ObjectFormValues = {}
+const objectFormContextOptions = { defaultValues: emptyObjectFormValues }
 
 function fieldRequired(
   mode: ObjectFormMode,
@@ -29,57 +29,71 @@ function fieldRequired(
   return mode === "create" ? property.requiredOnCreate : !property.nullable
 }
 
-function initialValue(
-  property: PropertyDefinition,
-  record: ClientRecord | undefined,
-  propertyId: string
-): ClientValue | undefined {
-  if (record !== undefined) return record[propertyId]
-  // SAFETY: portable property defaults are JSON-compatible values by schema.
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  return property.default as ClientValue | undefined
+function isFormValueObject(value: FormValue): value is FormValueObject {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+}
+
+function nestedValue(value: FormValue, key: string): string {
+  return isFormValueObject(value) ? stringValue(value[key]) : ""
+}
+
+function stringArrayValue(value: FormValue): ReadonlyArray<string> {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : []
+}
+
+function updateNested(
+  value: FormValue,
+  key: string,
+  next: string
+): FormValueObject {
+  const current = isFormValueObject(value) ? value : {}
+  return { ...current, [key]: next }
 }
 
 export function ObjectFormFields({
-  errors,
   mode,
   object,
-  record,
   referenceLabels,
 }: {
-  readonly errors: FormErrors
   readonly mode: ObjectFormMode
   readonly object: ModelObject
-  readonly record?: ClientRecord | undefined
   readonly referenceLabels: ReadonlyMap<string, string>
 }) {
+  const form = useTypedAppFormContext(objectFormContextOptions)
+
   return (
     <>
       {mode === "create" && object.parent.kind !== "root" ? (
-        <FormField
-          errors={errors}
-          id={`${object.id}-parent`}
-          label={parentName(object)}
-          name="parent"
-        >
-          {({ ariaDescribedBy, invalid }) => (
-            <ObjectReferenceSelect
-              ariaDescribedBy={ariaDescribedBy}
+        <form.AppField name="parent">
+          {(field) => (
+            <field.FormField
               id={`${object.id}-parent`}
-              invalid={invalid}
-              required
-              name="parent"
-              typeId={object.parent.typeId}
-            />
+              label={parentName(object)}
+            >
+              {({ ariaDescribedBy, invalid, onBlur, onValueChange, value }) => (
+                <ObjectReferenceSelect
+                  ariaDescribedBy={ariaDescribedBy}
+                  id={`${object.id}-parent`}
+                  invalid={invalid}
+                  required
+                  name="parent"
+                  typeId={object.parent.typeId}
+                  value={stringValue(value)}
+                  onBlur={onBlur}
+                  onValueChange={onValueChange}
+                />
+              )}
+            </field.FormField>
           )}
-        </FormField>
+        </form.AppField>
       ) : null}
 
       {objectFormProperties(object, mode).map(({ id, property, schema }) => {
         const fieldId = `${object.id}-${mode}-${id}`
         const label = property.label ?? id
         const required = fieldRequired(mode, property)
-        const value = initialValue(property, record, id)
 
         if (!isSupportedFormSchema(schema)) {
           return (
@@ -90,133 +104,187 @@ export function ObjectFormFields({
         }
 
         if (schema.kind === "boolean") {
-          const violations = errorsForField(errors, id)
-          const invalid = violations.length > 0
           return (
-            <Field key={id} orientation="horizontal" data-invalid={invalid}>
-              <input
-                id={fieldId}
-                name={id}
-                type="checkbox"
-                value="true"
-                defaultChecked={value === true}
-                aria-invalid={invalid}
-                aria-describedby={invalid ? `${fieldId}-error` : undefined}
-              />
-              <FieldLabel htmlFor={fieldId}>{label}</FieldLabel>
-              <FieldError id={`${fieldId}-error`} errors={violations} />
-            </Field>
+            <form.AppField key={id} name={id}>
+              {(field) => (
+                <field.FormField
+                  id={fieldId}
+                  label={label}
+                  orientation="horizontal"
+                >
+                  {({
+                    ariaDescribedBy,
+                    invalid,
+                    onBlur,
+                    onValueChange,
+                    value,
+                  }) => (
+                    <input
+                      id={fieldId}
+                      name={id}
+                      type="checkbox"
+                      checked={value === true}
+                      aria-invalid={invalid}
+                      aria-describedby={ariaDescribedBy}
+                      onBlur={onBlur}
+                      onChange={(event) =>
+                        onValueChange(event.currentTarget.checked)
+                      }
+                    />
+                  )}
+                </field.FormField>
+              )}
+            </form.AppField>
           )
         }
 
         if (schema.kind === "recordId") {
-          const recordId = stringValue(value)
           return (
-            <FormField
-              key={id}
-              errors={errors}
-              id={fieldId}
-              label={label}
-              name={id}
-              description={property.description}
-            >
-              {({ ariaDescribedBy, invalid }) => (
-                <ObjectReferenceSelect
-                  ariaDescribedBy={ariaDescribedBy}
+            <form.AppField key={id} name={id}>
+              {(field) => (
+                <field.FormField
                   id={fieldId}
-                  invalid={invalid}
-                  name={id}
-                  required={required}
-                  typeId={schema.typeId}
-                  value={recordId}
-                  initialLabel={referenceLabels.get(recordId)}
-                />
+                  label={label}
+                  description={property.description}
+                >
+                  {({
+                    ariaDescribedBy,
+                    invalid,
+                    onBlur,
+                    onValueChange,
+                    value,
+                  }) => {
+                    const recordId = stringValue(value)
+                    return (
+                      <ObjectReferenceSelect
+                        ariaDescribedBy={ariaDescribedBy}
+                        id={fieldId}
+                        invalid={invalid}
+                        name={id}
+                        required={required}
+                        typeId={schema.typeId}
+                        value={recordId}
+                        initialLabel={referenceLabels.get(recordId)}
+                        onBlur={onBlur}
+                        onValueChange={onValueChange}
+                      />
+                    )
+                  }}
+                </field.FormField>
               )}
-            </FormField>
+            </form.AppField>
           )
         }
 
         if (schema.kind === "enum") {
           return (
-            <FormField
-              key={id}
-              errors={errors}
-              id={fieldId}
-              label={label}
-              name={id}
-              description={property.description}
-            >
-              {({ ariaDescribedBy, invalid }) => (
-                <select
+            <form.AppField key={id} name={id}>
+              {(field) => (
+                <field.FormField
                   id={fieldId}
-                  name={id}
-                  required={required}
-                  defaultValue={stringValue(value)}
-                  aria-invalid={invalid}
-                  aria-describedby={ariaDescribedBy}
-                  className="h-8 border border-input bg-background px-2 text-xs aria-invalid:border-destructive"
+                  label={label}
+                  description={property.description}
                 >
-                  {required ? null : <option value="">None</option>}
-                  {(
-                    schema.options ??
-                    schema.values.map((option) => ({
-                      label: option,
-                      value: option,
-                    }))
-                  ).map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
+                  {({
+                    ariaDescribedBy,
+                    invalid,
+                    onBlur,
+                    onValueChange,
+                    value,
+                  }) => (
+                    <select
+                      id={fieldId}
+                      name={id}
+                      required={required}
+                      value={stringValue(value)}
+                      aria-invalid={invalid}
+                      aria-describedby={ariaDescribedBy}
+                      onBlur={onBlur}
+                      onChange={(event) =>
+                        onValueChange(event.currentTarget.value)
+                      }
+                      className="h-8 border border-input bg-background px-2 text-xs aria-invalid:border-destructive"
+                    >
+                      {required ? null : <option value="">None</option>}
+                      {(
+                        schema.options ??
+                        schema.values.map((option) => ({
+                          label: option,
+                          value: option,
+                        }))
+                      ).map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </field.FormField>
               )}
-            </FormField>
+            </form.AppField>
           )
         }
 
         if (schema.kind === "money") {
-          const money =
-            typeof value === "object" &&
-            value !== null &&
-            "amount" in value &&
-            "currency" in value
-              ? value
-              : undefined
           return (
-            <FormField
-              key={id}
-              errors={errors}
-              id={`${fieldId}-amount`}
-              label={label}
-              name={id}
-              description={property.description}
-            >
-              {({ ariaDescribedBy, invalid }) => (
-                <div className="grid grid-cols-[1fr_6rem] gap-2">
-                  <Input
-                    id={`${fieldId}-amount`}
-                    name={`${id}.amount`}
-                    inputMode="decimal"
-                    required={required}
-                    defaultValue={stringValue(money?.amount)}
-                    placeholder="0.00"
-                    aria-invalid={invalid}
-                    aria-describedby={ariaDescribedBy}
-                  />
-                  <Input
-                    aria-label={`${label} currency`}
-                    name={`${id}.currency`}
-                    maxLength={3}
-                    defaultValue={
-                      stringValue(money?.currency) ||
-                      modelMetadata.defaultCurrency
-                    }
-                    aria-invalid={invalid}
-                    aria-describedby={ariaDescribedBy}
-                  />
-                </div>
+            <form.AppField key={id} name={id}>
+              {(field) => (
+                <field.FormField
+                  id={`${fieldId}-amount`}
+                  label={label}
+                  description={property.description}
+                >
+                  {({
+                    ariaDescribedBy,
+                    invalid,
+                    onBlur,
+                    onValueChange,
+                    value,
+                  }) => (
+                    <div className="grid grid-cols-[1fr_6rem] gap-2">
+                      <Input
+                        id={`${fieldId}-amount`}
+                        name={`${id}.amount`}
+                        inputMode="decimal"
+                        required={required}
+                        value={nestedValue(value, "amount")}
+                        placeholder="0.00"
+                        aria-invalid={invalid}
+                        aria-describedby={ariaDescribedBy}
+                        onBlur={onBlur}
+                        onChange={(event) =>
+                          onValueChange(
+                            updateNested(
+                              value,
+                              "amount",
+                              event.currentTarget.value
+                            )
+                          )
+                        }
+                      />
+                      <Input
+                        aria-label={`${label} currency`}
+                        name={`${id}.currency`}
+                        maxLength={3}
+                        value={nestedValue(value, "currency")}
+                        aria-invalid={invalid}
+                        aria-describedby={ariaDescribedBy}
+                        onBlur={onBlur}
+                        onChange={(event) =>
+                          onValueChange(
+                            updateNested(
+                              value,
+                              "currency",
+                              event.currentTarget.value
+                            )
+                          )
+                        }
+                      />
+                    </div>
+                  )}
+                </field.FormField>
               )}
-            </FormField>
+            </form.AppField>
           )
         }
 
@@ -225,73 +293,103 @@ export function ObjectFormFields({
           schema.kind === "image" ||
           schema.kind === "media"
         ) {
-          const media =
-            typeof value === "object" && value !== null && "assetId" in value
-              ? value
-              : undefined
           return (
-            <FormField
-              key={id}
-              errors={errors}
-              id={`${fieldId}-asset`}
-              label={label}
-              name={id}
-              description={
-                property.description ??
-                "Enter an asset ID. A deployment can replace this with its media picker."
-              }
-            >
-              {({ ariaDescribedBy, invalid }) => (
-                <>
-                  <Input
-                    id={`${fieldId}-asset`}
-                    name={`${id}.assetId`}
-                    required={required}
-                    defaultValue={stringValue(media?.assetId)}
-                    placeholder="Asset ID"
-                    aria-invalid={invalid}
-                    aria-describedby={ariaDescribedBy}
-                  />
-                  {schema.kind === "file" ? null : (
-                    <Input
-                      name={`${id}.alt`}
-                      defaultValue={
-                        media !== undefined && "alt" in media
-                          ? stringValue(media.alt)
-                          : ""
-                      }
-                      placeholder="Alternative text"
-                      aria-invalid={invalid}
-                      aria-describedby={ariaDescribedBy}
-                    />
+            <form.AppField key={id} name={id}>
+              {(field) => (
+                <field.FormField
+                  id={`${fieldId}-asset`}
+                  label={label}
+                  description={
+                    property.description ??
+                    "Enter an asset ID. A deployment can replace this with its media picker."
+                  }
+                >
+                  {({
+                    ariaDescribedBy,
+                    invalid,
+                    onBlur,
+                    onValueChange,
+                    value,
+                  }) => (
+                    <>
+                      <Input
+                        id={`${fieldId}-asset`}
+                        name={`${id}.assetId`}
+                        required={required}
+                        value={nestedValue(value, "assetId")}
+                        placeholder="Asset ID"
+                        aria-invalid={invalid}
+                        aria-describedby={ariaDescribedBy}
+                        onBlur={onBlur}
+                        onChange={(event) =>
+                          onValueChange(
+                            updateNested(
+                              value,
+                              "assetId",
+                              event.currentTarget.value
+                            )
+                          )
+                        }
+                      />
+                      {schema.kind === "file" ? null : (
+                        <Input
+                          name={`${id}.alt`}
+                          value={nestedValue(value, "alt")}
+                          placeholder="Alternative text"
+                          aria-invalid={invalid}
+                          aria-describedby={ariaDescribedBy}
+                          onBlur={onBlur}
+                          onChange={(event) =>
+                            onValueChange(
+                              updateNested(
+                                value,
+                                "alt",
+                                event.currentTarget.value
+                              )
+                            )
+                          }
+                        />
+                      )}
+                    </>
                   )}
-                </>
+                </field.FormField>
               )}
-            </FormField>
+            </form.AppField>
           )
         }
 
         if (schema.kind === "array") {
           return (
-            <FormField
-              key={id}
-              errors={errors}
-              id={fieldId}
-              label={label}
-              name={id}
-              description={property.description ?? "One value per line."}
-            >
-              {({ ariaDescribedBy, invalid }) => (
-                <Textarea
+            <form.AppField key={id} name={id}>
+              {(field) => (
+                <field.FormField
                   id={fieldId}
-                  name={id}
-                  required={required}
-                  defaultValue={Array.isArray(value) ? value.join("\n") : ""}
-                  aria-invalid={invalid}
-                  aria-describedby={ariaDescribedBy}
-                />
+                  label={label}
+                  description={property.description ?? "One value per line."}
+                >
+                  {({
+                    ariaDescribedBy,
+                    invalid,
+                    onBlur,
+                    onValueChange,
+                    value,
+                  }) => (
+                    <Textarea
+                      id={fieldId}
+                      name={id}
+                      required={required}
+                      value={stringValue(value)}
+                      aria-invalid={invalid}
+                      aria-describedby={ariaDescribedBy}
+                      onBlur={onBlur}
+                      onChange={(event) =>
+                        onValueChange(event.currentTarget.value)
+                      }
+                    />
+                  )}
+                </field.FormField>
               )}
-            </FormField>
+            </form.AppField>
           )
         }
 
@@ -315,56 +413,121 @@ export function ObjectFormFields({
                     : schema.kind === "string" && schema.format === "url"
                       ? "url"
                       : "text"
-        const defaultValue = timestamp
-          ? dateTimeLocalValue(value)
-          : typeof value === "number"
-            ? value
-            : stringValue(value)
 
         return (
-          <FormField
-            key={id}
-            errors={errors}
-            id={fieldId}
-            label={label}
-            name={id}
-            description={property.description}
-          >
-            {({ ariaDescribedBy, invalid }) =>
-              longText ? (
-                <Textarea
-                  id={fieldId}
-                  name={id}
-                  required={required}
-                  defaultValue={defaultValue}
-                  maxLength={
-                    schema.kind === "string" ? schema.maxLength : undefined
-                  }
-                  aria-invalid={invalid}
-                  aria-describedby={ariaDescribedBy}
-                />
-              ) : (
-                <Input
-                  id={fieldId}
-                  name={id}
-                  type={inputType}
-                  required={required}
-                  defaultValue={defaultValue}
-                  max={schema.kind === "number" ? schema.maximum : undefined}
-                  min={schema.kind === "number" ? schema.minimum : undefined}
-                  step={schema.kind === "number" && schema.integer ? 1 : "any"}
-                  maxLength={
-                    schema.kind === "string" ? schema.maxLength : undefined
-                  }
-                  minLength={
-                    schema.kind === "string" ? schema.minLength : undefined
-                  }
-                  aria-invalid={invalid}
-                  aria-describedby={ariaDescribedBy}
-                />
-              )
-            }
-          </FormField>
+          <form.AppField key={id} name={id}>
+            {(field) => (
+              <field.FormField
+                id={fieldId}
+                label={label}
+                description={property.description}
+              >
+                {({
+                  ariaDescribedBy,
+                  invalid,
+                  onBlur,
+                  onValueChange,
+                  value,
+                }) =>
+                  longText ? (
+                    <Textarea
+                      id={fieldId}
+                      name={id}
+                      required={required}
+                      value={stringValue(value)}
+                      maxLength={
+                        schema.kind === "string" ? schema.maxLength : undefined
+                      }
+                      aria-invalid={invalid}
+                      aria-describedby={ariaDescribedBy}
+                      onBlur={onBlur}
+                      onChange={(event) =>
+                        onValueChange(event.currentTarget.value)
+                      }
+                    />
+                  ) : (
+                    <Input
+                      id={fieldId}
+                      name={id}
+                      type={inputType}
+                      required={required}
+                      value={stringValue(value)}
+                      max={
+                        schema.kind === "number" ? schema.maximum : undefined
+                      }
+                      min={
+                        schema.kind === "number" ? schema.minimum : undefined
+                      }
+                      step={
+                        schema.kind === "number" && schema.integer ? 1 : "any"
+                      }
+                      maxLength={
+                        schema.kind === "string" ? schema.maxLength : undefined
+                      }
+                      minLength={
+                        schema.kind === "string" ? schema.minLength : undefined
+                      }
+                      aria-invalid={invalid}
+                      aria-describedby={ariaDescribedBy}
+                      onBlur={onBlur}
+                      onChange={(event) =>
+                        onValueChange(event.currentTarget.value)
+                      }
+                    />
+                  )
+                }
+              </field.FormField>
+            )}
+          </form.AppField>
+        )
+      })}
+
+      {objectFormLinks(object, mode).map(({ target, traversal }) => {
+        const fieldId = `${object.id}-${mode}-link-${traversal.key}`
+        const name = `links.${traversal.key}`
+        return (
+          <form.AppField key={traversal.key} name={name}>
+            {(field) => (
+              <field.FormField
+                id={fieldId}
+                label={traversal.label}
+                description={traversal.description}
+              >
+                {({
+                  ariaDescribedBy,
+                  invalid,
+                  onBlur,
+                  onValueChange,
+                  value,
+                }) =>
+                  traversal.cardinality === "many" ? (
+                    <ObjectReferenceMultiSelect
+                      id={fieldId}
+                      name={name}
+                      value={stringArrayValue(value)}
+                      invalid={invalid}
+                      ariaDescribedBy={ariaDescribedBy}
+                      typeId={target.from.typeId}
+                      onBlur={onBlur}
+                      onValueChange={onValueChange}
+                    />
+                  ) : (
+                    <ObjectReferenceSelect
+                      ariaDescribedBy={ariaDescribedBy}
+                      id={fieldId}
+                      invalid={invalid}
+                      name={name}
+                      required={traversal.cardinality === "one"}
+                      typeId={target.from.typeId}
+                      value={stringValue(value)}
+                      onBlur={onBlur}
+                      onValueChange={onValueChange}
+                    />
+                  )
+                }
+              </field.FormField>
+            )}
+          </form.AppField>
         )
       })}
     </>

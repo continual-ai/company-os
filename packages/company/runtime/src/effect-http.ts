@@ -1,4 +1,4 @@
-/* oxlint-disable anti-slop/no-chained-type-assertions, anti-slop/no-unknown-parameters, anti-slop/no-unsafe-dictionary-type, typescript/no-unsafe-type-assertion */
+/* oxlint-disable anti-slop/no-chained-type-assertions, anti-slop/no-known-value-widening, anti-slop/no-object-parameters, anti-slop/no-reflect-get, anti-slop/no-runtime-typeof, anti-slop/no-unknown-parameters, anti-slop/no-unsafe-dictionary-type, typescript/no-unsafe-type-assertion -- Effect's static HttpApi surface requires one contained dynamic bridge from closed model data. */
 // Effect's HttpApi builder is statically keyed while a Model is intentionally
 // data-driven. This module contains the one dynamic bridge between them.
 import { Effect, Layer, Schema } from "effect"
@@ -21,18 +21,24 @@ import {
   type StandardActionId,
 } from "./definition/action"
 import type { ApiError, ErrorStatus, ErrorType } from "./definition/error"
+import type { LinkTraversal, LinkType } from "./definition/link"
 import {
   type ModelCatalog,
+  type ModelEndpointObjectTypeId,
+  type ModelLinkTraversal,
+  type ModelObjectCreateInput,
   type ModelObject,
+  modelObjectLinkTraversals,
   modelObjects,
 } from "./definition/model"
 import {
   Etag,
   type ObjectBatchDeleteInput,
   type ObjectBatchGetInput,
-  type ObjectCreateInput,
   type ObjectDeleteInput,
+  type ObjectGetInput,
   type ObjectRecord,
+  type ObjectRef,
   type ObjectType,
   type ObjectUpdateInput,
 } from "./definition/object"
@@ -54,8 +60,15 @@ import type {
   StructSchema,
 } from "./definition/schema"
 import { ValidationError } from "./definition/standard-error"
+import type {
+  LinkListInput,
+  LinkMutationInput,
+  LinkService,
+} from "./effect-link-service"
 import {
   executableModelOperation,
+  executableModelOperations,
+  executeModelOperation,
   type ExecutableModelOperation,
   modelOperation,
   modelOperationErrors,
@@ -71,7 +84,7 @@ import type { CurrentInvocation } from "./effect-object-service"
 import {
   toEffectErrorSchema,
   toEffectInputSchema,
-  toEffectObjectCreateSchema,
+  toEffectModelObjectCreateSchema,
   toEffectObjectUpdateSchema,
   toEffectRecordIdentifierSchema,
   toEffectSchema,
@@ -131,6 +144,7 @@ type CompleteHandlers = HttpApiBuilder.Handlers<
 >
 
 type ExecutableModelImplementation = {
+  readonly links: LinkService<unknown, CurrentInvocation>
   readonly model: ModelCatalog
   readonly services: Readonly<Record<string, object>>
 }
@@ -187,7 +201,10 @@ type ClientMethod<TRequest, TOutput> = (
   ApiError | HttpClientError.HttpClientError | Schema.SchemaError
 >
 
-type StandardClient<TObject extends ObjectType> = {
+type StandardClient<
+  TModel extends ModelCatalog,
+  TObject extends ModelObject<TModel>,
+> = {
   readonly [TId in OperationId<"list", TObject, "collection">]: ClientMethod<
     { readonly query: ListQuery },
     Page<ObjectRecord<TObject>>
@@ -219,7 +236,7 @@ type StandardClient<TObject extends ObjectType> = {
         readonly [
           TId in OperationId<"create", TObject, "object">
         ]: ClientMethod<
-          { readonly payload: ObjectCreateInput<TObject> },
+          { readonly payload: ModelObjectCreateInput<TModel, TObject> },
           ObjectRecord<TObject>
         >
       }
@@ -279,14 +296,280 @@ type ActionClient<TObject extends ObjectType> = {
   ]: TAction extends Action ? ActionClientMethod<TObject, TAction> : never
 }
 
-type ObjectHttpClient<TObject extends ObjectType> = StandardClient<TObject> &
-  ActionClient<TObject>
+type ObjectHttpClient<
+  TModel extends ModelCatalog,
+  TObject extends ModelObject<TModel>,
+> = StandardClient<TModel, TObject> & ActionClient<TObject>
 
 /** Typed decoded-only view of Effect's native HttpApiClient for a model. */
 export type ModelHttpClient<TModel extends ModelCatalog> = {
+  readonly [TObject in ModelObject<TModel> as TObject["id"]]: ObjectHttpClient<
+    TModel,
+    TObject
+  >
+}
+
+type ClientEndpointMatches<
+  TObject extends ObjectType,
+  TEndpoint extends LinkTraversal["from"],
+> = TEndpoint["kind"] extends "object"
+  ? TEndpoint["typeId"] extends TObject["id"]
+    ? true
+    : false
+  : TEndpoint["typeId"] extends keyof TObject["interfaces"]
+    ? true
+    : false
+
+type ClientLinkSide<TObject extends ObjectType, TLink> =
+  TLink extends LinkType<
+    string,
+    infer TForward extends LinkTraversal,
+    infer TReverse extends LinkTraversal
+  >
+    ?
+        | (ClientEndpointMatches<TObject, TForward["from"]> extends true
+            ? {
+                readonly direction: "forward"
+                readonly link: TLink
+                readonly side: TForward
+                readonly target: TReverse
+              }
+            : never)
+        | (ClientEndpointMatches<TObject, TReverse["from"]> extends true
+            ? {
+                readonly direction: "reverse"
+                readonly link: TLink
+                readonly side: TReverse
+                readonly target: TForward
+              }
+            : never)
+    : never
+
+type ClientLinkSides<
+  TModel extends ModelCatalog,
+  TObject extends ObjectType,
+> = TModel["links"][keyof TModel["links"]] extends infer TLink
+  ? ClientLinkSide<TObject, TLink>
+  : never
+
+type LinkTraversalClient<TModel extends ModelCatalog, TSide> = TSide extends {
+  readonly direction: "forward" | "reverse"
+  readonly link: infer TLink extends LinkType
+  readonly side: infer TTraversal extends LinkTraversal
+  readonly target: infer TTarget extends LinkTraversal
+}
+  ? {
+      readonly list: ClientMethod<
+        LinkListInput,
+        Page<ObjectRef<ModelEndpointObjectTypeId<TModel, TTarget["from"]>>>
+      >
+    } & (TLink["writeFrom"] extends TTraversal["key"]
+      ? {
+          readonly link: ClientMethod<LinkMutationInput, void>
+        } & (TTraversal["cardinality"] extends "one"
+          ? object
+          : TTarget["cardinality"] extends "one"
+            ? object
+            : { readonly unlink: ClientMethod<LinkMutationInput, void> })
+      : object)
+  : never
+
+type ObjectLinkClient<
+  TModel extends ModelCatalog,
+  TObject extends ObjectType,
+> = {
+  readonly [
+    TSide in ClientLinkSides<TModel, TObject> as TSide["side"]["key"]
+  ]: LinkTraversalClient<TModel, TSide>
+}
+
+type DirectClientMethod<TInput, TOutput> = (
+  input: TInput
+) => Effect.Effect<
+  TOutput,
+  ApiError | HttpClientError.HttpClientError | Schema.SchemaError
+>
+
+type DirectActionClient<TObject extends ObjectType> = {
+  readonly [
+    TAction in TObject["actions"][keyof TObject["actions"]] as TAction extends Action
+      ? TAction["id"] extends StandardActionId
+        ? never
+        : TAction["id"]
+      : never
+  ]: TAction extends Action
+    ? DirectClientMethod<InputOf<TAction>, OutputOf<TAction>>
+    : never
+}
+
+type DirectObjectClient<
+  TModel extends ModelCatalog,
+  TObject extends ModelObject<TModel>,
+> = {
+  readonly batchGet: DirectClientMethod<
+    ObjectBatchGetInput<TObject>,
+    Batch<ObjectRecord<TObject>>
+  >
+  readonly get: DirectClientMethod<
+    ObjectGetInput<TObject>,
+    ObjectRecord<TObject>
+  >
+  readonly list: (
+    request?: ListRequest<TObject>
+  ) => Effect.Effect<
+    Page<ObjectRecord<TObject>>,
+    ApiError | HttpClientError.HttpClientError | Schema.SchemaError
+  >
+} & ("batchDelete" extends keyof TObject["actions"]
+  ? {
+      readonly batchDelete: DirectClientMethod<
+        ObjectBatchDeleteInput<TObject>,
+        void
+      >
+    }
+  : object) &
+  ("create" extends keyof TObject["actions"]
+    ? {
+        readonly create: DirectClientMethod<
+          ModelObjectCreateInput<TModel, TObject>,
+          ObjectRecord<TObject>
+        >
+      }
+    : object) &
+  ("delete" extends keyof TObject["actions"]
+    ? {
+        readonly delete: DirectClientMethod<ObjectDeleteInput<TObject>, void>
+      }
+    : object) &
+  ("update" extends keyof TObject["actions"]
+    ? {
+        readonly update: DirectClientMethod<
+          ObjectUpdateInput<TObject>,
+          ObjectRecord<TObject>
+        >
+      }
+    : object) &
+  DirectActionClient<TObject> &
+  ObjectLinkClient<TModel, TObject>
+
+/** One noun-oriented model client generated from the native Effect contract. */
+export type ModelClient<TModel extends ModelCatalog> = {
   readonly [
     TObject in ModelObject<TModel> as TObject["id"]
-  ]: ObjectHttpClient<TObject>
+  ]: DirectObjectClient<TModel, TObject>
+}
+
+type NativeModelMethod = (request: unknown) => Effect.Effect<unknown, unknown>
+
+function nativeGroup(nativeClient: object, object: ObjectType): object {
+  const group = Reflect.get(nativeClient, object.id)
+  if (typeof group !== "object" || group === null) {
+    throw new Error(`HTTP client group '${object.id}' is missing.`)
+  }
+  return group
+}
+
+function nativeMethod(group: object, identifier: string): NativeModelMethod {
+  const method = Reflect.get(group, identifier)
+  if (typeof method !== "function") {
+    throw new Error(`HTTP endpoint '${identifier}' is missing.`)
+  }
+  // SAFETY: callers provide identifiers generated from the same closed model
+  // that produced the native Effect client.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  return method as NativeModelMethod
+}
+
+/** Projects the native Effect client as direct object, Action, and Link methods. */
+export function createModelClient<TModel extends ModelCatalog>(
+  model: TModel,
+  nativeClient: object
+): ModelClient<TModel> {
+  const result: Record<string, Record<string, unknown>> = {}
+  for (const object of modelObjects(model)) {
+    const group = nativeGroup(nativeClient, object)
+    const endpoint = (operation: string, scope?: "collection" | "object") =>
+      nativeMethod(group, httpEndpointId(operation, object, scope))
+    const list = endpoint("list")
+    const search = endpoint("search")
+    const methods: Record<string, unknown> = {
+      batchGet: (input: ObjectBatchGetInput<ObjectType>) =>
+        endpoint("batchGet")({ payload: input }),
+      get: (input: ObjectGetInput<ObjectType>) =>
+        endpoint("get")({ params: input }),
+      list: (input: ListRequest = {}) =>
+        input.filter === undefined && input.sort === undefined
+          ? list({ query: input })
+          : search({ payload: input }),
+    }
+    if (Object.hasOwn(object.actions, "batchDelete")) {
+      methods.batchDelete = (input: ObjectBatchDeleteInput<ObjectType>) =>
+        endpoint("batchDelete")({ payload: input })
+    }
+    if (Object.hasOwn(object.actions, "create")) {
+      methods.create = (input: object) => endpoint("create")({ payload: input })
+    }
+    if (Object.hasOwn(object.actions, "delete")) {
+      methods.delete = (input: ObjectDeleteInput<ObjectType>) => {
+        const { id, ...query } = input
+        return endpoint("delete")({ params: { id }, query })
+      }
+    }
+    if (Object.hasOwn(object.actions, "update")) {
+      methods.update = (
+        input: Readonly<Record<string, unknown>> & {
+          readonly id: RecordIdentifier
+        }
+      ) => {
+        const { id, ...payload } = input
+        return endpoint("update")({ params: { id }, payload })
+      }
+    }
+    for (const action of Object.values(object.actions)) {
+      if (isStandardActionId(action.id)) continue
+      const actionEndpoint = endpoint(action.id, action.scope)
+      methods[action.id] = (input: Readonly<Record<string, unknown>>) => {
+        if (action.scope === "collection") {
+          return actionEndpoint({ payload: input })
+        }
+        const { id, ...payload } = input
+        return actionEndpoint({ params: { id }, payload })
+      }
+    }
+    for (const traversal of modelObjectLinkTraversals(model, object)) {
+      const traversalMethods: Record<string, unknown> = {
+        list: (input: LinkListInput) => {
+          const { id, ...query } = input
+          return nativeMethod(
+            group,
+            linkHttpEndpointId("list", object, traversal)
+          )({ params: { id }, query })
+        },
+      }
+      if (traversal.writable) {
+        traversalMethods.link = (input: LinkMutationInput) =>
+          nativeMethod(
+            group,
+            linkHttpEndpointId("link", object, traversal)
+          )({ params: input })
+        if (
+          traversal.traversal.cardinality !== "one" &&
+          traversal.target.cardinality !== "one"
+        ) {
+          traversalMethods.unlink = (input: LinkMutationInput) =>
+            nativeMethod(
+              group,
+              linkHttpEndpointId("unlink", object, traversal)
+            )({ params: input })
+        }
+      }
+      methods[traversal.traversal.key] = traversalMethods
+    }
+    result[object.id] = methods
+  }
+  // SAFETY: methods and traversal groups are exhaustively generated from the
+  // same model and checked against its native Effect client above.
+  return result as ModelClient<TModel>
 }
 
 const defaultBasePath = "/api/v1" as const
@@ -333,6 +616,15 @@ export function httpEndpointId(
       ? object.collection
       : object.id
   return `${operation}${pascalCase(target)}`
+}
+
+/** Stable endpoint identifier for one generated Link traversal operation. */
+export function linkHttpEndpointId(
+  operation: "link" | "list" | "unlink",
+  object: ObjectType,
+  traversal: ModelLinkTraversal
+): string {
+  return `${operation}${pascalCase(object.id)}${pascalCase(traversal.traversal.key)}`
 }
 
 function pathParameter(object: ObjectType) {
@@ -390,6 +682,135 @@ function projectedErrorSchemas(
   )
 }
 
+function linkDescriptor(
+  model: ModelCatalog,
+  object: ObjectType,
+  traversal: ModelLinkTraversal,
+  operation: "link" | "list" | "unlink"
+): ExecutableModelOperation {
+  const key = `${object.id}.${traversal.traversal.key}.${operation}`
+  const descriptor = executableModelOperations(model).find(
+    (candidate) => candidate.key === key
+  )
+  if (descriptor === undefined) {
+    throw new Error(`Link operation '${key}' is not generated.`)
+  }
+  return descriptor
+}
+
+function addLinkEndpoints(
+  group: DynamicGroup,
+  model: ModelCatalog,
+  object: ObjectType,
+  basePath: `/${string}`
+): DynamicGroup {
+  let result = group
+  for (const traversal of modelObjectLinkTraversals(model, object)) {
+    const collectionPath =
+      `${basePath}/${object.collection}/:id/${traversal.traversal.key}` as const
+    const listDescriptor = linkDescriptor(model, object, traversal, "list")
+    const listEndpoint = HttpApiEndpoint.get(
+      linkHttpEndpointId("list", object, traversal),
+      collectionPath,
+      {
+        params: Schema.Struct({
+          id: toEffectRecordIdentifierSchema(object.id),
+        }),
+        query: {
+          pageSize: Schema.optionalKey(
+            Schema.Number.check(
+              Schema.isInt(),
+              Schema.isGreaterThanOrEqualTo(1),
+              Schema.isLessThanOrEqualTo(MAX_PAGE_SIZE)
+            )
+          ),
+          pageToken: Schema.optionalKey(pageTokenSchema),
+        },
+        success: Schema.Struct({
+          items: Schema.Array(
+            Schema.Struct({
+              id: Schema.String,
+              objectType: Schema.String,
+            })
+          ),
+          nextPageToken: Schema.Union([Schema.Literal(""), pageTokenSchema]),
+        }).annotate({
+          identifier: `${pascalCase(object.id)}${pascalCase(traversal.traversal.key)}Page`,
+        }),
+        error: errorSchemas(modelOperationErrors(listDescriptor)),
+      }
+    ).annotateMerge(
+      endpointAnnotations(
+        traversal.traversal.description === undefined
+          ? {
+              identifier: linkHttpEndpointId("list", object, traversal),
+              summary: `List ${traversal.traversal.label.toLowerCase()}`,
+            }
+          : {
+              description: traversal.traversal.description,
+              identifier: linkHttpEndpointId("list", object, traversal),
+              summary: `List ${traversal.traversal.label.toLowerCase()}`,
+            }
+      )
+    )
+    result = result.add(listEndpoint)
+
+    if (!traversal.writable) continue
+    const targetPath = `${collectionPath}/:target` as const
+    const params = Schema.Struct({
+      id: toEffectRecordIdentifierSchema(object.id),
+      target: toEffectRecordIdentifierSchema(traversal.target.from.typeId),
+    })
+    const linkActionDescriptor = linkDescriptor(
+      model,
+      object,
+      traversal,
+      "link"
+    )
+    result = result.add(
+      HttpApiEndpoint.put(
+        linkHttpEndpointId("link", object, traversal),
+        targetPath,
+        {
+          params,
+          success: HttpApiSchema.NoContent,
+          error: errorSchemas(modelOperationErrors(linkActionDescriptor)),
+        }
+      ).annotateMerge(
+        endpointAnnotations({
+          identifier: linkHttpEndpointId("link", object, traversal),
+          summary: `Link ${traversal.traversal.label.toLowerCase()}`,
+        })
+      )
+    )
+
+    if (
+      traversal.traversal.cardinality === "one" ||
+      traversal.target.cardinality === "one"
+    ) {
+      continue
+    }
+    const unlinkDescriptor = linkDescriptor(model, object, traversal, "unlink")
+    result = result.add(
+      HttpApiEndpoint.delete(
+        linkHttpEndpointId("unlink", object, traversal),
+        targetPath,
+        {
+          params,
+          success: HttpApiSchema.NoContent,
+          error: errorSchemas(modelOperationErrors(unlinkDescriptor)),
+        }
+      ).annotateMerge(
+        endpointAnnotations({
+          identifier: linkHttpEndpointId("unlink", object, traversal),
+          summary: `Unlink ${traversal.traversal.label.toLowerCase()}`,
+        })
+      )
+    )
+  }
+  return result
+}
+
 /** Maps generated request-decoding failures into the portable validation contract. */
 export class HttpValidationMiddleware extends HttpApiMiddleware.Service<HttpValidationMiddleware>()(
   "@company/runtime/HttpValidationMiddleware",
@@ -411,6 +832,7 @@ function endpointAnnotations(options: {
 
 function addDefaultEndpoints(
   group: DynamicGroup,
+  model: ModelCatalog,
   object: ObjectType,
   basePath: `/${string}`
 ): DynamicGroup {
@@ -418,7 +840,7 @@ function addDefaultEndpoints(
   const parameter = pathParameter(object)
   const recordPath = `${collectionPath}/:${parameter.name}` as const
   const record = objectRecordOutputSchema(object)
-  const createInput = toEffectObjectCreateSchema(object)
+  const createInput = toEffectModelObjectCreateSchema(model, object)
   const updateInput = toEffectObjectUpdateSchema(object)
   const queries = standardQueries(object)
   const listErrors = projectedErrorSchemas(object, queries.list)
@@ -727,7 +1149,8 @@ export function createModelHttpApi(
     // value is unchanged while declared endpoints are added below.
     // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion
     let group = initialGroup as unknown as DynamicGroup
-    group = addDefaultEndpoints(group, object, basePath)
+    group = addDefaultEndpoints(group, model, object, basePath)
+    group = addLinkEndpoints(group, model, object, basePath)
 
     for (const action of Object.values(object.actions)) {
       if (isStandardActionId(action.id)) continue
@@ -825,6 +1248,41 @@ export function createModelHttpHandlers(
               })
             )
         )
+      }
+
+      for (const traversal of modelObjectLinkTraversals(
+        implementation.model,
+        object
+      )) {
+        const register = (operation: "link" | "list" | "unlink") => {
+          const descriptor = linkDescriptor(
+            implementation.model,
+            object,
+            traversal,
+            operation
+          )
+          handlers = handlers.handle(
+            linkHttpEndpointId(operation, object, traversal),
+            (request) =>
+              invoke(
+                request,
+                descriptor,
+                executeModelOperation(implementation, descriptor, {
+                  ...request.params,
+                  ...request.query,
+                })
+              )
+          )
+        }
+        register("list")
+        if (!traversal.writable) continue
+        register("link")
+        if (
+          traversal.traversal.cardinality !== "one" &&
+          traversal.target.cardinality !== "one"
+        ) {
+          register("unlink")
+        }
       }
 
       // SAFETY: every endpoint generated for the group was registered above.

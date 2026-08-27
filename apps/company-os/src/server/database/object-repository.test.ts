@@ -6,7 +6,6 @@ import {
   EmailAddress,
   RecordAlias,
   RecordId,
-  Timestamp,
 } from "@company/runtime"
 import {
   InvalidListRequest,
@@ -78,7 +77,6 @@ function run<A, E>(effect: Effect.Effect<A, E, PgliteClient.PgliteClient>) {
 describe("Drizzle object repository", () => {
   it("migrates and preserves object invariants across standard methods", async () => {
     let nextId = 0
-    let nextInteractionId = 0
     const root = ROOT_ID
     const context = systemInvocation
     const result = await run(
@@ -280,39 +278,6 @@ describe("Drizzle object repository", () => {
           .get({ id: legacyExample })
           .pipe(Effect.flip)
 
-        const interactionRepository = yield* makeObjectRepository(
-          Model.objects.interaction
-        ).pipe(Effect.provideService(Database, db))
-        const interactionService = ObjectService.make(
-          Model.objects.interaction,
-          interactionRepository,
-          {
-            authorize: () => Effect.void,
-            generateRecordId: () => `interaction_${++nextInteractionId}`,
-            rootId: root,
-            resolveRecordAliases: identifiers.resolveAliases,
-            visibleWithin: () => Effect.succeed([root]),
-          }
-        )
-        yield* interactionService.create({
-          occurredAt: Timestamp("2026-08-20T12:00:00Z"),
-          subject: legacyExample,
-          summary: "Introductory call",
-        })
-        yield* interactionService.create({
-          occurredAt: Timestamp("2026-08-20T08:30:00-04:00"),
-          subject: first.id,
-          summary: "Follow-up call",
-        })
-        const partyInteractions = yield* interactionService.list({
-          filter: {
-            field: "subject",
-            operator: "eq",
-            value: legacyExample,
-          },
-          sort: [{ direction: "desc", field: "occurredAt" }],
-        })
-
         const dealRepository = yield* makeObjectRepository(
           Model.objects.deal
         ).pipe(Effect.provideService(Database, db))
@@ -404,7 +369,6 @@ describe("Drizzle object repository", () => {
           lineItemKindRows,
           lineItemObjectRows,
           mismatchedCursor,
-          partyInteractions,
           partyRows,
           retainedAfterBatchDelete,
           removedAlias,
@@ -492,20 +456,6 @@ describe("Drizzle object repository", () => {
     expect(result.partyRows.map(({ id }) => id)).toEqual([
       result.first.id,
       result.second.id,
-    ])
-    expect(result.partyInteractions.items).toEqual([
-      expect.objectContaining({
-        kind: "note",
-        occurredAt: "2026-08-20T12:30:00.000Z",
-        subject: result.first.id,
-        summary: "Follow-up call",
-      }),
-      expect.objectContaining({
-        kind: "note",
-        occurredAt: "2026-08-20T12:00:00.000Z",
-        subject: result.first.id,
-        summary: "Introductory call",
-      }),
     ])
     expect(result.inconsistentParent).toBeDefined()
     expect(result.lineItem).toMatchObject({

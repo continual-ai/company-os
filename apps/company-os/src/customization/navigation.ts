@@ -8,6 +8,8 @@ import {
   UserRoundSearchIcon,
 } from "lucide-react"
 
+import { capabilityPermission } from "@/capabilities"
+
 export const operateNavigation = [
   { label: "Home", to: "/", icon: HouseIcon },
 ] as const
@@ -54,5 +56,5 @@ export const salesNavigation = [
 ] as const
 
 export const salesNavigationChecks = salesNavigation.map(({ object }) => ({
-  permission: `${object.id}.list`,
+  permission: capabilityPermission(`${object.id}.list`),
 }))

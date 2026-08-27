@@ -3,7 +3,11 @@ import { modelTypeAccepts } from "@company/runtime"
 import { type ObjectAccessRequest } from "@company/runtime/effect/object-service"
 import { Context, Data, Effect, Layer } from "effect"
 
-import type { CapabilityCheck } from "@/capabilities"
+import {
+  capabilityPermission,
+  type CapabilityCheck,
+  type CapabilityPermission,
+} from "@/capabilities"
 import { callerForActor, type Caller } from "@/server/caller"
 import { currentAuthorizationActorId } from "@/server/invocation-context"
 import {
@@ -49,8 +53,8 @@ interface PermissionRequest {
   readonly expectedType?: string
   readonly modifiesTarget: boolean
   readonly objectType: string
-  readonly permission: string
-  readonly readPermission?: string | undefined
+  readonly permission: CapabilityPermission
+  readonly readPermission?: CapabilityPermission | undefined
   readonly targetIds?: ReadonlyArray<string> | undefined
 }
 
@@ -123,9 +127,10 @@ const make = Effect.gen(function* () {
       scopeIds: unrestricted ? undefined : scopeIds,
     })
     const scopesByPermission = new Map<string, Set<string>>()
+    const requestedPermissions = new Set<string>(permissions)
     for (const grant of grants) {
       for (const permission of grant.permissions) {
-        if (!permissions.includes(permission)) continue
+        if (!requestedPermissions.has(permission)) continue
         const permittedScopes = scopesByPermission.get(permission) ?? new Set()
         permittedScopes.add(grant.scopeId)
         scopesByPermission.set(permission, permittedScopes)
@@ -219,7 +224,7 @@ const make = Effect.gen(function* () {
   const requireAction = Effect.fn("@company/Authorization.requireAction")(
     function* (request: ActionAccessRequest) {
       const definition = permissionDefinition(
-        `${request.objectType}.${request.actionId}`
+        capabilityPermission(`${request.objectType}.${request.actionId}`)
       )
       return yield* requirePermission({
         ...definition,
@@ -233,7 +238,7 @@ const make = Effect.gen(function* () {
   const requireActionFor = Effect.fn("@company/Authorization.requireActionFor")(
     function* (caller: Caller, request: ActionAccessRequest) {
       const definition = permissionDefinition(
-        `${request.objectType}.${request.actionId}`
+        capabilityPermission(`${request.objectType}.${request.actionId}`)
       )
       return yield* requirePermissionFor(caller, {
         ...definition,

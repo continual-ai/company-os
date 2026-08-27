@@ -34,7 +34,7 @@ import {
   SettingsIcon,
 } from "lucide-react"
 
-import { applicationCapabilities } from "@/capabilities"
+import { applicationCapabilities, capabilityPermission } from "@/capabilities"
 import { BrandMark } from "@/customization/brand"
 import { applicationConfig } from "@/customization/config"
 import {
@@ -91,7 +91,9 @@ export function AppSidebar() {
   const activeSection: Section =
     requestedDevelopSection && canDevelop ? "Develop" : "Operate"
   const accessibleSalesNavigation = salesNavigation.filter((item) =>
-    capabilities.can({ permission: `${item.object.id}.list` })
+    capabilities.can({
+      permission: capabilityPermission(`${item.object.id}.list`),
+    })
   )
   const visibleSections = canDevelop
     ? sections

@@ -6,6 +6,7 @@ import { Contact } from "./contact"
 export const ContactPrimaryCompany = defineLink({
   id: "contactPrimaryCompany",
   name: "Contact primary company",
+  writeFrom: "contacts",
   description: "Connects a contact to their primary company.",
   forward: {
     from: Contact,

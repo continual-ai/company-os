@@ -33,7 +33,7 @@ import {
   systemInvocation,
 } from "@/server/invocation-context"
 import { ObjectRepositories } from "@/server/model/object-repositories"
-import { makeObjectService } from "@/server/model/object-service"
+import { makeBaseObjectService } from "@/server/model/object-service"
 import { RecordIdentifierResolver } from "@/server/model/record-identifier-resolver"
 import { RoleAssignmentRepository } from "@/server/modules/access/role-assignment-repository"
 import {
@@ -267,7 +267,7 @@ describe("Authorization", () => {
         const identifiers = yield* RecordIdentifierResolver.make.pipe(
           Effect.provideService(Database, database)
         )
-        const companyService = yield* makeObjectService(
+        const companyService = yield* makeBaseObjectService(
           Model.objects.company,
           companyRepository
         ).pipe(

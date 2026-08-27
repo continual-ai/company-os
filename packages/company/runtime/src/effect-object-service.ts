@@ -173,26 +173,54 @@ export type Service<
     UpdateService<TObject, TError, TRequirements>
   >
 
+/** Server-internal validated writes without public capability authorization. */
+export interface Writer<
+  TObject extends ObjectType,
+  TError = never,
+  TRequirements = never,
+> {
+  readonly create: (
+    input: ObjectCreateInput<TObject>
+  ) => Effect.Effect<
+    ObjectRecord<TObject>,
+    Schema.SchemaError | TError,
+    CurrentInvocation | TRequirements
+  >
+  readonly delete: (
+    input: ObjectDeleteInput<TObject>
+  ) => Effect.Effect<void, TError, CurrentInvocation | TRequirements>
+  readonly update: (
+    input: ObjectUpdateInput<TObject>
+  ) => Effect.Effect<
+    ObjectRecord<TObject>,
+    ImmutablePropertyError | Schema.SchemaError | TError,
+    CurrentInvocation | TRequirements
+  >
+}
+
 type RecordAliasResolver<TError, TRequirements> = (
   expectedType: string,
   aliases: ReadonlyArray<RecordAlias>
 ) => Effect.Effect<ReadonlyArray<string>, TError, TRequirements>
 
-export interface MakeOptions<
-  TAuthorizationError,
-  TAuthorizationRequirements,
-  TResolverError,
-  TResolverRequirements,
-> {
-  readonly authorize: (
-    request: ObjectAccessRequest
-  ) => Effect.Effect<void, TAuthorizationError, TAuthorizationRequirements>
+export interface WriterOptions<TResolverError, TResolverRequirements> {
   readonly generateRecordId?: (objectType: string) => string
   readonly rootId: RecordId
   readonly resolveRecordAliases: RecordAliasResolver<
     TResolverError,
     TResolverRequirements
   >
+}
+
+export interface MakeOptions<
+  TAuthorizationError,
+  TAuthorizationRequirements,
+  TResolverError,
+  TResolverRequirements,
+> extends WriterOptions<TResolverError, TResolverRequirements> {
+  readonly authorize: (
+    request: ObjectAccessRequest
+  ) => Effect.Effect<void, TAuthorizationError, TAuthorizationRequirements>
   readonly visibleWithin: (
     request: ObjectAccessRequest
   ) => Effect.Effect<
@@ -560,6 +588,174 @@ function assertImmutableFields<TObject extends ObjectType>(
   return Effect.void
 }
 
+type WriteTarget = {
+  readonly parentId?: string
+  readonly parentTypeId?: string
+  readonly recordIds?: ReadonlyArray<string>
+}
+
+type WriteGuard<TError, TRequirements> = (
+  operation: "create" | "delete" | "update",
+  target: WriteTarget
+) => Effect.Effect<void, TError, TRequirements>
+
+function makeWriteMethods<
+  const TObject extends ObjectType,
+  TRepositoryError,
+  TRepositoryRequirements,
+  TResolverError,
+  TResolverRequirements,
+  TGuardError,
+  TGuardRequirements,
+>(
+  object: TObject,
+  repository: Repository<TObject, TRepositoryError, TRepositoryRequirements>,
+  options: WriterOptions<TResolverError, TResolverRequirements>,
+  enforceImmutable: boolean,
+  guard: WriteGuard<TGuardError, TGuardRequirements>
+) {
+  const decodeCreateUnknown = Schema.decodeUnknownEffect(
+    toEffectObjectCreateSchema(object)
+  )
+  const decodeUpdateUnknown = Schema.decodeUnknownEffect(
+    toEffectObjectUpdateSchema(object)
+  )
+  const makeRecordId = options.generateRecordId ?? generateRecordId
+
+  const create = Effect.fn(`${object.id}.create`)(function* (
+    input: ObjectCreateInput<TObject>
+  ) {
+    const decoded = yield* decodeCreateUnknown(input)
+    // SAFETY: the compiled create schema accepts only portable decoded values
+    // and was derived from this exact object definition.
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+    const decodedInput = decoded as DecodedCreateInput
+    const validated = normalizeCreateInput(object, decodedInput)
+    const requestedParentId =
+      validated.parent === undefined
+        ? undefined
+        : yield* resolveIdentifier(
+            object.parent.typeId,
+            validated.parent,
+            options.resolveRecordAliases
+          )
+    const context = yield* CurrentInvocation
+    // SAFETY: repository parent validation confirms a concrete interface
+    // implementation before commit.
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion
+    const parent = RecordId(object.parent.typeId)(
+      requestedParentId ?? options.rootId
+    ) as unknown as ObjectRecord<TObject>["parent"]
+    yield* guard("create", {
+      parentId: parent,
+      parentTypeId: object.parent.typeId,
+    })
+    const canonical = yield* resolveCreateIdentifiers(
+      object,
+      validated,
+      options.resolveRecordAliases
+    )
+    // SAFETY: the trusted invocation boundary supplies an actor accepted by
+    // the closed model before server services execute.
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+    const actorId = context.actorId as ObjectRecord<TObject>["createdBy"]
+    return yield* repository.insert({
+      ...canonical,
+      aliases: canonical.aliases ?? [],
+      metadata: canonical.metadata ?? {},
+      createdBy: actorId,
+      id: RecordId(object.id)(makeRecordId(object.id)),
+      parent,
+      systemManaged: false,
+      updatedBy: actorId,
+    })
+  })
+
+  const update = Effect.fn(`${object.id}.update`)(function* (
+    input: ObjectUpdateInput<TObject>
+  ) {
+    const { id: identifier, ...changes } = input
+    const id = yield* resolveIdentifier(
+      object.id,
+      identifier,
+      options.resolveRecordAliases
+    ).pipe(Effect.map(RecordId(object.id)))
+    const decoded = yield* decodeUpdateUnknown(changes)
+    // SAFETY: the compiled update schema accepts only portable decoded values
+    // and was derived from this exact object definition.
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+    const validated = decoded as DecodedInput & { readonly etag?: Etag }
+    const { etag: requestedEtag, ...values } = validated
+    const context = yield* CurrentInvocation
+    // SAFETY: see the corresponding create boundary above.
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+    const actorId = context.actorId as ObjectRecord<TObject>["updatedBy"]
+    yield* guard("update", { recordIds: [id] })
+    const current = yield* repository.get(id)
+    const canonical = yield* resolveUpdateIdentifiers(
+      object,
+      values,
+      options.resolveRecordAliases
+    )
+    if (enforceImmutable) {
+      yield* assertImmutableFields(object, current, canonical)
+    }
+    return yield* repository.update({
+      ...canonical,
+      etag: requestedEtag ?? current.etag,
+      id,
+      updatedBy: actorId,
+    })
+  })
+
+  const deleteObject = Effect.fn(`${object.id}.delete`)(function* ({
+    etag,
+    id: identifier,
+  }: ObjectDeleteInput<TObject>) {
+    const id = yield* resolveIdentifier(
+      object.id,
+      identifier,
+      options.resolveRecordAliases
+    ).pipe(Effect.map(RecordId(object.id)))
+    yield* guard("delete", { recordIds: [id] })
+    const current = yield* repository.get(id)
+    yield* repository.delete({ etag: etag ?? current.etag, id })
+  })
+
+  return { create, delete: deleteObject, update }
+}
+
+/**
+ * Builds the server-internal write path used by custom business Actions and
+ * trusted adapters. It validates and attributes writes but never authorizes a
+ * public capability; callers must establish that authority before use.
+ */
+export function makeWriter<
+  const TObject extends ObjectType,
+  TRepositoryError,
+  TRepositoryRequirements,
+  TResolverError,
+  TResolverRequirements,
+>(
+  object: TObject,
+  repository: Repository<TObject, TRepositoryError, TRepositoryRequirements>,
+  options: WriterOptions<TResolverError, TResolverRequirements>
+): Writer<
+  TObject,
+  TRepositoryError | TResolverError,
+  TRepositoryRequirements | TResolverRequirements
+> {
+  return makeWriteMethods<
+    TObject,
+    TRepositoryError,
+    TRepositoryRequirements,
+    TResolverError,
+    TResolverRequirements,
+    never,
+    never
+  >(object, repository, options, false, () => Effect.void)
+}
+
 /**
  * Adds authorization, portable-schema validation, and common record fields
  * to a repository. Application code supplies the authorization policy; there is no
@@ -590,14 +786,6 @@ export function make<
   | TRepositoryRequirements
   | TResolverRequirements
 > {
-  const decodeCreateUnknown = Schema.decodeUnknownEffect(
-    toEffectObjectCreateSchema(object)
-  )
-  const decodeUpdateUnknown = Schema.decodeUnknownEffect(
-    toEffectObjectUpdateSchema(object)
-  )
-  const makeRecordId = options.generateRecordId ?? generateRecordId
-
   const authorize = (
     operation: ObjectOperation,
     target: {
@@ -613,6 +801,13 @@ export function make<
     }
     return options.authorize(request)
   }
+  const writes = makeWriteMethods(
+    object,
+    repository,
+    options,
+    true,
+    (operation, target) => authorize(operation, target)
+  )
 
   const get = Effect.fn(`${object.id}.get`)(function* ({
     id,
@@ -693,112 +888,14 @@ export function make<
     return undefined
   })
 
-  const create = Effect.fn(`${object.id}.create`)(function* (
-    input: ObjectCreateInput<TObject>
-  ) {
-    const decoded = yield* decodeCreateUnknown(input)
-    // SAFETY: the compiled create schema accepts only portable decoded values
-    // and was derived from this exact object definition.
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-    const decodedInput = decoded as DecodedCreateInput
-    const validated = normalizeCreateInput(object, decodedInput)
-    const requestedParentId =
-      validated.parent === undefined
-        ? undefined
-        : yield* resolveIdentifier(
-            object.parent.typeId,
-            validated.parent,
-            options.resolveRecordAliases
-          )
-    const context = yield* CurrentInvocation
-    // SAFETY: authorization and repository parent validation confirm the
-    // concrete ID is an implementation of an interface parent before commit.
-    // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion
-    const parent = RecordId(object.parent.typeId)(
-      requestedParentId ?? options.rootId
-    ) as unknown as ObjectRecord<TObject>["parent"]
-    yield* authorize("create", {
-      parentId: parent,
-      parentTypeId: object.parent.typeId,
-    })
-    const canonical = yield* resolveCreateIdentifiers(
-      object,
-      validated,
-      options.resolveRecordAliases
-    )
-    // SAFETY: the trusted invocation boundary supplies a canonical ID accepted
-    // by this model's actor interface before governed services execute.
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-    const actorId = context.actorId as ObjectRecord<TObject>["createdBy"]
-    return yield* repository.insert({
-      ...canonical,
-      aliases: canonical.aliases ?? [],
-      metadata: canonical.metadata ?? {},
-      createdBy: actorId,
-      id: RecordId(object.id)(makeRecordId(object.id)),
-      parent,
-      systemManaged: false,
-      updatedBy: actorId,
-    })
-  })
-
-  const update = Effect.fn(`${object.id}.update`)(function* (
-    input: ObjectUpdateInput<TObject>
-  ) {
-    const { id: identifier, ...changes } = input
-    const id = yield* resolveIdentifier(
-      object.id,
-      identifier,
-      options.resolveRecordAliases
-    ).pipe(Effect.map(RecordId(object.id)))
-    const decoded = yield* decodeUpdateUnknown(changes)
-    // SAFETY: the compiled update schema accepts only portable decoded values
-    // and was derived from this exact object definition.
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-    const validated = decoded as DecodedInput & { readonly etag?: Etag }
-    const { etag: requestedEtag, ...values } = validated
-    const context = yield* CurrentInvocation
-    // SAFETY: see the corresponding create boundary above.
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-    const actorId = context.actorId as ObjectRecord<TObject>["updatedBy"]
-    yield* authorize("update", { recordIds: [id] })
-    const current = yield* repository.get(id)
-    const canonical = yield* resolveUpdateIdentifiers(
-      object,
-      values,
-      options.resolveRecordAliases
-    )
-    yield* assertImmutableFields(object, current, canonical)
-    return yield* repository.update({
-      ...canonical,
-      etag: requestedEtag ?? current.etag,
-      id,
-      updatedBy: actorId,
-    })
-  })
-
-  const deleteObject = Effect.fn(`${object.id}.delete`)(function* ({
-    etag,
-    id: identifier,
-  }: ObjectDeleteInput<TObject>) {
-    const id = yield* resolveIdentifier(
-      object.id,
-      identifier,
-      options.resolveRecordAliases
-    ).pipe(Effect.map(RecordId(object.id)))
-    yield* authorize("delete", { recordIds: [id] })
-    const current = yield* repository.get(id)
-    yield* repository.delete({ etag: etag ?? current.etag, id })
-  })
-
   type ConstructedService = {
     batchDelete?: typeof batchDelete
     readonly batchGet: typeof batchGet
-    create?: typeof create
-    delete?: typeof deleteObject
+    create?: typeof writes.create
+    delete?: typeof writes.delete
     readonly get: typeof get
     readonly list: typeof list
-    update?: typeof update
+    update?: typeof writes.update
   }
   const service: ConstructedService = {
     batchGet,
@@ -808,9 +905,9 @@ export function make<
   if (Object.hasOwn(object.actions, "batchDelete")) {
     service.batchDelete = batchDelete
   }
-  if (Object.hasOwn(object.actions, "create")) service.create = create
-  if (Object.hasOwn(object.actions, "delete")) service.delete = deleteObject
-  if (Object.hasOwn(object.actions, "update")) service.update = update
+  if (Object.hasOwn(object.actions, "create")) service.create = writes.create
+  if (Object.hasOwn(object.actions, "delete")) service.delete = writes.delete
+  if (Object.hasOwn(object.actions, "update")) service.update = writes.update
   // SAFETY: every conditional method is included exactly when the matching
   // standard action exists in this object's normalized action registry.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion

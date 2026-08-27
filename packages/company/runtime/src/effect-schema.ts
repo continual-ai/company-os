@@ -1,6 +1,10 @@
 import { Predicate, Schema, SchemaIssue, SchemaTransformation } from "effect"
 
 import type { ApiError, ErrorType } from "./definition/error"
+import {
+  type ModelCatalog,
+  modelObjectLinkTraversals,
+} from "./definition/model"
 import { Etag, type ObjectRecord, type ObjectType } from "./definition/object"
 import type { PropertyDefinition } from "./definition/property"
 import type {
@@ -536,6 +540,56 @@ export function toEffectObjectCreateSchema(
     fields.parent = toEffectRecordIdentifierSchema(
       object.parent.typeId
     ).annotate({ title: "Parent" })
+  }
+  return annotateObjectSchema(
+    object,
+    Schema.Struct(fields),
+    `Create ${object.name}`,
+    `${pascalCase(object.id)}CreateInput`
+  )
+}
+
+/** Compiles the public create contract, including atomic initial Links. */
+export function toEffectModelObjectCreateSchema(
+  model: ModelCatalog,
+  object: ObjectType
+): Schema.Codec<unknown, unknown> {
+  const traversals = modelObjectLinkTraversals(model, object).filter(
+    ({ initializable }) => initializable
+  )
+  const linkFields: CompiledSchemaFields = Object.fromEntries(
+    traversals.map(({ target, traversal }) => {
+      const identifier = toEffectRecordIdentifierSchema(
+        target.from.typeId
+      ).annotate({ title: target.label })
+      const value =
+        traversal.cardinality === "many" ? Schema.Array(identifier) : identifier
+      return [
+        traversal.key,
+        traversal.cardinality === "one" ? value : Schema.optionalKey(value),
+      ]
+    })
+  )
+  const fields: CompiledSchemaFields = {
+    aliases: Schema.optionalKey(recordAliasesSchema),
+    metadata: Schema.optionalKey(metadataSchema),
+    ...compileCreateProperties(object),
+  }
+  if (object.parent.kind !== "root") {
+    fields.parent = toEffectRecordIdentifierSchema(
+      object.parent.typeId
+    ).annotate({ title: "Parent" })
+  }
+  if (traversals.length > 0) {
+    const links = Schema.Struct(linkFields).annotate({
+      description: "Links established atomically with the new object.",
+      title: "Initial links",
+    })
+    fields.links = traversals.some(
+      ({ traversal }) => traversal.cardinality === "one"
+    )
+      ? links
+      : Schema.optionalKey(links)
   }
   return annotateObjectSchema(
     object,

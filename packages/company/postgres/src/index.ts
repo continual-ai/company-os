@@ -1,4 +1,8 @@
 export {
+  makeLinkRepository,
+  type PostgresLinkRepositoryError,
+} from "./link-repository"
+export {
   makeObjectRepository,
   resolveRecordAliases,
   type PostgresRecordAliasResolutionError,

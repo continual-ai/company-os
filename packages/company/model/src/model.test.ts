@@ -1,8 +1,7 @@
 import {
   describeModel,
-  type InferSchema,
+  type ModelObjectCreateInput,
   type ModelObjectRef,
-  type ObjectCreateInput,
   type ObjectRecord,
   type RecordAlias,
   type RecordId,
@@ -23,17 +22,13 @@ describe("model contract", () => {
       actor: { typeId: "actor" },
       model: { name: modelMetadata.name },
       root: { id: "root", kind: "root", name: "Root" },
-      version: "0.29",
+      version: "0.30",
     })
     expect(description.modules).toEqual([
       {
         id: "access",
         interfaceIds: ["actor", "authorizationScope", "identity", "principal"],
-        linkIds: [
-          "groupMembershipMember",
-          "roleAssignmentPrincipal",
-          "roleAssignmentRole",
-        ],
+        linkIds: [],
         name: "Access",
         objectIds: [
           "user",
@@ -49,7 +44,7 @@ describe("model contract", () => {
       {
         id: "sales",
         interfaceIds: ["party"],
-        linkIds: ["contactPrimaryCompany", "interactionSubject"],
+        linkIds: ["contactPrimaryCompany", "interactionRegarding"],
         name: "Sales",
         objectIds: [
           "company",
@@ -101,11 +96,8 @@ describe("model contract", () => {
         .map((query) => query.id)
     ).toEqual(["get", "list", "batchGet"])
     expect(description.links.map((link) => link.id)).toEqual([
-      "groupMembershipMember",
-      "roleAssignmentPrincipal",
-      "roleAssignmentRole",
       "contactPrimaryCompany",
-      "interactionSubject",
+      "interactionRegarding",
     ])
     expect(description.links).toEqual(
       expect.arrayContaining([
@@ -128,17 +120,17 @@ describe("model contract", () => {
           }),
         }),
         expect.objectContaining({
-          id: "interactionSubject",
+          id: "interactionRegarding",
           forward: expect.objectContaining({
             cardinality: "one",
             from: { kind: "object", typeId: "interaction" },
-            key: "subject",
-            label: "Subject",
+            key: "regarding",
+            label: "Regarding",
             to: { kind: "interface", typeId: "party" },
           }),
           reverse: expect.objectContaining({
             cardinality: "many",
-            description: "Interactions involving this party.",
+            description: "Interactions primarily concerning this party.",
             from: { kind: "interface", typeId: "party" },
             key: "interactions",
             label: "Interactions",
@@ -176,14 +168,11 @@ describe("model contract", () => {
         propertyMapping: { image: "logo", name: "name" },
       },
     })
-    expect(
-      description.objects.find((object) => object.id === "interaction")
-        ?.properties.subject
-    ).toMatchObject({ kind: "recordId", typeId: "party" })
-    expect(
-      description.objects.find((object) => object.id === "interaction")
-        ?.properties
-    ).not.toHaveProperty("subjectId")
+    const interaction = description.objects.find(
+      (object) => object.id === "interaction"
+    )
+    expect(interaction?.properties).not.toHaveProperty("subject")
+    expect(interaction?.properties).not.toHaveProperty("subjectId")
     expect(description.objects).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -214,13 +203,24 @@ describe("model contract", () => {
       ContactPrimaryCompany.forward.key
     ).toEqualTypeOf<"primaryCompany">()
     expectTypeOf(ContactPrimaryCompany.reverse.key).toEqualTypeOf<"contacts">()
-    expectTypeOf(
-      Model.objects.contact.properties.primaryCompany.typeId
-    ).toEqualTypeOf<"company">()
+    expect(Model.objects.contact.properties).not.toHaveProperty(
+      "primaryCompany"
+    )
     expectTypeOf(Model.objects.deal.parent.typeId).toEqualTypeOf<"company">()
     expectTypeOf<
-      InferSchema<typeof Model.objects.interaction.properties.subject>
-    >().toEqualTypeOf<RecordId<"company"> | RecordId<"contact">>()
+      ModelObjectCreateInput<
+        typeof Model,
+        typeof Model.objects.interaction
+      >["links"]["regarding"]
+    >().toEqualTypeOf<RecordAlias | RecordId<"company"> | RecordId<"contact">>()
+    expectTypeOf<
+      keyof NonNullable<
+        ModelObjectCreateInput<
+          typeof Model,
+          typeof Model.objects.company
+        >["links"]
+      >
+    >().toEqualTypeOf<"contacts">()
     expectTypeOf<
       RecordIdOf<typeof Model, (typeof Model.interfaces)["party"]>
     >().toEqualTypeOf<RecordId<"company"> | RecordId<"contact">>()
@@ -240,10 +240,16 @@ describe("model contract", () => {
       ObjectRecord<typeof Model.objects.company>["createdBy"]
     >().toEqualTypeOf<ActorId>()
     expectTypeOf<
-      ObjectCreateInput<typeof Model.objects.roleAssignment>["parent"]
+      ModelObjectCreateInput<
+        typeof Model,
+        typeof Model.objects.roleAssignment
+      >["parent"]
     >().toEqualTypeOf<RecordAlias | RecordId<"company"> | RecordId<"root">>()
     expectTypeOf<
-      ObjectCreateInput<typeof Model.objects.roleAssignment>["principal"]
+      ModelObjectCreateInput<
+        typeof Model,
+        typeof Model.objects.roleAssignment
+      >["principal"]
     >().toEqualTypeOf<
       | RecordAlias
       | RecordId<"group">
@@ -252,8 +258,11 @@ describe("model contract", () => {
       | RecordId<"user">
     >()
     expectTypeOf<
-      ObjectRecord<typeof Model.objects.roleAssignment>["role"]
-    >().toEqualTypeOf<RecordId<"role">>()
+      ModelObjectCreateInput<
+        typeof Model,
+        typeof Model.objects.roleAssignment
+      >["role"]
+    >().toEqualTypeOf<RecordAlias | RecordId<"role">>()
   })
 
   it("keeps heterogeneous object references discriminated", () => {

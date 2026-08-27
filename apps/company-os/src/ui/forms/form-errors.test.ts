@@ -2,15 +2,11 @@ import type { ApiError, ValidationError } from "@company/runtime"
 import { Schema } from "effect"
 import { describe, expect, it } from "vitest"
 
-import {
-  FormValidationError,
-  errorsForField,
-  formErrorsFromCause,
-} from "./form-errors"
+import { FormValidationError, formErrorFromCause } from "./form-errors"
 
 describe("form errors", () => {
   it("partitions local violations by canonical field path", () => {
-    const errors = formErrorsFromCause(
+    const errors = formErrorFromCause(
       new FormValidationError([
         {
           message: "Invalid amount",
@@ -22,7 +18,8 @@ describe("form errors", () => {
       "Failed"
     )
 
-    expect(errorsForField(errors, "amount")).toHaveLength(1)
+    expect(errors.fields.amount).toHaveLength(1)
+    expect(errors.fields["amount.amount"]).toHaveLength(1)
     expect(errors.form).toMatchObject([{ message: "Invalid operation" }])
   })
 
@@ -41,12 +38,12 @@ describe("form errors", () => {
       reason: "VALIDATION_FAILED",
       status: "INVALID_ARGUMENT",
     }
-    const errors = formErrorsFromCause(apiError, "Saving failed.")
+    const errors = formErrorFromCause(apiError, "Saving failed.")
 
-    expect(errorsForField(errors, "domain")).toMatchObject([
+    expect(errors.fields.domain).toMatchObject([
       { message: "Expected a domain" },
     ])
-    expect(errors.form).toEqual([])
+    expect(errors.form).toBeUndefined()
   })
 
   it("maps native Effect client encoding failures to fields", () => {
@@ -60,9 +57,9 @@ describe("form errors", () => {
       cause = error
     }
 
-    const errors = formErrorsFromCause(cause, "Saving failed.")
-    expect(errorsForField(errors, "domain")).toHaveLength(1)
-    expect(errors.form).toEqual([])
+    const errors = formErrorFromCause(cause, "Saving failed.")
+    expect(errors.fields.domain).toHaveLength(1)
+    expect(errors.form).toBeUndefined()
   })
 
   it("keeps a useful form error when an API supplies no violations", () => {
@@ -72,7 +69,7 @@ describe("form errors", () => {
       reason: "ALREADY_EXISTS",
       status: "ALREADY_EXISTS",
     } as const
-    const errors = formErrorsFromCause(apiError, "Saving failed.")
+    const errors = formErrorFromCause(apiError, "Saving failed.")
 
     expect(errors.form).toMatchObject([
       { message: apiError.message, reason: apiError.reason },

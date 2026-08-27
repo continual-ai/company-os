@@ -8,7 +8,7 @@ import * as DatabaseSchema from "./schema"
 const { Storage } = DatabaseSchema
 
 describe("PostgreSQL schema", () => {
-  it("projects object properties, link references, and relation metadata", () => {
+  it("projects object properties, Links, and relation metadata", () => {
     expect(Object.keys(getTableColumns(Storage.objects.contact))).toEqual([
       "id",
       "parentId",
@@ -17,8 +17,10 @@ describe("PostgreSQL schema", () => {
       "jobTitle",
       "email",
       "phone",
-      "primaryCompanyId",
     ])
+    expect(
+      Object.keys(getTableColumns(Storage.linkTables.contactPrimaryCompany))
+    ).toEqual(["forwardId", "reverseId"])
     expect(
       Storage.relations.contact?.relations.primaryCompany?.targetTableName
     ).toBe("company")

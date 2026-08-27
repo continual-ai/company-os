@@ -55,10 +55,11 @@ describe("makePostgresSchema", () => {
       parent: ScopedRoot,
       pluralName: "Permissions",
       properties: { name: schema.string() },
-      uniqueBy: { scopeName: ["scope", "name"] },
+      uniqueBy: { name: ["name"] },
     })
     const PermissionScope = defineLink({
       id: "permissionScope",
+      writeFrom: "scope",
       forward: {
         cardinality: "one",
         from: Permission,
@@ -99,7 +100,7 @@ describe("makePostgresSchema", () => {
       typeof storage.interfaces.authorizationScope.$inferSelect.id
     >().toEqualTypeOf<RecordId<"root"> | RecordId<"workspace">>()
     expectTypeOf<
-      typeof storage.objects.permission.$inferSelect.scopeId
+      typeof storage.linkTables.permissionScope.$inferSelect.reverseId
     >().toEqualTypeOf<RecordId<"root"> | RecordId<"workspace">>()
     expectTypeOf<
       typeof storage.objects.workspace.$inferSelect.parentId
@@ -108,7 +109,7 @@ describe("makePostgresSchema", () => {
       getTableConfig(storage.objects.permission).indexes.map(
         ({ config }) => config.name
       )
-    ).toContain("permissions_scope_name_unique")
+    ).toContain("permissions_name_unique")
   })
 
   it("projects many-to-many links through one generated junction table", () => {
@@ -132,6 +133,7 @@ describe("makePostgresSchema", () => {
     })
     const TeamMembership = defineLink({
       id: "teamMembership",
+      writeFrom: "teams",
       name: "Team membership",
       forward: {
         from: Person,
@@ -170,7 +172,7 @@ describe("makePostgresSchema", () => {
     )
     expect(
       Object.keys(getTableColumns(storage.linkTables.teamMembership))
-    ).toEqual(["teamsId", "membersId"])
+    ).toEqual(["forwardId", "reverseId"])
     expect(storage.relations.person?.relations.teams?.targetTableName).toBe(
       "team"
     )
@@ -203,6 +205,7 @@ describe("makePostgresSchema", () => {
     })
     const PersonBadge = defineLink({
       id: "personBadge",
+      writeFrom: "badge",
       forward: {
         cardinality: "zeroOrOne",
         from: Person,
@@ -237,10 +240,15 @@ describe("makePostgresSchema", () => {
     const storage = makePostgresSchema(model)
 
     expect(
-      getTableConfig(storage.objects.person).indexes.map(
+      getTableConfig(storage.linkTables.personBadge).indexes.map(
         ({ config }) => config.name
       )
-    ).toContain("people_badge_id_unique")
+    ).toEqual(
+      expect.arrayContaining([
+        "person_badge_forward_id_unique",
+        "person_badge_reverse_id_unique",
+      ])
+    )
   })
 
   it("rejects physical table-name collisions after normalization", () => {

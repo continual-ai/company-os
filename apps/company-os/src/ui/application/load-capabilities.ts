@@ -6,7 +6,7 @@ import {
   MAX_CAPABILITY_CHECKS,
   type CapabilityCheck,
 } from "@/capabilities"
-import { httpClient } from "@/http-client"
+import { checkCapabilities } from "@/client"
 
 function chunks<T>(values: ReadonlyArray<T>, size: number): ReadonlyArray<T[]> {
   const result: T[][] = []
@@ -29,7 +29,7 @@ export async function loadAllowedCapabilities(
   const responses = await Promise.all(
     chunks(checks, MAX_CAPABILITY_CHECKS).map((batch) =>
       Effect.runPromise(
-        httpClient.capabilities.checkCapabilities({
+        checkCapabilities({
           payload: { checks: batch },
         })
       )

@@ -1,8 +1,8 @@
 {
   "version": "8",
   "dialect": "postgres",
-  "id": "f1963e14-cae1-4465-942b-3f5fb4d630bd",
-  "prevIds": ["1ebfbef4-ba0f-4d99-a21b-3837e30325f4"],
+  "id": "7843e9fe-f43d-4d31-ab2e-4ed8583d65cb",
+  "prevIds": ["00000000-0000-0000-0000-000000000000"],
   "ddl": [
     {
       "isRlsEnabled": false,
@@ -25,6 +25,12 @@
     {
       "isRlsEnabled": false,
       "name": "companies",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "contact_primary_company",
       "entityType": "tables",
       "schema": "public"
     },
@@ -66,6 +72,12 @@
     },
     {
       "isRlsEnabled": false,
+      "name": "interaction_regarding",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
       "name": "interactions",
       "entityType": "tables",
       "schema": "public"
@@ -96,12 +108,6 @@
     },
     {
       "isRlsEnabled": false,
-      "name": "roots",
-      "entityType": "tables",
-      "schema": "public"
-    },
-    {
-      "isRlsEnabled": false,
       "name": "principal_sets",
       "entityType": "tables",
       "schema": "public"
@@ -127,6 +133,12 @@
     {
       "isRlsEnabled": false,
       "name": "roles",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "roots",
       "entityType": "tables",
       "schema": "public"
     },
@@ -234,19 +246,6 @@
       "table": "companies"
     },
     {
-      "type": "jsonb",
-      "typeSchema": null,
-      "notNull": false,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "logo",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "companies"
-    },
-    {
       "type": "text",
       "typeSchema": null,
       "notNull": true,
@@ -255,6 +254,19 @@
       "generated": null,
       "identity": null,
       "name": "name",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "companies"
+    },
+    {
+      "type": "jsonb",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "logo",
       "entityType": "columns",
       "schema": "public",
       "table": "companies"
@@ -310,6 +322,32 @@
       "entityType": "columns",
       "schema": "public",
       "table": "companies"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "forward_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "contact_primary_company"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "reverse_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "contact_primary_company"
     },
     {
       "type": "text",
@@ -398,19 +436,6 @@
       "generated": null,
       "identity": null,
       "name": "phone",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "contacts"
-    },
-    {
-      "type": "text",
-      "typeSchema": null,
-      "notNull": false,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "primary_company_id",
       "entityType": "columns",
       "schema": "public",
       "table": "contacts"
@@ -657,6 +682,32 @@
       "default": null,
       "generated": null,
       "identity": null,
+      "name": "forward_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "interaction_regarding"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "reverse_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "interaction_regarding"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
       "name": "id",
       "entityType": "columns",
       "schema": "public",
@@ -723,19 +774,6 @@
       "generated": null,
       "identity": null,
       "name": "details",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "interactions"
-    },
-    {
-      "type": "text",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "subject_id",
       "entityType": "columns",
       "schema": "public",
       "table": "interactions"
@@ -1115,19 +1153,6 @@
       "name": "id",
       "entityType": "columns",
       "schema": "public",
-      "table": "roots"
-    },
-    {
-      "type": "text",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "id",
-      "entityType": "columns",
-      "schema": "public",
       "table": "principal_sets"
     },
     {
@@ -1362,6 +1387,19 @@
       "name": "id",
       "entityType": "columns",
       "schema": "public",
+      "table": "roots"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
       "table": "service_accounts"
     },
     {
@@ -1540,6 +1578,69 @@
       "nameExplicit": true,
       "columns": [
         {
+          "value": "forward_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "contact_primary_company_forward_id_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "contact_primary_company"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "reverse_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "contact_primary_company_reverse_id_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "contact_primary_company"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "forward_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "contact_primary_company_forward_id_unique",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "contact_primary_company"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
           "value": "parent_id",
           "isExpression": false,
           "asc": true,
@@ -1553,27 +1654,6 @@
       "method": "btree",
       "concurrently": false,
       "name": "contacts_parent_id_idx",
-      "entityType": "indexes",
-      "schema": "public",
-      "table": "contacts"
-    },
-    {
-      "nameExplicit": true,
-      "columns": [
-        {
-          "value": "primary_company_id",
-          "isExpression": false,
-          "asc": true,
-          "nullsFirst": false,
-          "opclass": null
-        }
-      ],
-      "isUnique": false,
-      "where": null,
-      "with": "",
-      "method": "btree",
-      "concurrently": false,
-      "name": "contacts_primary_company_id_idx",
       "entityType": "indexes",
       "schema": "public",
       "table": "contacts"
@@ -1694,6 +1774,69 @@
       "nameExplicit": true,
       "columns": [
         {
+          "value": "forward_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "interaction_regarding_forward_id_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "interaction_regarding"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "reverse_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "interaction_regarding_reverse_id_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "interaction_regarding"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "forward_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "interaction_regarding_forward_id_unique",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "interaction_regarding"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
           "value": "parent_id",
           "isExpression": false,
           "asc": true,
@@ -1707,27 +1850,6 @@
       "method": "btree",
       "concurrently": false,
       "name": "interactions_parent_id_idx",
-      "entityType": "indexes",
-      "schema": "public",
-      "table": "interactions"
-    },
-    {
-      "nameExplicit": true,
-      "columns": [
-        {
-          "value": "subject_id",
-          "isExpression": false,
-          "asc": true,
-          "nullsFirst": false,
-          "opclass": null
-        }
-      ],
-      "isUnique": false,
-      "where": null,
-      "with": "",
-      "method": "btree",
-      "concurrently": false,
-      "name": "interactions_subject_id_idx",
       "entityType": "indexes",
       "schema": "public",
       "table": "interactions"
@@ -2165,7 +2287,7 @@
       "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "RESTRICT",
-      "name": "anonymous_actors_parent_platform_fk",
+      "name": "anonymous_actors_parent_root_fk",
       "entityType": "fks",
       "schema": "public",
       "table": "anonymous_actors"
@@ -2217,7 +2339,7 @@
       "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "RESTRICT",
-      "name": "companies_parent_platform_fk",
+      "name": "companies_parent_root_fk",
       "entityType": "fks",
       "schema": "public",
       "table": "companies"
@@ -2237,6 +2359,32 @@
     },
     {
       "nameExplicit": false,
+      "columns": ["forward_id"],
+      "schemaTo": "public",
+      "tableTo": "contacts",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "contact_primary_company_forward_id_contacts_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "contact_primary_company"
+    },
+    {
+      "nameExplicit": false,
+      "columns": ["reverse_id"],
+      "schemaTo": "public",
+      "tableTo": "companies",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "contact_primary_company_reverse_id_companies_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "contact_primary_company"
+    },
+    {
+      "nameExplicit": false,
       "columns": ["id"],
       "schemaTo": "public",
       "tableTo": "objects",
@@ -2249,19 +2397,6 @@
       "table": "contacts"
     },
     {
-      "nameExplicit": false,
-      "columns": ["primary_company_id"],
-      "schemaTo": "public",
-      "tableTo": "companies",
-      "columnsTo": ["id"],
-      "onUpdate": "NO ACTION",
-      "onDelete": "RESTRICT",
-      "name": "contacts_primary_company_id_companies_id_fkey",
-      "entityType": "fks",
-      "schema": "public",
-      "table": "contacts"
-    },
-    {
       "nameExplicit": true,
       "columns": ["parent_id"],
       "schemaTo": "public",
@@ -2269,7 +2404,7 @@
       "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "RESTRICT",
-      "name": "contacts_parent_platform_fk",
+      "name": "contacts_parent_root_fk",
       "entityType": "fks",
       "schema": "public",
       "table": "contacts"
@@ -2399,7 +2534,7 @@
       "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "RESTRICT",
-      "name": "groups_parent_platform_fk",
+      "name": "groups_parent_root_fk",
       "entityType": "fks",
       "schema": "public",
       "table": "groups"
@@ -2445,6 +2580,32 @@
     },
     {
       "nameExplicit": false,
+      "columns": ["forward_id"],
+      "schemaTo": "public",
+      "tableTo": "interactions",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "interaction_regarding_forward_id_interactions_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "interaction_regarding"
+    },
+    {
+      "nameExplicit": false,
+      "columns": ["reverse_id"],
+      "schemaTo": "public",
+      "tableTo": "interface_party",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "interaction_regarding_reverse_id_interface_party_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "interaction_regarding"
+    },
+    {
+      "nameExplicit": false,
       "columns": ["id"],
       "schemaTo": "public",
       "tableTo": "objects",
@@ -2457,19 +2618,6 @@
       "table": "interactions"
     },
     {
-      "nameExplicit": false,
-      "columns": ["subject_id"],
-      "schemaTo": "public",
-      "tableTo": "interface_party",
-      "columnsTo": ["id"],
-      "onUpdate": "NO ACTION",
-      "onDelete": "RESTRICT",
-      "name": "interactions_subject_id_interface_party_id_fkey",
-      "entityType": "fks",
-      "schema": "public",
-      "table": "interactions"
-    },
-    {
       "nameExplicit": true,
       "columns": ["parent_id"],
       "schemaTo": "public",
@@ -2477,7 +2625,7 @@
       "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "RESTRICT",
-      "name": "interactions_parent_platform_fk",
+      "name": "interactions_parent_root_fk",
       "entityType": "fks",
       "schema": "public",
       "table": "interactions"
@@ -2542,7 +2690,7 @@
       "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "RESTRICT",
-      "name": "leads_parent_platform_fk",
+      "name": "leads_parent_root_fk",
       "entityType": "fks",
       "schema": "public",
       "table": "leads"
@@ -2659,19 +2807,6 @@
       "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
-      "name": "roots_id_objects_id_fkey",
-      "entityType": "fks",
-      "schema": "public",
-      "table": "roots"
-    },
-    {
-      "nameExplicit": false,
-      "columns": ["id"],
-      "schemaTo": "public",
-      "tableTo": "objects",
-      "columnsTo": ["id"],
-      "onUpdate": "NO ACTION",
-      "onDelete": "CASCADE",
       "name": "principal_sets_id_objects_id_fkey",
       "entityType": "fks",
       "schema": "public",
@@ -2685,7 +2820,7 @@
       "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "RESTRICT",
-      "name": "principal_sets_parent_platform_fk",
+      "name": "principal_sets_parent_root_fk",
       "entityType": "fks",
       "schema": "public",
       "table": "principal_sets"
@@ -2815,7 +2950,7 @@
       "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "RESTRICT",
-      "name": "roles_parent_platform_fk",
+      "name": "roles_parent_root_fk",
       "entityType": "fks",
       "schema": "public",
       "table": "roles"
@@ -2841,6 +2976,19 @@
       "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
+      "name": "roots_id_objects_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "roots"
+    },
+    {
+      "nameExplicit": false,
+      "columns": ["id"],
+      "schemaTo": "public",
+      "tableTo": "objects",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
       "name": "service_accounts_id_objects_id_fkey",
       "entityType": "fks",
       "schema": "public",
@@ -2854,7 +3002,7 @@
       "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "RESTRICT",
-      "name": "service_accounts_parent_platform_fk",
+      "name": "service_accounts_parent_root_fk",
       "entityType": "fks",
       "schema": "public",
       "table": "service_accounts"
@@ -2893,7 +3041,7 @@
       "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "RESTRICT",
-      "name": "users_parent_platform_fk",
+      "name": "users_parent_root_fk",
       "entityType": "fks",
       "schema": "public",
       "table": "users"
@@ -2912,12 +3060,28 @@
       "table": "users"
     },
     {
+      "columns": ["forward_id", "reverse_id"],
+      "nameExplicit": false,
+      "name": "contact_primary_company_pkey",
+      "entityType": "pks",
+      "schema": "public",
+      "table": "contact_primary_company"
+    },
+    {
       "columns": ["issuer", "subject"],
       "nameExplicit": false,
       "name": "identity_bindings_pkey",
       "entityType": "pks",
       "schema": "public",
       "table": "identity_bindings"
+    },
+    {
+      "columns": ["forward_id", "reverse_id"],
+      "nameExplicit": false,
+      "name": "interaction_regarding_pkey",
+      "entityType": "pks",
+      "schema": "public",
+      "table": "interaction_regarding"
     },
     {
       "columns": ["id"],
@@ -3034,14 +3198,6 @@
     {
       "columns": ["id"],
       "nameExplicit": false,
-      "name": "roots_pkey",
-      "schema": "public",
-      "table": "roots",
-      "entityType": "pks"
-    },
-    {
-      "columns": ["id"],
-      "nameExplicit": false,
       "name": "principal_sets_pkey",
       "schema": "public",
       "table": "principal_sets",
@@ -3082,6 +3238,14 @@
     {
       "columns": ["id"],
       "nameExplicit": false,
+      "name": "roots_pkey",
+      "schema": "public",
+      "table": "roots",
+      "entityType": "pks"
+    },
+    {
+      "columns": ["id"],
+      "nameExplicit": false,
       "name": "service_accounts_pkey",
       "schema": "public",
       "table": "service_accounts",
@@ -3096,14 +3260,14 @@
       "entityType": "pks"
     },
     {
-      "value": "\"object_type\" in ('platform', 'user', 'serviceAccount', 'anonymousActor', 'group', 'principalSet', 'groupMembership', 'role', 'roleAssignment', 'company', 'contact', 'lead', 'deal', 'lineItem', 'interaction')",
+      "value": "\"object_type\" in ('root', 'user', 'serviceAccount', 'anonymousActor', 'group', 'principalSet', 'groupMembership', 'role', 'roleAssignment', 'company', 'contact', 'lead', 'deal', 'lineItem', 'interaction')",
       "name": "objects_object_type_check",
       "entityType": "checks",
       "schema": "public",
       "table": "objects"
     },
     {
-      "value": "(\"object_type\" = 'platform' and \"parent_id\" is null)\n          or (\"object_type\" <> 'platform' and \"parent_id\" is not null)",
+      "value": "(\"object_type\" = 'root' and \"parent_id\" is null)\n          or (\"object_type\" <> 'root' and \"parent_id\" is not null)",
       "name": "objects_parent_required",
       "entityType": "checks",
       "schema": "public",

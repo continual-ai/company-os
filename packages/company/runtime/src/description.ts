@@ -15,7 +15,7 @@ import type { ObjectType } from "./definition/object"
 import type { Query } from "./definition/query"
 import type { RootType } from "./definition/root"
 
-export const MODEL_DESCRIPTION_VERSION = "0.29" as const
+export const MODEL_DESCRIPTION_VERSION = "0.30" as const
 
 type ObjectDescription = Omit<ObjectType, "actions" | "kind" | "parent"> & {
   parent: {

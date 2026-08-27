@@ -1,18 +1,35 @@
 import { Model } from "@company/model"
 import { describe, expect, it } from "vitest"
 
-import { FormValidationError } from "./form-errors"
-import { dateTimeLocalValue, decodeObjectForm } from "./object-form"
+import { FormValidationError } from "@/ui/forms/form-errors"
+
+import {
+  dateTimeLocalValue,
+  decodeObjectForm,
+  objectFormDefaultValues,
+} from "./object-form"
 
 describe("object forms", () => {
+  it("derives controlled defaults from the model", () => {
+    expect(
+      objectFormDefaultValues(Model.objects.company, "create")
+    ).toMatchObject({
+      domain: "",
+      lifecycleStage: "prospect",
+      links: { contacts: [] },
+      logo: { alt: "", assetId: "" },
+      name: "",
+    })
+  })
+
   it("decodes semantic sales values without transport-specific form logic", () => {
-    const form = new FormData()
-    form.set("parent", "company_northstar")
-    form.set("name", "Expansion")
-    form.set("stage", "qualified")
-    form.set("amount.amount", "12500.00")
-    form.set("amount.currency", "eur")
-    form.set("expectedCloseDate", "2026-09-30")
+    const form = {
+      amount: { amount: "12500.00", currency: "eur" },
+      expectedCloseDate: "2026-09-30",
+      name: "Expansion",
+      parent: "company_northstar",
+      stage: "qualified",
+    }
 
     expect(decodeObjectForm(Model.objects.deal, form, "create")).toEqual({
       amount: { amount: "12500.00", currency: "EUR" },
@@ -24,9 +41,7 @@ describe("object forms", () => {
   })
 
   it("omits root parents and server-owned defaults", () => {
-    const form = new FormData()
-    form.set("name", "Northstar")
-    form.set("domain", "northstar.example")
+    const form = { domain: "northstar.example", name: "Northstar" }
 
     expect(decodeObjectForm(Model.objects.company, form, "create")).toEqual({
       domain: "northstar.example",
@@ -37,6 +52,23 @@ describe("object forms", () => {
     })
   })
 
+  it("nests initial relationships under the generated links envelope", () => {
+    const form = {
+      links: { regarding: "company_northstar" },
+      occurredAt: "2026-08-25T18:30",
+      summary: "Introductory call",
+    }
+
+    expect(decodeObjectForm(Model.objects.interaction, form, "create")).toEqual(
+      {
+        details: null,
+        links: { regarding: "company_northstar" },
+        occurredAt: new Date("2026-08-25T18:30").toISOString(),
+        summary: "Introductory call",
+      }
+    )
+  })
+
   it("formats timestamps for datetime-local in local time", () => {
     expect(dateTimeLocalValue("2026-08-25T18:30:00.000Z")).toMatch(
       /^2026-08-25T\d{2}:30$/
@@ -44,9 +76,7 @@ describe("object forms", () => {
   })
 
   it("preserves model validation paths for inline errors", () => {
-    const form = new FormData()
-    form.set("name", "Invalid")
-    form.set("domain", "test")
+    const form = { domain: "test", name: "Invalid" }
 
     try {
       decodeObjectForm(Model.objects.company, form, "create")

@@ -23,8 +23,11 @@ import {
   modelObjectProperty,
   recordLabel,
   recordObjectTypes,
+  type ModelObject,
 } from "./object-client"
 import { canSortProperty } from "./object-collection-query"
+import { useObjectCreate } from "./object-create-context"
+import { ObjectReferenceCreateActions } from "./object-reference-create-actions"
 
 export interface ReferenceOption {
   readonly id: string
@@ -113,38 +116,40 @@ export function ObjectReferenceSelect({
   constraints = noConstraints,
   disabled = false,
   id,
+  includeHiddenInput = true,
   initialLabel,
   invalid = false,
   name,
+  onBlur,
+  onValueChange,
   placeholder = "Select a record",
   required = false,
   typeId,
-  value: initialValue = "",
+  value,
 }: {
   readonly ariaDescribedBy?: string | undefined
   readonly disabled?: boolean
   readonly id?: string | undefined
+  readonly includeHiddenInput?: boolean
   readonly constraints?: ReadonlyArray<ReferenceConstraint>
   readonly initialLabel?: string | undefined
   readonly invalid?: boolean | undefined
   readonly name: string
+  readonly onBlur: () => void
+  readonly onValueChange: (value: string, option?: ReferenceOption) => void
   readonly placeholder?: string
   readonly required?: boolean
   readonly typeId: string
-  readonly value?: string | undefined
+  readonly value: string
 }) {
+  const openObjectCreate = useObjectCreate()
   const [error, setError] = useState<string>()
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
   const [options, setOptions] = useState<ReadonlyArray<ReferenceOption>>(
-    initialValue === ""
-      ? []
-      : [{ id: initialValue, label: initialLabel ?? initialValue }]
+    value === "" ? [] : [{ id: value, label: initialLabel ?? value }]
   )
   const [query, setQuery] = useState("")
-  const [value, setValue] = useState(initialValue)
-  const [selectedLabel, setSelectedLabel] = useState(initialLabel)
-  const inputRef = useRef<HTMLInputElement>(null)
   const requestId = useRef(0)
 
   useEffect(() => {
@@ -175,9 +180,25 @@ export function ObjectReferenceSelect({
 
   const selected = options.find((option) => option.id === value)
 
+  const create = (object: ModelObject) => {
+    setOpen(false)
+    openObjectCreate(object, {
+      onCreated: (record) => {
+        const option = { id: record.id, label: recordLabel(object, record) }
+        setOptions((current) => [
+          option,
+          ...current.filter((candidate) => candidate.id !== option.id),
+        ])
+        onValueChange(option.id, option)
+      },
+    })
+  }
+
   return (
     <>
-      <input ref={inputRef} type="hidden" name={name} value={value} />
+      {includeHiddenInput ? (
+        <input type="hidden" name={name} value={value} />
+      ) : null}
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger
           render={
@@ -191,11 +212,12 @@ export function ObjectReferenceSelect({
               aria-required={required}
               data-form-field={name}
               className="w-full justify-between font-normal"
+              onBlur={onBlur}
             />
           }
         >
           <span className="truncate">
-            {selected?.label ?? selectedLabel ?? placeholder}
+            {selected?.label ?? initialLabel ?? placeholder}
           </span>
           <ChevronsUpDownIcon className="text-muted-foreground" />
         </PopoverTrigger>
@@ -219,12 +241,8 @@ export function ObjectReferenceSelect({
                   key={option.id}
                   value={option.id}
                   onSelect={() => {
-                    setValue(option.id)
-                    setSelectedLabel(option.label)
+                    onValueChange(option.id, option)
                     setOpen(false)
-                    inputRef.current?.dispatchEvent(
-                      new Event("input", { bubbles: true })
-                    )
                   }}
                 >
                   <span className="truncate">{option.label}</span>
@@ -235,6 +253,7 @@ export function ObjectReferenceSelect({
               ))}
             </CommandList>
           </Command>
+          <ObjectReferenceCreateActions typeId={typeId} onCreate={create} />
         </PopoverContent>
       </Popover>
     </>

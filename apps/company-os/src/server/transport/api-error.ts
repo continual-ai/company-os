@@ -135,6 +135,22 @@ function aborted(_error: TaggedFailure): StandardApiError {
 }
 
 function alreadyExists(error: TaggedFailure): StandardApiError {
+  if (error._tag === "LinkCardinalityConflict") {
+    return {
+      details: {
+        violations: [
+          {
+            message: "This relationship already has its allowed target.",
+            path: ["target"],
+            reason: "LINK_CARDINALITY_CONFLICT",
+          },
+        ],
+      },
+      message: "The relationship would violate its declared cardinality.",
+      reason: "ALREADY_EXISTS",
+      status: "ALREADY_EXISTS",
+    }
+  }
   const alias = stringProperty(error, "alias")
   const fields = stringArrayProperty(error, "fields")
   const violations =
@@ -183,6 +199,18 @@ function preconditionViolation(error: TaggedFailure): Violation {
         message: "The lead has an incomplete prior conversion.",
         reason: "LEAD_CONVERSION_STATE_INVALID",
       }
+    case "RequiredLinkUnlink":
+      return {
+        message: "A required relationship cannot be removed.",
+        path: [stringProperty(error, "traversal") ?? "target"],
+        reason: "REQUIRED_LINK",
+      }
+    case "ObjectDeleteRestricted":
+      return {
+        message:
+          "Remove required references to this record before deleting it.",
+        reason: "RECORD_STILL_REFERENCED",
+      }
     default:
       return {
         message: "The system state must change before trying again.",
@@ -202,6 +230,15 @@ function failedPrecondition(error: TaggedFailure): StandardApiError {
 
 function validationViolation(error: TaggedFailure): Violation {
   switch (error._tag) {
+    case "InvalidLinkRequest": {
+      const path = stringArrayProperty(error, "path")
+      const violation = {
+        message:
+          stringProperty(error, "message") ?? "The Link request is invalid.",
+        reason: "INVALID_LINK_REQUEST",
+      }
+      return path === undefined ? violation : { ...violation, path }
+    }
     case "ImmutablePropertyError":
       return {
         message: "This field cannot be changed after creation.",
@@ -219,6 +256,12 @@ function validationViolation(error: TaggedFailure): Violation {
         message: "Select a valid parent.",
         path: ["parent"],
         reason: "PARENT_TYPE_MISMATCH",
+      }
+    case "RequiredLinkMissing":
+      return {
+        message: "Select the required related record.",
+        path: ["links", stringProperty(error, "traversal") ?? "unknown"],
+        reason: "REQUIRED_LINK",
       }
     default:
       return {
@@ -248,14 +291,20 @@ const notFoundTags = new Set([
 const failedPreconditionTags = new Set([
   "LastAdministrator",
   "LeadConversionConflict",
+  "ObjectDeleteRestricted",
   "RoleScopeMismatch",
+  "RequiredLinkUnlink",
 ])
 const validationTags = new Set([
+  "InvalidLinkRequest",
+  "InvalidLinkListRequest",
   "ImmutablePropertyError",
   "InvalidBatchRequest",
   "InvalidListRequest",
   "InvalidRolePermission",
   "ObjectParentTypeMismatch",
+  "LinkMutationNotAllowed",
+  "RequiredLinkMissing",
 ])
 
 function translateApiError(error: unknown): ApiError | undefined {
@@ -281,6 +330,7 @@ function translateApiError(error: unknown): ApiError | undefined {
   if (error._tag === "ObjectWriteConflict") return aborted(error)
   if (
     error._tag === "ObjectUniqueConflict" ||
+    error._tag === "LinkCardinalityConflict" ||
     error._tag === "RecordAliasConflict"
   ) {
     return alreadyExists(error)

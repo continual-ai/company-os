@@ -30,6 +30,10 @@ export function objectCapabilityChecks(
   recordIds: ReadonlyArray<string>
 ): ReadonlyArray<CapabilityCheck> {
   const checks = new Map<string, CapabilityCheck>()
+  for (const recordId of recordIds) {
+    const check = objectCapabilityCheck(object, "get", recordId)
+    if (check !== undefined) checks.set(capabilityKey(check), check)
+  }
   for (const action of Object.values(object.actions)) {
     if (action.id === "batchDelete") continue
     if (action.scope === "collection") {

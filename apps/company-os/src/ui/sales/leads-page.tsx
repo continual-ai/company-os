@@ -2,7 +2,7 @@ import { Model } from "@company/model"
 import { RecordId } from "@company/runtime"
 import { Effect } from "effect"
 
-import { httpClient } from "@/http-client"
+import { client } from "@/client"
 import { ConfirmActionButton } from "@/ui/model/confirm-action-button"
 import { ObjectCollection } from "@/ui/model/object-collection"
 import type { ObjectTableRecord } from "@/ui/model/object-table/object-table-config"
@@ -25,9 +25,7 @@ function LeadActions({
       description="This atomically creates a company and contact linked to the lead."
       onConfirm={async () => {
         await Effect.runPromise(
-          httpClient.lead.convertLead({
-            params: { id: RecordId("lead")(record.id) },
-          })
+          client.lead.convert({ id: RecordId("lead")(record.id) })
         )
         await refresh()
       }}

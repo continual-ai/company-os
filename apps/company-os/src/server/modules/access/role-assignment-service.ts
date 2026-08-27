@@ -2,10 +2,10 @@ import { Model } from "@company/model"
 import type { ObjectCreateInput } from "@company/runtime"
 import { Context, Data, Effect, Layer } from "effect"
 
-import { definedPermissions } from "@/server/authorization/permission-catalog"
+import { isCapabilityPermission } from "@/capabilities"
 import { Database } from "@/server/database/database"
 import { ObjectRepositories } from "@/server/model/object-repositories"
-import { makeObjectService } from "@/server/model/object-service"
+import { makeBaseObjectService } from "@/server/model/object-service"
 import { ADMINISTRATOR_ROLE_ID, ROOT_ID } from "@/system-records"
 
 import { RoleAssignmentRepository } from "./role-assignment-repository"
@@ -29,11 +29,10 @@ const make = Effect.gen(function* () {
   const database = yield* Database
   const repository = yield* RoleAssignmentRepository
   const roleRepository = (yield* ObjectRepositories).role
-  const base = yield* makeObjectService(
+  const base = yield* makeBaseObjectService(
     Model.objects.roleAssignment,
     repository
   )
-  const permissions = new Set(definedPermissions)
 
   const create = Effect.fn("@company/RoleAssignmentService.create")(function* (
     input: ObjectCreateInput<(typeof Model.objects)["roleAssignment"]>
@@ -60,7 +59,7 @@ const make = Effect.gen(function* () {
           )
         }
         const invalidPermission = role.permissions.find(
-          (permission) => !permissions.has(permission)
+          (permission) => !isCapabilityPermission(permission)
         )
         if (invalidPermission !== undefined) {
           return yield* Effect.fail(

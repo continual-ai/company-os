@@ -2,8 +2,14 @@
 import { fileURLToPath } from "node:url"
 
 import { Model } from "@company/model"
-import { isStandardActionId } from "@company/runtime"
-import { httpEndpointId } from "@company/runtime/effect/http"
+import { makeLinkRepository } from "@company/postgres"
+import { isStandardActionId, Timestamp } from "@company/runtime"
+import {
+  createModelClient,
+  httpEndpointId,
+  linkHttpEndpointId,
+  type ModelHttpClient,
+} from "@company/runtime/effect/http"
 import { executableModelOperations } from "@company/runtime/effect/model-implementation"
 import { PgliteClient } from "@effect/sql-pglite"
 import { eq } from "drizzle-orm"
@@ -15,7 +21,7 @@ import { HttpApiClient, OpenApi } from "effect/unstable/httpapi"
 import { describe, expect, it } from "vitest"
 
 import { applicationHttpApi } from "@/http-api"
-import type { ApplicationHttpClient } from "@/http-client"
+import type { capabilityGroup } from "@/http-api"
 import { makeApplicationLayer } from "@/server/application-layer"
 import { AuthSettings, type AuthConfig } from "@/server/auth/auth-config"
 import { IdentityProvider } from "@/server/auth/identity-provider"
@@ -25,6 +31,7 @@ import {
   objects,
   relations,
   roleAssignments,
+  Storage,
   users,
 } from "@/server/database/schema"
 import { seedSystem } from "@/server/seeds/seed-system"
@@ -32,6 +39,9 @@ import { ROOT_ID } from "@/system-records"
 
 import { HttpTransport } from "./http-transport"
 import { McpTransport } from "./mcp-transport"
+
+type ApplicationHttpClient = ModelHttpClient<typeof Model> &
+  HttpApiClient.Client<typeof capabilityGroup>
 
 const migrationsFolder = fileURLToPath(
   new URL("../database/migrations", import.meta.url)
@@ -98,16 +108,33 @@ function run<A, E>(effect: Effect.Effect<A, E, PgliteClient.PgliteClient>) {
   )
 }
 
+function projectedHttpId(
+  descriptor: ReturnType<typeof executableModelOperations>[number]
+): string {
+  const { definition, linkTraversal, object } = descriptor
+  if (linkTraversal !== undefined) {
+    if (
+      definition.id !== "link" &&
+      definition.id !== "list" &&
+      definition.id !== "unlink"
+    ) {
+      throw new Error(`Link operation '${descriptor.key}' is invalid.`)
+    }
+    return linkHttpEndpointId(definition.id, object, linkTraversal)
+  }
+  return httpEndpointId(
+    definition.id,
+    object,
+    definition.kind === "action" && !isStandardActionId(definition.id)
+      ? definition.scope
+      : undefined
+  )
+}
+
 const modelProjectionContract = executableModelOperations(Model).map(
-  ({ definition, key, object }) => ({
-    httpOperationId: httpEndpointId(
-      definition.id,
-      object,
-      definition.kind === "action" && !isStandardActionId(definition.id)
-        ? definition.scope
-        : undefined
-    ),
-    mcpToolName: key,
+  (descriptor) => ({
+    httpOperationId: projectedHttpId(descriptor),
+    mcpToolName: descriptor.key,
   })
 )
 
@@ -271,6 +298,9 @@ describe("application HTTP server", () => {
         // represented by ApplicationHttpClient.
         // oxlint-disable-next-line typescript/no-unsafe-type-assertion
         const client = nativeClient as ApplicationHttpClient
+        // SAFETY: the native Effect client is generated from this same Model.
+        // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion
+        const model = createModelClient(Model, nativeClient)
         const useTestFetch = <A, E>(effect: Effect.Effect<A, E>) =>
           effect.pipe(Effect.provideService(FetchHttpClient.Fetch, fetchApi))
 
@@ -290,16 +320,144 @@ describe("application HTTP server", () => {
         ])
 
         const initial = yield* useTestFetch(
-          client.company.listCompanies({ query: { pageSize: 10 } })
+          model.company.list({ pageSize: 10 })
         )
         expect(initial).toEqual({ items: [], nextPageToken: "" })
 
         const created = yield* useTestFetch(
-          client.company.createCompany({ payload: { name: "Northstar" } })
+          model.company.create({ name: "Northstar" })
         )
         expect(created).toMatchObject({
           lifecycleStage: "prospect",
           name: "Northstar",
+        })
+        const interaction = yield* useTestFetch(
+          model.interaction.create({
+            links: { regarding: created.id },
+            occurredAt: Timestamp("2026-08-27T19:00:00.000Z"),
+            summary: "Introductory call",
+          })
+        )
+        expect(
+          yield* useTestFetch(
+            model.interaction.regarding.list({ id: interaction.id })
+          )
+        ).toEqual({
+          items: [{ id: created.id, objectType: "company" }],
+          nextPageToken: "",
+        })
+        const contact = yield* useTestFetch(
+          model.contact.create({
+            links: { primaryCompany: created.id },
+            name: "Ada Lovelace",
+          })
+        )
+        expect(
+          yield* makeLinkRepository(Storage, database).list({
+            direction: "reverse",
+            linkId: "contactPrimaryCompany",
+            pageSize: 10,
+            sourceId: created.id,
+          })
+        ).toEqual({
+          items: [{ id: contact.id, objectType: "contact" }],
+          nextPageToken: "",
+        })
+        const linkedContacts = yield* useTestFetch(
+          model.company.contacts.list({ id: created.id })
+        )
+        expect(linkedContacts.items).toEqual([
+          { id: contact.id, objectType: "contact" },
+        ])
+        yield* useTestFetch(
+          model.company.contacts.unlink({
+            id: created.id,
+            target: contact.id,
+          })
+        )
+        expect(
+          yield* useTestFetch(model.company.contacts.list({ id: created.id }))
+        ).toEqual({ items: [], nextPageToken: "" })
+        yield* useTestFetch(
+          model.company.contacts.link({
+            id: created.id,
+            target: contact.id,
+          })
+        )
+        expect(
+          yield* useTestFetch(
+            model.contact.primaryCompany.list({ id: contact.id })
+          )
+        ).toEqual({
+          items: [{ id: created.id, objectType: "company" }],
+          nextPageToken: "",
+        })
+        const secondContact = yield* useTestFetch(
+          model.contact.create({
+            links: { primaryCompany: created.id },
+            name: "Grace Hopper",
+          })
+        )
+        expect(
+          yield* makeLinkRepository(Storage, database).list(
+            {
+              direction: "reverse",
+              linkId: "contactPrimaryCompany",
+              pageSize: 1,
+              sourceId: created.id,
+            },
+            {
+              targets: [
+                {
+                  objectType: "contact",
+                  visibleWithin: [secondContact.id],
+                },
+              ],
+            }
+          )
+        ).toEqual({
+          items: [{ id: secondContact.id, objectType: "contact" }],
+          nextPageToken: "",
+        })
+
+        const destination = yield* useTestFetch(
+          model.company.create({ name: "Analytical Engine" })
+        )
+        yield* useTestFetch(
+          model.company.contacts.link({
+            id: destination.id,
+            target: contact.id,
+          })
+        )
+        yield* useTestFetch(
+          model.company.contacts.link({
+            id: destination.id,
+            target: contact.id,
+          })
+        )
+        expect(
+          yield* useTestFetch(
+            model.contact.primaryCompany.list({ id: contact.id })
+          )
+        ).toEqual({
+          items: [{ id: destination.id, objectType: "company" }],
+          nextPageToken: "",
+        })
+        expect(
+          yield* useTestFetch(model.company.contacts.list({ id: created.id }))
+        ).toEqual({
+          items: [{ id: secondContact.id, objectType: "contact" }],
+          nextPageToken: "",
+        })
+
+        const deleteRequiredTargetError = yield* Effect.flip(
+          useTestFetch(
+            model.company.delete({ etag: created.etag, id: created.id })
+          )
+        )
+        expect(deleteRequiredTargetError).toMatchObject({
+          reason: "FAILED_PRECONDITION",
+          status: "FAILED_PRECONDITION",
         })
 
         const listedUsers = yield* useTestFetch(

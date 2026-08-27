@@ -9,7 +9,6 @@ import {
   type RecordAliasUpdate,
   type ModelCatalog,
   type ModelObjectRef,
-  linkReferenceTraversals,
   PageToken,
   Timestamp,
   type InferProperty,
@@ -25,6 +24,7 @@ import {
 } from "@company/runtime/effect"
 import {
   ObjectNotFound,
+  ObjectDeleteRestricted,
   ObjectUniqueConflict,
   RecordAliasConflict,
   RecordAliasNotFound,
@@ -114,6 +114,7 @@ export type PostgresRepositoryError =
   | InvalidListRequest
   | RecordAliasConflict
   | ObjectNotFound
+  | ObjectDeleteRestricted
   | ObjectParentNotFound
   | ObjectParentTypeMismatch
   | ObjectUniqueConflict
@@ -173,6 +174,18 @@ function translateUniqueConflict<A, E, R>(
           rule: constraint.rule,
         })
   })
+}
+
+function translateDeleteRestriction<A, E, R>(
+  effect: Effect.Effect<A, E, R>,
+  object: ObjectType,
+  recordIds: ReadonlyArray<string>
+): Effect.Effect<A, E | ObjectDeleteRestricted, R> {
+  return Effect.mapError(effect, (error) =>
+    wrappedSqlError(error)?.reason._tag === "ConstraintError"
+      ? new ObjectDeleteRestricted({ objectType: object.id, recordIds })
+      : error
+  )
 }
 
 const queryValueSchema = Schema.Union([
@@ -395,22 +408,6 @@ export function makeObjectRepository<
       uniqueConstraints.set(objectUniqueConstraintName(tableName, rule), {
         fields,
         rule,
-      })
-    }
-    for (const link of Object.values(storage.model.links)) {
-      const reference = linkReferenceTraversals(link)
-      if (
-        reference === undefined ||
-        reference.source.from.typeId !== object.id ||
-        reference.source.cardinality === "many" ||
-        reference.target.cardinality === "many"
-      ) {
-        continue
-      }
-      const field = reference.source.key
-      uniqueConstraints.set(objectUniqueConstraintName(tableName, field), {
-        fields: [field],
-        rule: link.id,
       })
     }
     const parentInterfaceTable =
@@ -1274,6 +1271,7 @@ export function makeObjectRepository<
             )
           )
           .returning({ id: objects.id })
+          .pipe((effect) => translateDeleteRestriction(effect, object, [id]))
         if (deleted.length === 0)
           return yield* Effect.fail(conflict(object, id))
         return undefined
@@ -1284,25 +1282,35 @@ export function makeObjectRepository<
       function* (targets: ReadonlyArray<ObjectDeleteTarget<TObject>>) {
         if (targets.length === 0) return undefined
 
-        yield* db.transaction((tx) =>
-          Effect.gen(function* () {
-            const targetCondition = or(
-              ...targets.map(({ etag, id }) =>
-                and(eq(objects.id, id), eq(objects.etag, etag))
+        yield* db
+          .transaction((tx) =>
+            Effect.gen(function* () {
+              const targetCondition = or(
+                ...targets.map(({ etag, id }) =>
+                  and(eq(objects.id, id), eq(objects.etag, etag))
+                )
               )
+              const deleted = yield* tx
+                .delete(objects)
+                .where(and(eq(objects.objectType, object.id), targetCondition))
+                .returning({ id: objects.id })
+              const deletedIds = new Set(deleted.map(({ id }) => id))
+              const conflictTarget = targets.find(
+                ({ id }) => !deletedIds.has(id)
+              )
+              if (conflictTarget !== undefined) {
+                return yield* Effect.fail(conflict(object, conflictTarget.id))
+              }
+              return undefined
+            })
+          )
+          .pipe((effect) =>
+            translateDeleteRestriction(
+              effect,
+              object,
+              targets.map(({ id }) => id)
             )
-            const deleted = yield* tx
-              .delete(objects)
-              .where(and(eq(objects.objectType, object.id), targetCondition))
-              .returning({ id: objects.id })
-            const deletedIds = new Set(deleted.map(({ id }) => id))
-            const conflictTarget = targets.find(({ id }) => !deletedIds.has(id))
-            if (conflictTarget !== undefined) {
-              return yield* Effect.fail(conflict(object, conflictTarget.id))
-            }
-            return undefined
-          })
-        )
+          )
         return undefined
       }
     )
