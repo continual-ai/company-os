@@ -111,6 +111,7 @@ export function ObjectRecordDialog({
             <ObjectFormFields
               mode={mode}
               object={object}
+              record={record}
               referenceLabels={referenceLabels}
             />
             <form.Subscribe selector={({ errors }) => errors}>

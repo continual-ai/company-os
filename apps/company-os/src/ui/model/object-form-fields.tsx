@@ -1,13 +1,26 @@
 /* oxlint-disable anti-slop/no-runtime-typeof */
 import type { PropertyDefinition } from "@company/runtime"
+import { DateTimePicker } from "@company/ui/components/date-time-picker"
 import { FieldError } from "@company/ui/components/field"
 import { Input } from "@company/ui/components/input"
+import { PhoneInput } from "@company/ui/components/phone-input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@company/ui/components/select"
 import { Textarea } from "@company/ui/components/textarea"
 
 import { useTypedAppFormContext } from "@/ui/forms/app-form"
 import type { FormValue, FormValueObject } from "@/ui/forms/form-value"
 
-import { parentName, type ModelObject } from "./object-client"
+import {
+  parentName,
+  type ClientRecord,
+  type ModelObject,
+} from "./object-client"
 import {
   isSupportedFormSchema,
   objectFormLinks,
@@ -16,6 +29,7 @@ import {
   type ObjectFormMode,
   type ObjectFormValues,
 } from "./object-form"
+import { ObjectLinkEditField } from "./object-link-edit-field"
 import { ObjectReferenceMultiSelect } from "./object-reference-multi-select"
 import { ObjectReferenceSelect } from "./object-reference-select"
 
@@ -55,10 +69,12 @@ function updateNested(
 export function ObjectFormFields({
   mode,
   object,
+  record,
   referenceLabels,
 }: {
   readonly mode: ObjectFormMode
   readonly object: ModelObject
+  readonly record?: ClientRecord | undefined
   readonly referenceLabels: ReadonlyMap<string, string>
 }) {
   const form = useTypedAppFormContext(objectFormContextOptions)
@@ -191,34 +207,53 @@ export function ObjectFormFields({
                     onBlur,
                     onValueChange,
                     value,
-                  }) => (
-                    <select
-                      id={fieldId}
-                      name={id}
-                      required={required}
-                      value={stringValue(value)}
-                      aria-invalid={invalid}
-                      aria-describedby={ariaDescribedBy}
-                      onBlur={onBlur}
-                      onChange={(event) =>
-                        onValueChange(event.currentTarget.value)
-                      }
-                      className="h-8 border border-input bg-background px-2 text-xs aria-invalid:border-destructive"
-                    >
-                      {required ? null : <option value="">None</option>}
-                      {(
-                        schema.options ??
-                        schema.values.map((option) => ({
-                          label: option,
-                          value: option,
-                        }))
-                      ).map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  )}
+                  }) => {
+                    const selectedValue = stringValue(value)
+                    const options =
+                      schema.options ??
+                      schema.values.map((option) => ({
+                        label: option,
+                        value: option,
+                      }))
+                    const selectedLabel = options.find(
+                      (option) => option.value === selectedValue
+                    )?.label
+                    return (
+                      <Select
+                        name={id}
+                        required={required}
+                        value={selectedValue === "" ? null : selectedValue}
+                        onValueChange={(nextValue) =>
+                          onValueChange(nextValue ?? "")
+                        }
+                      >
+                        <SelectTrigger
+                          id={fieldId}
+                          className="w-full"
+                          aria-invalid={invalid}
+                          aria-describedby={ariaDescribedBy}
+                          aria-required={required}
+                          onBlur={onBlur}
+                        >
+                          <SelectValue
+                            placeholder={required ? "Choose a value" : "None"}
+                          >
+                            {selectedLabel}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent align="start">
+                          {required ? null : (
+                            <SelectItem value={null}>None</SelectItem>
+                          )}
+                          {options.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )
+                  }}
                 </field.FormField>
               )}
             </form.AppField>
@@ -395,6 +430,7 @@ export function ObjectFormFields({
 
         const timestamp =
           schema.kind === "string" && schema.format === "timestamp"
+        const phone = schema.kind === "string" && schema.format === "phone"
         const longText =
           schema.kind === "string" &&
           (schema.maxLength === undefined || schema.maxLength > 300) &&
@@ -404,15 +440,11 @@ export function ObjectFormFields({
             ? "number"
             : schema.kind === "string" && schema.format === "date"
               ? "date"
-              : timestamp
-                ? "datetime-local"
-                : schema.kind === "string" && schema.format === "email"
-                  ? "email"
-                  : schema.kind === "string" && schema.format === "phone"
-                    ? "tel"
-                    : schema.kind === "string" && schema.format === "url"
-                      ? "url"
-                      : "text"
+              : schema.kind === "string" && schema.format === "email"
+                ? "email"
+                : schema.kind === "string" && schema.format === "url"
+                  ? "url"
+                  : "text"
 
         return (
           <form.AppField key={id} name={id}>
@@ -429,7 +461,31 @@ export function ObjectFormFields({
                   onValueChange,
                   value,
                 }) =>
-                  longText ? (
+                  timestamp ? (
+                    <DateTimePicker
+                      id={fieldId}
+                      required={required}
+                      value={stringValue(value)}
+                      aria-describedby={ariaDescribedBy}
+                      aria-invalid={invalid}
+                      onBlur={onBlur}
+                      onValueChange={onValueChange}
+                    />
+                  ) : phone ? (
+                    <PhoneInput
+                      id={fieldId}
+                      name={id}
+                      required={required}
+                      value={stringValue(value)}
+                      maxLength={schema.maxLength}
+                      aria-invalid={invalid}
+                      aria-describedby={ariaDescribedBy}
+                      autoComplete="tel"
+                      placeholder="Enter phone number"
+                      onBlur={onBlur}
+                      onValueChange={onValueChange}
+                    />
+                  ) : longText ? (
                     <Textarea
                       id={fieldId}
                       name={id}
@@ -482,7 +538,8 @@ export function ObjectFormFields({
         )
       })}
 
-      {objectFormLinks(object, mode).map(({ target, traversal }) => {
+      {objectFormLinks(object, mode).map((linkTraversal) => {
+        const { target, traversal } = linkTraversal
         const fieldId = `${object.id}-${mode}-link-${traversal.key}`
         const name = `links.${traversal.key}`
         return (
@@ -500,7 +557,20 @@ export function ObjectFormFields({
                   onValueChange,
                   value,
                 }) =>
-                  traversal.cardinality === "many" ? (
+                  mode === "edit" && record !== undefined ? (
+                    <ObjectLinkEditField
+                      ariaDescribedBy={ariaDescribedBy}
+                      id={fieldId}
+                      invalid={invalid}
+                      name={name}
+                      object={object}
+                      record={record}
+                      traversal={linkTraversal}
+                      value={value}
+                      onBlur={onBlur}
+                      onValueChange={onValueChange}
+                    />
+                  ) : traversal.cardinality === "many" ? (
                     <ObjectReferenceMultiSelect
                       id={fieldId}
                       name={name}

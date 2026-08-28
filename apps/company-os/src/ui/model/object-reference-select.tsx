@@ -13,7 +13,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@company/ui/components/popover"
-import { CheckIcon, ChevronsUpDownIcon } from "lucide-react"
+import { CheckIcon, ChevronDownIcon } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 
 import { ROOT_ID } from "@/system-records"
@@ -211,7 +211,7 @@ export function ObjectReferenceSelect({
               aria-invalid={invalid}
               aria-required={required}
               data-form-field={name}
-              className="w-full justify-between font-normal"
+              className="w-full justify-between border-input bg-transparent font-normal hover:bg-transparent"
               onBlur={onBlur}
             />
           }
@@ -219,7 +219,7 @@ export function ObjectReferenceSelect({
           <span className="truncate">
             {selected?.label ?? initialLabel ?? placeholder}
           </span>
-          <ChevronsUpDownIcon className="text-muted-foreground" />
+          <ChevronDownIcon className="text-muted-foreground" />
         </PopoverTrigger>
         <PopoverContent align="start" className="w-80 gap-0 p-0">
           <Command shouldFilter={false}>

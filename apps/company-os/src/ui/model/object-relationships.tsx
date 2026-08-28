@@ -2,7 +2,6 @@ import { Model } from "@company/model"
 import {
   modelObjectLinkTraversals,
   type ModelLinkTraversal,
-  type ObjectRef,
 } from "@company/runtime"
 import { Button } from "@company/ui/components/button"
 import { FieldError } from "@company/ui/components/field"
@@ -23,21 +22,15 @@ import {
 } from "@/ui/forms/form-errors"
 
 import {
-  clientFor,
+  describeReferences,
   type DynamicLinkListInput,
   linkClientFor,
-  recordLabel,
   type ClientRecord,
   type ModelObject,
+  type RelatedRecord,
 } from "./object-client"
 import { stringValue } from "./object-form"
 import { ObjectReferenceSelect } from "./object-reference-select"
-
-interface RelatedRecord {
-  readonly id: string
-  readonly label: string
-  readonly objectType: string
-}
 
 function errorMessage(cause: unknown, fallback: string): string {
   const errors = formErrorFromCause(cause, fallback)
@@ -56,43 +49,6 @@ function targetTypeName(typeId: string): string {
     Object.values(Model.interfaces).find(({ id }) => id === typeId)?.name ??
     "record"
   )
-}
-
-async function describeReferences(
-  references: ReadonlyArray<ObjectRef>
-): Promise<ReadonlyArray<RelatedRecord>> {
-  const labels = new Map<string, string>()
-  const byType = new Map<string, ObjectRef[]>()
-  for (const reference of references) {
-    const typedReferences = byType.get(reference.objectType) ?? []
-    typedReferences.push(reference)
-    byType.set(reference.objectType, typedReferences)
-  }
-  await Promise.all(
-    [...byType].map(async ([objectType, typedReferences]) => {
-      if (objectType === Model.root.id) {
-        for (const reference of typedReferences) {
-          labels.set(reference.id, Model.root.name)
-        }
-        return
-      }
-      const object = Object.values(Model.objects).find(
-        (candidate) => candidate.id === objectType
-      )
-      if (object === undefined) return
-      const records = await clientFor(object).batchGet({
-        ids: typedReferences.map(({ id }) => id),
-      })
-      for (const record of records.items) {
-        labels.set(record.id, recordLabel(object, record))
-      }
-    })
-  )
-  return references.map(({ id, objectType }) => ({
-    id,
-    label: labels.get(id) ?? id,
-    objectType,
-  }))
 }
 
 function Relationship({

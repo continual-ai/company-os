@@ -9,10 +9,14 @@ import {
 } from "@company/runtime"
 import {
   toEffectModelObjectCreateSchema,
-  toEffectObjectUpdateSchema,
+  toEffectModelObjectUpdateSchema,
 } from "@company/runtime/effect"
 
-import { decodeFormSchema, FormValidationError } from "@/ui/forms/form-errors"
+import {
+  decodeFormSchema,
+  FormValidationError,
+  type FormSchemaInput,
+} from "@/ui/forms/form-errors"
 import type { FormValue, FormValueObject } from "@/ui/forms/form-value"
 
 import {
@@ -40,6 +44,11 @@ export interface ObjectFormInput {
   readonly [property: string]: ObjectFormInputValue | undefined
 }
 
+interface LinkDeltaInput {
+  add?: ReadonlyArray<string>
+  remove?: ReadonlyArray<string>
+}
+
 export interface ObjectFormProperty {
   readonly id: string
   readonly property: PropertyDefinition
@@ -50,11 +59,9 @@ export function objectFormLinks(
   object: ModelObject,
   mode: ObjectFormMode
 ): ReadonlyArray<ModelLinkTraversal> {
-  return mode === "create"
-    ? modelObjectLinkTraversals(Model, object).filter(
-        ({ initializable }) => initializable
-      )
-    : []
+  return modelObjectLinkTraversals(Model, object).filter((traversal) =>
+    mode === "create" ? traversal.initializable : traversal.writable
+  )
 }
 
 export function objectFormProperties(
@@ -297,14 +304,31 @@ export function decodeObjectForm(
         traversal.cardinality === "many" ? targets : targets[0]!
     }
     if (Object.keys(links).length > 0) input.links = links
+  } else {
+    const links: Record<string, LinkDeltaInput> = {}
+    const linkValues = values.links
+    for (const { traversal } of objectFormLinks(object, mode)) {
+      const rawValue = nestedFormValue(linkValues, traversal.key)
+      const add = stringArrayValue(nestedFormValue(rawValue, "add"))
+      const remove = stringArrayValue(nestedFormValue(rawValue, "remove"))
+      if (add.length === 0 && remove.length === 0) continue
+      const changes: LinkDeltaInput = {}
+      if (add.length > 0) changes.add = add
+      if (remove.length > 0) changes.remove = remove
+      links[traversal.key] = changes
+    }
+    if (Object.keys(links).length > 0) input.links = links
   }
   const schema =
     mode === "create"
       ? toEffectModelObjectCreateSchema(Model, object)
-      : toEffectObjectUpdateSchema(object)
+      : toEffectModelObjectUpdateSchema(Model, object)
   let decoded: unknown
   try {
-    decoded = decodeFormSchema(schema, input)
+    // SAFETY: input is assembled above from schema-compatible scalar values
+    // and Link-delta records; undefined properties are never assigned.
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+    decoded = decodeFormSchema(schema, input as FormSchemaInput)
   } catch (cause) {
     if (!(cause instanceof FormValidationError)) throw cause
     throw new FormValidationError(
@@ -344,9 +368,19 @@ function isObjectFormObject(
 function initialValue(
   property: PropertyDefinition,
   record: ClientRecord | undefined,
-  propertyId: string
+  propertyId: string,
+  mode: ObjectFormMode,
+  now: Date
 ): ClientValue | undefined {
   if (record !== undefined) return record[propertyId]
+  if (
+    mode === "create" &&
+    property.kind === "string" &&
+    property.format === "timestamp" &&
+    property.initialValue === "now"
+  ) {
+    return now.toISOString()
+  }
   // SAFETY: portable property defaults are JSON-compatible values by schema.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   return property.default as ClientValue | undefined
@@ -355,13 +389,14 @@ function initialValue(
 export function objectFormDefaultValues(
   object: ModelObject,
   mode: ObjectFormMode,
-  record?: ClientRecord
+  record?: ClientRecord,
+  now = new Date()
 ): ObjectFormValues {
   const values: Record<string, FormValue> = {}
   if (mode === "create" && object.parent.kind !== "root") values.parent = ""
 
   for (const { id, property, schema } of objectFormProperties(object, mode)) {
-    const value = initialValue(property, record, id)
+    const value = initialValue(property, record, id, mode, now)
     if (schema.kind === "boolean") {
       values[id] = value === true
       continue
@@ -407,10 +442,15 @@ export function objectFormDefaultValues(
     values[id] = typeof value === "number" ? String(value) : stringValue(value)
   }
 
-  if (mode === "create") {
-    const links: Record<string, string | ReadonlyArray<string>> = {}
+  {
+    const links: Record<string, FormValue> = {}
     for (const { traversal } of objectFormLinks(object, mode)) {
-      links[traversal.key] = traversal.cardinality === "many" ? [] : ""
+      links[traversal.key] =
+        mode === "create"
+          ? traversal.cardinality === "many"
+            ? []
+            : ""
+          : { add: [], remove: [] }
     }
     if (Object.keys(links).length > 0) values.links = links
   }
