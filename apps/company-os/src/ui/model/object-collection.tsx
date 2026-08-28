@@ -63,14 +63,6 @@ function AuthorizedObjectCollection({
   const [relating, setRelating] = useState<ClientRecord>()
   const hasRelationships = modelObjectLinkTraversals(Model, object).length > 0
 
-  if (collection.loading && collection.records.length === 0) {
-    return (
-      <div className="p-6 text-sm text-muted-foreground">
-        Loading {object.pluralName.toLowerCase()}…
-      </div>
-    )
-  }
-
   return (
     <>
       {collection.error === undefined ? null : (

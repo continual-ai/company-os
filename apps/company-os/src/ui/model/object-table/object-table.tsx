@@ -7,6 +7,12 @@ import {
 import { Button } from "@company/ui/components/button"
 import { Checkbox } from "@company/ui/components/checkbox"
 import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+} from "@company/ui/components/empty"
+import {
   Table,
   TableBody,
   TableCell,
@@ -112,6 +118,46 @@ const addColumnWidth = 136
 const tableHeaderHeight = 33
 const tableRowHeight = 32
 const tableFooterHeight = 32
+
+function ObjectTableViewportState({
+  filtered,
+  loading,
+  object,
+  canCreate,
+}: {
+  readonly canCreate: boolean
+  readonly filtered: boolean
+  readonly loading: boolean
+  readonly object: ObjectType
+}) {
+  const title = loading
+    ? `Loading ${object.pluralName.toLowerCase()}…`
+    : filtered
+      ? `No matching ${object.pluralName.toLowerCase()}`
+      : `No ${object.pluralName.toLowerCase()} to show`
+  const description = loading
+    ? "Records will appear as soon as they are available."
+    : filtered
+      ? "Change or clear the current filters."
+      : canCreate
+        ? `Create the first ${object.name.toLowerCase()} to get started.`
+        : "Records will appear here when they are available."
+
+  return (
+    <div
+      data-object-table-viewport-state=""
+      className="pointer-events-none absolute inset-x-0 z-10 grid place-items-center"
+      style={{ top: tableHeaderHeight + tableFooterHeight, bottom: 0 }}
+    >
+      <Empty className="h-full p-6" aria-live="polite">
+        <EmptyHeader>
+          <EmptyTitle>{title}</EmptyTitle>
+          <EmptyDescription>{description}</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
+    </div>
+  )
+}
 
 function pinnedColumnStyle(column: ObjectTableColumn): CSSProperties {
   const pinned = column.getIsPinned()
@@ -316,6 +362,8 @@ export function ObjectTable({
 
   const visibleRows = table.getRowModel().rows
   const hasActiveFilters = table.state.columnFilters.length > 0
+  const hasNoVisibleRows = visibleRows.length === 0
+  const isInitialLoading = pagination?.loading === true && records.length === 0
   const visibleColumns = table.getVisibleLeafColumns()
   const navigableColumns = visibleColumns.filter(
     (column) => column.columnDef.meta?.property !== undefined
@@ -326,11 +374,7 @@ export function ObjectTable({
   })
   const renderedTableWidth = table.getTotalSize() + addColumnWidth
   const renderedTableSurfaceHeight =
-    tableHeaderHeight +
-    (visibleRows.length === 0
-      ? tableRowHeight * 5
-      : tableRowHeight * visibleRows.length) +
-    tableFooterHeight
+    tableHeaderHeight + tableRowHeight * visibleRows.length + tableFooterHeight
   const recordCountLabel = pagination
     ? `${records.length} on page ${pagination.pageIndex + 1}`
     : visibleRows.length === records.length
@@ -464,195 +508,173 @@ export function ObjectTable({
             ))}
           </TableHeader>
           <TableBody>
-            {visibleRows.length === 0 ? (
-              <TableRow className="hover:bg-transparent">
-                <TableCell
-                  colSpan={visibleColumns.length + 1}
-                  className="h-40 text-center"
-                >
-                  <p className="font-medium">
-                    {hasActiveFilters
-                      ? `No matching ${object.pluralName.toLowerCase()}`
-                      : `No ${object.pluralName.toLowerCase()} to show`}
-                  </p>
-                  <p className="mt-1 text-muted-foreground">
-                    {hasActiveFilters
-                      ? "Change or clear the current filters."
-                      : onCreateRecord === undefined
-                        ? "Records will appear here when they are available."
-                        : `Create the first ${object.name.toLowerCase()} to get started.`}
-                  </p>
-                </TableCell>
-              </TableRow>
-            ) : (
-              visibleRows.map((row, rowIndex) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() ? "selected" : undefined}
-                  className="group h-8 hover:bg-muted/30"
-                >
-                  {row.getVisibleCells().map((cell) => {
-                    const meta = cell.column.columnDef.meta
-                    const pinned = cell.column.getIsPinned()
-                    if (
-                      meta?.property === undefined ||
-                      meta.propertyId === undefined
-                    ) {
-                      return (
-                        <TableCell
-                          key={cell.id}
-                          className={cn(
-                            "h-8 overflow-hidden border-r p-0",
-                            pinned && objectTablePinnedCellClassName
-                          )}
-                          style={pinnedColumnStyle(cell.column)}
-                        >
-                          <table.FlexRender cell={cell} />
-                        </TableCell>
-                      )
-                    }
-
-                    const address = {
-                      rowId: row.id,
-                      columnId: cell.column.id,
-                    }
-                    const propertyId = meta.propertyId
-                    const cellValue = row.original[propertyId] ?? null
-                    const active = navigation.isActive(address)
-                    const tabbable = navigation.isTabbable(address)
-                    const editing = navigation.isEditing(address)
-                    const expandActive =
-                      active &&
-                      !editing &&
-                      objectTableCellShouldExpand(meta.property, {
-                        displayLength: objectTableValueText(cellValue).length,
-                        valueCount: Array.isArray(cellValue)
-                          ? cellValue.length
-                          : 0,
-                      })
-                    const columnIndex = navigableColumns.findIndex(
-                      (column) => column.id === cell.column.id
-                    )
-                    const commitCell =
-                      onCellCommit === undefined ||
-                      (canUpdateRecord !== undefined &&
-                        !canUpdateRecord(row.original.id)) ||
-                      !isObjectTableCellEditable(meta.property)
-                        ? undefined
-                        : (nextValue: ObjectTableValue) =>
-                            onCellCommit(row.original.id, propertyId, nextValue)
-                    const editable = commitCell !== undefined
-
+            {visibleRows.map((row, rowIndex) => (
+              <TableRow
+                key={row.id}
+                data-state={row.getIsSelected() ? "selected" : undefined}
+                className="group h-8 hover:bg-muted/30"
+              >
+                {row.getVisibleCells().map((cell) => {
+                  const meta = cell.column.columnDef.meta
+                  const pinned = cell.column.getIsPinned()
+                  if (
+                    meta?.property === undefined ||
+                    meta.propertyId === undefined
+                  ) {
                     return (
                       <TableCell
                         key={cell.id}
-                        ref={(element) =>
-                          navigation.registerCell(address, element)
-                        }
-                        data-object-table-cell=""
-                        aria-selected={active}
-                        tabIndex={tabbable ? 0 : -1}
                         className={cn(
-                          "relative z-0 h-8 border-r p-0",
-                          pinned && objectTablePinnedCellClassName,
-                          active
-                            ? cn(
-                                pinned
-                                  ? "z-30 overflow-visible"
-                                  : "z-[1] overflow-visible",
-                                objectTableCellSelectionClassName
-                              )
-                            : "overflow-hidden outline-none"
+                          "h-8 overflow-hidden border-r p-0",
+                          pinned && objectTablePinnedCellClassName
                         )}
                         style={pinnedColumnStyle(cell.column)}
-                        onClick={(event) => {
-                          if (editing) return
-                          if (event.detail > 1 && editable) {
-                            event.preventDefault()
-                            navigation.setCellEditing(address, true)
-                            return
-                          }
-                          navigation.activateCell(address, true)
-                        }}
-                        onDoubleClick={(event) => {
-                          if (!editable) return
-                          event.preventDefault()
-                          navigation.setCellEditing(address, true)
-                        }}
-                        onFocus={(event) => {
-                          if (event.target === event.currentTarget) {
-                            navigation.activateCell(address)
-                          }
-                        }}
-                        onKeyDown={(event) =>
-                          navigation.handleCellKeyDown(
-                            event,
-                            rowIndex,
-                            columnIndex,
-                            editable,
-                            address
-                          )
-                        }
                       >
-                        <div
-                          className={cn(
-                            "h-full min-w-0",
-                            meta.propertyId === object.display.title && "flex"
-                          )}
-                        >
-                          {meta.propertyId === object.display.title ? (
-                            <div
-                              className="h-full shrink-0"
-                              style={{ width: selectionControlWidth }}
-                            >
-                              <SelectionCell row={row} />
-                            </div>
-                          ) : null}
-                          <div className="min-w-0 flex-1">
-                            <ObjectTableCell
-                              active={active}
-                              editing={editing}
-                              expandActive={expandActive}
-                              initialEditValue={
-                                editing
-                                  ? navigation.editingCell?.initialValue
-                                  : undefined
-                              }
-                              identity={
-                                meta.propertyId === object.display.title
-                                  ? { object, record: row.original }
-                                  : undefined
-                              }
-                              property={meta.property}
-                              resolveImageSrc={resolveImageSrc}
-                              resolveRecordLabel={resolveRecordLabel}
-                              value={cellValue}
-                              onCancelEditing={() =>
-                                navigation.cancelCellEditing(address)
-                              }
-                              onEditingChange={(nextEditing) =>
-                                navigation.setCellEditing(address, nextEditing)
-                              }
-                              onCommit={commitCell}
-                            />
-                          </div>
-                        </div>
+                        <table.FlexRender cell={cell} />
                       </TableCell>
                     )
-                  })}
-                  <TableCell
-                    className="h-8 border-r p-0"
-                    style={{ width: addColumnWidth }}
-                  >
-                    {renderRecordActions === undefined ? null : (
-                      <div className="flex h-full items-center justify-end gap-1 px-1">
-                        {renderRecordActions(row.original)}
+                  }
+
+                  const address = {
+                    rowId: row.id,
+                    columnId: cell.column.id,
+                  }
+                  const propertyId = meta.propertyId
+                  const cellValue = row.original[propertyId] ?? null
+                  const active = navigation.isActive(address)
+                  const tabbable = navigation.isTabbable(address)
+                  const editing = navigation.isEditing(address)
+                  const expandActive =
+                    active &&
+                    !editing &&
+                    objectTableCellShouldExpand(meta.property, {
+                      displayLength: objectTableValueText(cellValue).length,
+                      valueCount: Array.isArray(cellValue)
+                        ? cellValue.length
+                        : 0,
+                    })
+                  const columnIndex = navigableColumns.findIndex(
+                    (column) => column.id === cell.column.id
+                  )
+                  const commitCell =
+                    onCellCommit === undefined ||
+                    (canUpdateRecord !== undefined &&
+                      !canUpdateRecord(row.original.id)) ||
+                    !isObjectTableCellEditable(meta.property)
+                      ? undefined
+                      : (nextValue: ObjectTableValue) =>
+                          onCellCommit(row.original.id, propertyId, nextValue)
+                  const editable = commitCell !== undefined
+
+                  return (
+                    <TableCell
+                      key={cell.id}
+                      ref={(element) =>
+                        navigation.registerCell(address, element)
+                      }
+                      data-object-table-cell=""
+                      aria-selected={active}
+                      tabIndex={tabbable ? 0 : -1}
+                      className={cn(
+                        "relative z-0 h-8 border-r p-0",
+                        pinned && objectTablePinnedCellClassName,
+                        active
+                          ? cn(
+                              pinned
+                                ? "z-30 overflow-visible"
+                                : "z-[1] overflow-visible",
+                              objectTableCellSelectionClassName
+                            )
+                          : "overflow-hidden outline-none"
+                      )}
+                      style={pinnedColumnStyle(cell.column)}
+                      onClick={(event) => {
+                        if (editing) return
+                        if (event.detail > 1 && editable) {
+                          event.preventDefault()
+                          navigation.setCellEditing(address, true)
+                          return
+                        }
+                        navigation.activateCell(address, true)
+                      }}
+                      onDoubleClick={(event) => {
+                        if (!editable) return
+                        event.preventDefault()
+                        navigation.setCellEditing(address, true)
+                      }}
+                      onFocus={(event) => {
+                        if (event.target === event.currentTarget) {
+                          navigation.activateCell(address)
+                        }
+                      }}
+                      onKeyDown={(event) =>
+                        navigation.handleCellKeyDown(
+                          event,
+                          rowIndex,
+                          columnIndex,
+                          editable,
+                          address
+                        )
+                      }
+                    >
+                      <div
+                        className={cn(
+                          "h-full min-w-0",
+                          meta.propertyId === object.display.title && "flex"
+                        )}
+                      >
+                        {meta.propertyId === object.display.title ? (
+                          <div
+                            className="h-full shrink-0"
+                            style={{ width: selectionControlWidth }}
+                          >
+                            <SelectionCell row={row} />
+                          </div>
+                        ) : null}
+                        <div className="min-w-0 flex-1">
+                          <ObjectTableCell
+                            active={active}
+                            editing={editing}
+                            expandActive={expandActive}
+                            initialEditValue={
+                              editing
+                                ? navigation.editingCell?.initialValue
+                                : undefined
+                            }
+                            identity={
+                              meta.propertyId === object.display.title
+                                ? { object, record: row.original }
+                                : undefined
+                            }
+                            property={meta.property}
+                            resolveImageSrc={resolveImageSrc}
+                            resolveRecordLabel={resolveRecordLabel}
+                            value={cellValue}
+                            onCancelEditing={() =>
+                              navigation.cancelCellEditing(address)
+                            }
+                            onEditingChange={(nextEditing) =>
+                              navigation.setCellEditing(address, nextEditing)
+                            }
+                            onCommit={commitCell}
+                          />
+                        </div>
                       </div>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
+                    </TableCell>
+                  )
+                })}
+                <TableCell
+                  className="h-8 border-r p-0"
+                  style={{ width: addColumnWidth }}
+                >
+                  {renderRecordActions === undefined ? null : (
+                    <div className="flex h-full items-center justify-end gap-1 px-1">
+                      {renderRecordActions(row.original)}
+                    </div>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
           </TableBody>
           <TableFooter className="sticky bottom-0 z-20 bg-background font-normal">
             <TableRow className="h-8 hover:bg-transparent">
@@ -706,6 +728,15 @@ export function ObjectTable({
             </TableRow>
           </TableFooter>
         </Table>
+
+        {hasNoVisibleRows ? (
+          <ObjectTableViewportState
+            canCreate={onCreateRecord !== undefined}
+            filtered={hasActiveFilters}
+            loading={isInitialLoading}
+            object={object}
+          />
+        ) : null}
 
         {isHorizontallyScrolled ? (
           <div
