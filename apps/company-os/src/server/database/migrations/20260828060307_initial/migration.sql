@@ -73,21 +73,6 @@ CREATE TABLE "identity_bindings" (
 	CONSTRAINT "identity_bindings_pkey" PRIMARY KEY("issuer","subject")
 );
 --> statement-breakpoint
-CREATE TABLE "interaction_regarding" (
-	"forward_id" text,
-	"reverse_id" text,
-	CONSTRAINT "interaction_regarding_pkey" PRIMARY KEY("forward_id","reverse_id")
-);
---> statement-breakpoint
-CREATE TABLE "interactions" (
-	"id" text PRIMARY KEY,
-	"parent_id" text NOT NULL,
-	"kind" text DEFAULT 'note' NOT NULL,
-	"occurred_at" timestamp with time zone NOT NULL,
-	"summary" text NOT NULL,
-	"details" text
-);
---> statement-breakpoint
 CREATE TABLE "leads" (
 	"id" text PRIMARY KEY,
 	"parent_id" text NOT NULL,
@@ -110,6 +95,22 @@ CREATE TABLE "line_items" (
 	"unit_price" jsonb
 );
 --> statement-breakpoint
+CREATE TABLE "note_subjects" (
+	"forward_id" text,
+	"reverse_id" text,
+	CONSTRAINT "note_subjects_pkey" PRIMARY KEY("forward_id","reverse_id")
+);
+--> statement-breakpoint
+CREATE TABLE "interface_note_subject" (
+	"id" text PRIMARY KEY
+);
+--> statement-breakpoint
+CREATE TABLE "notes" (
+	"id" text PRIMARY KEY,
+	"parent_id" text NOT NULL,
+	"content" text NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE "objects" (
 	"id" text PRIMARY KEY,
 	"object_type" text NOT NULL,
@@ -122,7 +123,7 @@ CREATE TABLE "objects" (
 	"created_by_id" text NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_by_id" text NOT NULL,
-	CONSTRAINT "objects_object_type_check" CHECK ("object_type" in ('root', 'user', 'serviceAccount', 'anonymousActor', 'group', 'principalSet', 'groupMembership', 'role', 'roleAssignment', 'company', 'contact', 'lead', 'deal', 'lineItem', 'interaction')),
+	CONSTRAINT "objects_object_type_check" CHECK ("object_type" in ('root', 'user', 'serviceAccount', 'anonymousActor', 'group', 'principalSet', 'groupMembership', 'role', 'roleAssignment', 'company', 'contact', 'lead', 'deal', 'lineItem', 'note')),
 	CONSTRAINT "objects_parent_required" CHECK (("object_type" = 'root' and "parent_id" is null)
           or ("object_type" <> 'root' and "parent_id" is not null))
 );
@@ -196,14 +197,13 @@ CREATE INDEX "group_memberships_parent_id_idx" ON "group_memberships" ("parent_i
 CREATE INDEX "group_memberships_member_id_idx" ON "group_memberships" ("member_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "group_memberships_membership_unique" ON "group_memberships" ("parent_id","member_id");--> statement-breakpoint
 CREATE INDEX "groups_parent_id_idx" ON "groups" ("parent_id");--> statement-breakpoint
-CREATE INDEX "interaction_regarding_forward_id_idx" ON "interaction_regarding" ("forward_id");--> statement-breakpoint
-CREATE INDEX "interaction_regarding_reverse_id_idx" ON "interaction_regarding" ("reverse_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "interaction_regarding_forward_id_unique" ON "interaction_regarding" ("forward_id");--> statement-breakpoint
-CREATE INDEX "interactions_parent_id_idx" ON "interactions" ("parent_id");--> statement-breakpoint
 CREATE INDEX "leads_parent_id_idx" ON "leads" ("parent_id");--> statement-breakpoint
 CREATE INDEX "leads_converted_company_id_idx" ON "leads" ("converted_company_id");--> statement-breakpoint
 CREATE INDEX "leads_converted_contact_id_idx" ON "leads" ("converted_contact_id");--> statement-breakpoint
 CREATE INDEX "line_items_parent_id_idx" ON "line_items" ("parent_id");--> statement-breakpoint
+CREATE INDEX "note_subjects_forward_id_idx" ON "note_subjects" ("forward_id");--> statement-breakpoint
+CREATE INDEX "note_subjects_reverse_id_idx" ON "note_subjects" ("reverse_id");--> statement-breakpoint
+CREATE INDEX "notes_parent_id_idx" ON "notes" ("parent_id");--> statement-breakpoint
 CREATE INDEX "objects_object_type_idx" ON "objects" ("object_type");--> statement-breakpoint
 CREATE INDEX "objects_parent_id_idx" ON "objects" ("parent_id");--> statement-breakpoint
 CREATE INDEX "objects_ancestor_ids_idx" ON "objects" USING gin ("ancestor_ids");--> statement-breakpoint
@@ -243,11 +243,6 @@ ALTER TABLE "groups" ADD CONSTRAINT "groups_parent_root_fk" FOREIGN KEY ("parent
 ALTER TABLE "groups" ADD CONSTRAINT "groups_object_parent_fk" FOREIGN KEY ("id","parent_id") REFERENCES "objects"("id","parent_id") ON DELETE CASCADE;--> statement-breakpoint
 ALTER TABLE "interface_identity" ADD CONSTRAINT "interface_identity_id_objects_id_fkey" FOREIGN KEY ("id") REFERENCES "objects"("id") ON DELETE CASCADE;--> statement-breakpoint
 ALTER TABLE "identity_bindings" ADD CONSTRAINT "identity_bindings_identity_id_interface_identity_id_fkey" FOREIGN KEY ("identity_id") REFERENCES "interface_identity"("id") ON DELETE CASCADE;--> statement-breakpoint
-ALTER TABLE "interaction_regarding" ADD CONSTRAINT "interaction_regarding_forward_id_interactions_id_fkey" FOREIGN KEY ("forward_id") REFERENCES "interactions"("id") ON DELETE CASCADE;--> statement-breakpoint
-ALTER TABLE "interaction_regarding" ADD CONSTRAINT "interaction_regarding_reverse_id_interface_party_id_fkey" FOREIGN KEY ("reverse_id") REFERENCES "interface_party"("id") ON DELETE RESTRICT;--> statement-breakpoint
-ALTER TABLE "interactions" ADD CONSTRAINT "interactions_id_objects_id_fkey" FOREIGN KEY ("id") REFERENCES "objects"("id") ON DELETE CASCADE;--> statement-breakpoint
-ALTER TABLE "interactions" ADD CONSTRAINT "interactions_parent_root_fk" FOREIGN KEY ("parent_id") REFERENCES "roots"("id") ON DELETE RESTRICT;--> statement-breakpoint
-ALTER TABLE "interactions" ADD CONSTRAINT "interactions_object_parent_fk" FOREIGN KEY ("id","parent_id") REFERENCES "objects"("id","parent_id") ON DELETE CASCADE;--> statement-breakpoint
 ALTER TABLE "leads" ADD CONSTRAINT "leads_id_objects_id_fkey" FOREIGN KEY ("id") REFERENCES "objects"("id") ON DELETE CASCADE;--> statement-breakpoint
 ALTER TABLE "leads" ADD CONSTRAINT "leads_converted_company_id_companies_id_fkey" FOREIGN KEY ("converted_company_id") REFERENCES "companies"("id") ON DELETE RESTRICT;--> statement-breakpoint
 ALTER TABLE "leads" ADD CONSTRAINT "leads_converted_contact_id_contacts_id_fkey" FOREIGN KEY ("converted_contact_id") REFERENCES "contacts"("id") ON DELETE RESTRICT;--> statement-breakpoint
@@ -256,6 +251,12 @@ ALTER TABLE "leads" ADD CONSTRAINT "leads_object_parent_fk" FOREIGN KEY ("id","p
 ALTER TABLE "line_items" ADD CONSTRAINT "line_items_id_objects_id_fkey" FOREIGN KEY ("id") REFERENCES "objects"("id") ON DELETE CASCADE;--> statement-breakpoint
 ALTER TABLE "line_items" ADD CONSTRAINT "line_items_parent_deal_fk" FOREIGN KEY ("parent_id") REFERENCES "deals"("id") ON DELETE RESTRICT;--> statement-breakpoint
 ALTER TABLE "line_items" ADD CONSTRAINT "line_items_object_parent_fk" FOREIGN KEY ("id","parent_id") REFERENCES "objects"("id","parent_id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "note_subjects" ADD CONSTRAINT "note_subjects_forward_id_notes_id_fkey" FOREIGN KEY ("forward_id") REFERENCES "notes"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "note_subjects" ADD CONSTRAINT "note_subjects_reverse_id_interface_note_subject_id_fkey" FOREIGN KEY ("reverse_id") REFERENCES "interface_note_subject"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "interface_note_subject" ADD CONSTRAINT "interface_note_subject_id_objects_id_fkey" FOREIGN KEY ("id") REFERENCES "objects"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "notes" ADD CONSTRAINT "notes_id_objects_id_fkey" FOREIGN KEY ("id") REFERENCES "objects"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "notes" ADD CONSTRAINT "notes_parent_root_fk" FOREIGN KEY ("parent_id") REFERENCES "roots"("id") ON DELETE RESTRICT;--> statement-breakpoint
+ALTER TABLE "notes" ADD CONSTRAINT "notes_object_parent_fk" FOREIGN KEY ("id","parent_id") REFERENCES "objects"("id","parent_id") ON DELETE CASCADE;--> statement-breakpoint
 ALTER TABLE "objects" ADD CONSTRAINT "objects_parent_id_objects_id_fkey" FOREIGN KEY ("parent_id") REFERENCES "objects"("id") ON DELETE RESTRICT;--> statement-breakpoint
 ALTER TABLE "objects" ADD CONSTRAINT "objects_created_by_id_interface_actor_id_fkey" FOREIGN KEY ("created_by_id") REFERENCES "interface_actor"("id") ON DELETE RESTRICT DEFERRABLE INITIALLY DEFERRED;--> statement-breakpoint
 ALTER TABLE "objects" ADD CONSTRAINT "objects_updated_by_id_interface_actor_id_fkey" FOREIGN KEY ("updated_by_id") REFERENCES "interface_actor"("id") ON DELETE RESTRICT DEFERRABLE INITIALLY DEFERRED;--> statement-breakpoint

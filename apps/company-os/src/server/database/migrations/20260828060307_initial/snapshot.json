@@ -1,7 +1,7 @@
 {
   "version": "8",
   "dialect": "postgres",
-  "id": "7843e9fe-f43d-4d31-ab2e-4ed8583d65cb",
+  "id": "02762e18-ece5-4bd9-8f31-c186348c84ee",
   "prevIds": ["00000000-0000-0000-0000-000000000000"],
   "ddl": [
     {
@@ -72,18 +72,6 @@
     },
     {
       "isRlsEnabled": false,
-      "name": "interaction_regarding",
-      "entityType": "tables",
-      "schema": "public"
-    },
-    {
-      "isRlsEnabled": false,
-      "name": "interactions",
-      "entityType": "tables",
-      "schema": "public"
-    },
-    {
-      "isRlsEnabled": false,
       "name": "leads",
       "entityType": "tables",
       "schema": "public"
@@ -91,6 +79,24 @@
     {
       "isRlsEnabled": false,
       "name": "line_items",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "note_subjects",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "interface_note_subject",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "notes",
       "entityType": "tables",
       "schema": "public"
     },
@@ -682,110 +688,6 @@
       "default": null,
       "generated": null,
       "identity": null,
-      "name": "forward_id",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "interaction_regarding"
-    },
-    {
-      "type": "text",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "reverse_id",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "interaction_regarding"
-    },
-    {
-      "type": "text",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "id",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "interactions"
-    },
-    {
-      "type": "text",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "parent_id",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "interactions"
-    },
-    {
-      "type": "text",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": "'note'",
-      "generated": null,
-      "identity": null,
-      "name": "kind",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "interactions"
-    },
-    {
-      "type": "timestamp with time zone",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "occurred_at",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "interactions"
-    },
-    {
-      "type": "text",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "summary",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "interactions"
-    },
-    {
-      "type": "text",
-      "typeSchema": null,
-      "notNull": false,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "details",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "interactions"
-    },
-    {
-      "type": "text",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
       "name": "id",
       "entityType": "columns",
       "schema": "public",
@@ -985,6 +887,84 @@
       "entityType": "columns",
       "schema": "public",
       "table": "line_items"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "forward_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "note_subjects"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "reverse_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "note_subjects"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "interface_note_subject"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "notes"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "parent_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "notes"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "content",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "notes"
     },
     {
       "type": "text",
@@ -1774,90 +1754,6 @@
       "nameExplicit": true,
       "columns": [
         {
-          "value": "forward_id",
-          "isExpression": false,
-          "asc": true,
-          "nullsFirst": false,
-          "opclass": null
-        }
-      ],
-      "isUnique": false,
-      "where": null,
-      "with": "",
-      "method": "btree",
-      "concurrently": false,
-      "name": "interaction_regarding_forward_id_idx",
-      "entityType": "indexes",
-      "schema": "public",
-      "table": "interaction_regarding"
-    },
-    {
-      "nameExplicit": true,
-      "columns": [
-        {
-          "value": "reverse_id",
-          "isExpression": false,
-          "asc": true,
-          "nullsFirst": false,
-          "opclass": null
-        }
-      ],
-      "isUnique": false,
-      "where": null,
-      "with": "",
-      "method": "btree",
-      "concurrently": false,
-      "name": "interaction_regarding_reverse_id_idx",
-      "entityType": "indexes",
-      "schema": "public",
-      "table": "interaction_regarding"
-    },
-    {
-      "nameExplicit": true,
-      "columns": [
-        {
-          "value": "forward_id",
-          "isExpression": false,
-          "asc": true,
-          "nullsFirst": false,
-          "opclass": null
-        }
-      ],
-      "isUnique": true,
-      "where": null,
-      "with": "",
-      "method": "btree",
-      "concurrently": false,
-      "name": "interaction_regarding_forward_id_unique",
-      "entityType": "indexes",
-      "schema": "public",
-      "table": "interaction_regarding"
-    },
-    {
-      "nameExplicit": true,
-      "columns": [
-        {
-          "value": "parent_id",
-          "isExpression": false,
-          "asc": true,
-          "nullsFirst": false,
-          "opclass": null
-        }
-      ],
-      "isUnique": false,
-      "where": null,
-      "with": "",
-      "method": "btree",
-      "concurrently": false,
-      "name": "interactions_parent_id_idx",
-      "entityType": "indexes",
-      "schema": "public",
-      "table": "interactions"
-    },
-    {
-      "nameExplicit": true,
-      "columns": [
-        {
           "value": "parent_id",
           "isExpression": false,
           "asc": true,
@@ -1937,6 +1833,69 @@
       "entityType": "indexes",
       "schema": "public",
       "table": "line_items"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "forward_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "note_subjects_forward_id_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "note_subjects"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "reverse_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "note_subjects_reverse_id_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "note_subjects"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "parent_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "notes_parent_id_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "notes"
     },
     {
       "nameExplicit": true,
@@ -2580,71 +2539,6 @@
     },
     {
       "nameExplicit": false,
-      "columns": ["forward_id"],
-      "schemaTo": "public",
-      "tableTo": "interactions",
-      "columnsTo": ["id"],
-      "onUpdate": "NO ACTION",
-      "onDelete": "CASCADE",
-      "name": "interaction_regarding_forward_id_interactions_id_fkey",
-      "entityType": "fks",
-      "schema": "public",
-      "table": "interaction_regarding"
-    },
-    {
-      "nameExplicit": false,
-      "columns": ["reverse_id"],
-      "schemaTo": "public",
-      "tableTo": "interface_party",
-      "columnsTo": ["id"],
-      "onUpdate": "NO ACTION",
-      "onDelete": "RESTRICT",
-      "name": "interaction_regarding_reverse_id_interface_party_id_fkey",
-      "entityType": "fks",
-      "schema": "public",
-      "table": "interaction_regarding"
-    },
-    {
-      "nameExplicit": false,
-      "columns": ["id"],
-      "schemaTo": "public",
-      "tableTo": "objects",
-      "columnsTo": ["id"],
-      "onUpdate": "NO ACTION",
-      "onDelete": "CASCADE",
-      "name": "interactions_id_objects_id_fkey",
-      "entityType": "fks",
-      "schema": "public",
-      "table": "interactions"
-    },
-    {
-      "nameExplicit": true,
-      "columns": ["parent_id"],
-      "schemaTo": "public",
-      "tableTo": "roots",
-      "columnsTo": ["id"],
-      "onUpdate": "NO ACTION",
-      "onDelete": "RESTRICT",
-      "name": "interactions_parent_root_fk",
-      "entityType": "fks",
-      "schema": "public",
-      "table": "interactions"
-    },
-    {
-      "nameExplicit": true,
-      "columns": ["id", "parent_id"],
-      "schemaTo": "public",
-      "tableTo": "objects",
-      "columnsTo": ["id", "parent_id"],
-      "onUpdate": "NO ACTION",
-      "onDelete": "CASCADE",
-      "name": "interactions_object_parent_fk",
-      "entityType": "fks",
-      "schema": "public",
-      "table": "interactions"
-    },
-    {
-      "nameExplicit": false,
       "columns": ["id"],
       "schemaTo": "public",
       "tableTo": "objects",
@@ -2746,6 +2640,84 @@
       "entityType": "fks",
       "schema": "public",
       "table": "line_items"
+    },
+    {
+      "nameExplicit": false,
+      "columns": ["forward_id"],
+      "schemaTo": "public",
+      "tableTo": "notes",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "note_subjects_forward_id_notes_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "note_subjects"
+    },
+    {
+      "nameExplicit": false,
+      "columns": ["reverse_id"],
+      "schemaTo": "public",
+      "tableTo": "interface_note_subject",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "note_subjects_reverse_id_interface_note_subject_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "note_subjects"
+    },
+    {
+      "nameExplicit": false,
+      "columns": ["id"],
+      "schemaTo": "public",
+      "tableTo": "objects",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "interface_note_subject_id_objects_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "interface_note_subject"
+    },
+    {
+      "nameExplicit": false,
+      "columns": ["id"],
+      "schemaTo": "public",
+      "tableTo": "objects",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "notes_id_objects_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "notes"
+    },
+    {
+      "nameExplicit": true,
+      "columns": ["parent_id"],
+      "schemaTo": "public",
+      "tableTo": "roots",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "notes_parent_root_fk",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "notes"
+    },
+    {
+      "nameExplicit": true,
+      "columns": ["id", "parent_id"],
+      "schemaTo": "public",
+      "tableTo": "objects",
+      "columnsTo": ["id", "parent_id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "notes_object_parent_fk",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "notes"
     },
     {
       "nameExplicit": false,
@@ -3078,10 +3050,10 @@
     {
       "columns": ["forward_id", "reverse_id"],
       "nameExplicit": false,
-      "name": "interaction_regarding_pkey",
+      "name": "note_subjects_pkey",
       "entityType": "pks",
       "schema": "public",
-      "table": "interaction_regarding"
+      "table": "note_subjects"
     },
     {
       "columns": ["id"],
@@ -3158,14 +3130,6 @@
     {
       "columns": ["id"],
       "nameExplicit": false,
-      "name": "interactions_pkey",
-      "schema": "public",
-      "table": "interactions",
-      "entityType": "pks"
-    },
-    {
-      "columns": ["id"],
-      "nameExplicit": false,
       "name": "leads_pkey",
       "schema": "public",
       "table": "leads",
@@ -3177,6 +3141,22 @@
       "name": "line_items_pkey",
       "schema": "public",
       "table": "line_items",
+      "entityType": "pks"
+    },
+    {
+      "columns": ["id"],
+      "nameExplicit": false,
+      "name": "interface_note_subject_pkey",
+      "schema": "public",
+      "table": "interface_note_subject",
+      "entityType": "pks"
+    },
+    {
+      "columns": ["id"],
+      "nameExplicit": false,
+      "name": "notes_pkey",
+      "schema": "public",
+      "table": "notes",
       "entityType": "pks"
     },
     {
@@ -3260,7 +3240,7 @@
       "entityType": "pks"
     },
     {
-      "value": "\"object_type\" in ('root', 'user', 'serviceAccount', 'anonymousActor', 'group', 'principalSet', 'groupMembership', 'role', 'roleAssignment', 'company', 'contact', 'lead', 'deal', 'lineItem', 'interaction')",
+      "value": "\"object_type\" in ('root', 'user', 'serviceAccount', 'anonymousActor', 'group', 'principalSet', 'groupMembership', 'role', 'roleAssignment', 'company', 'contact', 'lead', 'deal', 'lineItem', 'note')",
       "name": "objects_object_type_check",
       "entityType": "checks",
       "schema": "public",
