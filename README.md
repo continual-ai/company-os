@@ -1,18 +1,26 @@
-# Company OS
+<div align="center">
+  <h1>Company OS</h1>
+  <p><strong>Build the software your company runs on.</strong></p>
+  <p>
+    A source-available TypeScript foundation for company-owned operational software.<br />
+    One model for the application, HTTP/OpenAPI, typed client, and MCP—backed by PostgreSQL.
+  </p>
+  <p>
+    <strong>Early preview</strong> · Powered by <a href="https://continual.ai">Continual</a> · Runs standalone
+  </p>
+  <p>
+    <a href="#quick-start"><strong>Quick start</strong></a> ·
+    <a href="#try-the-included-operation"><strong>Example operation</strong></a> ·
+    <a href="#how-it-works"><strong>Architecture</strong></a> ·
+    <a href="#make-it-yours"><strong>Customize</strong></a>
+  </p>
+</div>
 
-**Build the software your company runs on.**
+---
 
-Company OS is a source-available TypeScript foundation for company-owned operational software.
-Define business objects, relationships, permissions, and actions once, then use them through the
-application, HTTP/OpenAPI, a typed client, or MCP—all backed by PostgreSQL.
-
-The repository includes a working CRM operation with leads, companies, contacts, deals, line
-items, and notes.
-
-> **Early preview:** Company OS works end to end, but its model APIs and package boundaries may
-> change before the first stable release.
-
-**Powered by [Continual](https://continual.ai) · Runs standalone**
+Company OS works end to end, but its model APIs and package boundaries may change before the first
+stable release. The included CRM operation covers leads, companies, contacts, deals, line items,
+and notes.
 
 ## What works today
 
@@ -113,8 +121,6 @@ the package READMEs for their public boundaries.
 Company OS runs and can be customized independently. [Continual](https://continual.ai) is the
 optional platform being built to customize, deploy, upgrade, connect, and operate Company OS forks.
 The fork remains authoritative for its source, business policy, and records.
-
-**Powered by Continual when you want it. Fully standalone when you don't.**
 
 ## Development
 
