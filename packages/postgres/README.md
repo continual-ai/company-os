@@ -1,23 +1,8 @@
 # @company/postgres
 
-Vendored PostgreSQL storage for an operating semantic model.
-
-This server-only adapter compiles a portable `@company/runtime` model into deterministic Drizzle
-tables and provides the standard PostgreSQL object repository implementation. It owns mechanical
-storage behavior shared by application backends: object hierarchy, interface membership, links,
-aliases, filtering, pagination, optimistic writes, and transactional invariants.
-
-PostgreSQL is authoritative for record timestamps: inserts use column defaults and updates set
-`updated_at = now()` in the same statement that checks the current entity tag. The same write
-generates the successor tag with PostgreSQL's UUID generator. Audit actor IDs arrive from the
-governed service; no trigger or session identity is hidden beneath the repository query.
-
-The compiler maps persisted shape into native columns, defaults, nullability, foreign keys,
-declared `uniqueBy` invariants, standard indexes, and structural checks. Scalar arrays use native
-PostgreSQL arrays; structured values use JSONB. The adapter deliberately does not duplicate
-portable property rules such as string lengths, numeric ranges, select membership, or formats as
-SQL constraints; governed object services validate and canonicalize those rules for every caller
-before a repository write.
+The reusable server-only PostgreSQL adapter for a portable `@company/runtime` model. It compiles the
+model into a deterministic Drizzle schema and implements the standard object and Link repository
+contracts used by application backends.
 
 ```ts
 import { Model } from "@company/model"
@@ -26,11 +11,38 @@ import { makePostgresSchema } from "@company/postgres"
 export const Storage = makePostgresSchema(Model)
 ```
 
-The package does not own an application's model, migrations, credentials, Effect service identities,
-authorization, or deployment. The application backend binds its generated storage to a typed Drizzle
-`Database` service and exposes one repository capability per object. Migration SQL remains
-explicit, committed history beside that backend.
+`makePostgresSchema` is a pure compiler, not an Effect service. The application binds the generated
+tables to its typed database, repository registry, governed services, and transport handlers.
 
-`makePostgresSchema` is a pure compiler, not an Effect service. Runtime capabilities remain ordinary
-Effect services and Layers at the application composition root: PostgreSQL client, typed database,
-object repositories, governed services, then transport handlers.
+## Responsibilities
+
+The adapter preserves mechanical storage behavior shared across models, including ownership
+hierarchy, interface membership, Links, aliases, filtering, pagination, optimistic writes, and
+transactional invariants. PostgreSQL supplies authoritative record timestamps and successor entity
+tags in the same statements that enforce write preconditions.
+
+The compiler maps portable persisted shape into native columns, defaults, nullability, foreign keys,
+declared uniqueness rules, indexes, and structural checks. Governed object services remain
+responsible for portable schema validation and canonicalization before writes reach a repository.
+
+The central application owns its model, migrations, credentials, custom persistence queries,
+authorization, Effect service identities, and deployment. Migration SQL remains explicit committed
+history beside that backend; follow the [database workflow](../../docs/runbooks/database.md).
+
+## Boundaries
+
+This package may depend on `@company/runtime` and server-side PostgreSQL libraries. It must not
+depend on `@company/model`, an application, or `@company/ui`, and it does not create a second copy of
+application policy.
+
+Read the [architecture guide](../../docs/architecture.md) for the complete persistence and service
+composition boundary.
+
+## Develop
+
+From the repository root:
+
+```sh
+pnpm --filter @company/postgres test
+pnpm --filter @company/postgres typecheck
+```
