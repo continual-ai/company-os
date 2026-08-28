@@ -15,7 +15,7 @@ const ModelBrowserSearch = Schema.Struct({
   item: Schema.optional(Schema.String),
 })
 
-export const Route = createFileRoute("/_app/develop/model")({
+export const Route = createFileRoute("/_app/developer/model")({
   ...pageOptions(page),
   validateSearch: Schema.decodeUnknownSync(ModelBrowserSearch),
   component: ModelOverview,

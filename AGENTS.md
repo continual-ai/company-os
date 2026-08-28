@@ -97,6 +97,9 @@ and `turbo boundaries` enforce these conventions.
 - Feature code should consume the semantic client derived from the model contract. Keep the native
   Effect HTTP client inside the application client assembly and expose non-model API groups through
   purpose-named operations or a deliberate semantic namespace.
+- Keep application services out of TanStack Start's reserved `src/client.*` and `src/server.*`
+  entrypoints. Use names such as `src/app-client.ts`; an accidental `src/client.ts` replaces the
+  framework hydration entrypoint.
 - Forms own interactive state in TanStack Form, decode transformed submission values with Effect
   Schema, and render server failures from the standard violation paths. Use the regular React Form
   package when submission already goes through the generated Effect client; TanStack Start server

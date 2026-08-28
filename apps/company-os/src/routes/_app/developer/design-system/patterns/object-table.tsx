@@ -21,7 +21,7 @@ const page = {
 }
 
 export const Route = createFileRoute(
-  "/_app/develop/design-system/patterns/object-table"
+  "/_app/developer/design-system/patterns/object-table"
 )({
   ...pageOptions(page),
   component: ObjectTablePatternPage,

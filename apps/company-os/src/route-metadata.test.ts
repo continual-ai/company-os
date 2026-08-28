@@ -101,17 +101,17 @@ describe("document metadata", () => {
   it("normalizes index-route trailing slashes in canonical URLs", () => {
     vi.stubEnv("VITE_COMPANY_OS_URL", "https://os.example.com")
 
-    expect(canonicalMetadata("/develop/")).toEqual({
+    expect(canonicalMetadata("/developer/")).toEqual({
       meta: [
         {
           property: "og:url",
-          content: "https://os.example.com/develop",
+          content: "https://os.example.com/developer",
         },
       ],
       links: [
         {
           rel: "canonical",
-          href: "https://os.example.com/develop",
+          href: "https://os.example.com/developer",
         },
       ],
     })

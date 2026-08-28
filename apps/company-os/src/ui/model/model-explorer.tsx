@@ -27,7 +27,7 @@ import {
   DeveloperBrowserNavItem,
   DeveloperBrowserOutline,
   DeveloperBrowserSearch,
-} from "@/ui/develop/developer-browser"
+} from "@/ui/developer/developer-browser"
 
 type ModelDefinition = typeof Model
 type ModelObject = ObjectType

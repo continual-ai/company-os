@@ -1,9 +1,9 @@
 import { Link, createFileRoute } from "@tanstack/react-router"
 import { ArrowRightIcon } from "lucide-react"
 
-import { componentGroups } from "@/ui/develop/design-system/component-metadata"
+import { componentGroups } from "@/ui/developer/design-system/component-metadata"
 
-export const Route = createFileRoute("/_app/develop/design-system/")({
+export const Route = createFileRoute("/_app/developer/design-system/")({
   component: DesignSystemOverview,
 })
 
@@ -57,7 +57,7 @@ function DesignSystemOverview() {
               vocabulary beneath every component.
             </p>
             <Link
-              to="/develop/design-system/foundations"
+              to="/developer/design-system/foundations"
               className="mt-5 inline-flex items-center gap-1.5 text-xs font-medium hover:underline"
             >
               Explore foundations <ArrowRightIcon className="size-3.5" />
@@ -90,7 +90,7 @@ function DesignSystemOverview() {
                 {group.components.map((component) => (
                   <Link
                     key={component.slug}
-                    to="/develop/design-system/components/$componentId"
+                    to="/developer/design-system/components/$componentId"
                     params={{ componentId: component.slug }}
                     className="group flex items-start justify-between gap-4 py-3 text-sm"
                   >

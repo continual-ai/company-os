@@ -20,16 +20,10 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@company/ui/components/sidebar"
-import { cn } from "@company/ui/lib/utils"
 import { Link, useMatchRoute } from "@tanstack/react-router"
 import {
   BracesIcon,
   ChevronsUpDownIcon,
-  CodeXmlIcon,
-  BoxesIcon,
-  PackageIcon,
-  PaletteIcon,
-  PlugIcon,
   LogOutIcon,
   SettingsIcon,
 } from "lucide-react"
@@ -48,30 +42,6 @@ import {
 } from "@/ui/application/authenticated-user"
 import { useCapabilities } from "@/ui/application/use-capabilities"
 
-const sections = [
-  { label: "Operate", to: "/" },
-  { label: "Develop", to: "/develop" },
-] as const
-
-const developerNavigation = [
-  { label: "Overview", to: "/develop", icon: BracesIcon },
-  { label: "Model", to: "/develop/model", icon: BoxesIcon },
-  {
-    label: "API reference",
-    to: "/develop/api",
-    icon: CodeXmlIcon,
-  },
-  { label: "SDK", to: "/develop/sdk", icon: PackageIcon },
-  { label: "MCP", to: "/develop/mcp", icon: PlugIcon },
-  {
-    label: "Design system",
-    to: "/develop/design-system",
-    icon: PaletteIcon,
-  },
-] as const
-
-type Section = (typeof sections)[number]["label"]
-
 const navigationChecks = [
   ...salesNavigationChecks,
   applicationCapabilities.develop,
@@ -81,28 +51,12 @@ export function AppSidebar() {
   const user = useAuthenticatedUser()
   const capabilities = useCapabilities(navigationChecks)
   const matchRoute = useMatchRoute()
-  const requestedDevelopSection = Boolean(
-    matchRoute({
-      to: "/develop",
-      fuzzy: true,
-    })
-  )
   const canDevelop = capabilities.can(applicationCapabilities.develop)
-  const activeSection: Section =
-    requestedDevelopSection && canDevelop ? "Develop" : "Operate"
   const accessibleSalesNavigation = salesNavigation.filter((item) =>
     capabilities.can({
       permission: capabilityPermission(`${item.object.id}.list`),
     })
   )
-  const visibleSections = canDevelop
-    ? sections
-    : sections.filter(({ label }) => label === "Operate")
-  const activeSectionIndex = Math.max(
-    0,
-    visibleSections.findIndex(({ label }) => label === activeSection)
-  )
-
   return (
     <Sidebar variant="sidebar" collapsible="offcanvas">
       <SidebarHeader>
@@ -125,92 +79,35 @@ export function AppSidebar() {
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
-
-        <nav
-          aria-label={`${applicationConfig.identity.productName} sections`}
-          className="relative isolate grid"
-          style={{
-            gridTemplateColumns: `repeat(${visibleSections.length}, minmax(0, 1fr))`,
-          }}
-        >
-          <span
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-y-1 left-0 z-0 rounded-sm bg-sidebar-accent transition-transform duration-[250ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
-            style={{
-              transform: `translateX(${activeSectionIndex * 100}%)`,
-              width: `${100 / visibleSections.length}%`,
-            }}
-          />
-          {visibleSections.map((section) => {
-            const isActive = section.label === activeSection
-
-            return (
-              <Link
-                key={section.label}
-                to={section.to}
-                aria-current={isActive ? "page" : undefined}
-                className={cn(
-                  "relative z-10 flex h-8 items-center justify-center px-2 text-xs text-sidebar-foreground/60 transition-colors duration-200 hover:text-sidebar-accent-foreground focus-visible:outline-2 focus-visible:outline-sidebar-ring motion-reduce:transition-none",
-                  isActive && "text-sidebar-accent-foreground"
-                )}
-              >
-                {section.label}
-              </Link>
-            )
-          })}
-        </nav>
       </SidebarHeader>
 
       <SidebarContent>
-        {activeSection === "Operate" ? (
-          <>
-            <SidebarGroup>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {operateNavigation.map((item) => (
-                    <SidebarMenuItem key={item.label}>
-                      <SidebarMenuButton
-                        tooltip={item.label}
-                        isActive={Boolean(matchRoute({ to: item.to }))}
-                        render={<Link to={item.to} />}
-                      >
-                        <item.icon />
-                        <span>{item.label}</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {operateNavigation.map((item) => (
+                <SidebarMenuItem key={item.label}>
+                  <SidebarMenuButton
+                    tooltip={item.label}
+                    isActive={Boolean(matchRoute({ to: item.to }))}
+                    render={<Link to={item.to} />}
+                  >
+                    <item.icon />
+                    <span>{item.label}</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
 
-            {accessibleSalesNavigation.length === 0 ? null : (
-              <SidebarGroup>
-                <SidebarGroupLabel>Sales</SidebarGroupLabel>
-                <SidebarGroupContent>
-                  <SidebarMenu>
-                    {accessibleSalesNavigation.map((item) => (
-                      <SidebarMenuItem key={item.object.id}>
-                        <SidebarMenuButton
-                          tooltip={item.label}
-                          isActive={Boolean(matchRoute({ to: item.to }))}
-                          render={<Link to={item.to} />}
-                        >
-                          <item.icon />
-                          <span>{item.label}</span>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    ))}
-                  </SidebarMenu>
-                </SidebarGroupContent>
-              </SidebarGroup>
-            )}
-          </>
-        ) : (
+        {accessibleSalesNavigation.length === 0 ? null : (
           <SidebarGroup>
+            <SidebarGroupLabel>Sales</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {developerNavigation.map((item) => (
-                  <SidebarMenuItem key={item.label}>
+                {accessibleSalesNavigation.map((item) => (
+                  <SidebarMenuItem key={item.object.id}>
                     <SidebarMenuButton
                       tooltip={item.label}
                       isActive={Boolean(matchRoute({ to: item.to }))}
@@ -268,9 +165,15 @@ export function AppSidebar() {
                   </DropdownMenuLabel>
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
+                {canDevelop ? (
+                  <DropdownMenuItem render={<Link to="/developer" />}>
+                    <BracesIcon />
+                    Developer Center
+                  </DropdownMenuItem>
+                ) : null}
                 <DropdownMenuItem render={<Link to="/settings" />}>
                   <SettingsIcon />
-                  Account settings
+                  Settings
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   render={<a href="/sign-out" aria-label="Sign out" />}

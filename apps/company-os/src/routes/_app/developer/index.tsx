@@ -1,10 +1,10 @@
 import { Link, createFileRoute } from "@tanstack/react-router"
 
-export const Route = createFileRoute("/_app/develop/")({
-  component: DevelopOverview,
+export const Route = createFileRoute("/_app/developer/")({
+  component: DeveloperCenterOverview,
 })
 
-function DevelopOverview() {
+function DeveloperCenterOverview() {
   return (
     <div className="mx-auto w-full max-w-[90rem] px-5 py-10 lg:px-8 lg:py-14">
       <section className="max-w-3xl">
@@ -22,31 +22,31 @@ function DevelopOverview() {
           eyebrow="Model"
           title="Domain model"
           description="Explore the model's object types, properties, link types, and governed action types."
-          to="/develop/model"
+          to="/developer/model"
         />
         <DeveloperSurface
           eyebrow="API"
           title="API reference"
           description="Explore the OpenAPI contract generated from the same domain model used by the runtime."
-          to="/develop/api"
+          to="/developer/api"
         />
         <DeveloperSurface
           eyebrow="TypeScript"
           title="SDK"
           description="Use the model-inferred client from source or generate another client from the OpenAPI contract."
-          to="/develop/sdk"
+          to="/developer/sdk"
         />
         <DeveloperSurface
           eyebrow="Assistants"
           title="MCP"
           description="Connect Claude, ChatGPT, Cursor, and other MCP clients to governed capabilities."
-          to="/develop/mcp"
+          to="/developer/mcp"
         />
         <DeveloperSurface
           eyebrow="Interface"
           title="Design system"
           description="Develop and verify the foundations, components, and operating patterns used across apps."
-          to="/develop/design-system"
+          to="/developer/design-system"
         />
       </section>
     </div>
@@ -63,11 +63,11 @@ function DeveloperSurface({
   title: string
   description: string
   to:
-    | "/develop/model"
-    | "/develop/api"
-    | "/develop/sdk"
-    | "/develop/mcp"
-    | "/develop/design-system"
+    | "/developer/model"
+    | "/developer/api"
+    | "/developer/sdk"
+    | "/developer/mcp"
+    | "/developer/design-system"
 }) {
   const content = (
     <>

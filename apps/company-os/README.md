@@ -42,8 +42,9 @@ The application groups code by responsibility without duplicating the model regi
   picker uses the closed model as its registry and may open the same capability-gated creation
   dialog used by collection pages; nested creation selects the new record without introducing a
   second form or client path.
-- `src/client.ts` exposes the semantic browser client derived from the same application HTTP
-  contract; its native Effect transport client remains an assembly detail.
+- `src/app-client.ts` exposes the semantic browser client derived from the same application HTTP
+  contract; its native Effect transport client remains an assembly detail. Do not use TanStack
+  Start's reserved `src/client.*` entrypoint for application services.
 - `src/ui/forms` owns the TanStack Form hook, uniform field and submit components, and the single
   adapter from Effect Schema or API violations into field and form errors. Form submissions continue
   through the generated Effect client rather than a parallel server-function form transport.
@@ -371,7 +372,7 @@ or production environment.
 - Rebuild an empty database from the full history in CI. Repository integration tests run the same
   history against PGlite before exercising object behavior.
 
-## Develop
+## Developer Center
 
 ```sh
 pnpm --filter company-os dev
@@ -380,14 +381,14 @@ pnpm --filter company-os dev
 Open <http://localhost:3002>. Useful endpoints:
 
 - `/` — operating overview
-- `/develop` — model, API, SDK, MCP, and design-system surfaces
+- `/developer` — model, API, SDK, MCP, and design-system surfaces
 
 - `GET /health` — process health
 - `/api/v1/*` — governed object reads, mutations, declared actions, and capability checks
 - `POST /api/mcp` — Streamable HTTP MCP projection of the same governed operations
 - `GET /api/description` — serializable API projection of `Model`
 - `GET /api/openapi` — runtime-derived OpenAPI 3.1 contract
-- `/develop/api` — integrated reference over the generated OpenAPI contract
+- `/developer/api` — integrated reference over the generated OpenAPI contract
 
 Set the public deployment origin for canonical URLs and the MCP Host/Origin allowlist:
 

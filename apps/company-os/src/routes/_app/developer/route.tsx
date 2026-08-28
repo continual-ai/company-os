@@ -5,18 +5,18 @@ import { pageOptions } from "@/route-metadata"
 import { CapabilityBoundary } from "@/ui/application/capability-boundary"
 
 const page = {
-  breadcrumb: "Develop",
+  breadcrumb: "Developer Center",
   description:
     "Inspect the domain model and generated interfaces, then extend the system from shared contracts.",
-  title: "Develop",
+  title: "Developer Center",
 }
 
-export const Route = createFileRoute("/_app/develop")({
+export const Route = createFileRoute("/_app/developer")({
   ...pageOptions(page),
-  component: DevelopLayout,
+  component: DeveloperCenterLayout,
 })
 
-function DevelopLayout() {
+function DeveloperCenterLayout() {
   return (
     <CapabilityBoundary
       permission={applicationCapabilities.develop.permission}

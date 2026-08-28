@@ -10,6 +10,7 @@ import type { AuthenticatedUser } from "@/authentication"
 import { AppSidebar } from "@/ui/application/app-sidebar"
 import { AuthenticatedUserProvider } from "@/ui/application/authenticated-user"
 import { SiteHeader } from "@/ui/application/site-header"
+import { DeveloperSidebar } from "@/ui/developer/developer-sidebar"
 import { ObjectCreateProvider } from "@/ui/model/object-create-provider"
 import { SettingsSidebar } from "@/ui/settings/settings-sidebar"
 
@@ -26,27 +27,40 @@ export function AppShell({
 }) {
   const matchRoute = useMatchRoute()
   const isSettings = Boolean(matchRoute({ to: "/settings", fuzzy: true }))
+  const isDeveloper = Boolean(matchRoute({ to: "/developer", fuzzy: true }))
+  const utilityTitle = isSettings
+    ? "Settings"
+    : isDeveloper
+      ? "Developer Center"
+      : undefined
+  const secondaryShell = utilityTitle !== undefined
 
   return (
     <AuthenticatedUserProvider user={user}>
       <TooltipProvider>
         <ObjectCreateProvider>
           <SidebarProvider
-            key={isSettings ? "settings" : "app"}
+            key={secondaryShell ? utilityTitle : "app"}
             className="h-svh min-h-0 overflow-hidden"
-            defaultWidth={isSettings ? 240 : 256}
+            defaultWidth={secondaryShell ? 240 : 256}
             minWidth={224}
             maxWidth={384}
-            resizable={!isSettings}
-            revealOnHover={!isSettings}
+            resizable={!secondaryShell}
+            revealOnHover={!secondaryShell}
             style={sidebarStyle}
           >
-            {isSettings ? <SettingsSidebar /> : <AppSidebar />}
+            {isSettings ? (
+              <SettingsSidebar />
+            ) : isDeveloper ? (
+              <DeveloperSidebar />
+            ) : (
+              <AppSidebar />
+            )}
             <SidebarInset className="h-svh min-h-0 min-w-0 overflow-hidden">
-              {isSettings ? (
+              {secondaryShell ? (
                 <header className="flex h-(--header-height) shrink-0 items-center gap-3 border-b bg-background px-4 md:hidden">
                   <SidebarTrigger className="-ml-1" />
-                  <span className="text-sm font-medium">Settings</span>
+                  <span className="text-sm font-medium">{utilityTitle}</span>
                 </header>
               ) : (
                 <SiteHeader />

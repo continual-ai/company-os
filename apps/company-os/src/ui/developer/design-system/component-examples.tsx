@@ -56,6 +56,7 @@ import {
   CommandList,
   CommandShortcut,
 } from "@company/ui/components/command"
+import { DateTimePicker } from "@company/ui/components/date-time-picker"
 import {
   Dialog,
   DialogContent,
@@ -97,6 +98,7 @@ import {
   InputGroupText,
 } from "@company/ui/components/input-group"
 import { Label } from "@company/ui/components/label"
+import { PhoneInput } from "@company/ui/components/phone-input"
 import {
   Popover,
   PopoverContent,
@@ -175,8 +177,9 @@ import {
   Trash2Icon,
   UsersIcon,
 } from "lucide-react"
+import { useState } from "react"
 
-import type { ComponentSlug } from "@/ui/develop/design-system/component-metadata"
+import type { ComponentSlug } from "@/ui/developer/design-system/component-metadata"
 
 type ComponentExample = {
   code: string
@@ -262,7 +265,7 @@ const exampleDetails = {
       "",
       "<Breadcrumb>",
       "  <BreadcrumbList>",
-      '    <BreadcrumbItem><BreadcrumbLink href="/develop">Develop</BreadcrumbLink></BreadcrumbItem>',
+      '    <BreadcrumbItem><BreadcrumbLink href="/developer">Developer Center</BreadcrumbLink></BreadcrumbItem>',
       "    <BreadcrumbSeparator />",
       "    <BreadcrumbItem><BreadcrumbPage>Design system</BreadcrumbPage></BreadcrumbItem>",
       "  </BreadcrumbList>",
@@ -311,6 +314,22 @@ const exampleDetails = {
     ),
     usage:
       "Use checkboxes for independent choices. Pair every checkbox with a visible label and a unique id.",
+  },
+  "date-time-picker": {
+    code: snippet(
+      'import { DateTimePicker } from "@company/ui/components/date-time-picker"',
+      "",
+      'const [occurredAt, setOccurredAt] = useState("2026-08-27T09:15")',
+      "",
+      "<DateTimePicker",
+      '  id="occurred-at"',
+      "  required",
+      "  value={occurredAt}",
+      "  onValueChange={setOccurredAt}",
+      "/>"
+    ),
+    usage:
+      "Use DateTimePicker for an editable local date and time. Keep authoritative timestamp decoding and timezone conversion at the form boundary.",
   },
   command: {
     code: snippet(
@@ -439,6 +458,22 @@ const exampleDetails = {
     ),
     usage:
       "Use a popover for lightweight contextual interaction that remains anchored to its trigger.",
+  },
+  "phone-input": {
+    code: snippet(
+      'import { PhoneInput } from "@company/ui/components/phone-input"',
+      "",
+      'const [phone, setPhone] = useState("+14155550123")',
+      "",
+      "<PhoneInput",
+      '  defaultCountry="US"',
+      '  placeholder="Enter phone number"',
+      "  value={phone}",
+      "  onValueChange={setPhone}",
+      "/>"
+    ),
+    usage:
+      "Use PhoneInput for international phone numbers. Persist its E.164 value and let the control handle country-specific presentation.",
   },
   progress: {
     code: snippet(
@@ -620,6 +655,9 @@ export function getComponentExample(slug: ComponentSlug): ComponentExample {
 }
 
 function ComponentPreview({ slug }: { slug: ComponentSlug }) {
+  const [dateTime, setDateTime] = useState("2026-08-27T09:15")
+  const [phoneNumber, setPhoneNumber] = useState("+14155550123")
+
   switch (slug) {
     case "accordion":
       return (
@@ -702,11 +740,13 @@ function ComponentPreview({ slug }: { slug: ComponentSlug }) {
         <Breadcrumb>
           <BreadcrumbList>
             <BreadcrumbItem>
-              <BreadcrumbLink href="/develop">Develop</BreadcrumbLink>
+              <BreadcrumbLink href="/developer">
+                Developer Center
+              </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbLink href="/develop/design-system">
+              <BreadcrumbLink href="/developer/design-system">
                 Design system
               </BreadcrumbLink>
             </BreadcrumbItem>
@@ -754,6 +794,15 @@ function ComponentPreview({ slug }: { slug: ComponentSlug }) {
             Require approval before execution
           </Label>
         </div>
+      )
+    case "date-time-picker":
+      return (
+        <DateTimePicker
+          id="example-date-time"
+          required
+          value={dateTime}
+          onValueChange={setDateTime}
+        />
       )
     case "command":
       return (
@@ -909,6 +958,16 @@ function ComponentPreview({ slug }: { slug: ComponentSlug }) {
             </PopoverContent>
           </Popover>
         </div>
+      )
+    case "phone-input":
+      return (
+        <PhoneInput
+          className="mx-auto max-w-sm"
+          defaultCountry="US"
+          aria-label="Phone number"
+          value={phoneNumber}
+          onValueChange={setPhoneNumber}
+        />
       )
     case "progress":
       return (

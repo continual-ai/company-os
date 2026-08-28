@@ -2,13 +2,13 @@ import { Link, createFileRoute } from "@tanstack/react-router"
 
 import { documentHead } from "@/route-metadata"
 import type { PageMetadata } from "@/route-metadata"
-import { getComponent } from "@/ui/develop/design-system/component-metadata"
-import { ComponentPage } from "@/ui/develop/design-system/component-page"
+import { getComponent } from "@/ui/developer/design-system/component-metadata"
+import { ComponentPage } from "@/ui/developer/design-system/component-page"
 
 const missingComponentPage = componentPage(undefined)
 
 export const Route = createFileRoute(
-  "/_app/develop/design-system/components/$componentId"
+  "/_app/developer/design-system/components/$componentId"
 )({
   loader: ({ params }) => {
     const component = getComponent(params.componentId)
@@ -35,7 +35,7 @@ function ComponentRoute() {
           surface.
         </p>
         <Link
-          to="/develop/design-system"
+          to="/developer/design-system"
           className="mt-6 inline-flex text-xs font-medium hover:underline"
         >
           Return to the design system

@@ -11,7 +11,7 @@ const page = {
   title: "MCP",
 }
 
-export const Route = createFileRoute("/_app/develop/mcp")({
+export const Route = createFileRoute("/_app/developer/mcp")({
   ...pageOptions(page),
   component: McpPage,
 })

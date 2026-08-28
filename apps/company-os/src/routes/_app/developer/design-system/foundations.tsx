@@ -39,12 +39,12 @@ const colors = [
   },
 ] as const
 
-export const Route = createFileRoute("/_app/develop/design-system/foundations")(
-  {
-    ...pageOptions(page),
-    component: FoundationsPage,
-  }
-)
+export const Route = createFileRoute(
+  "/_app/developer/design-system/foundations"
+)({
+  ...pageOptions(page),
+  component: FoundationsPage,
+})
 
 function FoundationsPage() {
   return (

@@ -2,7 +2,7 @@ import { cn } from "@company/ui/lib/utils"
 import { Link, Outlet, useMatchRoute } from "@tanstack/react-router"
 import { ChevronDownIcon } from "lucide-react"
 
-import { componentGroups } from "@/ui/develop/design-system/component-metadata"
+import { componentGroups } from "@/ui/developer/design-system/component-metadata"
 
 export function DesignSystemLayout() {
   return (
@@ -42,20 +42,20 @@ function DesignSystemNavigation() {
         <div className="mt-2 grid gap-0.5">
           <DesignSystemLink
             active={Boolean(
-              matchRoute({ to: "/develop/design-system", fuzzy: false })
+              matchRoute({ to: "/developer/design-system", fuzzy: false })
             )}
-            to="/develop/design-system"
+            to="/developer/design-system"
           >
             Overview
           </DesignSystemLink>
           <DesignSystemLink
             active={Boolean(
               matchRoute({
-                to: "/develop/design-system/foundations",
+                to: "/developer/design-system/foundations",
                 fuzzy: false,
               })
             )}
-            to="/develop/design-system/foundations"
+            to="/developer/design-system/foundations"
           >
             Foundations
           </DesignSystemLink>
@@ -70,11 +70,11 @@ function DesignSystemNavigation() {
           <DesignSystemLink
             active={Boolean(
               matchRoute({
-                to: "/develop/design-system/patterns/object-table",
+                to: "/developer/design-system/patterns/object-table",
                 fuzzy: false,
               })
             )}
-            to="/develop/design-system/patterns/object-table"
+            to="/developer/design-system/patterns/object-table"
           >
             Object table
           </DesignSystemLink>
@@ -90,7 +90,7 @@ function DesignSystemNavigation() {
             {group.components.map((component) => {
               const active = Boolean(
                 matchRoute({
-                  to: "/develop/design-system/components/$componentId",
+                  to: "/developer/design-system/components/$componentId",
                   params: { componentId: component.slug },
                   fuzzy: false,
                 })
@@ -99,7 +99,7 @@ function DesignSystemNavigation() {
               return (
                 <Link
                   key={component.slug}
-                  to="/develop/design-system/components/$componentId"
+                  to="/developer/design-system/components/$componentId"
                   params={{ componentId: component.slug }}
                   aria-current={active ? "page" : undefined}
                   className={cn(
@@ -128,9 +128,9 @@ function DesignSystemLink({
   active: boolean
   children: React.ReactNode
   to:
-    | "/develop/design-system"
-    | "/develop/design-system/foundations"
-    | "/develop/design-system/patterns/object-table"
+    | "/developer/design-system"
+    | "/developer/design-system/foundations"
+    | "/developer/design-system/patterns/object-table"
 }) {
   return (
     <Link

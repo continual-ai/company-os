@@ -4,28 +4,44 @@ const ALLOWED_FRAMEWORK_FILENAMES = new Set(["$", "__root"])
 const KEBAB_CASE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 const NUMBERED_MIGRATION =
   /[\\/]migrations[\\/]\d+_[a-z0-9]+(?:-[a-z0-9]+)*\.[cm]?tsx?$/
+const RESERVED_START_ENTRYPOINT =
+  /[\\/]apps[\\/][^\\/]+[\\/]src[\\/](?:client|server|start)\.[cm]?[jt]sx?$/
 
 function sourceName(filename: string): string {
   const basename = filename.split(/[\\/]/).at(-1) ?? filename
   return basename.split(".")[0] ?? basename
 }
 
-/** Require searchable, cross-platform kebab-case source filenames. */
+/** Require safe, searchable, cross-platform source filenames. */
 export const filenameCaseRule = defineRule({
   meta: {
     type: "suggestion",
     docs: {
       description:
-        "Require kebab-case JavaScript and TypeScript filenames, with narrow framework exceptions.",
+        "Require kebab-case source filenames and protect reserved framework entrypoints.",
     },
     messages: {
       invalidFilename:
         'Rename "{{filename}}" to kebab-case (for example, "email-delivery-port.ts").',
+      reservedStartEntrypoint:
+        '"{{filename}}" is a reserved TanStack Start entrypoint. Use a purpose-named module unless this file intentionally boots the application.',
     },
   },
   createOnce(context) {
     return {
       Program(node) {
+        if (RESERVED_START_ENTRYPOINT.test(context.filename)) {
+          context.report({
+            node,
+            messageId: "reservedStartEntrypoint",
+            data: {
+              filename:
+                context.filename.split(/[\\/]/).at(-1) ?? context.filename,
+            },
+          })
+          return
+        }
+
         const name = sourceName(context.filename)
         if (
           ALLOWED_FRAMEWORK_FILENAMES.has(name) ||

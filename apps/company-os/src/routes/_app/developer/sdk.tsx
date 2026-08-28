@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router"
 import { pageOptions } from "@/route-metadata"
 
 const sdkExample = `import { Effect } from "effect"
-import { client } from "@/client"
+import { client } from "@/app-client"
 
 const companies = await Effect.runPromise(
   client.company.list()
@@ -16,7 +16,7 @@ const page = {
   title: "SDK",
 }
 
-export const Route = createFileRoute("/_app/develop/sdk")({
+export const Route = createFileRoute("/_app/developer/sdk")({
   ...pageOptions(page),
   component: SdkPage,
 })

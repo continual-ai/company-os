@@ -1,17 +1,5 @@
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-} from "@company/ui/components/sidebar"
 import { Link, useMatchRoute } from "@tanstack/react-router"
 import {
-  ArrowLeftIcon,
   BotIcon,
   PaletteIcon,
   SettingsIcon,
@@ -20,6 +8,11 @@ import {
   UserRoundIcon,
 } from "lucide-react"
 
+import {
+  SecondarySidebar,
+  SecondarySidebarItem,
+  SecondarySidebarSection,
+} from "@/ui/application/secondary-sidebar"
 import { useCapabilities } from "@/ui/application/use-capabilities"
 
 const settingsSections = [
@@ -85,47 +78,25 @@ export function SettingsSidebar() {
   const capabilities = useCapabilities(accessChecks)
 
   return (
-    <Sidebar variant="sidebar" collapsible="offcanvas">
-      <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton render={<Link to="/" />} tooltip="Back to app">
-              <ArrowLeftIcon />
-              <span>Back to app</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarHeader>
-
-      <SidebarContent>
-        {settingsSections.map((section) => {
-          const items = section.items.filter(
-            (item) =>
-              !("capability" in item) || capabilities.can(item.capability)
-          )
-          return items.length === 0 ? null : (
-            <SidebarGroup key={section.label}>
-              <SidebarGroupLabel>{section.label}</SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {items.map((item) => (
-                    <SidebarMenuItem key={item.to}>
-                      <SidebarMenuButton
-                        tooltip={item.label}
-                        isActive={settingsItemIsActive(item.to, matchRoute)}
-                        render={<Link to={item.to} />}
-                      >
-                        <item.icon />
-                        <span>{item.label}</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          )
-        })}
-      </SidebarContent>
-    </Sidebar>
+    <SecondarySidebar>
+      {settingsSections.map((section) => {
+        const items = section.items.filter(
+          (item) => !("capability" in item) || capabilities.can(item.capability)
+        )
+        return items.length === 0 ? null : (
+          <SecondarySidebarSection key={section.label} label={section.label}>
+            {items.map((item) => (
+              <SecondarySidebarItem
+                key={item.to}
+                icon={item.icon}
+                isActive={settingsItemIsActive(item.to, matchRoute)}
+                label={item.label}
+                link={<Link to={item.to} />}
+              />
+            ))}
+          </SecondarySidebarSection>
+        )
+      })}
+    </SecondarySidebar>
   )
 }

@@ -1,12 +1,12 @@
 import { Effect } from "effect"
 
+import { checkCapabilities } from "@/app-client"
 import {
   allowedCapabilityKeys,
   capabilityKey,
   MAX_CAPABILITY_CHECKS,
   type CapabilityCheck,
 } from "@/capabilities"
-import { checkCapabilities } from "@/client"
 
 function chunks<T>(values: ReadonlyArray<T>, size: number): ReadonlyArray<T[]> {
   const result: T[][] = []

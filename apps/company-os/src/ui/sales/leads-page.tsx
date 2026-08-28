@@ -2,7 +2,7 @@ import { Model } from "@company/model"
 import { RecordId } from "@company/runtime"
 import { Effect } from "effect"
 
-import { client } from "@/client"
+import { client } from "@/app-client"
 import { ConfirmActionButton } from "@/ui/model/confirm-action-button"
 import { ObjectCollection } from "@/ui/model/object-collection"
 import type { ObjectTableRecord } from "@/ui/model/object-table/object-table-config"

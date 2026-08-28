@@ -18,6 +18,12 @@ export const componentGroups = [
         description: "Selects one or more independent options.",
       },
       {
+        slug: "date-time-picker",
+        name: "Date & Time Picker",
+        description:
+          "Selects a local date and time with a calendar and time input.",
+      },
+      {
         slug: "field",
         name: "Field",
         description: "Composes labels, controls, descriptions, and errors.",
@@ -36,6 +42,12 @@ export const componentGroups = [
         slug: "label",
         name: "Label",
         description: "Names an associated form control.",
+      },
+      {
+        slug: "phone-input",
+        name: "Phone Input",
+        description:
+          "Collects and formats an international phone number with country selection.",
       },
       {
         slug: "radio-group",

@@ -11,7 +11,7 @@ import {
 } from "@company/runtime"
 import { Effect } from "effect"
 
-import { client } from "@/client"
+import { client } from "@/app-client"
 
 import { objectTableValueText } from "./object-table/object-table-config"
 import type { ObjectTableRecord } from "./object-table/object-table-config"
@@ -31,6 +31,12 @@ export interface ClientRecord {
   readonly id: string
   readonly parent?: string
   readonly [property: string]: ClientValue | undefined
+}
+
+export interface RelatedRecord {
+  readonly id: string
+  readonly label: string
+  readonly objectType: string
 }
 
 export interface DynamicObjectClient {
@@ -241,6 +247,43 @@ export function recordObjectTypes(typeId: string): ReadonlyArray<ModelObject> {
   return Object.values(Model.objects).filter((candidate) =>
     modelTypeAccepts(Model, candidate.id, typeId)
   )
+}
+
+export async function describeReferences(
+  references: ReadonlyArray<ObjectRef>
+): Promise<ReadonlyArray<RelatedRecord>> {
+  const labels = new Map<string, string>()
+  const byType = new Map<string, ObjectRef[]>()
+  for (const reference of references) {
+    const typedReferences = byType.get(reference.objectType) ?? []
+    typedReferences.push(reference)
+    byType.set(reference.objectType, typedReferences)
+  }
+  await Promise.all(
+    [...byType].map(async ([objectType, typedReferences]) => {
+      if (objectType === Model.root.id) {
+        for (const reference of typedReferences) {
+          labels.set(reference.id, Model.root.name)
+        }
+        return
+      }
+      const object = Object.values(Model.objects).find(
+        (candidate) => candidate.id === objectType
+      )
+      if (object === undefined) return
+      const records = await clientFor(object).batchGet({
+        ids: typedReferences.map(({ id }) => id),
+      })
+      for (const record of records.items) {
+        labels.set(record.id, recordLabel(object, record))
+      }
+    })
+  )
+  return references.map(({ id, objectType }) => ({
+    id,
+    label: labels.get(id) ?? id,
+    objectType,
+  }))
 }
 
 export function parentName(object: ModelObject): string {
