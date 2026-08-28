@@ -19,7 +19,7 @@ const homeCapabilityChecks = [
   ...salesNavigationChecks,
   applicationCapabilities.develop,
 ]
-const homeObjectIds = new Set(["lead", "company", "deal", "interaction"])
+const homeObjectIds = new Set(["lead", "company", "deal", "note"])
 
 /** Custom first authenticated experience and primary activation surface. */
 export function Home() {
@@ -91,11 +91,10 @@ export function Home() {
             </h2>
             <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
               Qualify a lead into a company and contact, advance the resulting
-              deal, and keep every interaction attached to the same business
-              context.
+              deal, and keep every note attached to the same business context.
             </p>
             <div className="mt-6 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-              {["Lead", "Company + contact", "Deal", "Activity"].map(
+              {["Lead", "Company + contact", "Deal", "Notes"].map(
                 (step, index) => (
                   <span key={step} className="contents">
                     {index === 0 ? null : <ArrowRightIcon className="size-3" />}
@@ -110,11 +109,11 @@ export function Home() {
 
           {canDevelop ? (
             <Link
-              to="/develop"
+              to="/developer"
               className="group bg-background px-4 py-6 transition-colors hover:bg-muted/30 lg:px-6 lg:py-8"
             >
               <p className="text-xs font-medium text-muted-foreground">
-                Develop this operation
+                Developer Center
               </p>
               <h2 className="mt-8 flex items-center gap-2 text-lg font-medium">
                 Inspect and extend the system
@@ -134,8 +133,8 @@ export function Home() {
                 Work from one current customer record.
               </h2>
               <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
-                Companies, contacts, opportunities, and activity stay connected
-                as the relationship changes.
+                Companies, contacts, opportunities, and notes stay connected as
+                the relationship changes.
               </p>
             </article>
           )}

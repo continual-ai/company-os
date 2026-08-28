@@ -43,17 +43,10 @@ describe("model contract", () => {
       },
       {
         id: "sales",
-        interfaceIds: ["party"],
-        linkIds: ["contactPrimaryCompany", "interactionRegarding"],
+        interfaceIds: ["party", "noteSubject"],
+        linkIds: ["contactPrimaryCompany", "noteSubjects"],
         name: "Sales",
-        objectIds: [
-          "company",
-          "contact",
-          "lead",
-          "deal",
-          "lineItem",
-          "interaction",
-        ],
+        objectIds: ["company", "contact", "lead", "deal", "lineItem", "note"],
       },
     ])
     expect(description.objects.map((object) => object.id)).toEqual([
@@ -70,7 +63,7 @@ describe("model contract", () => {
       "lead",
       "deal",
       "lineItem",
-      "interaction",
+      "note",
     ])
     expect(description.interfaces.map((item) => item.id)).toEqual([
       "actor",
@@ -78,6 +71,7 @@ describe("model contract", () => {
       "identity",
       "principal",
       "party",
+      "noteSubject",
     ])
     expect(description.interfaces).toContainEqual(
       expect.objectContaining({
@@ -97,7 +91,7 @@ describe("model contract", () => {
     ).toEqual(["get", "list", "batchGet"])
     expect(description.links.map((link) => link.id)).toEqual([
       "contactPrimaryCompany",
-      "interactionRegarding",
+      "noteSubjects",
     ])
     expect(description.links).toEqual(
       expect.arrayContaining([
@@ -120,21 +114,22 @@ describe("model contract", () => {
           }),
         }),
         expect.objectContaining({
-          id: "interactionRegarding",
+          id: "noteSubjects",
           forward: expect.objectContaining({
-            cardinality: "one",
-            from: { kind: "object", typeId: "interaction" },
-            key: "regarding",
-            label: "Regarding",
-            to: { kind: "interface", typeId: "party" },
+            cardinality: "many",
+            description: "The business records this note concerns.",
+            from: { kind: "object", typeId: "note" },
+            key: "subjects",
+            label: "Subjects",
+            to: { kind: "interface", typeId: "noteSubject" },
           }),
           reverse: expect.objectContaining({
             cardinality: "many",
-            description: "Interactions primarily concerning this party.",
-            from: { kind: "interface", typeId: "party" },
-            key: "interactions",
-            label: "Interactions",
-            to: { kind: "object", typeId: "interaction" },
+            description: "Notes attached to this business record.",
+            from: { kind: "interface", typeId: "noteSubject" },
+            key: "notes",
+            label: "Notes",
+            to: { kind: "object", typeId: "note" },
           }),
         }),
       ])
@@ -167,12 +162,17 @@ describe("model contract", () => {
         interfaceId: "party",
         propertyMapping: { image: "logo", name: "name" },
       },
+      noteSubject: {
+        interfaceId: "noteSubject",
+        propertyMapping: {},
+      },
     })
-    const interaction = description.objects.find(
-      (object) => object.id === "interaction"
+    const note = description.objects.find((object) => object.id === "note")
+    expect(note?.properties).toEqual(
+      expect.objectContaining({ content: expect.any(Object) })
     )
-    expect(interaction?.properties).not.toHaveProperty("subject")
-    expect(interaction?.properties).not.toHaveProperty("subjectId")
+    expect(note?.properties).not.toHaveProperty("subject")
+    expect(note?.properties).not.toHaveProperty("subjectId")
     expect(description.objects).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -208,11 +208,19 @@ describe("model contract", () => {
     )
     expectTypeOf(Model.objects.deal.parent.typeId).toEqualTypeOf<"company">()
     expectTypeOf<
-      ModelObjectCreateInput<
-        typeof Model,
-        typeof Model.objects.interaction
-      >["links"]["regarding"]
-    >().toEqualTypeOf<RecordAlias | RecordId<"company"> | RecordId<"contact">>()
+      NonNullable<
+        ModelObjectCreateInput<typeof Model, typeof Model.objects.note>["links"]
+      >["subjects"]
+    >().toEqualTypeOf<
+      | ReadonlyArray<
+          | RecordAlias
+          | RecordId<"company">
+          | RecordId<"contact">
+          | RecordId<"deal">
+          | RecordId<"lead">
+        >
+      | undefined
+    >()
     expectTypeOf<
       keyof NonNullable<
         ModelObjectCreateInput<
@@ -224,6 +232,14 @@ describe("model contract", () => {
     expectTypeOf<
       RecordIdOf<typeof Model, (typeof Model.interfaces)["party"]>
     >().toEqualTypeOf<RecordId<"company"> | RecordId<"contact">>()
+    expectTypeOf<
+      RecordIdOf<typeof Model, (typeof Model.interfaces)["noteSubject"]>
+    >().toEqualTypeOf<
+      | RecordId<"company">
+      | RecordId<"contact">
+      | RecordId<"deal">
+      | RecordId<"lead">
+    >()
     expectTypeOf<IdentityId>().toEqualTypeOf<
       RecordId<"serviceAccount"> | RecordId<"user">
     >()

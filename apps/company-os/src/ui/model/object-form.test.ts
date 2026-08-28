@@ -7,6 +7,7 @@ import {
   dateTimeLocalValue,
   decodeObjectForm,
   objectFormDefaultValues,
+  objectFormLinks,
 } from "./object-form"
 
 describe("object forms", () => {
@@ -54,25 +55,61 @@ describe("object forms", () => {
 
   it("nests initial relationships under the generated links envelope", () => {
     const form = {
-      links: { regarding: "company_northstar" },
-      occurredAt: "2026-08-25T18:30",
-      summary: "Introductory call",
+      content: "Introductory call",
+      links: { subjects: ["company_northstar", "contact_ada"] },
     }
 
-    expect(decodeObjectForm(Model.objects.interaction, form, "create")).toEqual(
-      {
-        details: null,
-        links: { regarding: "company_northstar" },
-        occurredAt: new Date("2026-08-25T18:30").toISOString(),
-        summary: "Introductory call",
-      }
-    )
+    expect(decodeObjectForm(Model.objects.note, form, "create")).toEqual({
+      content: "Introductory call",
+      links: { subjects: ["company_northstar", "contact_ada"] },
+    })
+  })
+
+  it("derives writable edit relationships and decodes Link deltas", () => {
+    expect(
+      objectFormLinks(Model.objects.company, "edit").map(
+        ({ traversal }) => traversal.key
+      )
+    ).toEqual(["contacts"])
+    expect(
+      objectFormDefaultValues(Model.objects.company, "edit").links
+    ).toEqual({ contacts: { add: [], remove: [] } })
+    expect(
+      decodeObjectForm(
+        Model.objects.company,
+        {
+          lifecycleStage: "prospect",
+          links: {
+            contacts: {
+              add: ["contact_grace"],
+              remove: ["contact_ada"],
+            },
+          },
+          name: "Northstar",
+        },
+        "edit"
+      )
+    ).toMatchObject({
+      links: {
+        contacts: {
+          add: ["contact_grace"],
+          remove: ["contact_ada"],
+        },
+      },
+    })
   })
 
   it("formats timestamps for datetime-local in local time", () => {
     expect(dateTimeLocalValue("2026-08-25T18:30:00.000Z")).toMatch(
       /^2026-08-25T\d{2}:30$/
     )
+  })
+
+  it("derives writable note subjects from the model", () => {
+    expect(objectFormDefaultValues(Model.objects.note, "create")).toEqual({
+      content: "",
+      links: { subjects: [] },
+    })
   })
 
   it("preserves model validation paths for inline errors", () => {

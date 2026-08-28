@@ -2,6 +2,7 @@ import { defineObject, schema } from "@company/runtime"
 
 import { Root } from "#root"
 
+import { NoteSubject } from "./note-subject"
 import { Party } from "./party"
 
 export const Contact = defineObject({
@@ -12,6 +13,7 @@ export const Contact = defineObject({
   pluralName: "Contacts",
   description: "A person associated with business activity.",
   implements: [
+    { interface: NoteSubject },
     {
       interface: Party,
       propertyMapping: { image: "photo", name: "name" },

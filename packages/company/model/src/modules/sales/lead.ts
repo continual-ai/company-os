@@ -4,6 +4,7 @@ import { Root } from "#root"
 
 import { Company } from "./company"
 import { Contact } from "./contact"
+import { NoteSubject } from "./note-subject"
 
 const CompanyReference = { id: "company" } as const
 const ContactReference = { id: "contact" } as const
@@ -16,6 +17,7 @@ export const Lead = defineObject({
   pluralName: "Leads",
   description:
     "An unqualified person or organization that may become a customer.",
+  implements: [{ interface: NoteSubject }],
   actions: {
     convert: {
       name: "Convert lead",

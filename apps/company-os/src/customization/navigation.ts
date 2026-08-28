@@ -1,10 +1,10 @@
 import { Model } from "@company/model"
 import {
-  ActivityIcon,
   Building2Icon,
   ContactRoundIcon,
   HandshakeIcon,
   HouseIcon,
+  NotebookPenIcon,
   UserRoundSearchIcon,
 } from "lucide-react"
 
@@ -46,12 +46,11 @@ export const salesNavigation = [
     to: "/deals",
   },
   {
-    description:
-      "Review the calls, emails, meetings, and notes around the work.",
-    icon: ActivityIcon,
-    label: "Activity",
-    object: Model.objects.interaction,
-    to: "/interactions",
+    description: "Keep durable context attached to the records it concerns.",
+    icon: NotebookPenIcon,
+    label: "Notes",
+    object: Model.objects.note,
+    to: "/notes",
   },
 ] as const
 

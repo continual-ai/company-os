@@ -3,6 +3,7 @@ import { defineObject, schema } from "@company/runtime"
 import { AuthorizationScope } from "#modules/access/authorization-scope"
 import { Root } from "#root"
 
+import { NoteSubject } from "./note-subject"
 import { Party } from "./party"
 
 export const Company = defineObject({
@@ -14,6 +15,7 @@ export const Company = defineObject({
   description: "An organization that is a customer, prospect, or partner.",
   implements: [
     { interface: AuthorizationScope },
+    { interface: NoteSubject },
     {
       interface: Party,
       propertyMapping: { image: "logo", name: "name" },

@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url"
 
 import { Model } from "@company/model"
 import { makeLinkRepository } from "@company/postgres"
-import { isStandardActionId, Timestamp } from "@company/runtime"
+import { isStandardActionId, RecordAlias } from "@company/runtime"
 import {
   createModelClient,
   httpEndpointId,
@@ -28,6 +28,7 @@ import { IdentityProvider } from "@/server/auth/identity-provider"
 import { Database } from "@/server/database/database"
 import {
   identityBindings,
+  notes,
   objects,
   relations,
   roleAssignments,
@@ -331,17 +332,14 @@ describe("application HTTP server", () => {
           lifecycleStage: "prospect",
           name: "Northstar",
         })
-        const interaction = yield* useTestFetch(
-          model.interaction.create({
-            links: { regarding: created.id },
-            occurredAt: Timestamp("2026-08-27T19:00:00.000Z"),
-            summary: "Introductory call",
+        const note = yield* useTestFetch(
+          model.note.create({
+            content: "Introductory call",
+            links: { subjects: [created.id] },
           })
         )
         expect(
-          yield* useTestFetch(
-            model.interaction.regarding.list({ id: interaction.id })
-          )
+          yield* useTestFetch(model.note.subjects.list({ id: note.id }))
         ).toEqual({
           items: [{ id: created.id, objectType: "company" }],
           nextPageToken: "",
@@ -369,6 +367,50 @@ describe("application HTTP server", () => {
         expect(linkedContacts.items).toEqual([
           { id: contact.id, objectType: "contact" },
         ])
+        const secondContact = yield* useTestFetch(
+          model.contact.create({ name: "Grace Hopper" })
+        )
+        const updated = yield* useTestFetch(
+          model.company.update({
+            etag: created.etag,
+            id: created.id,
+            links: {
+              contacts: {
+                add: [secondContact.id],
+                remove: [contact.id],
+              },
+            },
+            name: "Northstar Systems",
+          })
+        )
+        expect(updated.name).toBe("Northstar Systems")
+        expect(
+          yield* useTestFetch(model.company.contacts.list({ id: created.id }))
+        ).toEqual({
+          items: [{ id: secondContact.id, objectType: "contact" }],
+          nextPageToken: "",
+        })
+        expect(
+          yield* Effect.flip(
+            useTestFetch(
+              model.company.update({
+                etag: updated.etag,
+                id: created.id,
+                links: {
+                  contacts: {
+                    add: [RecordAlias("test:contact:missing")],
+                  },
+                },
+                name: "This must roll back",
+              })
+            )
+          )
+        ).toMatchObject({ reason: "NOT_FOUND" })
+        expect(
+          yield* useTestFetch(model.company.list({ pageSize: 10 }))
+        ).toMatchObject({
+          items: [expect.objectContaining({ name: "Northstar Systems" })],
+        })
         yield* useTestFetch(
           model.company.contacts.unlink({
             id: created.id,
@@ -377,7 +419,10 @@ describe("application HTTP server", () => {
         )
         expect(
           yield* useTestFetch(model.company.contacts.list({ id: created.id }))
-        ).toEqual({ items: [], nextPageToken: "" })
+        ).toEqual({
+          items: [{ id: secondContact.id, objectType: "contact" }],
+          nextPageToken: "",
+        })
         yield* useTestFetch(
           model.company.contacts.link({
             id: created.id,
@@ -392,12 +437,6 @@ describe("application HTTP server", () => {
           items: [{ id: created.id, objectType: "company" }],
           nextPageToken: "",
         })
-        const secondContact = yield* useTestFetch(
-          model.contact.create({
-            links: { primaryCompany: created.id },
-            name: "Grace Hopper",
-          })
-        )
         expect(
           yield* makeLinkRepository(Storage, database).list(
             {
@@ -450,16 +489,20 @@ describe("application HTTP server", () => {
           nextPageToken: "",
         })
 
-        const deleteRequiredTargetError = yield* Effect.flip(
-          useTestFetch(
-            model.company.delete({ etag: created.etag, id: created.id })
-          )
+        yield* useTestFetch(
+          model.company.delete({ etag: updated.etag, id: created.id })
         )
-        expect(deleteRequiredTargetError).toMatchObject({
-          reason: "FAILED_PRECONDITION",
-          status: "FAILED_PRECONDITION",
+        expect(
+          yield* useTestFetch(model.note.subjects.list({ id: note.id }))
+        ).toEqual({
+          items: [],
+          nextPageToken: "",
         })
-
+        const [persistedNote] = yield* database
+          .select({ content: notes.content })
+          .from(notes)
+          .where(eq(notes.id, note.id))
+        expect(persistedNote).toEqual({ content: "Introductory call" })
         const listedUsers = yield* useTestFetch(
           client.user.listUsers({ query: { pageSize: 10 } })
         )

@@ -20,34 +20,34 @@ import { Route as ApiOpenapiRouteImport } from './routes/api/openapi'
 import { Route as ApiMcpRouteImport } from './routes/api/mcp'
 import { Route as ApiDescriptionRouteImport } from './routes/api/description'
 import { Route as AppSettingsRouteRouteImport } from './routes/_app/settings/route'
-import { Route as AppDevelopRouteRouteImport } from './routes/_app/develop/route'
+import { Route as AppDeveloperRouteRouteImport } from './routes/_app/developer/route'
 import { Route as AppsalesRouteRouteImport } from './routes/_app/(sales)/route'
 import { Route as AppSettingsIndexRouteImport } from './routes/_app/settings/index'
-import { Route as AppDevelopIndexRouteImport } from './routes/_app/develop/index'
+import { Route as AppDeveloperIndexRouteImport } from './routes/_app/developer/index'
 import { Route as ApiV1SplatRouteImport } from './routes/api/v1/$'
 import { Route as AppSettingsProfileRouteImport } from './routes/_app/settings/profile'
 import { Route as AppSettingsAppearanceRouteImport } from './routes/_app/settings/appearance'
-import { Route as AppDevelopSdkRouteImport } from './routes/_app/develop/sdk'
-import { Route as AppDevelopModelRouteImport } from './routes/_app/develop/model'
-import { Route as AppDevelopMcpRouteImport } from './routes/_app/develop/mcp'
-import { Route as AppDevelopApiRouteImport } from './routes/_app/develop/api'
+import { Route as AppDeveloperSdkRouteImport } from './routes/_app/developer/sdk'
+import { Route as AppDeveloperModelRouteImport } from './routes/_app/developer/model'
+import { Route as AppDeveloperMcpRouteImport } from './routes/_app/developer/mcp'
+import { Route as AppDeveloperApiRouteImport } from './routes/_app/developer/api'
+import { Route as AppsalesNotesRouteImport } from './routes/_app/(sales)/notes'
 import { Route as AppsalesLineItemsRouteImport } from './routes/_app/(sales)/line-items'
 import { Route as AppsalesLeadsRouteImport } from './routes/_app/(sales)/leads'
-import { Route as AppsalesInteractionsRouteImport } from './routes/_app/(sales)/interactions'
 import { Route as AppsalesDealsRouteImport } from './routes/_app/(sales)/deals'
 import { Route as AppsalesContactsRouteImport } from './routes/_app/(sales)/contacts'
 import { Route as AppsalesCompaniesRouteImport } from './routes/_app/(sales)/companies'
-import { Route as AppDevelopDesignSystemRouteRouteImport } from './routes/_app/develop/design-system/route'
-import { Route as AppDevelopDesignSystemIndexRouteImport } from './routes/_app/develop/design-system/index'
+import { Route as AppDeveloperDesignSystemRouteRouteImport } from './routes/_app/developer/design-system/route'
+import { Route as AppDeveloperDesignSystemIndexRouteImport } from './routes/_app/developer/design-system/index'
 import { Route as AppSettingsaccessUsersRouteImport } from './routes/_app/settings/(access)/users'
 import { Route as AppSettingsaccessServiceAccountsRouteImport } from './routes/_app/settings/(access)/service-accounts'
 import { Route as AppSettingsaccessRolesRouteImport } from './routes/_app/settings/(access)/roles'
 import { Route as AppSettingsaccessRoleAssignmentsRouteImport } from './routes/_app/settings/(access)/role-assignments'
 import { Route as AppSettingsaccessGroupsRouteImport } from './routes/_app/settings/(access)/groups'
 import { Route as AppSettingsaccessGroupMembershipsRouteImport } from './routes/_app/settings/(access)/group-memberships'
-import { Route as AppDevelopDesignSystemFoundationsRouteImport } from './routes/_app/develop/design-system/foundations'
-import { Route as AppDevelopDesignSystemPatternsObjectTableRouteImport } from './routes/_app/develop/design-system/patterns/object-table'
-import { Route as AppDevelopDesignSystemComponentsComponentIdRouteRouteImport } from './routes/_app/develop/design-system/components/$componentId/route'
+import { Route as AppDeveloperDesignSystemFoundationsRouteImport } from './routes/_app/developer/design-system/foundations'
+import { Route as AppDeveloperDesignSystemPatternsObjectTableRouteImport } from './routes/_app/developer/design-system/patterns/object-table'
+import { Route as AppDeveloperDesignSystemComponentsComponentIdRouteRouteImport } from './routes/_app/developer/design-system/components/$componentId/route'
 
 const SignOutRoute = SignOutRouteImport.update({
   id: '/sign-out',
@@ -103,9 +103,9 @@ const AppSettingsRouteRoute = AppSettingsRouteRouteImport.update({
   path: '/settings',
   getParentRoute: () => AppRouteRoute,
 } as any)
-const AppDevelopRouteRoute = AppDevelopRouteRouteImport.update({
-  id: '/develop',
-  path: '/develop',
+const AppDeveloperRouteRoute = AppDeveloperRouteRouteImport.update({
+  id: '/developer',
+  path: '/developer',
   getParentRoute: () => AppRouteRoute,
 } as any)
 const AppsalesRouteRoute = AppsalesRouteRouteImport.update({
@@ -117,10 +117,10 @@ const AppSettingsIndexRoute = AppSettingsIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppSettingsRouteRoute,
 } as any)
-const AppDevelopIndexRoute = AppDevelopIndexRouteImport.update({
+const AppDeveloperIndexRoute = AppDeveloperIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => AppDevelopRouteRoute,
+  getParentRoute: () => AppDeveloperRouteRoute,
 } as any)
 const ApiV1SplatRoute = ApiV1SplatRouteImport.update({
   id: '/api/v1/$',
@@ -137,25 +137,30 @@ const AppSettingsAppearanceRoute = AppSettingsAppearanceRouteImport.update({
   path: '/appearance',
   getParentRoute: () => AppSettingsRouteRoute,
 } as any)
-const AppDevelopSdkRoute = AppDevelopSdkRouteImport.update({
+const AppDeveloperSdkRoute = AppDeveloperSdkRouteImport.update({
   id: '/sdk',
   path: '/sdk',
-  getParentRoute: () => AppDevelopRouteRoute,
+  getParentRoute: () => AppDeveloperRouteRoute,
 } as any)
-const AppDevelopModelRoute = AppDevelopModelRouteImport.update({
+const AppDeveloperModelRoute = AppDeveloperModelRouteImport.update({
   id: '/model',
   path: '/model',
-  getParentRoute: () => AppDevelopRouteRoute,
+  getParentRoute: () => AppDeveloperRouteRoute,
 } as any)
-const AppDevelopMcpRoute = AppDevelopMcpRouteImport.update({
+const AppDeveloperMcpRoute = AppDeveloperMcpRouteImport.update({
   id: '/mcp',
   path: '/mcp',
-  getParentRoute: () => AppDevelopRouteRoute,
+  getParentRoute: () => AppDeveloperRouteRoute,
 } as any)
-const AppDevelopApiRoute = AppDevelopApiRouteImport.update({
+const AppDeveloperApiRoute = AppDeveloperApiRouteImport.update({
   id: '/api',
   path: '/api',
-  getParentRoute: () => AppDevelopRouteRoute,
+  getParentRoute: () => AppDeveloperRouteRoute,
+} as any)
+const AppsalesNotesRoute = AppsalesNotesRouteImport.update({
+  id: '/notes',
+  path: '/notes',
+  getParentRoute: () => AppsalesRouteRoute,
 } as any)
 const AppsalesLineItemsRoute = AppsalesLineItemsRouteImport.update({
   id: '/line-items',
@@ -165,11 +170,6 @@ const AppsalesLineItemsRoute = AppsalesLineItemsRouteImport.update({
 const AppsalesLeadsRoute = AppsalesLeadsRouteImport.update({
   id: '/leads',
   path: '/leads',
-  getParentRoute: () => AppsalesRouteRoute,
-} as any)
-const AppsalesInteractionsRoute = AppsalesInteractionsRouteImport.update({
-  id: '/interactions',
-  path: '/interactions',
   getParentRoute: () => AppsalesRouteRoute,
 } as any)
 const AppsalesDealsRoute = AppsalesDealsRouteImport.update({
@@ -187,17 +187,17 @@ const AppsalesCompaniesRoute = AppsalesCompaniesRouteImport.update({
   path: '/companies',
   getParentRoute: () => AppsalesRouteRoute,
 } as any)
-const AppDevelopDesignSystemRouteRoute =
-  AppDevelopDesignSystemRouteRouteImport.update({
+const AppDeveloperDesignSystemRouteRoute =
+  AppDeveloperDesignSystemRouteRouteImport.update({
     id: '/design-system',
     path: '/design-system',
-    getParentRoute: () => AppDevelopRouteRoute,
+    getParentRoute: () => AppDeveloperRouteRoute,
   } as any)
-const AppDevelopDesignSystemIndexRoute =
-  AppDevelopDesignSystemIndexRouteImport.update({
+const AppDeveloperDesignSystemIndexRoute =
+  AppDeveloperDesignSystemIndexRouteImport.update({
     id: '/',
     path: '/',
-    getParentRoute: () => AppDevelopDesignSystemRouteRoute,
+    getParentRoute: () => AppDeveloperDesignSystemRouteRoute,
   } as any)
 const AppSettingsaccessUsersRoute = AppSettingsaccessUsersRouteImport.update({
   id: '/(access)/users',
@@ -232,23 +232,23 @@ const AppSettingsaccessGroupMembershipsRoute =
     path: '/group-memberships',
     getParentRoute: () => AppSettingsRouteRoute,
   } as any)
-const AppDevelopDesignSystemFoundationsRoute =
-  AppDevelopDesignSystemFoundationsRouteImport.update({
+const AppDeveloperDesignSystemFoundationsRoute =
+  AppDeveloperDesignSystemFoundationsRouteImport.update({
     id: '/foundations',
     path: '/foundations',
-    getParentRoute: () => AppDevelopDesignSystemRouteRoute,
+    getParentRoute: () => AppDeveloperDesignSystemRouteRoute,
   } as any)
-const AppDevelopDesignSystemPatternsObjectTableRoute =
-  AppDevelopDesignSystemPatternsObjectTableRouteImport.update({
+const AppDeveloperDesignSystemPatternsObjectTableRoute =
+  AppDeveloperDesignSystemPatternsObjectTableRouteImport.update({
     id: '/patterns/object-table',
     path: '/patterns/object-table',
-    getParentRoute: () => AppDevelopDesignSystemRouteRoute,
+    getParentRoute: () => AppDeveloperDesignSystemRouteRoute,
   } as any)
-const AppDevelopDesignSystemComponentsComponentIdRouteRoute =
-  AppDevelopDesignSystemComponentsComponentIdRouteRouteImport.update({
+const AppDeveloperDesignSystemComponentsComponentIdRouteRoute =
+  AppDeveloperDesignSystemComponentsComponentIdRouteRouteImport.update({
     id: '/components/$componentId',
     path: '/components/$componentId',
-    getParentRoute: () => AppDevelopDesignSystemRouteRoute,
+    getParentRoute: () => AppDeveloperDesignSystemRouteRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -257,38 +257,38 @@ export interface FileRoutesByFullPath {
   '/health': typeof HealthRoute
   '/sign-in': typeof SignInRoute
   '/sign-out': typeof SignOutRoute
-  '/develop': typeof AppDevelopRouteRouteWithChildren
+  '/developer': typeof AppDeveloperRouteRouteWithChildren
   '/settings': typeof AppSettingsRouteRouteWithChildren
   '/api/description': typeof ApiDescriptionRoute
   '/api/mcp': typeof ApiMcpRoute
   '/api/openapi': typeof ApiOpenapiRoute
   '/auth/local-session': typeof AuthLocalSessionRoute
-  '/develop/design-system': typeof AppDevelopDesignSystemRouteRouteWithChildren
+  '/developer/design-system': typeof AppDeveloperDesignSystemRouteRouteWithChildren
   '/companies': typeof AppsalesCompaniesRoute
   '/contacts': typeof AppsalesContactsRoute
   '/deals': typeof AppsalesDealsRoute
-  '/interactions': typeof AppsalesInteractionsRoute
   '/leads': typeof AppsalesLeadsRoute
   '/line-items': typeof AppsalesLineItemsRoute
-  '/develop/api': typeof AppDevelopApiRoute
-  '/develop/mcp': typeof AppDevelopMcpRoute
-  '/develop/model': typeof AppDevelopModelRoute
-  '/develop/sdk': typeof AppDevelopSdkRoute
+  '/notes': typeof AppsalesNotesRoute
+  '/developer/api': typeof AppDeveloperApiRoute
+  '/developer/mcp': typeof AppDeveloperMcpRoute
+  '/developer/model': typeof AppDeveloperModelRoute
+  '/developer/sdk': typeof AppDeveloperSdkRoute
   '/settings/appearance': typeof AppSettingsAppearanceRoute
   '/settings/profile': typeof AppSettingsProfileRoute
   '/api/v1/$': typeof ApiV1SplatRoute
-  '/develop/': typeof AppDevelopIndexRoute
+  '/developer/': typeof AppDeveloperIndexRoute
   '/settings/': typeof AppSettingsIndexRoute
-  '/develop/design-system/foundations': typeof AppDevelopDesignSystemFoundationsRoute
+  '/developer/design-system/foundations': typeof AppDeveloperDesignSystemFoundationsRoute
   '/settings/group-memberships': typeof AppSettingsaccessGroupMembershipsRoute
   '/settings/groups': typeof AppSettingsaccessGroupsRoute
   '/settings/role-assignments': typeof AppSettingsaccessRoleAssignmentsRoute
   '/settings/roles': typeof AppSettingsaccessRolesRoute
   '/settings/service-accounts': typeof AppSettingsaccessServiceAccountsRoute
   '/settings/users': typeof AppSettingsaccessUsersRoute
-  '/develop/design-system/': typeof AppDevelopDesignSystemIndexRoute
-  '/develop/design-system/components/$componentId': typeof AppDevelopDesignSystemComponentsComponentIdRouteRoute
-  '/develop/design-system/patterns/object-table': typeof AppDevelopDesignSystemPatternsObjectTableRoute
+  '/developer/design-system/': typeof AppDeveloperDesignSystemIndexRoute
+  '/developer/design-system/components/$componentId': typeof AppDeveloperDesignSystemComponentsComponentIdRouteRoute
+  '/developer/design-system/patterns/object-table': typeof AppDeveloperDesignSystemPatternsObjectTableRoute
 }
 export interface FileRoutesByTo {
   '/access-denied': typeof AccessDeniedRoute
@@ -303,28 +303,28 @@ export interface FileRoutesByTo {
   '/companies': typeof AppsalesCompaniesRoute
   '/contacts': typeof AppsalesContactsRoute
   '/deals': typeof AppsalesDealsRoute
-  '/interactions': typeof AppsalesInteractionsRoute
   '/leads': typeof AppsalesLeadsRoute
   '/line-items': typeof AppsalesLineItemsRoute
-  '/develop/api': typeof AppDevelopApiRoute
-  '/develop/mcp': typeof AppDevelopMcpRoute
-  '/develop/model': typeof AppDevelopModelRoute
-  '/develop/sdk': typeof AppDevelopSdkRoute
+  '/notes': typeof AppsalesNotesRoute
+  '/developer/api': typeof AppDeveloperApiRoute
+  '/developer/mcp': typeof AppDeveloperMcpRoute
+  '/developer/model': typeof AppDeveloperModelRoute
+  '/developer/sdk': typeof AppDeveloperSdkRoute
   '/settings/appearance': typeof AppSettingsAppearanceRoute
   '/settings/profile': typeof AppSettingsProfileRoute
   '/api/v1/$': typeof ApiV1SplatRoute
-  '/develop': typeof AppDevelopIndexRoute
+  '/developer': typeof AppDeveloperIndexRoute
   '/settings': typeof AppSettingsIndexRoute
-  '/develop/design-system/foundations': typeof AppDevelopDesignSystemFoundationsRoute
+  '/developer/design-system/foundations': typeof AppDeveloperDesignSystemFoundationsRoute
   '/settings/group-memberships': typeof AppSettingsaccessGroupMembershipsRoute
   '/settings/groups': typeof AppSettingsaccessGroupsRoute
   '/settings/role-assignments': typeof AppSettingsaccessRoleAssignmentsRoute
   '/settings/roles': typeof AppSettingsaccessRolesRoute
   '/settings/service-accounts': typeof AppSettingsaccessServiceAccountsRoute
   '/settings/users': typeof AppSettingsaccessUsersRoute
-  '/develop/design-system': typeof AppDevelopDesignSystemIndexRoute
-  '/develop/design-system/components/$componentId': typeof AppDevelopDesignSystemComponentsComponentIdRouteRoute
-  '/develop/design-system/patterns/object-table': typeof AppDevelopDesignSystemPatternsObjectTableRoute
+  '/developer/design-system': typeof AppDeveloperDesignSystemIndexRoute
+  '/developer/design-system/components/$componentId': typeof AppDeveloperDesignSystemComponentsComponentIdRouteRoute
+  '/developer/design-system/patterns/object-table': typeof AppDeveloperDesignSystemPatternsObjectTableRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -334,39 +334,39 @@ export interface FileRoutesById {
   '/sign-in': typeof SignInRoute
   '/sign-out': typeof SignOutRoute
   '/_app/(sales)': typeof AppsalesRouteRouteWithChildren
-  '/_app/develop': typeof AppDevelopRouteRouteWithChildren
+  '/_app/developer': typeof AppDeveloperRouteRouteWithChildren
   '/_app/settings': typeof AppSettingsRouteRouteWithChildren
   '/api/description': typeof ApiDescriptionRoute
   '/api/mcp': typeof ApiMcpRoute
   '/api/openapi': typeof ApiOpenapiRoute
   '/auth/local-session': typeof AuthLocalSessionRoute
   '/_app/': typeof AppIndexRoute
-  '/_app/develop/design-system': typeof AppDevelopDesignSystemRouteRouteWithChildren
+  '/_app/developer/design-system': typeof AppDeveloperDesignSystemRouteRouteWithChildren
   '/_app/(sales)/companies': typeof AppsalesCompaniesRoute
   '/_app/(sales)/contacts': typeof AppsalesContactsRoute
   '/_app/(sales)/deals': typeof AppsalesDealsRoute
-  '/_app/(sales)/interactions': typeof AppsalesInteractionsRoute
   '/_app/(sales)/leads': typeof AppsalesLeadsRoute
   '/_app/(sales)/line-items': typeof AppsalesLineItemsRoute
-  '/_app/develop/api': typeof AppDevelopApiRoute
-  '/_app/develop/mcp': typeof AppDevelopMcpRoute
-  '/_app/develop/model': typeof AppDevelopModelRoute
-  '/_app/develop/sdk': typeof AppDevelopSdkRoute
+  '/_app/(sales)/notes': typeof AppsalesNotesRoute
+  '/_app/developer/api': typeof AppDeveloperApiRoute
+  '/_app/developer/mcp': typeof AppDeveloperMcpRoute
+  '/_app/developer/model': typeof AppDeveloperModelRoute
+  '/_app/developer/sdk': typeof AppDeveloperSdkRoute
   '/_app/settings/appearance': typeof AppSettingsAppearanceRoute
   '/_app/settings/profile': typeof AppSettingsProfileRoute
   '/api/v1/$': typeof ApiV1SplatRoute
-  '/_app/develop/': typeof AppDevelopIndexRoute
+  '/_app/developer/': typeof AppDeveloperIndexRoute
   '/_app/settings/': typeof AppSettingsIndexRoute
-  '/_app/develop/design-system/foundations': typeof AppDevelopDesignSystemFoundationsRoute
+  '/_app/developer/design-system/foundations': typeof AppDeveloperDesignSystemFoundationsRoute
   '/_app/settings/(access)/group-memberships': typeof AppSettingsaccessGroupMembershipsRoute
   '/_app/settings/(access)/groups': typeof AppSettingsaccessGroupsRoute
   '/_app/settings/(access)/role-assignments': typeof AppSettingsaccessRoleAssignmentsRoute
   '/_app/settings/(access)/roles': typeof AppSettingsaccessRolesRoute
   '/_app/settings/(access)/service-accounts': typeof AppSettingsaccessServiceAccountsRoute
   '/_app/settings/(access)/users': typeof AppSettingsaccessUsersRoute
-  '/_app/develop/design-system/': typeof AppDevelopDesignSystemIndexRoute
-  '/_app/develop/design-system/components/$componentId': typeof AppDevelopDesignSystemComponentsComponentIdRouteRoute
-  '/_app/develop/design-system/patterns/object-table': typeof AppDevelopDesignSystemPatternsObjectTableRoute
+  '/_app/developer/design-system/': typeof AppDeveloperDesignSystemIndexRoute
+  '/_app/developer/design-system/components/$componentId': typeof AppDeveloperDesignSystemComponentsComponentIdRouteRoute
+  '/_app/developer/design-system/patterns/object-table': typeof AppDeveloperDesignSystemPatternsObjectTableRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -376,38 +376,38 @@ export interface FileRouteTypes {
     | '/health'
     | '/sign-in'
     | '/sign-out'
-    | '/develop'
+    | '/developer'
     | '/settings'
     | '/api/description'
     | '/api/mcp'
     | '/api/openapi'
     | '/auth/local-session'
-    | '/develop/design-system'
+    | '/developer/design-system'
     | '/companies'
     | '/contacts'
     | '/deals'
-    | '/interactions'
     | '/leads'
     | '/line-items'
-    | '/develop/api'
-    | '/develop/mcp'
-    | '/develop/model'
-    | '/develop/sdk'
+    | '/notes'
+    | '/developer/api'
+    | '/developer/mcp'
+    | '/developer/model'
+    | '/developer/sdk'
     | '/settings/appearance'
     | '/settings/profile'
     | '/api/v1/$'
-    | '/develop/'
+    | '/developer/'
     | '/settings/'
-    | '/develop/design-system/foundations'
+    | '/developer/design-system/foundations'
     | '/settings/group-memberships'
     | '/settings/groups'
     | '/settings/role-assignments'
     | '/settings/roles'
     | '/settings/service-accounts'
     | '/settings/users'
-    | '/develop/design-system/'
-    | '/develop/design-system/components/$componentId'
-    | '/develop/design-system/patterns/object-table'
+    | '/developer/design-system/'
+    | '/developer/design-system/components/$componentId'
+    | '/developer/design-system/patterns/object-table'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/access-denied'
@@ -422,28 +422,28 @@ export interface FileRouteTypes {
     | '/companies'
     | '/contacts'
     | '/deals'
-    | '/interactions'
     | '/leads'
     | '/line-items'
-    | '/develop/api'
-    | '/develop/mcp'
-    | '/develop/model'
-    | '/develop/sdk'
+    | '/notes'
+    | '/developer/api'
+    | '/developer/mcp'
+    | '/developer/model'
+    | '/developer/sdk'
     | '/settings/appearance'
     | '/settings/profile'
     | '/api/v1/$'
-    | '/develop'
+    | '/developer'
     | '/settings'
-    | '/develop/design-system/foundations'
+    | '/developer/design-system/foundations'
     | '/settings/group-memberships'
     | '/settings/groups'
     | '/settings/role-assignments'
     | '/settings/roles'
     | '/settings/service-accounts'
     | '/settings/users'
-    | '/develop/design-system'
-    | '/develop/design-system/components/$componentId'
-    | '/develop/design-system/patterns/object-table'
+    | '/developer/design-system'
+    | '/developer/design-system/components/$componentId'
+    | '/developer/design-system/patterns/object-table'
   id:
     | '__root__'
     | '/_app'
@@ -452,39 +452,39 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/sign-out'
     | '/_app/(sales)'
-    | '/_app/develop'
+    | '/_app/developer'
     | '/_app/settings'
     | '/api/description'
     | '/api/mcp'
     | '/api/openapi'
     | '/auth/local-session'
     | '/_app/'
-    | '/_app/develop/design-system'
+    | '/_app/developer/design-system'
     | '/_app/(sales)/companies'
     | '/_app/(sales)/contacts'
     | '/_app/(sales)/deals'
-    | '/_app/(sales)/interactions'
     | '/_app/(sales)/leads'
     | '/_app/(sales)/line-items'
-    | '/_app/develop/api'
-    | '/_app/develop/mcp'
-    | '/_app/develop/model'
-    | '/_app/develop/sdk'
+    | '/_app/(sales)/notes'
+    | '/_app/developer/api'
+    | '/_app/developer/mcp'
+    | '/_app/developer/model'
+    | '/_app/developer/sdk'
     | '/_app/settings/appearance'
     | '/_app/settings/profile'
     | '/api/v1/$'
-    | '/_app/develop/'
+    | '/_app/developer/'
     | '/_app/settings/'
-    | '/_app/develop/design-system/foundations'
+    | '/_app/developer/design-system/foundations'
     | '/_app/settings/(access)/group-memberships'
     | '/_app/settings/(access)/groups'
     | '/_app/settings/(access)/role-assignments'
     | '/_app/settings/(access)/roles'
     | '/_app/settings/(access)/service-accounts'
     | '/_app/settings/(access)/users'
-    | '/_app/develop/design-system/'
-    | '/_app/develop/design-system/components/$componentId'
-    | '/_app/develop/design-system/patterns/object-table'
+    | '/_app/developer/design-system/'
+    | '/_app/developer/design-system/components/$componentId'
+    | '/_app/developer/design-system/patterns/object-table'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -579,11 +579,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsRouteRouteImport
       parentRoute: typeof AppRouteRoute
     }
-    '/_app/develop': {
-      id: '/_app/develop'
-      path: '/develop'
-      fullPath: '/develop'
-      preLoaderRoute: typeof AppDevelopRouteRouteImport
+    '/_app/developer': {
+      id: '/_app/developer'
+      path: '/developer'
+      fullPath: '/developer'
+      preLoaderRoute: typeof AppDeveloperRouteRouteImport
       parentRoute: typeof AppRouteRoute
     }
     '/_app/(sales)': {
@@ -600,12 +600,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsIndexRouteImport
       parentRoute: typeof AppSettingsRouteRoute
     }
-    '/_app/develop/': {
-      id: '/_app/develop/'
+    '/_app/developer/': {
+      id: '/_app/developer/'
       path: '/'
-      fullPath: '/develop/'
-      preLoaderRoute: typeof AppDevelopIndexRouteImport
-      parentRoute: typeof AppDevelopRouteRoute
+      fullPath: '/developer/'
+      preLoaderRoute: typeof AppDeveloperIndexRouteImport
+      parentRoute: typeof AppDeveloperRouteRoute
     }
     '/api/v1/$': {
       id: '/api/v1/$'
@@ -628,33 +628,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsAppearanceRouteImport
       parentRoute: typeof AppSettingsRouteRoute
     }
-    '/_app/develop/sdk': {
-      id: '/_app/develop/sdk'
+    '/_app/developer/sdk': {
+      id: '/_app/developer/sdk'
       path: '/sdk'
-      fullPath: '/develop/sdk'
-      preLoaderRoute: typeof AppDevelopSdkRouteImport
-      parentRoute: typeof AppDevelopRouteRoute
+      fullPath: '/developer/sdk'
+      preLoaderRoute: typeof AppDeveloperSdkRouteImport
+      parentRoute: typeof AppDeveloperRouteRoute
     }
-    '/_app/develop/model': {
-      id: '/_app/develop/model'
+    '/_app/developer/model': {
+      id: '/_app/developer/model'
       path: '/model'
-      fullPath: '/develop/model'
-      preLoaderRoute: typeof AppDevelopModelRouteImport
-      parentRoute: typeof AppDevelopRouteRoute
+      fullPath: '/developer/model'
+      preLoaderRoute: typeof AppDeveloperModelRouteImport
+      parentRoute: typeof AppDeveloperRouteRoute
     }
-    '/_app/develop/mcp': {
-      id: '/_app/develop/mcp'
+    '/_app/developer/mcp': {
+      id: '/_app/developer/mcp'
       path: '/mcp'
-      fullPath: '/develop/mcp'
-      preLoaderRoute: typeof AppDevelopMcpRouteImport
-      parentRoute: typeof AppDevelopRouteRoute
+      fullPath: '/developer/mcp'
+      preLoaderRoute: typeof AppDeveloperMcpRouteImport
+      parentRoute: typeof AppDeveloperRouteRoute
     }
-    '/_app/develop/api': {
-      id: '/_app/develop/api'
+    '/_app/developer/api': {
+      id: '/_app/developer/api'
       path: '/api'
-      fullPath: '/develop/api'
-      preLoaderRoute: typeof AppDevelopApiRouteImport
-      parentRoute: typeof AppDevelopRouteRoute
+      fullPath: '/developer/api'
+      preLoaderRoute: typeof AppDeveloperApiRouteImport
+      parentRoute: typeof AppDeveloperRouteRoute
+    }
+    '/_app/(sales)/notes': {
+      id: '/_app/(sales)/notes'
+      path: '/notes'
+      fullPath: '/notes'
+      preLoaderRoute: typeof AppsalesNotesRouteImport
+      parentRoute: typeof AppsalesRouteRoute
     }
     '/_app/(sales)/line-items': {
       id: '/_app/(sales)/line-items'
@@ -668,13 +675,6 @@ declare module '@tanstack/react-router' {
       path: '/leads'
       fullPath: '/leads'
       preLoaderRoute: typeof AppsalesLeadsRouteImport
-      parentRoute: typeof AppsalesRouteRoute
-    }
-    '/_app/(sales)/interactions': {
-      id: '/_app/(sales)/interactions'
-      path: '/interactions'
-      fullPath: '/interactions'
-      preLoaderRoute: typeof AppsalesInteractionsRouteImport
       parentRoute: typeof AppsalesRouteRoute
     }
     '/_app/(sales)/deals': {
@@ -698,19 +698,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppsalesCompaniesRouteImport
       parentRoute: typeof AppsalesRouteRoute
     }
-    '/_app/develop/design-system': {
-      id: '/_app/develop/design-system'
+    '/_app/developer/design-system': {
+      id: '/_app/developer/design-system'
       path: '/design-system'
-      fullPath: '/develop/design-system'
-      preLoaderRoute: typeof AppDevelopDesignSystemRouteRouteImport
-      parentRoute: typeof AppDevelopRouteRoute
+      fullPath: '/developer/design-system'
+      preLoaderRoute: typeof AppDeveloperDesignSystemRouteRouteImport
+      parentRoute: typeof AppDeveloperRouteRoute
     }
-    '/_app/develop/design-system/': {
-      id: '/_app/develop/design-system/'
+    '/_app/developer/design-system/': {
+      id: '/_app/developer/design-system/'
       path: '/'
-      fullPath: '/develop/design-system/'
-      preLoaderRoute: typeof AppDevelopDesignSystemIndexRouteImport
-      parentRoute: typeof AppDevelopDesignSystemRouteRoute
+      fullPath: '/developer/design-system/'
+      preLoaderRoute: typeof AppDeveloperDesignSystemIndexRouteImport
+      parentRoute: typeof AppDeveloperDesignSystemRouteRoute
     }
     '/_app/settings/(access)/users': {
       id: '/_app/settings/(access)/users'
@@ -754,26 +754,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsaccessGroupMembershipsRouteImport
       parentRoute: typeof AppSettingsRouteRoute
     }
-    '/_app/develop/design-system/foundations': {
-      id: '/_app/develop/design-system/foundations'
+    '/_app/developer/design-system/foundations': {
+      id: '/_app/developer/design-system/foundations'
       path: '/foundations'
-      fullPath: '/develop/design-system/foundations'
-      preLoaderRoute: typeof AppDevelopDesignSystemFoundationsRouteImport
-      parentRoute: typeof AppDevelopDesignSystemRouteRoute
+      fullPath: '/developer/design-system/foundations'
+      preLoaderRoute: typeof AppDeveloperDesignSystemFoundationsRouteImport
+      parentRoute: typeof AppDeveloperDesignSystemRouteRoute
     }
-    '/_app/develop/design-system/patterns/object-table': {
-      id: '/_app/develop/design-system/patterns/object-table'
+    '/_app/developer/design-system/patterns/object-table': {
+      id: '/_app/developer/design-system/patterns/object-table'
       path: '/patterns/object-table'
-      fullPath: '/develop/design-system/patterns/object-table'
-      preLoaderRoute: typeof AppDevelopDesignSystemPatternsObjectTableRouteImport
-      parentRoute: typeof AppDevelopDesignSystemRouteRoute
+      fullPath: '/developer/design-system/patterns/object-table'
+      preLoaderRoute: typeof AppDeveloperDesignSystemPatternsObjectTableRouteImport
+      parentRoute: typeof AppDeveloperDesignSystemRouteRoute
     }
-    '/_app/develop/design-system/components/$componentId': {
-      id: '/_app/develop/design-system/components/$componentId'
+    '/_app/developer/design-system/components/$componentId': {
+      id: '/_app/developer/design-system/components/$componentId'
       path: '/components/$componentId'
-      fullPath: '/develop/design-system/components/$componentId'
-      preLoaderRoute: typeof AppDevelopDesignSystemComponentsComponentIdRouteRouteImport
-      parentRoute: typeof AppDevelopDesignSystemRouteRoute
+      fullPath: '/developer/design-system/components/$componentId'
+      preLoaderRoute: typeof AppDeveloperDesignSystemComponentsComponentIdRouteRouteImport
+      parentRoute: typeof AppDeveloperDesignSystemRouteRoute
     }
   }
 }
@@ -782,69 +782,68 @@ interface AppsalesRouteRouteChildren {
   AppsalesCompaniesRoute: typeof AppsalesCompaniesRoute
   AppsalesContactsRoute: typeof AppsalesContactsRoute
   AppsalesDealsRoute: typeof AppsalesDealsRoute
-  AppsalesInteractionsRoute: typeof AppsalesInteractionsRoute
   AppsalesLeadsRoute: typeof AppsalesLeadsRoute
   AppsalesLineItemsRoute: typeof AppsalesLineItemsRoute
+  AppsalesNotesRoute: typeof AppsalesNotesRoute
 }
 
 const AppsalesRouteRouteChildren: AppsalesRouteRouteChildren = {
   AppsalesCompaniesRoute: AppsalesCompaniesRoute,
   AppsalesContactsRoute: AppsalesContactsRoute,
   AppsalesDealsRoute: AppsalesDealsRoute,
-  AppsalesInteractionsRoute: AppsalesInteractionsRoute,
   AppsalesLeadsRoute: AppsalesLeadsRoute,
   AppsalesLineItemsRoute: AppsalesLineItemsRoute,
+  AppsalesNotesRoute: AppsalesNotesRoute,
 }
 
 const AppsalesRouteRouteWithChildren = AppsalesRouteRoute._addFileChildren(
   AppsalesRouteRouteChildren,
 )
 
-interface AppDevelopDesignSystemRouteRouteChildren {
-  AppDevelopDesignSystemFoundationsRoute: typeof AppDevelopDesignSystemFoundationsRoute
-  AppDevelopDesignSystemIndexRoute: typeof AppDevelopDesignSystemIndexRoute
-  AppDevelopDesignSystemComponentsComponentIdRouteRoute: typeof AppDevelopDesignSystemComponentsComponentIdRouteRoute
-  AppDevelopDesignSystemPatternsObjectTableRoute: typeof AppDevelopDesignSystemPatternsObjectTableRoute
+interface AppDeveloperDesignSystemRouteRouteChildren {
+  AppDeveloperDesignSystemFoundationsRoute: typeof AppDeveloperDesignSystemFoundationsRoute
+  AppDeveloperDesignSystemIndexRoute: typeof AppDeveloperDesignSystemIndexRoute
+  AppDeveloperDesignSystemComponentsComponentIdRouteRoute: typeof AppDeveloperDesignSystemComponentsComponentIdRouteRoute
+  AppDeveloperDesignSystemPatternsObjectTableRoute: typeof AppDeveloperDesignSystemPatternsObjectTableRoute
 }
 
-const AppDevelopDesignSystemRouteRouteChildren: AppDevelopDesignSystemRouteRouteChildren =
+const AppDeveloperDesignSystemRouteRouteChildren: AppDeveloperDesignSystemRouteRouteChildren =
   {
-    AppDevelopDesignSystemFoundationsRoute:
-      AppDevelopDesignSystemFoundationsRoute,
-    AppDevelopDesignSystemIndexRoute: AppDevelopDesignSystemIndexRoute,
-    AppDevelopDesignSystemComponentsComponentIdRouteRoute:
-      AppDevelopDesignSystemComponentsComponentIdRouteRoute,
-    AppDevelopDesignSystemPatternsObjectTableRoute:
-      AppDevelopDesignSystemPatternsObjectTableRoute,
+    AppDeveloperDesignSystemFoundationsRoute:
+      AppDeveloperDesignSystemFoundationsRoute,
+    AppDeveloperDesignSystemIndexRoute: AppDeveloperDesignSystemIndexRoute,
+    AppDeveloperDesignSystemComponentsComponentIdRouteRoute:
+      AppDeveloperDesignSystemComponentsComponentIdRouteRoute,
+    AppDeveloperDesignSystemPatternsObjectTableRoute:
+      AppDeveloperDesignSystemPatternsObjectTableRoute,
   }
 
-const AppDevelopDesignSystemRouteRouteWithChildren =
-  AppDevelopDesignSystemRouteRoute._addFileChildren(
-    AppDevelopDesignSystemRouteRouteChildren,
+const AppDeveloperDesignSystemRouteRouteWithChildren =
+  AppDeveloperDesignSystemRouteRoute._addFileChildren(
+    AppDeveloperDesignSystemRouteRouteChildren,
   )
 
-interface AppDevelopRouteRouteChildren {
-  AppDevelopDesignSystemRouteRoute: typeof AppDevelopDesignSystemRouteRouteWithChildren
-  AppDevelopApiRoute: typeof AppDevelopApiRoute
-  AppDevelopMcpRoute: typeof AppDevelopMcpRoute
-  AppDevelopModelRoute: typeof AppDevelopModelRoute
-  AppDevelopSdkRoute: typeof AppDevelopSdkRoute
-  AppDevelopIndexRoute: typeof AppDevelopIndexRoute
+interface AppDeveloperRouteRouteChildren {
+  AppDeveloperDesignSystemRouteRoute: typeof AppDeveloperDesignSystemRouteRouteWithChildren
+  AppDeveloperApiRoute: typeof AppDeveloperApiRoute
+  AppDeveloperMcpRoute: typeof AppDeveloperMcpRoute
+  AppDeveloperModelRoute: typeof AppDeveloperModelRoute
+  AppDeveloperSdkRoute: typeof AppDeveloperSdkRoute
+  AppDeveloperIndexRoute: typeof AppDeveloperIndexRoute
 }
 
-const AppDevelopRouteRouteChildren: AppDevelopRouteRouteChildren = {
-  AppDevelopDesignSystemRouteRoute:
-    AppDevelopDesignSystemRouteRouteWithChildren,
-  AppDevelopApiRoute: AppDevelopApiRoute,
-  AppDevelopMcpRoute: AppDevelopMcpRoute,
-  AppDevelopModelRoute: AppDevelopModelRoute,
-  AppDevelopSdkRoute: AppDevelopSdkRoute,
-  AppDevelopIndexRoute: AppDevelopIndexRoute,
+const AppDeveloperRouteRouteChildren: AppDeveloperRouteRouteChildren = {
+  AppDeveloperDesignSystemRouteRoute:
+    AppDeveloperDesignSystemRouteRouteWithChildren,
+  AppDeveloperApiRoute: AppDeveloperApiRoute,
+  AppDeveloperMcpRoute: AppDeveloperMcpRoute,
+  AppDeveloperModelRoute: AppDeveloperModelRoute,
+  AppDeveloperSdkRoute: AppDeveloperSdkRoute,
+  AppDeveloperIndexRoute: AppDeveloperIndexRoute,
 }
 
-const AppDevelopRouteRouteWithChildren = AppDevelopRouteRoute._addFileChildren(
-  AppDevelopRouteRouteChildren,
-)
+const AppDeveloperRouteRouteWithChildren =
+  AppDeveloperRouteRoute._addFileChildren(AppDeveloperRouteRouteChildren)
 
 interface AppSettingsRouteRouteChildren {
   AppSettingsAppearanceRoute: typeof AppSettingsAppearanceRoute
@@ -876,14 +875,14 @@ const AppSettingsRouteRouteWithChildren =
 
 interface AppRouteRouteChildren {
   AppsalesRouteRoute: typeof AppsalesRouteRouteWithChildren
-  AppDevelopRouteRoute: typeof AppDevelopRouteRouteWithChildren
+  AppDeveloperRouteRoute: typeof AppDeveloperRouteRouteWithChildren
   AppSettingsRouteRoute: typeof AppSettingsRouteRouteWithChildren
   AppIndexRoute: typeof AppIndexRoute
 }
 
 const AppRouteRouteChildren: AppRouteRouteChildren = {
   AppsalesRouteRoute: AppsalesRouteRouteWithChildren,
-  AppDevelopRouteRoute: AppDevelopRouteRouteWithChildren,
+  AppDeveloperRouteRoute: AppDeveloperRouteRouteWithChildren,
   AppSettingsRouteRoute: AppSettingsRouteRouteWithChildren,
   AppIndexRoute: AppIndexRoute,
 }

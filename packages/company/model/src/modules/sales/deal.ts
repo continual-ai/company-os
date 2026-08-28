@@ -1,6 +1,7 @@
 import { defineObject, schema } from "@company/runtime"
 
 import { Company } from "./company"
+import { NoteSubject } from "./note-subject"
 
 export const Deal = defineObject({
   id: "deal",
@@ -9,6 +10,7 @@ export const Deal = defineObject({
   parent: Company,
   pluralName: "Deals",
   description: "A potential commercial agreement with a company.",
+  implements: [{ interface: NoteSubject }],
   properties: {
     name: schema.string({
       label: "Name",

@@ -9,7 +9,11 @@ import { LeadService } from "@/server/modules/sales/lead-service"
 
 import { Links } from "./link-service"
 import { ObjectRepositories } from "./object-repositories"
-import { makeBaseObjectService, makeObjectService } from "./object-service"
+import {
+  makeBaseObjectService,
+  makeMutableObjectService,
+  makeObjectService,
+} from "./object-service"
 
 const make = Effect.gen(function* () {
   const repositories = yield* ObjectRepositories
@@ -21,28 +25,34 @@ const make = Effect.gen(function* () {
         Model.objects.anonymousActor,
         repositories.anonymousActor
       ),
-      company: yield* makeObjectService(
+      company: yield* makeMutableObjectService(
         Model.objects.company,
         repositories.company
       ),
-      contact: yield* makeObjectService(
+      contact: yield* makeMutableObjectService(
         Model.objects.contact,
         repositories.contact
       ),
-      deal: yield* makeObjectService(Model.objects.deal, repositories.deal),
-      group: yield* makeObjectService(Model.objects.group, repositories.group),
+      deal: yield* makeMutableObjectService(
+        Model.objects.deal,
+        repositories.deal
+      ),
+      group: yield* makeMutableObjectService(
+        Model.objects.group,
+        repositories.group
+      ),
       groupMembership: yield* makeObjectService(
         Model.objects.groupMembership,
         repositories.groupMembership
       ),
-      interaction: yield* makeObjectService(
-        Model.objects.interaction,
-        repositories.interaction
-      ),
       lead: yield* LeadService,
-      lineItem: yield* makeObjectService(
+      lineItem: yield* makeMutableObjectService(
         Model.objects.lineItem,
         repositories.lineItem
+      ),
+      note: yield* makeMutableObjectService(
+        Model.objects.note,
+        repositories.note
       ),
       principalSet: yield* makeBaseObjectService(
         Model.objects.principalSet,

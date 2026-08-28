@@ -95,9 +95,9 @@ const operatorObjectTypes = new Set([
   "company",
   "contact",
   "deal",
-  "interaction",
   "lead",
   "lineItem",
+  "note",
 ])
 
 /** Business-data permissions granted to the built-in non-administrator role. */

@@ -44,8 +44,16 @@ describe("PostgreSQL schema", () => {
     expect(objectColumns.createdAt.hasDefault).toBe(true)
     expect(objectColumns.etag.hasDefault).toBe(true)
     expect(objectColumns.updatedAt.hasDefault).toBe(true)
-    expect(Storage.objects.interaction.occurredAt.getSQLType()).toBe(
-      "timestamp with time zone"
+    expect(getTableName(Storage.interfaces.noteSubject)).toBe(
+      "interface_note_subject"
+    )
+    expect(Object.keys(getTableColumns(Storage.objects.note))).toEqual([
+      "id",
+      "parentId",
+      "content",
+    ])
+    expect(Storage.relations.note?.relations.subjects?.relationType).toBe(
+      "many"
     )
     expect(Storage.objects.deal.expectedCloseDate.getSQLType()).toBe("date")
     expect(Storage.objects.role.permissions.dimensions).toBe(1)

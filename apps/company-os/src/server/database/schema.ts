@@ -12,6 +12,7 @@ export const roots = Storage.core.roots
 export const actors = Storage.interfaces.actor
 export const authorizationScopes = Storage.interfaces.authorizationScope
 export const identities = Storage.interfaces.identity
+export const noteSubjects = Storage.interfaces.noteSubject
 export const parties = Storage.interfaces.party
 export const principals = Storage.interfaces.principal
 export const principalSets = Storage.objects.principalSet
@@ -21,15 +22,15 @@ export const contacts = Storage.objects.contact
 export const deals = Storage.objects.deal
 export const groupMemberships = Storage.objects.groupMembership
 export const groups = Storage.objects.group
-export const interactions = Storage.objects.interaction
 export const leads = Storage.objects.lead
 export const lineItems = Storage.objects.lineItem
+export const notes = Storage.objects.note
 export const roleAssignments = Storage.objects.roleAssignment
 export const roles = Storage.objects.role
 export const serviceAccounts = Storage.objects.serviceAccount
 export const users = Storage.objects.user
 export const contactPrimaryCompanies = Storage.linkTables.contactPrimaryCompany
-export const interactionRegarding = Storage.linkTables.interactionRegarding
+export const noteSubjectLinks = Storage.linkTables.noteSubjects
 export const relations = Storage.relations
 
 /** Stable external-subject mappings; credentials and sessions remain outside Company OS. */
