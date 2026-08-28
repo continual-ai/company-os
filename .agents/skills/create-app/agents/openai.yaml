@@ -1,0 +1,4 @@
+interface:
+  display_name: "Create App"
+  short_description: "Instantiate a runnable Company OS app template"
+  default_prompt: "Use $create-app to instantiate and bootstrap a Company OS application template."

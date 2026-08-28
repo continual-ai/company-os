@@ -2,20 +2,30 @@ import { defineRule } from "@oxlint/plugins"
 import type { ESTree } from "@oxlint/plugins"
 
 const APPLICATION_PACKAGE_NAMES = [
+  "@company-template/client-portal",
+  "@company-template/company-os",
+  "@company-template/marketing-site",
   "client-portal",
   "company-os",
   "marketing-site",
 ] as const
 
+const COMPANY_PACKAGE_NAMES = ["model", "postgres", "runtime", "ui"] as const
+
 function packageNameForFile(filename: string): string | null {
   const normalizedFilename = filename.replaceAll("\\", "/")
   const libraryMatch = normalizedFilename.match(
-    /(?:^|\/)packages\/([^/]+)\/([^/]+)(?:\/|$)/
+    /(?:^|\/)packages\/([^/]+)(?:\/|$)/
   )
-  if (libraryMatch) return `@${libraryMatch[1]}/${libraryMatch[2]}`
+  if (
+    libraryMatch &&
+    COMPANY_PACKAGE_NAMES.some((name) => name === libraryMatch[1])
+  ) {
+    return `@company/${libraryMatch[1]}`
+  }
 
   const applicationMatch = normalizedFilename.match(
-    /(?:^|\/)apps\/([^/]+)(?:\/|$)/
+    /(?:^|\/)(?:apps|templates)\/([^/]+)(?:\/|$)/
   )
   return applicationMatch ? `app:${applicationMatch[1]}` : null
 }

@@ -2,10 +2,12 @@ import { defineRule } from "@oxlint/plugins"
 
 const ALLOWED_FRAMEWORK_FILENAMES = new Set(["$", "__root"])
 const KEBAB_CASE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
+const TANSTACK_DYNAMIC_ROUTE =
+  /[\\/]src[\\/]routes[\\/](?:.*[\\/])?\$[a-z][A-Za-z0-9]*\.[cm]?[jt]sx?$/
 const NUMBERED_MIGRATION =
   /[\\/]migrations[\\/]\d+_[a-z0-9]+(?:-[a-z0-9]+)*\.[cm]?tsx?$/
 const RESERVED_START_ENTRYPOINT =
-  /[\\/]apps[\\/][^\\/]+[\\/]src[\\/](?:client|server|start)\.[cm]?[jt]sx?$/
+  /[\\/](?:apps|templates)[\\/][^\\/]+[\\/]src[\\/](?:client|server|start)\.[cm]?[jt]sx?$/
 
 function sourceName(filename: string): string {
   const basename = filename.split(/[\\/]/).at(-1) ?? filename
@@ -46,6 +48,7 @@ export const filenameCaseRule = defineRule({
         if (
           ALLOWED_FRAMEWORK_FILENAMES.has(name) ||
           KEBAB_CASE.test(name) ||
+          TANSTACK_DYNAMIC_ROUTE.test(context.filename) ||
           NUMBERED_MIGRATION.test(context.filename)
         )
           return

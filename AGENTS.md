@@ -30,6 +30,8 @@ planning artifact instead.
 ## Documentation and comments
 
 - Prefer clear names, types, small modules, and tests over comments that narrate the code.
+- Do not add UI copy that merely narrates visible structure or implementation. Supporting text must
+  convey domain meaning, a consequence, or necessary instruction.
 - Add concise TSDoc to deliberate public exports when callers need a non-obvious contract,
   invariant, default, or ownership boundary. Do not restate the TypeScript signature.
 - Use implementation comments only to explain why something is necessary, especially safety
@@ -49,7 +51,9 @@ Direction, and Vision distinct. The canonical skills live in `.agents/skills`; `
 
 ## Ownership
 
-- `@company/*` and `apps/*` are vendored, source-owned parts of the standalone Company OS.
+- `@company/*`, `templates/*`, and `apps/*` are vendored, source-owned parts of the standalone
+  Company OS. Templates are executable golden masters; apps are instantiated, company-owned
+  copies and must never import template source.
 - `@company/runtime` is the portable definition and execution foundation. It must not import the
   company model, UI, storage adapter, or applications.
 - `@company/model` is browser-safe semantic model source. It may depend on the portable
@@ -61,8 +65,9 @@ Direction, and Vision distinct. The canonical skills live in `.agents/skills`; `
   persistence, or applications.
 - Browser applications may use public browser-safe package exports. They must not import another
   app or private Company OS server modules.
-- `apps/company-os` is the central product and private server composition boundary. Other apps are
-  focused interfaces over its governed capabilities, not independent business authorities.
+- The instantiated `apps/company-os` is the central product and private server composition
+  boundary. `templates/company-os` holds its runnable starter. Other apps are focused interfaces
+  over the central app's governed capabilities, not independent business authorities.
 - Hosted Continual integration must remain optional. Add a source-owned adapter only for a concrete
   platform contract; environment injection alone does not justify another package.
 

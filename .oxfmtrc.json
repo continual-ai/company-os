@@ -9,7 +9,7 @@
     "sortScripts": true
   },
   "sortTailwindcss": {
-    "stylesheet": "packages/company/ui/src/styles/globals.css",
+    "stylesheet": "packages/ui/src/styles/globals.css",
     "functions": ["cn", "cva"]
   },
   "ignorePatterns": [

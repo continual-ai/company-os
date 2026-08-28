@@ -2,9 +2,9 @@ import { defineRule } from "@oxlint/plugins"
 import type { ESTree } from "@oxlint/plugins"
 
 const PUBLIC_PACKAGE_ENTRYPOINTS = [
-  "packages/company/model/src/index.ts",
-  "packages/company/postgres/src/index.ts",
-  "packages/company/runtime/src/index.ts",
+  "packages/model/src/index.ts",
+  "packages/postgres/src/index.ts",
+  "packages/runtime/src/index.ts",
 ] as const
 
 function isPublicPackageEntrypoint(filename: string): boolean {

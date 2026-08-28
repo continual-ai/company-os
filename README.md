@@ -47,11 +47,11 @@ pnpm setup
 pnpm dev
 ```
 
-Open <http://localhost:3002> and choose a local development identity. Create a lead, convert it,
+Open <http://localhost:3202> and choose a local development identity. Create a lead, convert it,
 or inspect the model and generated interfaces in the **Developer Center**.
 
-`pnpm dev` runs Company OS. Use `pnpm dev:all` to also run the example client portal at
-<http://localhost:3001> and marketing site at <http://localhost:3000>.
+`pnpm dev` runs the Company OS template. Use `pnpm dev:all` to also run the client portal template at
+<http://localhost:3201> and marketing site template at <http://localhost:3200>.
 
 ## Try the included operation
 
@@ -90,19 +90,35 @@ Code owns the work that must be predictable: durable state, permissions, invaria
 and consequential actions. AI can interpret information, research, plan, recommend, and handle
 exceptions through those actions, with people deciding where approval is required.
 
+## Templates and apps
+
+`templates/*` contains the executable golden starters maintained by this repository. They use
+isolated development ports and the central template uses its own PostgreSQL service and database.
+`apps/*` contains company-owned copies created from those starters; generated apps never import
+template source.
+
+```sh
+pnpm create:app -- --list
+pnpm create:app -- company-os
+```
+
+The creation command refuses to overwrite an existing app, rewrites the package for its normal app
+identity, installs the workspace, and runs the template's declared bootstrap checks. Use
+`pnpm template:dev:all` to run the golden starter suite without creating apps.
+
 ## Make it yours
 
 A fork is meant to become your company's software, not another generic multi-tenant SaaS instance.
 Start with one operation and change ordinary source code:
 
-- [`packages/company/model/src/metadata.ts`](packages/company/model/src/metadata.ts) names the
+- [`packages/model/src/metadata.ts`](packages/model/src/metadata.ts) names the
   company model.
-- [`apps/company-os/src/customization`](apps/company-os/src/customization) owns product identity,
-  entry, home, and navigation.
-- [`packages/company/model/src/modules/sales`](packages/company/model/src/modules/sales) is the
+- [`templates/company-os/src/customization`](templates/company-os/src/customization) is the
+  executable starter for product identity, entry, home, and navigation.
+- [`packages/model/src/modules/sales`](packages/model/src/modules/sales) is the
   replaceable example business module.
-- [`apps/company-os/src/server/modules`](apps/company-os/src/server/modules) contains custom
-  business implementations.
+- [`templates/company-os/src/server/modules`](templates/company-os/src/server/modules) contains
+  starter business implementations that become app-owned after creation.
 
 The repository includes coding-agent skills for onboarding a company, extending an established
 fork, and incorporating upstream improvements:
@@ -113,8 +129,9 @@ Track the customer, milestones, owners, blockers, and launch date. Let an agent 
 but require a person to approve anything sent to the customer.
 ```
 
-See [`apps/company-os/README.md`](apps/company-os/README.md) for the application architecture and
-the package READMEs for their public boundaries.
+Run `pnpm create:app -- company-os` to instantiate the central application under `apps/`. See
+[`templates/company-os/README.md`](templates/company-os/README.md) for its architecture and the
+package READMEs for their public boundaries.
 
 ## Continual
 
@@ -126,7 +143,7 @@ The fork remains authoritative for its source, business policy, and records.
 
 | Command      | Purpose                                                  |
 | ------------ | -------------------------------------------------------- |
-| `pnpm dev`   | Apply migrations and run Company OS                      |
+| `pnpm dev`   | Apply isolated template migrations and run Company OS    |
 | `pnpm check` | Check formatting, lint, boundaries, dead code, and types |
 | `pnpm test`  | Run the repository test suite                            |
 | `pnpm build` | Build every application                                  |

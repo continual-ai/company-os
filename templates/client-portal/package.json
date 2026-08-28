@@ -1,0 +1,30 @@
+{
+  "name": "@company-template/client-portal",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build --mode template",
+    "dev": "vite dev --mode template --port 3201",
+    "preview": "vite preview --port 3301",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@company/model": "workspace:*",
+    "@company/ui": "workspace:*",
+    "@tailwindcss/vite": "catalog:",
+    "@tanstack/react-router": "catalog:",
+    "@tanstack/react-start": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:"
+  },
+  "devDependencies": {
+    "@tanstack/devtools-vite": "catalog:",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:"
+  }
+}
