@@ -33,7 +33,7 @@ it("constructs nominally distinct standard values through validated brands", () 
   expect(Decimal("1250.00")).toBe("1250.00")
   expect(DomainName("example.example")).toBe("example.example")
   expect(EmailAddress("ada@company.example")).toBe("ada@company.example")
-  expect(PhoneNumber("+1 415 555 0100")).toBe("+1 415 555 0100")
+  expect(PhoneNumber("+14155550100")).toBe("+14155550100")
   expect(RecordAlias("hubspot:portal_1:company:123")).toBe(
     "hubspot:portal_1:company:123"
   )
@@ -52,6 +52,7 @@ it("rejects invalid values before branding them", () => {
   expect(() => DomainName("not a domain")).toThrow()
   expect(() => EmailAddress("not an email")).toThrow()
   expect(() => PhoneNumber("123")).toThrow()
+  expect(() => PhoneNumber("+1 415 555 0100")).toThrow()
   expect(() => RecordAlias("")).toThrow()
   expect(() => RecordAlias("unqualified")).toThrow()
   expect(() =>

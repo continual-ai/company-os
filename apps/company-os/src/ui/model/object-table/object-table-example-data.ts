@@ -18,7 +18,7 @@ export const exampleCompanyRecords: ObjectTableRecord[] = [
     lastReviewedAt: "2026-08-21T16:42:00.000Z",
     strategic: true,
     contactEmail: "partnerships@northwind.example",
-    contactPhone: "+1 206 555 0142",
+    contactPhone: "+12065550142",
   },
   {
     id: "contoso",
@@ -37,7 +37,7 @@ export const exampleCompanyRecords: ObjectTableRecord[] = [
     lastReviewedAt: "2026-08-18T20:15:00.000Z",
     strategic: false,
     contactEmail: "hello@contoso.example",
-    contactPhone: "+1 425 555 0188",
+    contactPhone: "+14255550188",
   },
   {
     id: "fabrikam",
@@ -56,7 +56,7 @@ export const exampleCompanyRecords: ObjectTableRecord[] = [
     lastReviewedAt: "2026-08-03T09:30:00.000Z",
     strategic: true,
     contactEmail: "sales@fabrikam.example",
-    contactPhone: "+1 312 555 0164",
+    contactPhone: "+13125550164",
   },
   {
     id: "adventure-works",
@@ -75,7 +75,7 @@ export const exampleCompanyRecords: ObjectTableRecord[] = [
     lastReviewedAt: "2026-07-29T18:05:00.000Z",
     strategic: false,
     contactEmail: "team@adventure-works.example",
-    contactPhone: "+1 303 555 0196",
+    contactPhone: "+13035550196",
   },
   {
     id: "tailspin-toys",

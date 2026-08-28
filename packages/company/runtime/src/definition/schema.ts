@@ -7,7 +7,7 @@ export type LiteralValue = boolean | null | number | string
 const datePattern = /^\d{4}-\d{2}-\d{2}$/
 const domainPattern = /^(?!-)(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$/
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-const phonePattern = /^\+?[0-9().\-\s]{7,}$/
+const phonePattern = /^\+[1-9]\d{6,14}$/
 const timestampPattern =
   /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/
 const urlPattern = /^https?:\/\/[^\s]+$/
@@ -50,7 +50,8 @@ export const EmailAddress = Brand.make<EmailAddress>(
 export type PhoneNumber = string & Brand.Brand<"PhoneNumber">
 export const PhoneNumber = Brand.make<PhoneNumber>(
   (value) =>
-    phonePattern.test(value) || `Expected '${value}' to be a phone number`
+    phonePattern.test(value) ||
+    `Expected '${value}' to be a canonical E.164 phone number`
 )
 
 const recordAliasPattern = /^[a-z][a-z0-9_-]*:\S+$/
@@ -257,6 +258,8 @@ export interface StringSchema<
   TValue extends string = string,
 > extends SchemaDefinition<TValue> {
   format?: "date" | "domain" | "email" | "phone" | "timestamp" | "url"
+  /** Advisory initial value for new input surfaces; it does not make the value optional. */
+  initialValue?: "now"
   kind: "string"
   maxLength?: number
   minLength?: number
@@ -396,6 +399,11 @@ type SemanticStringOptions<TValue extends string> = Omit<
   "default"
 > &
   SchemaAnnotations<TValue>
+
+interface TimestampSchemaOptions extends SemanticStringOptions<Timestamp> {
+  /** Suggest the current instant when a new value is presented for entry. */
+  initialValue?: "now"
+}
 
 export interface NumberSchemaOptions extends SchemaAnnotations<number> {
   integer?: boolean
@@ -671,7 +679,7 @@ function phone<const TOptions extends SemanticStringOptions<PhoneNumber> = {}>(
   return semanticString("phone", options)
 }
 
-function timestamp<const TOptions extends SchemaAnnotations<Timestamp> = {}>(
+function timestamp<const TOptions extends TimestampSchemaOptions = {}>(
   options?: TOptions
 ): StringSchema<Timestamp> & TOptions {
   return semanticString("timestamp", options)

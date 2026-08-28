@@ -186,22 +186,15 @@ function normalizePhoneNumber(input: string): ObjectTableCellInputResult {
   const digits = input.replace(/\D/g, "")
   if (digits.length === 0) return { value: null }
   if (
-    digits.length === 10 ||
-    (digits.length === 11 && digits.startsWith("1"))
-  ) {
-    const national = digits.length === 10 ? digits : digits.slice(1)
-    return {
-      value: `+1 ${national.slice(0, 3)} ${national.slice(3, 6)} ${national.slice(6)}`,
-    }
-  }
-  if (
     input.trim().startsWith("+") &&
-    digits.length >= 8 &&
+    digits.length >= 7 &&
     digits.length <= 15
   ) {
     return { value: `+${digits}` }
   }
-  return { error: "Enter a valid phone number, including its area code." }
+  return {
+    error: "Enter an international phone number, such as +1 415 555 0123.",
+  }
 }
 
 function isRealCalendarDate(value: string): boolean {

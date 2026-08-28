@@ -158,9 +158,9 @@ describe("objectTableLinkHref", () => {
     expect(
       parseObjectTableCellInput(
         { ...schema.phone(), ...propertyMetadata },
-        "(206) 555-0142"
+        "+1 (206) 555-0142"
       )
-    ).toEqual({ value: "+1 206 555 0142" })
+    ).toEqual({ value: "+12065550142" })
     expect(
       parseObjectTableCellInput(
         { ...schema.phone(), ...propertyMetadata },

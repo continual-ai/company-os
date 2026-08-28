@@ -1,3 +1,4 @@
+import { formatPhoneNumberForDisplay } from "@company/ui/lib/phone-number"
 import { useEffect, useRef, useState } from "react"
 
 import type { ObjectTableCellType } from "./object-table-cell-types"
@@ -62,6 +63,9 @@ export function formatObjectTableCellText(
   if (type === "timestamp" && fallback.length > 0) {
     const date = new Date(fallback)
     if (!Number.isNaN(date.getTime())) return timestampFormatter.format(date)
+  }
+  if (type === "phone" && fallback.length > 0) {
+    return formatPhoneNumberForDisplay(fallback)
   }
   return fallback
 }
