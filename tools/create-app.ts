@@ -15,18 +15,9 @@ import { Schema } from "effect"
 
 interface TemplateManifest {
   readonly bootstrapCommands: ReadonlyArray<readonly [string, ...string[]]>
-  readonly destination: string
   readonly environmentExample?: string | undefined
   readonly id: string
-  readonly package: {
-    readonly name: string
-    readonly scripts: Readonly<Record<string, string>>
-  }
-  readonly replacements: ReadonlyArray<{
-    readonly files: ReadonlyArray<string>
-    readonly from: string
-    readonly to: string
-  }>
+  readonly scripts: Readonly<Record<string, string>>
 }
 
 const nonEmptyStringSchema = Schema.String.check(Schema.isNonEmpty())
@@ -34,22 +25,9 @@ const templateManifestSchema = Schema.Struct({
   bootstrapCommands: Schema.Array(
     Schema.Array(nonEmptyStringSchema).check(Schema.isMinLength(1))
   ),
-  destination: nonEmptyStringSchema,
   environmentExample: Schema.optionalKey(nonEmptyStringSchema),
   id: nonEmptyStringSchema,
-  package: Schema.Struct({
-    name: nonEmptyStringSchema,
-    scripts: Schema.Record(nonEmptyStringSchema, nonEmptyStringSchema),
-  }),
-  replacements: Schema.optionalKey(
-    Schema.Array(
-      Schema.Struct({
-        files: Schema.Array(nonEmptyStringSchema).check(Schema.isMinLength(1)),
-        from: nonEmptyStringSchema,
-        to: Schema.String,
-      })
-    )
-  ),
+  scripts: Schema.Record(nonEmptyStringSchema, nonEmptyStringSchema),
 })
 const dependencyMapSchema = Schema.Record(
   nonEmptyStringSchema,
@@ -91,6 +69,11 @@ function manifest(templateId: string): TemplateManifest {
   const decoded = Schema.decodeUnknownSync(templateManifestSchema)(
     JSON.parse(readFileSync(path, "utf8"))
   )
+  if (decoded.id !== templateId) {
+    fail(
+      `Template manifest id '${decoded.id}' must match directory '${templateId}'.`
+    )
+  }
   return {
     ...decoded,
     bootstrapCommands: decoded.bootstrapCommands.map((command) => {
@@ -98,7 +81,6 @@ function manifest(templateId: string): TemplateManifest {
       if (executable === undefined) fail("Bootstrap command cannot be empty.")
       return [executable, ...args] as const
     }),
-    replacements: decoded.replacements ?? [],
   }
 }
 
@@ -134,31 +116,13 @@ function rewritePackage(destination: string, definition: TemplateManifest) {
     `${JSON.stringify(
       {
         ...packageJson,
-        name: definition.package.name,
-        scripts: definition.package.scripts,
+        name: definition.id,
+        scripts: definition.scripts,
       },
       null,
       2
     )}\n`
   )
-}
-
-function applyReplacements(
-  destination: string,
-  replacements: TemplateManifest["replacements"]
-) {
-  for (const replacement of replacements) {
-    for (const file of replacement.files) {
-      const path = resolve(destination, file)
-      const contents = readFileSync(path, "utf8")
-      if (!contents.includes(replacement.from)) {
-        fail(
-          `Expected '${replacement.from}' in ${relative(repositoryRoot, path)}.`
-        )
-      }
-      writeFileSync(path, contents.replaceAll(replacement.from, replacement.to))
-    }
-  }
 }
 
 function run(command: readonly [string, ...string[]]) {
@@ -174,7 +138,7 @@ function run(command: readonly [string, ...string[]]) {
 
 function createApp(definition: TemplateManifest, bootstrap: boolean) {
   const source = resolve(templatesDirectory, definition.id)
-  const destination = resolve(repositoryRoot, "apps", definition.destination)
+  const destination = resolve(repositoryRoot, "apps", definition.id)
   if (existsSync(destination)) {
     fail(`Refusing to overwrite ${relative(repositoryRoot, destination)}.`)
   }
@@ -185,7 +149,6 @@ function createApp(definition: TemplateManifest, bootstrap: boolean) {
     recursive: true,
   })
   rewritePackage(destination, definition)
-  applyReplacements(destination, definition.replacements)
 
   if (!bootstrap) return
   if (definition.environmentExample !== undefined) {
@@ -199,21 +162,31 @@ function createApp(definition: TemplateManifest, bootstrap: boolean) {
 
 function usage(): string {
   return [
-    "Usage: pnpm create:app -- <template> [--no-bootstrap] [--dry-run]",
-    "       pnpm create:app -- --list",
+    "Usage: pnpm create:app <template> [--dry-run] [--no-bootstrap]",
+    "",
+    "Available templates:",
+    ...templateIds().map((id) => `  ${id}`),
   ].join("\n")
 }
 
 function main() {
   const args = process.argv.slice(2)
-  if (args.includes("--list")) {
-    process.stdout.write(`${templateIds().join("\n")}\n`)
+  if (args.length === 0 || args.includes("--help")) {
+    process.stdout.write(`${usage()}\n`)
     return
   }
-  const templateId = args.find((arg) => !arg.startsWith("--"))
+  const allowedFlags = new Set(["--dry-run", "--no-bootstrap"])
+  const unsupportedFlag = args.find(
+    (arg) => arg.startsWith("--") && !allowedFlags.has(arg)
+  )
+  if (unsupportedFlag !== undefined)
+    fail(`Unknown option '${unsupportedFlag}'.`)
+  const templateArguments = args.filter((arg) => !arg.startsWith("--"))
+  if (templateArguments.length > 1) fail(usage())
+  const [templateId] = templateArguments
   if (templateId === undefined) fail(usage())
   const definition = manifest(templateId)
-  const destination = `apps/${definition.destination}`
+  const destination = `apps/${definition.id}`
   if (args.includes("--dry-run")) {
     process.stdout.write(
       `Would create ${destination} from templates/${definition.id}.\n`
@@ -221,7 +194,9 @@ function main() {
     return
   }
   createApp(definition, !args.includes("--no-bootstrap"))
-  process.stdout.write(`Created ${destination}.\n`)
+  process.stdout.write(
+    `Created ${destination}.\nRun: pnpm --filter ${definition.id} dev\n`
+  )
 }
 
 try {

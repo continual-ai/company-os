@@ -1,41 +1,20 @@
 {
   "id": "company-os",
-  "destination": "company-os",
-  "package": {
-    "name": "company-os",
-    "scripts": {
-      "build": "vite build",
-      "db:check": "drizzle-kit check --config drizzle.config.ts",
-      "db:deploy": "tsx --env-file-if-exists=.env.local src/server/database/deploy.ts",
-      "db:generate": "drizzle-kit generate --config drizzle.config.ts",
-      "db:generate:custom": "drizzle-kit generate --custom --config drizzle.config.ts",
-      "db:migrate": "tsx --env-file-if-exists=.env.local src/server/database/migrate.ts",
-      "db:reset": "tsx --env-file-if-exists=.env.local src/server/database/reset.ts",
-      "db:seed": "tsx --env-file-if-exists=.env.local src/server/database/seed.ts",
-      "dev": "vite dev --port 3002",
-      "preview": "vite preview --port 3102",
-      "test": "vitest run",
-      "typecheck": "tsc --noEmit"
-    }
+  "scripts": {
+    "build": "vite build",
+    "db:check": "drizzle-kit check --config drizzle.config.ts",
+    "db:deploy": "tsx --env-file-if-exists=.env.local src/server/database/deploy.ts",
+    "db:generate": "drizzle-kit generate --config drizzle.config.ts",
+    "db:generate:custom": "drizzle-kit generate --custom --config drizzle.config.ts",
+    "db:migrate": "tsx --env-file-if-exists=.env.local src/server/database/migrate.ts",
+    "db:reset": "tsx --env-file-if-exists=.env.local src/server/database/reset.ts",
+    "db:seed": "tsx --env-file-if-exists=.env.local src/server/database/seed.ts",
+    "dev": "vite dev --port 3002",
+    "preview": "vite preview --port 3102",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
   },
   "environmentExample": ".env.example",
-  "replacements": [
-    {
-      "files": [".env.example"],
-      "from": "templates/company-os",
-      "to": "apps/company-os"
-    },
-    {
-      "files": ["README.md"],
-      "from": "@company-template/company-os",
-      "to": "company-os"
-    },
-    {
-      "files": ["README.md"],
-      "from": "company_os_template",
-      "to": "company_os"
-    }
-  ],
   "bootstrapCommands": [
     ["docker", "compose", "up", "-d", "--wait", "postgres"],
     ["pnpm", "--filter", "company-os", "db:deploy"],

@@ -15,13 +15,11 @@ app or shared `@company/*` packages according to repository ownership rules.
 ## Instantiate
 
 1. Inspect the worktree and preserve unrelated changes.
-2. Run `pnpm create:app -- --list` to discover the maintained templates. Do not infer a template
-   from an arbitrary directory.
-3. Confirm the manifest's fixed `apps/<destination>` does not already exist. Never delete, merge,
-   or overwrite an existing app to make creation succeed.
-4. Run `pnpm create:app -- <template>`. The repository tool owns copying, package rewriting,
-   environment creation, dependency installation, and declared bootstrap commands.
-5. Verify the created package and review its working-tree scope. Run `pnpm check` when creation is
+2. Run `pnpm create:app` to see the maintained templates, then run
+   `pnpm create:app <template>` to create one. Do not infer templates from arbitrary directories.
+3. Let the repository tool own copying, package rewriting, environment creation, dependency
+   installation, and bootstrap checks. It refuses to overwrite an existing `apps/<template>`.
+4. Verify the created package and review the working-tree scope. Run `pnpm check` when creation is
    part of a larger repository change.
 
 Use `--dry-run` to show the intended source and destination without writing. Use `--no-bootstrap`

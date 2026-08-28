@@ -1,27 +1,10 @@
 {
   "id": "marketing-site",
-  "destination": "marketing-site",
-  "package": {
-    "name": "marketing-site",
-    "scripts": {
-      "build": "vite build",
-      "dev": "vite dev --port 3000",
-      "preview": "vite preview",
-      "typecheck": "tsc --noEmit"
-    }
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite dev --port 3000",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
   },
-  "environmentExample": ".env.example",
-  "replacements": [
-    {
-      "files": ["README.md"],
-      "from": "@company-template/marketing-site",
-      "to": "marketing-site"
-    },
-    {
-      "files": ["README.md"],
-      "from": "localhost:3200",
-      "to": "localhost:3000"
-    }
-  ],
   "bootstrapCommands": [["pnpm", "--filter", "marketing-site", "typecheck"]]
 }
