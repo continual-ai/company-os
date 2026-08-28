@@ -61,6 +61,13 @@ export type InitialLinks = Readonly<
   >
 >
 
+export interface LinkChanges {
+  readonly add?: ReadonlyArray<RecordIdentifier>
+  readonly remove?: ReadonlyArray<RecordIdentifier>
+}
+
+export type LinkUpdates = Readonly<Record<string, LinkChanges | undefined>>
+
 export interface LinkAccessRequest {
   readonly operation: "initialize" | "link" | "list" | "unlink"
   readonly source: ObjectType
@@ -107,6 +114,11 @@ export interface LinkWriter<TError = never, TRequirements = never> {
   readonly link: (
     traversal: ModelLinkTraversal,
     input: LinkMutationInput
+  ) => Effect.Effect<void, TError, TRequirements>
+  readonly update: (
+    object: ObjectType,
+    sourceId: RecordIdentifier,
+    links: LinkUpdates
   ) => Effect.Effect<void, TError, TRequirements>
   readonly unlink: (
     traversal: ModelLinkTraversal,
@@ -187,125 +199,181 @@ function makeLinkWriteMethods<
   const authorizeRequest = (request: LinkAccessRequest) =>
     authorize === undefined ? Effect.void : authorize(request)
 
-  return {
-    initialize: Effect.fn("@company/runtime/LinkWriter.initialize")(
-      function* (object, sourceId, initial) {
-        const traversals = modelObjectLinkTraversals(model, object).filter(
-          ({ initializable }) => initializable
+  const initialize = Effect.fn("@company/runtime/LinkWriter.initialize")(
+    function* (object, sourceId, initial) {
+      const traversals = modelObjectLinkTraversals(model, object).filter(
+        ({ initializable }) => initializable
+      )
+      const known = new Set(traversals.map(({ traversal }) => traversal.key))
+      const unknown = Object.keys(initial).find((key) => !known.has(key))
+      if (unknown !== undefined) {
+        return yield* Effect.fail(
+          new InvalidLinkRequest({
+            message: `Link traversal '${unknown}' is not defined for '${object.id}'.`,
+            path: ["links", unknown],
+          })
         )
-        const known = new Set(traversals.map(({ traversal }) => traversal.key))
-        const unknown = Object.keys(initial).find((key) => !known.has(key))
-        if (unknown !== undefined) {
+      }
+      for (const traversal of traversals) {
+        const targets = values(initial[traversal.traversal.key])
+        if (traversal.traversal.cardinality !== "many" && targets.length > 1) {
           return yield* Effect.fail(
             new InvalidLinkRequest({
-              message: `Link traversal '${unknown}' is not defined for '${object.id}'.`,
-              path: ["links", unknown],
+              message: "A singular Link accepts at most one target.",
+              path: ["links", traversal.traversal.key],
             })
           )
         }
-        for (const traversal of traversals) {
-          const targets = values(initial[traversal.traversal.key])
-          if (
-            traversal.traversal.cardinality !== "many" &&
-            targets.length > 1
-          ) {
-            return yield* Effect.fail(
-              new InvalidLinkRequest({
-                message: "A singular Link accepts at most one target.",
-                path: ["links", traversal.traversal.key],
-              })
-            )
-          }
-          if (
-            traversal.traversal.cardinality === "one" &&
-            targets.length === 0
-          ) {
-            return yield* Effect.fail(
-              new RequiredLinkMissing({
-                objectType: object.id,
-                traversal: traversal.traversal.key,
-              })
-            )
-          }
-          for (const target of targets) {
-            const targetId = yield* options.resolve(
-              traversal.target.from.typeId,
-              target
-            )
-            yield* authorizeRequest({
-              operation: "initialize",
-              source: traversal.source,
-              sourceId,
-              targetId,
-              traversal,
-            })
-            yield* repository.link({
-              direction: traversal.direction,
-              linkId: traversal.link.id,
-              sourceId,
-              targetId,
-            })
-          }
-        }
-        return undefined
-      }
-    ),
-    link: Effect.fn("@company/runtime/LinkWriter.link")(
-      function* (traversal, input) {
-        if (!traversal.writable) {
+        if (traversal.traversal.cardinality === "one" && targets.length === 0) {
           return yield* Effect.fail(
-            new LinkMutationNotAllowed({
-              linkId: traversal.link.id,
+            new RequiredLinkMissing({
+              objectType: object.id,
               traversal: traversal.traversal.key,
             })
           )
         }
-        const pair = yield* resolvePair(traversal, input)
-        yield* authorizeRequest({
-          operation: "link",
-          source: traversal.source,
-          sourceId: pair.sourceId,
-          targetId: pair.targetId,
-          traversal,
-        })
-        yield* repository.link(pair)
-        return undefined
+        for (const target of targets) {
+          const targetId = yield* options.resolve(
+            traversal.target.from.typeId,
+            target
+          )
+          yield* authorizeRequest({
+            operation: "initialize",
+            source: traversal.source,
+            sourceId,
+            targetId,
+            traversal,
+          })
+          yield* repository.link({
+            direction: traversal.direction,
+            linkId: traversal.link.id,
+            sourceId,
+            targetId,
+          })
+        }
       }
-    ),
-    unlink: Effect.fn("@company/runtime/LinkWriter.unlink")(
-      function* (traversal, input) {
-        if (!traversal.writable) {
+      return undefined
+    }
+  )
+  const link = Effect.fn("@company/runtime/LinkWriter.link")(
+    function* (traversal, input) {
+      if (!traversal.writable) {
+        return yield* Effect.fail(
+          new LinkMutationNotAllowed({
+            linkId: traversal.link.id,
+            traversal: traversal.traversal.key,
+          })
+        )
+      }
+      const pair = yield* resolvePair(traversal, input)
+      yield* authorizeRequest({
+        operation: "link",
+        source: traversal.source,
+        sourceId: pair.sourceId,
+        targetId: pair.targetId,
+        traversal,
+      })
+      yield* repository.link(pair)
+      return undefined
+    }
+  )
+  const unlink = Effect.fn("@company/runtime/LinkWriter.unlink")(
+    function* (traversal, input) {
+      if (!traversal.writable) {
+        return yield* Effect.fail(
+          new LinkMutationNotAllowed({
+            linkId: traversal.link.id,
+            traversal: traversal.traversal.key,
+          })
+        )
+      }
+      if (
+        traversal.traversal.cardinality === "one" ||
+        traversal.target.cardinality === "one"
+      ) {
+        return yield* Effect.fail(
+          new RequiredLinkUnlink({
+            linkId: traversal.link.id,
+            traversal: traversal.traversal.key,
+          })
+        )
+      }
+      const pair = yield* resolvePair(traversal, input)
+      yield* authorizeRequest({
+        operation: "unlink",
+        source: traversal.source,
+        sourceId: pair.sourceId,
+        targetId: pair.targetId,
+        traversal,
+      })
+      yield* repository.unlink(pair)
+      return undefined
+    }
+  )
+  const update = Effect.fn("@company/runtime/LinkWriter.update")(
+    function* (object, sourceId, changes) {
+      const traversals = modelObjectLinkTraversals(model, object).filter(
+        ({ writable }) => writable
+      )
+      const known = new Set(traversals.map(({ traversal }) => traversal.key))
+      const unknown = Object.keys(changes).find((key) => !known.has(key))
+      if (unknown !== undefined) {
+        return yield* Effect.fail(
+          new InvalidLinkRequest({
+            message: `Link traversal '${unknown}' is not writable for '${object.id}'.`,
+            path: ["links", unknown],
+          })
+        )
+      }
+
+      for (const traversal of traversals) {
+        const key = traversal.traversal.key
+        const change = changes[key]
+        if (change === undefined) continue
+        const add: ReadonlyArray<RecordIdentifier> = change.add ?? []
+        const remove: ReadonlyArray<RecordIdentifier> = change.remove ?? []
+        if (traversal.traversal.cardinality !== "many" && add.length > 1) {
           return yield* Effect.fail(
-            new LinkMutationNotAllowed({
-              linkId: traversal.link.id,
-              traversal: traversal.traversal.key,
+            new InvalidLinkRequest({
+              message: "A singular Link accepts at most one added target.",
+              path: ["links", key, "add"],
             })
           )
         }
         if (
-          traversal.traversal.cardinality === "one" ||
-          traversal.target.cardinality === "one"
+          remove.length > 0 &&
+          (traversal.traversal.cardinality === "one" ||
+            traversal.target.cardinality === "one")
         ) {
           return yield* Effect.fail(
             new RequiredLinkUnlink({
               linkId: traversal.link.id,
-              traversal: traversal.traversal.key,
+              traversal: key,
             })
           )
         }
-        const pair = yield* resolvePair(traversal, input)
-        yield* authorizeRequest({
-          operation: "unlink",
-          source: traversal.source,
-          sourceId: pair.sourceId,
-          targetId: pair.targetId,
-          traversal,
-        })
-        yield* repository.unlink(pair)
-        return undefined
+        const added = new Set(add)
+        const duplicate = remove.find((target) => added.has(target))
+        if (duplicate !== undefined) {
+          return yield* Effect.fail(
+            new InvalidLinkRequest({
+              message: "A Link target cannot be both added and removed.",
+              path: ["links", key],
+            })
+          )
+        }
+        for (const target of remove) {
+          yield* unlink(traversal, { id: sourceId, target })
+        }
+        for (const target of add) {
+          yield* link(traversal, { id: sourceId, target })
+        }
       }
-    ),
-  }
+      return undefined
+    }
+  )
+
+  return { initialize, link, unlink, update }
 }
 
 /** Builds governed Link behavior shared by HTTP, MCP, and browser clients. */

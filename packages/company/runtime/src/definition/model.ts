@@ -2,7 +2,12 @@ import { type Action, actionKey, isStandardActionId } from "./action"
 import type { InterfaceType } from "./interface"
 import type { LinkTraversal, LinkType } from "./link"
 import type { ModuleDefinition } from "./module"
-import type { ObjectCreateInput, ObjectRef, ObjectType } from "./object"
+import type {
+  ObjectCreateInput,
+  ObjectRef,
+  ObjectType,
+  ObjectUpdateInput,
+} from "./object"
 import { standardQueries, type Query, type StandardQueries } from "./query"
 import type { RootType } from "./root"
 import type {
@@ -358,6 +363,54 @@ export type ModelObjectCreateInput<
   (keyof RequiredInitialLinks<TModel, TObject> extends never
     ? { readonly links?: InitialLinksFor<TModel, TObject> }
     : { readonly links: InitialLinksFor<TModel, TObject> })
+
+type WritableLinkSide<TSide> = TSide extends {
+  readonly link: infer TLink extends LinkType
+  readonly side: infer TTraversal extends LinkTraversal
+}
+  ? TLink["writeFrom"] extends TTraversal["key"]
+    ? TSide
+    : never
+  : never
+
+type CanUnlink<
+  TSide extends LinkTraversal,
+  TTarget extends LinkTraversal,
+> = TSide["cardinality"] extends "one"
+  ? false
+  : TTarget["cardinality"] extends "one"
+    ? false
+    : true
+
+type LinkChangesFor<
+  TModel extends ModelCatalog,
+  TSide extends LinkTraversal,
+  TTarget extends LinkTraversal,
+> = {
+  readonly add?: ReadonlyArray<EndpointIdentifier<TModel, TTarget["from"]>>
+} & (CanUnlink<TSide, TTarget> extends true
+  ? {
+      readonly remove?: ReadonlyArray<
+        EndpointIdentifier<TModel, TTarget["from"]>
+      >
+    }
+  : object)
+
+type UpdateLinksFor<TModel extends ModelCatalog, TObject extends ObjectType> = {
+  readonly [
+    TSide in WritableLinkSide<
+      ModelLinkSide<TModel, TObject>
+    > as TSide["side"]["key"]
+  ]?: LinkChangesFor<TModel, TSide["side"], TSide["target"]>
+}
+
+/** Standard update input plus atomic deltas for writable model Links. */
+export type ModelObjectUpdateInput<
+  TModel extends ModelCatalog,
+  TObject extends ModelObject<TModel>,
+> = ObjectUpdateInput<TObject> & {
+  readonly links?: UpdateLinksFor<TModel, TObject>
+}
 
 export type LinkDirection = "forward" | "reverse"
 

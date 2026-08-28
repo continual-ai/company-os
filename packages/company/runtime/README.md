@@ -167,10 +167,11 @@ embedded record fields. Standard create may establish singular Links and canonic
 Links atomically through its `links` envelope; non-writable reverse collections are not create
 inputs. `one` means exactly one, `zeroOrOne` means optional singular, and `many` means zero or more.
 The canonical writable traversal supplies idempotent `link` and eligible `unlink` Actions, while
-both traversals supply a `list` Query. Re-linking a compatible singular endpoint replaces its prior
-edge atomically, and deleting a target cannot orphan a required `one` traversal. The portable
-contract does not expose storage orientation; the storage adapter derives its projection and
-referential actions.
+both traversals supply a `list` Query. Standard update accepts `add` and eligible `remove` deltas
+for writable Links and applies them atomically with property changes; omitted traversals remain
+unchanged. Re-linking a compatible singular endpoint replaces its prior edge atomically, and
+deleting a target cannot orphan a required `one` traversal. The portable contract does not expose
+storage orientation; the storage adapter derives its projection and referential actions.
 
 Use `parent` only for ownership and authorization hierarchy. Use a record-reference property for
 directional inline state. Use a Link for a bidirectional edge without independent identity. Use an

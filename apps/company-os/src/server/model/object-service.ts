@@ -2,8 +2,10 @@
 import type { Model } from "@company/model"
 import type {
   ModelObjectCreateInput,
+  ModelObjectUpdateInput,
   ObjectCreateInput,
   ObjectRecord,
+  ObjectUpdateInput,
 } from "@company/runtime"
 import type { Repository } from "@company/runtime/effect/object-repository"
 import * as ObjectService from "@company/runtime/effect/object-service"
@@ -25,6 +27,15 @@ type CreatableModelObject = {
     ? (typeof Model.objects)[TKey]
     : never
 }[keyof typeof Model.objects]
+
+type MutableModelObject = {
+  [
+    TKey in keyof typeof Model.objects
+  ]: "update" extends keyof (typeof Model.objects)[TKey]["actions"]
+    ? (typeof Model.objects)[TKey]
+    : never
+}[keyof typeof Model.objects] &
+  CreatableModelObject
 
 /** Validated server-internal writes for custom Actions and trusted adapters. */
 export function makeObjectWriter<
@@ -111,5 +122,54 @@ export function makeObjectService<
     })
 
     return { ...base, create }
+  })
+}
+
+/** Adds atomic Link-delta coordination to a standard mutable object service. */
+export function makeMutableObjectService<
+  const TObject extends MutableModelObject,
+  TError,
+  TRequirements,
+>(
+  object: TObject,
+  repository: Repository<NoInfer<TObject>, TError, TRequirements>
+) {
+  return Effect.gen(function* () {
+    const database = yield* Database
+    const links = yield* Links
+    const service = yield* makeObjectService(object, repository)
+    // SAFETY: MutableModelObject is exactly the closed-model union whose
+    // action registry contains the standard update action.
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion
+    const baseUpdate = (
+      service as unknown as {
+        readonly update: (
+          input: ObjectUpdateInput<TObject>
+        ) => Effect.Effect<
+          ObjectRecord<TObject>,
+          unknown,
+          CurrentInvocation | TRequirements
+        >
+      }
+    ).update
+    const update = Effect.fn(`${object.id}.update`)(function* (
+      input: ModelObjectUpdateInput<typeof Model, TObject>
+    ) {
+      const { links: linkUpdates = {}, ...objectInput } = input
+      return yield* database.transaction(() =>
+        Effect.gen(function* () {
+          // SAFETY: ModelObjectUpdateInput adds only the model-derived `links`
+          // envelope to this exact object's standard update input.
+          // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion
+          const record = yield* baseUpdate(
+            objectInput as unknown as ObjectUpdateInput<TObject>
+          )
+          yield* links.update(object, record.id, linkUpdates)
+          return record
+        })
+      )
+    })
+
+    return { ...service, update }
   })
 }

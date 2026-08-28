@@ -27,6 +27,7 @@ import {
   type ModelEndpointObjectTypeId,
   type ModelLinkTraversal,
   type ModelObjectCreateInput,
+  type ModelObjectUpdateInput,
   type ModelObject,
   modelObjectLinkTraversals,
   modelObjects,
@@ -85,7 +86,7 @@ import {
   toEffectErrorSchema,
   toEffectInputSchema,
   toEffectModelObjectCreateSchema,
-  toEffectObjectUpdateSchema,
+  toEffectModelObjectUpdateSchema,
   toEffectRecordIdentifierSchema,
   toEffectSchema,
   schemaErrorToApiError,
@@ -158,10 +159,10 @@ type OperationId<
 >}`
 
 type ListQuery = Pick<ListRequest, "pageSize" | "pageToken">
-type UpdatePayload<TObject extends ObjectType> = Omit<
-  ObjectUpdateInput<TObject>,
-  "id"
->
+type UpdatePayload<
+  TModel extends ModelCatalog,
+  TObject extends ModelObject<TModel>,
+> = Omit<ModelObjectUpdateInput<TModel, TObject>, "id">
 type DeleteQuery<TObject extends ObjectType> = Pick<
   ObjectDeleteInput<TObject>,
   "etag"
@@ -252,7 +253,7 @@ type StandardClient<
         ]: ClientMethod<
           {
             readonly params: Pick<ObjectUpdateInput<TObject>, "id">
-            readonly payload: UpdatePayload<TObject>
+            readonly payload: UpdatePayload<TModel, TObject>
           },
           ObjectRecord<TObject>
         >
@@ -444,7 +445,7 @@ type DirectObjectClient<
   ("update" extends keyof TObject["actions"]
     ? {
         readonly update: DirectClientMethod<
-          ObjectUpdateInput<TObject>,
+          ModelObjectUpdateInput<TModel, TObject>,
           ObjectRecord<TObject>
         >
       }
@@ -841,7 +842,7 @@ function addDefaultEndpoints(
   const recordPath = `${collectionPath}/:${parameter.name}` as const
   const record = objectRecordOutputSchema(object)
   const createInput = toEffectModelObjectCreateSchema(model, object)
-  const updateInput = toEffectObjectUpdateSchema(object)
+  const updateInput = toEffectModelObjectUpdateSchema(model, object)
   const queries = standardQueries(object)
   const listErrors = projectedErrorSchemas(object, queries.list)
   const getErrors = projectedErrorSchemas(object, queries.get)

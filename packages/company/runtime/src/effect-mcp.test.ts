@@ -130,6 +130,7 @@ describe("model MCP projection", () => {
         link: () => Effect.void,
         list: () => Effect.succeed({ items: [], nextPageToken: "" as never }),
         unlink: () => Effect.void,
+        update: () => Effect.void,
       },
       model: TestModel as ModelCatalog,
       services: services() as unknown as Readonly<Record<string, object>>,

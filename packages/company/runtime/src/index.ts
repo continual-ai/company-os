@@ -45,6 +45,7 @@ export type {
   ModelLinkTraversal,
   LinkDirection,
   ModelObjectCreateInput,
+  ModelObjectUpdateInput,
   RecordIdOf,
 } from "./definition/model"
 export { defineModule } from "./definition/module"

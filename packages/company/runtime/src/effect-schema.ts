@@ -621,6 +621,64 @@ export function toEffectObjectUpdateSchema(
   )
 }
 
+/** Compiles the public update contract, including atomic writable-Link deltas. */
+export function toEffectModelObjectUpdateSchema(
+  model: ModelCatalog,
+  object: ObjectType
+): Schema.Codec<unknown, unknown> {
+  const traversals = modelObjectLinkTraversals(model, object).filter(
+    ({ writable }) => writable
+  )
+  const linkFields: CompiledSchemaFields = Object.fromEntries(
+    traversals.map(({ target, traversal }) => {
+      const identifier = toEffectRecordIdentifierSchema(target.from.typeId)
+      let identifiers = Schema.Array(identifier).check(Schema.isUnique())
+      if (traversal.cardinality !== "many") {
+        identifiers = identifiers.check(Schema.isMaxLength(1))
+      }
+      const changes: CompiledSchemaFields = {
+        add: Schema.optionalKey(identifiers),
+      }
+      if (traversal.cardinality !== "one" && target.cardinality !== "one") {
+        changes.remove = Schema.optionalKey(identifiers)
+      }
+      return [
+        traversal.key,
+        Schema.optionalKey(
+          Schema.Struct(changes).annotate({
+            title: `${traversal.label} changes`,
+          })
+        ),
+      ]
+    })
+  )
+  const fields: CompiledSchemaFields = {
+    aliases: Schema.optionalKey(recordAliasUpdateSchema),
+    etag: Schema.optionalKey(
+      etagSchema.annotate({
+        description:
+          "Current entity tag. The update fails if the record has changed.",
+      })
+    ),
+    metadata: Schema.optionalKey(metadataSchema),
+    ...compileUpdateProperties(object),
+  }
+  if (traversals.length > 0) {
+    fields.links = Schema.optionalKey(
+      Schema.Struct(linkFields).annotate({
+        description: "Writable Link deltas applied atomically with the update.",
+        title: "Link changes",
+      })
+    )
+  }
+  return annotateObjectSchema(
+    object,
+    Schema.Struct(fields),
+    `Update ${object.name}`,
+    `${pascalCase(object.id)}UpdateInput`
+  )
+}
+
 export function toEffectErrorSchema<TError extends ErrorType>(
   error: TError
 ): Schema.Codec<
