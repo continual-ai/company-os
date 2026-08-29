@@ -8,11 +8,36 @@ to its repositories and services.
 Run the commands below from `apps/company-os`. From the repository root, prefix a command with
 `pnpm --filter company-os`.
 
+## Runtime composition
+
+The database path has one implementation in production and tests:
+
+```text
+PostgreSQL URL
+  -> Effect PgClient managed pool
+  -> app-typed Drizzle Database with the generated relations
+  -> PostgreSQL repository implementations
+  -> governed application services
+```
+
+`Database` is an Effect service for sharing the app-typed Drizzle value and transaction boundary; it
+is not a second repository abstraction. The reusable `@company/postgres` functions receive that
+concrete Drizzle value explicitly and implement the portable repository contracts. Production and
+tests use the same binding. They differ only in where the PostgreSQL URL and lifecycle come from.
+
 ## Local setup
 
-At the repository root, `pnpm dev` starts PostgreSQL, applies committed migrations, converges
-required records, and starts the central application. Run `pnpm setup` when only database setup is
-needed.
+Run PostgreSQL locally before starting Company OS. The committed development URL uses the standard
+local endpoint `postgresql://127.0.0.1:5432/company_os`; override it in
+`apps/company-os/.env.local` when necessary. Create the development database once:
+
+```sh
+createdb company_os
+```
+
+At the repository root, `pnpm dev` applies committed migrations, converges required records, and
+starts the central application. It does not install or start PostgreSQL. Run `pnpm setup` when only
+database convergence is needed.
 
 Within the app package, the normal convergence command is:
 
@@ -22,6 +47,38 @@ pnpm db:deploy
 
 `db:deploy` applies pending committed migrations and then idempotently converges the required Root,
 system identity, principal sets, roles, and initial role assignments. It is safe to run repeatedly.
+
+## Database tests
+
+Files named `*-database.test.ts` run in a separate Vitest project against real PostgreSQL. The test
+role must have `CREATEDB`. Tests use the same `DATABASE_URL` contract as the application and default
+to `postgresql://127.0.0.1:5432/postgres` when it is unset. The database named in that URL is only
+the starting connection: tests leave it untouched and create temporary sibling databases on the
+same PostgreSQL server.
+
+The test project creates one migrated template database for the run. Every `itDatabase` test clones
+that immutable template into a uniquely named database, uses the same Effect PostgreSQL client and
+typed Drizzle binding as production, closes its pool, and drops the clone. Tests therefore share no
+mutable database state and may run concurrently. The template is dropped after the project finishes.
+
+On Neon, the sibling databases live in the same existing Neon branch as the database named by
+`DATABASE_URL`; the harness does not create or manage Neon branches. Use the direct, non-pooler
+endpoint when running the tests because the harness performs migrations and database
+administration. Local PostgreSQL follows the identical database lifecycle.
+
+Supply the test environment connection when the local role or endpoint differs:
+
+```sh
+DATABASE_URL=postgresql://developer@127.0.0.1:5432/postgres pnpm test
+```
+
+The repository test task uses the Turbo cache. Force every task to execute against the currently
+configured PostgreSQL server after changing the server, PostgreSQL version, or database
+configuration:
+
+```sh
+pnpm test:force
+```
 
 ## Change persisted shape
 
@@ -80,8 +137,8 @@ Replace the value with the exact target database name. The committed local defau
 Confirm the value in the central app's local environment before running the command.
 
 The reset rebuilds the local database from the committed migration history and required seeds. It
-deliberately refuses remote database URLs. Tests do not need it because they rebuild isolated PGlite
-databases from the same history.
+deliberately refuses remote database URLs. Tests do not need it because each test receives an
+isolated PostgreSQL database cloned from the migrated test template.
 
 ## Deploy
 

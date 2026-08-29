@@ -36,21 +36,26 @@ and database remain the authority for business rules and records.
 
 ## Quick start
 
-You need Docker, Node.js 22.12 or newer, and pnpm 11. The repository also includes a `mise.toml`
-for installing the pinned toolchain with [mise](https://mise.jdx.dev/).
+You need PostgreSQL 18, Node.js 22.12 or newer, and pnpm 11. The repository also includes a
+`mise.toml` for installing the pinned Node.js and pnpm toolchain with
+[mise](https://mise.jdx.dev/).
 
 ```sh
 git clone https://github.com/continual-ai/company-os.git
 cd company-os
 pnpm install
+createdb company_os
 pnpm dev
 ```
 
 Open <http://localhost:3002> and choose a local development identity. Create a lead, convert it,
 or inspect the model and generated interfaces in the **Developer Center**.
 
-`pnpm dev` runs the central Company OS application. Use `pnpm dev:all` after adding optional apps to
-run every application under `apps/*`.
+The committed development configuration connects to PostgreSQL on its standard local port. Override
+`DATABASE_URL` in `apps/company-os/.env.local` when your local role, password, host, port, or database
+name differs. `pnpm dev` applies committed migrations, converges required records, and runs the
+central Company OS application; it does not install or start PostgreSQL. Use `pnpm dev:all` after
+adding optional apps to run every application under `apps/*`.
 
 ## Try the included operation
 
@@ -163,12 +168,13 @@ The fork remains authoritative for its source, business policy, and records.
 | ------------------------------ | -------------------------------------------------------- |
 | `pnpm dev`                     | Set up the database and run the central application      |
 | `pnpm dev:all`                 | Set up the database and run every app under `apps/*`     |
-| `pnpm setup`                   | Start PostgreSQL and apply the central app's migrations  |
+| `pnpm setup`                   | Apply migrations and converge required database records  |
 | `pnpm add:app`                 | List optional application templates                      |
 | `pnpm add:app client-portal`   | Add and bootstrap an optional client portal              |
 | `pnpm --filter company-os dev` | Run only the central app without database setup          |
 | `pnpm check`                   | Check formatting, lint, boundaries, dead code, and types |
-| `pnpm test`                    | Run the repository test suite                            |
+| `pnpm test`                    | Run the repository test suite using the Turbo cache      |
+| `pnpm test:force`              | Force the complete suite against the current PostgreSQL  |
 | `pnpm build`                   | Build every application                                  |
 
 Repository-wide constraints live in [`AGENTS.md`](AGENTS.md). Product and ownership context for

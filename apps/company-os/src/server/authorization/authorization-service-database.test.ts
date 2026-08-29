@@ -1,17 +1,13 @@
-import { fileURLToPath } from "node:url"
-
 import { Model } from "@company/model"
 import { Etag, RecordId, Timestamp } from "@company/runtime"
 import { CurrentInvocation } from "@company/runtime/effect/object-service"
-import { PgliteClient } from "@effect/sql-pglite"
 import { eq } from "drizzle-orm"
-import * as PgliteDrizzle from "drizzle-orm/effect-pglite"
-import { migrate } from "drizzle-orm/effect-pglite/migrator"
-import { Effect, Layer } from "effect"
-import { describe, expect, it } from "vitest"
+import { Effect } from "effect"
+import { describe, expect } from "vitest"
 
 import { anonymousCaller, authenticatedCaller } from "@/server/caller"
 import { Database } from "@/server/database/database"
+import { itDatabase } from "@/server/database/it-database"
 import {
   authorizationScopes,
   companies,
@@ -21,12 +17,10 @@ import {
   objects,
   parties,
   principals,
-  relations,
   roleAssignments,
   roles,
   users,
 } from "@/server/database/schema"
-import { asTestDatabase } from "@/server/database/test-database"
 import {
   anonymousInvocation,
   authenticatedInvocation,
@@ -59,10 +53,6 @@ import {
   PermissionDenied,
 } from "./authorization-service"
 
-const migrationsFolder = fileURLToPath(
-  new URL("../database/migrations", import.meta.url)
-)
-const TestDatabase = PgliteClient.layer()
 const now = Timestamp("2026-08-23T00:00:00.000Z")
 const UserId = RecordId("user")
 const ServiceAccountId = RecordId("serviceAccount")
@@ -89,38 +79,23 @@ function objectRow(
   }
 }
 
-function run<A, E>(
-  effect: Effect.Effect<A, E, PageTokens | PgliteClient.PgliteClient>
-) {
-  return Effect.runPromise(
-    Effect.scoped(
-      effect.pipe(
-        Effect.provide(Layer.merge(TestDatabase, PageTokens.layerTest))
-      )
-    )
-  )
-}
-
 describe("Authorization", () => {
-  it("applies direct and group grants through the ownership hierarchy", async () => {
-    const userId = UserId("user_00000000000000000000000001")
-    const allowedCompanyId = CompanyId("company_00000000000000000000000001")
-    const groupCompanyId = CompanyId("company_00000000000000000000000002")
-    const readerRoleId = RoleId("role_00000000000000000000000001")
-    const groupId = GroupId("group_00000000000000000000000001")
-    const membershipId = GroupMembershipId(
-      "groupMembership_00000000000000000000000001"
-    )
+  itDatabase(
+    "applies direct and group grants through the ownership hierarchy",
+    Effect.fn(function* () {
+      const userId = UserId("user_00000000000000000000000001")
+      const allowedCompanyId = CompanyId("company_00000000000000000000000001")
+      const groupCompanyId = CompanyId("company_00000000000000000000000002")
+      const readerRoleId = RoleId("role_00000000000000000000000001")
+      const groupId = GroupId("group_00000000000000000000000001")
+      const membershipId = GroupMembershipId(
+        "groupMembership_00000000000000000000000001"
+      )
 
-    const result = await run(
-      Effect.gen(function* () {
-        const pglite = yield* PgliteDrizzle.makeWithDefaults({ relations })
-        yield* migrate(pglite, { migrationsFolder })
-        const database = asTestDatabase(pglite)
-        yield* seedSystem().pipe(Effect.provideService(Database, database))
-        const objectRepositories = yield* ObjectRepositories.make.pipe(
-          Effect.provideService(Database, database)
-        )
+      const result = yield* Effect.gen(function* () {
+        const database = yield* Database
+        yield* seedSystem()
+        const objectRepositories = yield* ObjectRepositories.make
 
         yield* database.insert(objects).values([
           objectRow({
@@ -213,10 +188,7 @@ describe("Authorization", () => {
           roleId: readerRoleId,
         })
 
-        const authorizationRepository =
-          yield* AuthorizationRepository.make.pipe(
-            Effect.provideService(Database, database)
-          )
+        const authorizationRepository = yield* AuthorizationRepository.make
         const authorization = yield* Authorization.make.pipe(
           Effect.provideService(
             AuthorizationRepository,
@@ -261,9 +233,7 @@ describe("Authorization", () => {
           .delete(objects)
           .where(eq(objects.id, publicAdmissionAssignmentId))
         const companyRepository = objectRepositories.company
-        const identifiers = yield* RecordIdentifierResolver.make.pipe(
-          Effect.provideService(Database, database)
-        )
+        const identifiers = yield* RecordIdentifierResolver.make
         const companyService = yield* makeBaseObjectService(
           Model.objects.company,
           companyRepository
@@ -388,7 +358,6 @@ describe("Authorization", () => {
 
         const roleAssignmentRepository =
           yield* RoleAssignmentRepository.make.pipe(
-            Effect.provideService(Database, database),
             Effect.provideService(ObjectRepositories, objectRepositories)
           )
         const roleAssignmentService = yield* RoleAssignmentService.make.pipe(
@@ -397,7 +366,6 @@ describe("Authorization", () => {
             authorizationRepository
           ),
           Effect.provideService(Authorization, authorization),
-          Effect.provideService(Database, database),
           Effect.provideService(RecordIdentifierResolver, identifiers),
           Effect.provideService(
             RoleAssignmentRepository,
@@ -477,50 +445,55 @@ describe("Authorization", () => {
           systemList,
           wrongScope,
         }
-      })
-    )
+      }).pipe(Effect.provide(PageTokens.layerTest))
 
-    expect(result.directList.items.map(({ id }) => id)).toEqual([
-      allowedCompanyId,
-    ])
-    expect(result.directGet.id).toBe(allowedCompanyId)
-    expect(result.anonymousAdmission.results).toEqual([{ allowed: false }])
-    expect(result.authenticatedAdmission.results).toEqual([{ allowed: false }])
-    expect(result.publicAdmission.results).toEqual([{ allowed: true }])
-    expect(result.publicAdmissionFromInvocation.results).toEqual([
-      { allowed: true },
-    ])
-    expect(result.hiddenGet).toBeInstanceOf(AuthorizationTargetNotFound)
-    expect(result.deniedUpdate).toBeInstanceOf(PermissionDenied)
-    expect(result.deniedBatch).toBeInstanceOf(AuthorizationTargetNotFound)
-    expect(result.directCapabilities.results).toEqual([
-      { allowed: true },
-      { allowed: true },
-      { allowed: false },
-      { allowed: false },
-    ])
-    expect(result.delegatedCapabilities.results).toEqual([{ allowed: true }])
-    expect(result.attributedActor).toBe("serviceAccount_0000000000000000000001")
-    expect(result.groupList.items.map(({ id }) => id)).toEqual(
-      expect.arrayContaining([allowedCompanyId, groupCompanyId])
-    )
-    expect(result.groupList.items).toHaveLength(2)
-    expect(result.allowedBatch.items.map(({ id }) => id)).toEqual([
-      allowedCompanyId,
-      groupCompanyId,
-    ])
-    expect(result.groupCapability.results).toEqual([{ allowed: true }])
-    expect(result.afterRevocation.items.map(({ id }) => id)).toEqual([
-      allowedCompanyId,
-    ])
-    expect(result.revokedCapability.results).toEqual([{ allowed: false }])
-    expect(result.systemList.items.map(({ id }) => id)).toEqual(
-      expect.arrayContaining([allowedCompanyId, groupCompanyId])
-    )
-    expect(result.systemList.items).toHaveLength(2)
-    expect(result.systemAfterGrantRemoval.items).toEqual([])
-    expect(result.wrongScope).toBeInstanceOf(RoleScopeMismatch)
-    expect(result.protectedSystemAssignment).toBeInstanceOf(PermissionDenied)
-    expect(result.lastAdministrator).toBeInstanceOf(LastAdministrator)
-  })
+      expect(result.directList.items.map(({ id }) => id)).toEqual([
+        allowedCompanyId,
+      ])
+      expect(result.directGet.id).toBe(allowedCompanyId)
+      expect(result.anonymousAdmission.results).toEqual([{ allowed: false }])
+      expect(result.authenticatedAdmission.results).toEqual([
+        { allowed: false },
+      ])
+      expect(result.publicAdmission.results).toEqual([{ allowed: true }])
+      expect(result.publicAdmissionFromInvocation.results).toEqual([
+        { allowed: true },
+      ])
+      expect(result.hiddenGet).toBeInstanceOf(AuthorizationTargetNotFound)
+      expect(result.deniedUpdate).toBeInstanceOf(PermissionDenied)
+      expect(result.deniedBatch).toBeInstanceOf(AuthorizationTargetNotFound)
+      expect(result.directCapabilities.results).toEqual([
+        { allowed: true },
+        { allowed: true },
+        { allowed: false },
+        { allowed: false },
+      ])
+      expect(result.delegatedCapabilities.results).toEqual([{ allowed: true }])
+      expect(result.attributedActor).toBe(
+        "serviceAccount_0000000000000000000001"
+      )
+      expect(result.groupList.items.map(({ id }) => id)).toEqual(
+        expect.arrayContaining([allowedCompanyId, groupCompanyId])
+      )
+      expect(result.groupList.items).toHaveLength(2)
+      expect(result.allowedBatch.items.map(({ id }) => id)).toEqual([
+        allowedCompanyId,
+        groupCompanyId,
+      ])
+      expect(result.groupCapability.results).toEqual([{ allowed: true }])
+      expect(result.afterRevocation.items.map(({ id }) => id)).toEqual([
+        allowedCompanyId,
+      ])
+      expect(result.revokedCapability.results).toEqual([{ allowed: false }])
+      expect(result.systemList.items.map(({ id }) => id)).toEqual(
+        expect.arrayContaining([allowedCompanyId, groupCompanyId])
+      )
+      expect(result.systemList.items).toHaveLength(2)
+      expect(result.systemAfterGrantRemoval.items).toEqual([])
+      expect(result.wrongScope).toBeInstanceOf(RoleScopeMismatch)
+      expect(result.protectedSystemAssignment).toBeInstanceOf(PermissionDenied)
+      expect(result.lastAdministrator).toBeInstanceOf(LastAdministrator)
+    }),
+    10_000
+  )
 })

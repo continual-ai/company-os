@@ -13,9 +13,10 @@ From this package directory:
 pnpm dev
 ```
 
-The development server prints its local URL. Local identity mode provides administrator, operator,
-and restricted profiles without an external identity provider. Open `/developer` to inspect the
-current model, generated API and SDK, MCP tools, and design system.
+PostgreSQL must already be running at the configured `DATABASE_URL`; the repository does not manage
+the server. The development server prints its local URL. Local identity mode provides administrator,
+operator, and restricted profiles without an external identity provider. Open `/developer` to
+inspect the current model, generated API and SDK, MCP tools, and design system.
 
 Use [`.env.example`](.env.example) as the deployment configuration contract. Local development uses
 the committed `.env.development` defaults unless `.env.local` overrides them. Only `VITE_`

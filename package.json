@@ -16,8 +16,9 @@
     "lint:fix": "oxlint --fix . && turbo boundaries && pnpm lint:model",
     "lint:model": "pnpm -r --if-present lint:model",
     "prepare": "effect-tsgo patch --no-typescript --oxlint",
-    "setup": "docker compose up -d --wait postgres && pnpm --filter company-os db:deploy",
+    "setup": "pnpm --filter company-os db:deploy",
     "test": "pnpm test:tools && turbo test",
+    "test:force": "pnpm test:tools && turbo test --force",
     "test:tools": "tsx tools/oxlint/company-os/test-rules.ts",
     "typecheck": "tsc --noEmit && turbo typecheck",
     "ui:add": "pnpm --filter @company/ui exec shadcn add"

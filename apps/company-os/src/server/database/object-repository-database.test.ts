@@ -1,5 +1,3 @@
-import { fileURLToPath } from "node:url"
-
 import { Model } from "@company/model"
 import {
   DomainName,
@@ -17,12 +15,9 @@ import {
   ObjectWriteConflict,
 } from "@company/runtime/effect/object-repository"
 import * as ObjectService from "@company/runtime/effect/object-service"
-import { PgliteClient } from "@effect/sql-pglite"
 import { eq } from "drizzle-orm"
-import * as PgliteDrizzle from "drizzle-orm/effect-pglite"
-import { migrate } from "drizzle-orm/effect-pglite/migrator"
-import { Effect, Layer } from "effect"
-import { describe, expect, expectTypeOf, it } from "vitest"
+import { Effect } from "effect"
+import { describe, expect, expectTypeOf } from "vitest"
 
 import { systemInvocation } from "@/server/invocation-context"
 import { RecordIdentifierResolver } from "@/server/model/record-identifier-resolver"
@@ -31,12 +26,11 @@ import { seedSystem } from "@/server/seeds/seed-system"
 import { ROOT_ID, SYSTEM_SERVICE_ACCOUNT_ID } from "@/system-records"
 
 import { Database } from "./database"
+import { itDatabase } from "./it-database"
+import { applyMigrations } from "./migrations"
 import { makeObjectRepository } from "./object-repository"
-import { lineItems, recordAliases, objects, parties, relations } from "./schema"
-import { asTestDatabase } from "./test-database"
+import { lineItems, recordAliases, objects, parties } from "./schema"
 
-const migrationsFolder = fileURLToPath(new URL("./migrations", import.meta.url))
-const TestDatabase = PgliteClient.layer()
 const CompanyId = RecordId("company")
 
 function omitStorageFields<
@@ -60,37 +54,21 @@ function snakeCase(value: string): string {
   return value.replaceAll(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase()
 }
 
-function run<A, E>(
-  effect: Effect.Effect<A, E, PageTokens | PgliteClient.PgliteClient>
-) {
-  return Effect.runPromise(
-    Effect.scoped(
-      effect.pipe(
-        Effect.provide(Layer.merge(TestDatabase, PageTokens.layerTest))
-      )
-    )
-  )
-}
-
 describe("Drizzle object repository", () => {
-  it("migrates and preserves object invariants across standard methods", async () => {
-    let nextId = 0
-    const root = ROOT_ID
-    const context = systemInvocation
-    const result = await run(
-      Effect.gen(function* () {
-        const database = yield* PgliteDrizzle.makeWithDefaults({ relations })
-        yield* migrate(database, { migrationsFolder })
-        yield* migrate(database, { migrationsFolder })
+  itDatabase(
+    "migrates and preserves object invariants across standard methods",
+    Effect.fn(function* () {
+      let nextId = 0
+      const root = ROOT_ID
+      const context = systemInvocation
+      const result = yield* Effect.gen(function* () {
+        const database = yield* Database
+        yield* applyMigrations()
+        yield* applyMigrations()
 
-        const db = asTestDatabase(database)
-        yield* seedSystem().pipe(Effect.provideService(Database, db))
-        const identifiers = yield* RecordIdentifierResolver.make.pipe(
-          Effect.provideService(Database, db)
-        )
-        const repository = yield* makeObjectRepository(
-          Model.objects.company
-        ).pipe(Effect.provideService(Database, db))
+        yield* seedSystem()
+        const identifiers = yield* RecordIdentifierResolver.make
+        const repository = yield* makeObjectRepository(Model.objects.company)
         const service = ObjectService.make(Model.objects.company, repository, {
           authorize: () => Effect.void,
           generateRecordId: () => `company_${++nextId}`,
@@ -219,9 +197,7 @@ describe("Drizzle object repository", () => {
             parent: RootId(first.id),
           })
           .pipe(Effect.flip)
-        const userRepository = yield* makeObjectRepository(
-          Model.objects.user
-        ).pipe(Effect.provideService(Database, db))
+        const userRepository = yield* makeObjectRepository(Model.objects.user)
         const userRecord = {
           aliases: [],
           createdBy: SYSTEM_SERVICE_ACCOUNT_ID,
@@ -244,7 +220,7 @@ describe("Drizzle object repository", () => {
           name: "Second User",
         })
         const rollbackId = CompanyId("company_rollback")
-        yield* db
+        yield* database
           .transaction(() =>
             repository
               .insert({
@@ -256,9 +232,7 @@ describe("Drizzle object repository", () => {
           .pipe(Effect.flip)
         const rolledBack = yield* repository.get(rollbackId).pipe(Effect.flip)
 
-        const leadRepository = yield* makeObjectRepository(
-          Model.objects.lead
-        ).pipe(Effect.provideService(Database, db))
+        const leadRepository = yield* makeObjectRepository(Model.objects.lead)
         const leadService = ObjectService.make(
           Model.objects.lead,
           leadRepository,
@@ -286,9 +260,7 @@ describe("Drizzle object repository", () => {
           .get({ id: legacyExample })
           .pipe(Effect.flip)
 
-        const dealRepository = yield* makeObjectRepository(
-          Model.objects.deal
-        ).pipe(Effect.provideService(Database, db))
+        const dealRepository = yield* makeObjectRepository(Model.objects.deal)
         const dealService = ObjectService.make(
           Model.objects.deal,
           dealRepository,
@@ -311,7 +283,7 @@ describe("Drizzle object repository", () => {
         >()
         const lineItemRepository = yield* makeObjectRepository(
           Model.objects.lineItem
-        ).pipe(Effect.provideService(Database, db))
+        )
         const lineItemService = ObjectService.make(
           Model.objects.lineItem,
           lineItemRepository,
@@ -396,133 +368,140 @@ describe("Drizzle object repository", () => {
           zeroPageSize,
           oversizedPage,
         }
-      }).pipe(Effect.provideService(ObjectService.CurrentInvocation, context))
-    )
-
-    expect(result.first).toMatchObject({
-      aliases: ["hubspot:portal_1:company:example"],
-      domain: "example.example",
-      id: "company_1",
-      lifecycleStage: "prospect",
-      name: "Example",
-      parent: ROOT_ID,
-    })
-    expect(result.updated).toMatchObject({
-      id: result.first.id,
-      name: "Example Corporation",
-    })
-    expect(result.updated.createdAt).toBe(result.first.createdAt)
-    expect(result.updated.etag).not.toBe(result.first.etag)
-    expect(Date.parse(result.first.createdAt)).not.toBeNaN()
-    expect(Date.parse(result.updated.updatedAt)).not.toBeNaN()
-    expect(result.aliasDelta.aliases).toEqual([
-      "salesforce:org_1:account:example",
-    ])
-    expect(result.aliasReplacement.aliases).toEqual(["legacy:company:example"])
-    expect(result.aliasConflict).toBeInstanceOf(RecordAliasConflict)
-    expect(result.secondAfterConflict.aliases).toEqual([
-      "hubspot:portal_1:company:bravo",
-    ])
-    expect(result.resolvedAlias).toBe(result.first.id)
-    expect(result.foundByAlias.id).toBe(result.first.id)
-    expect(result.removedAlias).toBeInstanceOf(RecordAliasNotFound)
-    expect(result.clearedSecond.aliases).toEqual([])
-    expect(result.clearedAlias).toBeInstanceOf(RecordAliasNotFound)
-    expect(result.aliasRows).toEqual([
-      { alias: "legacy:company:example", objectId: result.first.id },
-    ])
-    expect(result.batch.items.map(({ id }) => id)).toEqual([
-      result.second.id,
-      result.first.id,
-    ])
-    expect(result.batchDeleteFailure).toBeDefined()
-    expect(result.retainedAfterBatchDelete.items.map(({ id }) => id)).toEqual([
-      result.second.id,
-      result.first.id,
-    ])
-    expect(result.firstPage.items).toHaveLength(1)
-    expect(result.firstPage.nextPageToken).not.toBeNull()
-    if (result.firstPage.nextPageToken !== null) {
-      expect(result.firstPage.nextPageToken.length).toBeLessThan(256)
-    }
-    expect(result.firstPage.totalSize).toBe(2)
-    expect(result.secondPage.items).toHaveLength(1)
-    expect(result.secondPage.nextPageToken).toBeNull()
-    expect(result.secondPage.totalSize).toBe(2)
-    expect(result.zeroPageSize.items).toHaveLength(2)
-    expect(result.oversizedPage.items).toHaveLength(2)
-    expect(result.tamperedCursor).toBeInstanceOf(InvalidListRequest)
-    expect(result.filtered.items.map(({ id }) => id)).toEqual([result.first.id])
-    expect(result.filtered.totalSize).toBe(1)
-    expect(result.filteredByAlias.items.map(({ id }) => id)).toEqual([
-      result.first.id,
-    ])
-    expect(result.filteredByAlias.totalSize).toBe(1)
-    expect(result.sortedFirstPage.items[0]?.name).toBe("Example Corporation")
-    expect(result.sortedFirstPage.totalSize).toBe(2)
-    expect(result.sortedSecondPage.items[0]?.name).toBe("Bravo")
-    expect(result.sortedSecondPage.totalSize).toBe(2)
-    expect(result.mismatchedCursor).toBeInstanceOf(InvalidListRequest)
-    expect(result.invalidFilterValue).toBeInstanceOf(InvalidListRequest)
-    expect(result.staleWrite).toBeInstanceOf(ObjectWriteConflict)
-    expect(result.userWithSharedEmail).toMatchObject({
-      email: "unique@example.example",
-      name: "Second User",
-    })
-    expect(result.wrongParent).toBeInstanceOf(ObjectParentTypeMismatch)
-    expect(result.wrongTypeAlias).toBeInstanceOf(RecordAliasNotFound)
-    expect(result.rolledBack).toBeInstanceOf(ObjectNotFound)
-    expect(result.leads.items).toHaveLength(1)
-    expect(result.leads.items[0]).toMatchObject({
-      email: "lead@example.example",
-    })
-    expect(result.partyRows.map(({ id }) => id)).toEqual([
-      result.first.id,
-      result.second.id,
-    ])
-    expect(result.inconsistentParent).toBeDefined()
-    expect(result.lineItem).toMatchObject({
-      name: "Implementation",
-      parent: "deal_1",
-      quantity: 1,
-    })
-    expect(result.storedDeals).toEqual([
-      expect.objectContaining({
-        id: "deal_1",
-        parentId: result.first.id,
-      }),
-    ])
-    expect(result.lineItemKindRows).toEqual([
-      expect.objectContaining({
-        parentId: "deal_1",
-        id: result.lineItem.id,
-      }),
-    ])
-    expect(
-      result.lineItemObjectRows.find(({ id }) => id === result.lineItem.id)
-    ).toMatchObject({
-      ancestorIds: ["deal_1", result.first.id, ROOT_ID],
-    })
-    for (const object of Object.values(Model.objects)) {
-      expect(
-        new Set(
-          result.columns
-            .filter(
-              ({ tableName }) => tableName === snakeCase(object.collection)
-            )
-            .map(({ columnName }) => columnName)
-        )
-      ).toEqual(
-        new Set([
-          "id",
-          "parent_id",
-          ...Object.entries(object.properties).map(([propertyId, property]) =>
-            snakeCase(
-              property.kind === "recordId" ? `${propertyId}Id` : propertyId
-            )
-          ),
-        ])
+      }).pipe(
+        Effect.provideService(ObjectService.CurrentInvocation, context),
+        Effect.provide(PageTokens.layerTest)
       )
-    }
-  })
+
+      expect(result.first).toMatchObject({
+        aliases: ["hubspot:portal_1:company:example"],
+        domain: "example.example",
+        id: "company_1",
+        lifecycleStage: "prospect",
+        name: "Example",
+        parent: ROOT_ID,
+      })
+      expect(result.updated).toMatchObject({
+        id: result.first.id,
+        name: "Example Corporation",
+      })
+      expect(result.updated.createdAt).toBe(result.first.createdAt)
+      expect(result.updated.etag).not.toBe(result.first.etag)
+      expect(Date.parse(result.first.createdAt)).not.toBeNaN()
+      expect(Date.parse(result.updated.updatedAt)).not.toBeNaN()
+      expect(result.aliasDelta.aliases).toEqual([
+        "salesforce:org_1:account:example",
+      ])
+      expect(result.aliasReplacement.aliases).toEqual([
+        "legacy:company:example",
+      ])
+      expect(result.aliasConflict).toBeInstanceOf(RecordAliasConflict)
+      expect(result.secondAfterConflict.aliases).toEqual([
+        "hubspot:portal_1:company:bravo",
+      ])
+      expect(result.resolvedAlias).toBe(result.first.id)
+      expect(result.foundByAlias.id).toBe(result.first.id)
+      expect(result.removedAlias).toBeInstanceOf(RecordAliasNotFound)
+      expect(result.clearedSecond.aliases).toEqual([])
+      expect(result.clearedAlias).toBeInstanceOf(RecordAliasNotFound)
+      expect(result.aliasRows).toEqual([
+        { alias: "legacy:company:example", objectId: result.first.id },
+      ])
+      expect(result.batch.items.map(({ id }) => id)).toEqual([
+        result.second.id,
+        result.first.id,
+      ])
+      expect(result.batchDeleteFailure).toBeDefined()
+      expect(result.retainedAfterBatchDelete.items.map(({ id }) => id)).toEqual(
+        [result.second.id, result.first.id]
+      )
+      expect(result.firstPage.items).toHaveLength(1)
+      expect(result.firstPage.nextPageToken).not.toBeNull()
+      if (result.firstPage.nextPageToken !== null) {
+        expect(result.firstPage.nextPageToken.length).toBeLessThan(256)
+      }
+      expect(result.firstPage.totalSize).toBe(2)
+      expect(result.secondPage.items).toHaveLength(1)
+      expect(result.secondPage.nextPageToken).toBeNull()
+      expect(result.secondPage.totalSize).toBe(2)
+      expect(result.zeroPageSize.items).toHaveLength(2)
+      expect(result.oversizedPage.items).toHaveLength(2)
+      expect(result.tamperedCursor).toBeInstanceOf(InvalidListRequest)
+      expect(result.filtered.items.map(({ id }) => id)).toEqual([
+        result.first.id,
+      ])
+      expect(result.filtered.totalSize).toBe(1)
+      expect(result.filteredByAlias.items.map(({ id }) => id)).toEqual([
+        result.first.id,
+      ])
+      expect(result.filteredByAlias.totalSize).toBe(1)
+      expect(result.sortedFirstPage.items[0]?.name).toBe("Example Corporation")
+      expect(result.sortedFirstPage.totalSize).toBe(2)
+      expect(result.sortedSecondPage.items[0]?.name).toBe("Bravo")
+      expect(result.sortedSecondPage.totalSize).toBe(2)
+      expect(result.mismatchedCursor).toBeInstanceOf(InvalidListRequest)
+      expect(result.invalidFilterValue).toBeInstanceOf(InvalidListRequest)
+      expect(result.staleWrite).toBeInstanceOf(ObjectWriteConflict)
+      expect(result.userWithSharedEmail).toMatchObject({
+        email: "unique@example.example",
+        name: "Second User",
+      })
+      expect(result.wrongParent).toBeInstanceOf(ObjectParentTypeMismatch)
+      expect(result.wrongTypeAlias).toBeInstanceOf(RecordAliasNotFound)
+      expect(result.rolledBack).toBeInstanceOf(ObjectNotFound)
+      expect(result.leads.items).toHaveLength(1)
+      expect(result.leads.items[0]).toMatchObject({
+        email: "lead@example.example",
+      })
+      expect(result.partyRows.map(({ id }) => id)).toEqual([
+        result.first.id,
+        result.second.id,
+      ])
+      expect(result.inconsistentParent).toBeDefined()
+      expect(result.lineItem).toMatchObject({
+        name: "Implementation",
+        parent: "deal_1",
+        quantity: 1,
+      })
+      expect(result.storedDeals).toEqual([
+        expect.objectContaining({
+          id: "deal_1",
+          parentId: result.first.id,
+        }),
+      ])
+      expect(result.lineItemKindRows).toEqual([
+        expect.objectContaining({
+          parentId: "deal_1",
+          id: result.lineItem.id,
+        }),
+      ])
+      expect(
+        result.lineItemObjectRows.find(({ id }) => id === result.lineItem.id)
+      ).toMatchObject({
+        ancestorIds: ["deal_1", result.first.id, ROOT_ID],
+      })
+      for (const object of Object.values(Model.objects)) {
+        expect(
+          new Set(
+            result.columns
+              .filter(
+                ({ tableName }) => tableName === snakeCase(object.collection)
+              )
+              .map(({ columnName }) => columnName)
+          )
+        ).toEqual(
+          new Set([
+            "id",
+            "parent_id",
+            ...Object.entries(object.properties).map(([propertyId, property]) =>
+              snakeCase(
+                property.kind === "recordId" ? `${propertyId}Id` : propertyId
+              )
+            ),
+          ])
+        )
+      }
+    }),
+    10_000
+  )
 })

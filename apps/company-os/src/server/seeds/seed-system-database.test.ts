@@ -1,25 +1,19 @@
-import { fileURLToPath } from "node:url"
-
 import { Etag } from "@company/runtime"
-import { PgliteClient } from "@effect/sql-pglite"
 import { eq, inArray, sql } from "drizzle-orm"
-import * as PgliteDrizzle from "drizzle-orm/effect-pglite"
-import { migrate } from "drizzle-orm/effect-pglite/migrator"
-import { Effect, Layer } from "effect"
-import { describe, expect, it } from "vitest"
+import { Effect } from "effect"
+import { describe, expect } from "vitest"
 
 import { Database } from "@/server/database/database"
+import { itDatabase } from "@/server/database/it-database"
 import {
   actors,
   anonymousActors,
   objects,
   principalSets,
   recordAliases,
-  relations,
   roleAssignments,
   roles,
 } from "@/server/database/schema"
-import { asTestDatabase } from "@/server/database/test-database"
 import {
   authenticatedInvocation,
   ReservedSystemActor,
@@ -37,30 +31,12 @@ import {
 
 import { seedSystem } from "./seed-system"
 
-const migrationsFolder = fileURLToPath(
-  new URL("../database/migrations", import.meta.url)
-)
-const TestDatabase = PgliteClient.layer()
-
-function run<A, E>(
-  effect: Effect.Effect<A, E, PageTokens | PgliteClient.PgliteClient>
-) {
-  return Effect.runPromise(
-    Effect.scoped(
-      effect.pipe(
-        Effect.provide(Layer.merge(TestDatabase, PageTokens.layerTest))
-      )
-    )
-  )
-}
-
 describe("Company OS seeds", () => {
-  it("converges stable system-managed records without aliases", async () => {
-    const result = await run(
-      Effect.gen(function* () {
-        const pglite = yield* PgliteDrizzle.makeWithDefaults({ relations })
-        yield* migrate(pglite, { migrationsFolder })
-        const database = asTestDatabase(pglite)
+  itDatabase(
+    "converges stable system-managed records without aliases",
+    Effect.fn(function* () {
+      const result = yield* Effect.gen(function* () {
+        const database = yield* Database
 
         const auditConstraints = yield* database.execute<{
           constraintName: string
@@ -80,7 +56,7 @@ describe("Company OS seeds", () => {
           "objects"
         )
 
-        yield* seedSystem().pipe(Effect.provideService(Database, database))
+        yield* seedSystem()
         yield* database
           .update(roles)
           .set({ name: "Drifted", permissions: [] })
@@ -93,7 +69,7 @@ describe("Company OS seeds", () => {
           .delete(objects)
           .where(eq(objects.id, SYSTEM_ROLE_ASSIGNMENT_ID))
 
-        yield* seedSystem().pipe(Effect.provideService(Database, database))
+        yield* seedSystem()
 
         const seededObjects = yield* database
           .select({ id: objects.id, systemManaged: objects.systemManaged })
@@ -162,52 +138,53 @@ describe("Company OS seeds", () => {
           seededObjects,
           unknownActor,
         }
-      })
-    )
+      }).pipe(Effect.provide(PageTokens.layerTest))
 
-    expect(result.seededObjects.map(({ id }) => id)).toEqual(
-      expect.arrayContaining([
-        ROOT_ID,
-        SYSTEM_SERVICE_ACCOUNT_ID,
-        ANONYMOUS_ACTOR_ID,
-        ADMINISTRATOR_ROLE_ID,
-        SYSTEM_ROLE_ASSIGNMENT_ID,
+      expect(result.seededObjects.map(({ id }) => id)).toEqual(
+        expect.arrayContaining([
+          ROOT_ID,
+          SYSTEM_SERVICE_ACCOUNT_ID,
+          ANONYMOUS_ACTOR_ID,
+          ADMINISTRATOR_ROLE_ID,
+          SYSTEM_ROLE_ASSIGNMENT_ID,
+        ])
+      )
+      expect(result.seededObjects).toHaveLength(5)
+      expect(result.anonymousActor).toEqual([
+        { actorId: ANONYMOUS_ACTOR_ID, id: ANONYMOUS_ACTOR_ID },
       ])
-    )
-    expect(result.seededObjects).toHaveLength(5)
-    expect(result.anonymousActor).toEqual([
-      { actorId: ANONYMOUS_ACTOR_ID, id: ANONYMOUS_ACTOR_ID },
-    ])
-    expect(result.auditConstraints).toEqual([
-      {
-        constraintName: "objects_created_by_id_interface_actor_id_fkey",
-        deferrable: true,
-        initiallyDeferred: true,
-      },
-      {
-        constraintName: "objects_updated_by_id_interface_actor_id_fkey",
-        deferrable: true,
-        initiallyDeferred: true,
-      },
-    ])
-    expect(
-      result.seededObjects.every(({ systemManaged }) => systemManaged)
-    ).toBe(true)
-    expect(result.role[0]?.name).toBe("Administrator")
-    expect(result.callerSets).toEqual([
-      {
-        id: ALL_AUTHENTICATED_CALLERS_PRINCIPAL_SET_ID,
-        kind: "allAuthenticatedCallers",
-      },
-      { id: ALL_CALLERS_PRINCIPAL_SET_ID, kind: "allCallers" },
-    ])
-    expect(Array.isArray(result.role[0]?.permissions)).toBe(true)
-    expect(result.assignment[0]).toEqual({
-      principalId: SYSTEM_SERVICE_ACCOUNT_ID,
-      roleId: ADMINISTRATOR_ROLE_ID,
-    })
-    expect(result.aliases).toEqual([])
-    expect(result.impersonation).toBeInstanceOf(ReservedSystemActor)
-    expect(result.unknownActor).toBeDefined()
-  })
+      expect(result.auditConstraints).toEqual([
+        {
+          constraintName: "objects_created_by_id_interface_actor_id_fkey",
+          deferrable: true,
+          initiallyDeferred: true,
+        },
+        {
+          constraintName: "objects_updated_by_id_interface_actor_id_fkey",
+          deferrable: true,
+          initiallyDeferred: true,
+        },
+      ])
+      expect(
+        result.seededObjects.every(({ systemManaged }) => systemManaged)
+      ).toBe(true)
+      expect(result.role[0]?.name).toBe("Administrator")
+      expect(result.callerSets).toEqual([
+        {
+          id: ALL_AUTHENTICATED_CALLERS_PRINCIPAL_SET_ID,
+          kind: "allAuthenticatedCallers",
+        },
+        { id: ALL_CALLERS_PRINCIPAL_SET_ID, kind: "allCallers" },
+      ])
+      expect(Array.isArray(result.role[0]?.permissions)).toBe(true)
+      expect(result.assignment[0]).toEqual({
+        principalId: SYSTEM_SERVICE_ACCOUNT_ID,
+        roleId: ADMINISTRATOR_ROLE_ID,
+      })
+      expect(result.aliases).toEqual([])
+      expect(result.impersonation).toBeInstanceOf(ReservedSystemActor)
+      expect(result.unknownActor).toBeDefined()
+    }),
+    10_000
+  )
 })

@@ -31,6 +31,8 @@ Effect.gen(function* () {
     "Database reset complete; all committed migrations applied and required records converged."
   )
 }).pipe(
-  Effect.provide(Layer.merge(Postgres.layer, PageTokens.layer)),
+  Effect.provide(
+    Layer.merge(Postgres.databaseAndClientLayer, PageTokens.layer)
+  ),
   NodeRuntime.runMain
 )

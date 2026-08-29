@@ -38,7 +38,7 @@
     "react-dom": "catalog:"
   },
   "devDependencies": {
-    "@effect/sql-pglite": "catalog:",
+    "@effect/vitest": "catalog:",
     "@tanstack/devtools-vite": "catalog:",
     "@types/node": "catalog:",
     "@types/pg": "catalog:",

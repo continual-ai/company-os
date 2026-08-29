@@ -1,3 +1,5 @@
+/// <reference types="vitest/config" />
+
 import tailwindcss from "@tailwindcss/vite"
 import { devtools } from "@tanstack/devtools-vite"
 import { tanstackStart } from "@tanstack/react-start/plugin/vite"
@@ -22,4 +24,26 @@ export default defineConfig({
     }),
     viteReact(),
   ],
+  test: {
+    teardownTimeout: 10_000,
+    projects: [
+      {
+        extends: true,
+        test: {
+          exclude: ["src/**/*-database.test.{ts,tsx}"],
+          include: ["src/**/*.test.{ts,tsx}"],
+          name: "unit",
+        },
+      },
+      {
+        extends: true,
+        test: {
+          globalSetup: "./src/server/database/test-database-global-setup.ts",
+          include: ["src/**/*-database.test.ts"],
+          name: "database",
+          testTimeout: 15_000,
+        },
+      },
+    ],
+  },
 })
