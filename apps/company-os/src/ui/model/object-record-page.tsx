@@ -8,7 +8,7 @@ import {
   TabsTrigger,
 } from "@company/ui/components/tabs"
 import { ArrowLeftIcon, PencilIcon } from "lucide-react"
-import { useCallback, useState, type ReactNode } from "react"
+import { useCallback, useMemo, useState, type ReactNode } from "react"
 
 import { usePageChromeOverride } from "@/ui/application/page-chrome"
 
@@ -46,13 +46,19 @@ export function ObjectRecordPage({
     readonly recordId: string
     readonly totals: Readonly<Record<string, number>>
   }>({ recordId, totals: {} })
+  const traversals = useMemo(
+    () => modelObjectLinkTraversals(Model, object),
+    [object]
+  )
   const updateRelationshipTotal = useCallback(
     (traversalKey: string, totalSize: number) =>
       setRelationshipTotals((current) => {
-        const totals: Record<string, number> =
-          current.recordId === recordId ? { ...current.totals } : {}
-        totals[traversalKey] = totalSize
-        return { recordId, totals }
+        const totals = current.recordId === recordId ? current.totals : {}
+        if (totals[traversalKey] === totalSize) return current
+        return {
+          recordId,
+          totals: { ...totals, [traversalKey]: totalSize },
+        }
       }),
     [recordId]
   )
@@ -94,7 +100,6 @@ export function ObjectRecordPage({
   }
 
   const projected = tableRecord(object, record)
-  const traversals = modelObjectLinkTraversals(Model, object)
   const activeTab =
     tab !== undefined &&
     traversals.some(({ traversal }) => traversal.key === tab)
