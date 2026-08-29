@@ -35,7 +35,6 @@ export function FormField({
 }) {
   const field = useFieldContext<FormValue>()
   // SAFETY: application validators and the API adapter emit FormErrorValue only.
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const errors = formErrorMessages(
     field.state.meta.errors as ReadonlyArray<FormErrorValue>
   )

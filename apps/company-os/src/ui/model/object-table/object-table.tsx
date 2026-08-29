@@ -1,4 +1,3 @@
-/* oxlint-disable anti-slop/no-conditional-empty-object-spread */
 import {
   schema,
   type ObjectType,
@@ -8,8 +7,10 @@ import { Button } from "@company/ui/components/button"
 import { Checkbox } from "@company/ui/components/checkbox"
 import {
   Empty,
+  EmptyContent,
   EmptyDescription,
   EmptyHeader,
+  EmptyMedia,
   EmptyTitle,
 } from "@company/ui/components/empty"
 import {
@@ -38,9 +39,14 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   GripVerticalIcon,
+  LoaderCircleIcon,
+  PlusIcon,
+  SearchXIcon,
 } from "lucide-react"
 import { type CSSProperties, useMemo, useState } from "react"
 import type { ReactNode } from "react"
+
+import { ObjectIcon } from "@/ui/model/object-record-identity"
 
 import { ObjectTableCell } from "./object-table-cell"
 import {
@@ -124,40 +130,65 @@ const tableRowHeight = 32
 const tableFooterHeight = 32
 
 function ObjectTableViewportState({
+  onClearFilters,
+  onCreate,
   filtered,
   loading,
   object,
-  canCreate,
 }: {
-  readonly canCreate: boolean
   readonly filtered: boolean
   readonly loading: boolean
   readonly object: ObjectType
+  readonly onClearFilters: () => void
+  readonly onCreate?: (() => Promise<void> | void) | undefined
 }) {
   const title = loading
     ? `Loading ${object.pluralName.toLowerCase()}…`
     : filtered
       ? `No matching ${object.pluralName.toLowerCase()}`
-      : `No ${object.pluralName.toLowerCase()} to show`
+      : `No ${object.pluralName.toLowerCase()} yet`
   const description = loading
     ? "Records will appear as soon as they are available."
     : filtered
       ? "Change or clear the current filters."
-      : canCreate
+      : onCreate !== undefined
         ? `Create the first ${object.name.toLowerCase()} to get started.`
         : "Records will appear here when they are available."
 
   return (
     <div
       data-object-table-viewport-state=""
-      className="pointer-events-none absolute inset-x-0 z-10 grid place-items-center"
-      style={{ top: tableHeaderHeight + tableFooterHeight, bottom: 0 }}
+      className="absolute inset-x-0 bottom-0 z-10 grid place-items-center"
+      style={{ top: tableHeaderHeight }}
     >
       <Empty className="h-full p-6" aria-live="polite">
         <EmptyHeader>
+          <EmptyMedia variant="icon">
+            {loading ? (
+              <LoaderCircleIcon className="animate-spin" />
+            ) : filtered ? (
+              <SearchXIcon />
+            ) : (
+              <ObjectIcon object={object} />
+            )}
+          </EmptyMedia>
           <EmptyTitle>{title}</EmptyTitle>
           <EmptyDescription>{description}</EmptyDescription>
         </EmptyHeader>
+        {loading ? null : filtered ? (
+          <EmptyContent>
+            <Button type="button" variant="outline" onClick={onClearFilters}>
+              Clear filters
+            </Button>
+          </EmptyContent>
+        ) : onCreate === undefined ? null : (
+          <EmptyContent>
+            <Button type="button" onClick={() => void onCreate()}>
+              <PlusIcon />
+              New {object.name}
+            </Button>
+          </EmptyContent>
+        )}
       </Empty>
     </div>
   )
@@ -386,7 +417,9 @@ export function ObjectTable({
   })
   const renderedTableWidth = table.getTotalSize() + addColumnWidth
   const renderedTableSurfaceHeight =
-    tableHeaderHeight + tableRowHeight * visibleRows.length + tableFooterHeight
+    tableHeaderHeight +
+    tableRowHeight * visibleRows.length +
+    (hasNoVisibleRows ? 0 : tableFooterHeight)
   const recordCountLabel = pagination
     ? `${pagination.totalSize} total`
     : visibleRows.length === records.length
@@ -418,7 +451,7 @@ export function ObjectTable({
           className="table-fixed border-separate border-spacing-0"
           role="grid"
           aria-colcount={visibleColumns.length + 1}
-          aria-rowcount={visibleRows.length + 2}
+          aria-rowcount={visibleRows.length + (hasNoVisibleRows ? 1 : 2)}
           style={{ minWidth: "100%", width: renderedTableWidth }}
           onContainerScroll={(event) =>
             setIsHorizontallyScrolled(event.currentTarget.scrollLeft !== 0)
@@ -693,65 +726,68 @@ export function ObjectTable({
               </TableRow>
             ))}
           </TableBody>
-          <TableFooter className="sticky bottom-0 z-20 bg-background font-normal">
-            <TableRow className="h-8 hover:bg-transparent">
-              {visibleColumns.map((column) => (
+          {hasNoVisibleRows ? null : (
+            <TableFooter className="sticky bottom-0 z-20 bg-background font-normal">
+              <TableRow className="h-8 hover:bg-transparent">
+                {visibleColumns.map((column) => (
+                  <TableCell
+                    key={column.id}
+                    className={cn(
+                      "h-8 border-y border-r bg-background p-0 text-muted-foreground",
+                      column.getIsPinned() && "z-10"
+                    )}
+                    style={pinnedColumnStyle(column)}
+                  >
+                    {column.id === object.display.title ? (
+                      <div className="flex h-full items-center justify-end px-2 tabular-nums">
+                        {recordCountLabel}
+                      </div>
+                    ) : null}
+                  </TableCell>
+                ))}
                 <TableCell
-                  key={column.id}
-                  className={cn(
-                    "h-8 border-y border-r bg-background p-0 text-muted-foreground",
-                    column.getIsPinned() && "z-10"
-                  )}
-                  style={pinnedColumnStyle(column)}
+                  className="h-8 border-y border-r bg-background p-0"
+                  style={{ width: addColumnWidth }}
                 >
-                  {column.id === object.display.title ? (
-                    <div className="flex h-full items-center justify-end px-2 tabular-nums">
-                      {recordCountLabel}
+                  {pagination === undefined ? null : (
+                    <div className="flex h-full items-center justify-end px-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-xs"
+                        aria-label="Previous page"
+                        disabled={
+                          pagination.loading || !pagination.hasPreviousPage
+                        }
+                        onClick={pagination.onPreviousPage}
+                      >
+                        <ChevronLeftIcon />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-xs"
+                        aria-label="Next page"
+                        disabled={pagination.loading || !pagination.hasNextPage}
+                        onClick={pagination.onNextPage}
+                      >
+                        <ChevronRightIcon />
+                      </Button>
                     </div>
-                  ) : null}
+                  )}
                 </TableCell>
-              ))}
-              <TableCell
-                className="h-8 border-y border-r bg-background p-0"
-                style={{ width: addColumnWidth }}
-              >
-                {pagination === undefined ? null : (
-                  <div className="flex h-full items-center justify-end px-1">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-xs"
-                      aria-label="Previous page"
-                      disabled={
-                        pagination.loading || !pagination.hasPreviousPage
-                      }
-                      onClick={pagination.onPreviousPage}
-                    >
-                      <ChevronLeftIcon />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-xs"
-                      aria-label="Next page"
-                      disabled={pagination.loading || !pagination.hasNextPage}
-                      onClick={pagination.onNextPage}
-                    >
-                      <ChevronRightIcon />
-                    </Button>
-                  </div>
-                )}
-              </TableCell>
-            </TableRow>
-          </TableFooter>
+              </TableRow>
+            </TableFooter>
+          )}
         </Table>
 
         {hasNoVisibleRows ? (
           <ObjectTableViewportState
-            canCreate={onCreateRecord !== undefined}
             filtered={hasActiveFilters}
             loading={isInitialLoading}
             object={object}
+            onClearFilters={() => table.resetColumnFilters(true)}
+            onCreate={onCreateRecord}
           />
         ) : null}
 

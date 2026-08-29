@@ -1,59 +1,11 @@
 "use client"
 
-import {
-  Command,
-  CommandEmpty,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@company/ui/components/command"
 import { Input } from "@company/ui/components/input"
-import {
-  InputGroup,
-  InputGroupButton,
-} from "@company/ui/components/input-group"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@company/ui/components/popover"
+import { InputGroup } from "@company/ui/components/input-group"
 import { cn } from "@company/ui/lib/utils"
 import { GlobeIcon } from "lucide-react"
-import {
-  forwardRef,
-  useState,
-  type ComponentProps,
-  type FocusEventHandler,
-} from "react"
-import PhoneNumberInput, {
-  getCountryCallingCode,
-  type Country,
-} from "react-phone-number-input"
-
-interface CountryOption {
-  readonly divider?: boolean
-  readonly label: string
-  readonly value?: Country
-}
-
-interface CountrySelectProps {
-  readonly "aria-describedby"?: string | undefined
-  readonly "aria-invalid"?:
-    | boolean
-    | "false"
-    | "grammar"
-    | "spelling"
-    | "true"
-    | undefined
-  readonly "aria-label"?: string | undefined
-  readonly disabled?: boolean | undefined
-  readonly onBlur?: FocusEventHandler<HTMLButtonElement> | undefined
-  readonly onChange: (country?: Country) => void
-  readonly onFocus?: FocusEventHandler<HTMLButtonElement> | undefined
-  readonly options: ReadonlyArray<CountryOption>
-  readonly readOnly?: boolean | undefined
-  readonly value?: Country | undefined
-}
+import { forwardRef, type ComponentProps, type FocusEventHandler } from "react"
+import PhoneNumberInput, { type Country } from "react-phone-number-input"
 
 function countryFlag(country: Country): string {
   return String.fromCodePoint(
@@ -64,111 +16,19 @@ function countryFlag(country: Country): string {
   )
 }
 
-function CountrySelect({
-  "aria-describedby": ariaDescribedBy,
-  "aria-invalid": invalid,
-  "aria-label": ariaLabel,
-  disabled,
-  onBlur,
-  onChange,
-  onFocus,
-  options,
-  readOnly,
-  value,
-}: CountrySelectProps) {
-  const [open, setOpen] = useState(false)
-  const [query, setQuery] = useState("")
-  const normalizedQuery = query.trim().toLocaleLowerCase()
-  const visibleOptions = options.filter(
-    (option) =>
-      !option.divider &&
-      (normalizedQuery === "" ||
-        option.label.toLocaleLowerCase().includes(normalizedQuery) ||
-        option.value?.toLocaleLowerCase().includes(normalizedQuery) === true ||
-        (option.value === undefined
-          ? "international"
-          : `+${getCountryCallingCode(option.value)}`
-        ).includes(normalizedQuery))
-  )
-  const selected = options.find((option) => option.value === value)
-
+function CountryIndicator({ value }: { readonly value?: Country | undefined }) {
   return (
-    <Popover
-      open={open}
-      onOpenChange={(nextOpen) => {
-        setOpen(nextOpen)
-        if (!nextOpen) setQuery("")
-      }}
+    <span
+      aria-hidden="true"
+      data-slot="phone-country-indicator"
+      className="pointer-events-none absolute inset-y-0 left-0 z-10 flex w-9 items-center justify-center border-r border-input bg-muted/40 text-sm leading-none text-muted-foreground"
     >
-      <PopoverTrigger
-        render={
-          <InputGroupButton
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            data-slot="input-group-control"
-            aria-label={
-              selected === undefined
-                ? (ariaLabel ?? "Phone number country")
-                : `${ariaLabel ?? "Phone number country"}: ${selected.label}`
-            }
-            aria-describedby={ariaDescribedBy}
-            aria-invalid={invalid}
-            disabled={disabled || readOnly}
-            className="h-full w-9 shrink-0 border-0 px-0 focus-visible:ring-0"
-            onBlur={onBlur}
-            onFocus={onFocus}
-          />
-        }
-      >
-        {value === undefined ? (
-          <GlobeIcon className="size-3.5 text-muted-foreground" />
-        ) : (
-          <span aria-hidden="true" className="text-sm leading-none">
-            {countryFlag(value)}
-          </span>
-        )}
-      </PopoverTrigger>
-      <PopoverContent align="start" className="w-80 gap-0 p-0">
-        <Command shouldFilter={false}>
-          <CommandInput
-            aria-label="Search countries"
-            placeholder="Search countries or calling codes…"
-            value={query}
-            onValueChange={setQuery}
-          />
-          <CommandList>
-            <CommandEmpty>No matching countries</CommandEmpty>
-            {visibleOptions.map((option) => (
-              <CommandItem
-                key={option.value ?? "international"}
-                value={option.value ?? "international"}
-                data-checked={option.value === value}
-                onSelect={() => {
-                  onChange(option.value)
-                  setOpen(false)
-                }}
-              >
-                <span aria-hidden="true" className="w-5 text-sm">
-                  {option.value === undefined
-                    ? "🌐"
-                    : countryFlag(option.value)}
-                </span>
-                <span className="min-w-0 flex-1 truncate">{option.label}</span>
-                {option.value === undefined ? null : (
-                  <span className="text-muted-foreground tabular-nums">
-                    +{getCountryCallingCode(option.value)}
-                  </span>
-                )}
-              </CommandItem>
-            ))}
-          </CommandList>
-        </Command>
-      </PopoverContent>
-      <span className="sr-only" aria-live="polite">
-        {selected?.label}
-      </span>
-    </Popover>
+      {value === undefined ? (
+        <GlobeIcon className="size-3.5" />
+      ) : (
+        countryFlag(value)
+      )}
+    </span>
   )
 }
 
@@ -179,7 +39,7 @@ const PhoneTextInput = forwardRef<HTMLInputElement, ComponentProps<"input">>(
         ref={ref}
         data-slot="input-group-control"
         className={cn(
-          "flex-1 border-0 bg-transparent shadow-none ring-0 focus-visible:ring-0 disabled:bg-transparent aria-invalid:ring-0 dark:bg-transparent dark:disabled:bg-transparent",
+          "flex-1 border-0 bg-transparent pl-11 shadow-none ring-0 focus-visible:ring-0 disabled:bg-transparent aria-invalid:ring-0 dark:bg-transparent dark:disabled:bg-transparent",
           className
         )}
         {...props}
@@ -216,11 +76,7 @@ export function PhoneInput({
       {...props}
       className={cn(className)}
       containerComponent={InputGroup}
-      countrySelectComponent={CountrySelect}
-      countrySelectProps={{
-        "aria-describedby": props["aria-describedby"],
-        "aria-invalid": props["aria-invalid"],
-      }}
+      countrySelectComponent={CountryIndicator}
       defaultCountry={defaultCountry}
       inputComponent={PhoneTextInput}
       smartCaret={false}

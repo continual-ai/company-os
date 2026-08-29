@@ -1,27 +1,29 @@
 import type { ObjectType } from "@company/runtime"
 import { Badge } from "@company/ui/components/badge"
+import { Button } from "@company/ui/components/button"
 import {
   PreviewCard,
   PreviewCardContent,
   PreviewCardTrigger,
 } from "@company/ui/components/preview-card"
+import { cn } from "@company/ui/lib/utils"
 import { Link } from "@tanstack/react-router"
-import { BoxIcon, Building2Icon, UserRoundIcon } from "lucide-react"
+import { BoxIcon, Building2Icon, UserRoundIcon, XIcon } from "lucide-react"
 
-import { objectTablePropertySchema } from "./object-table-cell-types"
+import type { ObjectRecordPresentation } from "./object-client"
+import { objectTablePropertySchema } from "./object-table/object-table-cell-types"
 import {
   objectTableImageValue,
   objectTableValueText,
   type ObjectTableImageResolver,
   type ObjectTableRecord,
   type ObjectTableValue,
-} from "./object-table-config"
+} from "./object-table/object-table-config"
 
-interface ObjectTableIdentityProps {
-  href?: string | undefined
-  object: ObjectType
-  record: ObjectTableRecord
-  resolveImageSrc?: ObjectTableImageResolver | undefined
+interface ObjectRecordIdentityProps extends ObjectRecordPresentation {
+  readonly className?: string | undefined
+  readonly href?: string | undefined
+  readonly resolveImageSrc?: ObjectTableImageResolver | undefined
 }
 
 function displayText(value: ObjectTableValue | undefined): string {
@@ -59,14 +61,12 @@ function displayStatus(object: ObjectType, record: ObjectTableRecord) {
   return choices.find((choice) => choice.value === value)?.label ?? value
 }
 
-function ObjectMark({
-  image,
+export function ObjectIcon({
   object,
-  size = "sm",
+  className,
 }: {
-  image: string
-  object: ObjectType
-  size?: "lg" | "sm"
+  readonly object: ObjectType
+  readonly className?: string | undefined
 }) {
   const Icon =
     object.display.icon === "building"
@@ -75,6 +75,18 @@ function ObjectMark({
         ? UserRoundIcon
         : BoxIcon
 
+  return <Icon className={className} />
+}
+
+function ObjectMark({
+  image,
+  object,
+  size = "sm",
+}: {
+  readonly image: string
+  readonly object: ObjectType
+  readonly size?: "lg" | "sm"
+}) {
   return (
     <span
       aria-hidden="true"
@@ -87,18 +99,22 @@ function ObjectMark({
       {image.length > 0 ? (
         <img alt="" className="size-full object-cover" src={image} />
       ) : (
-        <Icon className={size === "lg" ? "size-4" : "size-3"} />
+        <ObjectIcon
+          object={object}
+          className={size === "lg" ? "size-4" : "size-3"}
+        />
       )}
     </span>
   )
 }
 
-export function ObjectTableIdentity({
+export function ObjectRecordIdentity({
+  className,
   href,
   object,
   record,
   resolveImageSrc,
-}: ObjectTableIdentityProps) {
+}: ObjectRecordIdentityProps) {
   const title = displayText(record[object.display.title])
   const subtitle =
     object.display.subtitle === undefined
@@ -116,11 +132,19 @@ export function ObjectTableIdentity({
       <PreviewCardTrigger
         render={
           href === undefined ? (
-            <span className="inline-flex min-w-0 items-center gap-1.5" />
+            <span
+              className={cn(
+                "inline-flex min-w-0 items-center gap-1.5",
+                className
+              )}
+            />
           ) : (
             <Link
               to={href}
-              className="inline-flex min-w-0 items-center gap-1.5 text-interactive underline-offset-2 hover:underline focus-visible:underline focus-visible:outline-none"
+              className={cn(
+                "inline-flex min-w-0 items-center gap-1.5 text-interactive underline-offset-2 hover:underline focus-visible:underline focus-visible:outline-none",
+                className
+              )}
               onClick={(event) => event.stopPropagation()}
               onDoubleClick={(event) => event.stopPropagation()}
             />
@@ -152,5 +176,58 @@ export function ObjectTableIdentity({
         ) : null}
       </PreviewCardContent>
     </PreviewCard>
+  )
+}
+
+export function ObjectRecordPill({
+  label,
+  onRemove,
+  presentation,
+}: {
+  readonly label: string
+  readonly onRemove?: (() => void) | undefined
+  readonly presentation?: ObjectRecordPresentation | undefined
+}) {
+  return (
+    <span className="inline-flex min-w-0 items-center gap-1 border bg-muted py-1 pr-1 pl-1.5 text-xs">
+      {presentation === undefined ? (
+        <span className="max-w-56 truncate px-1">{label}</span>
+      ) : (
+        <ObjectRecordIdentity
+          className="max-w-56"
+          object={presentation.object}
+          record={presentation.record}
+        />
+      )}
+      {onRemove === undefined ? null : (
+        <Button
+          type="button"
+          size="icon-xs"
+          variant="ghost"
+          aria-label={`Remove ${label}`}
+          onClick={onRemove}
+        >
+          <XIcon />
+        </Button>
+      )}
+    </span>
+  )
+}
+
+export function ObjectRecordOption({
+  label,
+  presentation,
+}: {
+  readonly label: string
+  readonly presentation?: ObjectRecordPresentation | undefined
+}) {
+  return presentation === undefined ? (
+    <span className="truncate">{label}</span>
+  ) : (
+    <ObjectRecordIdentity
+      className="max-w-full"
+      object={presentation.object}
+      record={presentation.record}
+    />
   )
 }

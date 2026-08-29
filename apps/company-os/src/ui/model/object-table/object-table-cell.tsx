@@ -40,6 +40,8 @@ import {
 } from "lucide-react"
 import { type ComponentType, useEffect, useRef, useState } from "react"
 
+import { ObjectRecordIdentity } from "@/ui/model/object-record-identity"
+
 import {
   formatObjectTableCellText,
   objectTableCellInputValue,
@@ -67,7 +69,6 @@ import {
   type ObjectTableRecord,
   type ObjectTableValue,
 } from "./object-table-config"
-import { ObjectTableIdentity } from "./object-table-identity"
 
 const tagColorClasses = {
   blue: "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300",
@@ -245,7 +246,7 @@ function TextCell({
       }
     >
       {identity !== undefined ? (
-        <ObjectTableIdentity {...identity} resolveImageSrc={resolveImageSrc} />
+        <ObjectRecordIdentity {...identity} resolveImageSrc={resolveImageSrc} />
       ) : href !== null ? (
         <a
           className={cn(

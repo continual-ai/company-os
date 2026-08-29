@@ -1,4 +1,3 @@
-/* oxlint-disable anti-slop/no-reflect-get, anti-slop/no-runtime-typeof -- This model adapter validates reflected endpoints before invoking them. */
 import { Model } from "@company/model"
 import {
   type Batch,
@@ -6,6 +5,7 @@ import {
   modelTypeAccepts,
   type ListRequest,
   type ObjectRef,
+  type ObjectType,
   type Page,
   type PropertyDefinition,
 } from "@company/runtime"
@@ -33,10 +33,16 @@ export interface ClientRecord {
   readonly [property: string]: ClientValue | undefined
 }
 
+export interface ObjectRecordPresentation {
+  readonly object: ObjectType
+  readonly record: ObjectTableRecord
+}
+
 export interface RelatedRecord {
   readonly id: string
   readonly label: string
   readonly objectType: string
+  readonly presentation?: ObjectRecordPresentation | undefined
 }
 
 export interface DynamicObjectClient {
@@ -210,7 +216,6 @@ export function modelObjectProperty(
 ): PropertyDefinition | undefined {
   // SAFETY: a closed-model object's heterogeneous property map is read through
   // its common normalized PropertyDefinition contract.
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const properties = object.properties as Readonly<
     Record<string, PropertyDefinition>
   >
@@ -223,7 +228,6 @@ export function tableRecord(
 ): ObjectTableRecord {
   // SAFETY: the server validates responses from the same model projected by
   // the table; only declared presentation properties cross this adapter.
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const projected = {
     id: record.id,
     systemManaged: record.systemManaged === true,
@@ -253,6 +257,7 @@ export async function describeReferences(
   references: ReadonlyArray<ObjectRef>
 ): Promise<ReadonlyArray<RelatedRecord>> {
   const labels = new Map<string, string>()
+  const presentations = new Map<string, ObjectRecordPresentation>()
   const byType = new Map<string, ObjectRef[]>()
   for (const reference of references) {
     const typedReferences = byType.get(reference.objectType) ?? []
@@ -276,6 +281,10 @@ export async function describeReferences(
       })
       for (const record of records.items) {
         labels.set(record.id, recordLabel(object, record))
+        presentations.set(record.id, {
+          object,
+          record: tableRecord(object, record),
+        })
       }
     })
   )
@@ -283,6 +292,7 @@ export async function describeReferences(
     id,
     label: labels.get(id) ?? id,
     objectType,
+    presentation: presentations.get(id),
   }))
 }
 

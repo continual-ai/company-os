@@ -1,4 +1,3 @@
-/* oxlint-disable anti-slop/no-runtime-typeof */
 import type { ModelLinkTraversal } from "@company/runtime"
 import { Button } from "@company/ui/components/button"
 import { XIcon } from "lucide-react"
@@ -14,6 +13,7 @@ import {
   type ModelObject,
   type RelatedRecord,
 } from "./object-client"
+import { ObjectRecordPill } from "./object-record-identity"
 import {
   ObjectReferenceSelect,
   type ReferenceOption,
@@ -67,12 +67,12 @@ export function ObjectLinkEditField({
     [object, traversal]
   )
   const [current, setCurrent] = useState<ReadonlyArray<RelatedRecord>>([])
-  const [addedLabels, setAddedLabels] = useState<ReadonlyMap<string, string>>(
-    new Map()
-  )
+  const [addedOptions, setAddedOptions] = useState<
+    ReadonlyMap<string, ReferenceOption>
+  >(new Map())
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string>()
-  const [nextPageToken, setNextPageToken] = useState("")
+  const [nextPageToken, setNextPageToken] = useState<string | null>(null)
   const requestId = useRef(0)
   const delta = linkDelta(value)
 
@@ -135,17 +135,22 @@ export function ObjectLinkEditField({
 
   const remember = (option?: ReferenceOption) => {
     if (option === undefined) return
-    setAddedLabels((labels) => new Map(labels).set(option.id, option.label))
+    setAddedOptions((options) => new Map(options).set(option.id, option))
   }
 
   const currentById = new Map(current.map((item) => [item.id, item]))
   const activeCurrent = current.filter(
     ({ id: target }) => !delta.remove.includes(target)
   )
-  const added = delta.add.map((target) => ({
-    id: target,
-    label: addedLabels.get(target) ?? currentById.get(target)?.label ?? target,
-  }))
+  const added = delta.add.map((target) => {
+    const option = addedOptions.get(target)
+    const existing = currentById.get(target)
+    return {
+      id: target,
+      label: option?.label ?? existing?.label ?? target,
+      presentation: option?.presentation ?? existing?.presentation,
+    }
+  })
 
   if (traversal.traversal.cardinality !== "many") {
     const original = current[0]
@@ -197,40 +202,28 @@ export function ObjectLinkEditField({
   ]
   return (
     <div
-      className="grid gap-2"
+      className="flex min-h-9 flex-wrap items-center gap-1.5 border border-input bg-transparent p-1.5"
       aria-describedby={ariaDescribedBy}
       aria-invalid={invalid}
     >
-      {visible.length === 0 ? null : (
-        <div className="flex flex-wrap gap-1.5">
-          {visible.map((item) => (
-            <span
-              key={item.id}
-              className="inline-flex min-w-0 items-center gap-1 border bg-muted px-2 py-1 text-xs"
-            >
-              <span className="max-w-56 truncate">{item.label}</span>
-              {client.unlink === undefined ? null : (
-                <Button
-                  type="button"
-                  size="icon-xs"
-                  variant="ghost"
-                  aria-label={`Remove ${item.label}`}
-                  onClick={() =>
-                    delta.add.includes(item.id)
-                      ? setDelta(
-                          delta.add.filter((target) => target !== item.id),
-                          delta.remove
-                        )
-                      : setDelta(delta.add, [...delta.remove, item.id])
-                  }
-                >
-                  <XIcon />
-                </Button>
-              )}
-            </span>
-          ))}
-        </div>
-      )}
+      {visible.map((item) => (
+        <ObjectRecordPill
+          key={item.id}
+          label={item.label}
+          presentation={item.presentation}
+          onRemove={
+            client.unlink === undefined
+              ? undefined
+              : () =>
+                  delta.add.includes(item.id)
+                    ? setDelta(
+                        delta.add.filter((target) => target !== item.id),
+                        delta.remove
+                      )
+                    : setDelta(delta.add, [...delta.remove, item.id])
+          }
+        />
+      ))}
       {loadError === undefined ? null : (
         <div className="flex items-center justify-between gap-2 text-xs text-destructive">
           <span>{loadError}</span>
@@ -244,7 +237,7 @@ export function ObjectLinkEditField({
           </Button>
         </div>
       )}
-      {nextPageToken === "" ? null : (
+      {nextPageToken === null ? null : (
         <Button
           type="button"
           size="sm"
@@ -256,12 +249,15 @@ export function ObjectLinkEditField({
         </Button>
       )}
       <ObjectReferenceSelect
+        appearance="inline"
         ariaDescribedBy={ariaDescribedBy}
+        closeOnSelect={false}
         id={id}
         includeHiddenInput={false}
         invalid={invalid}
         name={name}
         placeholder="Add a record"
+        selectedValues={visible.map(({ id: target }) => target)}
         typeId={traversal.target.from.typeId}
         value=""
         onBlur={onBlur}

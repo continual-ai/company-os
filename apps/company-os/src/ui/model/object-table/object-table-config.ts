@@ -45,7 +45,6 @@ export function objectTableImageValue(
 ): ImageRef | null {
   if (value === null || value === undefined) return null
   // This is the parsed ObjectTableValue boundary; its only object member is ImageRef.
-  // oxlint-disable-next-line anti-slop/no-runtime-typeof
   return typeof value === "object" && "assetId" in value ? value : null
 }
 
@@ -54,7 +53,6 @@ function objectTableMoneyValue(
 ): Money | null {
   if (
     // ObjectTableValue is the parsed boundary for presentation values.
-    // oxlint-disable-next-line anti-slop/no-runtime-typeof
     typeof value !== "object" ||
     value === null ||
     !("amount" in value) ||
@@ -76,7 +74,6 @@ export function objectTableValueText(
   if (money !== null) return `${money.amount} ${money.currency}`
 
   // ObjectTableValue is already parsed; this exhausts its scalar members.
-  // oxlint-disable-next-line anti-slop/no-runtime-typeof
   switch (typeof value) {
     case "boolean":
       return value ? "true" : "false"
@@ -147,10 +144,8 @@ const operatorLabels = {
 
 // TanStack Table intentionally exposes filter values as unknown. This parser
 // validates that boundary before the value enters the ObjectTable contract.
-// oxlint-disable-next-line anti-slop/no-unknown-parameters
 function isFilterValue(value: unknown): value is ObjectTableFilterValue {
   if (
-    // oxlint-disable-next-line anti-slop/no-runtime-typeof
     typeof value !== "object" ||
     value === null ||
     !("operator" in value) ||
@@ -160,14 +155,10 @@ function isFilterValue(value: unknown): value is ObjectTableFilterValue {
   }
 
   return (
-    // oxlint-disable-next-line anti-slop/no-runtime-typeof
     typeof value.operator === "string" &&
     value.operator in operatorLabels &&
     Array.isArray(value.values) &&
-    value.values.every(
-      // oxlint-disable-next-line anti-slop/no-runtime-typeof
-      (filterValue) => typeof filterValue === "string"
-    )
+    value.values.every((filterValue) => typeof filterValue === "string")
   )
 }
 
@@ -238,10 +229,8 @@ export function matchesObjectTableFilter(
 
 const objectPropertyFilter = constructFilterFn({
   // TanStack owns this untyped extension point; the value is parsed here.
-  // oxlint-disable-next-line anti-slop/no-unknown-parameters
   autoRemove: (value: unknown) => !isFilterValue(value),
   // TanStack owns the filter-value extension point; it is parsed here.
-  // oxlint-disable-next-line anti-slop/no-unknown-parameters
   filter: (dataValue: ObjectTableValue, filterValue: unknown) => {
     if (!isFilterValue(filterValue)) return true
 
@@ -254,11 +243,10 @@ const objectPropertySort = constructSortFn({
   resolveDataValue: objectTableSortText,
 })
 
+const defaultColumnMeta: ObjectTableColumnMeta = { label: "" }
+
 export const objectTableFeatures = tableFeatures({
-  // SAFETY: every ObjectTable column creates metadata matching this local
-  // contract before the definition is passed to TanStack Table.
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  columnMeta: {} as ObjectTableColumnMeta,
+  columnMeta: defaultColumnMeta,
   columnFilteringFeature,
   filterFns: { objectProperty: objectPropertyFilter },
   filteredRowModel: createFilteredRowModel(),
@@ -354,7 +342,6 @@ export function hasFilterInput(operator: ObjectTableFilterOperator): boolean {
 
 // TanStack Table exposes its generic column-filter value as unknown. This
 // parser supplies a safe local default for invalid external values.
-// oxlint-disable-next-line anti-slop/no-unknown-parameters
 export function readFilterValue(value: unknown): ObjectTableFilterValue {
   return isFilterValue(value) ? value : { operator: "contains", values: [] }
 }

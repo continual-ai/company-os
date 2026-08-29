@@ -1,4 +1,3 @@
-/* oxlint-disable anti-slop/no-runtime-typeof */
 import { Model, modelMetadata } from "@company/model"
 import {
   modelObjectLinkTraversals,
@@ -369,6 +368,24 @@ function isObjectFormObject(
   return typeof value === "object" && value !== null && !Array.isArray(value)
 }
 
+function isClientValue(value: unknown): value is ClientValue {
+  if (
+    value === null ||
+    typeof value === "boolean" ||
+    typeof value === "number" ||
+    typeof value === "string"
+  ) {
+    return true
+  }
+  if (Array.isArray(value)) return value.every(isClientValue)
+  return (
+    typeof value === "object" &&
+    Object.values(value).every(
+      (item) => item === undefined || isClientValue(item)
+    )
+  )
+}
+
 function initialValue(
   property: PropertyDefinition,
   record: ClientRecord | undefined,
@@ -385,9 +402,10 @@ function initialValue(
   ) {
     return now.toISOString()
   }
-  // SAFETY: portable property defaults are JSON-compatible values by schema.
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  return property.default as ClientValue | undefined
+  if (property.default === undefined || isClientValue(property.default)) {
+    return property.default
+  }
+  throw new Error(`Property '${propertyId}' has a non-portable default value.`)
 }
 
 export function objectFormDefaultValues(

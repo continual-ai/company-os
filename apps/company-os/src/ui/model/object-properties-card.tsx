@@ -1,4 +1,3 @@
-/* oxlint-disable anti-slop/no-runtime-typeof -- ClientRecord and ObjectTableValue are decoded API representations with a closed value union. */
 import { Badge } from "@company/ui/components/badge"
 import { Separator } from "@company/ui/components/separator"
 import type { ReactNode } from "react"

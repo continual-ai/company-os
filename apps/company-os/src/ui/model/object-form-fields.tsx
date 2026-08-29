@@ -1,4 +1,3 @@
-/* oxlint-disable anti-slop/no-runtime-typeof */
 import { DateTimePicker } from "@company/ui/components/date-time-picker"
 import { FieldError } from "@company/ui/components/field"
 import { Input } from "@company/ui/components/input"
@@ -551,10 +550,7 @@ export function ObjectFormFields({
       </ObjectFormSection>
 
       {links.length === 0 ? null : (
-        <ObjectFormSection
-          title="Relationships"
-          description="Connect this record to the other records it concerns."
-        >
+        <ObjectFormSection title="Relationships">
           {links.map((linkTraversal) => {
             const { target, traversal } = linkTraversal
             const fieldId = `${object.id}-${mode}-link-${traversal.key}`

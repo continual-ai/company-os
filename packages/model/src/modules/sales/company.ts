@@ -38,10 +38,25 @@ export const Company = defineObject({
       maxLength: 2_048,
       nullable: true,
     }),
-    industry: schema.string({
+    industry: schema.select({
       label: "Industry",
-      maxLength: 100,
       nullable: true,
+      options: [
+        { value: "SaaS/Technology", label: "SaaS / technology" },
+        { value: "Professional services", label: "Professional services" },
+        { value: "Financial services", label: "Financial services" },
+        { value: "Healthcare", label: "Healthcare" },
+        { value: "Manufacturing", label: "Manufacturing" },
+        { value: "Retail", label: "Retail" },
+        {
+          value: "Media/Telecommunications",
+          label: "Media / telecommunications",
+        },
+        { value: "Education", label: "Education" },
+        { value: "Government", label: "Government" },
+        { value: "Nonprofit", label: "Nonprofit" },
+        { value: "Other", label: "Other" },
+      ],
     }),
     lifecycleStage: schema.select({
       label: "Lifecycle stage",

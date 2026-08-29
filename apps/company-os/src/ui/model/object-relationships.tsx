@@ -86,7 +86,7 @@ function Relationship({
   const [expanded, setExpanded] = useState(!collapsible)
   const [loading, setLoading] = useState(false)
   const [loadError, setLoadError] = useState<string>()
-  const [nextPageToken, setNextPageToken] = useState("")
+  const [nextPageToken, setNextPageToken] = useState<string | null>(null)
   const [removing, setRemoving] = useState<string>()
   const formElement = useRef<HTMLFormElement>(null)
   const link = canUpdate ? client.link : undefined
@@ -302,7 +302,7 @@ function Relationship({
             </div>
           )}
 
-          {nextPageToken === "" ? null : (
+          {nextPageToken === null ? null : (
             <Button
               type="button"
               size="sm"

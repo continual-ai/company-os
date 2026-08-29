@@ -13,6 +13,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@company/ui/components/popover"
+import { cn } from "@company/ui/lib/utils"
 import { CheckIcon, ChevronDownIcon } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 
@@ -23,18 +24,23 @@ import {
   modelObjectProperty,
   recordLabel,
   recordObjectTypes,
+  tableRecord,
   type ModelObject,
+  type ObjectRecordPresentation,
 } from "./object-client"
 import { canSortProperty } from "./object-collection-query"
 import { useObjectCreate } from "./object-create-context"
+import { ObjectRecordOption } from "./object-record-identity"
 import { ObjectReferenceCreateActions } from "./object-reference-create-actions"
 
 export interface ReferenceOption {
   readonly id: string
   readonly label: string
+  readonly presentation?: ObjectRecordPresentation | undefined
 }
 
 const noConstraints: ReadonlyArray<ReferenceConstraint> = []
+const noSelectedValues: ReadonlyArray<string> = []
 
 interface ReferenceListRequest {
   filter?: Exclude<ListRequest["filter"], undefined>
@@ -99,10 +105,11 @@ async function findOptions(
       }
     })
   )
-  const options = pages.flatMap(({ object, page }) =>
+  const options: ReferenceOption[] = pages.flatMap(({ object, page }) =>
     page.items.map((record) => ({
       id: record.id,
       label: recordLabel(object, record),
+      presentation: { object, record: tableRecord(object, record) },
     }))
   )
   if (modelTypeAccepts(Model, Model.root.id, typeId)) {
@@ -112,7 +119,9 @@ async function findOptions(
 }
 
 export function ObjectReferenceSelect({
+  appearance = "field",
   ariaDescribedBy,
+  closeOnSelect = true,
   constraints = noConstraints,
   disabled = false,
   id,
@@ -124,10 +133,13 @@ export function ObjectReferenceSelect({
   onValueChange,
   placeholder = "Select a record",
   required = false,
+  selectedValues = noSelectedValues,
   typeId,
   value,
 }: {
+  readonly appearance?: "field" | "inline"
   readonly ariaDescribedBy?: string | undefined
+  readonly closeOnSelect?: boolean
   readonly disabled?: boolean
   readonly id?: string | undefined
   readonly includeHiddenInput?: boolean
@@ -139,6 +151,7 @@ export function ObjectReferenceSelect({
   readonly onValueChange: (value: string, option?: ReferenceOption) => void
   readonly placeholder?: string
   readonly required?: boolean
+  readonly selectedValues?: ReadonlyArray<string>
   readonly typeId: string
   readonly value: string
 }) {
@@ -184,7 +197,11 @@ export function ObjectReferenceSelect({
     setOpen(false)
     openObjectCreate(object, {
       onCreated: (record) => {
-        const option = { id: record.id, label: recordLabel(object, record) }
+        const option = {
+          id: record.id,
+          label: recordLabel(object, record),
+          presentation: { object, record: tableRecord(object, record) },
+        }
         setOptions((current) => [
           option,
           ...current.filter((candidate) => candidate.id !== option.id),
@@ -211,14 +228,23 @@ export function ObjectReferenceSelect({
               aria-invalid={invalid}
               aria-required={required}
               data-form-field={name}
-              className="w-full justify-between border-input bg-transparent font-normal hover:bg-transparent"
+              className={cn(
+                appearance === "field"
+                  ? "w-full justify-between border-input bg-transparent font-normal hover:bg-transparent"
+                  : "h-7 min-w-36 flex-1 justify-between border-0 bg-transparent px-2 font-normal text-muted-foreground shadow-none hover:bg-muted/60 hover:text-foreground"
+              )}
               onBlur={onBlur}
             />
           }
         >
-          <span className="truncate">
-            {selected?.label ?? initialLabel ?? placeholder}
-          </span>
+          {selected === undefined ? (
+            <span className="truncate">{initialLabel ?? placeholder}</span>
+          ) : (
+            <ObjectRecordOption
+              label={selected.label}
+              presentation={selected.presentation}
+            />
+          )}
           <ChevronDownIcon className="text-muted-foreground" />
         </PopoverTrigger>
         <PopoverContent align="start" className="w-80 gap-0 p-0">
@@ -241,12 +267,20 @@ export function ObjectReferenceSelect({
                   key={option.id}
                   value={option.id}
                   onSelect={() => {
+                    if (selectedValues.includes(option.id)) return
                     onValueChange(option.id, option)
-                    setOpen(false)
+                    if (closeOnSelect) {
+                      setOpen(false)
+                    } else {
+                      setQuery("")
+                    }
                   }}
                 >
-                  <span className="truncate">{option.label}</span>
-                  {option.id === value ? (
+                  <ObjectRecordOption
+                    label={option.label}
+                    presentation={option.presentation}
+                  />
+                  {option.id === value || selectedValues.includes(option.id) ? (
                     <CheckIcon className="ml-auto" />
                   ) : null}
                 </CommandItem>

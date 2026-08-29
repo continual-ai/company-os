@@ -1,4 +1,3 @@
-/* oxlint-disable anti-slop/no-runtime-typeof -- This boundary normalizes TanStack Form's library-owned ValidationError union. */
 import {
   isApiError,
   standardErrorViolations,

@@ -16,8 +16,8 @@ export function ObjectFormSection({
   readonly title: string
 }) {
   return (
-    <FieldSet className="border-t pt-4 first:border-t-0 first:pt-0">
-      <FieldLegend>{title}</FieldLegend>
+    <FieldSet className="border-0 p-0 pt-2 first:pt-0">
+      <FieldLegend className="mb-0 w-full border-b pb-2">{title}</FieldLegend>
       {description === undefined ? null : (
         <FieldDescription>{description}</FieldDescription>
       )}
