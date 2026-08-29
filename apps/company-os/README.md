@@ -7,9 +7,10 @@ maintaining separate business rules.
 
 ## Develop
 
-From this package directory:
+From the repository root, prepare the application once and then start it:
 
 ```sh
+pnpm setup
 pnpm dev
 ```
 
@@ -18,9 +19,10 @@ the server. The development server prints its local URL. Local identity mode pro
 operator, and restricted profiles without an external identity provider. Open `/developer` to
 inspect the current model, generated API and SDK, MCP tools, and design system.
 
-Use [`.env.example`](.env.example) as the deployment configuration contract. Local development uses
-the committed `.env.development` defaults unless `.env.local` overrides them. Only `VITE_`
-variables may enter browser code; keep database and identity assertion configuration server-only.
+`pnpm setup` creates `.env` from [`.env.example`](.env.example) when it is missing. The example is
+the deployment configuration contract; the ignored `.env` contains local values. Only `VITE_`
+variables may enter browser code. Server code validates private configuration with Effect Config
+rather than reading the process environment directly.
 
 Set `VITE_COMPANY_OS_URL` to the public deployment origin when canonical URLs and the MCP Host/Origin
 allowlist should use it. When it is unset, the app omits canonical URLs instead of publishing a local
@@ -53,6 +55,7 @@ primitives belong in `@company/ui`. Server-only application code stays under `sr
 - `src/server/model` owns generic model execution bindings and repositories.
 - `src/server/modules/<module>` owns behavior specific to a business module.
 - `src/server/transport` projects the governed implementation to HTTP and MCP.
+- `tools` contains the app's explicit setup and database command entrypoints.
 
 Put business behavior in the model and governed server path rather than duplicating policy in React
 or customization configuration.
@@ -80,12 +83,11 @@ on the server even when the UI has already received an advisory capability resul
 The model is the source of truth for persisted business shape. This app owns the resulting schema
 projection, explicit SQL migrations, generated snapshots, and release database job.
 
-Common package-local commands are:
+From the repository root, use Turbo to target the app that owns the database:
 
 ```sh
-pnpm db:check
-pnpm db:deploy
-pnpm test
+pnpm turbo run db:check --filter=company-os
+pnpm turbo run db:migrate --filter=company-os
 ```
 
 Read the [database workflow](../../docs/runbooks/database.md) before generating a migration,

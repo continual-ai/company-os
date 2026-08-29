@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto"
 
 import { PgClient } from "@effect/sql-pg"
-import { Data, Effect, Layer, Redacted } from "effect"
+import { Config, Data, Effect, Layer, Redacted } from "effect"
 import { Client } from "pg"
 
 import { Database } from "./database"
@@ -109,7 +109,9 @@ async function migrateDatabase(url: string): Promise<void> {
 }
 
 async function createTemplate(): Promise<TestDatabaseTemplate> {
-  const adminUrl = process.env.DATABASE_URL ?? defaultAdminUrl
+  const adminUrl = await Effect.runPromise(
+    Config.string("DATABASE_URL").pipe(Config.withDefault(defaultAdminUrl))
+  )
   const name = databaseName("template")
   await createDatabase(adminUrl, name, "template0")
   try {

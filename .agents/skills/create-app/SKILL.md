@@ -1,16 +1,16 @@
 ---
-name: add-app
+name: create-app
 description:
-  Add and bootstrap an optional company-owned app from one of this repository's executable
-  templates. Use for adding a portal, marketing site, or other focused interface to an existing
+  Create and bootstrap an optional company-owned app from one of this repository's executable
+  templates. Use for creating a portal, marketing site, or other focused interface in an existing
   Company OS project, not for creating the required central app or company model.
 ---
 
-# Add App
+# Create App
 
-Add an optional, source-owned application to an existing Company OS project. The generated app is a
-one-time copy of a runnable template: it must not import from `templates/`, and subsequent work
-belongs in the app or shared `@company/*` packages according to repository ownership rules.
+Create an optional, source-owned application in an existing Company OS project. The generated app
+is a one-time copy of a runnable template: it must not import from `templates/`, and subsequent
+work belongs in the app or shared `@company/*` packages according to repository ownership rules.
 
 Every project already has exactly one central `apps/company-os` and one `@company/model`. Never use
 this skill to create or replace either one. Optional apps are focused interfaces over the central
@@ -18,8 +18,8 @@ app's governed capabilities, not independent business authorities.
 
 ## Instantiate
 
-1. Inspect the worktree and preserve unrelated changes.
-2. Run `pnpm add:app` to see the maintained templates, then run `pnpm add:app <template>` to add
+1. Inspect the checkout and preserve unrelated changes.
+2. Run `pnpm app:create` to see the maintained templates, then run `pnpm app:create <template>` to add
    one. Do not infer templates from arbitrary directories.
 3. Let the repository tool own copying, package rewriting, environment creation, dependency
    installation, and bootstrap checks. It refuses to overwrite an existing `apps/<template>`.

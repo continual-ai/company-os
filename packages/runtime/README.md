@@ -113,6 +113,5 @@ authority model.
 From the repository root:
 
 ```sh
-pnpm --filter @company/runtime test
-pnpm --filter @company/runtime typecheck
+pnpm turbo run test typecheck --filter=@company/runtime
 ```

@@ -1,3 +1,4 @@
+import { companyOsUrl } from "@/client-environment"
 import { applicationConfig } from "@/customization/config"
 
 export type PageMetadata = {
@@ -80,8 +81,8 @@ export function canonicalMetadata(path: string) {
 }
 
 function absoluteSiteUrl(path: string | undefined) {
-  const configuredSiteUrl = import.meta.env.VITE_COMPANY_OS_URL?.trim()
-  if (!configuredSiteUrl || !path) return undefined
+  const siteUrl = companyOsUrl()
+  if (!siteUrl || !path) return undefined
 
-  return new URL(path, configuredSiteUrl).toString()
+  return new URL(path, siteUrl).toString()
 }

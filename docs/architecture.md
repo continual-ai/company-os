@@ -49,7 +49,7 @@ attribution, and transactional rules again for every operation, regardless of ca
 
 Cloning or forking the repository creates one project with one `@company/model` and one required
 `apps/company-os` composition root. `templates/*` contains maintained executable starters only for
-optional focused apps. `pnpm add:app <template>` copies one under `apps/*`, gives it its ordinary
+optional focused apps. `pnpm app:create <template>` copies one under `apps/*`, gives it its ordinary
 package identity, installs the workspace, and runs its bootstrap checks. The added app is then
 ordinary company-owned source. It never imports template source, so a company can change it without
 creating a second extension system.

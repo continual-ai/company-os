@@ -36,7 +36,7 @@ and database remain the authority for business rules and records.
 
 ## Quick start
 
-You need PostgreSQL 18, Node.js 22.12 or newer, and pnpm 11. The repository also includes a
+You need PostgreSQL 18, Node.js 24, and pnpm 11. The repository also includes a
 `mise.toml` for installing the pinned Node.js and pnpm toolchain with
 [mise](https://mise.jdx.dev/).
 
@@ -44,18 +44,19 @@ You need PostgreSQL 18, Node.js 22.12 or newer, and pnpm 11. The repository also
 git clone https://github.com/continual-ai/company-os.git
 cd company-os
 pnpm install
-createdb company_os
+pnpm setup
 pnpm dev
 ```
 
 Open <http://localhost:3002> and choose a local development identity. Create a lead, convert it,
 or inspect the model and generated interfaces in the **Developer Center**.
 
-The committed development configuration connects to PostgreSQL on its standard local port. Override
-`DATABASE_URL` in `apps/company-os/.env.local` when your local role, password, host, port, or database
-name differs. `pnpm dev` applies committed migrations, converges required records, and runs the
-central Company OS application; it does not install or start PostgreSQL. Use `pnpm dev:all` after
-adding optional apps to run every application under `apps/*`.
+`pnpm setup` creates `apps/company-os/.env` from the example when needed, creates the configured
+database on local PostgreSQL when needed, and applies migrations and required records. Edit that
+file when your local role, password, host, port, or database name differs. PostgreSQL itself must
+already be running. `pnpm dev` runs every application development task. Maintained template source
+is checked and built but does not run as an application until it is copied into `apps/*`. Use
+Turbo's `--filter` option directly when you want to run only part of the monorepo.
 
 ## Try the included operation
 
@@ -121,9 +122,9 @@ contains executable starters for optional focused interfaces. `apps/*` contains 
 company-owned source; added apps never import template source.
 
 ```sh
-pnpm add:app
-pnpm add:app client-portal
-pnpm --filter client-portal dev
+pnpm app:create
+pnpm app:create client-portal
+pnpm turbo run dev --filter=client-portal
 ```
 
 The command refuses to overwrite an existing app, rewrites the package for its normal identity,
@@ -164,18 +165,22 @@ The fork remains authoritative for its source, business policy, and records.
 
 ## Development
 
-| Command                        | Purpose                                                  |
-| ------------------------------ | -------------------------------------------------------- |
-| `pnpm dev`                     | Set up the database and run the central application      |
-| `pnpm dev:all`                 | Set up the database and run every app under `apps/*`     |
-| `pnpm setup`                   | Apply migrations and converge required database records  |
-| `pnpm add:app`                 | List optional application templates                      |
-| `pnpm add:app client-portal`   | Add and bootstrap an optional client portal              |
-| `pnpm --filter company-os dev` | Run only the central app without database setup          |
-| `pnpm check`                   | Check formatting, lint, boundaries, dead code, and types |
-| `pnpm test`                    | Run the repository test suite using the Turbo cache      |
-| `pnpm test:force`              | Force the complete suite against the current PostgreSQL  |
-| `pnpm build`                   | Build every application                                  |
+| Command                         | Purpose                                                  |
+| ------------------------------- | -------------------------------------------------------- |
+| `pnpm dev`                      | Run every application development task                   |
+| `pnpm setup`                    | Create local config and prepare the application database |
+| `pnpm app:create`               | List optional application templates                      |
+| `pnpm app:create client-portal` | Create and bootstrap an optional client portal           |
+| `pnpm format`                   | Format the repository                                    |
+| `pnpm lint`                     | Lint every workspace package                             |
+| `pnpm check`                    | Check formatting, lint, boundaries, dead code, and types |
+| `pnpm test`                     | Run the repository test suite using the Turbo cache      |
+| `pnpm build`                    | Build every application                                  |
+
+Oxlint owns source lint and Company OS ownership rules. Turbo validates declared package
+dependencies and dispatches package tasks such as model validation, tests, typechecking, and
+builds. Installing dependencies automatically connects the compatible Effect diagnostics to
+Oxlint; there is no separate developer command for that integration.
 
 Repository-wide constraints live in [`AGENTS.md`](AGENTS.md). Product and ownership context for
 coding agents lives in [`.agents/skills`](.agents/skills).

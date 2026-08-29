@@ -5,8 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "vite build --mode template",
-    "dev": "vite dev --mode template --port 3201",
-    "preview": "vite preview --port 3301",
+    "lint": "oxlint .",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

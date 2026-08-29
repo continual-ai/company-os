@@ -18,7 +18,6 @@ import {
   authenticatedInvocation,
   ReservedSystemActor,
 } from "@/server/invocation-context"
-import { PageTokens } from "@/server/page-tokens"
 import {
   ALL_AUTHENTICATED_CALLERS_PRINCIPAL_SET_ID,
   ALL_CALLERS_PRINCIPAL_SET_ID,
@@ -138,7 +137,7 @@ describe("Company OS seeds", () => {
           seededObjects,
           unknownActor,
         }
-      }).pipe(Effect.provide(PageTokens.layerTest))
+      })
 
       expect(result.seededObjects.map(({ id }) => id)).toEqual(
         expect.arrayContaining([

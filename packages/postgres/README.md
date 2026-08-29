@@ -43,6 +43,5 @@ composition boundary.
 From the repository root:
 
 ```sh
-pnpm --filter @company/postgres test
-pnpm --filter @company/postgres typecheck
+pnpm turbo run test typecheck --filter=@company/postgres
 ```

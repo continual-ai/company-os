@@ -7,7 +7,7 @@ import {
   definedPermissions,
   operatorPermissions,
 } from "@/server/authorization/permission-catalog"
-import { makeObjectRepository } from "@/server/database/object-repository"
+import { makeObjectSeedRepository } from "@/server/database/object-repository"
 import { currentActorId } from "@/server/invocation-context"
 import {
   ALL_AUTHENTICATED_CALLERS_PRINCIPAL_SET_ID,
@@ -24,17 +24,17 @@ import {
 export const seedAuthorization = Effect.fn("@company/seedAuthorization")(
   function* () {
     const actorId = yield* currentActorId
-    const anonymousActorRepository = yield* makeObjectRepository(
+    const anonymousActorRepository = yield* makeObjectSeedRepository(
       Model.objects.anonymousActor
     )
-    const serviceAccountRepository = yield* makeObjectRepository(
+    const serviceAccountRepository = yield* makeObjectSeedRepository(
       Model.objects.serviceAccount
     )
-    const roleRepository = yield* makeObjectRepository(Model.objects.role)
-    const principalSetRepository = yield* makeObjectRepository(
+    const roleRepository = yield* makeObjectSeedRepository(Model.objects.role)
+    const principalSetRepository = yield* makeObjectSeedRepository(
       Model.objects.principalSet
     )
-    const roleAssignmentRepository = yield* makeObjectRepository(
+    const roleAssignmentRepository = yield* makeObjectSeedRepository(
       Model.objects.roleAssignment
     )
 

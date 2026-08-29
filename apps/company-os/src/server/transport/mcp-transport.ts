@@ -7,6 +7,7 @@ import { CurrentInvocation } from "@company/runtime/effect/object-service"
 import { Context, Data, Effect, Layer, Option, Schema } from "effect"
 
 import { applicationMetadata } from "@/application-metadata"
+import { companyOsUrl } from "@/client-environment"
 import { Authentication } from "@/server/auth/authentication"
 import { ModelImplementation } from "@/server/model/model-implementation"
 
@@ -23,7 +24,7 @@ class McpTransportFailure extends Data.TaggedError("McpTransportFailure")<{
 const localMcpHostnames = ["localhost", "127.0.0.1", "[::1]"] as const
 
 function allowedMcpHostnames(): ReadonlyArray<string> {
-  const configuredOrigin = import.meta.env.VITE_COMPANY_OS_URL?.trim()
+  const configuredOrigin = companyOsUrl()
   if (!configuredOrigin) return localMcpHostnames
   return [
     ...new Set([...localMcpHostnames, new URL(configuredOrigin).hostname]),

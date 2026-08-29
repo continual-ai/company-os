@@ -79,7 +79,7 @@ business slice and can be replaced. After changing the model, update its governe
 and persistence projection in the central app, then run:
 
 ```sh
-pnpm --filter @company/model test
+pnpm turbo run test --filter=@company/model
 pnpm check
 pnpm test
 ```

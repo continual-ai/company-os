@@ -238,21 +238,15 @@ export function resolveRecordAliases<
   })
 }
 
-/**
- * Builds the standard repository for one semantic object and its Drizzle
- * storage table. Application-specific repositories may add typed queries to the
- * returned capability without bypassing its hydration and write invariants.
- */
-export function makeObjectRepository<
+function makeRepository<
   const TModel extends ModelCatalog,
   const TObject extends TModel["objects"][keyof TModel["objects"] & string],
   const TRelations extends AnyRelations,
 >(
   storage: PostgresStorage<TModel>,
   object: TObject,
-  db: EffectPgDatabase<TRelations>,
-  pageTokens: PageTokenCodec
-): Effect.Effect<Repository<TObject, PostgresRepositoryError>> {
+  db: EffectPgDatabase<TRelations>
+) {
   return Effect.gen(function* () {
     const { recordAliases, objects } = storage.core
     const table = Object.entries(storage.objects).find(
@@ -432,104 +426,108 @@ export function makeObjectRepository<
       return ids.map((id) => byId.get(id)!)
     })
 
-    const list = Effect.fn(`${object.id}.repository.list`)(function* (
-      request: RepositoryListRequest<TObject> = {},
-      visibility?: RepositoryListVisibility
-    ): Effect.fn.Return<Page<ObjectRecord<TObject>>, PostgresRepositoryError> {
-      const size = yield* Effect.try({
-        try: () => normalizePageSize(request.pageSize),
-        catch: () =>
-          invalidListRequest(
-            object,
-            "pageSize must be a non-negative integer."
-          ),
-      })
-      const resolvedSort = yield* Effect.try({
-        try: () => resolveSort(request),
-        catch: (error) =>
-          error instanceof InvalidListRequest
-            ? error
-            : invalidListRequest(object, "The sort request is invalid."),
-      })
-      const publicSort = resolvedSort.map(
-        ({ column: _column, ...sort }) => sort
-      )
-      const fingerprint = cursorFingerprint(object, request, publicSort)
-      const cursor =
-        request.pageToken === undefined
-          ? undefined
-          : yield* Effect.try({
-              try: () =>
-                decodeCursor(
-                  object,
-                  pageTokens,
-                  request.pageToken!,
-                  fingerprint,
-                  resolvedSort.length
-                ),
-              catch: (error) =>
-                error instanceof InvalidListRequest
-                  ? error
-                  : invalidListRequest(object, "The page token is invalid."),
-            })
-      const filter = yield* Effect.try({
-        try: () =>
-          request.filter === undefined
+    const makeList = (pageTokens: PageTokenCodec) =>
+      Effect.fn(`${object.id}.repository.list`)(function* (
+        request: RepositoryListRequest<TObject> = {},
+        visibility?: RepositoryListVisibility
+      ): Effect.fn.Return<
+        Page<ObjectRecord<TObject>>,
+        PostgresRepositoryError
+      > {
+        const size = yield* Effect.try({
+          try: () => normalizePageSize(request.pageSize),
+          catch: () =>
+            invalidListRequest(
+              object,
+              "pageSize must be a non-negative integer."
+            ),
+        })
+        const resolvedSort = yield* Effect.try({
+          try: () => resolveSort(request),
+          catch: (error) =>
+            error instanceof InvalidListRequest
+              ? error
+              : invalidListRequest(object, "The sort request is invalid."),
+        })
+        const publicSort = resolvedSort.map(
+          ({ column: _column, ...sort }) => sort
+        )
+        const fingerprint = cursorFingerprint(object, request, publicSort)
+        const cursor =
+          request.pageToken === undefined
             ? undefined
-            : compileFilter(request.filter),
-        catch: (error) =>
-          error instanceof InvalidListRequest
-            ? error
-            : invalidListRequest(object, "The filter request is invalid."),
-      })
-      const after =
-        cursor === undefined
-          ? undefined
-          : cursorCondition(resolvedSort, cursor.values)
-      const visible =
-        visibility === undefined
-          ? undefined
-          : visibility.visibleWithin.length === 0
-            ? sql`false`
-            : or(
-                inArray(idColumn, visibility.visibleWithin),
-                sql`${objects.ancestorIds} && array[${sql.join(
-                  visibility.visibleWithin.map((scopeId) => sql`${scopeId}`),
-                  sql`, `
-                )}]::text[]`
-              )
-      const matching = and(filter, visible)
-      const records = yield* select(
-        and(matching, after),
-        resolvedSort.map(orderExpression)
-      )
-        .limit(size + 1)
-        .pipe(Effect.flatMap((rows) => decodeRecords(rows)))
-      const hasNextPage = records.length > size
-      const items = hasNextPage ? records.slice(0, size) : records
-      const last = items.at(-1)
-      const totalSize =
-        request.pageToken === undefined && !hasNextPage
-          ? items.length
-          : ((yield* countMatching(
-              matching,
-              filter !== undefined || visible !== undefined
-            ))[0]?.totalSize ?? 0)
-      return {
-        items,
-        nextPageToken:
-          hasNextPage && last !== undefined
-            ? encodeCursor(pageTokens, {
-                fingerprint,
-                values: resolvedSort.map(({ field }) =>
-                  recordValue(last, field)
-                ),
-                version: 1,
+            : yield* Effect.try({
+                try: () =>
+                  decodeCursor(
+                    object,
+                    pageTokens,
+                    request.pageToken!,
+                    fingerprint,
+                    resolvedSort.length
+                  ),
+                catch: (error) =>
+                  error instanceof InvalidListRequest
+                    ? error
+                    : invalidListRequest(object, "The page token is invalid."),
               })
-            : null,
-        totalSize,
-      }
-    })
+        const filter = yield* Effect.try({
+          try: () =>
+            request.filter === undefined
+              ? undefined
+              : compileFilter(request.filter),
+          catch: (error) =>
+            error instanceof InvalidListRequest
+              ? error
+              : invalidListRequest(object, "The filter request is invalid."),
+        })
+        const after =
+          cursor === undefined
+            ? undefined
+            : cursorCondition(resolvedSort, cursor.values)
+        const visible =
+          visibility === undefined
+            ? undefined
+            : visibility.visibleWithin.length === 0
+              ? sql`false`
+              : or(
+                  inArray(idColumn, visibility.visibleWithin),
+                  sql`${objects.ancestorIds} && array[${sql.join(
+                    visibility.visibleWithin.map((scopeId) => sql`${scopeId}`),
+                    sql`, `
+                  )}]::text[]`
+                )
+        const matching = and(filter, visible)
+        const records = yield* select(
+          and(matching, after),
+          resolvedSort.map(orderExpression)
+        )
+          .limit(size + 1)
+          .pipe(Effect.flatMap((rows) => decodeRecords(rows)))
+        const hasNextPage = records.length > size
+        const items = hasNextPage ? records.slice(0, size) : records
+        const last = items.at(-1)
+        const totalSize =
+          request.pageToken === undefined && !hasNextPage
+            ? items.length
+            : ((yield* countMatching(
+                matching,
+                filter !== undefined || visible !== undefined
+              ))[0]?.totalSize ?? 0)
+        return {
+          items,
+          nextPageToken:
+            hasNextPage && last !== undefined
+              ? encodeCursor(pageTokens, {
+                  fingerprint,
+                  values: resolvedSort.map(({ field }) =>
+                    recordValue(last, field)
+                  ),
+                  version: 1,
+                })
+              : null,
+          totalSize,
+        }
+      })
 
     const insert = Effect.fn(`${object.id}.repository.insert`)(function* (
       record: ObjectInsert<TObject>
@@ -973,9 +971,47 @@ export function makeObjectRepository<
       delete: deleteObject,
       get,
       insert,
-      list,
+      makeList,
       update,
       upsert,
     }
   })
+}
+
+/**
+ * Builds the standard repository for one semantic object and its Drizzle
+ * storage table. Application-specific repositories may add typed queries to the
+ * returned capability without bypassing its hydration and write invariants.
+ */
+export function makeObjectRepository<
+  const TModel extends ModelCatalog,
+  const TObject extends TModel["objects"][keyof TModel["objects"] & string],
+  const TRelations extends AnyRelations,
+>(
+  storage: PostgresStorage<TModel>,
+  object: TObject,
+  db: EffectPgDatabase<TRelations>,
+  pageTokens: PageTokenCodec
+): Effect.Effect<Repository<TObject, PostgresRepositoryError>> {
+  return makeRepository(storage, object, db).pipe(
+    Effect.map(({ makeList, ...repository }) => ({
+      ...repository,
+      list: makeList(pageTokens),
+    }))
+  )
+}
+
+/** Builds the idempotent upsert capability used by trusted system seeds. */
+export function makeObjectSeedRepository<
+  const TModel extends ModelCatalog,
+  const TObject extends TModel["objects"][keyof TModel["objects"] & string],
+  const TRelations extends AnyRelations,
+>(
+  storage: PostgresStorage<TModel>,
+  object: TObject,
+  db: EffectPgDatabase<TRelations>
+): Effect.Effect<Pick<Repository<TObject, PostgresRepositoryError>, "upsert">> {
+  return makeRepository(storage, object, db).pipe(
+    Effect.map(({ upsert }) => ({ upsert }))
+  )
 }

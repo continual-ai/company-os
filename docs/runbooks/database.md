@@ -5,8 +5,15 @@ model is the source of truth for objects, properties, interfaces, ownership, Lin
 The app instantiates that projection, owns explicit SQL migrations, and binds the generated storage
 to its repositories and services.
 
-Run the commands below from `apps/company-os`. From the repository root, prefix a command with
-`pnpm --filter company-os`.
+Run the commands below from the repository root. Database-writing tasks explicitly target the
+central app because it is the only package that owns the Company OS database.
+
+| Command       | Purpose                                                          |
+| ------------- | ---------------------------------------------------------------- |
+| `db:generate` | Generate a committed migration from the schema projection.       |
+| `db:check`    | Validate the committed migration history.                        |
+| `db:migrate`  | Apply committed migrations and converge required system records. |
+| `db:reset`    | Destructively rebuild a dedicated local database.                |
 
 ## Runtime composition
 
@@ -27,25 +34,25 @@ tests use the same binding. They differ only in where the PostgreSQL URL and lif
 
 ## Local setup
 
-Run PostgreSQL locally before starting Company OS. The committed development URL uses the standard
-local endpoint `postgresql://127.0.0.1:5432/company_os`; override it in
-`apps/company-os/.env.local` when necessary. Create the development database once:
+Run PostgreSQL locally before starting Company OS. Then prepare the repository once:
 
 ```sh
-createdb company_os
+pnpm setup
 ```
 
-At the repository root, `pnpm dev` applies committed migrations, converges required records, and
-starts the central application. It does not install or start PostgreSQL. Run `pnpm setup` when only
-database convergence is needed.
+The setup command creates `apps/company-os/.env` from `.env.example` when it is missing. Its default
+URL is the standard local endpoint `postgresql://127.0.0.1:5432/company_os`; edit `.env` when
+necessary. Setup creates that database when it targets local PostgreSQL, then applies committed
+migrations and converges required records. It does not install or start PostgreSQL. Run `pnpm dev`
+after setup to start the application.
 
-Within the app package, the normal convergence command is:
+The normal convergence command is:
 
 ```sh
-pnpm db:deploy
+pnpm turbo run db:migrate --filter=company-os
 ```
 
-`db:deploy` applies pending committed migrations and then idempotently converges the required Root,
+`db:migrate` applies pending committed migrations and then idempotently converges the required Root,
 system identity, principal sets, roles, and initial role assignments. It is safe to run repeatedly.
 
 ## Database tests
@@ -77,7 +84,7 @@ configured PostgreSQL server after changing the server, PostgreSQL version, or d
 configuration:
 
 ```sh
-pnpm test:force
+pnpm turbo run test --force
 ```
 
 ## Change persisted shape
@@ -88,7 +95,7 @@ pnpm test:force
 3. Generate a descriptive migration:
 
    ```sh
-   pnpm db:generate --name add_company_owner
+   pnpm turbo run db:generate --filter=company-os -- --name add_company_owner
    ```
 
 4. Review the generated SQL for renames, destructive DDL, defaults, indexes, foreign keys, locks,
@@ -96,7 +103,7 @@ pnpm test:force
 5. Validate the history and rebuild it through the integration tests:
 
    ```sh
-   pnpm db:check
+   pnpm turbo run db:check --filter=company-os
    pnpm test
    ```
 
@@ -112,7 +119,7 @@ developer or environment, never edit it; append a forward-only migration.
 For SQL that Drizzle cannot derive, create an empty tracked migration:
 
 ```sh
-pnpm db:generate:custom --name backfill_company_owner
+pnpm turbo run db:generate --filter=company-os -- --custom --name backfill_company_owner
 ```
 
 Do not use `drizzle-kit push`. Every environment should exercise the same committed history.
@@ -130,7 +137,7 @@ Reset is destructive and unrecoverable. It accepts only a loopback PostgreSQL ho
 exact database name as confirmation:
 
 ```sh
-CONFIRM_DATABASE_RESET=company_os pnpm db:reset
+CONFIRM_DATABASE_RESET=company_os pnpm turbo run db:reset --filter=company-os
 ```
 
 Replace the value with the exact target database name. The committed local default is `company_os`.
@@ -140,12 +147,12 @@ The reset rebuilds the local database from the committed migration history and r
 deliberately refuses remote database URLs. Tests do not need it because each test receives an
 isolated PostgreSQL database cloned from the migrated test template.
 
-## Deploy
+## Production migration
 
 Run one migration job from the same immutable revision as the application:
 
 ```sh
-DATABASE_URL="$PRODUCTION_DATABASE_URL" pnpm db:deploy
+DATABASE_URL="$PRODUCTION_DATABASE_URL" pnpm turbo run db:migrate --filter=company-os
 ```
 
 1. Verify a restore point and test risky migrations on a production-like copy.

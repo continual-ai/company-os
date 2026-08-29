@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { localDatabaseTarget } from "./reset-target"
+import { localDatabaseTarget } from "./db-reset-target"
 
 describe("localDatabaseTarget", () => {
   it("accepts an explicitly confirmed local PostgreSQL database", () => {

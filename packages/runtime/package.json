@@ -18,6 +18,7 @@
     "./effect/object-service": "./src/effect-object-service.ts"
   },
   "scripts": {
+    "lint": "oxlint .",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

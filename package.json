@@ -4,37 +4,24 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "add:app": "tsx tools/add-app.ts",
-    "build": "turbo build",
-    "check": "pnpm format:check && pnpm lint && pnpm deadcode && pnpm typecheck && pnpm -r --if-present db:check",
-    "deadcode": "knip",
-    "dev": "pnpm setup && turbo dev --filter=company-os",
-    "dev:all": "pnpm setup && turbo dev --filter='./apps/*'",
+    "app:create": "tsx tools/create-app.ts",
+    "build": "turbo run build",
+    "check": "oxfmt --check . && turbo run lint typecheck db:check model:check && turbo boundaries && knip",
+    "dev": "turbo run dev",
     "format": "oxfmt .",
-    "format:check": "oxfmt --check .",
-    "lint": "oxlint . && turbo boundaries && pnpm lint:model",
-    "lint:fix": "oxlint --fix . && turbo boundaries && pnpm lint:model",
-    "lint:model": "pnpm -r --if-present lint:model",
-    "prepare": "effect-tsgo patch --no-typescript --oxlint",
-    "setup": "pnpm --filter company-os db:deploy",
-    "test": "pnpm test:tools && turbo test",
-    "test:force": "pnpm test:tools && turbo test --force",
-    "test:tools": "tsx tools/oxlint/company-os/test-rules.ts",
-    "typecheck": "tsc --noEmit && turbo typecheck",
-    "ui:add": "pnpm --filter @company/ui exec shadcn add"
+    "lint": "turbo run lint",
+    "postinstall": "effect-tsgo patch --no-typescript --oxlint",
+    "setup": "turbo run setup",
+    "test": "turbo run test"
   },
   "devDependencies": {
     "@effect/tsgo": "0.38.0",
-    "@oxlint/plugins": "1.80.0",
-    "@types/node": "catalog:",
-    "effect": "catalog:",
     "knip": "6.32.2",
     "oxfmt": "0.63.0",
     "oxlint": "1.80.0",
     "oxlint-tsgolint": "7.0.2001",
     "tsx": "4.23.12",
-    "turbo": "2.10.10",
-    "typescript": "7.0.2"
+    "turbo": "2.10.10"
   },
   "devEngines": {
     "packageManager": {
@@ -44,12 +31,12 @@
     }
   },
   "engines": {
-    "node": ">=22.12.0",
+    "node": ">=24.10.0 <25.0.0",
     "pnpm": ">=11.0.0 <12.0.0"
   },
   "knip": {
     "ignore": [
-      "tools/oxlint/company-os/fixtures/**"
+      "fixtures/**"
     ]
   }
 }

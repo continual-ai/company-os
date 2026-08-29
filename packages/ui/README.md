@@ -25,7 +25,7 @@ app-specific styles:
 Run the source-owned shadcn generator from the repository root:
 
 ```sh
-pnpm ui:add <component>
+pnpm --filter @company/ui exec shadcn add <component>
 ```
 
 Add an explicit package export for every public component or utility. Keep opinionated product
@@ -46,5 +46,5 @@ ownership model.
 From the repository root:
 
 ```sh
-pnpm --filter @company/ui typecheck
+pnpm turbo run typecheck --filter=@company/ui
 ```

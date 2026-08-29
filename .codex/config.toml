@@ -1,4 +1,0 @@
-[mcp_servers.company_os]
-url = "http://localhost:3002/api/mcp"
-default_tools_approval_mode = "approve"
-http_headers = { Cookie = "company-os-local-identity=administrator" }

@@ -45,6 +45,7 @@
     "./lib/utils": "./src/lib/utils.ts"
   },
   "scripts": {
+    "lint": "oxlint .",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

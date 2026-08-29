@@ -53,6 +53,7 @@ const ignoredDirectoryNames = new Set([
   "node_modules",
 ])
 const ignoredFileNames = new Set([
+  ".env",
   ".env.local",
   ".env.template",
   ".env.template.local",
@@ -151,8 +152,8 @@ function addApp(definition: TemplateManifest, bootstrap: boolean) {
   if (!bootstrap) return
   if (definition.environmentExample !== undefined) {
     const example = resolve(destination, definition.environmentExample)
-    const local = resolve(destination, ".env.local")
-    if (!existsSync(local)) copyFileSync(example, local)
+    const environment = resolve(destination, ".env")
+    if (!existsSync(environment)) copyFileSync(example, environment)
   }
   run(["pnpm", "install"])
   for (const command of definition.bootstrapCommands) run(command)
@@ -160,7 +161,7 @@ function addApp(definition: TemplateManifest, bootstrap: boolean) {
 
 function usage(): string {
   return [
-    "Usage: pnpm add:app <template> [--dry-run] [--no-bootstrap]",
+    "Usage: pnpm app:create <template> [--dry-run] [--no-bootstrap]",
     "",
     "Available templates:",
     ...templateIds().map((id) => `  ${id}`),
@@ -193,7 +194,7 @@ function main() {
   }
   addApp(definition, !args.includes("--no-bootstrap"))
   process.stdout.write(
-    `Added ${destination}.\nRun: pnpm --filter ${definition.id} dev\n`
+    `Added ${destination}.\nRun: pnpm turbo run dev --filter=${definition.id}\n`
   )
 }
 

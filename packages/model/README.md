@@ -56,6 +56,5 @@ request path.
 From the repository root:
 
 ```sh
-pnpm --filter @company/model test
-pnpm --filter @company/model typecheck
+pnpm turbo run test typecheck --filter=@company/model
 ```

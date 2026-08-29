@@ -13,7 +13,7 @@ agents, and external interfaces on the same governed business capabilities.
 
 ## Orient to the change
 
-1. Inspect `AGENTS.md`, the current worktree, relevant definitions, services, routes, migrations,
+1. Inspect `AGENTS.md`, the current checkout, relevant definitions, services, routes, migrations,
    tests, and package boundaries. Existing code is evidence of current behavior, not proof that its
    shape is permanent.
    When `.agents/skills/company-context/SKILL.md` exists, read it for durable company language,

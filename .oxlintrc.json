@@ -38,7 +38,7 @@
     ".roo/**",
     ".windsurf/**",
     "**/routeTree.gen.ts",
-    "tools/oxlint/company-os/fixtures/**"
+    "fixtures/**"
   ],
   "rules": {
     "company-os/filename-case": "error",
@@ -74,6 +74,8 @@
     "effecttsgo/overridden-schema-constructor": "error",
     "effecttsgo/prefer-unsafe-constructor": "off",
     "effecttsgo/promise-in-effect-success": "error",
+    "effecttsgo/process-env": "error",
+    "effecttsgo/process-env-in-effect": "error",
     "effecttsgo/return-effect-in-gen": "error",
     "effecttsgo/run-effect-inside-effect": "off",
     "effecttsgo/schema-literal-non-finite": "error",

@@ -1,14 +1,15 @@
-#!/usr/bin/env node
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 import { PgClient } from "@effect/sql-pg"
-import { Config, Effect, Layer, Redacted } from "effect"
+import { Config, Effect, Redacted } from "effect"
 
-import { PageTokens } from "@/server/page-tokens"
+import { loadEnvironment } from "@/environment"
+import { applyMigrations } from "@/server/database/migrations"
+import * as Postgres from "@/server/database/postgres"
 import { seedSystem } from "@/server/seeds/seed-system"
 
-import { applyMigrations } from "./migrations"
-import * as Postgres from "./postgres"
-import { localDatabaseTarget } from "./reset-target"
+import { localDatabaseTarget } from "./db-reset-target"
+
+loadEnvironment()
 
 Effect.gen(function* () {
   const databaseUrl = yield* Config.redacted("DATABASE_URL")
@@ -30,9 +31,4 @@ Effect.gen(function* () {
   yield* Effect.log(
     "Database reset complete; all committed migrations applied and required records converged."
   )
-}).pipe(
-  Effect.provide(
-    Layer.merge(Postgres.databaseAndClientLayer, PageTokens.layer)
-  ),
-  NodeRuntime.runMain
-)
+}).pipe(Effect.provide(Postgres.databaseAndClientLayer), NodeRuntime.runMain)

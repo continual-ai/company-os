@@ -14,7 +14,8 @@
     "./metadata": "./src/metadata.ts"
   },
   "scripts": {
-    "lint:model": "tsx tools/lint-model.ts",
+    "lint": "oxlint .",
+    "model:check": "tsx tools/lint-model.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

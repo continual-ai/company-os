@@ -19,7 +19,7 @@ available user and company context without asking the user to repeat facts alrea
 
 ## Establish the target
 
-Inspect `AGENTS.md`, the worktree, model, app composition, routes, customization overlay,
+Inspect `AGENTS.md`, the checkout, model, app composition, routes, customization overlay,
 migrations, and nearby tests. Identify:
 
 - the company, its preferred language, and the initial users;

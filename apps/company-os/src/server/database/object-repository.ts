@@ -1,5 +1,8 @@
 import type { Model } from "@company/model"
-import { makeObjectRepository as makePostgresObjectRepository } from "@company/postgres"
+import {
+  makeObjectRepository as makePostgresObjectRepository,
+  makeObjectSeedRepository as makePostgresObjectSeedRepository,
+} from "@company/postgres"
 import { Effect } from "effect"
 
 import { PageTokens } from "@/server/page-tokens"
@@ -22,5 +25,15 @@ export function makeObjectRepository<const TObject extends ModelObjectType>(
       database,
       pageTokens
     )
+  })
+}
+
+/** Builds the narrow idempotent upsert capability used by system seeds. */
+export function makeObjectSeedRepository<const TObject extends ModelObjectType>(
+  object: TObject
+) {
+  return Effect.gen(function* () {
+    const database = yield* Database
+    return yield* makePostgresObjectSeedRepository(Storage, object, database)
   })
 }

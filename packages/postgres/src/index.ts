@@ -4,6 +4,7 @@ export {
 } from "./link-repository"
 export {
   makeObjectRepository,
+  makeObjectSeedRepository,
   resolveRecordAliases,
   type PostgresRecordAliasResolutionError,
   type PostgresRepositoryError,

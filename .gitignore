@@ -5,7 +5,6 @@ dist-ssr
 *.local
 .env*
 !.env.example
-!.env.development
 !.env.template
 .tanstack
 .wrangler

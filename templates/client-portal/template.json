@@ -6,5 +6,7 @@
     "preview": "vite preview --port 3101",
     "typecheck": "tsc --noEmit"
   },
-  "bootstrapCommands": [["pnpm", "--filter", "client-portal", "typecheck"]]
+  "bootstrapCommands": [
+    ["pnpm", "turbo", "run", "typecheck", "--filter=client-portal"]
+  ]
 }

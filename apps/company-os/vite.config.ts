@@ -6,6 +6,10 @@ import { tanstackStart } from "@tanstack/react-start/plugin/vite"
 import viteReact from "@vitejs/plugin-react"
 import { defineConfig } from "vite"
 
+import { loadEnvironment } from "./src/environment"
+
+loadEnvironment()
+
 export default defineConfig({
   resolve: { tsconfigPaths: true },
   plugins: [
@@ -31,7 +35,7 @@ export default defineConfig({
         extends: true,
         test: {
           exclude: ["src/**/*-database.test.{ts,tsx}"],
-          include: ["src/**/*.test.{ts,tsx}"],
+          include: ["src/**/*.test.{ts,tsx}", "tools/**/*.test.ts"],
           name: "unit",
         },
       },

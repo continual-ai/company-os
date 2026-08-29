@@ -5,7 +5,6 @@
     "tsconfig.base.json",
     "tsconfig.react.json"
   ],
-  "ui": "tui",
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
@@ -16,8 +15,37 @@
     "typecheck": {
       "dependsOn": ["^typecheck"]
     },
+    "lint": {
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/.oxlintrc.json",
+        "$TURBO_ROOT$/tools/oxlint/company-os/**/*.ts"
+      ]
+    },
+    "db:check": {},
+    "db:generate": {
+      "cache": false
+    },
+    "db:migrate": {
+      "cache": false,
+      "passThroughEnv": ["APP_NAMESPACE", "DATABASE_URL"]
+    },
+    "db:reset": {
+      "cache": false,
+      "passThroughEnv": [
+        "APP_NAMESPACE",
+        "CONFIRM_DATABASE_RESET",
+        "DATABASE_URL"
+      ]
+    },
+    "model:check": {},
+    "setup": {
+      "cache": false,
+      "passThroughEnv": ["APP_NAMESPACE", "DATABASE_URL"]
+    },
     "test": {
       "dependsOn": ["^test"],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/fixtures/**", ".env"],
       "passThroughEnv": ["DATABASE_URL"]
     },
     "dev": {

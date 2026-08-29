@@ -9,6 +9,7 @@
     ".": "./src/index.ts"
   },
   "scripts": {
+    "lint": "oxlint .",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
