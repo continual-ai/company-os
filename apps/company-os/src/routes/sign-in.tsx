@@ -1,5 +1,5 @@
 import { Badge } from "@company/ui/components/badge"
-import { Button, buttonVariants } from "@company/ui/components/button"
+import { Button } from "@company/ui/components/button"
 import {
   Card,
   CardContent,
@@ -7,10 +7,17 @@ import {
   CardHeader,
   CardTitle,
 } from "@company/ui/components/card"
-import { cn } from "@company/ui/lib/utils"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@company/ui/components/select"
 import { createFileRoute } from "@tanstack/react-router"
 import { Schema } from "effect"
-import { ArrowRightIcon, CheckIcon } from "lucide-react"
+import { ArrowRightIcon } from "lucide-react"
+import { useState } from "react"
 
 import { safeReturnTo } from "@/auth-navigation"
 import { getAuthenticationExperience } from "@/authentication-experience.functions"
@@ -46,6 +53,15 @@ export const Route = createFileRoute("/sign-in")({
 function SignIn() {
   const { experience } = Route.useLoaderData()
   const { returnTo } = Route.useSearch()
+  const [localProfileId, setLocalProfileId] = useState(
+    experience.kind === "local"
+      ? (experience.selectedProfileId ?? experience.profiles[0]?.id ?? null)
+      : null
+  )
+  const localProfile =
+    experience.kind === "local"
+      ? experience.profiles.find(({ id }) => id === localProfileId)
+      : undefined
 
   return (
     <main className="grid min-h-svh bg-background lg:grid-cols-2">
@@ -106,56 +122,73 @@ function SignIn() {
               <form
                 action="/auth/local-session"
                 method="post"
-                className="mt-7 grid gap-3"
+                className="mt-7 grid gap-4"
               >
                 <input type="hidden" name="returnTo" value={returnTo} />
-                {experience.profiles.map((profile) => {
-                  const selected = profile.id === experience.selectedProfileId
-                  return (
-                    <button
-                      key={profile.id}
-                      type="submit"
-                      name="profileId"
-                      value={profile.id}
-                      className={cn(
-                        buttonVariants({ variant: "outline" }),
-                        "h-auto w-full justify-start gap-4 p-4 text-left whitespace-normal",
-                        selected && "border-primary ring-1 ring-primary/20"
-                      )}
+
+                <div className="grid gap-2">
+                  <label
+                    htmlFor="local-profile"
+                    className="text-sm font-medium"
+                  >
+                    Identity
+                  </label>
+                  <Select
+                    name="profileId"
+                    value={localProfileId}
+                    onValueChange={setLocalProfileId}
+                  >
+                    <SelectTrigger
+                      id="local-profile"
+                      className="h-11 w-full px-3 text-sm"
                     >
-                      <span className="flex size-9 shrink-0 items-center justify-center bg-muted text-xs font-semibold text-foreground">
-                        {profile.name
-                          .split(/\s+/)
-                          .slice(0, 2)
-                          .map((part) => part[0])
-                          .join("")
-                          .toUpperCase()}
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="flex items-center gap-2">
-                          <span className="truncate text-sm font-medium">
-                            {profile.name}
+                      <SelectValue placeholder="Choose an identity">
+                        {localProfile ? (
+                          <span className="flex min-w-0 items-center gap-2">
+                            <span className="truncate font-medium">
+                              {localProfile.name}
+                            </span>
+                            <Badge variant="secondary">
+                              {localProfile.role}
+                            </Badge>
                           </span>
-                          <Badge variant="secondary">{profile.role}</Badge>
-                        </span>
-                        <span className="mt-0.5 block truncate text-xs text-muted-foreground">
-                          {profile.email}
-                        </span>
-                        <span className="mt-2 block text-xs/relaxed text-muted-foreground">
-                          {profile.description}
-                        </span>
-                      </span>
-                      {selected ? (
-                        <span className="text-primary">
-                          <CheckIcon className="size-4" />
-                          <span className="sr-only">Current identity</span>
-                        </span>
-                      ) : (
-                        <ArrowRightIcon className="size-4 text-muted-foreground" />
-                      )}
-                    </button>
-                  )
-                })}
+                        ) : null}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent align="start" alignItemWithTrigger={false}>
+                      {experience.profiles.map((profile) => (
+                        <SelectItem
+                          key={profile.id}
+                          value={profile.id}
+                          className="items-start py-3"
+                        >
+                          <span className="min-w-0 pr-2">
+                            <span className="flex items-center gap-2">
+                              <span className="font-medium">
+                                {profile.name}
+                              </span>
+                              <Badge variant="secondary">{profile.role}</Badge>
+                            </span>
+                            <span className="mt-1 block max-w-sm whitespace-normal text-muted-foreground">
+                              {profile.description}
+                            </span>
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={!localProfile}
+                >
+                  {localProfile
+                    ? `Continue as ${localProfile.name}`
+                    : "Continue"}
+                  <ArrowRightIcon data-icon="inline-end" />
+                </Button>
               </form>
             </div>
           )}
