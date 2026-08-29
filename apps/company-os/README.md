@@ -17,9 +17,9 @@ The development server prints its local URL. Local identity mode provides admini
 and restricted profiles without an external identity provider. Open `/developer` to inspect the
 current model, generated API and SDK, MCP tools, and design system.
 
-Use [`.env.example`](.env.example) as the deployment configuration contract. App creation prepares
-the local environment file. Only `VITE_` variables may enter browser code; keep database and identity
-assertion configuration server-only.
+Use [`.env.example`](.env.example) as the deployment configuration contract. Local development uses
+the committed `.env.development` defaults unless `.env.local` overrides them. Only `VITE_`
+variables may enter browser code; keep database and identity assertion configuration server-only.
 
 Set `VITE_COMPANY_OS_URL` to the public deployment origin when canonical URLs and the MCP Host/Origin
 allowlist should use it. When it is unset, the app omits canonical URLs instead of publishing a local

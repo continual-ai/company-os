@@ -92,8 +92,6 @@ function templateIds(): ReadonlyArray<string> {
         existsSync(resolve(templatesDirectory, entry.name, "template.json"))
     )
     .map(({ name }) => name)
-  // This array is a fresh list owned by the CLI.
-  // oxlint-disable-next-line unicorn/no-array-sort
   return ids.sort()
 }
 
@@ -136,7 +134,7 @@ function run(command: readonly [string, ...string[]]) {
   }
 }
 
-function createApp(definition: TemplateManifest, bootstrap: boolean) {
+function addApp(definition: TemplateManifest, bootstrap: boolean) {
   const source = resolve(templatesDirectory, definition.id)
   const destination = resolve(repositoryRoot, "apps", definition.id)
   if (existsSync(destination)) {
@@ -162,7 +160,7 @@ function createApp(definition: TemplateManifest, bootstrap: boolean) {
 
 function usage(): string {
   return [
-    "Usage: pnpm create:app <template> [--dry-run] [--no-bootstrap]",
+    "Usage: pnpm add:app <template> [--dry-run] [--no-bootstrap]",
     "",
     "Available templates:",
     ...templateIds().map((id) => `  ${id}`),
@@ -189,13 +187,13 @@ function main() {
   const destination = `apps/${definition.id}`
   if (args.includes("--dry-run")) {
     process.stdout.write(
-      `Would create ${destination} from templates/${definition.id}.\n`
+      `Would add ${destination} from templates/${definition.id}.\n`
     )
     return
   }
-  createApp(definition, !args.includes("--no-bootstrap"))
+  addApp(definition, !args.includes("--no-bootstrap"))
   process.stdout.write(
-    `Created ${destination}.\nRun: pnpm --filter ${definition.id} dev\n`
+    `Added ${destination}.\nRun: pnpm --filter ${definition.id} dev\n`
   )
 }
 

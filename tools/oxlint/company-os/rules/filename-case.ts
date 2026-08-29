@@ -1,6 +1,7 @@
 import { defineRule } from "@oxlint/plugins"
 
 const ALLOWED_FRAMEWORK_FILENAMES = new Set(["$", "__root"])
+const ALLOWED_SOURCE_SUFFIXES = new Set(["config", "functions", "gen", "test"])
 const KEBAB_CASE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 const TANSTACK_DYNAMIC_ROUTE =
   /[\\/]src[\\/]routes[\\/](?:.*[\\/])?\$[a-z][A-Za-z0-9]*\.[cm]?[jt]sx?$/
@@ -11,7 +12,12 @@ const RESERVED_START_ENTRYPOINT =
 
 function sourceName(filename: string): string {
   const basename = filename.split(/[\\/]/).at(-1) ?? filename
-  return basename.split(".")[0] ?? basename
+  const withoutExtension = basename.replace(/\.[cm]?[jt]sx?$/, "")
+  const parts = withoutExtension.split(".")
+  while (parts.length > 1 && ALLOWED_SOURCE_SUFFIXES.has(parts.at(-1) ?? "")) {
+    parts.pop()
+  }
+  return parts.join(".")
 }
 
 /** Require safe, searchable, cross-platform source filenames. */

@@ -29,8 +29,8 @@ VITE_COMPANY_OS_URL=https://os.example.com
 - `src/lib` owns site-local helpers and configuration.
 - `src/styles` owns site-specific styling over the shared theme.
 
-The checked-in content is placeholder material intended to be replaced when the app is created for
-a company.
+The checked-in content is placeholder material intended to be replaced when the app is added to a
+company project.
 
 ## Boundaries
 

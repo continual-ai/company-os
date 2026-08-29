@@ -46,11 +46,11 @@ pnpm install
 pnpm dev
 ```
 
-Open <http://localhost:3202> and choose a local development identity. Create a lead, convert it,
+Open <http://localhost:3002> and choose a local development identity. Create a lead, convert it,
 or inspect the model and generated interfaces in the **Developer Center**.
 
-`pnpm dev` runs the Company OS template. Use `pnpm dev:all` to also run the client portal template at
-<http://localhost:3201> and marketing site template at <http://localhost:3200>.
+`pnpm dev` runs the central Company OS application. Use `pnpm dev:all` after adding optional apps to
+run every application under `apps/*`.
 
 ## Try the included operation
 
@@ -97,50 +97,47 @@ exceptions through those actions, with people deciding where approval is require
 | [`packages/model`](packages/model/README.md)                     | The browser-safe business contract shared by every interface              |
 | [`packages/postgres`](packages/postgres/README.md)               | The server-only PostgreSQL implementation of runtime repository contracts |
 | [`packages/ui`](packages/ui/README.md)                           | Shared design tokens and presentation primitives                          |
-| [`templates/company-os`](templates/company-os/README.md)         | Starter for the central backend and operating application                 |
+| [`apps/company-os`](apps/company-os/README.md)                   | Required central backend and operating application                        |
 | [`templates/client-portal`](templates/client-portal/README.md)   | Starter for a customer-facing interface over governed capabilities        |
 | [`templates/marketing-site`](templates/marketing-site/README.md) | Starter for the public website                                            |
 
 `@company/*` is the stable import namespace for reusable source in this repository. It is not a
-placeholder for a company name. Packages under `@company-template/*` identify runnable starter
-workspaces; creating an app gives the copy its ordinary app package name.
+placeholder for a company name. Packages under `@company-template/*` identify runnable optional
+app starters; adding one gives the copy its ordinary app package name.
 
 For the complete dependency and authority model, read
 [`docs/architecture.md`](docs/architecture.md). When changing the business contract, start with
 [`docs/modeling.md`](docs/modeling.md).
 
-## Create owned apps
+## Add optional apps
 
-`templates/*` contains the executable starters maintained by this repository. They use
-isolated development ports and the central template uses its own PostgreSQL service and database.
-`apps/*` contains company-owned copies created from those starters; generated apps never import
-template source.
+Every checkout already contains one company model and one central application. `templates/*`
+contains executable starters for optional focused interfaces. `apps/*` contains ordinary
+company-owned source; added apps never import template source.
 
 ```sh
-pnpm create:app
-pnpm create:app company-os
-pnpm --filter company-os dev
+pnpm add:app
+pnpm add:app client-portal
+pnpm --filter client-portal dev
 ```
 
-The creation command refuses to overwrite an existing app, rewrites the package for its normal app
-identity, installs the workspace, and runs the template's declared bootstrap checks. Use
-`pnpm dev:all` to run all three starters without creating apps.
+The command refuses to overwrite an existing app, rewrites the package for its normal identity,
+installs the workspace, and runs the template's declared bootstrap checks. Templates remain
+runnable on isolated ports for evaluating them before adding one.
 
 ## Make it yours
 
 A fork is meant to become your company's software, not another generic multi-tenant SaaS instance.
-Start by creating the central app, then change ordinary source code:
+The repository is already a complete project: customize its one model and central app directly.
 
 - [`packages/model/src/metadata.ts`](packages/model/src/metadata.ts) names the
   company model.
-- `apps/company-os/src/customization` owns product identity, entry, home, and navigation after
-  creation. Its starter source lives in
-  [`templates/company-os/src/customization`](templates/company-os/src/customization).
+- [`apps/company-os/src/customization`](apps/company-os/src/customization) owns product identity,
+  entry, home, and navigation.
 - [`packages/model/src/modules/sales`](packages/model/src/modules/sales) is the
   replaceable example business module.
-- `apps/company-os/src/server/modules` owns private business implementations after creation; the
-  starter implementations live in
-  [`templates/company-os/src/server/modules`](templates/company-os/src/server/modules).
+- [`apps/company-os/src/server/modules`](apps/company-os/src/server/modules) owns private business
+  implementations.
 
 The repository includes coding-agent skills for onboarding a company, extending an established
 fork, and incorporating upstream improvements:
@@ -151,9 +148,8 @@ Track the customer, milestones, owners, blockers, and launch date. Let an agent 
 but require a person to approve anything sent to the customer.
 ```
 
-Run `pnpm create:app company-os` to instantiate the central application under `apps/`. See
-[`templates/company-os/README.md`](templates/company-os/README.md) for its architecture and the
-repository map above for each package's public boundary.
+See [`apps/company-os/README.md`](apps/company-os/README.md) for the central application's
+architecture and the repository map above for each package's public boundary.
 
 ## Continual
 
@@ -163,16 +159,17 @@ The fork remains authoritative for its source, business policy, and records.
 
 ## Development
 
-| Command                        | Purpose                                                   |
-| ------------------------------ | --------------------------------------------------------- |
-| `pnpm dev`                     | Apply isolated migrations and run the Company OS template |
-| `pnpm dev:all`                 | Run all three application starters                        |
-| `pnpm create:app`              | List templates and creation usage                         |
-| `pnpm create:app company-os`   | Create and bootstrap the owned central app                |
-| `pnpm --filter company-os dev` | Run the instantiated central app                          |
-| `pnpm check`                   | Check formatting, lint, boundaries, dead code, and types  |
-| `pnpm test`                    | Run the repository test suite                             |
-| `pnpm build`                   | Build every application                                   |
+| Command                        | Purpose                                                  |
+| ------------------------------ | -------------------------------------------------------- |
+| `pnpm dev`                     | Set up the database and run the central application      |
+| `pnpm dev:all`                 | Set up the database and run every app under `apps/*`     |
+| `pnpm setup`                   | Start PostgreSQL and apply the central app's migrations  |
+| `pnpm add:app`                 | List optional application templates                      |
+| `pnpm add:app client-portal`   | Add and bootstrap an optional client portal              |
+| `pnpm --filter company-os dev` | Run only the central app without database setup          |
+| `pnpm check`                   | Check formatting, lint, boundaries, dead code, and types |
+| `pnpm test`                    | Run the repository test suite                            |
+| `pnpm build`                   | Build every application                                  |
 
 Repository-wide constraints live in [`AGENTS.md`](AGENTS.md). Product and ownership context for
 coding agents lives in [`.agents/skills`](.agents/skills).

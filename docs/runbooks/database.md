@@ -5,14 +5,14 @@ model is the source of truth for objects, properties, interfaces, ownership, Lin
 The app instantiates that projection, owns explicit SQL migrations, and binds the generated storage
 to its repositories and services.
 
-Run the commands below from the target `templates/company-os` or `apps/company-os` directory. From
-the repository root, prefix a command with `pnpm --filter <package-name>`.
+Run the commands below from `apps/company-os`. From the repository root, prefix a command with
+`pnpm --filter company-os`.
 
 ## Local setup
 
-At the repository root, `pnpm dev` starts the isolated template PostgreSQL service, applies its
-committed migrations, converges required records, and starts the central starter. Creating an owned
-app with `pnpm create:app company-os` performs its declared bootstrap before returning.
+At the repository root, `pnpm dev` starts PostgreSQL, applies committed migrations, converges
+required records, and starts the central application. Run `pnpm setup` when only database setup is
+needed.
 
 Within the app package, the normal convergence command is:
 
@@ -76,9 +76,8 @@ exact database name as confirmation:
 CONFIRM_DATABASE_RESET=company_os pnpm db:reset
 ```
 
-Replace the value with the exact target database name. The maintained central starter uses
-`company_os_template`; an app created with the default configuration uses `company_os`. Confirm the
-value in the target app's local environment before running the command.
+Replace the value with the exact target database name. The committed local default is `company_os`.
+Confirm the value in the central app's local environment before running the command.
 
 The reset rebuilds the local database from the committed migration history and required seeds. It
 deliberately refuses remote database URLs. Tests do not need it because they rebuild isolated PGlite

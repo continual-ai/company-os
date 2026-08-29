@@ -1,10 +1,14 @@
 {
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "$schema": "./node_modules/@effect/tsgo/oxlint-schema.json",
+  "extends": ["./node_modules/@effect/tsgo/oxlint-presets/correctness.json"],
   "categories": {
     "correctness": "error",
     "suspicious": "error"
   },
   "options": {
+    "denyWarnings": true,
+    "reportUnusedDisableDirectives": "error",
+    "respectEslintDisableDirectives": false,
     "typeAware": true
   },
   "plugins": ["typescript", "unicorn", "oxc", "import", "react", "jsx-a11y"],
@@ -16,10 +20,6 @@
     }
   },
   "jsPlugins": [
-    {
-      "name": "anti-slop",
-      "specifier": "./tools/oxlint/anti-slop/index.ts"
-    },
     {
       "name": "company-os",
       "specifier": "./tools/oxlint/company-os/index.ts"
@@ -38,35 +38,77 @@
     ".roo/**",
     ".windsurf/**",
     "**/routeTree.gen.ts",
-    "tools/oxlint/anti-slop/**"
+    "tools/oxlint/company-os/fixtures/**"
   ],
   "rules": {
-    "anti-slop/no-chained-type-assertions": "error",
-    "anti-slop/no-conditional-empty-object-spread": "error",
-    "anti-slop/no-known-value-widening": "error",
-    "anti-slop/no-module-mocking": "error",
-    "anti-slop/no-object-parameters": "error",
-    "anti-slop/no-reflect-apply": "error",
-    "anti-slop/no-reflect-get": "error",
-    "anti-slop/no-runtime-typeof": "error",
-    "anti-slop/no-shape-in-symbol-names": "error",
-    "anti-slop/no-unknown-parameters": "error",
-    "anti-slop/no-unknown-returns": "error",
-    "anti-slop/no-unknown-type-aliases": "error",
-    "anti-slop/no-unsafe-dictionary-type": "error",
-    "anti-slop/no-widen-then-assert": "error",
-    "anti-slop/require-safety-comment-for-type-assertion": "error",
     "company-os/filename-case": "error",
     "company-os/no-internal-reexports": "error",
     "company-os/no-unsafe-sql": "error",
     "company-os/package-boundaries": "error",
+    "effecttsgo/any-unknown-in-error-context": "off",
+    "effecttsgo/catch-unfailable-effect": "off",
+    "effecttsgo/class-self-mismatch": "error",
+    "effecttsgo/duplicate-package": "error",
+    "effecttsgo/effect-fn-iife": "off",
+    "effecttsgo/effect-fn-implicit-any": "off",
+    "effecttsgo/effect-gen-uses-adapter": "error",
+    "effecttsgo/effect-in-failure": "off",
+    "effecttsgo/effect-in-void-success": "error",
+    "effecttsgo/floating-effect": "error",
+    "effecttsgo/floating-effect-in-vitest": "error",
+    "effecttsgo/generic-effect-services": "error",
+    "effecttsgo/global-error-in-effect-catch": "off",
+    "effecttsgo/global-error-in-effect-failure": "off",
+    "effecttsgo/layer-merge-all-with-dependencies": "error",
+    "effecttsgo/lazy-effect": "off",
+    "effecttsgo/lazy-promise-in-effect-sync": "error",
+    "effecttsgo/leaking-requirements": "off",
+    "effecttsgo/missing-effect-context": "error",
+    "effecttsgo/missing-effect-error": "error",
+    "effecttsgo/missing-layer-context": "error",
+    "effecttsgo/missing-return-yield-star": "error",
+    "effecttsgo/missing-star-in-yield-effect-gen": "error",
+    "effecttsgo/multiple-effect-provide": "error",
+    "effecttsgo/non-object-effect-service-type": "error",
+    "effecttsgo/outdated-api": "error",
+    "effecttsgo/overridden-schema-constructor": "error",
+    "effecttsgo/prefer-unsafe-constructor": "off",
+    "effecttsgo/promise-in-effect-success": "error",
+    "effecttsgo/return-effect-in-gen": "error",
+    "effecttsgo/run-effect-inside-effect": "off",
+    "effecttsgo/schema-literal-non-finite": "error",
+    "effecttsgo/schema-opaque-instance-member": "error",
+    "effecttsgo/schema-sync-in-effect": "error",
+    "effecttsgo/scope-in-layer-effect": "error",
+    "effecttsgo/strict-effect-provide": "off",
+    "effecttsgo/try-catch-in-effect-gen": "error",
+    "effecttsgo/unknown-in-effect-catch": "off",
+    "effecttsgo/unsafe-effect-type-assertion": "error",
     "eqeqeq": "error",
     "import/no-relative-parent-imports": "error",
     "jsx-a11y/label-has-associated-control": "error",
-    "oxc/no-barrel-file": ["error", { "threshold": 0 }],
+    "no-underscore-dangle": "off",
     "react/react-in-jsx-scope": "off",
+    "react/exhaustive-effect-dependencies": "off",
+    "react/set-state-in-effect": "off",
+    "react/static-components": "off",
     "typescript/consistent-type-imports": "error",
     "typescript/no-explicit-any": "error",
+    "unicorn/no-array-sort": "off",
     "unicorn/prefer-node-protocol": "error"
-  }
+  },
+  "overrides": [
+    {
+      "files": ["**/src/server/**/*.ts"],
+      "rules": {
+        "effecttsgo/global-date-in-effect": "error"
+      }
+    },
+    {
+      "files": ["**/*.test.ts", "**/*.test.tsx"],
+      "rules": {
+        "effecttsgo/schema-sync-in-effect": "off"
+      }
+    }
+  ]
 }

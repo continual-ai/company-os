@@ -25,7 +25,6 @@
     ".roo/**",
     ".windsurf/**",
     "**/routeTree.gen.ts",
-    "pnpm-lock.yaml",
-    "tools/oxlint/anti-slop/**"
+    "pnpm-lock.yaml"
   ]
 }

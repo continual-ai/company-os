@@ -10,13 +10,14 @@ implementations. Reusable framework code should remain source-neutral. A hosted 
 operate infrastructure or access, but should not become a second source of business truth merely
 because it hosts or observes the system.
 
-The repository expresses that ownership with vendored `@company/*` packages, executable
-`templates/*`, and instantiated `apps/*`. `@company/*` is a stable source-ownership namespace, not
-a configured organization name. `templates/company-os` is the golden starter for the central
-composition root; after creation, `apps/company-os` owns that role. Focused apps such as a portal or
-marketing site remain interfaces over its governed capabilities. Generated apps never import
-template source. Continual-specific code should appear only at a real hosted integration boundary,
-never as a required foundation for standalone operation.
+The repository expresses that ownership with vendored `@company/*` packages, source-owned
+`apps/*`, and executable starters for optional apps under `templates/*`. `@company/*` is a stable
+source-ownership namespace, not a configured organization name. Each project has one closed
+`@company/model` and one `apps/company-os` composition root; cloning or forking the repository
+instantiates both. Focused apps such as a portal or marketing site remain interfaces over the
+central app's governed capabilities. Added apps never import template source. Continual-specific
+code should appear only at a real hosted integration boundary, never as a required foundation for
+standalone operation.
 
 ## Authority before layering
 

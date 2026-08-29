@@ -1,4 +1,37 @@
 import { defineRule } from "@oxlint/plugins"
+import type { ESTree, Scope, SourceCode, Variable } from "@oxlint/plugins"
+
+function resolveVariable(
+  sourceCode: SourceCode,
+  identifier: ESTree.IdentifierReference
+): Variable | null {
+  let scope: Scope | null = sourceCode.getScope(identifier)
+  while (scope !== null) {
+    const variable = scope.set.get(identifier.name)
+    if (variable !== undefined) return variable
+    scope = scope.upper
+  }
+  return null
+}
+
+function isDrizzleSqlBinding(
+  sourceCode: SourceCode,
+  identifier: ESTree.IdentifierReference
+): boolean {
+  const variable = resolveVariable(sourceCode, identifier)
+  return (
+    variable?.defs.some(
+      (definition) =>
+        definition.type === "ImportBinding" &&
+        definition.node.type === "ImportSpecifier" &&
+        definition.parent?.type === "ImportDeclaration" &&
+        definition.parent.source.value === "drizzle-orm" &&
+        (definition.node.imported.type === "Identifier"
+          ? definition.node.imported.name
+          : definition.node.imported.value) === "sql"
+    ) ?? false
+  )
+}
 
 /** Keep dynamic values on parameterized Drizzle or Effect SQL paths. */
 export const noUnsafeSqlRule = defineRule({
@@ -6,11 +39,11 @@ export const noUnsafeSqlRule = defineRule({
     type: "problem",
     docs: {
       description:
-        "Forbid raw and unsafe SQL escape hatches in application TypeScript.",
+        "Forbid Drizzle raw SQL escape hatches while allowing parameterized SQL templates.",
     },
     messages: {
       unsafeSql:
-        "Do not use sql.{{method}}(). Use typed Drizzle expressions or parameterized Effect SQL; put reviewed DDL in a migration.sql file.",
+        "Do not use Drizzle sql.{{method}}(). Use typed expressions or parameterized SQL templates; put reviewed DDL in a migration.sql file.",
     },
   },
   createOnce(context) {
@@ -20,7 +53,7 @@ export const noUnsafeSqlRule = defineRule({
           node.callee.type !== "MemberExpression" ||
           node.callee.computed ||
           node.callee.object.type !== "Identifier" ||
-          node.callee.object.name !== "sql" ||
+          !isDrizzleSqlBinding(context.sourceCode, node.callee.object) ||
           node.callee.property.type !== "Identifier" ||
           (node.callee.property.name !== "raw" &&
             node.callee.property.name !== "unsafe")

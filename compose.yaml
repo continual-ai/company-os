@@ -15,22 +15,5 @@ services:
     volumes:
       - company_os_postgres:/var/lib/postgresql/data
 
-  template-postgres:
-    image: postgres:17-alpine
-    environment:
-      POSTGRES_DB: company_os_template
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_USER: postgres
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d company_os_template"]
-      interval: 1s
-      timeout: 5s
-      retries: 30
-    ports:
-      - "127.0.0.1:5434:5432"
-    volumes:
-      - company_os_template_postgres:/var/lib/postgresql/data
-
 volumes:
   company_os_postgres:
-  company_os_template_postgres:

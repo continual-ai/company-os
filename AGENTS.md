@@ -51,13 +51,13 @@ Direction, and Vision distinct. The canonical skills live in `.agents/skills`; `
 
 ## Ownership
 
-- `@company/*`, `templates/*`, and `apps/*` are vendored, source-owned parts of the standalone
-  Company OS. Templates are executable golden masters; apps are instantiated, company-owned
-  copies and must never import template source.
+- `@company/*`, `apps/*`, and `templates/*` are vendored, source-owned parts of the standalone
+  Company OS. The project is instantiated by cloning or forking the repository. Templates are
+  executable starters for optional apps; copied apps must never import template source.
 - `@company/runtime` is the portable definition and execution foundation. It must not import the
   company model, UI, storage adapter, or applications.
-- `@company/model` is browser-safe semantic model source. It may depend on the portable
-  `@company/runtime` surface, but not on UI, handlers, persistence, providers, or Effect.
+- `@company/model` is the project's single browser-safe semantic model source. It may depend on the
+  portable `@company/runtime` surface, but not on UI, handlers, persistence, providers, or Effect.
 - `@company/postgres` is the reusable server-only PostgreSQL adapter. It implements runtime
   repository contracts and may depend on `@company/runtime`, but it does not own model definitions,
   migrations, credentials, custom persistence queries, or application Effect service identities.
@@ -65,9 +65,9 @@ Direction, and Vision distinct. The canonical skills live in `.agents/skills`; `
   persistence, or applications.
 - Browser applications may use public browser-safe package exports. They must not import another
   app or private Company OS server modules.
-- The instantiated `apps/company-os` is the central product and private server composition
-  boundary. `templates/company-os` holds its runnable starter. Other apps are focused interfaces
-  over the central app's governed capabilities, not independent business authorities.
+- `apps/company-os` is the required singleton central product and private server composition
+  boundary. Other apps are optional focused interfaces over its governed capabilities, not
+  independent business authorities.
 - Hosted Continual integration must remain optional. Add a source-owned adapter only for a concrete
   platform contract; environment injection alone does not justify another package.
 

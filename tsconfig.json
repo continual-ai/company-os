@@ -3,5 +3,6 @@
   "compilerOptions": {
     "types": ["node"]
   },
-  "include": ["tools"]
+  "include": ["tools"],
+  "exclude": ["tools/oxlint/company-os/fixtures"]
 }

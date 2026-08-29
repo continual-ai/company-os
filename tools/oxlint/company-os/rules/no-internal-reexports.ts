@@ -1,25 +1,10 @@
 import { defineRule } from "@oxlint/plugins"
-import type { ESTree } from "@oxlint/plugins"
-
-const PUBLIC_PACKAGE_ENTRYPOINTS = [
-  "packages/model/src/index.ts",
-  "packages/postgres/src/index.ts",
-  "packages/runtime/src/index.ts",
-] as const
 
 function isPublicPackageEntrypoint(filename: string): boolean {
   const normalizedFilename = filename.replaceAll("\\", "/")
-  return PUBLIC_PACKAGE_ENTRYPOINTS.some(
-    (entrypoint) =>
-      normalizedFilename === entrypoint ||
-      normalizedFilename.endsWith(`/${entrypoint}`)
+  return /(?:^|\/)packages\/[^/]+\/src\/index\.[cm]?[jt]sx?$/.test(
+    normalizedFilename
   )
-}
-
-function exportedName(specifier: ESTree.ExportSpecifier): string {
-  return specifier.exported.type === "Identifier"
-    ? specifier.exported.name
-    : specifier.exported.value
 }
 
 /** Keep re-exports at one explicit package API boundary instead of internal barrels. */
@@ -31,10 +16,10 @@ export const noInternalReexportsRule = defineRule({
         "Allow explicit named re-exports only from a package's public source entrypoint.",
     },
     messages: {
-      defaultReexport:
-        "Do not forward a default export. Give the public API an explicit named export.",
       internalReexport:
         "Do not re-export through an internal module. Import the symbol from its defining module, or expose it through the package's public src/index.ts entrypoint.",
+      wildcardReexport:
+        "Do not use wildcard re-exports. Expose a deliberate list of named package exports.",
     },
   },
   createOnce(context) {
@@ -49,17 +34,9 @@ export const noInternalReexportsRule = defineRule({
           })
           return
         }
-
-        if (
-          node.specifiers.some(
-            (specifier) => exportedName(specifier) === "default"
-          )
-        ) {
-          context.report({
-            node: node.source,
-            messageId: "defaultReexport",
-          })
-        }
+      },
+      ExportAllDeclaration(node) {
+        context.report({ node: node.source, messageId: "wildcardReexport" })
       },
     }
   },

@@ -13,7 +13,7 @@ are projections over that implementation rather than independent systems.
 | [`@company/model`](../packages/model/README.md)           | Browser-safe company objects, relationships, queries, actions, and shared metadata      | `@company/runtime`                 |
 | [`@company/postgres`](../packages/postgres/README.md)     | Server-only PostgreSQL schema and repository implementation                             | `@company/runtime`                 |
 | [`@company/ui`](../packages/ui/README.md)                 | Shared visual primitives and design tokens                                              | Presentation libraries only        |
-| [`company-os`](../templates/company-os/README.md)         | Central UI, authorization, business services, transactions, persistence, and transports | All reusable packages              |
+| [`company-os`](../apps/company-os/README.md)              | Central UI, authorization, business services, transactions, persistence, and transports | All reusable packages              |
 | [`client-portal`](../templates/client-portal/README.md)   | Customer-facing interface over deliberately exposed capabilities                        | Browser-safe model and UI packages |
 | [`marketing-site`](../templates/marketing-site/README.md) | Public content and entry points into the other applications                             | Browser-safe model and UI packages |
 
@@ -47,18 +47,20 @@ attribution, and transactional rules again for every operation, regardless of ca
 
 ## Source ownership
 
-`templates/*` contains the maintained executable starters. `pnpm create:app <template>` copies one
-under `apps/*`, gives it its ordinary package identity, installs the workspace, and runs its
-bootstrap checks. The created app is then ordinary company-owned source. It never imports template
-source, so a company can change it without creating a second extension system.
+Cloning or forking the repository creates one project with one `@company/model` and one required
+`apps/company-os` composition root. `templates/*` contains maintained executable starters only for
+optional focused apps. `pnpm add:app <template>` copies one under `apps/*`, gives it its ordinary
+package identity, installs the workspace, and runs its bootstrap checks. The added app is then
+ordinary company-owned source. It never imports template source, so a company can change it without
+creating a second extension system.
 
 The stable `@company/*` namespace identifies reusable source packages; it is not replaced with a
 company name. Product identity belongs in model metadata and application customization source.
 
 ## Where a change belongs
 
-The paths below describe a company fork after app creation. When maintaining the reusable starters
-in this canonical repository, the corresponding application source remains under `templates/*`.
+The paths below describe a Company OS project. Optional app starters remain under `templates/*`;
+the central application is always ordinary source under `apps/company-os`.
 
 | Change                                                             | Start here                          |
 | ------------------------------------------------------------------ | ----------------------------------- |

@@ -1,28 +1,65 @@
+import { readFileSync, readdirSync } from "node:fs"
+import { join } from "node:path"
+import { fileURLToPath } from "node:url"
+
 import { defineRule } from "@oxlint/plugins"
 import type { ESTree } from "@oxlint/plugins"
 
-const APPLICATION_PACKAGE_NAMES = [
-  "@company-template/client-portal",
-  "@company-template/company-os",
-  "@company-template/marketing-site",
-  "client-portal",
-  "company-os",
-  "marketing-site",
-] as const
+const REPOSITORY_ROOT = fileURLToPath(new URL("../../../../", import.meta.url))
 
-const COMPANY_PACKAGE_NAMES = ["model", "postgres", "runtime", "ui"] as const
+interface WorkspacePackage {
+  readonly directory: string
+  readonly kind: "application" | "company"
+  readonly name: string
+}
+
+function packagesIn(
+  parent: "apps" | "packages" | "templates",
+  kind: WorkspacePackage["kind"]
+): ReadonlyArray<WorkspacePackage> {
+  const directory = join(REPOSITORY_ROOT, parent)
+  return readdirSync(directory, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .flatMap((entry) => {
+      try {
+        const manifest: unknown = JSON.parse(
+          readFileSync(join(directory, entry.name, "package.json"), "utf8")
+        )
+        return typeof manifest === "object" &&
+          manifest !== null &&
+          "name" in manifest &&
+          typeof manifest.name === "string"
+          ? [{ directory: entry.name, kind, name: manifest.name }]
+          : []
+      } catch {
+        return []
+      }
+    })
+}
+
+const WORKSPACE_PACKAGES = [
+  ...packagesIn("packages", "company"),
+  ...packagesIn("apps", "application"),
+  ...packagesIn("templates", "application"),
+]
+const APPLICATION_PACKAGE_NAMES = new Set(
+  WORKSPACE_PACKAGES.filter(({ kind }) => kind === "application").map(
+    ({ name }) => name
+  )
+)
+const COMPANY_PACKAGE_NAMES = new Map(
+  WORKSPACE_PACKAGES.filter(({ kind }) => kind === "company").map(
+    ({ directory, name }) => [directory, name]
+  )
+)
 
 function packageNameForFile(filename: string): string | null {
   const normalizedFilename = filename.replaceAll("\\", "/")
   const libraryMatch = normalizedFilename.match(
     /(?:^|\/)packages\/([^/]+)(?:\/|$)/
   )
-  if (
-    libraryMatch &&
-    COMPANY_PACKAGE_NAMES.some((name) => name === libraryMatch[1])
-  ) {
-    return `@company/${libraryMatch[1]}`
-  }
+  if (libraryMatch)
+    return COMPANY_PACKAGE_NAMES.get(libraryMatch[1] ?? "") ?? null
 
   const applicationMatch = normalizedFilename.match(
     /(?:^|\/)(?:apps|templates)\/([^/]+)(?:\/|$)/
@@ -80,7 +117,9 @@ function forbiddenReason(
 
   if (
     packageName.startsWith("@company/") &&
-    APPLICATION_PACKAGE_NAMES.some((appName) => isPackage(specifier, appName))
+    [...APPLICATION_PACKAGE_NAMES].some((appName) =>
+      isPackage(specifier, appName)
+    )
   ) {
     return "Source-owned packages cannot depend on deployable applications."
   }
@@ -95,7 +134,9 @@ function forbiddenReason(
 
   if (
     packageName.startsWith("app:") &&
-    APPLICATION_PACKAGE_NAMES.some((appName) => isPackage(specifier, appName))
+    [...APPLICATION_PACKAGE_NAMES].some((appName) =>
+      isPackage(specifier, appName)
+    )
   ) {
     return "Applications are independent deployables and cannot import one another."
   }

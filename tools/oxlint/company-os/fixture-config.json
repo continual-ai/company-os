@@ -1,0 +1,15 @@
+{
+  "$schema": "../../../node_modules/oxlint/configuration_schema.json",
+  "jsPlugins": [
+    {
+      "name": "company-os",
+      "specifier": "./index.ts"
+    }
+  ],
+  "rules": {
+    "company-os/filename-case": "error",
+    "company-os/no-internal-reexports": "error",
+    "company-os/no-unsafe-sql": "error",
+    "company-os/package-boundaries": "error"
+  }
+}

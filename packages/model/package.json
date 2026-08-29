@@ -14,6 +14,7 @@
     "./metadata": "./src/metadata.ts"
   },
   "scripts": {
+    "lint:model": "tsx tools/lint-model.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
@@ -21,6 +22,7 @@
     "@company/runtime": "workspace:*"
   },
   "devDependencies": {
+    "tsx": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }

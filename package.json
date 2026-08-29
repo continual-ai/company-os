@@ -4,32 +4,36 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "add:app": "tsx tools/add-app.ts",
     "build": "turbo build",
     "check": "pnpm format:check && pnpm lint && pnpm deadcode && pnpm typecheck && pnpm -r --if-present db:check",
-    "create:app": "tsx tools/create-app.ts",
     "deadcode": "knip",
-    "dev": "pnpm template:setup && turbo dev --filter=@company-template/company-os",
-    "dev:all": "pnpm template:setup && turbo dev --filter='./templates/*'",
+    "dev": "pnpm setup && turbo dev --filter=company-os",
+    "dev:all": "pnpm setup && turbo dev --filter='./apps/*'",
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
-    "lint": "oxlint . && turbo boundaries",
-    "lint:fix": "oxlint --fix . && turbo boundaries",
-    "template:setup": "docker compose up -d --wait template-postgres && pnpm --filter @company-template/company-os db:deploy",
-    "test": "turbo test",
+    "lint": "oxlint . && turbo boundaries && pnpm lint:model",
+    "lint:fix": "oxlint --fix . && turbo boundaries && pnpm lint:model",
+    "lint:model": "pnpm -r --if-present lint:model",
+    "prepare": "effect-tsgo patch --no-typescript --oxlint",
+    "setup": "docker compose up -d --wait postgres && pnpm --filter company-os db:deploy",
+    "test": "pnpm test:tools && turbo test",
+    "test:tools": "tsx tools/oxlint/company-os/test-rules.ts",
     "typecheck": "tsc --noEmit && turbo typecheck",
     "ui:add": "pnpm --filter @company/ui exec shadcn add"
   },
   "devDependencies": {
-    "@oxlint/plugins": "1.78.0",
+    "@effect/tsgo": "0.38.0",
+    "@oxlint/plugins": "1.80.0",
     "@types/node": "catalog:",
     "effect": "catalog:",
     "knip": "6.32.2",
     "oxfmt": "0.63.0",
-    "oxlint": "1.78.0",
+    "oxlint": "1.80.0",
     "oxlint-tsgolint": "7.0.2001",
     "tsx": "4.23.12",
     "turbo": "2.10.10",
-    "typescript": "6.0.3"
+    "typescript": "7.0.2"
   },
   "devEngines": {
     "packageManager": {
@@ -41,5 +45,10 @@
   "engines": {
     "node": ">=22.12.0",
     "pnpm": ">=11.0.0 <12.0.0"
+  },
+  "knip": {
+    "ignore": [
+      "tools/oxlint/company-os/fixtures/**"
+    ]
   }
 }

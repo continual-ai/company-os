@@ -1,8 +1,8 @@
 # @company/model
 
-The browser-safe business contract shared by the operating application, external interfaces, and
-agents. It declares objects, interfaces, relationships, queries, actions, and shared metadata
-without choosing a backend, transport, or UI.
+The project's single browser-safe business contract, shared by the operating application, external
+interfaces, and agents. It declares objects, interfaces, relationships, queries, actions, and
+shared metadata without choosing a backend, transport, or UI.
 
 ```ts
 import { Model } from "@company/model"
