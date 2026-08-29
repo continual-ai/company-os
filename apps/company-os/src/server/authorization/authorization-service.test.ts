@@ -7,7 +7,7 @@ import { PgliteClient } from "@effect/sql-pglite"
 import { eq } from "drizzle-orm"
 import * as PgliteDrizzle from "drizzle-orm/effect-pglite"
 import { migrate } from "drizzle-orm/effect-pglite/migrator"
-import { Effect } from "effect"
+import { Effect, Layer } from "effect"
 import { describe, expect, it } from "vitest"
 
 import { anonymousCaller, authenticatedCaller } from "@/server/caller"
@@ -26,6 +26,7 @@ import {
   roles,
   users,
 } from "@/server/database/schema"
+import { asTestDatabase } from "@/server/database/test-database"
 import {
   anonymousInvocation,
   authenticatedInvocation,
@@ -41,6 +42,7 @@ import {
   RoleAssignmentService,
   RoleScopeMismatch,
 } from "@/server/modules/access/role-assignment-service"
+import { PageTokens } from "@/server/page-tokens"
 import { seedSystem } from "@/server/seeds/seed-system"
 import {
   ALL_CALLERS_PRINCIPAL_SET_ID,
@@ -72,17 +74,6 @@ const RoleAssignmentId = RecordId("roleAssignment")
 
 type ObjectInsert = typeof objects.$inferInsert
 
-function asDatabase(
-  database: Effect.Success<
-    ReturnType<typeof PgliteDrizzle.makeWithDefaults<typeof relations>>
-  >
-): typeof Database.Service {
-  // SAFETY: Drizzle's Effect PostgreSQL and PGlite drivers implement the same
-  // query and transaction API. Tests replace only the underlying client.
-  // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion
-  return database as unknown as typeof Database.Service
-}
-
 function objectRow(
   input: Pick<ObjectInsert, "ancestorIds" | "id" | "objectType" | "parentId">
 ): ObjectInsert {
@@ -98,9 +89,15 @@ function objectRow(
   }
 }
 
-function run<A, E>(effect: Effect.Effect<A, E, PgliteClient.PgliteClient>) {
+function run<A, E>(
+  effect: Effect.Effect<A, E, PageTokens | PgliteClient.PgliteClient>
+) {
   return Effect.runPromise(
-    Effect.scoped(effect.pipe(Effect.provide(TestDatabase)))
+    Effect.scoped(
+      effect.pipe(
+        Effect.provide(Layer.merge(TestDatabase, PageTokens.layerTest))
+      )
+    )
   )
 }
 
@@ -119,7 +116,7 @@ describe("Authorization", () => {
       Effect.gen(function* () {
         const pglite = yield* PgliteDrizzle.makeWithDefaults({ relations })
         yield* migrate(pglite, { migrationsFolder })
-        const database = asDatabase(pglite)
+        const database = asTestDatabase(pglite)
         yield* seedSystem().pipe(Effect.provideService(Database, database))
         const objectRepositories = yield* ObjectRepositories.make.pipe(
           Effect.provideService(Database, database)

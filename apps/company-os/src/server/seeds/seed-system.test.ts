@@ -5,7 +5,7 @@ import { PgliteClient } from "@effect/sql-pglite"
 import { eq, inArray, sql } from "drizzle-orm"
 import * as PgliteDrizzle from "drizzle-orm/effect-pglite"
 import { migrate } from "drizzle-orm/effect-pglite/migrator"
-import { Effect } from "effect"
+import { Effect, Layer } from "effect"
 import { describe, expect, it } from "vitest"
 
 import { Database } from "@/server/database/database"
@@ -19,10 +19,12 @@ import {
   roleAssignments,
   roles,
 } from "@/server/database/schema"
+import { asTestDatabase } from "@/server/database/test-database"
 import {
   authenticatedInvocation,
   ReservedSystemActor,
 } from "@/server/invocation-context"
+import { PageTokens } from "@/server/page-tokens"
 import {
   ALL_AUTHENTICATED_CALLERS_PRINCIPAL_SET_ID,
   ALL_CALLERS_PRINCIPAL_SET_ID,
@@ -40,20 +42,15 @@ const migrationsFolder = fileURLToPath(
 )
 const TestDatabase = PgliteClient.layer()
 
-function asDatabase(
-  database: Effect.Success<
-    ReturnType<typeof PgliteDrizzle.makeWithDefaults<typeof relations>>
-  >
-): typeof Database.Service {
-  // SAFETY: the Effect PostgreSQL and PGlite drivers implement the same
-  // Drizzle query and transaction API; only the client is replaced in tests.
-  // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion
-  return database as unknown as typeof Database.Service
-}
-
-function run<A, E>(effect: Effect.Effect<A, E, PgliteClient.PgliteClient>) {
+function run<A, E>(
+  effect: Effect.Effect<A, E, PageTokens | PgliteClient.PgliteClient>
+) {
   return Effect.runPromise(
-    Effect.scoped(effect.pipe(Effect.provide(TestDatabase)))
+    Effect.scoped(
+      effect.pipe(
+        Effect.provide(Layer.merge(TestDatabase, PageTokens.layerTest))
+      )
+    )
   )
 }
 
@@ -63,7 +60,7 @@ describe("Company OS seeds", () => {
       Effect.gen(function* () {
         const pglite = yield* PgliteDrizzle.makeWithDefaults({ relations })
         yield* migrate(pglite, { migrationsFolder })
-        const database = asDatabase(pglite)
+        const database = asTestDatabase(pglite)
 
         const auditConstraints = yield* database.execute<{
           constraintName: string

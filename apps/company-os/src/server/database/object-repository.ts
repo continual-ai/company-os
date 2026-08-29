@@ -2,6 +2,8 @@ import type { Model } from "@company/model"
 import { makeObjectRepository as makePostgresObjectRepository } from "@company/postgres"
 import { Effect } from "effect"
 
+import { PageTokens } from "@/server/page-tokens"
+
 import { Database } from "./database"
 import { Storage } from "./schema"
 
@@ -13,6 +15,12 @@ export function makeObjectRepository<const TObject extends ModelObjectType>(
 ) {
   return Effect.gen(function* () {
     const database = yield* Database
-    return yield* makePostgresObjectRepository(Storage, object, database)
+    const pageTokens = yield* PageTokens
+    return yield* makePostgresObjectRepository(
+      Storage,
+      object,
+      database,
+      pageTokens
+    )
   })
 }

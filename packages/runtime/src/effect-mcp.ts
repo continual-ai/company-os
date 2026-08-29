@@ -1,4 +1,3 @@
-/* oxlint-disable anti-slop/no-unknown-parameters, anti-slop/no-unknown-returns, anti-slop/no-unsafe-dictionary-type, typescript/no-unsafe-type-assertion */
 // MCP validates JSON inputs and outputs against generated schemas. Unknown is
 // confined to this protocol boundary before dispatch to model-typed services.
 import {
@@ -32,6 +31,7 @@ import {
   objectListInputSchema,
   objectPageOutputSchema,
   objectRecordOutputSchema,
+  pageSizeSchema,
   pageTotalSizeSchema,
 } from "./effect-model-schemas"
 import type { CurrentInvocation } from "./effect-object-service"
@@ -97,9 +97,11 @@ function querySchemas(object: ObjectType, query: Query) {
 
 function toolResult(output: unknown) {
   // Model operations expose struct outputs, including an empty struct for void.
-  // SAFETY: every model operation has a portable struct output schema.
+  if (output !== undefined && (typeof output !== "object" || output === null)) {
+    throw new Error("A model MCP operation returned a non-object result.")
+  }
   const structuredContent =
-    output === undefined ? {} : (output as Record<string, unknown>)
+    output === undefined ? {} : Object.fromEntries(Object.entries(output))
   return {
     content: [
       { type: "text" as const, text: JSON.stringify(structuredContent) },
@@ -134,6 +136,7 @@ function mcpSchema(schema: Schema.Codec<unknown, unknown>) {
         return {
           // SAFETY: the Effect schema above validated and decoded this value;
           // T is the matching Standard Schema result requested by the MCP SDK.
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion
           data: decoded.value as T,
           errorMessage: undefined,
           valid: true,
@@ -166,7 +169,7 @@ export function createModelMcpServer({
         id: toEffectRecordIdentifierSchema(object.id),
         ...(definition.id === "list"
           ? {
-              pageSize: Schema.optionalKey(Schema.Number),
+              pageSize: Schema.optionalKey(pageSizeSchema),
               pageToken: Schema.optionalKey(Schema.String),
             }
           : {
@@ -181,7 +184,7 @@ export function createModelMcpServer({
               items: Schema.Array(
                 Schema.Struct({ id: Schema.String, objectType: Schema.String })
               ),
-              nextPageToken: Schema.String,
+              nextPageToken: Schema.NullOr(Schema.String),
               totalSize: pageTotalSizeSchema,
             })
           : Schema.Struct({})

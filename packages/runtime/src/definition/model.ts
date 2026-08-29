@@ -752,7 +752,7 @@ export function defineModel<
   )
 
   // SAFETY: duplicate identifiers were rejected before building the registries.
-  // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   return {
     actions,
     actor: definition.actor,

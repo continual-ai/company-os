@@ -1,4 +1,4 @@
-import { Context, Data, Effect, Option, Schema } from "effect"
+import { Context, Data, Effect, Schema } from "effect"
 import { typeid } from "typeid-js"
 
 import {
@@ -6,7 +6,6 @@ import {
   type ObjectBatchDeleteInput,
   type ObjectBatchGetInput,
   type ObjectCreateInput,
-  type ObjectCreateValues,
   type ObjectDeleteInput,
   type ObjectGetInput,
   type ObjectRecord,
@@ -19,22 +18,23 @@ import {
   MAX_BATCH_DELETE_SIZE,
   MAX_BATCH_GET_SIZE,
   type Batch,
-  type CanonicalListRequest,
-  type CanonicalObjectFilter,
-  type ObjectFilter,
   type ListRequest,
   type Page,
 } from "./definition/request"
+import { RecordId } from "./definition/schema"
 import {
-  isRecordAlias,
-  RecordId,
-  type AnySchema,
-  type RecordAlias,
-  type RecordIdentifier,
-} from "./definition/schema"
+  type DecodedCreateInput,
+  type DecodedInput,
+  normalizeCreateInput,
+  type RecordAliasResolver,
+  resolveCreateIdentifiers,
+  resolveIdentifier,
+  resolveIdentifiers,
+  resolveListRequest,
+  resolveUpdateIdentifiers,
+} from "./effect-object-input"
 import type { Repository } from "./effect-object-repository"
 import {
-  toEffectInputSchema,
   toEffectObjectCreateSchema,
   toEffectObjectUpdateSchema,
   toEffectObjectWriterUpdateSchema,
@@ -200,11 +200,6 @@ export interface Writer<
   >
 }
 
-type RecordAliasResolver<TError, TRequirements> = (
-  expectedType: string,
-  aliases: ReadonlyArray<RecordAlias>
-) => Effect.Effect<ReadonlyArray<string>, TError, TRequirements>
-
 export interface WriterOptions<TResolverError, TResolverRequirements> {
   readonly generateRecordId?: (objectType: string) => string
   readonly rootId: RecordId
@@ -240,86 +235,6 @@ export function generateRecordId(objectType: string): string {
   return typeid(prefix).toString()
 }
 
-type DecodedValue =
-  | boolean
-  | null
-  | number
-  | string
-  | undefined
-  | ReadonlyArray<DecodedValue>
-  | DecodedInput
-
-interface DecodedInput {
-  readonly [key: string]: DecodedValue
-}
-
-interface DecodedCreateInput extends DecodedInput {
-  readonly parent?: RecordIdentifier
-}
-
-function normalizeCreateInput(object: ObjectType, input: DecodedCreateInput) {
-  const normalized = { ...input }
-
-  for (const [propertyId, property] of Object.entries(object.properties)) {
-    if (property.outputOnly || propertyId in normalized) continue
-
-    if (Object.hasOwn(property, "default")) {
-      Object.assign(normalized, { [propertyId]: property.default })
-    } else if (property.nullable) {
-      Object.assign(normalized, { [propertyId]: null })
-    }
-  }
-
-  return normalized
-}
-
-function resolveIdentifier<TError, TRequirements>(
-  expectedType: string,
-  identifier: string,
-  resolveAliases: RecordAliasResolver<TError, TRequirements>
-): Effect.Effect<RecordId, TError, TRequirements> {
-  return isRecordAlias(identifier)
-    ? resolveAliases(expectedType, [identifier]).pipe(
-        Effect.flatMap((resolved) => {
-          const id = resolved[0]
-          return id === undefined
-            ? Effect.die("Record alias resolver returned no result.")
-            : Effect.succeed(RecordId(expectedType)(id))
-        })
-      )
-    : Effect.succeed(RecordId(expectedType)(identifier))
-}
-
-function resolveIdentifiers<TError, TRequirements>(
-  expectedType: string,
-  identifiers: ReadonlyArray<string>,
-  resolveAliases: RecordAliasResolver<TError, TRequirements>
-): Effect.Effect<ReadonlyArray<RecordId>, TError, TRequirements> {
-  const aliases = identifiers.filter(isRecordAlias)
-  if (aliases.length === 0) {
-    return Effect.succeed(
-      identifiers.map((identifier) => RecordId(expectedType)(identifier))
-    )
-  }
-  return resolveAliases(expectedType, aliases).pipe(
-    Effect.flatMap((resolved) => {
-      if (resolved.length !== aliases.length) {
-        return Effect.die(
-          "Record alias resolver returned an invalid result count."
-        )
-      }
-      let aliasIndex = 0
-      return Effect.succeed(
-        identifiers.map((identifier) =>
-          RecordId(expectedType)(
-            isRecordAlias(identifier) ? resolved[aliasIndex++]! : identifier
-          )
-        )
-      )
-    })
-  )
-}
-
 function validateBatchSize(
   objectType: string,
   operation: "batchDelete" | "batchGet",
@@ -345,223 +260,6 @@ function validateBatchSize(
     )
   }
   return Effect.void
-}
-
-function resolveSchemaIdentifiers<TError, TRequirements>(
-  definition: AnySchema,
-  value: DecodedValue,
-  resolveAliases: RecordAliasResolver<TError, TRequirements>
-): Effect.Effect<DecodedValue, TError, TRequirements> {
-  if (value === null || value === undefined) return Effect.succeed(value)
-
-  switch (definition.kind) {
-    case "array":
-      if (definition.items.kind === "recordId") {
-        // SAFETY: the input boundary decoded this value as record identifiers.
-        // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-        const identifiers = value as ReadonlyArray<string>
-        return resolveIdentifiers(
-          definition.items.typeId,
-          identifiers,
-          resolveAliases
-        )
-      }
-      // SAFETY: the input boundary decoded this value with the same array schema.
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-      return Effect.forEach(value as ReadonlyArray<DecodedValue>, (item) =>
-        resolveSchemaIdentifiers(definition.items, item, resolveAliases)
-      )
-    case "map": {
-      // SAFETY: the input boundary decoded this value with the same map schema.
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-      const entries = Object.entries(value as DecodedInput)
-      return Effect.forEach(entries, ([key, item]) =>
-        resolveSchemaIdentifiers(definition.values, item, resolveAliases).pipe(
-          Effect.map((resolved) => [key, resolved] as const)
-        )
-      ).pipe(Effect.map(Object.fromEntries))
-    }
-    case "optional":
-      return resolveSchemaIdentifiers(definition.value, value, resolveAliases)
-    case "recordId":
-      // SAFETY: the input boundary decoded this value as a record identifier.
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-      const identifier = value as string
-      return isRecordAlias(identifier)
-        ? resolveIdentifier(definition.typeId, identifier, resolveAliases)
-        : Effect.succeed(RecordId(definition.typeId)(identifier))
-    case "struct": {
-      // SAFETY: the input boundary decoded this value with the same struct schema.
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-      const entries = Object.entries(value as DecodedInput)
-      return Effect.forEach(entries, ([key, item]) => {
-        const member = definition.properties[key]
-        return member === undefined
-          ? Effect.succeed([key, item] as const)
-          : resolveSchemaIdentifiers(member, item, resolveAliases).pipe(
-              Effect.map((resolved) => [key, resolved] as const)
-            )
-      }).pipe(Effect.map(Object.fromEntries))
-    }
-    case "union": {
-      const member = definition.members.find((candidate) =>
-        Option.isSome(
-          Schema.decodeUnknownOption(toEffectInputSchema(candidate))(value)
-        )
-      )
-      return member === undefined
-        ? Effect.succeed(value)
-        : resolveSchemaIdentifiers(member, value, resolveAliases)
-    }
-    default:
-      return Effect.succeed(value)
-  }
-}
-
-function resolveObjectInputIdentifiers<TError, TRequirements>(
-  object: ObjectType,
-  input: DecodedInput,
-  resolveAliases: RecordAliasResolver<TError, TRequirements>
-): Effect.Effect<DecodedInput, TError, TRequirements> {
-  return Effect.forEach(Object.entries(input), ([key, value]) => {
-    const property = object.properties[key]
-    return property === undefined
-      ? Effect.succeed([key, value] as const)
-      : resolveSchemaIdentifiers(property, value, resolveAliases).pipe(
-          Effect.map((resolved) => [key, resolved] as const)
-        )
-  }).pipe(Effect.map(Object.fromEntries))
-}
-
-function resolveCreateIdentifiers<
-  TObject extends ObjectType,
-  TError,
-  TRequirements,
->(
-  object: TObject,
-  input: DecodedInput,
-  resolveAliases: RecordAliasResolver<TError, TRequirements>
-): Effect.Effect<ObjectCreateValues<TObject>, TError, TRequirements> {
-  return resolveObjectInputIdentifiers(object, input, resolveAliases).pipe(
-    Effect.map((resolved) => {
-      // SAFETY: schema-directed resolution replaces every input identifier
-      // with the canonical value required by the same property schema.
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-      return resolved as ObjectCreateValues<TObject>
-    })
-  )
-}
-
-function resolveUpdateIdentifiers<
-  TObject extends ObjectType,
-  TError,
-  TRequirements,
->(
-  object: TObject,
-  input: DecodedInput,
-  resolveAliases: RecordAliasResolver<TError, TRequirements>
-): Effect.Effect<ObjectUpdateValues<TObject>, TError, TRequirements> {
-  return resolveObjectInputIdentifiers(object, input, resolveAliases).pipe(
-    Effect.map((resolved) => {
-      // SAFETY: schema-directed resolution replaces every input identifier
-      // with the canonical value required by the same property schema.
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-      return resolved as ObjectUpdateValues<TObject>
-    })
-  )
-}
-
-function filterTargetType(object: ObjectType, field: string) {
-  if (field === "id") return object.id
-  if (field === "parent") return object.parent.typeId
-  const property = object.properties[field]
-  return property?.kind === "recordId" ? property.typeId : undefined
-}
-
-type FilterNode =
-  | { readonly and: ReadonlyArray<FilterNode> }
-  | { readonly not: FilterNode }
-  | { readonly or: ReadonlyArray<FilterNode> }
-  | {
-      readonly field: string
-      readonly operator: string
-      readonly value?: DecodedValue
-    }
-
-function resolveFilterNode<TError, TRequirements>(
-  object: ObjectType,
-  filter: FilterNode,
-  resolveAliases: RecordAliasResolver<TError, TRequirements>
-): Effect.Effect<FilterNode, TError, TRequirements> {
-  if ("and" in filter) {
-    return Effect.forEach(filter.and, (member) =>
-      resolveFilterNode(object, member, resolveAliases)
-    ).pipe(Effect.map((and) => ({ and })))
-  }
-  if ("or" in filter) {
-    return Effect.forEach(filter.or, (member) =>
-      resolveFilterNode(object, member, resolveAliases)
-    ).pipe(Effect.map((or) => ({ or })))
-  }
-  if ("not" in filter) {
-    return resolveFilterNode(object, filter.not, resolveAliases).pipe(
-      Effect.map((not) => ({ not }))
-    )
-  }
-
-  const expectedType = filterTargetType(object, filter.field)
-  if (expectedType === undefined || filter.operator === "isNull") {
-    return Effect.succeed(filter)
-  }
-  if (filter.operator === "in") {
-    // SAFETY: reference filters permit `in` only with record identifier arrays.
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-    const identifiers = filter.value as ReadonlyArray<string>
-    return resolveIdentifiers(expectedType, identifiers, resolveAliases).pipe(
-      Effect.map((value) => ({ ...filter, value }))
-    )
-  }
-  // SAFETY: reference filters permit only scalar equality outside `in`.
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  const identifier = filter.value as string
-  return resolveIdentifier(expectedType, identifier, resolveAliases).pipe(
-    Effect.map((value) => ({ ...filter, value }))
-  )
-}
-
-function resolveFilterIdentifiers<
-  TObject extends ObjectType,
-  TError,
-  TRequirements,
->(
-  object: TObject,
-  filter: ObjectFilter<TObject>,
-  resolveAliases: RecordAliasResolver<TError, TRequirements>
-): Effect.Effect<CanonicalObjectFilter<TObject>, TError, TRequirements> {
-  // SAFETY: ObjectFilter is the typed public form of this recursive filter node.
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  const node = filter as FilterNode
-  return resolveFilterNode(object, node, resolveAliases).pipe(
-    Effect.map((resolved) => {
-      // SAFETY: resolution preserves the filter shape and canonicalizes only
-      // values for fields whose model schema declares a record reference.
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-      return resolved as CanonicalObjectFilter<TObject>
-    })
-  )
-}
-
-function resolveListRequest<TObject extends ObjectType, TError, TRequirements>(
-  object: TObject,
-  request: ListRequest<TObject>,
-  resolveAliases: RecordAliasResolver<TError, TRequirements>
-): Effect.Effect<CanonicalListRequest<TObject>, TError, TRequirements> {
-  const { filter, ...rest } = request
-  return filter === undefined
-    ? Effect.succeed(rest)
-    : resolveFilterIdentifiers(object, filter, resolveAliases).pipe(
-        Effect.map((resolvedFilter) => ({ ...rest, filter: resolvedFilter }))
-      )
 }
 
 function assertImmutableFields<TObject extends ObjectType>(
@@ -654,7 +352,7 @@ function makeWriteMethods<
     const context = yield* CurrentInvocation
     // SAFETY: repository parent validation confirms a concrete interface
     // implementation before commit.
-    // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
     const parent = RecordId(object.parent.typeId)(
       requestedParentId ?? options.rootId
     ) as unknown as ObjectRecord<TObject>["parent"]

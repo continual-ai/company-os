@@ -1,27 +1,18 @@
-/* oxlint-disable anti-slop/no-unknown-parameters, eslint/no-underscore-dangle -- This adapter unwraps structured Effect and Drizzle provider failures at the persistence boundary. */
-import { Buffer } from "node:buffer"
-
 import {
-  DEFAULT_PAGE_SIZE,
-  MAX_PAGE_SIZE,
+  normalizePageSize,
   RecordId,
   type RecordAlias,
   type RecordAliasUpdate,
   type ModelCatalog,
   type ModelObjectRef,
-  PageToken,
-  Timestamp,
+  type PageTokenCodec,
   type InferProperty,
   type ObjectRecord,
-  type ObjectSort,
   type ObjectType,
   type Page,
   type ObjectRef,
 } from "@company/runtime"
-import {
-  toEffectInputSchema,
-  toEffectObjectSchema,
-} from "@company/runtime/effect"
+import { toEffectObjectSchema } from "@company/runtime/effect"
 import {
   ObjectNotFound,
   ObjectDeleteRestricted,
@@ -37,30 +28,19 @@ import {
   type ObjectRepositoryUpdate,
   type RepositoryListRequest,
   type RepositoryListVisibility,
-  type RepositoryFilter,
   type Repository,
 } from "@company/runtime/effect/object-repository"
 import {
   and,
   asc,
   count,
-  desc,
   eq,
   getTableName,
   getTableColumns,
-  gt,
-  gte,
-  ilike,
   inArray,
-  isNotNull,
-  isNull,
-  lt,
-  lte,
-  not,
   notInArray,
   or,
   sql,
-  type Column,
   type AnyRelations,
   type SQL,
 } from "drizzle-orm"
@@ -74,6 +54,16 @@ import type {
 import { Cause, Effect, Option, Schema } from "effect"
 import { isSqlError, type SqlError } from "effect/unstable/sql/SqlError"
 
+import {
+  cursorCondition,
+  cursorFingerprint,
+  decodeCursor,
+  encodeCursor,
+  invalidListRequest,
+  makeObjectQueryCompiler,
+  orderExpression,
+  recordValue,
+} from "./object-query"
 import {
   objectUniqueConstraintName,
   physicalPropertyKey,
@@ -127,20 +117,6 @@ export type PostgresRecordAliasResolutionError =
   | EffectDrizzleQueryError
   | RecordAliasNotFound
 
-interface CursorPayload {
-  readonly fingerprint: string
-  readonly values: ReadonlyArray<QueryValue>
-  readonly version: 1
-}
-
-interface CursorSort {
-  readonly direction: "asc" | "desc"
-  readonly field: string
-  readonly nulls?: "first" | "last"
-}
-
-type QueryValue = boolean | null | number | string
-
 interface UniqueConstraint {
   readonly fields: ReadonlyArray<string>
   readonly rule: string
@@ -187,123 +163,6 @@ function translateDeleteRestriction<A, E, R>(
       ? new ObjectDeleteRestricted({ objectType: object.id, recordIds })
       : error
   )
-}
-
-const queryValueSchema = Schema.Union([
-  Schema.Boolean,
-  Schema.Null,
-  Schema.Number,
-  Schema.String,
-])
-
-const cursorPayloadSchema = Schema.Struct({
-  fingerprint: Schema.String,
-  values: Schema.Array(queryValueSchema),
-  version: Schema.Literal(1),
-})
-
-interface ResolvedSort {
-  readonly column: Column
-  readonly direction: "asc" | "desc"
-  readonly field: string
-  readonly nulls: "first" | "last"
-}
-
-function orderExpression(sort: ResolvedSort): SQL {
-  const ordered =
-    sort.direction === "asc" ? asc(sort.column) : desc(sort.column)
-  return sort.nulls === "first"
-    ? sql`${ordered} nulls first`
-    : sql`${ordered} nulls last`
-}
-
-function equalCursorValue(sort: ResolvedSort, value: QueryValue): SQL {
-  return value === null ? isNull(sort.column) : eq(sort.column, value)
-}
-
-function laterCursorValue(
-  sort: ResolvedSort,
-  value: QueryValue
-): SQL | undefined {
-  if (value === null) {
-    return sort.nulls === "first" ? isNotNull(sort.column) : undefined
-  }
-  const comparison =
-    sort.direction === "asc" ? gt(sort.column, value) : lt(sort.column, value)
-  return sort.nulls === "last"
-    ? or(comparison, isNull(sort.column))
-    : comparison
-}
-
-function cursorCondition(
-  sort: ReadonlyArray<ResolvedSort>,
-  values: ReadonlyArray<QueryValue>,
-  index = 0
-): SQL | undefined {
-  const current = sort[index]
-  const value = values[index]
-  if (current === undefined || value === undefined) return undefined
-  const later = laterCursorValue(current, value)
-  const tied = cursorCondition(sort, values, index + 1)
-  const tiedAndLater =
-    tied === undefined ? undefined : and(equalCursorValue(current, value), tied)
-  return or(later, tiedAndLater)
-}
-
-function recordValue<TObject extends ObjectType>(
-  record: ObjectRecord<TObject>,
-  field: string
-): QueryValue {
-  const value = Object.entries(record).find(([key]) => key === field)?.[1]
-  return Schema.decodeUnknownSync(queryValueSchema)(value)
-}
-
-function invalidListRequest(object: ObjectType, message: string) {
-  return new InvalidListRequest({ message, objectType: object.id })
-}
-
-function escapeLike(value: string): string {
-  return value
-    .replaceAll("\\", "\\\\")
-    .replaceAll("%", "\\%")
-    .replaceAll("_", "\\_")
-}
-
-function cursorFingerprint<TObject extends ObjectType>(
-  request: RepositoryListRequest<TObject>,
-  sort: ReadonlyArray<CursorSort>
-): string {
-  return JSON.stringify({ filter: request.filter ?? null, sort })
-}
-
-function encodeCursor(payload: CursorPayload): PageToken {
-  return PageToken(Buffer.from(JSON.stringify(payload)).toString("base64url"))
-}
-
-function decodeCursor(
-  object: ObjectType,
-  token: PageToken,
-  fingerprint: string,
-  valueCount: number
-): CursorPayload {
-  try {
-    const parsed = Schema.decodeUnknownSync(cursorPayloadSchema)(
-      JSON.parse(Buffer.from(token, "base64url").toString("utf8"))
-    )
-    if (
-      parsed.fingerprint !== fingerprint ||
-      parsed.values.length !== valueCount
-    ) {
-      throw invalidListRequest(
-        object,
-        "The page token does not match this list request."
-      )
-    }
-    return { version: 1, fingerprint, values: parsed.values }
-  } catch (error) {
-    if (error instanceof InvalidListRequest) throw error
-    throw invalidListRequest(object, "The page token is invalid.")
-  }
 }
 
 function notFound(object: ObjectType, id: string) {
@@ -391,7 +250,8 @@ export function makeObjectRepository<
 >(
   storage: PostgresStorage<TModel>,
   object: TObject,
-  db: EffectPgDatabase<TRelations>
+  db: EffectPgDatabase<TRelations>,
+  pageTokens: PageTokenCodec
 ): Effect.Effect<Repository<TObject, PostgresRepositoryError>> {
   return Effect.gen(function* () {
     const { recordAliases, objects } = storage.core
@@ -506,247 +366,10 @@ export function makeObjectRepository<
       updatedBy: objects.updatedById,
     }
 
-    const columnFor = (field: string): Column => {
-      const column = Object.entries(queryColumns).find(
-        ([columnName]) => columnName === field
-      )?.[1]
-      if (column === undefined) {
-        throw invalidListRequest(
-          object,
-          `Field '${field}' cannot be filtered or sorted.`
-        )
-      }
-      return column
-    }
-
-    const allowedOperators = (field: string): ReadonlySet<string> => {
-      if (field === "id" || field === "parent") {
-        return new Set(["eq", "in"])
-      }
-      if (field === "createdBy" || field === "updatedBy") {
-        return new Set(["eq", "in"])
-      }
-      if (field === "systemManaged") return new Set(["eq", "in"])
-      if (field === "createdAt" || field === "updatedAt") {
-        return new Set(["eq", "gt", "gte", "in", "lt", "lte"])
-      }
-
-      const property = object.properties[field]
-      if (property === undefined) return new Set()
-      const nullable = property.nullable ? ["isNull"] : []
-      switch (property.kind) {
-        case "boolean":
-        case "enum":
-        case "recordId":
-          return new Set(["eq", "in", ...nullable])
-        case "decimal":
-        case "number":
-          return new Set(["eq", "gt", "gte", "in", "lt", "lte", ...nullable])
-        case "string":
-          return property.format === "date" || property.format === "timestamp"
-            ? new Set(["eq", "gt", "gte", "in", "lt", "lte", ...nullable])
-            : new Set([
-                "contains",
-                "endsWith",
-                "eq",
-                "in",
-                "startsWith",
-                ...nullable,
-              ])
-        default:
-          return new Set()
-      }
-    }
-
-    const decodeFilterValue = (
-      field: string,
-      value: QueryValue
-    ): Exclude<QueryValue, null> => {
-      if (value === null || value === undefined) {
-        throw invalidListRequest(
-          object,
-          `Filter property '${field}' requires a non-null value.`
-        )
-      }
-      const property = object.properties[field]
-      if (property !== undefined) {
-        const decoded = Schema.decodeUnknownSync(toEffectInputSchema(property))(
-          value
-        )
-        const queryValue = Schema.decodeUnknownSync(queryValueSchema)(decoded)
-        if (queryValue === null) {
-          throw invalidListRequest(
-            object,
-            `Filter property '${field}' requires a non-null value.`
-          )
-        }
-        return queryValue
-      }
-      if (field === "systemManaged") {
-        return Schema.decodeUnknownSync(Schema.Boolean)(value)
-      }
-      const textValue = Schema.decodeUnknownSync(Schema.String)(value)
-      if (field === "id" || field === "parent") {
-        if (textValue.length === 0) {
-          throw invalidListRequest(
-            object,
-            `Filter property '${field}' requires a non-empty record ID.`
-          )
-        }
-        return textValue
-      }
-      if (field === "createdBy" || field === "updatedBy") {
-        return RecordId("actor")(textValue)
-      }
-      if (field === "createdAt" || field === "updatedAt") {
-        return Timestamp(textValue)
-      }
-      throw invalidListRequest(object, `Unknown filter property '${field}'.`)
-    }
-
-    const decodeStringFilterValue = (field: string, value: string): string =>
-      Schema.decodeUnknownSync(Schema.String)(decodeFilterValue(field, value))
-
-    const compileFilter = (filter: RepositoryFilter<TObject>): SQL => {
-      if ("and" in filter) {
-        if (filter.and.length === 0) {
-          throw invalidListRequest(object, "An 'and' filter cannot be empty.")
-        }
-        return and(...filter.and.map(compileFilter))!
-      }
-      if ("or" in filter) {
-        if (filter.or.length === 0) {
-          throw invalidListRequest(object, "An 'or' filter cannot be empty.")
-        }
-        return or(...filter.or.map(compileFilter))!
-      }
-      if ("not" in filter) return not(compileFilter(filter.not))!
-
-      const column = columnFor(filter.field)
-      if (!allowedOperators(filter.field).has(filter.operator)) {
-        throw invalidListRequest(
-          object,
-          `Operator '${filter.operator}' is not supported for property '${filter.field}'.`
-        )
-      }
-
-      switch (filter.operator) {
-        case "contains": {
-          const value = decodeStringFilterValue(filter.field, filter.value)
-          return ilike(column, `%${escapeLike(value)}%`)
-        }
-        case "endsWith": {
-          const value = decodeStringFilterValue(filter.field, filter.value)
-          return ilike(column, `%${escapeLike(value)}`)
-        }
-        case "eq":
-          return eq(
-            column,
-            decodeFilterValue(
-              filter.field,
-              Schema.decodeUnknownSync(queryValueSchema)(filter.value)
-            )
-          )
-        case "gt":
-          return gt(
-            column,
-            decodeFilterValue(
-              filter.field,
-              Schema.decodeUnknownSync(queryValueSchema)(filter.value)
-            )
-          )
-        case "gte":
-          return gte(
-            column,
-            decodeFilterValue(
-              filter.field,
-              Schema.decodeUnknownSync(queryValueSchema)(filter.value)
-            )
-          )
-        case "in": {
-          if (!Array.isArray(filter.value)) {
-            throw invalidListRequest(
-              object,
-              "Operator 'in' requires an array value."
-            )
-          }
-          const values = filter.value.map((value) =>
-            decodeFilterValue(
-              filter.field,
-              Schema.decodeUnknownSync(queryValueSchema)(value)
-            )
-          )
-          return values.length === 0 ? sql`false` : inArray(column, values)
-        }
-        case "isNull":
-          return isNull(column)
-        case "lt":
-          return lt(
-            column,
-            decodeFilterValue(
-              filter.field,
-              Schema.decodeUnknownSync(queryValueSchema)(filter.value)
-            )
-          )
-        case "lte":
-          return lte(
-            column,
-            decodeFilterValue(
-              filter.field,
-              Schema.decodeUnknownSync(queryValueSchema)(filter.value)
-            )
-          )
-        case "startsWith": {
-          const value = decodeStringFilterValue(filter.field, filter.value)
-          return ilike(column, `${escapeLike(value)}%`)
-        }
-      }
-      throw invalidListRequest(object, "The filter operator is invalid.")
-    }
-
-    const resolveSort = (
-      request: RepositoryListRequest<TObject>
-    ): ReadonlyArray<ResolvedSort> => {
-      const requested: Array<ObjectSort<TObject>> = [...(request.sort ?? [])]
-      const duplicate = requested.find(
-        (candidate, index) =>
-          requested.findIndex(({ field }) => field === candidate.field) !==
-          index
-      )
-      if (duplicate !== undefined) {
-        throw invalidListRequest(
-          object,
-          `Sort property '${duplicate.field}' is declared more than once.`
-        )
-      }
-      if (!requested.some(({ field }) => field === "id")) {
-        requested.push({ direction: "asc", field: "id" })
-      }
-      return requested.map((sort) => {
-        const property = object.properties[sort.field]
-        if (
-          property !== undefined &&
-          !new Set([
-            "boolean",
-            "decimal",
-            "enum",
-            "number",
-            "recordId",
-            "string",
-          ]).has(property.kind)
-        ) {
-          throw invalidListRequest(
-            object,
-            `Property '${sort.field}' cannot be sorted.`
-          )
-        }
-        return {
-          ...sort,
-          column: columnFor(sort.field),
-          nulls: sort.nulls ?? "last",
-        }
-      })
-    }
+    const { compileFilter, resolveSort } = makeObjectQueryCompiler(
+      object,
+      queryColumns
+    )
 
     const select = (
       where?: SQL,
@@ -799,7 +422,7 @@ export function makeObjectRepository<
       if (ids.length === 0) return []
 
       const records = yield* select(inArray(idColumn, ids)).pipe(
-        Effect.flatMap(decodeRecords)
+        Effect.flatMap((rows) => decodeRecords(rows))
       )
       const byId = new Map(records.map((record) => [record.id, record]))
       const missing = ids.find((id) => !byId.has(id))
@@ -813,10 +436,14 @@ export function makeObjectRepository<
       request: RepositoryListRequest<TObject> = {},
       visibility?: RepositoryListVisibility
     ): Effect.fn.Return<Page<ObjectRecord<TObject>>, PostgresRepositoryError> {
-      const size = Math.min(
-        MAX_PAGE_SIZE,
-        Math.max(1, request.pageSize ?? DEFAULT_PAGE_SIZE)
-      )
+      const size = yield* Effect.try({
+        try: () => normalizePageSize(request.pageSize),
+        catch: () =>
+          invalidListRequest(
+            object,
+            "pageSize must be a non-negative integer."
+          ),
+      })
       const resolvedSort = yield* Effect.try({
         try: () => resolveSort(request),
         catch: (error) =>
@@ -827,7 +454,7 @@ export function makeObjectRepository<
       const publicSort = resolvedSort.map(
         ({ column: _column, ...sort }) => sort
       )
-      const fingerprint = cursorFingerprint(request, publicSort)
+      const fingerprint = cursorFingerprint(object, request, publicSort)
       const cursor =
         request.pageToken === undefined
           ? undefined
@@ -835,6 +462,7 @@ export function makeObjectRepository<
               try: () =>
                 decodeCursor(
                   object,
+                  pageTokens,
                   request.pageToken!,
                   fingerprint,
                   resolvedSort.length
@@ -876,7 +504,7 @@ export function makeObjectRepository<
         resolvedSort.map(orderExpression)
       )
         .limit(size + 1)
-        .pipe(Effect.flatMap(decodeRecords))
+        .pipe(Effect.flatMap((rows) => decodeRecords(rows)))
       const hasNextPage = records.length > size
       const items = hasNextPage ? records.slice(0, size) : records
       const last = items.at(-1)
@@ -891,14 +519,14 @@ export function makeObjectRepository<
         items,
         nextPageToken:
           hasNextPage && last !== undefined
-            ? encodeCursor({
+            ? encodeCursor(pageTokens, {
                 fingerprint,
                 values: resolvedSort.map(({ field }) =>
                   recordValue(last, field)
                 ),
                 version: 1,
               })
-            : "",
+            : null,
         totalSize,
       }
     })
@@ -995,13 +623,11 @@ export function makeObjectRepository<
           }
           // SAFETY: the portable object schema validates the property values,
           // while the model-derived storage projection supplies this table.
-          // oxlint-disable-next-line typescript/no-unsafe-type-assertion
           const objectRow = objectValues as PgInsertValue<typeof table>
           yield* tx.insert(table).values(objectRow)
           for (const interfaceTable of interfaceTables) {
             // SAFETY: interface storage tables are ID-only projections whose
             // rows are transactionally derived from declared implementations.
-            // oxlint-disable-next-line typescript/no-unsafe-type-assertion
             const interfaceRow = { id } as PgInsertValue<typeof interfaceTable>
             yield* tx.insert(interfaceTable).values(interfaceRow)
           }
@@ -1141,7 +767,6 @@ export function makeObjectRepository<
           const objectValues = { id, ...storageProperties, parentId }
           // SAFETY: the portable object schema validates the complete record,
           // while the model-derived projection supplies this exact table.
-          // oxlint-disable-next-line typescript/no-unsafe-type-assertion
           const objectRow = objectValues as PgInsertValue<typeof table>
           const inserted = tx.insert(table).values(objectRow)
           if (Object.keys(storageProperties).length === 0) {
@@ -1149,7 +774,7 @@ export function makeObjectRepository<
           } else {
             // SAFETY: the complete seed record carries this object's canonical
             // property values and never changes its semantic parent.
-            // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion
             const changes = storageProperties as unknown as PgUpdateSetSource<
               typeof table
             >
@@ -1161,7 +786,6 @@ export function makeObjectRepository<
           for (const interfaceTable of interfaceTables) {
             // SAFETY: interface tables are same-ID projections derived from
             // the model declaration.
-            // oxlint-disable-next-line typescript/no-unsafe-type-assertion
             const interfaceRow = { id } as PgInsertValue<typeof interfaceTable>
             yield* tx
               .insert(interfaceTable)
@@ -1274,7 +898,7 @@ export function makeObjectRepository<
             const storageChanges =
               // SAFETY: the portable object update schema validates the values,
               // while this factory is explicitly paired with the same table.
-              // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion
+              // oxlint-disable-next-line typescript/no-unsafe-type-assertion
               storageProperties as unknown as PgUpdateSetSource<typeof table>
             yield* tx.update(table).set(storageChanges).where(eq(idColumn, id))
           }

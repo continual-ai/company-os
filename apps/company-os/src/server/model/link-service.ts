@@ -12,6 +12,7 @@ import { Context, Effect, Layer } from "effect"
 import { Authorization } from "@/server/authorization/authorization-service"
 import { Database } from "@/server/database/database"
 import { Storage } from "@/server/database/schema"
+import { PageTokens } from "@/server/page-tokens"
 
 import { RecordIdentifierResolver } from "./record-identifier-resolver"
 
@@ -19,7 +20,8 @@ const make = Effect.gen(function* () {
   const authorization = yield* Authorization
   const database = yield* Database
   const identifiers = yield* RecordIdentifierResolver
-  const repository = makeLinkRepository(Storage, database)
+  const pageTokens = yield* PageTokens
+  const repository = makeLinkRepository(Storage, database, pageTokens)
 
   return makeLinkService(Model, repository, {
     resolve: identifiers.resolve,
@@ -77,9 +79,12 @@ const make = Effect.gen(function* () {
 export const makeLinkWriter = Effect.gen(function* () {
   const database = yield* Database
   const identifiers = yield* RecordIdentifierResolver
-  return makeRuntimeLinkWriter(Model, makeLinkRepository(Storage, database), {
-    resolve: identifiers.resolve,
-  })
+  const pageTokens = yield* PageTokens
+  return makeRuntimeLinkWriter(
+    Model,
+    makeLinkRepository(Storage, database, pageTokens),
+    { resolve: identifiers.resolve }
+  )
 })
 
 /** Governed execution for every model-derived Link traversal. */

@@ -1,4 +1,3 @@
-/* oxlint-disable anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- TypeScript cannot preserve a closed-model conditional create member through the generic Effect service intersection; both assertions remove only the generated links envelope from the same model-owned input. */
 import type { Model } from "@company/model"
 import type {
   ModelObjectCreateInput,
@@ -91,18 +90,17 @@ export function makeObjectService<
     const base = yield* makeBaseObjectService(object, repository)
     // SAFETY: CreatableModelObject is exactly the closed-model union whose
     // action registry contains the standard create action.
-    // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion
-    const baseCreate = (
-      base as unknown as {
-        readonly create: (
-          input: ObjectCreateInput<TObject>
-        ) => Effect.Effect<
-          ObjectRecord<TObject>,
-          unknown,
-          CurrentInvocation | TRequirements
-        >
-      }
-    ).create
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+    const creatable = base as unknown as {
+      readonly create: (
+        input: ObjectCreateInput<TObject>
+      ) => Effect.Effect<
+        ObjectRecord<TObject>,
+        unknown,
+        CurrentInvocation | TRequirements
+      >
+    }
+    const baseCreate = creatable.create
     const create = Effect.fn(`${object.id}.create`)(function* (
       input: ModelObjectCreateInput<typeof Model, TObject>
     ) {
@@ -111,8 +109,8 @@ export function makeObjectService<
         Effect.gen(function* () {
           // SAFETY: ModelObjectCreateInput adds only the model-derived `links`
           // envelope to this exact object's standard create input.
-          // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion
           const record = yield* baseCreate(
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion
             objectInput as unknown as ObjectCreateInput<TObject>
           )
           yield* links.initialize(object, record.id, initialLinks)
@@ -140,18 +138,17 @@ export function makeMutableObjectService<
     const service = yield* makeObjectService(object, repository)
     // SAFETY: MutableModelObject is exactly the closed-model union whose
     // action registry contains the standard update action.
-    // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion
-    const baseUpdate = (
-      service as unknown as {
-        readonly update: (
-          input: ObjectUpdateInput<TObject>
-        ) => Effect.Effect<
-          ObjectRecord<TObject>,
-          unknown,
-          CurrentInvocation | TRequirements
-        >
-      }
-    ).update
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+    const mutable = service as unknown as {
+      readonly update: (
+        input: ObjectUpdateInput<TObject>
+      ) => Effect.Effect<
+        ObjectRecord<TObject>,
+        unknown,
+        CurrentInvocation | TRequirements
+      >
+    }
+    const baseUpdate = mutable.update
     const update = Effect.fn(`${object.id}.update`)(function* (
       input: ModelObjectUpdateInput<typeof Model, TObject>
     ) {
@@ -160,8 +157,8 @@ export function makeMutableObjectService<
         Effect.gen(function* () {
           // SAFETY: ModelObjectUpdateInput adds only the model-derived `links`
           // envelope to this exact object's standard update input.
-          // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion
           const record = yield* baseUpdate(
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion
             objectInput as unknown as ObjectUpdateInput<TObject>
           )
           yield* links.update(object, record.id, linkUpdates)

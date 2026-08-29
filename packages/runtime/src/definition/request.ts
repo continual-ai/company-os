@@ -36,6 +36,25 @@ export const PageToken = Brand.make<PageToken>(
   (value) => value.length > 0 || "Expected a non-empty page token"
 )
 
+/** Application-owned protection for adapter-specific continuation state. */
+export interface PageTokenCodec {
+  readonly decode: (token: PageToken) => string
+  readonly encode: (value: string) => PageToken
+}
+
+/** Applies the shared list-size contract used by every transport and adapter. */
+export function normalizePageSize(pageSize?: number): number {
+  if (pageSize === undefined || pageSize === 0) return DEFAULT_PAGE_SIZE
+  if (
+    !Number.isFinite(pageSize) ||
+    !Number.isInteger(pageSize) ||
+    pageSize < 0
+  ) {
+    throw new RangeError("pageSize must be a non-negative integer.")
+  }
+  return Math.min(pageSize, MAX_PAGE_SIZE)
+}
+
 type EqualityFilter<TField extends string, TValue> =
   | {
       readonly field: TField
@@ -200,8 +219,8 @@ export interface CanonicalListRequest<TObject extends ObjectType> {
 
 export interface Page<TItem> {
   readonly items: ReadonlyArray<TItem>
-  /** Empty when there is no next page. */
-  readonly nextPageToken: PageToken | ""
+  /** Null when there is no next page. */
+  readonly nextPageToken: PageToken | null
   /** Exact number of matching items visible to the caller before pagination. */
   readonly totalSize: number
 }

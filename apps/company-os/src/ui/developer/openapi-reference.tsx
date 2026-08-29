@@ -16,6 +16,7 @@ import {
 import {
   curlExample,
   filterOperations,
+  isOpenApiDocument,
   mediaSchema,
   operationKey,
   operationsFromDocument,
@@ -391,9 +392,11 @@ export function OpenApiReference({
         if (!response.ok) {
           throw new Error(`OpenAPI request failed with ${response.status}.`)
         }
-        // SAFETY: this same-origin endpoint serializes Effect's generated OpenAPI document.
-        // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-        return (await response.json()) as OpenApiDocument
+        const value: unknown = await response.json()
+        if (!isOpenApiDocument(value)) {
+          throw new Error("The OpenAPI endpoint returned an invalid document.")
+        }
+        return value
       })
       .then(setDocument)
       .catch((cause) => {

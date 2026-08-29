@@ -245,10 +245,10 @@ export function bindActions<
 
   return {
     // SAFETY: every authored definition is normalized under its validated key.
-    // oxlint-disable-next-line anti-slop/no-known-value-widening, typescript/no-unsafe-type-assertion
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
     actions: actions as BoundActions<TObjectType, TDefinitions>,
     // SAFETY: standardEnabled implements the same false-only conditional encoded by this type.
-    // oxlint-disable-next-line anti-slop/no-known-value-widening, typescript/no-unsafe-type-assertion
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
     standard: {
       batchDelete:
         standardEnabled(definitions, "delete") &&

@@ -1,4 +1,3 @@
-/* oxlint-disable anti-slop/no-chained-type-assertions, anti-slop/no-unsafe-dictionary-type, typescript/no-unsafe-type-assertion, unicorn/prefer-add-event-listener */
 import {
   InMemoryTransport,
   LATEST_PROTOCOL_VERSION,
@@ -11,13 +10,17 @@ import { describe, expect, it } from "vitest"
 
 import { defineInterface } from "./definition/interface"
 import { defineModel } from "./definition/model"
-import type { ModelCatalog } from "./definition/model"
 import { defineModule } from "./definition/module"
 import { defineObject } from "./definition/object"
+import { PageToken } from "./definition/request"
 import { defineRoot } from "./definition/root"
 import { schema } from "./definition/schema"
 import { NotFoundError } from "./definition/standard-error"
-import { createModelMcpServer, validateModelMcpRequest } from "./effect-mcp"
+import {
+  createModelMcpServer,
+  type ModelMcpBinding,
+  validateModelMcpRequest,
+} from "./effect-mcp"
 import { type ModelServiceMap } from "./effect-model-implementation"
 import { CurrentInvocation } from "./effect-object-service"
 
@@ -74,7 +77,7 @@ function services(): ModelServiceMap<typeof TestModel> {
       enroll: () => Effect.succeed({ enrolled: true }),
       get: unused,
       list: () =>
-        Effect.succeed({ items: [], nextPageToken: "" as const, totalSize: 0 }),
+        Effect.succeed({ items: [], nextPageToken: null, totalSize: 0 }),
       update: unused,
     },
   }
@@ -85,6 +88,9 @@ const unused = () => Effect.die("not called")
 function rpcClient(transport: InMemoryTransport) {
   type SuccessResponse = Extract<JSONRPCResponse, { readonly result: unknown }>
   const pending = new Map<string | number, (message: SuccessResponse) => void>()
+  // The MCP transport exposes an EventTarget-like callback property rather
+  // than addEventListener.
+  // oxlint-disable-next-line unicorn/prefer-add-event-listener
   transport.onmessage = (message: JSONRPCMessage) => {
     if (!("id" in message) || !("result" in message)) return
     pending.get(message.id)?.(message)
@@ -95,6 +101,21 @@ function rpcClient(transport: InMemoryTransport) {
       pending.set(request.id, resolve)
       void transport.send(request)
     })
+}
+
+function toolNames(response: JSONRPCResponse): ReadonlyArray<string> {
+  if (!("result" in response))
+    throw new Error("Expected a successful response.")
+  const tools = Reflect.get(response.result, "tools")
+  if (!Array.isArray(tools)) throw new Error("Expected an MCP tool list.")
+  return tools.map((tool) => {
+    if (typeof tool !== "object" || tool === null) {
+      throw new Error("Expected an MCP tool descriptor.")
+    }
+    const name = Reflect.get(tool, "name")
+    if (typeof name !== "string") throw new Error("Expected an MCP tool name.")
+    return name
+  })
 }
 
 describe("model MCP projection", () => {
@@ -125,21 +146,22 @@ describe("model MCP projection", () => {
   it("publishes model queries and actions as tools and dispatches to services", async () => {
     // SAFETY: the preceding test and services() validate this closed binding;
     // widening here keeps the protocol test focused on runtime behavior.
-    const implementation = {
-      links: {
-        initialize: () => Effect.void,
-        link: () => Effect.void,
-        list: () =>
-          Effect.succeed({
-            items: [],
-            nextPageToken: "" as never,
-            totalSize: 0,
-          }),
-        unlink: () => Effect.void,
-        update: () => Effect.void,
-      },
-      model: TestModel as ModelCatalog,
-      services: services() as unknown as Readonly<Record<string, object>>,
+    const links = {
+      initialize: () => Effect.void,
+      link: () => Effect.void,
+      list: () =>
+        Effect.succeed({
+          items: [],
+          nextPageToken: PageToken("unused"),
+          totalSize: 0,
+        }),
+      unlink: () => Effect.void,
+      update: () => Effect.void,
+    }
+    const implementation: ModelMcpBinding["implementation"] = {
+      links,
+      model: TestModel,
+      services: services(),
     }
     const server = createModelMcpServer({
       implementation,
@@ -200,9 +222,7 @@ describe("model MCP projection", () => {
       jsonrpc: "2.0",
       method: "tools/list",
     })
-    // SAFETY: tools/list has the MCP ListToolsResult response shape.
-    const tools = (listed.result as { tools: Array<{ name: string }> }).tools
-    expect(tools.map((tool) => tool.name)).toEqual([
+    expect(toolNames(listed)).toEqual([
       "contact.get",
       "contact.list",
       "contact.batchGet",
@@ -224,7 +244,7 @@ describe("model MCP projection", () => {
     })
     expect(page.result).toMatchObject({
       structuredContent: {
-        result: { items: [], nextPageToken: "", totalSize: 0 },
+        result: { items: [], nextPageToken: null, totalSize: 0 },
       },
     })
 

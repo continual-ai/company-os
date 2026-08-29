@@ -1,6 +1,6 @@
 import { Model } from "@company/model"
 import { Timestamp, type ObjectGetInput } from "@company/runtime"
-import { Context, Data, Effect, Layer } from "effect"
+import { Context, Data, DateTime, Effect, Layer } from "effect"
 
 import { Authorization } from "@/server/authorization/authorization-service"
 import { Database } from "@/server/database/database"
@@ -69,8 +69,9 @@ const make = Effect.gen(function* () {
         yield* links.initialize(Model.objects.contact, contact.id, {
           primaryCompany: company.id,
         })
+        const convertedAt = yield* DateTime.now
         yield* leads.update({
-          convertedAt: Timestamp(new Date().toISOString()),
+          convertedAt: Timestamp(DateTime.formatIso(convertedAt)),
           convertedCompany: company.id,
           convertedContact: contact.id,
           etag: lead.etag,

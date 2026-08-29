@@ -1,4 +1,3 @@
-/* oxlint-disable anti-slop/no-runtime-typeof, anti-slop/no-unknown-parameters -- This helper validates an untrusted API boundary without a runtime dependency. */
 import { defineError, isErrorReason } from "./error"
 import { schema, type InferSchema } from "./schema"
 

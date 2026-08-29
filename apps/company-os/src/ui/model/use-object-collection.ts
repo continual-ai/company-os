@@ -62,7 +62,6 @@ export async function loadReferenceLabels(
         const value = record[propertyId]
         // The client record is the parsed API representation; references are
         // the string member of its closed value union.
-        // oxlint-disable-next-line anti-slop/no-runtime-typeof
         return typeof value === "string" ? [value] : []
       })
     )
@@ -101,7 +100,7 @@ export function useObjectCollection(
   const [pageTokens, setPageTokens] = useState<
     ReadonlyArray<PageToken | undefined>
   >([undefined])
-  const [nextPageToken, setNextPageToken] = useState<PageToken | "">("")
+  const [nextPageToken, setNextPageToken] = useState<PageToken | null>(null)
   const [totalSize, setTotalSize] = useState(0)
   const [records, setRecords] = useState<ReadonlyArray<ClientRecord>>([])
   const [allowedCapabilities, setAllowedCapabilities] = useState<
@@ -191,7 +190,7 @@ export function useObjectCollection(
     await load()
   }
   const nextPage = () => {
-    if (nextPageToken === "") return
+    if (nextPageToken === null) return
     setPageTokens((current) => [
       ...current.slice(0, pageIndex + 1),
       nextPageToken,
@@ -226,7 +225,7 @@ export function useObjectCollection(
     totalSize,
     update,
     updateCell,
-    hasNextPage: nextPageToken !== "",
+    hasNextPage: nextPageToken !== null,
     hasPreviousPage: pageIndex > 0,
   } as const
 }

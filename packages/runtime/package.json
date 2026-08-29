@@ -9,6 +9,7 @@
     ".": "./src/index.ts",
     "./effect": "./src/effect-schema.ts",
     "./effect/http": "./src/effect-http.ts",
+    "./effect/http-client": "./src/effect-http-client.ts",
     "./effect/link-repository": "./src/effect-link-repository.ts",
     "./effect/link-service": "./src/effect-link-service.ts",
     "./effect/mcp": "./src/effect-mcp.ts",

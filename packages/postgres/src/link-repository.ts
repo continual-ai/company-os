@@ -1,6 +1,9 @@
-import { Buffer } from "node:buffer"
-
-import { PageToken, type ModelCatalog, type ObjectRef } from "@company/runtime"
+import {
+  type PageToken,
+  type PageTokenCodec,
+  type ModelCatalog,
+  type ObjectRef,
+} from "@company/runtime"
 import {
   InvalidLinkListRequest,
   LinkCardinalityConflict,
@@ -31,11 +34,13 @@ import type { SqlError } from "effect/unstable/sql/SqlError"
 import type { PostgresStorage } from "./schema"
 
 interface LinkCursor {
+  readonly fingerprint: string
   readonly id: string
   readonly version: 1
 }
 
 const linkCursorSchema = Schema.Struct({
+  fingerprint: Schema.String,
   id: Schema.String.check(Schema.isNonEmpty()),
   version: Schema.Literal(1),
 })
@@ -50,29 +55,67 @@ export type PostgresLinkRepositoryError =
   | Schema.SchemaError
   | SqlError
 
-function encodeCursor(id: string): PageToken {
-  return PageToken(
-    Buffer.from(
-      JSON.stringify({ id, version: 1 } satisfies LinkCursor)
-    ).toString("base64url")
+function cursorFingerprint(request: {
+  readonly direction: "forward" | "reverse"
+  readonly linkId: string
+  readonly sourceId: string
+}): string {
+  return createHash("sha256")
+    .update(
+      JSON.stringify({
+        direction: request.direction,
+        linkId: request.linkId,
+        sourceId: request.sourceId,
+      })
+    )
+    .digest()
+    .subarray(0, 16)
+    .toString("base64url")
+}
+
+function encodeCursor(
+  pageTokens: PageTokenCodec,
+  fingerprint: string,
+  id: string
+): PageToken {
+  return pageTokens.encode(
+    JSON.stringify({ fingerprint, id, version: 1 } satisfies LinkCursor)
   )
 }
 
 function decodeCursor(
   linkId: string,
-  token: PageToken
+  pageTokens: PageTokenCodec,
+  token: PageToken,
+  fingerprint: string
 ): Effect.Effect<string, InvalidLinkListRequest> {
   return Effect.try({
-    try: () =>
-      Schema.decodeUnknownSync(linkCursorSchema)(
-        JSON.parse(Buffer.from(token, "base64url").toString("utf8"))
-      ).id,
+    try: () => JSON.parse(pageTokens.decode(token)),
     catch: () =>
       new InvalidLinkListRequest({
         linkId,
         message: "The page token is invalid.",
       }),
-  })
+  }).pipe(
+    Effect.flatMap(Schema.decodeUnknownEffect(linkCursorSchema)),
+    Effect.mapError(
+      () =>
+        new InvalidLinkListRequest({
+          linkId,
+          message: "The page token is invalid.",
+        })
+    ),
+    Effect.flatMap((cursor) =>
+      cursor.fingerprint === fingerprint
+        ? Effect.succeed(cursor.id)
+        : Effect.fail(
+            new InvalidLinkListRequest({
+              linkId,
+              message: "The page token does not match this list request.",
+            })
+          )
+    )
+  )
 }
 
 function linkColumn(table: AnyPgTable, key: string): AnyPgColumn {
@@ -89,12 +132,12 @@ export function makeLinkRepository<
   const TRelations extends AnyRelations,
 >(
   storage: PostgresStorage<TModel>,
-  db: EffectPgDatabase<TRelations>
+  db: EffectPgDatabase<TRelations>,
+  pageTokens: PageTokenCodec
 ): LinkRepository<PostgresLinkRepositoryError> {
   const definition = (linkId: string) => {
     const link = storage.model.links[linkId]
     // SAFETY: PostgresStorage materializes each model Link as an AnyPgTable.
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
     const table = storage.linkTables[linkId] as AnyPgTable | undefined
     if (link === undefined || table === undefined) {
       throw new Error(`Link '${linkId}' does not have PostgreSQL storage.`)
@@ -114,7 +157,6 @@ export function makeLinkRepository<
       const targetTraversal =
         pair.direction === "forward" ? link.reverse : link.forward
       // SAFETY: sourceKey and targetKey are the two required columns verified above.
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
       const values = {
         [sourceKey]: pair.sourceId,
         [targetKey]: pair.targetId,
@@ -207,10 +249,16 @@ export function makeLinkRepository<
           table,
           request.direction === "forward" ? "reverseId" : "forwardId"
         )
+        const fingerprint = cursorFingerprint(request)
         const after =
           request.pageToken === undefined
             ? undefined
-            : yield* decodeCursor(request.linkId, request.pageToken)
+            : yield* decodeCursor(
+                request.linkId,
+                pageTokens,
+                request.pageToken,
+                fingerprint
+              )
         const targetVisibility =
           visibility === undefined
             ? undefined
@@ -284,7 +332,9 @@ export function makeLinkRepository<
             objectType,
           })),
           nextPageToken:
-            hasMore && last !== undefined ? encodeCursor(last.id) : "",
+            hasMore && last !== undefined
+              ? encodeCursor(pageTokens, fingerprint, last.id)
+              : null,
           totalSize,
         }
       }
@@ -318,3 +368,4 @@ export function makeLinkRepository<
     ),
   }
 }
+import { createHash } from "node:crypto"

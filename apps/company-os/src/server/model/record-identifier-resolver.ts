@@ -39,7 +39,7 @@ const make = Effect.gen(function* () {
     return resolved.map(({ id }) => {
       // SAFETY: modelTypeAccepts above proves each concrete record is accepted
       // wherever the requested object or interface identifier is required.
-      // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
       return id as unknown as RecordId<TExpectedType>
     })
   })

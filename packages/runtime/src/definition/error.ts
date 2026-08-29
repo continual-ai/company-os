@@ -1,4 +1,3 @@
-/* oxlint-disable anti-slop/no-runtime-typeof, anti-slop/no-unknown-parameters -- isApiError validates an untrusted transport failure. */
 import type { AnySchema, InferSchema } from "./schema"
 
 /** Canonical transport-independent statuses from google.rpc.Code. */

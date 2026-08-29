@@ -731,7 +731,7 @@ export function makePostgresSchema<const TModel extends ModelCatalog>(
 
   // SAFETY: every model object and interface was materialized under its
   // validated type ID and each table contains the derived physical columns.
-  // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   return {
     core: { recordAliases, objects, roots },
     interfaces: interfaceTables,

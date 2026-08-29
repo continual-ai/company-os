@@ -92,6 +92,7 @@ export {
   MAX_BATCH_DELETE_SIZE,
   MAX_BATCH_GET_SIZE,
   MAX_PAGE_SIZE,
+  normalizePageSize,
   nullPlacements,
   PageToken,
   sortDirections,
@@ -104,6 +105,7 @@ export type {
   ObjectFilter,
   ObjectSort,
   Page,
+  PageTokenCodec,
   SortDirection,
 } from "./definition/request"
 export {
@@ -160,3 +162,5 @@ export {
 export type { Violation } from "./definition/standard-error"
 export { describeModel, MODEL_DESCRIPTION_VERSION } from "./description"
 export type { ModelDescription, ModuleDescription } from "./description"
+export { lintModelDescription } from "./model-lint"
+export type { ModelDiagnostic } from "./model-lint"

@@ -4,6 +4,7 @@ import { Model } from "@company/model"
 import {
   DomainName,
   EmailAddress,
+  PageToken,
   RecordAlias,
   RecordId,
 } from "@company/runtime"
@@ -20,17 +21,19 @@ import { PgliteClient } from "@effect/sql-pglite"
 import { eq } from "drizzle-orm"
 import * as PgliteDrizzle from "drizzle-orm/effect-pglite"
 import { migrate } from "drizzle-orm/effect-pglite/migrator"
-import { Effect } from "effect"
+import { Effect, Layer } from "effect"
 import { describe, expect, expectTypeOf, it } from "vitest"
 
 import { systemInvocation } from "@/server/invocation-context"
 import { RecordIdentifierResolver } from "@/server/model/record-identifier-resolver"
+import { PageTokens } from "@/server/page-tokens"
 import { seedSystem } from "@/server/seeds/seed-system"
 import { ROOT_ID, SYSTEM_SERVICE_ACCOUNT_ID } from "@/system-records"
 
 import { Database } from "./database"
 import { makeObjectRepository } from "./object-repository"
 import { lineItems, recordAliases, objects, parties, relations } from "./schema"
+import { asTestDatabase } from "./test-database"
 
 const migrationsFolder = fileURLToPath(new URL("./migrations", import.meta.url))
 const TestDatabase = PgliteClient.layer()
@@ -57,20 +60,15 @@ function snakeCase(value: string): string {
   return value.replaceAll(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase()
 }
 
-function asDatabase(
-  database: Effect.Success<
-    ReturnType<typeof PgliteDrizzle.makeWithDefaults<typeof relations>>
-  >
-): typeof Database.Service {
-  // SAFETY: Drizzle's Effect PostgreSQL and PGlite drivers implement the same
-  // query and transaction API. Tests replace only the underlying client.
-  // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion
-  return database as unknown as typeof Database.Service
-}
-
-function run<A, E>(effect: Effect.Effect<A, E, PgliteClient.PgliteClient>) {
+function run<A, E>(
+  effect: Effect.Effect<A, E, PageTokens | PgliteClient.PgliteClient>
+) {
   return Effect.runPromise(
-    Effect.scoped(effect.pipe(Effect.provide(TestDatabase)))
+    Effect.scoped(
+      effect.pipe(
+        Effect.provide(Layer.merge(TestDatabase, PageTokens.layerTest))
+      )
+    )
   )
 }
 
@@ -85,7 +83,7 @@ describe("Drizzle object repository", () => {
         yield* migrate(database, { migrationsFolder })
         yield* migrate(database, { migrationsFolder })
 
-        const db = asDatabase(database)
+        const db = asTestDatabase(database)
         yield* seedSystem().pipe(Effect.provideService(Database, db))
         const identifiers = yield* RecordIdentifierResolver.make.pipe(
           Effect.provideService(Database, db)
@@ -154,13 +152,23 @@ describe("Drizzle object repository", () => {
           .resolve("company", hubspotBravo)
           .pipe(Effect.flip)
         const firstPage = yield* service.list({ pageSize: 1 })
-        if (firstPage.nextPageToken === "") {
+        if (firstPage.nextPageToken === null) {
           return yield* Effect.die("Expected another page")
         }
         const secondPage = yield* service.list({
           pageSize: 1,
           pageToken: firstPage.nextPageToken,
         })
+        const zeroPageSize = yield* service.list({ pageSize: 0 })
+        const oversizedPage = yield* service.list({ pageSize: 10_000 })
+        const tamperedCursor = yield* service
+          .list({
+            pageSize: 1,
+            pageToken: PageToken(
+              `${firstPage.nextPageToken.startsWith("A") ? "B" : "A"}${firstPage.nextPageToken.slice(1)}`
+            ),
+          })
+          .pipe(Effect.flip)
         const filtered = yield* service.list({
           filter: { field: "name", operator: "contains", value: "example" },
           sort: [{ direction: "asc", field: "name" }],
@@ -172,7 +180,7 @@ describe("Drizzle object repository", () => {
           pageSize: 1,
           sort: [{ direction: "desc", field: "name" }],
         })
-        if (sortedFirstPage.nextPageToken === "") {
+        if (sortedFirstPage.nextPageToken === null) {
           return yield* Effect.die("Expected another sorted page")
         }
         const sortedSecondPage = yield* service.list({
@@ -380,10 +388,13 @@ describe("Drizzle object repository", () => {
           sortedFirstPage,
           sortedSecondPage,
           staleWrite,
+          tamperedCursor,
           updated,
           userWithSharedEmail,
           wrongParent,
           wrongTypeAlias,
+          zeroPageSize,
+          oversizedPage,
         }
       }).pipe(Effect.provideService(ObjectService.CurrentInvocation, context))
     )
@@ -430,11 +441,17 @@ describe("Drizzle object repository", () => {
       result.first.id,
     ])
     expect(result.firstPage.items).toHaveLength(1)
-    expect(result.firstPage.nextPageToken).not.toBe("")
+    expect(result.firstPage.nextPageToken).not.toBeNull()
+    if (result.firstPage.nextPageToken !== null) {
+      expect(result.firstPage.nextPageToken.length).toBeLessThan(256)
+    }
     expect(result.firstPage.totalSize).toBe(2)
     expect(result.secondPage.items).toHaveLength(1)
-    expect(result.secondPage.nextPageToken).toBe("")
+    expect(result.secondPage.nextPageToken).toBeNull()
     expect(result.secondPage.totalSize).toBe(2)
+    expect(result.zeroPageSize.items).toHaveLength(2)
+    expect(result.oversizedPage.items).toHaveLength(2)
+    expect(result.tamperedCursor).toBeInstanceOf(InvalidListRequest)
     expect(result.filtered.items.map(({ id }) => id)).toEqual([result.first.id])
     expect(result.filtered.totalSize).toBe(1)
     expect(result.filteredByAlias.items.map(({ id }) => id)).toEqual([

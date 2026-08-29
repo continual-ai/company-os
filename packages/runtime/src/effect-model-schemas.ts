@@ -34,6 +34,14 @@ export const pageTotalSizeSchema = Schema.Number.check(
     "Exact number of matching items visible to the caller before pagination.",
   identifier: "PageTotalSize",
 })
+export const pageSizeSchema = Schema.Number.check(
+  Schema.isInt(),
+  Schema.isGreaterThanOrEqualTo(0)
+).annotate({
+  default: DEFAULT_PAGE_SIZE,
+  description: `Maximum number of records to return. Zero uses the default of ${DEFAULT_PAGE_SIZE}; values above ${MAX_PAGE_SIZE} are capped.`,
+  identifier: "PageSize",
+})
 const recordSchemas = new WeakMap<
   ObjectType,
   ReturnType<typeof toEffectObjectSchema>
@@ -100,13 +108,7 @@ export function objectListInputSchema(object: ObjectType) {
 
   return Schema.Struct({
     filter: Schema.optionalKey(filter),
-    pageSize: Schema.optionalKey(
-      Schema.Number.check(
-        Schema.isInt(),
-        Schema.isGreaterThanOrEqualTo(1),
-        Schema.isLessThanOrEqualTo(MAX_PAGE_SIZE)
-      ).annotate({ default: DEFAULT_PAGE_SIZE })
-    ),
+    pageSize: Schema.optionalKey(pageSizeSchema),
     pageToken: Schema.optionalKey(pageTokenSchema),
     sort: Schema.optionalKey(
       Schema.Array(
@@ -137,9 +139,9 @@ export function objectBatchOutputSchema(object: ObjectType) {
 export function objectPageOutputSchema(object: ObjectType) {
   return Schema.Struct({
     items: Schema.Array(objectRecordOutputSchema(object)),
-    nextPageToken: Schema.Union([Schema.Literal(""), pageTokenSchema]).annotate(
-      { identifier: "PageContinuation" }
-    ),
+    nextPageToken: Schema.NullOr(pageTokenSchema).annotate({
+      identifier: "PageContinuation",
+    }),
     totalSize: pageTotalSizeSchema,
   }).annotate({ identifier: `${pascalCase(object.id)}Page` })
 }

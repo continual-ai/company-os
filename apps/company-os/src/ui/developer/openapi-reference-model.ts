@@ -82,6 +82,24 @@ export interface OpenApiDocument {
   }>
 }
 
+function isObject(value: unknown): value is object {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+}
+
+/** Validates the stable top-level contract consumed by the API reference UI. */
+export function isOpenApiDocument(value: unknown): value is OpenApiDocument {
+  if (!isObject(value)) return false
+  const info = Reflect.get(value, "info")
+  const paths = Reflect.get(value, "paths")
+  return (
+    typeof Reflect.get(value, "openapi") === "string" &&
+    isObject(info) &&
+    typeof Reflect.get(info, "title") === "string" &&
+    typeof Reflect.get(info, "version") === "string" &&
+    isObject(paths)
+  )
+}
+
 export interface OpenApiOperation extends OpenApiOperationDefinition {
   readonly method: HttpMethod
   readonly path: string

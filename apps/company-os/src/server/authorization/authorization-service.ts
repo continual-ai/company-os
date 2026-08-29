@@ -186,17 +186,17 @@ const make = Effect.gen(function* () {
     "@company/Authorization.requirePermissionFor"
   )(function* (caller: Caller, request: PermissionRequest) {
     const [decision] = yield* decide(caller, [request])
-    if (decision === "allowed") return
+    if (decision === "allowed") return undefined
     const recordIds = request.targetIds ?? []
     if (decision === "notFound") {
-      yield* Effect.fail(
+      return yield* Effect.fail(
         new AuthorizationTargetNotFound({
           objectType: request.expectedType ?? request.objectType,
           recordIds,
         })
       )
     }
-    yield* Effect.fail(
+    return yield* Effect.fail(
       new PermissionDenied({ permission: request.permission, recordIds })
     )
   })

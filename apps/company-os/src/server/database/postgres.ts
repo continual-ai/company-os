@@ -1,8 +1,10 @@
 import { PgClient } from "@effect/sql-pg"
-import { Config } from "effect"
+import { Config, Layer } from "effect"
+
+import { Database } from "./database"
 
 /** Production PostgreSQL services used by repositories at the composition root. */
-export const layer = PgClient.layerConfig({
+const clientLayer = PgClient.layerConfig({
   applicationName: Config.string("APP_NAMESPACE").pipe(
     Config.withDefault("company-os")
   ),
@@ -10,3 +12,6 @@ export const layer = PgClient.layerConfig({
   maxConnections: Config.succeed(10),
   url: Config.redacted("DATABASE_URL"),
 })
+
+export const databaseLayer = Database.layer.pipe(Layer.provide(clientLayer))
+export const layer = Layer.merge(clientLayer, databaseLayer)

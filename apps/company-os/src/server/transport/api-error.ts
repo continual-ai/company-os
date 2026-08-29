@@ -1,4 +1,3 @@
-/* oxlint-disable anti-slop/no-unknown-parameters, eslint/no-underscore-dangle */
 // This is the single boundary that normalizes independently typed Effect failures
 // into the portable API error contract without leaking infrastructure failures.
 import {

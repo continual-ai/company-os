@@ -8,9 +8,9 @@ import {
   type ObjectRecord,
 } from "./definition/object"
 import {
-  DEFAULT_PAGE_SIZE,
   MAX_BATCH_DELETE_SIZE,
   MAX_BATCH_GET_SIZE,
+  normalizePageSize,
   PageToken,
 } from "./definition/request"
 import { defineRoot } from "./definition/root"
@@ -87,8 +87,6 @@ function isAliasReplacement(
 function sortedAliases(
   aliases: ReadonlyArray<RecordAliasType>
 ): ReadonlyArray<RecordAliasType> {
-  // This array is a fresh snapshot owned by the in-memory test adapter.
-  // oxlint-disable-next-line unicorn/no-array-sort
   return [...aliases].sort()
 }
 
@@ -203,9 +201,7 @@ function makeRepository(
       }),
     list: (request = {}) =>
       Effect.sync(() => {
-        const size = Math.max(1, request.pageSize ?? DEFAULT_PAGE_SIZE)
-        // This array is a fresh snapshot owned by the in-memory test adapter.
-        // oxlint-disable-next-line unicorn/no-array-sort
+        const size = normalizePageSize(request.pageSize)
         const sorted = [...records.values()].sort((left, right) =>
           left.id.localeCompare(right.id)
         )
@@ -221,7 +217,7 @@ function makeRepository(
         const items = hasNextPage ? candidates.slice(0, size) : candidates
         return {
           items,
-          nextPageToken: hasNextPage ? PageToken(items.at(-1)!.id) : "",
+          nextPageToken: hasNextPage ? PageToken(items.at(-1)!.id) : null,
           totalSize: sorted.length,
         }
       }),
@@ -432,7 +428,7 @@ describe("ObjectService", () => {
           })
           .pipe(Effect.flip)
         const firstPage = yield* service.list({ pageSize: 1 })
-        if (firstPage.nextPageToken === "") {
+        if (firstPage.nextPageToken === null) {
           return yield* Effect.die("Expected another page")
         }
         const secondPage = yield* service.list({
@@ -582,9 +578,9 @@ describe("ObjectService", () => {
       "hubspot:portal_1:company:bravo",
       "legacy:company:example",
     ])
-    expect(result.firstPage.nextPageToken).not.toBe("")
+    expect(result.firstPage.nextPageToken).not.toBeNull()
     expect(result.firstPage.totalSize).toBe(2)
-    expect(result.secondPage.nextPageToken).toBe("")
+    expect(result.secondPage.nextPageToken).toBeNull()
     expect(result.secondPage.totalSize).toBe(2)
     expect(result.staleWrite).toBeInstanceOf(ObjectWriteConflict)
     expect(result.staleServiceWrite).toBeInstanceOf(ObjectWriteConflict)

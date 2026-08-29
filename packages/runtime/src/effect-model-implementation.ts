@@ -1,4 +1,3 @@
-/* oxlint-disable anti-slop/no-object-parameters, anti-slop/no-runtime-typeof, anti-slop/no-unknown-parameters, anti-slop/no-unknown-returns, anti-slop/no-unsafe-dictionary-type, typescript/no-unsafe-type-assertion */
 // Model authors retain precise service types; transport projections need one
 // checked dynamic dispatch seam because model operation IDs are runtime data.
 import type { Effect } from "effect"
@@ -212,8 +211,7 @@ export function modelOperationErrors(
 
 function operation(service: object, name: string): unknown {
   // This is the single runtime validation seam for the declarative service map.
-  // SAFETY: callers only use model-derived operation IDs, validated below.
-  return (service as Readonly<Record<string, unknown>>)[name]
+  return Reflect.get(service, name)
 }
 
 /** Validates and binds a closed model to the services that already execute it. */
@@ -262,6 +260,7 @@ export function modelOperation(
     )
   }
   // SAFETY: implementModel validated this model-derived operation as a method.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   return method.bind(service) as (
     input: unknown
   ) => Effect.Effect<unknown, unknown, CurrentInvocation>

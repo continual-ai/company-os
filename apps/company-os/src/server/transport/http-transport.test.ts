@@ -1,4 +1,3 @@
-/* oxlint-disable anti-slop/no-runtime-typeof */
 import { fileURLToPath } from "node:url"
 
 import { Model } from "@company/model"
@@ -9,7 +8,7 @@ import {
   httpEndpointId,
   linkHttpEndpointId,
   type ModelHttpClient,
-} from "@company/runtime/effect/http"
+} from "@company/runtime/effect/http-client"
 import { executableModelOperations } from "@company/runtime/effect/model-implementation"
 import { PgliteClient } from "@effect/sql-pglite"
 import { eq } from "drizzle-orm"
@@ -22,6 +21,7 @@ import { describe, expect, it } from "vitest"
 
 import { applicationHttpApi } from "@/http-api"
 import type { capabilityGroup } from "@/http-api"
+import { makeApplicationKeys } from "@/server/application-keys"
 import { makeApplicationLayer } from "@/server/application-layer"
 import { AuthSettings, type AuthConfig } from "@/server/auth/auth-config"
 import { IdentityProvider } from "@/server/auth/identity-provider"
@@ -35,6 +35,8 @@ import {
   Storage,
   users,
 } from "@/server/database/schema"
+import { asTestDatabase } from "@/server/database/test-database"
+import { makeEncryptedPageTokenCodec, PageTokens } from "@/server/page-tokens"
 import { seedSystem } from "@/server/seeds/seed-system"
 import { ROOT_ID } from "@/system-records"
 
@@ -48,6 +50,11 @@ const migrationsFolder = fileURLToPath(
   new URL("../database/migrations", import.meta.url)
 )
 const TestDatabase = PgliteClient.layer()
+const testPageTokens = makeEncryptedPageTokenCodec(
+  makeApplicationKeys(
+    "http-transport-test-application-secret-at-least-32-bytes"
+  ).deriveKey("http-transport-page-token-test:v1")
+)
 
 const authConfig: AuthConfig = {
   provider: {
@@ -93,16 +100,6 @@ const testIdentityProvider = {
     })
   },
 } satisfies typeof IdentityProvider.Service
-
-function asDatabase(
-  database: Effect.Success<
-    ReturnType<typeof PgliteDrizzle.makeWithDefaults<typeof relations>>
-  >
-): typeof Database.Service {
-  // SAFETY: Effect PostgreSQL and PGlite expose the same Drizzle transaction API.
-  // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion
-  return database as unknown as typeof Database.Service
-}
 
 function run<A, E>(effect: Effect.Effect<A, E, PgliteClient.PgliteClient>) {
   return Effect.runPromise(
@@ -154,8 +151,11 @@ describe("application HTTP server", () => {
       Effect.gen(function* () {
         const pglite = yield* PgliteDrizzle.makeWithDefaults({ relations })
         yield* migrate(pglite, { migrationsFolder })
-        const database = asDatabase(pglite)
-        yield* seedSystem().pipe(Effect.provideService(Database, database))
+        const database = asTestDatabase(pglite)
+        yield* seedSystem().pipe(
+          Effect.provideService(Database, database),
+          Effect.provideService(PageTokens, testPageTokens)
+        )
 
         const runtime = ManagedRuntime.make(
           makeApplicationLayer({
@@ -165,6 +165,7 @@ describe("application HTTP server", () => {
               IdentityProvider,
               testIdentityProvider
             ),
+            pageTokens: Layer.succeed(PageTokens, testPageTokens),
           })
         )
         const api = yield* Effect.promise(() =>
@@ -301,7 +302,6 @@ describe("application HTTP server", () => {
         // oxlint-disable-next-line typescript/no-unsafe-type-assertion
         const client = nativeClient as ApplicationHttpClient
         // SAFETY: the native Effect client is generated from this same Model.
-        // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion
         const model = createModelClient(Model, nativeClient)
         const useTestFetch = <A, E>(effect: Effect.Effect<A, E>) =>
           effect.pipe(Effect.provideService(FetchHttpClient.Fetch, fetchApi))
@@ -326,7 +326,7 @@ describe("application HTTP server", () => {
         )
         expect(initial).toEqual({
           items: [],
-          nextPageToken: "",
+          nextPageToken: null,
           totalSize: 0,
         })
 
@@ -347,7 +347,7 @@ describe("application HTTP server", () => {
           yield* useTestFetch(model.note.subjects.list({ id: note.id }))
         ).toEqual({
           items: [{ id: created.id, objectType: "company" }],
-          nextPageToken: "",
+          nextPageToken: null,
           totalSize: 1,
         })
         const contact = yield* useTestFetch(
@@ -357,7 +357,7 @@ describe("application HTTP server", () => {
           })
         )
         expect(
-          yield* makeLinkRepository(Storage, database).list({
+          yield* makeLinkRepository(Storage, database, testPageTokens).list({
             direction: "reverse",
             linkId: "contactPrimaryCompany",
             pageSize: 10,
@@ -365,7 +365,7 @@ describe("application HTTP server", () => {
           })
         ).toEqual({
           items: [{ id: contact.id, objectType: "contact" }],
-          nextPageToken: "",
+          nextPageToken: null,
           totalSize: 1,
         })
         const linkedContacts = yield* useTestFetch(
@@ -395,7 +395,7 @@ describe("application HTTP server", () => {
           yield* useTestFetch(model.company.contacts.list({ id: created.id }))
         ).toEqual({
           items: [{ id: secondContact.id, objectType: "contact" }],
-          nextPageToken: "",
+          nextPageToken: null,
           totalSize: 1,
         })
         expect(
@@ -429,7 +429,7 @@ describe("application HTTP server", () => {
           yield* useTestFetch(model.company.contacts.list({ id: created.id }))
         ).toEqual({
           items: [{ id: secondContact.id, objectType: "contact" }],
-          nextPageToken: "",
+          nextPageToken: null,
           totalSize: 1,
         })
         yield* useTestFetch(
@@ -444,7 +444,7 @@ describe("application HTTP server", () => {
           )
         ).toEqual({
           items: [{ id: created.id, objectType: "company" }],
-          nextPageToken: "",
+          nextPageToken: null,
           totalSize: 1,
         })
 
@@ -452,12 +452,29 @@ describe("application HTTP server", () => {
           model.company.contacts.list({ id: created.id, pageSize: 1 })
         )
         expect(firstContactPage.items).toHaveLength(1)
-        expect(firstContactPage.nextPageToken).not.toBe("")
+        expect(firstContactPage.nextPageToken).not.toBeNull()
         expect(firstContactPage.totalSize).toBe(2)
         const nextContactPageToken =
-          firstContactPage.nextPageToken === ""
+          firstContactPage.nextPageToken === null
             ? yield* Effect.die("Expected another contact page")
             : firstContactPage.nextPageToken
+        expect(nextContactPageToken.length).toBeLessThan(256)
+        const mismatchedLinkCursor = yield* makeLinkRepository(
+          Storage,
+          database,
+          testPageTokens
+        )
+          .list({
+            direction: "reverse",
+            linkId: "contactPrimaryCompany",
+            pageSize: 1,
+            pageToken: nextContactPageToken,
+            sourceId: ROOT_ID,
+          })
+          .pipe(Effect.flip)
+        expect(mismatchedLinkCursor).toMatchObject({
+          message: "The page token does not match this list request.",
+        })
         const secondContactPage = yield* useTestFetch(
           model.company.contacts.list({
             id: created.id,
@@ -466,10 +483,10 @@ describe("application HTTP server", () => {
           })
         )
         expect(secondContactPage.items).toHaveLength(1)
-        expect(secondContactPage.nextPageToken).toBe("")
+        expect(secondContactPage.nextPageToken).toBeNull()
         expect(secondContactPage.totalSize).toBe(2)
         expect(
-          yield* makeLinkRepository(Storage, database).list(
+          yield* makeLinkRepository(Storage, database, testPageTokens).list(
             {
               direction: "reverse",
               linkId: "contactPrimaryCompany",
@@ -487,7 +504,7 @@ describe("application HTTP server", () => {
           )
         ).toEqual({
           items: [{ id: secondContact.id, objectType: "contact" }],
-          nextPageToken: "",
+          nextPageToken: null,
           totalSize: 1,
         })
 
@@ -512,14 +529,14 @@ describe("application HTTP server", () => {
           )
         ).toEqual({
           items: [{ id: destination.id, objectType: "company" }],
-          nextPageToken: "",
+          nextPageToken: null,
           totalSize: 1,
         })
         expect(
           yield* useTestFetch(model.company.contacts.list({ id: created.id }))
         ).toEqual({
           items: [{ id: secondContact.id, objectType: "contact" }],
-          nextPageToken: "",
+          nextPageToken: null,
           totalSize: 1,
         })
 
@@ -530,7 +547,7 @@ describe("application HTTP server", () => {
           yield* useTestFetch(model.note.subjects.list({ id: note.id }))
         ).toEqual({
           items: [],
-          nextPageToken: "",
+          nextPageToken: null,
           totalSize: 0,
         })
         const [persistedNote] = yield* database

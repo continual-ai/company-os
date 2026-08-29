@@ -17,11 +17,11 @@ export function identityCaller(identityId: IdentityId): Caller {
   return { identityId, kind: "identity" }
 }
 
+function isIdentityActorId(actorId: ActorId): actorId is IdentityId {
+  return actorId !== ANONYMOUS_ACTOR_ID
+}
+
 /** Recovers request authorization state from a trusted durable audit actor. */
 export function callerForActor(actorId: ActorId): Caller {
-  if (actorId === ANONYMOUS_ACTOR_ID) return anonymousCaller
-  // SAFETY: AnonymousActor is the only Actor implementation that is not also
-  // an Identity, and its stable ID was excluded above.
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  return identityCaller(actorId as IdentityId)
+  return isIdentityActorId(actorId) ? identityCaller(actorId) : anonymousCaller
 }

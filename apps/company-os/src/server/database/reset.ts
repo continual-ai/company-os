@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 import { PgClient } from "@effect/sql-pg"
-import { Config, Effect, Redacted } from "effect"
+import { Config, Effect, Layer, Redacted } from "effect"
 
+import { PageTokens } from "@/server/page-tokens"
 import { seedSystem } from "@/server/seeds/seed-system"
 
-import { Database } from "./database"
 import { applyMigrations } from "./migrations"
 import * as Postgres from "./postgres"
 import { localDatabaseTarget } from "./reset-target"
@@ -31,7 +31,6 @@ Effect.gen(function* () {
     "Database reset complete; all committed migrations applied and required records converged."
   )
 }).pipe(
-  Effect.provide(Database.layer),
-  Effect.provide(Postgres.layer),
+  Effect.provide(Layer.merge(Postgres.layer, PageTokens.layer)),
   NodeRuntime.runMain
 )

@@ -451,7 +451,7 @@ export function defineObject<
   }
   // SAFETY: bindActions rejects authored standard IDs and standardActions
   // materializes exactly the actions enabled by the inferred settings.
-  // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const object = {
     ...metadata,
     actions,

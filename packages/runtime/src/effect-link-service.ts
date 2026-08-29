@@ -7,8 +7,7 @@ import {
 } from "./definition/model"
 import type { ObjectRef, ObjectType } from "./definition/object"
 import {
-  DEFAULT_PAGE_SIZE,
-  MAX_PAGE_SIZE,
+  normalizePageSize,
   type Page,
   type PageToken,
 } from "./definition/request"
@@ -415,15 +414,14 @@ export function makeLinkService<
     ...writer,
     list: Effect.fn("@company/runtime/LinkService.list")(
       function* (traversal, input) {
-        const pageSize = input.pageSize ?? DEFAULT_PAGE_SIZE
-        if (pageSize < 1 || pageSize > MAX_PAGE_SIZE) {
-          return yield* Effect.fail(
+        const pageSize = yield* Effect.try({
+          try: () => normalizePageSize(input.pageSize),
+          catch: () =>
             new InvalidLinkRequest({
-              message: `pageSize must be between 1 and ${MAX_PAGE_SIZE}.`,
+              message: "pageSize must be a non-negative integer.",
               path: ["pageSize"],
-            })
-          )
-        }
+            }),
+        })
         const sourceId = yield* options.resolve(traversal.source.id, input.id)
         yield* options.authorize({
           operation: "list",

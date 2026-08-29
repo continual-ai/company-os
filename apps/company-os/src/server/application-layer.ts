@@ -16,12 +16,14 @@ import { RoleAssignmentService } from "./modules/access/role-assignment-service"
 import { ServiceAccountService } from "./modules/access/service-account-service"
 import { UserService } from "./modules/access/user-service"
 import { LeadService } from "./modules/sales/lead-service"
+import { PageTokens } from "./page-tokens"
 import { Readiness } from "./readiness"
 import { HttpTransport } from "./transport/http-transport"
 import { McpTransport } from "./transport/mcp-transport"
 
 export interface ApplicationInfrastructure {
   readonly identityProvider?: Layer.Layer<IdentityProvider, unknown>
+  readonly pageTokens?: Layer.Layer<PageTokens, unknown>
   readonly authSettings: Layer.Layer<AuthSettings, unknown>
   readonly database: Layer.Layer<Database, unknown>
 }
@@ -31,9 +33,12 @@ export function makeApplicationLayer({
   authSettings,
   database,
   identityProvider: suppliedIdentityProvider,
+  pageTokens: suppliedPageTokens,
 }: ApplicationInfrastructure) {
+  const pageTokens = suppliedPageTokens ?? PageTokens.layer
+  const persistence = Layer.merge(database, pageTokens)
   const objectRepositories = ObjectRepositories.layer.pipe(
-    Layer.provide(database)
+    Layer.provide(persistence)
   )
   const roleAssignmentRepository = RoleAssignmentRepository.layer.pipe(
     Layer.provide(database),
@@ -53,6 +58,7 @@ export function makeApplicationLayer({
   const applicationDependencies = Layer.mergeAll(
     authorization,
     database,
+    pageTokens,
     recordIdentifierResolver,
     repositories
   )
