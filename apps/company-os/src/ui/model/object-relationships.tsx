@@ -11,34 +11,27 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@company/ui/components/empty"
-import { FieldError } from "@company/ui/components/field"
 import {
   ChevronDownIcon,
   ChevronRightIcon,
   LinkIcon,
-  PlusIcon,
   UnlinkIcon,
 } from "lucide-react"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 
-import { useAppForm } from "@/ui/forms/app-form"
-import {
-  focusFirstFormError,
-  formErrorFromCause,
-  formErrorFromViolations,
-  formErrorMessages,
-} from "@/ui/forms/form-errors"
+import { formErrorFromCause } from "@/ui/forms/form-errors"
 
 import {
   describeReferences,
   type DynamicLinkListInput,
   linkClientFor,
+  recordObjectTypes,
   type ClientRecord,
   type ModelObject,
   type RelatedRecord,
 } from "./object-client"
-import { stringValue } from "./object-form"
-import { ObjectReferenceSelect } from "./object-reference-select"
+import { ObjectRelationshipCollection } from "./object-relationship-collection"
+import { ObjectRelationshipForm } from "./object-relationship-form"
 
 const RELATIONSHIP_PAGE_SIZE = 20
 
@@ -48,16 +41,6 @@ function errorMessage(cause: unknown, fallback: string): string {
     errors.form?.[0]?.message ??
     Object.values(errors.fields)[0]?.[0]?.message ??
     fallback
-  )
-}
-
-function targetTypeName(typeId: string): string {
-  if (typeId === Model.root.id) return Model.root.name
-  const object = Object.values(Model.objects).find(({ id }) => id === typeId)
-  if (object !== undefined) return object.name
-  return (
-    Object.values(Model.interfaces).find(({ id }) => id === typeId)?.name ??
-    "record"
   )
 }
 
@@ -88,7 +71,6 @@ function Relationship({
   const [loadError, setLoadError] = useState<string>()
   const [nextPageToken, setNextPageToken] = useState<string | null>(null)
   const [removing, setRemoving] = useState<string>()
-  const formElement = useRef<HTMLFormElement>(null)
   const link = canUpdate ? client.link : undefined
   const unlink = canUpdate ? client.unlink : undefined
 
@@ -130,42 +112,6 @@ function Relationship({
     if (!expanded) return
     void load()
   }, [expanded, load])
-
-  const form = useAppForm({
-    defaultValues: { target: "" },
-    validators: {
-      onSubmit: ({ value }) =>
-        value.target.trim() === ""
-          ? formErrorFromViolations([
-              {
-                message: `${targetTypeName(traversal.target.from.typeId)} is required.`,
-                path: ["target"],
-                reason: "REQUIRED",
-              },
-            ])
-          : undefined,
-    },
-    onSubmitInvalid: () => focusFirstFormError(formElement.current),
-    onSubmit: async ({ formApi, value }) => {
-      try {
-        if (link === undefined) {
-          throw new Error("This relationship is not writable.")
-        }
-        await link({ id: record.id, target: value.target.trim() })
-        formApi.reset()
-        await load()
-      } catch (cause) {
-        formApi.setErrorMap({
-          onSubmit: formErrorFromCause(
-            cause,
-            `${traversal.traversal.label} could not be linked.`
-          ),
-        })
-        focusFirstFormError(formElement.current)
-        throw cause
-      }
-    },
-  })
 
   const canAdd =
     link !== undefined &&
@@ -314,64 +260,13 @@ function Relationship({
             </Button>
           )}
 
-          {canAdd ? (
-            <form.AppForm>
-              <form
-                ref={formElement}
-                noValidate
-                className="grid gap-2"
-                onSubmit={(event) => {
-                  event.preventDefault()
-                  void form.handleSubmit().catch(() => undefined)
-                }}
-              >
-                <form.AppField name="target">
-                  {(field) => (
-                    <field.FormField
-                      id={`${record.id}-${traversal.traversal.key}-target`}
-                      label={`Add ${targetTypeName(traversal.target.from.typeId).toLowerCase()}`}
-                    >
-                      {({
-                        ariaDescribedBy,
-                        invalid,
-                        onBlur,
-                        onValueChange,
-                        value,
-                      }) => (
-                        <ObjectReferenceSelect
-                          ariaDescribedBy={ariaDescribedBy}
-                          id={`${record.id}-${traversal.traversal.key}-target`}
-                          invalid={invalid}
-                          name="target"
-                          required
-                          typeId={traversal.target.from.typeId}
-                          value={stringValue(value)}
-                          onBlur={onBlur}
-                          onValueChange={onValueChange}
-                        />
-                      )}
-                    </field.FormField>
-                  )}
-                </form.AppField>
-                <form.Subscribe selector={({ errors }) => errors}>
-                  {(errors) => (
-                    <FieldError errors={formErrorMessages(errors)} />
-                  )}
-                </form.Subscribe>
-                <form.FormSubmitButton
-                  size="sm"
-                  pendingChildren={
-                    <>
-                      <PlusIcon />
-                      Linking…
-                    </>
-                  }
-                >
-                  <PlusIcon />
-                  Link
-                </form.FormSubmitButton>
-              </form>
-            </form.AppForm>
+          {canAdd && link !== undefined ? (
+            <ObjectRelationshipForm
+              link={link}
+              recordId={record.id}
+              traversal={traversal}
+              onLinked={load}
+            />
           ) : null}
         </div>
       ) : null}
@@ -394,15 +289,31 @@ export function ObjectRelationshipPanel({
   readonly record: ClientRecord
   readonly traversal: ModelLinkTraversal
 }) {
+  const targetObjects = recordObjectTypes(traversal.target.from.typeId)
+  const targetObject = targetObjects.length === 1 ? targetObjects[0] : undefined
+  if (targetObject !== undefined) {
+    return (
+      <ObjectRelationshipCollection
+        canUpdate={canUpdate}
+        object={object}
+        onTotalSizeChange={onTotalSizeChange}
+        record={record}
+        targetObject={targetObject}
+        traversal={traversal}
+      />
+    )
+  }
   return (
-    <Relationship
-      canUpdate={canUpdate}
-      collapsible={false}
-      object={object}
-      onTotalSizeChange={onTotalSizeChange}
-      record={record}
-      traversal={traversal}
-    />
+    <div className="mx-auto w-full max-w-6xl p-4 sm:p-5">
+      <Relationship
+        canUpdate={canUpdate}
+        collapsible={false}
+        object={object}
+        onTotalSizeChange={onTotalSizeChange}
+        record={record}
+        traversal={traversal}
+      />
+    </div>
   )
 }
 

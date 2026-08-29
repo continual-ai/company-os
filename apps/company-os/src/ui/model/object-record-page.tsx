@@ -110,7 +110,7 @@ export function ObjectRecordPage({
 
   return (
     <Tabs
-      className="min-h-0 flex-1 gap-0 overflow-y-auto bg-muted/20"
+      className="min-h-0 flex-1 gap-0 overflow-hidden bg-muted/20"
       value={activeTab}
       onValueChange={(value) => onTabChange?.(value)}
     >
@@ -168,7 +168,7 @@ export function ObjectRecordPage({
         </div>
       </header>
 
-      <TabsContent value="overview" className="m-0">
+      <TabsContent value="overview" className="m-0 overflow-y-auto">
         <div className="mx-auto w-full max-w-6xl p-4 sm:p-5">
           <ObjectPropertiesCard
             object={object}
@@ -182,18 +182,16 @@ export function ObjectRecordPage({
         <TabsContent
           key={traversal.traversal.key}
           value={traversal.traversal.key}
-          className="m-0"
+          className="m-0 min-h-0 overflow-hidden"
           keepMounted
         >
-          <div className="mx-auto w-full max-w-6xl p-4 sm:p-5">
-            <ObjectRelationshipPanel
-              canUpdate={recordState.can("update")}
-              object={object}
-              onTotalSizeChange={updateRelationshipTotal}
-              record={record}
-              traversal={traversal}
-            />
-          </div>
+          <ObjectRelationshipPanel
+            canUpdate={recordState.can("update")}
+            object={object}
+            onTotalSizeChange={updateRelationshipTotal}
+            record={record}
+            traversal={traversal}
+          />
         </TabsContent>
       ))}
 

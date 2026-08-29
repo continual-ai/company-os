@@ -1,5 +1,10 @@
 import { Model } from "@company/model"
-import { MAX_PAGE_SIZE, type PageToken } from "@company/runtime"
+import {
+  MAX_PAGE_SIZE,
+  type ListRequest,
+  type Page,
+  type PageToken,
+} from "@company/runtime"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import { capabilityKey } from "@/capabilities"
@@ -25,6 +30,10 @@ import type {
 import type { ObjectFormInput } from "./object-form"
 import { objectTablePropertySchema } from "./object-table/object-table-cell-types"
 import type { ObjectTableValue } from "./object-table/object-table-config"
+
+export type ObjectCollectionList = (
+  request: ListRequest
+) => Promise<Page<ClientRecord>>
 
 function chunks<T>(values: ReadonlyArray<T>, size: number): ReadonlyArray<T[]> {
   const result: T[][] = []
@@ -93,9 +102,11 @@ export async function loadReferenceLabels(
 export function useObjectCollection(
   object: ModelObject,
   columnFilters: ReadonlyArray<ObjectCollectionFilter>,
-  sorting: ReadonlyArray<ObjectCollectionSort>
+  sorting: ReadonlyArray<ObjectCollectionSort>,
+  listRecords?: ObjectCollectionList
 ) {
   const client = useMemo(() => clientFor(object), [object])
+  const list = listRecords ?? client.list
   const [pageIndex, setPageIndex] = useState(0)
   const [pageTokens, setPageTokens] = useState<
     ReadonlyArray<PageToken | undefined>
@@ -120,7 +131,7 @@ export function useObjectCollection(
     setError(undefined)
     setAllowedCapabilities(new Set())
     try {
-      const page = await client.list(
+      const page = await list(
         objectListRequest(object, columnFilters, sorting, pageToken)
       )
       const checks = objectCapabilityChecks(
@@ -146,7 +157,7 @@ export function useObjectCollection(
     } finally {
       if (requestId.current === currentRequest) setLoading(false)
     }
-  }, [client, columnFilters, object, pageToken, sorting])
+  }, [columnFilters, list, object, pageToken, sorting])
 
   useEffect(() => {
     void load()
@@ -155,7 +166,7 @@ export function useObjectCollection(
   useEffect(() => {
     setPageIndex(0)
     setPageTokens([undefined])
-  }, [columnFilters, sorting])
+  }, [columnFilters, listRecords, sorting])
 
   const update = async (record: ClientRecord, changes: ObjectFormInput) => {
     if (client.update === undefined)

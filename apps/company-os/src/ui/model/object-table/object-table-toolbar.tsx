@@ -207,6 +207,12 @@ export function ObjectTableToolbar({
   toolbarActions,
 }: ObjectTableToolbarProps) {
   const selectedCount = table.getSelectedRowIds().length
+  const canFilter = table
+    .getAllLeafColumns()
+    .some((column) => column.getCanFilter())
+  const canSort = table
+    .getAllLeafColumns()
+    .some((column) => column.getCanSort())
   const [deleteError, setDeleteError] = useState<string>()
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deletePending, setDeletePending] = useState(false)
@@ -315,8 +321,8 @@ export function ObjectTableToolbar({
       </div>
       <div className="flex h-10 shrink-0 items-center gap-1.5 border-b px-5">
         <div className="no-scrollbar flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto">
-          <ObjectTableSortMenu table={table} />
-          <ObjectTableFilters table={table} />
+          {canSort ? <ObjectTableSortMenu table={table} /> : null}
+          {canFilter ? <ObjectTableFilters table={table} /> : null}
         </div>
         <div className="shrink-0">
           <ObjectTableColumnMenu table={table} />

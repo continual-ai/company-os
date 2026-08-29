@@ -80,6 +80,7 @@ export interface ObjectTableProps {
   canUpdateRecord?: ((recordId: string) => boolean) | undefined
   columnFilters?: ColumnFiltersState | undefined
   columnVisibility?: Readonly<Record<string, boolean>> | undefined
+  enableRowSelection?: boolean | undefined
   object: ObjectType
   onCellCommit?:
     | ((
@@ -261,6 +262,7 @@ export function ObjectTable({
   canUpdateRecord,
   columnFilters,
   columnVisibility,
+  enableRowSelection = true,
   object,
   onCellCommit,
   onCreateRecord,
@@ -336,7 +338,7 @@ export function ObjectTable({
           ),
           minSize:
             propertyId === object.display.title
-              ? selectionControlWidth + 176
+              ? (enableRowSelection ? selectionControlWidth : 0) + 176
               : 120,
           maxSize: 560,
           header: label,
@@ -349,7 +351,13 @@ export function ObjectTable({
         })
       })
     )
-  }, [canFilterProperty, canSortProperty, object, properties])
+  }, [
+    canFilterProperty,
+    canSortProperty,
+    enableRowSelection,
+    object,
+    properties,
+  ])
 
   const initialState = useMemo(() => {
     const defaultPropertyIds = new Set(
@@ -384,8 +392,9 @@ export function ObjectTable({
     initialState,
     columnResizeMode: "onChange",
     enableMultiSort: true,
-    enableRowSelection:
-      canDeleteRecord === undefined
+    enableRowSelection: !enableRowSelection
+      ? false
+      : canDeleteRecord === undefined
         ? true
         : (row) => canDeleteRecord(row.original.id),
     enableSortingRemoval: true,
@@ -486,12 +495,14 @@ export function ObjectTable({
                         <table.FlexRender header={header} />
                       ) : meta.propertyId === object.display.title ? (
                         <div className="flex size-full min-w-0">
-                          <div
-                            className="h-full shrink-0"
-                            style={{ width: selectionControlWidth }}
-                          >
-                            <SelectionHeader table={table} />
-                          </div>
+                          {enableRowSelection ? (
+                            <div
+                              className="h-full shrink-0"
+                              style={{ width: selectionControlWidth }}
+                            >
+                              <SelectionHeader table={table} />
+                            </div>
+                          ) : null}
                           <Button
                             type="button"
                             variant="ghost"
@@ -669,7 +680,8 @@ export function ObjectTable({
                           meta.propertyId === object.display.title && "flex"
                         )}
                       >
-                        {meta.propertyId === object.display.title ? (
+                        {meta.propertyId === object.display.title &&
+                        enableRowSelection ? (
                           <div
                             className="h-full shrink-0"
                             style={{ width: selectionControlWidth }}
