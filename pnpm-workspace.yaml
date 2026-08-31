@@ -9,6 +9,7 @@ packages:
 
 catalog:
   "@base-ui/react": 1.7.0
+  "@cloudflare/vite-plugin": 1.54.2
   "@effect/platform-node": 4.0.0-beta.107
   "@effect/sql-pg": 4.0.0-beta.107
   "@effect/vitest": 4.0.0-beta.107
@@ -48,6 +49,7 @@ catalog:
   "typescript": 7.0.2
   "vite": 8.0.16
   "vitest": 4.1.11
+  "wrangler": 4.127.1
 
 allowBuilds:
   esbuild: true

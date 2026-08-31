@@ -22,36 +22,48 @@
         "$TURBO_ROOT$/tools/oxlint/company-os/**/*.ts"
       ]
     },
+    "bundle:continual": {
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", ".env*"],
+      "outputs": [".continual/**", "dist/**"]
+    },
     "db:check": {},
     "db:generate": {
       "cache": false
     },
     "db:migrate": {
       "cache": false,
-      "passThroughEnv": ["APP_NAMESPACE", "DATABASE_URL"]
+      "passThroughEnv": ["APP_NAMESPACE", "DATABASE_SCHEMA", "DATABASE_URL"]
     },
     "db:reset": {
       "cache": false,
       "passThroughEnv": [
         "APP_NAMESPACE",
         "CONFIRM_DATABASE_RESET",
+        "DATABASE_SCHEMA",
         "DATABASE_URL"
       ]
     },
     "model:check": {},
     "setup": {
       "cache": false,
-      "passThroughEnv": ["APP_NAMESPACE", "DATABASE_URL"]
+      "passThroughEnv": ["APP_NAMESPACE", "DATABASE_SCHEMA", "DATABASE_URL"]
     },
     "test": {
       "dependsOn": ["^test"],
       "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/fixtures/**", ".env"],
-      "passThroughEnv": ["DATABASE_URL"]
+      "passThroughEnv": ["DATABASE_SCHEMA", "DATABASE_URL"]
     },
     "dev": {
       "cache": false,
       "env": ["VITE_CLIENT_PORTAL_URL", "VITE_COMPANY_OS_URL"],
-      "passThroughEnv": ["AUTH_*", "DATABASE_URL"],
+      "passThroughEnv": [
+        "APP_SECRET",
+        "AUTH_*",
+        "CONTINUAL_*",
+        "DATABASE_SCHEMA",
+        "DATABASE_URL"
+      ],
       "persistent": true
     }
   }

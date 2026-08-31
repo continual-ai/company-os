@@ -15,6 +15,7 @@
   "ignorePatterns": [
     ".agent/**",
     ".agents/**",
+    ".lavish/**",
     ".claude/**",
     ".codex/**",
     ".continue/**",

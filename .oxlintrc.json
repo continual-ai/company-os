@@ -101,6 +101,12 @@
   },
   "overrides": [
     {
+      "files": ["**/vite.config.ts"],
+      "rules": {
+        "effecttsgo/process-env": "off"
+      }
+    },
+    {
       "files": ["**/src/server/**/*.ts"],
       "rules": {
         "effecttsgo/global-date-in-effect": "error"

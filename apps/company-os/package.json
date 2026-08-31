@@ -5,13 +5,15 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
+    "bundle:continual": "pnpm build && pnpm clean:continual && pnpm exec wrangler deploy --dry-run --config dist/server/wrangler.json --outdir .continual/wrangler",
+    "clean:continual": "node -e \"require('node:fs').rmSync('.continual/wrangler',{recursive:true,force:true})\"",
     "db:check": "drizzle-kit check --config drizzle.config.ts",
     "db:generate": "drizzle-kit generate --config drizzle.config.ts",
     "db:migrate": "tsx tools/db-migrate.ts",
     "db:reset": "tsx tools/db-reset.ts",
-    "dev": "vite dev --port 3002",
+    "dev": "vite dev --port 3002 --host 0.0.0.0",
     "lint": "oxlint .",
-    "preview": "vite preview --port 3102",
+    "preview": "vite preview --port 3102 --host 0.0.0.0",
     "setup": "tsx tools/setup.ts && pnpm run db:migrate",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
@@ -37,6 +39,7 @@
     "react-dom": "catalog:"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "catalog:",
     "@effect/vitest": "catalog:",
     "@tanstack/devtools-vite": "catalog:",
     "@types/node": "catalog:",
@@ -48,6 +51,7 @@
     "tsx": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "wrangler": "catalog:"
   }
 }
