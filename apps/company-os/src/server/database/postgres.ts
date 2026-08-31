@@ -5,9 +5,7 @@ import { Database } from "./database"
 
 /** Configured PostgreSQL client used to construct the application database. */
 const clientLayer = PgClient.layerConfig({
-  applicationName: Config.string("APP_NAMESPACE").pipe(
-    Config.withDefault("company-os")
-  ),
+  applicationName: Config.succeed("company-os"),
   connectTimeout: Config.succeed("5 seconds"),
   maxConnections: Config.succeed(10),
   url: Config.redacted("DATABASE_URL"),

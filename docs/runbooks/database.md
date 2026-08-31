@@ -137,7 +137,7 @@ Reset is destructive and unrecoverable. It accepts only a loopback PostgreSQL ho
 exact database name as confirmation:
 
 ```sh
-CONFIRM_DATABASE_RESET=company_os pnpm turbo run db:reset --filter=company-os
+CONFIRM_DATABASE_RESET=company_os pnpm reset
 ```
 
 Replace the value with the exact target database name. The committed local default is `company_os`.
@@ -145,9 +145,14 @@ Confirm the value in the central app's local environment before running the comm
 
 The reset rebuilds the local database from the committed migration history and required seeds. It
 deliberately refuses remote database URLs. Tests do not need it because each test receives an
-isolated PostgreSQL database cloned from the migrated test template.
+isolated PostgreSQL database cloned from the migrated test template. The root reset command uses
+Turbo to run the reset task of every application that owns local mutable state.
 
 ## Production migration
+
+The root `pnpm deploy` command dispatches application-owned deployment tasks through Turbo. The
+central application currently reports that deployment is not implemented, so run the migration job
+explicitly when preparing a real deployment.
 
 Run one migration job from the same immutable revision as the application:
 

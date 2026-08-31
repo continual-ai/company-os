@@ -1,12 +1,7 @@
 import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router"
 
 import { applicationConfig } from "@/customization/config"
-import {
-  appName,
-  canonicalMetadata,
-  documentHead,
-  resolvePageMetadata,
-} from "@/route-metadata"
+import { appName, documentHead, resolvePageMetadata } from "@/route-metadata"
 
 import appCss from "@/styles/app.css?url"
 
@@ -39,7 +34,6 @@ export const Route = createRootRoute({
   ),
   head: ({ matches }) => {
     const document = documentHead(resolvePageMetadata(matches) ?? rootDocument)
-    const location = canonicalMetadata(matches.at(-1)?.pathname ?? "/")
 
     return {
       meta: [
@@ -48,7 +42,6 @@ export const Route = createRootRoute({
         { name: "robots", content: "noindex, nofollow" },
         { name: "theme-color", content: applicationConfig.brand.themeColor },
         ...document.meta,
-        ...(location.meta ?? []),
       ],
       links: [
         { rel: "stylesheet", href: appCss },
@@ -57,7 +50,6 @@ export const Route = createRootRoute({
           href: applicationConfig.brand.favicon.href,
           type: applicationConfig.brand.favicon.type,
         },
-        ...(location.links ?? []),
       ],
     }
   },

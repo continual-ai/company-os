@@ -12,6 +12,9 @@
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
       "outputs": [".output/**", "dist/**"]
     },
+    "deploy": {
+      "cache": false
+    },
     "typecheck": {
       "dependsOn": ["^typecheck"]
     },
@@ -28,20 +31,20 @@
     },
     "db:migrate": {
       "cache": false,
-      "passThroughEnv": ["APP_NAMESPACE", "DATABASE_URL"]
+      "passThroughEnv": ["DATABASE_URL"]
     },
     "db:reset": {
       "cache": false,
-      "passThroughEnv": [
-        "APP_NAMESPACE",
-        "CONFIRM_DATABASE_RESET",
-        "DATABASE_URL"
-      ]
+      "passThroughEnv": ["CONFIRM_DATABASE_RESET", "DATABASE_URL"]
     },
     "model:check": {},
+    "reset": {
+      "cache": false,
+      "passThroughEnv": ["CONFIRM_DATABASE_RESET", "DATABASE_URL"]
+    },
     "setup": {
       "cache": false,
-      "passThroughEnv": ["APP_NAMESPACE", "DATABASE_URL"]
+      "passThroughEnv": ["DATABASE_URL"]
     },
     "test": {
       "dependsOn": ["^test"],

@@ -1,4 +1,3 @@
-import { companyOsUrl } from "@/client-environment"
 import { applicationConfig } from "@/customization/config"
 
 export type PageMetadata = {
@@ -66,23 +65,4 @@ export function documentHead(document: DocumentMetadata) {
   ]
 
   return { meta }
-}
-
-export function canonicalMetadata(path: string) {
-  const canonicalPath = path === "/" ? path : path.replace(/\/+$/, "")
-  const canonicalUrl = absoluteSiteUrl(canonicalPath)
-
-  return canonicalUrl
-    ? {
-        meta: [{ property: "og:url", content: canonicalUrl }],
-        links: [{ rel: "canonical", href: canonicalUrl }],
-      }
-    : {}
-}
-
-function absoluteSiteUrl(path: string | undefined) {
-  const siteUrl = companyOsUrl()
-  if (!siteUrl || !path) return undefined
-
-  return new URL(path, siteUrl).toString()
 }

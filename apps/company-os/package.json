@@ -9,9 +9,11 @@
     "db:generate": "drizzle-kit generate --config drizzle.config.ts",
     "db:migrate": "tsx tools/db-migrate.ts",
     "db:reset": "tsx tools/db-reset.ts",
+    "deploy": "echo \"No deploy implemented for company-os.\"",
     "dev": "vite dev --port 3002",
     "lint": "oxlint .",
     "preview": "vite preview --port 3102",
+    "reset": "pnpm run db:reset",
     "setup": "tsx tools/setup.ts && pnpm run db:migrate",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"

@@ -24,10 +24,6 @@ the deployment configuration contract; the ignored `.env` contains local values.
 variables may enter browser code. Server code validates private configuration with Effect Config
 rather than reading the process environment directly.
 
-Set `VITE_COMPANY_OS_URL` to the public deployment origin when canonical URLs and the MCP Host/Origin
-allowlist should use it. When it is unset, the app omits canonical URLs instead of publishing a local
-development origin.
-
 ## Ownership
 
 This application owns:

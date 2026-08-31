@@ -1,7 +1,6 @@
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { describe, expect, it } from "vitest"
 
 import {
-  canonicalMetadata,
   documentHead,
   pageMetadataForMatch,
   pageOptions,
@@ -21,8 +20,6 @@ const customer = {
   description: "Review Example Corporation.",
   title: "Example Corporation",
 } satisfies PageMetadata
-
-afterEach(() => vi.unstubAllEnvs())
 
 describe("page metadata", () => {
   it("keeps static page metadata in TanStack staticData", () => {
@@ -69,8 +66,6 @@ describe("page metadata", () => {
 
 describe("document metadata", () => {
   it("builds the title, description, and social metadata from one page", () => {
-    vi.stubEnv("VITE_COMPANY_OS_URL", "https://os.example.com")
-
     const document = documentHead({
       ...customer,
       section: "Customers",
@@ -88,32 +83,13 @@ describe("document metadata", () => {
     )
   })
 
-  it("omits deployment URLs when the public origin is not configured", () => {
-    vi.stubEnv("VITE_COMPANY_OS_URL", "")
-
+  it("does not publish deployment-specific URLs", () => {
     expect(documentHead(overview).meta).toContainEqual({
       name: "twitter:card",
       content: "summary",
     })
-    expect(canonicalMetadata("/overview")).toEqual({})
-  })
-
-  it("normalizes index-route trailing slashes in canonical URLs", () => {
-    vi.stubEnv("VITE_COMPANY_OS_URL", "https://os.example.com")
-
-    expect(canonicalMetadata("/developer/")).toEqual({
-      meta: [
-        {
-          property: "og:url",
-          content: "https://os.example.com/developer",
-        },
-      ],
-      links: [
-        {
-          rel: "canonical",
-          href: "https://os.example.com/developer",
-        },
-      ],
-    })
+    expect(documentHead(overview).meta).not.toContainEqual(
+      expect.objectContaining({ property: "og:url" })
+    )
   })
 })
