@@ -3,6 +3,9 @@ packages:
   - "packages/*"
   - "templates/*"
   - "tools"
+  # Unused by the standalone project; pre-satisfies the Continual create-app
+  # skill's project preparation so it never rewrites this file.
+  - "modules/*"
 
 catalog:
   "@base-ui/react": 1.7.0
@@ -51,4 +54,8 @@ allowBuilds:
   lightningcss: true
   msgpackr-extract: false
   unrs-resolver: true
-  msw: false
+  # msw, sharp, and workerd match the Continual create-app skill's expected
+  # allowlist; they are inert until such a dependency is actually installed.
+  msw: true
+  sharp: true
+  workerd: true

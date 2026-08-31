@@ -1,13 +1,17 @@
 node_modules
+node_modules/
 .DS_Store
 dist
 dist-ssr
 *.local
+*.log
 .env*
 !.env.example
 !.env.template
 .tanstack
 .wrangler
+.wrangler/
+.continual/
 .output
 .vinxi
 __unconfig*
