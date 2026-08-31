@@ -1,0 +1,21 @@
+# apps/company-os
+
+This is the required central Company OS application and the project's private server composition boundary.
+It already exists and stays on its checked-in stack; never scaffold a replacement or a parallel app for capabilities that belong here.
+
+## Deployment contract
+
+The app directory name is its stable app key.
+`pnpm bundle:continual` produces the deployable artifact: `dist/server/wrangler.json`, `dist/client`, and the dry-run output in `.continual/wrangler`.
+The committed `wrangler.jsonc` carries build-time configuration only; runtime configuration arrives as deploy-time bindings (`DATABASE`, `DATABASE_SCHEMA`, `APP_SECRET`, `AUTH_*`), so never add credentials or vars to it.
+`GET /api/health` is the platform liveness probe and must stay dependency-free; `GET /health` is the database-backed readiness check.
+
+## Data
+
+The app owns the semantic model's migrations and migrates first on a shared deployment schema; run them with `pnpm db:migrate`, which honors `DATABASE_URL` and `DATABASE_SCHEMA`.
+Migrations must stay schema-relative: no `public.` qualification and no cross-schema references.
+
+## Local development
+
+`pnpm setup` then `pnpm dev` (port 3002).
+Dev and preview run the server inside workerd; the local `DATABASE_URL` therefore needs an explicit user, and connection pools must never be shared across requests.

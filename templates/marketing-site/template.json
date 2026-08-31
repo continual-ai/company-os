@@ -2,8 +2,11 @@
   "id": "marketing-site",
   "scripts": {
     "build": "vite build",
-    "dev": "vite dev --port 3000",
-    "preview": "vite preview",
+    "bundle:continual": "pnpm build && pnpm clean:continual && pnpm exec wrangler deploy --dry-run --config dist/server/wrangler.json --outdir .continual/wrangler",
+    "clean:continual": "node -e \"require('node:fs').rmSync('.continual/wrangler',{recursive:true,force:true})\"",
+    "dev": "vite dev --port 3000 --host 0.0.0.0",
+    "lint": "oxlint .",
+    "preview": "vite preview --host 0.0.0.0",
     "typecheck": "tsc --noEmit"
   },
   "bootstrapCommands": [

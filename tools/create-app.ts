@@ -46,9 +46,11 @@ const packageJsonSchema = Schema.Struct({
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const templatesDirectory = resolve(repositoryRoot, "templates")
 const ignoredDirectoryNames = new Set([
+  ".continual",
   ".output",
   ".tanstack",
   ".turbo",
+  ".wrangler",
   "dist",
   "node_modules",
 ])

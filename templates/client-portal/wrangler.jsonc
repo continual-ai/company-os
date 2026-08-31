@@ -1,0 +1,11 @@
+// Build-time Worker configuration consumed by the Cloudflare Vite plugin.
+// Runtime configuration is supplied as deploy-time bindings by the hosting
+// platform and must never appear here. create-app rewrites the name.
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "client-portal",
+  "main": "@tanstack/react-start/server-entry",
+  "compatibility_date": "2026-08-07",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+}

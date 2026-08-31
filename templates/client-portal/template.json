@@ -2,8 +2,11 @@
   "id": "client-portal",
   "scripts": {
     "build": "vite build",
-    "dev": "vite dev --port 3001",
-    "preview": "vite preview --port 3101",
+    "bundle:continual": "pnpm build && pnpm clean:continual && pnpm exec wrangler deploy --dry-run --config dist/server/wrangler.json --outdir .continual/wrangler",
+    "clean:continual": "node -e \"require('node:fs').rmSync('.continual/wrangler',{recursive:true,force:true})\"",
+    "dev": "vite dev --port 3001 --host 0.0.0.0",
+    "lint": "oxlint .",
+    "preview": "vite preview --port 3101 --host 0.0.0.0",
     "typecheck": "tsc --noEmit"
   },
   "bootstrapCommands": [
