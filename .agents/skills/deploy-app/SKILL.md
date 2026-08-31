@@ -22,8 +22,11 @@ templates already carry:
   identity) arrives as deploy-time bindings; adding vars or credentials to the Wrangler config is
   a defect and some pipelines reject it.
 - A dependency-free `GET /api/health` liveness route.
-- A `db:migrate` script only when the app owns migrations; the deploy pipeline runs it against the
-  deployment database before bundling, so migrations must be forward-only and idempotent.
+- Deployment sequencing owned by the app's own scripts: when an app owns migrations, its
+  `bundle:continual` runs them first wherever `DATABASE_URL` is configured and skips them where it
+  is not, so the same command behaves identically on a laptop, in CI, and in a platform sandbox.
+  Migrations must be forward-only and idempotent because identical-content re-publishes run them
+  again, while rollbacks to an existing deployment never do.
 
 The app's directory name is its stable app key; the platform's app identifier and display name are
 platform concerns. Do not encode platform release or deployment record shapes into this
@@ -32,10 +35,11 @@ repository; only the artifact contract above is load-bearing here.
 ## Deploy
 
 1. Ensure a clean `git status --porcelain`, a pushed HEAD, and a passing `pnpm check`.
-2. If the app owns migrations, run `pnpm --dir apps/<app-directory> run db:migrate` with the
-   deployment `DATABASE_URL` and `DATABASE_SCHEMA` (in a platform sandbox, `continual env pull`
-   provides them). Stop on failure.
-3. Run `pnpm --dir apps/<app-directory> run bundle:continual`.
+2. Ensure the deployment `DATABASE_URL` and `DATABASE_SCHEMA` are in the environment when the app
+   owns migrations (in a platform sandbox they already are; `continual env pull` also provides
+   them). `bundle:continual` migrates first when they are present.
+3. Run `pnpm --dir apps/<app-directory> run bundle:continual`. Stop on failure; a migration
+   failure fails the bundle before anything is published.
 4. Publish with the platform CLI:
    `continual deploy --app <app-id> --name "<display name>" --app-dir apps/<app-directory>`.
 
