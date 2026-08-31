@@ -21,6 +21,15 @@ import {
   AlertDialogTrigger,
 } from "@company/ui/components/alert-dialog"
 import {
+  Attachment,
+  AttachmentAction,
+  AttachmentActions,
+  AttachmentContent,
+  AttachmentDescription,
+  AttachmentMedia,
+  AttachmentTitle,
+} from "@company/ui/components/attachment"
+import {
   Avatar,
   AvatarBadge,
   AvatarFallback,
@@ -36,6 +45,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@company/ui/components/breadcrumb"
+import { Bubble, BubbleContent } from "@company/ui/components/bubble"
 import { Button } from "@company/ui/components/button"
 import {
   Card,
@@ -46,6 +56,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@company/ui/components/card"
+import {
+  ChartContainer,
+  ChartLegend,
+  ChartLegendContent,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@company/ui/components/chart"
+import { ChatShell, type ChatMessage } from "@company/ui/components/chat"
 import { Checkbox } from "@company/ui/components/checkbox"
 import {
   Command,
@@ -98,6 +117,25 @@ import {
   InputGroupText,
 } from "@company/ui/components/input-group"
 import { Label } from "@company/ui/components/label"
+import {
+  Marker,
+  MarkerContent,
+  MarkerIcon,
+} from "@company/ui/components/marker"
+import {
+  Message,
+  MessageAvatar,
+  MessageContent,
+  MessageHeader,
+} from "@company/ui/components/message"
+import {
+  MessageScroller,
+  MessageScrollerButton,
+  MessageScrollerContent,
+  MessageScrollerItem,
+  MessageScrollerProvider,
+  MessageScrollerViewport,
+} from "@company/ui/components/message-scroller"
 import { PhoneInput } from "@company/ui/components/phone-input"
 import {
   Popover,
@@ -145,6 +183,7 @@ import {
   SidebarProvider,
 } from "@company/ui/components/sidebar"
 import { Skeleton } from "@company/ui/components/skeleton"
+import { Spinner } from "@company/ui/components/spinner"
 import { Switch } from "@company/ui/components/switch"
 import {
   Table,
@@ -161,6 +200,7 @@ import {
   TabsTrigger,
 } from "@company/ui/components/tabs"
 import { Textarea } from "@company/ui/components/textarea"
+import { toast, Toaster } from "@company/ui/components/toast"
 import {
   Tooltip,
   TooltipContent,
@@ -170,14 +210,17 @@ import {
   ArchiveIcon,
   Building2Icon,
   CheckCircle2Icon,
+  FileTextIcon,
   MoreHorizontalIcon,
   PlusIcon,
   SearchIcon,
   SettingsIcon,
   Trash2Icon,
   UsersIcon,
+  XIcon,
 } from "lucide-react"
 import { useState } from "react"
+import { Bar, BarChart, CartesianGrid, XAxis } from "recharts"
 
 import type { ComponentSlug } from "@/ui/developer/design-system/component-metadata"
 
@@ -188,6 +231,45 @@ type ComponentExample = {
 }
 
 const snippet = (...lines: string[]) => lines.join("\n")
+
+const pipelineChartConfig = {
+  qualified: { label: "Qualified" },
+  closed: { label: "Closed" },
+} satisfies ChartConfig
+
+const pipelineChartData = [
+  { month: "May", qualified: 14, closed: 6 },
+  { month: "Jun", qualified: 18, closed: 9 },
+  { month: "Jul", qualified: 12, closed: 11 },
+  { month: "Aug", qualified: 21, closed: 8 },
+]
+
+const initialChatMessages: ChatMessage[] = [
+  {
+    id: "chat-1",
+    role: "user",
+    content: "Which companies still need a qualification review?",
+    status: "complete",
+  },
+  {
+    id: "chat-2",
+    role: "assistant",
+    content:
+      "Three companies are waiting: Northwind, Northstar, and Acme. Northwind has been in review the longest.",
+    status: "complete",
+  },
+]
+
+const transcriptPreviewLines = [
+  "Northwind moved to qualification.",
+  "A review was requested for Northstar.",
+  "Acme signed the pilot agreement.",
+  "Northwind's review is still open after five days.",
+  "Two new contacts were added to Northstar.",
+  "The Acme pilot kickoff was scheduled.",
+  "Northwind's review was assigned to Taylor.",
+  "Acme asked for an updated proposal.",
+]
 
 const exampleDetails = {
   accordion: {
@@ -238,6 +320,20 @@ const exampleDetails = {
     usage:
       "Use an alert dialog when a consequential action requires explicit acknowledgement. Ordinary editing belongs in a dialog or sheet.",
   },
+  attachment: {
+    code: snippet(
+      'import { Attachment, AttachmentContent, AttachmentMedia, AttachmentTitle } from "@company/ui/components/attachment"',
+      "",
+      '<Attachment state="done" size="sm">',
+      "  <AttachmentMedia><FileTextIcon /></AttachmentMedia>",
+      "  <AttachmentContent>",
+      "    <AttachmentTitle>qualification-notes.pdf</AttachmentTitle>",
+      "  </AttachmentContent>",
+      "</Attachment>"
+    ),
+    usage:
+      "Use attachments for files that travel with a message or draft. Drive the visual lifecycle through state instead of swapping layouts.",
+  },
   avatar: {
     code: snippet(
       'import { Avatar, AvatarBadge, AvatarFallback } from "@company/ui/components/avatar"',
@@ -274,6 +370,20 @@ const exampleDetails = {
     usage:
       "Use breadcrumbs for a real hierarchy. Keep labels short and make the final item the current page.",
   },
+  bubble: {
+    code: snippet(
+      'import { Bubble, BubbleContent } from "@company/ui/components/bubble"',
+      "",
+      '<Bubble variant="secondary">',
+      "  <BubbleContent>Northwind is waiting on a qualification review.</BubbleContent>",
+      "</Bubble>",
+      '<Bubble align="end">',
+      "  <BubbleContent>Assign it to me.</BubbleContent>",
+      "</Bubble>"
+    ),
+    usage:
+      "Use bubbles for conversational content. Align the viewer's own messages to the end and keep one variant per speaker.",
+  },
   button: {
     code: snippet(
       'import { Button } from "@company/ui/components/button"',
@@ -301,6 +411,39 @@ const exampleDetails = {
     ),
     usage:
       "Use cards for bounded supporting surfaces. Prefer ordinary page structure when the content already has sufficient hierarchy.",
+  },
+  chart: {
+    code: snippet(
+      'import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@company/ui/components/chart"',
+      'import { Bar, BarChart, XAxis } from "recharts"',
+      "",
+      'const config = { qualified: { label: "Qualified" }, closed: { label: "Closed" } }',
+      "",
+      "<ChartContainer config={config}>",
+      "  <BarChart data={data}>",
+      '    <XAxis dataKey="month" />',
+      "    <ChartTooltip content={<ChartTooltipContent config={config} />} />",
+      '    <Bar dataKey="qualified" fill="var(--color-qualified)" />',
+      '    <Bar dataKey="closed" fill="var(--color-closed)" />',
+      "  </BarChart>",
+      "</ChartContainer>"
+    ),
+    usage:
+      "Use charts for trends and comparisons that a table obscures. Rely on the themed chart tokens instead of hard-coded colors.",
+  },
+  chat: {
+    code: snippet(
+      'import { ChatShell } from "@company/ui/components/chat"',
+      "",
+      "<ChatShell",
+      "  messages={messages}",
+      "  value={draft}",
+      "  onValueChange={setDraft}",
+      "  onSubmit={sendMessage}",
+      "/>"
+    ),
+    usage:
+      "Use the chat shell for a complete conversational surface. Compose the transcript and composer directly when the layout must diverge.",
   },
   checkbox: {
     code: snippet(
@@ -441,6 +584,62 @@ const exampleDetails = {
     ),
     usage:
       "Prefer FieldLabel inside Field. Use Label directly for compact controls that do not need descriptions or validation.",
+  },
+  marker: {
+    code: snippet(
+      'import { Marker, MarkerContent, MarkerIcon } from "@company/ui/components/marker"',
+      "",
+      '<Marker variant="separator">',
+      "  <MarkerContent>Today</MarkerContent>",
+      "</Marker>",
+      "<Marker>",
+      "  <MarkerIcon><Spinner /></MarkerIcon>",
+      "  <MarkerContent>Generating response...</MarkerContent>",
+      "</Marker>"
+    ),
+    usage:
+      "Use markers for conversation events that are not messages, such as day boundaries or generation status.",
+  },
+  message: {
+    code: snippet(
+      'import { Message, MessageAvatar, MessageContent, MessageHeader } from "@company/ui/components/message"',
+      "",
+      "<Message>",
+      "  <MessageAvatar>AI</MessageAvatar>",
+      "  <MessageContent>",
+      "    <MessageHeader>Assistant</MessageHeader>",
+      '    <Bubble variant="secondary"><BubbleContent>On it.</BubbleContent></Bubble>',
+      "  </MessageContent>",
+      "</Message>"
+    ),
+    usage:
+      "Use Message to lay out one conversation turn. Align the viewer's own turns to the end so authorship stays scannable.",
+  },
+  "message-scroller": {
+    code: snippet(
+      'import { MessageScroller, MessageScrollerButton, MessageScrollerContent, MessageScrollerItem, MessageScrollerProvider, MessageScrollerViewport } from "@company/ui/components/message-scroller"',
+      "",
+      "<MessageScrollerProvider>",
+      "  <MessageScroller>",
+      "    <MessageScrollerViewport>",
+      "      <MessageScrollerContent>",
+      "        {messages.map((message) => (",
+      "          <MessageScrollerItem",
+      "            key={message.id}",
+      "            messageId={message.id}",
+      '            scrollAnchor={message.status === "streaming"}',
+      "          >",
+      "            ...",
+      "          </MessageScrollerItem>",
+      "        ))}",
+      "      </MessageScrollerContent>",
+      "    </MessageScrollerViewport>",
+      "    <MessageScrollerButton />",
+      "  </MessageScroller>",
+      "</MessageScrollerProvider>"
+    ),
+    usage:
+      "Use the message scroller for growing transcripts. Mark the streaming turn as the scroll anchor so readers follow it from its start.",
   },
   popover: {
     code: snippet(
@@ -583,6 +782,15 @@ const exampleDetails = {
     usage:
       "Use skeletons to preserve the eventual layout during short loads. Do not replace meaningful progress or error feedback with indefinite shimmer.",
   },
+  spinner: {
+    code: snippet(
+      'import { Spinner } from "@company/ui/components/spinner"',
+      "",
+      "<Spinner />"
+    ),
+    usage:
+      "Use a spinner for a short, indeterminate wait tied to a specific control or line. Prefer a skeleton when layout is known.",
+  },
   switch: {
     code: snippet(
       'import { Switch } from "@company/ui/components/switch"',
@@ -633,6 +841,19 @@ const exampleDetails = {
     usage:
       "Use Textarea inside Field for multiline content. Keep operational notes concise and distinguish them from structured company data.",
   },
+  toast: {
+    code: snippet(
+      'import { toast, Toaster } from "@company/ui/components/toast"',
+      "",
+      "<Toaster />",
+      "",
+      'toast.success("Company archived", {',
+      '  description: "Northwind is no longer in active work.",',
+      "})"
+    ),
+    usage:
+      "Use toasts for brief confirmations of completed actions. Errors the user must resolve belong in the flow, not in a toast.",
+  },
   tooltip: {
     code: snippet(
       'import { Tooltip, TooltipContent, TooltipTrigger } from "@company/ui/components/tooltip"',
@@ -657,6 +878,8 @@ export function getComponentExample(slug: ComponentSlug): ComponentExample {
 function ComponentPreview({ slug }: { slug: ComponentSlug }) {
   const [dateTime, setDateTime] = useState("2026-08-27T09:15")
   const [phoneNumber, setPhoneNumber] = useState("+14155550123")
+  const [chatDraft, setChatDraft] = useState("")
+  const [chatMessages, setChatMessages] = useState(initialChatMessages)
 
   switch (slug) {
     case "accordion":
@@ -711,6 +934,25 @@ function ComponentPreview({ slug }: { slug: ComponentSlug }) {
           </AlertDialog>
         </div>
       )
+    case "attachment":
+      return (
+        <div className="flex justify-center">
+          <Attachment size="sm">
+            <AttachmentMedia>
+              <FileTextIcon />
+            </AttachmentMedia>
+            <AttachmentContent>
+              <AttachmentTitle>qualification-notes.pdf</AttachmentTitle>
+              <AttachmentDescription>128 KB</AttachmentDescription>
+            </AttachmentContent>
+            <AttachmentActions>
+              <AttachmentAction aria-label="Remove qualification-notes.pdf">
+                <XIcon />
+              </AttachmentAction>
+            </AttachmentActions>
+          </Attachment>
+        </div>
+      )
     case "avatar":
       return (
         <div className="flex justify-center">
@@ -757,6 +999,19 @@ function ComponentPreview({ slug }: { slug: ComponentSlug }) {
           </BreadcrumbList>
         </Breadcrumb>
       )
+    case "bubble":
+      return (
+        <div className="mx-auto flex max-w-md flex-col gap-2">
+          <Bubble variant="secondary">
+            <BubbleContent>
+              Northwind is waiting on a qualification review.
+            </BubbleContent>
+          </Bubble>
+          <Bubble align="end">
+            <BubbleContent>Assign it to me.</BubbleContent>
+          </Bubble>
+        </div>
+      )
     case "button":
       return (
         <div className="flex flex-wrap justify-center gap-2">
@@ -785,6 +1040,46 @@ function ComponentPreview({ slug }: { slug: ComponentSlug }) {
             Updated moments ago
           </CardFooter>
         </Card>
+      )
+    case "chart":
+      return (
+        <ChartContainer config={pipelineChartConfig} className="h-56">
+          <BarChart data={pipelineChartData}>
+            <CartesianGrid vertical={false} />
+            <XAxis dataKey="month" tickLine={false} axisLine={false} />
+            <ChartTooltip
+              content={<ChartTooltipContent config={pipelineChartConfig} />}
+            />
+            <ChartLegend
+              content={<ChartLegendContent config={pipelineChartConfig} />}
+            />
+            <Bar dataKey="qualified" fill="var(--color-qualified)" />
+            <Bar dataKey="closed" fill="var(--color-closed)" />
+          </BarChart>
+        </ChartContainer>
+      )
+    case "chat":
+      return (
+        <ChatShell
+          className="mx-auto h-96 max-w-md"
+          messages={chatMessages}
+          value={chatDraft}
+          onValueChange={setChatDraft}
+          onSubmit={() => {
+            const content = chatDraft.trim()
+            if (!content) return
+            setChatMessages((messages) => [
+              ...messages,
+              {
+                id: `chat-${messages.length + 1}`,
+                role: "user",
+                content,
+                status: "complete",
+              },
+            ])
+            setChatDraft("")
+          }}
+        />
       )
     case "checkbox":
       return (
@@ -940,6 +1235,63 @@ function ComponentPreview({ slug }: { slug: ComponentSlug }) {
           <Input id="example-company-name" defaultValue="Northwind" />
         </div>
       )
+    case "marker":
+      return (
+        <div className="mx-auto flex max-w-md flex-col gap-4">
+          <Marker variant="separator">
+            <MarkerContent>Today</MarkerContent>
+          </Marker>
+          <Marker>
+            <MarkerIcon>
+              <Spinner />
+            </MarkerIcon>
+            <MarkerContent className="animate-pulse">
+              Generating response...
+            </MarkerContent>
+          </Marker>
+        </div>
+      )
+    case "message":
+      return (
+        <Message className="mx-auto max-w-md">
+          <MessageAvatar className="size-8">AI</MessageAvatar>
+          <MessageContent>
+            <MessageHeader>Assistant</MessageHeader>
+            <Bubble variant="secondary">
+              <BubbleContent>
+                Northwind's review has been open for five days. Want me to
+                assign it?
+              </BubbleContent>
+            </Bubble>
+          </MessageContent>
+        </Message>
+      )
+    case "message-scroller":
+      return (
+        <div className="mx-auto h-64 max-w-md border">
+          <MessageScrollerProvider>
+            <MessageScroller>
+              <MessageScrollerViewport>
+                <MessageScrollerContent className="gap-3 p-3">
+                  {transcriptPreviewLines.map((line, index) => (
+                    <MessageScrollerItem
+                      key={line}
+                      messageId={`event-${index}`}
+                    >
+                      <Bubble
+                        variant={index % 2 === 0 ? "secondary" : "outline"}
+                      >
+                        <BubbleContent>{line}</BubbleContent>
+                      </Bubble>
+                    </MessageScrollerItem>
+                  ))}
+                </MessageScrollerContent>
+              </MessageScrollerViewport>
+              <MessageScrollerButton />
+            </MessageScroller>
+          </MessageScrollerProvider>
+        </div>
+      )
     case "popover":
       return (
         <div className="flex justify-center">
@@ -1091,6 +1443,13 @@ function ComponentPreview({ slug }: { slug: ComponentSlug }) {
           </div>
         </div>
       )
+    case "spinner":
+      return (
+        <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+          <Spinner />
+          Syncing company model
+        </div>
+      )
     case "switch":
       return (
         <div className="mx-auto flex max-w-sm items-center justify-between gap-4">
@@ -1150,6 +1509,22 @@ function ComponentPreview({ slug }: { slug: ComponentSlug }) {
           aria-label="Operating note"
           placeholder="Add context for the next review..."
         />
+      )
+    case "toast":
+      return (
+        <div className="flex justify-center">
+          <Toaster />
+          <Button
+            variant="outline"
+            onClick={() =>
+              toast.success("Company archived", {
+                description: "Northwind is no longer in active work.",
+              })
+            }
+          >
+            Archive company
+          </Button>
+        </div>
       )
     case "tooltip":
       return (

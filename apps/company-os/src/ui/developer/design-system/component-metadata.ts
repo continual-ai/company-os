@@ -94,6 +94,16 @@ export const componentGroups = [
         name: "Skeleton",
         description: "Reserves layout while content is loading.",
       },
+      {
+        slug: "spinner",
+        name: "Spinner",
+        description: "Indicates an operation in progress.",
+      },
+      {
+        slug: "toast",
+        name: "Toast",
+        description: "Announces the outcome of an action briefly.",
+      },
     ],
   },
   {
@@ -115,9 +125,51 @@ export const componentGroups = [
         description: "Groups a bounded piece of supporting content.",
       },
       {
+        slug: "chart",
+        name: "Chart",
+        description: "Visualizes series data with themed chart colors.",
+      },
+      {
         slug: "table",
         name: "Table",
         description: "Displays structured records for comparison and scanning.",
+      },
+    ],
+  },
+  {
+    label: "Conversation",
+    components: [
+      {
+        slug: "attachment",
+        name: "Attachment",
+        description: "Shows a file with its upload lifecycle and actions.",
+      },
+      {
+        slug: "bubble",
+        name: "Bubble",
+        description: "Displays one message's content in a conversation.",
+      },
+      {
+        slug: "chat",
+        name: "Chat",
+        description:
+          "Composes a transcript and prompt composer into a chat surface.",
+      },
+      {
+        slug: "marker",
+        name: "Marker",
+        description: "Annotates a conversation with a non-message event.",
+      },
+      {
+        slug: "message",
+        name: "Message",
+        description: "Lays out a conversation turn with avatar and metadata.",
+      },
+      {
+        slug: "message-scroller",
+        name: "Message Scroller",
+        description:
+          "Keeps a growing transcript readable with scroll anchoring.",
       },
     ],
   },
