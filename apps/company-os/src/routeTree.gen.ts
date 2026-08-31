@@ -18,6 +18,7 @@ import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AuthLocalSessionRouteImport } from './routes/auth/local-session'
 import { Route as ApiOpenapiRouteImport } from './routes/api/openapi'
 import { Route as ApiMcpRouteImport } from './routes/api/mcp'
+import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApiDescriptionRouteImport } from './routes/api/description'
 import { Route as AppSettingsRouteRouteImport } from './routes/_app/settings/route'
 import { Route as AppDeveloperRouteRouteImport } from './routes/_app/developer/route'
@@ -101,6 +102,11 @@ const ApiOpenapiRoute = ApiOpenapiRouteImport.update({
 const ApiMcpRoute = ApiMcpRouteImport.update({
   id: '/api/mcp',
   path: '/api/mcp',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiHealthRoute = ApiHealthRouteImport.update({
+  id: '/api/health',
+  path: '/api/health',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiDescriptionRoute = ApiDescriptionRouteImport.update({
@@ -322,6 +328,7 @@ export interface FileRoutesByFullPath {
   '/developer': typeof AppDeveloperRouteRouteWithChildren
   '/settings': typeof AppSettingsRouteRouteWithChildren
   '/api/description': typeof ApiDescriptionRoute
+  '/api/health': typeof ApiHealthRoute
   '/api/mcp': typeof ApiMcpRoute
   '/api/openapi': typeof ApiOpenapiRoute
   '/auth/local-session': typeof AuthLocalSessionRoute
@@ -369,6 +376,7 @@ export interface FileRoutesByTo {
   '/sign-out': typeof SignOutRoute
   '/': typeof AppIndexRoute
   '/api/description': typeof ApiDescriptionRoute
+  '/api/health': typeof ApiHealthRoute
   '/api/mcp': typeof ApiMcpRoute
   '/api/openapi': typeof ApiOpenapiRoute
   '/auth/local-session': typeof AuthLocalSessionRoute
@@ -414,6 +422,7 @@ export interface FileRoutesById {
   '/_app/developer': typeof AppDeveloperRouteRouteWithChildren
   '/_app/settings': typeof AppSettingsRouteRouteWithChildren
   '/api/description': typeof ApiDescriptionRoute
+  '/api/health': typeof ApiHealthRoute
   '/api/mcp': typeof ApiMcpRoute
   '/api/openapi': typeof ApiOpenapiRoute
   '/auth/local-session': typeof AuthLocalSessionRoute
@@ -466,6 +475,7 @@ export interface FileRouteTypes {
     | '/developer'
     | '/settings'
     | '/api/description'
+    | '/api/health'
     | '/api/mcp'
     | '/api/openapi'
     | '/auth/local-session'
@@ -513,6 +523,7 @@ export interface FileRouteTypes {
     | '/sign-out'
     | '/'
     | '/api/description'
+    | '/api/health'
     | '/api/mcp'
     | '/api/openapi'
     | '/auth/local-session'
@@ -557,6 +568,7 @@ export interface FileRouteTypes {
     | '/_app/developer'
     | '/_app/settings'
     | '/api/description'
+    | '/api/health'
     | '/api/mcp'
     | '/api/openapi'
     | '/auth/local-session'
@@ -606,6 +618,7 @@ export interface RootRouteChildren {
   SignInRoute: typeof SignInRoute
   SignOutRoute: typeof SignOutRoute
   ApiDescriptionRoute: typeof ApiDescriptionRoute
+  ApiHealthRoute: typeof ApiHealthRoute
   ApiMcpRoute: typeof ApiMcpRoute
   ApiOpenapiRoute: typeof ApiOpenapiRoute
   AuthLocalSessionRoute: typeof AuthLocalSessionRoute
@@ -675,6 +688,13 @@ declare module '@tanstack/react-router' {
       path: '/api/mcp'
       fullPath: '/api/mcp'
       preLoaderRoute: typeof ApiMcpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/health': {
+      id: '/api/health'
+      path: '/api/health'
+      fullPath: '/api/health'
+      preLoaderRoute: typeof ApiHealthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/description': {
@@ -1150,6 +1170,7 @@ const rootRouteChildren: RootRouteChildren = {
   SignInRoute: SignInRoute,
   SignOutRoute: SignOutRoute,
   ApiDescriptionRoute: ApiDescriptionRoute,
+  ApiHealthRoute: ApiHealthRoute,
   ApiMcpRoute: ApiMcpRoute,
   ApiOpenapiRoute: ApiOpenapiRoute,
   AuthLocalSessionRoute: AuthLocalSessionRoute,

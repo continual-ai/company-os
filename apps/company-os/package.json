@@ -23,6 +23,7 @@
     "@company/postgres": "workspace:*",
     "@company/runtime": "workspace:*",
     "@company/ui": "workspace:*",
+    "@continual/sdk": "catalog:",
     "@effect/platform-node": "catalog:",
     "@effect/sql-pg": "catalog:",
     "@tailwindcss/vite": "catalog:",
@@ -52,6 +53,7 @@
     "typescript": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:",
-    "wrangler": "catalog:"
+    "wrangler": "catalog:",
+    "zod": "catalog:"
   }
 }

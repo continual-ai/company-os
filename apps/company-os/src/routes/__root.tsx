@@ -1,4 +1,6 @@
+import { initDesignMode, initTelemetry } from "@continual/sdk/app-preview"
 import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router"
+import { useEffect } from "react"
 
 import { applicationConfig } from "@/customization/config"
 import {
@@ -70,6 +72,13 @@ export const Route = createRootRoute({
 })
 
 function RootDocument({ children }: { children: React.ReactNode }) {
+  // Hosted previews drive design feedback and telemetry through these hooks;
+  // outside a preview they observe nothing and send nothing.
+  useEffect(() => {
+    initDesignMode()
+    initTelemetry()
+  }, [])
+
   return (
     <html lang="en">
       <head>

@@ -211,6 +211,9 @@ catalogs:
     '@cloudflare/vite-plugin':
       specifier: 1.54.2
       version: 1.54.2
+    '@continual/sdk':
+      specifier: 0.1.4
+      version: 0.1.4
     '@effect/platform-node':
       specifier: 4.0.0-beta.107
       version: 4.0.0-beta.107
@@ -331,6 +334,9 @@ catalogs:
     wrangler:
       specifier: 4.127.1
       version: 4.127.1
+    zod:
+      specifier: 4.4.3
+      version: 4.4.3
 
 importers:
 
@@ -372,6 +378,9 @@ importers:
       '@company/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      '@continual/sdk':
+        specifier: 'catalog:'
+        version: 0.1.4
       '@effect/platform-node':
         specifier: 'catalog:'
         version: 4.0.0-beta.107(effect@4.0.0-beta.107)(ioredis@5.11.1)
@@ -457,6 +466,9 @@ importers:
       wrangler:
         specifier: 'catalog:'
         version: 4.127.1
+      zod:
+        specifier: 'catalog:'
+        version: 4.4.3
 
   packages/model:
     dependencies:
@@ -907,6 +919,10 @@ packages:
     engines: {node: '>=16'}
     cpu: [x64]
     os: [win32]
+
+  '@continual/sdk@0.1.4':
+    resolution: {integrity: sha512-UL+h9pslKJd9Xhr8kq2Mgg1LsEI9mjE64J92jhyLnLuFEoUAUHsxUn9gm/i+DQxcpKq4GHviHlbdrnsY4gEfjg==}
+    engines: {node: '>=24.0.0'}
 
   '@cspotcode/source-map-support@0.8.1':
     resolution: {integrity: sha512-IchNf6dN4tHoMFIn/7OE8LWZ19Y6q/67Bmf6vnGREv8RSbBVb9LPJxEcnwrcwX6ixSvaiGoomAUvu4YSxXrVgw==}
@@ -5514,6 +5530,11 @@ snapshots:
 
   '@cloudflare/workerd-windows-64@1.20260828.1':
     optional: true
+
+  '@continual/sdk@0.1.4':
+    dependencies:
+      zod: 3.25.76
+      zod-to-json-schema: 3.25.2(zod@3.25.76)
 
   '@cspotcode/source-map-support@0.8.1':
     dependencies:
