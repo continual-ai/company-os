@@ -3,7 +3,10 @@ import { PgClient } from "@effect/sql-pg"
 import { Config, Effect, Redacted } from "effect"
 
 import { loadEnvironment } from "@/environment"
-import { applyMigrations } from "@/server/database/migrations"
+import {
+  applyMigrations,
+  ensureDatabaseSchema,
+} from "@/server/database/migrations"
 import * as Postgres from "@/server/database/postgres"
 import { seedSystem } from "@/server/seeds/seed-system"
 
@@ -22,10 +25,15 @@ Effect.gen(function* () {
   yield* Effect.log(
     `Resetting local PostgreSQL database '${target.databaseName}' on '${target.host}'.`
   )
+  const schema = yield* Postgres.databaseSchemaConfig
   yield* sql`drop schema if exists auth cascade`
   yield* sql`drop schema if exists drizzle cascade`
   yield* sql`drop schema if exists public cascade`
+  if (schema !== "public") {
+    yield* sql.unsafe(`drop schema if exists "${schema}" cascade`)
+  }
   yield* sql`create schema public`
+  yield* ensureDatabaseSchema()
   yield* applyMigrations()
   yield* seedSystem()
   yield* Effect.log(
