@@ -25,7 +25,6 @@ const sandboxPreviewHosts = [
 // Production never gets values this way: the platform supplies bindings at
 // deploy time, and the committed wrangler.jsonc stays credential-free.
 const devVarNames = [
-  "APP_NAMESPACE",
   "APP_SECRET",
   "CONTINUAL_EXECUTION_TOKEN",
   "CONTINUAL_RUNTIME_ORIGIN",

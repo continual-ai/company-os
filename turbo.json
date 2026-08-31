@@ -1,5 +1,5 @@
 {
-  "$schema": "https://turbo.build/schema.json",
+  "$schema": "https://v2-10-12.turborepo.dev/schema.json",
   "globalDependencies": [
     "tsconfig.app.json",
     "tsconfig.base.json",
@@ -11,6 +11,9 @@
       "env": ["VITE_CLIENT_PORTAL_URL", "VITE_COMPANY_OS_URL"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
       "outputs": [".output/**", "dist/**"]
+    },
+    "deploy": {
+      "cache": false
     },
     "typecheck": {
       "dependsOn": ["^typecheck"]
@@ -33,21 +36,24 @@
     },
     "db:migrate": {
       "cache": false,
-      "passThroughEnv": ["APP_NAMESPACE", "DATABASE_SCHEMA", "DATABASE_URL"]
+      "passThroughEnv": ["DATABASE_SCHEMA", "DATABASE_URL"]
     },
     "db:reset": {
       "cache": false,
       "passThroughEnv": [
-        "APP_NAMESPACE",
         "CONFIRM_DATABASE_RESET",
         "DATABASE_SCHEMA",
         "DATABASE_URL"
       ]
     },
     "model:check": {},
+    "reset": {
+      "cache": false,
+      "passThroughEnv": ["CONFIRM_DATABASE_RESET", "DATABASE_URL"]
+    },
     "setup": {
       "cache": false,
-      "passThroughEnv": ["APP_NAMESPACE", "DATABASE_SCHEMA", "DATABASE_URL"]
+      "passThroughEnv": ["DATABASE_SCHEMA", "DATABASE_URL"]
     },
     "test": {
       "dependsOn": ["^test"],

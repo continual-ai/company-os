@@ -169,6 +169,8 @@ The fork remains authoritative for its source, business policy, and records.
 | ------------------------------- | -------------------------------------------------------- |
 | `pnpm dev`                      | Run every application development task                   |
 | `pnpm setup`                    | Create local config and prepare the application database |
+| `pnpm reset`                    | Destructively rebuild local application state            |
+| `pnpm deploy`                   | Run every application deployment task                    |
 | `pnpm app:create`               | List optional application templates                      |
 | `pnpm app:create client-portal` | Create and bootstrap an optional client portal           |
 | `pnpm format`                   | Format the repository                                    |

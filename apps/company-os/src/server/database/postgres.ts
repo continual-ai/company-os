@@ -55,9 +55,7 @@ const connectionUrlConfig = Config.all({
 
 /** Configured PostgreSQL client used to construct the application database. */
 const clientLayer = PgClient.layerConfig({
-  applicationName: Config.string("APP_NAMESPACE").pipe(
-    Config.withDefault("company-os")
-  ),
+  applicationName: Config.succeed("company-os"),
   connectTimeout: Config.succeed("5 seconds"),
   maxConnections: Config.int("DATABASE_MAX_CONNECTIONS").pipe(
     Config.withDefault(10)
