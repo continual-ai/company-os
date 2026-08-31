@@ -1,7 +1,13 @@
 import { defineRule } from "@oxlint/plugins"
 
 const ALLOWED_FRAMEWORK_FILENAMES = new Set(["$", "__root"])
-const ALLOWED_SOURCE_SUFFIXES = new Set(["config", "functions", "gen", "test"])
+const ALLOWED_SOURCE_SUFFIXES = new Set([
+  "config",
+  "d",
+  "functions",
+  "gen",
+  "test",
+])
 const KEBAB_CASE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 const TANSTACK_DYNAMIC_ROUTE =
   /[\\/]src[\\/]routes[\\/](?:.*[\\/])?\$[a-z][A-Za-z0-9]*\.[cm]?[jt]sx?$/
