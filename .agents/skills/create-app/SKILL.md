@@ -30,6 +30,15 @@ Use `--dry-run` to show the intended source and destination without writing. Use
 only for an explicitly requested source-only copy or an isolated tool test; disclose that the app's
 dependencies, database, and checks were not bootstrapped.
 
+## Naming and deployment posture
+
+The app's directory name is its permanent app key on any hosting platform, so choose a short
+kebab-case template-matching name and never rename a deployed app's directory. Created apps carry
+the deployment contract already: `bundle:continual`, a credential-free `wrangler.jsonc`, the
+`/api/health` liveness route, and an `AGENTS.md` that marks them as existing apps with a fixed
+stack. Creation does not register or deploy anything; use `$deploy-app` when the app should reach a
+hosting platform.
+
 Use `$company-onboard` to adapt the existing central app and model to a company and its first
 operation. Adding an optional app is a separate step only when that interface serves the requested
 operation.

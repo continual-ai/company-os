@@ -1,10 +1,10 @@
 ---
 name: company-upgrade
 description:
-  Safely update a customized Company OS fork from its GitHub upstream by verifying remotes,
-  fetching and merging upstream history, resolving conflicts without discarding company changes,
-  and validating the result. Use for scaffold upgrades, not dependency-only upgrades or ordinary
-  feature development.
+  Safely update a customized Company OS project from its upstream source, whether a GitHub fork or
+  a platform-materialized baseline, by verifying the upstream relationship, integrating upstream
+  history, resolving conflicts without discarding company changes, and validating the result. Use
+  for scaffold upgrades, not dependency-only upgrades or ordinary feature development.
 ---
 
 # Company Upgrade
@@ -21,24 +21,39 @@ branding, workflows, migrations, and other intentional customization.
 3. Work on a dedicated `codex/upgrade-*` branch unless the user explicitly chose another branch or
    the current branch is already dedicated to this upgrade. Do not push without authorization.
 
-## Verify the fork relationship
+## Verify the upstream relationship
 
-- Inspect `git remote -v`. For a conventional fork, `origin` should identify the user's fork and
-  `upstream` should identify its source repository.
-- When GitHub CLI is available, use repository metadata such as
-  `gh repo view --json nameWithOwner,parent,defaultBranchRef` to identify the fork parent and default
-  branches rather than guessing names or URLs.
-- If the parent is verified and `upstream` is missing, add it. If an existing `upstream` points
-  elsewhere, stop and explain the mismatch before changing it. If the repository is not a GitHub
-  fork and no canonical source is documented, ask the user for the upstream repository.
-- Fetch `origin` and `upstream`, then show the exact upstream commit range and common ancestor that
-  will participate in the upgrade.
+A project reaches its owner in one of two topologies, and the upgrade must establish which one it
+is in before touching Git state.
+
+- **GitHub fork.** Inspect `git remote -v`; `origin` should identify the user's fork and
+  `upstream` its source repository. When GitHub CLI is available, verify the parent with
+  `gh repo view --json nameWithOwner,parent,defaultBranchRef` rather than guessing names. If the
+  parent is verified and `upstream` is missing, add it. If an existing `upstream` points elsewhere,
+  stop and explain the mismatch before changing it.
+- **Platform-materialized baseline.** A hosting platform may initialize the project from a pinned
+  Company OS revision as a single parentless root commit, so the repository has no fork parent and
+  no shared history with its source. Recover the baseline identity from the root commit
+  (`git rev-list --max-parents=0 HEAD` and its `Initialize from <repository>@<commit>` message) or
+  from the platform's recorded provenance. Add the source as a `baseline` remote when absent.
+- If neither topology can be verified and no canonical source is documented, ask the user for the
+  upstream repository and, for materialized projects, the baseline commit.
+- Fetch the remotes, then show the exact upstream commit range that will participate in the
+  upgrade. For a fork that range starts at the common ancestor; for a materialized baseline it
+  starts at the recorded baseline commit, since no Git merge base exists.
 
 ## Integrate upstream
 
 - Prefer merging the upstream default branch into a long-lived customized fork. Rebase only when
   the user requests it or the affected branch is unpublished and linear history has a concrete
   benefit.
+- In a materialized-baseline project, histories are unrelated, so a plain merge of the source's
+  default branch is wrong. Integrate the delta between the recorded baseline commit and the new
+  upstream revision instead: merge with the recorded baseline commit treated as the base (for
+  example `git merge --allow-unrelated-histories` only after confirming the diff being introduced
+  is exactly `git diff <recorded-baseline-commit> <new-upstream-commit>`), or apply that range as
+  patches when a merge would drag in unrelated history. Record the new baseline commit in the
+  upgrade summary so the next upgrade has a starting point.
 - Review incoming changes before the merge, especially model definitions, migrations, generated
   artifacts, application composition, package boundaries, toolchain pins, and repository skills.
 - Resolve each conflict from the base, upstream intent, and company intent. Never apply blanket
