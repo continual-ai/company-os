@@ -45,6 +45,7 @@
     "company-os/no-internal-reexports": "error",
     "company-os/no-unsafe-sql": "error",
     "company-os/package-boundaries": "error",
+    "company-os/visual-drift": "error",
     "effecttsgo/any-unknown-in-error-context": "off",
     "effecttsgo/catch-unfailable-effect": "off",
     "effecttsgo/class-self-mismatch": "error",

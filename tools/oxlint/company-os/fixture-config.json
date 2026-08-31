@@ -10,6 +10,7 @@
     "company-os/filename-case": "error",
     "company-os/no-internal-reexports": "error",
     "company-os/no-unsafe-sql": "error",
-    "company-os/package-boundaries": "error"
+    "company-os/package-boundaries": "error",
+    "company-os/visual-drift": "error"
   }
 }

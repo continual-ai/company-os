@@ -51,10 +51,10 @@ describe("Company OS Oxlint rules", () => {
       parsed.diagnostics.map(({ code, filename }) =>
         JSON.stringify({
           code,
-          fixture: `packages/${filename
+          fixture: filename
             .replaceAll("\\", "/")
-            .split("/packages/")
-            .at(-1)}`,
+            .split("fixtures/oxlint/company-os/")
+            .at(-1),
         })
       )
     )
@@ -78,6 +78,10 @@ describe("Company OS Oxlint rules", () => {
       {
         code: "company-os(package-boundaries)",
         fixture: "packages/runtime/src/wrong-boundary.ts",
+      },
+      {
+        code: "company-os(visual-drift)",
+        fixture: "apps/company-os/src/visual-drift.tsx",
       },
     ]
 
