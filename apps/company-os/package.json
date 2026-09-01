@@ -57,5 +57,8 @@
     "vitest": "catalog:",
     "wrangler": "catalog:",
     "zod": "catalog:"
+  },
+  "continual": {
+    "database": true
   }
 }
