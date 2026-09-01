@@ -19,8 +19,10 @@ app's governed capabilities, not independent business authorities.
 ## Instantiate
 
 1. Inspect the checkout and preserve unrelated changes.
-2. Run `pnpm app:create` to see the maintained templates, then run `pnpm app:create <template>` to add
-   one. Do not infer templates from arbitrary directories.
+2. Run `pnpm app:create` to see the maintained templates, then run
+   `pnpm app:create <template> <app-name>` to add one. Use the `base` template for any app without
+   a closer starter, and choose the app's real name (for example
+   `pnpm app:create base vendor-portal`). Do not infer templates from arbitrary directories.
 3. Let the repository tool own copying, package rewriting, environment creation, dependency
    installation, and bootstrap checks. It refuses to overwrite an existing `apps/<template>`.
 4. Verify the created package and review the working-tree scope. Run `pnpm check` when creation is
@@ -32,8 +34,9 @@ dependencies, database, and checks were not bootstrapped.
 
 ## Naming and deployment posture
 
-The app's directory name is its permanent app key on any hosting platform, so choose a short
-kebab-case template-matching name and never rename a deployed app's directory. Created apps carry
+The app name passed to `pnpm app:create` becomes the directory, the package name, and the
+permanent app key on any hosting platform, so choose a short kebab-case name that will stay
+accurate and never rename a deployed app's directory. Created apps carry
 the deployment contract already: `bundle:continual`, a credential-free `wrangler.jsonc`, the
 `/api/health` liveness route, and an `AGENTS.md` that marks them as existing apps with a fixed
 stack. Creation does not register or deploy anything; use `$deploy-app` when the app should reach a

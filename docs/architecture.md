@@ -14,6 +14,7 @@ are projections over that implementation rather than independent systems.
 | [`@company/postgres`](../packages/postgres/README.md)     | Server-only PostgreSQL schema and repository implementation                             | `@company/runtime`                 |
 | [`@company/ui`](../packages/ui/README.md)                 | Shared visual primitives and design tokens                                              | Presentation libraries only        |
 | [`company-os`](../apps/company-os/README.md)              | Central UI, authorization, business services, transactions, persistence, and transports | All reusable packages              |
+| [`base`](../templates/base/README.md)                     | Minimal starter for any optional application                                            | Browser-safe model and UI packages |
 | [`client-portal`](../templates/client-portal/README.md)   | Customer-facing interface over deliberately exposed capabilities                        | Browser-safe model and UI packages |
 | [`marketing-site`](../templates/marketing-site/README.md) | Public content and entry points into the other applications                             | Browser-safe model and UI packages |
 

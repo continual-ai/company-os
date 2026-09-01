@@ -104,6 +104,7 @@ exceptions through those actions, with people deciding where approval is require
 | [`packages/postgres`](packages/postgres/README.md)               | The server-only PostgreSQL implementation of runtime repository contracts |
 | [`packages/ui`](packages/ui/README.md)                           | Shared design tokens and presentation primitives                          |
 | [`apps/company-os`](apps/company-os/README.md)                   | Required central backend and operating application                        |
+| [`templates/base`](templates/base/README.md)                     | Minimal starter for any optional application                              |
 | [`templates/client-portal`](templates/client-portal/README.md)   | Starter for a customer-facing interface over governed capabilities        |
 | [`templates/marketing-site`](templates/marketing-site/README.md) | Starter for the public website                                            |
 
@@ -123,10 +124,12 @@ company-owned source; added apps never import template source.
 
 ```sh
 pnpm app:create
-pnpm app:create client-portal
-pnpm turbo run dev --filter=client-portal
+pnpm app:create base vendor-portal
+pnpm turbo run dev --filter=vendor-portal
 ```
 
+The chosen app name becomes the directory under `apps/`, the package name, and the permanent app
+key on any hosting platform.
 The command refuses to overwrite an existing app, rewrites the package for its normal identity,
 installs the workspace, and runs the template's declared bootstrap checks. Templates remain
 runnable on isolated ports for evaluating them before adding one.

@@ -107,7 +107,31 @@ function shouldCopy(source: string): boolean {
   )
 }
 
-function rewritePackage(destination: string, definition: TemplateManifest) {
+const APP_NAME_PATTERN = /^[a-z](?:[a-z0-9-]*[a-z0-9])?$/
+
+function assertAppName(name: string): string {
+  if (!APP_NAME_PATTERN.test(name)) {
+    fail(
+      `App name '${name}' must be kebab-case: lowercase letters, digits, and single dashes.`
+    )
+  }
+  if (name === "company-os") {
+    fail("The central app already exists; 'company-os' is reserved.")
+  }
+  return name
+}
+
+// The manifest is written in terms of the template id (turbo filters, script
+// arguments), so every occurrence is retargeted to the created app's name.
+function retarget(value: string, definition: TemplateManifest, name: string) {
+  return value.replaceAll(definition.id, name)
+}
+
+function rewritePackage(
+  destination: string,
+  definition: TemplateManifest,
+  name: string
+) {
   const path = resolve(destination, "package.json")
   const packageJson = Schema.decodeUnknownSync(packageJsonSchema)(
     JSON.parse(readFileSync(path, "utf8"))
@@ -117,13 +141,37 @@ function rewritePackage(destination: string, definition: TemplateManifest) {
     `${JSON.stringify(
       {
         ...packageJson,
-        name: definition.id,
-        scripts: definition.scripts,
+        name,
+        scripts: Object.fromEntries(
+          Object.entries(definition.scripts).map(([key, script]) => [
+            key,
+            retarget(script, definition, name),
+          ])
+        ),
       },
       null,
       2
     )}\n`
   )
+}
+
+// wrangler.jsonc keeps comments, so the name is rewritten textually rather
+// than through a JSON round-trip.
+function rewriteWorkerName(
+  destination: string,
+  definition: TemplateManifest,
+  name: string
+) {
+  const path = resolve(destination, "wrangler.jsonc")
+  if (!existsSync(path)) return
+  const source = readFileSync(path, "utf8")
+  const marker = `"name": "${definition.id}"`
+  if (!source.includes(marker)) {
+    fail(
+      `templates/${definition.id}/wrangler.jsonc must declare "name": "${definition.id}".`
+    )
+  }
+  writeFileSync(path, source.replace(marker, `"name": "${name}"`))
 }
 
 function run(command: readonly [string, ...string[]]) {
@@ -137,9 +185,13 @@ function run(command: readonly [string, ...string[]]) {
   }
 }
 
-function addApp(definition: TemplateManifest, bootstrap: boolean) {
+function addApp(
+  definition: TemplateManifest,
+  name: string,
+  bootstrap: boolean
+) {
   const source = resolve(templatesDirectory, definition.id)
-  const destination = resolve(repositoryRoot, "apps", definition.id)
+  const destination = resolve(repositoryRoot, "apps", name)
   if (existsSync(destination)) {
     fail(`Refusing to overwrite ${relative(repositoryRoot, destination)}.`)
   }
@@ -149,7 +201,8 @@ function addApp(definition: TemplateManifest, bootstrap: boolean) {
     filter: shouldCopy,
     recursive: true,
   })
-  rewritePackage(destination, definition)
+  rewritePackage(destination, definition, name)
+  rewriteWorkerName(destination, definition, name)
 
   if (!bootstrap) return
   if (definition.environmentExample !== undefined) {
@@ -158,12 +211,21 @@ function addApp(definition: TemplateManifest, bootstrap: boolean) {
     if (!existsSync(environment)) copyFileSync(example, environment)
   }
   run(["pnpm", "install"])
-  for (const command of definition.bootstrapCommands) run(command)
+  for (const command of definition.bootstrapCommands) {
+    const [executable, ...commandArgs] = command
+    run([
+      retarget(executable, definition, name),
+      ...commandArgs.map((arg) => retarget(arg, definition, name)),
+    ])
+  }
 }
 
 function usage(): string {
   return [
-    "Usage: pnpm app:create <template> [--dry-run] [--no-bootstrap]",
+    "Usage: pnpm app:create <template> <app-name> [--dry-run] [--no-bootstrap]",
+    "",
+    "The app name becomes the directory under apps/, the package name, and the",
+    "permanent app key on any hosting platform.",
     "",
     "Available templates:",
     ...templateIds().map((id) => `  ${id}`),
@@ -182,21 +244,24 @@ function main() {
   )
   if (unsupportedFlag !== undefined)
     fail(`Unknown option '${unsupportedFlag}'.`)
-  const templateArguments = args.filter((arg) => !arg.startsWith("--"))
-  if (templateArguments.length > 1) fail(usage())
-  const [templateId] = templateArguments
-  if (templateId === undefined) fail(usage())
+  const [templateId, appName, ...extra] = args.filter(
+    (arg) => !arg.startsWith("--")
+  )
+  if (templateId === undefined || appName === undefined || extra.length > 0) {
+    fail(usage())
+  }
   const definition = manifest(templateId)
-  const destination = `apps/${definition.id}`
+  const name = assertAppName(appName)
+  const destination = `apps/${name}`
   if (args.includes("--dry-run")) {
     process.stdout.write(
       `Would add ${destination} from templates/${definition.id}.\n`
     )
     return
   }
-  addApp(definition, !args.includes("--no-bootstrap"))
+  addApp(definition, name, !args.includes("--no-bootstrap"))
   process.stdout.write(
-    `Added ${destination}.\nRun: pnpm turbo run dev --filter=${definition.id}\n`
+    `Added ${destination}.\nRun: pnpm turbo run dev --filter=${name}\n`
   )
 }
 
