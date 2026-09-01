@@ -25,6 +25,14 @@ class TestDatabaseError extends Data.TaggedError("TestDatabaseError")<{
   readonly message: string
 }> {}
 
+function databaseCreationError(cause: unknown): TestDatabaseError {
+  return new TestDatabaseError({
+    cause,
+    message:
+      "Could not create an isolated PostgreSQL test database. Ensure DATABASE_URL reaches PostgreSQL with a role that has CREATEDB.",
+  })
+}
+
 function databaseName(kind: "database" | "template"): string {
   const id = randomUUID().replaceAll("-", "").slice(0, 20)
   return `company_os_test_${kind}_${id}`
@@ -56,7 +64,10 @@ async function withAdminClient<A>(
   use: (client: Client) => Promise<A>
 ): Promise<A> {
   // This client is test-harness control-plane access only; application queries use Database.
-  const client = new Client({ connectionString: adminUrl })
+  const client = new Client({
+    connectionString: adminUrl,
+    connectionTimeoutMillis: 5_000,
+  })
   try {
     await client.connect()
     return await use(client)
@@ -113,7 +124,11 @@ async function createTemplate(): Promise<TestDatabaseTemplate> {
     Config.string("DATABASE_URL").pipe(Config.withDefault(defaultAdminUrl))
   )
   const name = databaseName("template")
-  await createDatabase(adminUrl, name, "template0")
+  try {
+    await createDatabase(adminUrl, name, "template0")
+  } catch (cause) {
+    throw databaseCreationError(cause)
+  }
   try {
     await migrateDatabase(databaseUrl(adminUrl, name))
   } catch (error) {
@@ -135,12 +150,7 @@ function layer(template: TestDatabaseTemplate) {
             url: databaseUrl(template.adminUrl, name),
           }
         },
-        catch: (cause) =>
-          new TestDatabaseError({
-            cause,
-            message:
-              "Could not create an isolated PostgreSQL test database. Ensure DATABASE_URL reaches PostgreSQL with a role that has CREATEDB.",
-          }),
+        catch: databaseCreationError,
       }),
       ({ name }) =>
         Effect.tryPromise({

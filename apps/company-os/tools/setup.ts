@@ -34,7 +34,10 @@ if (databaseName.length === 0) {
 if (localHostnames.has(target.hostname) && databaseName !== "postgres") {
   const adminUrl = new URL(target)
   adminUrl.pathname = "/postgres"
-  const client = new Client({ connectionString: adminUrl.toString() })
+  const client = new Client({
+    connectionString: adminUrl.toString(),
+    connectionTimeoutMillis: 5_000,
+  })
   try {
     await client.connect()
     const existing = await client.query<{ exists: boolean }>(
@@ -46,6 +49,11 @@ if (localHostnames.has(target.hostname) && databaseName !== "postgres") {
       await client.query(`create database ${identifier}`)
       console.log(`Created local PostgreSQL database '${databaseName}'.`)
     }
+  } catch (cause) {
+    throw new Error(
+      "Could not prepare the local PostgreSQL database. Ensure DATABASE_URL reaches PostgreSQL and the configured role can create the database.",
+      { cause }
+    )
   } finally {
     await client.end().catch(() => undefined)
   }

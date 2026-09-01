@@ -36,9 +36,7 @@ and database remain the authority for business rules and records.
 
 ## Quick start
 
-You need PostgreSQL 18, Node.js 24, and pnpm 11. The repository also includes a
-`mise.toml` for installing the pinned Node.js and pnpm toolchain with
-[mise](https://mise.jdx.dev/).
+You need PostgreSQL 18 or newer, Node.js 24 or newer, and pnpm 11 or newer.
 
 ```sh
 git clone https://github.com/continual-ai/company-os.git
