@@ -1,20 +1,36 @@
 import { constants } from "node:fs"
 import { copyFile } from "node:fs/promises"
 
-import { Config, Effect } from "effect"
+import { Config, Effect, Option } from "effect"
 import { Client } from "pg"
 
 const applicationRoot = new URL("../", import.meta.url)
 const environmentFile = new URL(".env", applicationRoot)
 const exampleFile = new URL(".env.example", applicationRoot)
 
-try {
-  await copyFile(exampleFile, environmentFile, constants.COPYFILE_EXCL)
-  console.log("Created apps/company-os/.env from .env.example.")
-} catch (error) {
-  if (!(error instanceof Error && "code" in error && error.code === "EEXIST")) {
-    throw error
+// Hosted environments inject configuration through the process environment.
+// A .env copied from the example would carry a localhost DATABASE_URL that
+// misleads any subprocess not inheriting the injected values, so the file is
+// only created where it is the source of truth.
+const ambientDatabaseUrl = await Effect.runPromise(
+  Config.option(Config.nonEmptyString("DATABASE_URL"))
+)
+
+if (Option.isNone(ambientDatabaseUrl)) {
+  try {
+    await copyFile(exampleFile, environmentFile, constants.COPYFILE_EXCL)
+    console.log("Created apps/company-os/.env from .env.example.")
+  } catch (error) {
+    if (
+      !(error instanceof Error && "code" in error && error.code === "EEXIST")
+    ) {
+      throw error
+    }
   }
+} else {
+  console.log(
+    "DATABASE_URL is provided by the environment; skipping .env creation."
+  )
 }
 
 const { loadEnvironment } = await import("@/environment")
