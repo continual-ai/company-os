@@ -1,8 +1,8 @@
-import type { RecordId } from "@company/runtime"
+import type { IdentityId } from "@company/model"
 
-/** Browser-safe projection of the canonical User for a verified request. */
+/** Browser-safe projection of the authenticated App user. */
 export interface AuthenticatedUser {
-  readonly email: string
-  readonly id: RecordId<"user">
+  readonly email: string | null
+  readonly id: IdentityId
   readonly name: string
 }

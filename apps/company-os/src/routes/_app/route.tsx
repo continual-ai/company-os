@@ -12,9 +12,6 @@ export const Route = createFileRoute("/_app")({
         search: { returnTo: location.href },
       })
     }
-    if (currentUser.status === "forbidden") {
-      throw redirect({ to: "/access-denied" })
-    }
     return { authenticatedUser: currentUser.user }
   },
   component: CompanyAppLayout,

@@ -22,7 +22,7 @@ available user and company context without asking the user to repeat facts alrea
 Inspect `AGENTS.md`, the checkout, model, app composition, routes, customization overlay,
 migrations, and nearby tests. Identify:
 
-- the company, its preferred language, and the initial users;
+- the company, its preferred language, and the initial operators;
 - the work or event entering the operation and the outcome it should produce;
 - the authoritative records and deterministic rules;
 - where an agent may exercise judgment and where a person must decide;
@@ -56,10 +56,11 @@ Action, API, and human interface. Ordinary record work uses standard Queries and
 custom Action represents an explicit business transition or invariant. Reuse that same capability
 for MCP or agents when needed rather than creating another implementation.
 
-Preserve foundational identity, authorization, actor, party, and audit meaning unless the user
-explicitly changes it. Keep deterministic state, permissions, invariants, idempotency, and
-transactions in code. Do not hide business policy in React, rebuild gateway-owned identity flows,
-or introduce a feature-flag or plugin framework merely for onboarding.
+Preserve the Continual actor ID as the local principal and audit ID. Reuse the existing provider
+binding, User projection, roles, and role assignments rather than creating another identity or
+session system. Keep deterministic state, invariants, idempotency, and transactions in code. Do not
+hide business policy in React, rebuild Continual's identity flow, or introduce a feature-flag or
+plugin framework merely for onboarding.
 
 Keep the initial surface focused. Navigation may emphasize the requested operation, but do not claim
 that an API or capability is disabled when it remains reachable. Prefer one working operation over

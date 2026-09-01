@@ -5,12 +5,9 @@ import { OpenApi } from "effect/unstable/httpapi"
 import { applicationHttpApi } from "@/http-api"
 
 import { makeApplicationLayer } from "./application-layer"
-import { AuthSettings } from "./auth/auth-config"
 import * as Postgres from "./database/postgres"
 
-const authSettingsLayer = AuthSettings.layer
 const applicationLayer = makeApplicationLayer({
-  authSettings: authSettingsLayer,
   database: Postgres.databaseLayer,
 })
 

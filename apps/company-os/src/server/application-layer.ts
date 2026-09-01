@@ -1,6 +1,5 @@
 import { Layer } from "effect"
 
-import type { AuthSettings } from "./auth/auth-config"
 import { Authentication } from "./auth/authentication"
 import { IdentityBindingRepository } from "./auth/identity-binding-repository"
 import { IdentityProvider } from "./auth/identity-provider"
@@ -24,13 +23,11 @@ import { McpTransport } from "./transport/mcp-transport"
 export interface ApplicationInfrastructure {
   readonly identityProvider?: Layer.Layer<IdentityProvider, unknown>
   readonly pageTokens?: Layer.Layer<PageTokens, unknown>
-  readonly authSettings: Layer.Layer<AuthSettings, unknown>
   readonly database: Layer.Layer<Database, unknown>
 }
 
 /** Assembles the application from replaceable infrastructure capabilities. */
 export function makeApplicationLayer({
-  authSettings,
   database,
   identityProvider: suppliedIdentityProvider,
   pageTokens: suppliedPageTokens,
@@ -79,11 +76,8 @@ export function makeApplicationLayer({
     specializedServices,
     modelImplementation
   )
-  const identityProvider =
-    suppliedIdentityProvider ??
-    IdentityProvider.layer.pipe(Layer.provide(authSettings))
+  const identityProvider = suppliedIdentityProvider ?? IdentityProvider.layer
   const authentication = Authentication.layer.pipe(
-    Layer.provide(authSettings),
     Layer.provide(identityProvider),
     Layer.provide(governedServices),
     Layer.provide(repositories),
@@ -100,7 +94,6 @@ export function makeApplicationLayer({
   const readiness = Readiness.layer.pipe(Layer.provide(database))
 
   return Layer.mergeAll(
-    authSettings,
     authorization,
     governedServices,
     authentication,

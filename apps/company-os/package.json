@@ -35,7 +35,6 @@
     "@tanstack/react-table": "catalog:",
     "drizzle-orm": "catalog:",
     "effect": "catalog:",
-    "jose": "catalog:",
     "lucide-react": "catalog:",
     "pg": "catalog:",
     "react": "catalog:",

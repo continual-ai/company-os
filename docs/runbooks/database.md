@@ -52,8 +52,9 @@ The normal convergence command is:
 pnpm turbo run db:migrate --filter=company-os
 ```
 
-`db:migrate` applies pending committed migrations and then idempotently converges the required Root,
-system identity, principal sets, roles, and initial role assignments. It is safe to run repeatedly.
+`db:migrate` applies pending committed migrations and then idempotently converges the required Root
+and trusted system identity. Continual human actor IDs are stored directly and do not create local
+User or role records. The command is safe to run repeatedly.
 
 ## Database tests
 

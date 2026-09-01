@@ -40,7 +40,7 @@ function devVars(): Record<string, string> {
   const vars: Record<string, string> = {}
   for (const [name, value] of Object.entries(process.env)) {
     if (value === undefined) continue
-    if (devVarNames.includes(name) || name.startsWith("AUTH_")) {
+    if (devVarNames.includes(name)) {
       vars[name] = value
     }
   }

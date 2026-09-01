@@ -6,7 +6,11 @@ import { isCapabilityPermission } from "@/capabilities"
 import { Database } from "@/server/database/database"
 import { ObjectRepositories } from "@/server/model/object-repositories"
 import { makeBaseObjectService } from "@/server/model/object-service"
-import { ADMINISTRATOR_ROLE_ID, ROOT_ID } from "@/system-records"
+import {
+  ADMINISTRATOR_ROLE_ID,
+  OPERATOR_ROLE_ID,
+  ROOT_ID,
+} from "@/system-records"
 
 import { RoleAssignmentRepository } from "./role-assignment-repository"
 
@@ -95,7 +99,32 @@ const make = Effect.gen(function* () {
     }
   )
 
-  return { ...base, create, delete: deleteAssignment }
+  const provisionInitialUserRole = Effect.fn(
+    "@company/RoleAssignmentService.provisionInitialUserRole"
+  )(function* (
+    principal: ObjectCreateInput<
+      (typeof Model.objects)["roleAssignment"]
+    >["principal"]
+  ) {
+    return yield* database.transaction(() =>
+      Effect.gen(function* () {
+        const administrators = yield* repository.lockRoleAssignments({
+          roleId: ADMINISTRATOR_ROLE_ID,
+          scopeId: ROOT_ID,
+        })
+        return yield* create({
+          parent: ROOT_ID,
+          principal,
+          role:
+            administrators.length === 1
+              ? ADMINISTRATOR_ROLE_ID
+              : OPERATOR_ROLE_ID,
+        })
+      })
+    )
+  })
+
+  return { ...base, create, delete: deleteAssignment, provisionInitialUserRole }
 })
 
 export class RoleAssignmentService extends Context.Service<RoleAssignmentService>()(

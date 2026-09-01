@@ -8,7 +8,7 @@ It already exists and stays on its checked-in stack; never scaffold a replacemen
 The app directory name is its stable app key.
 `pnpm bundle:continual` produces the deployable artifact: `dist/server/wrangler.json`, `dist/client`, and the dry-run output in `.continual/wrangler`.
 It runs `db:migrate` first whenever `DATABASE_URL` is configured and skips it otherwise, so deployment sequencing lives in this script rather than in any platform.
-The committed `wrangler.jsonc` carries build-time configuration only; runtime configuration arrives as deploy-time bindings (`DATABASE`, `DATABASE_SCHEMA`, `APP_SECRET`, `AUTH_*`), so never add credentials or vars to it.
+The committed `wrangler.jsonc` carries build-time configuration only; runtime configuration arrives as deploy-time bindings (`DATABASE`, `DATABASE_SCHEMA`, `APP_SECRET`) and Continual's request-bound runtime headers, so never add credentials or vars to it.
 `GET /api/health` is the platform liveness probe and must stay dependency-free; `GET /health` is the database-backed readiness check.
 
 ## Data

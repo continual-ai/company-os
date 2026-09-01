@@ -33,7 +33,7 @@ export const contactPrimaryCompanies = Storage.linkTables.contactPrimaryCompany
 export const noteSubjectLinks = Storage.linkTables.noteSubjects
 export const relations = Storage.relations
 
-/** Stable external-subject mappings; credentials and sessions remain outside Company OS. */
+/** Maps provider subjects to App principals; credentials remain provider-owned. */
 export const identityBindings = pgTable(
   "identity_bindings",
   {

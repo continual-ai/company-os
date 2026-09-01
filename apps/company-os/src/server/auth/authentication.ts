@@ -1,5 +1,5 @@
 import type { IdentityId } from "@company/model"
-import { EmailAddress } from "@company/runtime"
+import { EmailAddress, RecordId } from "@company/runtime"
 import { CurrentInvocation } from "@company/runtime/effect/object-service"
 import { Context, Data, Effect, Layer } from "effect"
 
@@ -14,14 +14,7 @@ import {
 import { RoleAssignmentService } from "@/server/modules/access/role-assignment-service"
 import { ServiceAccountService } from "@/server/modules/access/service-account-service"
 import { UserService } from "@/server/modules/access/user-service"
-import {
-  ADMINISTRATOR_ROLE_ID,
-  OPERATOR_ROLE_ID,
-  ROOT_ID,
-} from "@/system-records"
 
-import { AuthSettings } from "./auth-config"
-import type { ProvisioningRole } from "./auth-config"
 import {
   IdentityBindingRepository,
   type BoundIdentity,
@@ -38,36 +31,19 @@ class IdentityInactive extends Data.TaggedError("IdentityInactive")<{
 
 class IdentityProvisioningRequired extends Data.TaggedError(
   "IdentityProvisioningRequired"
-)<{ readonly reason: "email" | "kind" }> {}
+)<{ readonly reason: "email" }> {}
 
 class UserInterfaceRequired extends Data.TaggedError(
   "UserInterfaceRequired"
 )<{}> {}
 
 const make = Effect.gen(function* () {
-  const config = yield* AuthSettings
   const database = yield* Database
   const bindings = yield* IdentityBindingRepository
   const provider = yield* IdentityProvider
   const roleAssignments = yield* RoleAssignmentService
   const serviceAccounts = yield* ServiceAccountService
   const users = yield* UserService
-
-  const provisioningRole = (
-    subject: AuthenticatedSubject
-  ): ProvisioningRole => {
-    if (
-      config.provider.kind === "local" &&
-      subject.issuer === config.provider.issuer
-    ) {
-      return (
-        config.provider.profiles.find(
-          (profile) => profile.subject === subject.subject
-        )?.provisioningRole ?? "none"
-      )
-    }
-    return config.provisioningRole
-  }
 
   const emailAddress = Effect.fn("@company/Authentication.emailAddress")(
     function* (email: string) {
@@ -115,18 +91,11 @@ const make = Effect.gen(function* () {
     subject: AuthenticatedSubject,
     grantInitialRole: boolean
   ) {
-    if (subject.kind === undefined) {
-      return yield* Effect.fail(
-        new IdentityProvisioningRequired({ reason: "kind" })
-      )
-    }
-
     return yield* database.transaction(() =>
       Effect.gen(function* () {
         const concurrent = yield* bindings.find(subject.issuer, subject.subject)
-        if (concurrent !== undefined) {
+        if (concurrent !== undefined)
           return yield* requireActive(concurrent, subject)
-        }
 
         const identity = yield* subject.kind === "user"
           ? Effect.gen(function* () {
@@ -136,10 +105,15 @@ const make = Effect.gen(function* () {
                 )
               }
               const email = yield* emailAddress(subject.email)
-              const user = yield* users.provision({
-                email,
-                name: subject.name?.trim() || email,
-              })
+              const user = yield* users.provision(
+                subject.preferredIdentityId === undefined
+                  ? { email, name: subject.name?.trim() || email }
+                  : {
+                      email,
+                      id: RecordId("user")(subject.preferredIdentityId),
+                      name: subject.name?.trim() || email,
+                    }
+              )
               return { id: user.id, kind: "user" as const }
             })
           : serviceAccounts
@@ -154,20 +128,8 @@ const make = Effect.gen(function* () {
                 }))
               )
 
-        const initialRole = provisioningRole(subject)
-        const role = grantInitialRole
-          ? initialRole === "administrator"
-            ? ADMINISTRATOR_ROLE_ID
-            : initialRole === "operator"
-              ? OPERATOR_ROLE_ID
-              : undefined
-          : undefined
-        if (role !== undefined) {
-          yield* roleAssignments.create({
-            parent: ROOT_ID,
-            principal: identity.id,
-            role,
-          })
+        if (grantInitialRole) {
+          yield* roleAssignments.provisionInitialUserRole(identity.id)
         }
         yield* bindings.bind({
           identityId: identity.id,
@@ -202,10 +164,7 @@ const make = Effect.gen(function* () {
       verified.actor.issuer === verified.authorizationSubject.issuer &&
       verified.actor.subject === verified.authorizationSubject.subject
     ) {
-      return {
-        actor: authorizationIdentity,
-        authorizationIdentity,
-      }
+      return { actor: authorizationIdentity, authorizationIdentity }
     }
     return {
       actor: yield* resolve(verified.actor, false),
@@ -258,7 +217,7 @@ const make = Effect.gen(function* () {
   return { currentUser, identify, invocation }
 })
 
-/** Resolves verified external subjects into governed local actor invocations. */
+/** Maps verified provider identities to governed, role-assignable App principals. */
 export class Authentication extends Context.Service<Authentication>()(
   "@company/Authentication",
   { make }

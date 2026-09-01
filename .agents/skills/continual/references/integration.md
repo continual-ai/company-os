@@ -20,12 +20,18 @@ provider change.
 
 ## Identity and authorization
 
-A platform may establish an authenticated principal. The company backend should still decide
-business roles, row scope, approvals, and action constraints unless a different authority is
-explicitly chosen.
+A Continual App uses the signed runtime assertion supplied by the gateway (or the managed preview
+credential in a sandbox) to resolve the current Continual actor. Retain the returned `us_…` ID
+as the App principal ID and in invocation and audit context. Materialize only the thin User
+projection and provider-subject binding needed for relational integrity and App-owned role
+assignments; do not issue a second person ID or create another credential or session system.
 
-Do not accept browser- or agent-supplied identity claims without verification. Avoid maintaining
-the same company policy independently in a platform UI and the backend.
+Credential verification and business authorization are separate. Continual is the default identity
+provider, while the App owns roles, group membership, scope, and approvals. A different verified
+identity provider can replace the default adapter without replacing authorization or business data.
+
+Do not trust browser- or agent-supplied identity headers. Resolve identity through Continual's
+request-bound runtime credential and server endpoint.
 
 ## Agent and tool access
 

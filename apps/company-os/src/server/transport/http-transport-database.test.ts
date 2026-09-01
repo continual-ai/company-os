@@ -12,14 +12,12 @@ import { eq } from "drizzle-orm"
 import { Effect, Layer, ManagedRuntime, Schema } from "effect"
 import { FetchHttpClient } from "effect/unstable/http"
 import { HttpApiClient, OpenApi } from "effect/unstable/httpapi"
-import { describe, expect } from "vitest"
+import { describe, expect, vi } from "vitest"
 
 import { applicationHttpApi } from "@/http-api"
 import type { capabilityGroup } from "@/http-api"
 import { makeApplicationKeys } from "@/server/application-keys"
 import { makeApplicationLayer } from "@/server/application-layer"
-import { AuthSettings, type AuthConfig } from "@/server/auth/auth-config"
-import { IdentityProvider } from "@/server/auth/identity-provider"
 import { Database } from "@/server/database/database"
 import { itDatabase } from "@/server/database/it-database"
 import {
@@ -32,7 +30,7 @@ import {
 } from "@/server/database/schema"
 import { makeEncryptedPageTokenCodec, PageTokens } from "@/server/page-tokens"
 import { seedSystem } from "@/server/seeds/seed-system"
-import { ROOT_ID } from "@/system-records"
+import { ADMINISTRATOR_ROLE_ID, ROOT_ID } from "@/system-records"
 
 import { HttpTransport } from "./http-transport"
 import { McpTransport } from "./mcp-transport"
@@ -46,50 +44,10 @@ const testPageTokens = makeEncryptedPageTokenCodec(
   ).deriveKey("http-transport-page-token-test:v1")
 )
 
-const authConfig: AuthConfig = {
-  provider: {
-    cookieName: "company-os-local-identity",
-    issuer: "urn:company-os:local",
-    kind: "local",
-    profiles: [
-      {
-        email: "owner@example.com",
-        id: "owner",
-        name: "Owner",
-        provisioningRole: "administrator",
-        subject: "owner",
-      },
-    ],
-  },
-  provisioningRole: "administrator",
+const runtimeHeaders = {
+  "x-continual-app-runtime-assertion": "runtime-assertion",
+  "x-continual-app-runtime-origin": "https://continual.example",
 }
-
-const testIdentityProvider = {
-  identify: (headers: Headers) => {
-    if (headers.has("x-test-anonymous")) return Effect.succeed(null)
-    const authorizationSubject = {
-      email: headers.has("x-test-renamed")
-        ? "renamed@example.com"
-        : "owner@example.com",
-      issuer: "https://identity.example.com",
-      kind: "user" as const,
-      name: headers.has("x-test-renamed") ? "Renamed Owner" : "Owner",
-      subject: "owner",
-    }
-    return Effect.succeed({
-      actor: headers.has("x-test-delegated")
-        ? {
-            email: undefined,
-            issuer: "https://identity.example.com",
-            kind: "serviceAccount" as const,
-            name: "Portfolio agent",
-            subject: "portfolio-agent",
-          }
-        : authorizationSubject,
-      authorizationSubject,
-    })
-  },
-} satisfies typeof IdentityProvider.Service
 
 function projectedHttpId(
   descriptor: ReturnType<typeof executableModelOperations>[number]
@@ -131,8 +89,18 @@ const httpOperationIds = new Set(
 
 describe("application HTTP server", () => {
   itDatabase(
-    "assembles generated CRUD, JIT identity, and anonymous authorization",
+    "assembles generated CRUD with Continual identity and anonymous authorization",
     Effect.fn(function* () {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () =>
+          Response.json({
+            actorId: "us_test",
+            email: "owner@example.com",
+            name: "Owner",
+          })
+        )
+      )
       const database = yield* Database
       yield* seedSystem().pipe(
         Effect.provideService(PageTokens, testPageTokens)
@@ -142,12 +110,7 @@ describe("application HTTP server", () => {
         Effect.sync(() =>
           ManagedRuntime.make(
             makeApplicationLayer({
-              authSettings: Layer.succeed(AuthSettings, authConfig),
               database: Layer.succeed(Database, database),
-              identityProvider: Layer.succeed(
-                IdentityProvider,
-                testIdentityProvider
-              ),
               pageTokens: Layer.succeed(PageTokens, testPageTokens),
             })
           )
@@ -234,7 +197,6 @@ describe("application HTTP server", () => {
               }),
               headers: {
                 "content-type": "application/json",
-                "x-test-anonymous": "true",
               },
               method: "POST",
             })
@@ -251,7 +213,10 @@ describe("application HTTP server", () => {
           api.handle(
             new Request("http://company.test/api/v1/companies", {
               body: JSON.stringify({ domain: "test", name: "Invalid" }),
-              headers: { "content-type": "application/json" },
+              headers: {
+                "content-type": "application/json",
+                ...runtimeHeaders,
+              },
               method: "POST",
             })
           )
@@ -273,7 +238,13 @@ describe("application HTTP server", () => {
             : input instanceof URL
               ? input.href
               : input.url
-        return runtime.runPromise(api.handle(new Request(url, init)))
+        const headers = new Headers(init?.headers)
+        for (const [name, value] of Object.entries(runtimeHeaders)) {
+          headers.set(name, value)
+        }
+        return runtime.runPromise(
+          api.handle(new Request(url, { ...init, headers }))
+        )
       }
       const nativeClient = yield* HttpApiClient.make(applicationHttpApi, {
         baseUrl: "http://company.test",
@@ -534,77 +505,31 @@ describe("application HTTP server", () => {
         .from(notes)
         .where(eq(notes.id, note.id))
       expect(persistedNote).toEqual({ content: "Introductory call" })
-      const listedUsers = yield* useTestFetch(
-        client.user.listUsers({ query: { pageSize: 10 } })
-      )
-      expect(listedUsers.items).toEqual([
-        expect.objectContaining({
-          email: "owner@example.com",
-          name: "Owner",
-        }),
-      ])
-
-      const delegatedResponse = yield* Effect.promise(() =>
-        runtime.runPromise(
-          api.handle(
-            new Request("http://company.test/api/v1/companies", {
-              body: JSON.stringify({ name: "Delegated Company" }),
-              headers: {
-                "content-type": "application/json",
-                "x-test-delegated": "true",
-              },
-              method: "POST",
-            })
-          )
-        )
-      )
-      expect(delegatedResponse.status).toBe(201)
-      const delegated = Schema.decodeUnknownSync(
-        Schema.Struct({ id: Schema.String })
-      )(yield* Effect.promise(() => delegatedResponse.json()))
-      const [actorBinding] = yield* database
-        .select({ identityId: identityBindings.identityId })
-        .from(identityBindings)
-        .where(eq(identityBindings.subject, "portfolio-agent"))
-      expect(actorBinding).toBeDefined()
-      const actorIdentityId = Schema.decodeUnknownSync(Schema.String)(
-        actorBinding?.identityId
-      )
-      const [delegatedObject] = yield* database
+      const [auditedObject] = yield* database
         .select({ createdById: objects.createdById })
         .from(objects)
-        .where(eq(objects.id, delegated.id))
-      expect(delegatedObject?.createdById).toBe(actorIdentityId)
-      const actorRoles = yield* database
-        .select({ id: roleAssignments.id })
-        .from(roleAssignments)
-        .where(eq(roleAssignments.principalId, actorIdentityId))
-      expect(actorRoles).toEqual([])
-
-      const renamedResponse = yield* Effect.promise(() =>
-        runtime.runPromise(
-          api.handle(
-            new Request("http://company.test/api/v1/capabilities:check", {
-              body: JSON.stringify({
-                checks: [{ permission: "company.create", target: ROOT_ID }],
-              }),
-              headers: {
-                "content-type": "application/json",
-                "x-test-renamed": "true",
-              },
-              method: "POST",
-            })
-          )
-        )
-      )
-      expect(renamedResponse.status).toBe(200)
-      const [reconciledUser] = yield* database
-        .select({ email: users.email, name: users.name })
+        .where(eq(objects.id, destination.id))
+      expect(auditedObject?.createdById).toBe("us_test")
+      const [projectedUser] = yield* database
+        .select({ id: users.id, name: users.name })
         .from(users)
-        .where(eq(users.id, created.createdBy))
-      expect(reconciledUser).toEqual({
-        email: "renamed@example.com",
-        name: "Renamed Owner",
+        .where(eq(users.id, "us_test"))
+      expect(projectedUser).toEqual({ id: "us_test", name: "Owner" })
+      const [binding] = yield* database
+        .select({ identityId: identityBindings.identityId })
+        .from(identityBindings)
+        .where(eq(identityBindings.subject, "us_test"))
+      expect(binding).toEqual({ identityId: "us_test" })
+      const [assignment] = yield* database
+        .select({
+          principalId: roleAssignments.principalId,
+          roleId: roleAssignments.roleId,
+        })
+        .from(roleAssignments)
+        .where(eq(roleAssignments.principalId, "us_test"))
+      expect(assignment).toEqual({
+        principalId: "us_test",
+        roleId: ADMINISTRATOR_ROLE_ID,
       })
     }),
     10_000

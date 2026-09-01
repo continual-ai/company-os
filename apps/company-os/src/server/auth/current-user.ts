@@ -17,14 +17,8 @@ export function readCurrentUser(headers: Headers) {
       }
     }).pipe(
       Effect.catchTags({
-        IdentityInactive: () =>
-          Effect.succeed({ status: "forbidden" as const }),
-        IdentityProvisioningRequired: () =>
-          Effect.succeed({ status: "forbidden" as const }),
         InvalidIdentityAssertion: () =>
           Effect.succeed({ status: "unauthenticated" as const }),
-        UserInterfaceRequired: () =>
-          Effect.succeed({ status: "forbidden" as const }),
       })
     )
   )

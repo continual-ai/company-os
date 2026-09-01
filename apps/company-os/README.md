@@ -15,9 +15,9 @@ pnpm dev
 ```
 
 PostgreSQL must already be running at the configured `DATABASE_URL`; the repository does not manage
-the server. The development server prints its local URL. Local identity mode provides administrator,
-operator, and restricted profiles without an external identity provider. Open `/developer` to
-inspect the current model, generated API and SDK, MCP tools, and design system.
+the server. Open the development server through a Continual managed preview or proxied App URL so
+the request includes its runtime identity. Open `/developer` to inspect the current model,
+generated API and SDK, MCP tools, and design system.
 
 `pnpm setup` creates `.env` from [`.env.example`](.env.example) when it is missing. The example is
 the deployment configuration contract; the ignored `.env` contains local values. Only `VITE_`
@@ -33,7 +33,7 @@ development origin.
 This application owns:
 
 - private business implementations and orchestration;
-- identity assertion verification and business authorization;
+- resolution of Continual App identity into business authorization;
 - persistence, migrations, transactions, and runtime configuration; and
 - the operating UI, developer surfaces, server functions, and external API routes.
 
@@ -65,7 +65,9 @@ or customization configuration.
 ```text
 UI / HTTP / MCP
        |
-verified identity and invocation context
+verified provider identity (Continual by default)
+       |
+App principal, roles, and invocation context
        |
 governed object services and custom actions
        |

@@ -21,12 +21,7 @@ import {
   SidebarRail,
 } from "@company/ui/components/sidebar"
 import { Link, useMatchRoute } from "@tanstack/react-router"
-import {
-  BracesIcon,
-  ChevronsUpDownIcon,
-  LogOutIcon,
-  SettingsIcon,
-} from "lucide-react"
+import { BracesIcon, ChevronsUpDownIcon, SettingsIcon } from "lucide-react"
 
 import { applicationCapabilities, capabilityPermission } from "@/capabilities"
 import { BrandMark } from "@/customization/brand"
@@ -174,12 +169,6 @@ export function AppSidebar() {
                 <DropdownMenuItem render={<Link to="/settings" />}>
                   <SettingsIcon />
                   Settings
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  render={<a href="/sign-out" aria-label="Sign out" />}
-                >
-                  <LogOutIcon />
-                  Sign out
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

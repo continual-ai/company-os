@@ -26,7 +26,7 @@ and notes.
 
 - A typed business model with objects, properties, relationships, queries, and actions.
 - PostgreSQL persistence, explicit migrations, and transactional business operations.
-- Authentication, users, service accounts, API keys, sessions, roles, and capability checks.
+- Continual authentication by default, direct actor IDs, App-owned roles, and capability checks.
 - A source-owned operating application built with TanStack Start and shadcn/ui.
 - Generated HTTP endpoints, OpenAPI, a typed Effect client, and MCP tools from one model contract.
 - A CRM example that exercises ordinary CRUD and a custom lead-conversion action end to end.
@@ -48,8 +48,10 @@ pnpm setup
 pnpm dev
 ```
 
-Open <http://localhost:3002> and choose a local development identity. Create a lead, convert it,
-or inspect the model and generated interfaces in the **Developer Center**.
+Open the App through its Continual preview or deployment URL. Continual authenticates the user and
+the App projects that `us_…` ID into its own role-assignable principal without issuing another user
+ID. Create a lead, convert it, or inspect the model and generated interfaces in the **Developer
+Center**.
 
 `pnpm setup` creates `apps/company-os/.env` from the example when needed, creates the configured
 database on local PostgreSQL when needed, and applies migrations and required records. Edit that

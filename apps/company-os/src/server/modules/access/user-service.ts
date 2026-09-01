@@ -1,12 +1,19 @@
 import { Model } from "@company/model"
-import type { ObjectCreateInput, ObjectRecord } from "@company/runtime"
+import {
+  RecordId,
+  type ObjectCreateInput,
+  type ObjectRecord,
+} from "@company/runtime"
+import type { ObjectInsert } from "@company/runtime/effect/object-repository"
 import { Context, Effect, Layer } from "effect"
 
+import { currentActorId } from "@/server/invocation-context"
 import { ObjectRepositories } from "@/server/model/object-repositories"
 import {
   makeBaseObjectService,
   makeObjectWriter,
 } from "@/server/model/object-service"
+import { ROOT_ID } from "@/system-records"
 
 type UserRecord = ObjectRecord<(typeof Model.objects)["user"]>
 type UserCreateInput = ObjectCreateInput<(typeof Model.objects)["user"]>
@@ -18,8 +25,24 @@ const make = Effect.gen(function* () {
 
   const provision = Effect.fn("@company/UserService.provision")(function* (
     input: Pick<UserRecord, "email" | "name"> &
-      Partial<Pick<UserRecord, "image">>
+      Partial<Pick<UserRecord, "image">> & { readonly id?: string }
   ) {
+    if (input.id !== undefined) {
+      const actorId = yield* currentActorId
+      return yield* repository.insert({
+        aliases: [],
+        createdBy: actorId,
+        email: input.email,
+        id: RecordId("user")(input.id),
+        image: input.image ?? null,
+        metadata: {},
+        name: input.name,
+        parent: ROOT_ID,
+        status: "active",
+        systemManaged: false,
+        updatedBy: actorId,
+      } satisfies ObjectInsert<(typeof Model.objects)["user"]>)
+    }
     const createInput: UserCreateInput =
       input.image === undefined
         ? { email: input.email, name: input.name }
