@@ -21,7 +21,8 @@ const sandboxPreviewHosts = [
     .filter(Boolean) ?? []),
 ]
 
-// Dev and preview run the server inside workerd, which only sees Worker vars.
+// Preview and opted-in workerd dev run the server inside workerd, which only
+// sees Worker vars; ordinary Node dev reads the process environment directly.
 // Production never gets values this way: the platform supplies bindings at
 // deploy time, and the committed wrangler.jsonc stays credential-free.
 const devVarNames = [
@@ -46,15 +47,20 @@ function devVars(): Record<string, string> {
   return vars
 }
 
-export default defineConfig(({ command, mode }) => ({
+// workerd cannot open outbound database sockets in some sandbox runtimes, so
+// ordinary dev serves SSR from Node. Build and preview keep workerd so every
+// deploy path still exercises the Worker runtime; CONTINUAL_WORKERD_DEV=1
+// opts dev back in for full fidelity.
+const workerdDev = process.env.CONTINUAL_WORKERD_DEV === "1"
+
+export default defineConfig(({ command, mode, isPreview }) => ({
   resolve: { tsconfigPaths: true },
   plugins: [
     // The Cloudflare plugin emits dist/server/wrangler.json and the Worker
-    // build that `bundle:continual` packages. Vitest drives its own Node
-    // pipeline, so the plugin stays out of test mode.
-    ...(mode === "test"
-      ? []
-      : [
+    // build that `bundle:continual` packages; preview serves that build in
+    // workerd. Vitest and ordinary dev run in Node.
+    ...(mode !== "test" && (command === "build" || isPreview || workerdDev)
+      ? [
           cloudflare({
             viteEnvironment: { name: "ssr" },
             config: (config) =>
@@ -62,7 +68,8 @@ export default defineConfig(({ command, mode }) => ({
                 ? { vars: { ...config.vars, ...devVars() } }
                 : {},
           }),
-        ]),
+        ]
+      : []),
     devtools(),
     tailwindcss(),
     tanstackStart({
