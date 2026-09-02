@@ -212,8 +212,8 @@ catalogs:
       specifier: 1.54.2
       version: 1.54.2
     '@continual/sdk':
-      specifier: 0.1.4
-      version: 0.1.4
+      specifier: 0.1.5
+      version: 0.1.5
     '@effect/platform-node':
       specifier: 4.0.0-beta.107
       version: 4.0.0-beta.107
@@ -380,7 +380,7 @@ importers:
         version: link:../../packages/ui
       '@continual/sdk':
         specifier: 'catalog:'
-        version: 0.1.4
+        version: 0.1.5
       '@effect/platform-node':
         specifier: 'catalog:'
         version: 4.0.0-beta.107(effect@4.0.0-beta.107)(ioredis@5.11.1)
@@ -604,7 +604,7 @@ importers:
         version: link:../../packages/ui
       '@continual/sdk':
         specifier: 'catalog:'
-        version: 0.1.4
+        version: 0.1.5
       '@tailwindcss/vite':
         specifier: 'catalog:'
         version: 4.3.0(vite@8.0.16(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0))
@@ -659,7 +659,7 @@ importers:
         version: link:../../packages/ui
       '@continual/sdk':
         specifier: 'catalog:'
-        version: 0.1.4
+        version: 0.1.5
       '@tailwindcss/vite':
         specifier: 'catalog:'
         version: 4.3.0(vite@8.0.16(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0))
@@ -714,7 +714,7 @@ importers:
         version: link:../../packages/ui
       '@continual/sdk':
         specifier: 'catalog:'
-        version: 0.1.4
+        version: 0.1.5
       '@tailwindcss/vite':
         specifier: 'catalog:'
         version: 4.3.0(vite@8.0.16(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0))
@@ -996,8 +996,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@continual/sdk@0.1.4':
-    resolution: {integrity: sha512-UL+h9pslKJd9Xhr8kq2Mgg1LsEI9mjE64J92jhyLnLuFEoUAUHsxUn9gm/i+DQxcpKq4GHviHlbdrnsY4gEfjg==}
+  '@continual/sdk@0.1.5':
+    resolution: {integrity: sha512-KEb5BIKOZja83PmD99Uf5Ri3+j/6JLBGdbfYiSqoHQkYr/gExyMnF9O5K6x6tBex7pa9VybjQFaY9DATx/91qw==}
     engines: {node: '>=24.0.0'}
 
   '@cspotcode/source-map-support@0.8.1':
@@ -5732,7 +5732,7 @@ snapshots:
   '@cloudflare/workerd-windows-64@1.20260828.1':
     optional: true
 
-  '@continual/sdk@0.1.4':
+  '@continual/sdk@0.1.5':
     dependencies:
       zod: 3.25.76
       zod-to-json-schema: 3.25.2(zod@3.25.76)

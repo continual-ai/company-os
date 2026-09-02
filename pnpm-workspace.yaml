@@ -10,7 +10,7 @@ packages:
 catalog:
   "@base-ui/react": 1.7.0
   "@cloudflare/vite-plugin": 1.54.2
-  "@continual/sdk": 0.1.4
+  "@continual/sdk": 0.1.5
   "@effect/platform-node": 4.0.0-beta.107
   "@effect/sql-pg": 4.0.0-beta.107
   "@effect/vitest": 4.0.0-beta.107
@@ -66,3 +66,6 @@ allowBuilds:
   msw: true
   sharp: true
   workerd: true
+
+minimumReleaseAgeExclude:
+  - "@continual/sdk@0.1.5"
