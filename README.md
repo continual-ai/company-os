@@ -36,9 +36,7 @@ and database remain the authority for business rules and records.
 
 ## Quick start
 
-You need PostgreSQL 18, Node.js 24, and pnpm 11. The repository also includes a
-`mise.toml` for installing the pinned Node.js and pnpm toolchain with
-[mise](https://mise.jdx.dev/).
+You need PostgreSQL 18 or newer, Node.js 24 or newer, and pnpm 11 or newer.
 
 ```sh
 git clone https://github.com/continual-ai/company-os.git
@@ -188,6 +186,10 @@ Oxlint owns source lint and Company OS ownership rules. Turbo validates declared
 dependencies and dispatches package tasks such as model validation, tests, typechecking, and
 builds. Installing dependencies automatically connects the compatible Effect diagnostics to
 Oxlint; there is no separate developer command for that integration.
+
+Cloud Agents use [`.cursor/environment.json`](.cursor/environment.json) for install and
+startup. The install script refreshes dependencies; the start script brings up local PostgreSQL and
+runs `pnpm setup`. The Company OS app is available from the `company-os` terminal on port 3002.
 
 Repository-wide constraints live in [`AGENTS.md`](AGENTS.md). Product and ownership context for
 coding agents lives in [`.agents/skills`](.agents/skills).
