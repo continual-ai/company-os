@@ -95,6 +95,8 @@ An app that owns migrations runs them inside `bundle:continual` whenever `DATABA
 so deployment sequencing lives in this repository rather than in any platform.
 Publishing the artifact is a hosting platform's concern; this repository guarantees only the contract
 above and never encodes a platform's release or deployment records.
+An optional app that calls the central app on behalf of the current user forwards the hosting
+platform's runtime identity headers from the incoming request; no app mints identity itself.
 
 ## Stack
 

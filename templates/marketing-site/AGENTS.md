@@ -14,3 +14,4 @@ The committed `wrangler.jsonc` carries build-time configuration only; never add 
 
 Keep the checked-in TanStack Start stack; do not replace it or scaffold a parallel app.
 Use `@company/model` for browser-safe semantics and `@company/ui` for presentation primitives.
+A server route that calls the central app on behalf of the current user forwards the hosting platform's runtime identity headers from the incoming request (`runtimeIdentityHeaders(request)` from `@continual/sdk/app`); it never mints identity itself.
