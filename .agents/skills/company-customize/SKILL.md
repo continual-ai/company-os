@@ -3,7 +3,9 @@ name: company-customize
 description:
   Customize an established Company OS fork by changing its model, governed capabilities, workflows,
   integrations, background work, branding, or interface. Use for company-specific product work
-  after onboarding, not initial discovery or merging upstream scaffold changes.
+  after onboarding, including deciding whether a request belongs in the central application, in a
+  separate optional app created per AGENTS.md, or needs a clarifying question first. Not for initial
+  discovery or merging upstream scaffold changes.
 ---
 
 # Company Customize

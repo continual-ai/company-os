@@ -109,7 +109,8 @@ above and never encodes a platform's release or deployment records.
 - Use TanStack Form through each application's source-owned form hook and field components. Keep
   Effect Schema as the authoritative decoder and map canonical API violations into form errors at
   one application boundary.
-- Use `pnpm` and Turborepo. Do not add another frontend framework or component library.
+- Use `pnpm` and Turborepo. Do not add another frontend framework or component library, and do not
+  rebuild an existing app on one; a request for another framework is met on the checked-in stack.
 - Preserve an ordinary Fetch-compatible runtime boundary where practical.
 
 ## Application clients and forms
