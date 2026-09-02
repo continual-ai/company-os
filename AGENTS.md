@@ -41,11 +41,10 @@ planning artifact instead.
 ## Context skills
 
 - Use `$company-os` when product intent, business semantics, ownership, or architecture tradeoffs
-  are not answerable from the repository alone.
-- Use `$continual` when deciding whether an optional hosted capability belongs in Continual or the
-  standalone Company OS.
+  are not answerable from the repository alone, including whether a capability belongs in this
+  standalone repository or in an optional hosting platform.
 
-Both skills are challengeable working context. Read only the relevant reference and keep Current,
+The skill is challengeable working context. Read only the relevant reference and keep Current,
 Direction, and Vision distinct. The canonical skills live in `.agents/skills`; `.codex/skills` and
 `.claude/skills` point there.
 
@@ -80,6 +79,22 @@ relative filesystem path or a TypeScript `paths` shortcut. Use `@/*` for app-loc
 would otherwise traverse a parent directory and simple relative imports within a package.
 Package-local generator aliases such as `@company/ui/*` may resolve back into the same package. Oxlint
 and `turbo boundaries` enforce these conventions.
+
+## Adding and deploying apps
+
+Every checkout has one central `apps/company-os` and one `@company/model`; never scaffold a replacement
+or a parallel app for capabilities that belong to them.
+Optional apps are copies of the repository's templates: run `pnpm app:create` to list them and
+`pnpm app:create <template> <app-name>` to add one, using `base` when no closer starter exists.
+The app name becomes the directory under `apps/`, the package name, and the permanent app key on any
+hosting platform, so choose a short kebab-case name and never rename a deployed app's directory.
+Every app carries the same deployment contract: `pnpm bundle:continual` produces
+`dist/server/wrangler.json`, `dist/client`, and the Wrangler dry-run output in `.continual/wrangler`;
+the committed `wrangler.jsonc` holds build-time settings only; `GET /api/health` stays dependency-free.
+An app that owns migrations runs them inside `bundle:continual` whenever `DATABASE_URL` is configured,
+so deployment sequencing lives in this repository rather than in any platform.
+Publishing the artifact is a hosting platform's concern; this repository guarantees only the contract
+above and never encodes a platform's release or deployment records.
 
 ## Stack
 

@@ -1,4 +1,0 @@
-interface:
-  display_name: "Deploy App"
-  short_description: "Bundle and publish an app through the hosting platform"
-  default_prompt: "Use $deploy-app to migrate, bundle, and publish an application from this Company OS project."

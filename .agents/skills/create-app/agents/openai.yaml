@@ -1,4 +1,0 @@
-interface:
-  display_name: "Create App"
-  short_description: "Create an optional app from a runnable template"
-  default_prompt: "Use $create-app to create and bootstrap an optional application in this Company OS project."

@@ -1,4 +1,0 @@
-interface:
-  display_name: "Continual"
-  short_description: "Evolving hosted-platform decision context"
-  default_prompt: "Use $continual to compare hosted and standalone ownership without treating proposed platform boundaries as settled."
