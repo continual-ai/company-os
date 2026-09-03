@@ -149,11 +149,12 @@ The repository is already a complete project: customize its one model and centra
 - [`apps/company-os/src/server/modules`](apps/company-os/src/server/modules) owns private business
   implementations.
 
-The repository includes coding-agent skills for onboarding a company, extending an established
-fork, and incorporating upstream improvements:
+The repository includes coding-agent skills: `$onboard` for a company's first operation,
+`$architecture` for ownership and design context, `$upgrade` for upstream changes, and `$review` for
+a strict maintainability audit.
 
 ```text
-Use $company-onboard to adapt this repository to Acme and build our customer onboarding process.
+Use $onboard to adapt this repository to Acme and build our customer onboarding process.
 Track the customer, milestones, owners, blockers, and launch date. Let an agent prepare follow-ups,
 but require a person to approve anything sent to the customer.
 ```
@@ -187,13 +188,8 @@ dependencies and dispatches package tasks such as model validation, tests, typec
 builds. Installing dependencies automatically connects the compatible Effect diagnostics to
 Oxlint; there is no separate developer command for that integration.
 
-Cloud Agents use [`.cursor/environment.json`](.cursor/environment.json) for install and startup.
-The install script refreshes dependencies, the start script brings up local PostgreSQL, and the
-application development task migrates its database before serving. The Company OS app is available
-from the `company-os` terminal on port 3002.
-
-Repository-wide constraints live in [`AGENTS.md`](AGENTS.md). Product and ownership context for
-coding agents lives in [`.agents/skills`](.agents/skills).
+Repository-wide working constraints live in [`AGENTS.md`](AGENTS.md). Product and ownership context
+for coding agents lives in [`.agents/skills`](.agents/skills).
 
 Focused documentation lives under [`docs`](docs/README.md):
 

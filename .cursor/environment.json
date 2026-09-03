@@ -1,7 +1,7 @@
 {
   "name": "Company OS",
-  "install": "bash .cursor/cloud-install.sh",
-  "start": "bash .cursor/cloud-start.sh",
+  "install": "bash .cursor/install.sh",
+  "start": "sudo pg_ctlcluster 18 main start || true\npg_isready -h 127.0.0.1 -p 5432",
   "ports": [
     {
       "name": "company-os",
@@ -11,7 +11,7 @@
   "terminals": [
     {
       "name": "company-os",
-      "command": "pnpm turbo run dev --filter=company-os -- --host 0.0.0.0",
+      "command": "pnpm dev",
       "description": "Company OS development server at http://localhost:3002"
     }
   ]

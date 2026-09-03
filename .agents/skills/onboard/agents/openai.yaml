@@ -1,0 +1,4 @@
+interface:
+  display_name: "Onboard"
+  short_description: "Adapt this fork to a company and first use case"
+  default_prompt: "Use $onboard to adapt this fork to my company and deliver the first requested operation end to end."

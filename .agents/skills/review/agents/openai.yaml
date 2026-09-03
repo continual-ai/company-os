@@ -1,0 +1,4 @@
+interface:
+  display_name: "Review"
+  short_description: "Extremely strict maintainability and abstraction audit"
+  default_prompt: "Use $review for a thermo-nuclear code quality review of this branch."
