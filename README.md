@@ -187,13 +187,8 @@ dependencies and dispatches package tasks such as model validation, tests, typec
 builds. Installing dependencies automatically connects the compatible Effect diagnostics to
 Oxlint; there is no separate developer command for that integration.
 
-Cloud Agents use [`.cursor/environment.json`](.cursor/environment.json). Install puts Node 24, pnpm
-11, and PostgreSQL 18 on the machine and refreshes workspace dependencies. Start brings PostgreSQL
-up on `127.0.0.1:5432`. After that, the same `pnpm` commands as local development apply. The
-`company-os` terminal runs `pnpm dev` on port 3002.
-
-Repository-wide constraints live in [`AGENTS.md`](AGENTS.md). Product and ownership context for
-coding agents lives in [`.agents/skills`](.agents/skills).
+Repository-wide working constraints live in [`AGENTS.md`](AGENTS.md). Product and ownership context
+for coding agents lives in [`.agents/skills`](.agents/skills).
 
 Focused documentation lives under [`docs`](docs/README.md):
 
