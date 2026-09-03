@@ -187,10 +187,10 @@ dependencies and dispatches package tasks such as model validation, tests, typec
 builds. Installing dependencies automatically connects the compatible Effect diagnostics to
 Oxlint; there is no separate developer command for that integration.
 
-Cloud Agents use [`.cursor/environment.json`](.cursor/environment.json) for install and startup.
-The install script refreshes dependencies, the start script brings up local PostgreSQL, and the
-application development task migrates its database before serving. The Company OS app is available
-from the `company-os` terminal on port 3002.
+Cloud Agents use [`.cursor/environment.json`](.cursor/environment.json). Install puts Node 24, pnpm
+11, and PostgreSQL 18 on the machine and refreshes workspace dependencies. Start brings PostgreSQL
+up on `127.0.0.1:5432`. After that, the same `pnpm` commands as local development apply. The
+`company-os` terminal runs `pnpm dev` on port 3002.
 
 Repository-wide constraints live in [`AGENTS.md`](AGENTS.md). Product and ownership context for
 coding agents lives in [`.agents/skills`](.agents/skills).

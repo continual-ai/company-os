@@ -154,3 +154,10 @@ declare exact cardinality unless services, storage, deletion behavior, and tests
 Run `pnpm check` for formatting, lint, package boundaries, dead code, and TypeScript. It verifies
 without rewriting. Run `pnpm format` when formatting is needed. Run `pnpm build` after changing
 routing, bundling, or application dependencies.
+
+## Cursor Cloud specific instructions
+
+Environment install installs Node 24, pnpm 11, and PostgreSQL 18 when they are missing, then runs
+`pnpm install --frozen-lockfile`. Start only brings PostgreSQL up; it does not reinstall
+dependencies. After that, use the same `pnpm` commands as any other checkout. PostgreSQL listens on
+`127.0.0.1:5432` with trust for local TCP so `.env.example` works without a password.
