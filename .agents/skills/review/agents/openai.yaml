@@ -1,4 +1,4 @@
 interface:
   display_name: "Review"
-  short_description: "Strict maintainability and abstraction audit"
-  default_prompt: "Use $review for a deep code quality audit of this branch and push for the simpler structure."
+  short_description: "Extremely strict maintainability and abstraction audit"
+  default_prompt: "Use $review for a thermo-nuclear code quality review of this branch."
