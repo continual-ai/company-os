@@ -1,4 +1,4 @@
-# Company OS architecture context
+# Architecture context
 
 Use this reference for rationale and tradeoffs that are not evident from the package graph. The
 current implementation is evidence, not a target architecture.

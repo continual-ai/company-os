@@ -1,4 +1,0 @@
-interface:
-  display_name: "Company Customize"
-  short_description: "Customize company data, workflows, and interfaces"
-  default_prompt: "Use $company-customize to implement this company-specific change through the existing Company OS boundaries."

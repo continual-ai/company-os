@@ -153,7 +153,7 @@ The repository includes coding-agent skills for onboarding a company, extending 
 fork, and incorporating upstream improvements:
 
 ```text
-Use $company-onboard to adapt this repository to Acme and build our customer onboarding process.
+Use $onboard to adapt this repository to Acme and build our customer onboarding process.
 Track the customer, milestones, owners, blockers, and launch date. Let an agent prepare follow-ups,
 but require a person to approve anything sent to the customer.
 ```

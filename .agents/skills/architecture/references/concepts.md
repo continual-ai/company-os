@@ -1,11 +1,11 @@
-# Company OS product context
+# Product context
 
 This is a vocabulary and decision aid, not a roadmap or schema specification. Verify current
 definitions in code and introduce a concept only when a real company operation needs it.
 
 ## Current
 
-Company OS is software a company owns and changes to run its business. Customer-facing software,
+This repository is software a company owns and changes to run its business. Customer-facing software,
 internal work, integrations, and agents can share the same business records and actions while the
 company keeps its code and data.
 
@@ -97,8 +97,8 @@ through explicit, reviewable, and reversible mechanisms rather than silent self-
 - Use the example company's language for business concepts.
 - Use plain descriptions in public documentation. Internal shorthand such as "source-owned" should
   not replace saying who owns the code, data, policy, or runtime.
-- Treat Company OS as the repository and shared foundation, not the required visible name of a
-  customer's operation.
+- Treat this repository as the shared foundation, not the required visible name of a customer's
+  operation.
 - Use domain terms such as revenue engine or software factory only when the working system earns
   them through a concrete input, process, output, policy, and measure of success.
 - Name reusable concepts only after more than one concrete use establishes common semantics.

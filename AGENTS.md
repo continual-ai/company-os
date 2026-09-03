@@ -33,5 +33,5 @@ shortcuts across packages. Use explicit Effect v4 APIs (`Context.Service(..., { 
 implementation as `.layer`; not v3 `.Default` or `Live`). Do not make Effect the required public
 format of company definitions. Applications use TanStack Start, `@company/ui`, and TanStack Form.
 
-Read `$company-os` in `.agents/skills` only when product intent or ownership is not answerable from
-the repository. Keep Current, Direction, and Vision distinct.
+Read `$architecture` in `.agents/skills` only when product intent or ownership is not answerable
+from the repository. Keep Current, Direction, and Vision distinct.
