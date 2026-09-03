@@ -1,4 +1,0 @@
-interface:
-  display_name: "Customize"
-  short_description: "Change company data, workflows, and interfaces"
-  default_prompt: "Use $customize to implement this company-specific change through the existing package and ownership boundaries."
