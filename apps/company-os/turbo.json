@@ -1,0 +1,58 @@
+{
+  "$schema": "https://v2-10-12.turborepo.dev/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "bundle:continual": {
+      "cache": false,
+      "passThroughEnv": [
+        "APP_SECRET",
+        "CONTINUAL_EXECUTION_TOKEN",
+        "CONTINUAL_URL",
+        "DATABASE_MAX_CONNECTIONS",
+        "DATABASE_SCHEMA",
+        "DATABASE_URL"
+      ]
+    },
+    "db:check": {},
+    "db:generate": {
+      "cache": false
+    },
+    "db:migrate": {
+      "cache": false,
+      "passThroughEnv": [
+        "DATABASE_MAX_CONNECTIONS",
+        "DATABASE_SCHEMA",
+        "DATABASE_URL"
+      ]
+    },
+    "db:reset": {
+      "cache": false,
+      "passThroughEnv": [
+        "CONFIRM_DATABASE_RESET",
+        "DATABASE_MAX_CONNECTIONS",
+        "DATABASE_SCHEMA",
+        "DATABASE_URL"
+      ]
+    },
+    "dev": {
+      "dependsOn": ["db:migrate"]
+    },
+    "reset": {
+      "cache": false,
+      "passThroughEnv": [
+        "CONFIRM_DATABASE_RESET",
+        "DATABASE_MAX_CONNECTIONS",
+        "DATABASE_SCHEMA",
+        "DATABASE_URL"
+      ]
+    },
+    "test": {
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/fixtures/**", ".env"],
+      "passThroughEnv": [
+        "DATABASE_MAX_CONNECTIONS",
+        "DATABASE_SCHEMA",
+        "DATABASE_URL"
+      ]
+    }
+  }
+}

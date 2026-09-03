@@ -6,18 +6,18 @@
     "tsconfig.react.json"
   ],
   "tasks": {
+    "//#deadcode": {},
+    "//#format:check": {},
     "build": {
       "dependsOn": ["^build"],
       "env": ["VITE_CLIENT_PORTAL_URL", "VITE_COMPANY_OS_URL"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "outputs": [".output/**", "dist/**"]
+      "outputs": [".output/**", "dist/**", "!dist/**/.dev.vars"]
     },
     "deploy": {
       "cache": false
     },
-    "typecheck": {
-      "dependsOn": ["^typecheck"]
-    },
+    "typecheck": {},
     "lint": {
       "inputs": [
         "$TURBO_DEFAULT$",
@@ -28,38 +28,9 @@
     "bundle:continual": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "outputs": [".continual/**", "dist/**"]
+      "outputs": [".continual/**", "dist/**", "!dist/**/.dev.vars"]
     },
-    "db:check": {},
-    "db:generate": {
-      "cache": false
-    },
-    "db:migrate": {
-      "cache": false,
-      "passThroughEnv": ["DATABASE_SCHEMA", "DATABASE_URL"]
-    },
-    "db:reset": {
-      "cache": false,
-      "passThroughEnv": [
-        "CONFIRM_DATABASE_RESET",
-        "DATABASE_SCHEMA",
-        "DATABASE_URL"
-      ]
-    },
-    "model:check": {},
-    "reset": {
-      "cache": false,
-      "passThroughEnv": ["CONFIRM_DATABASE_RESET", "DATABASE_URL"]
-    },
-    "setup": {
-      "cache": false,
-      "passThroughEnv": ["DATABASE_SCHEMA", "DATABASE_URL"]
-    },
-    "test": {
-      "dependsOn": ["^test"],
-      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/fixtures/**", ".env"],
-      "passThroughEnv": ["DATABASE_SCHEMA", "DATABASE_URL"]
-    },
+    "test": {},
     "dev": {
       "cache": false,
       "env": ["VITE_CLIENT_PORTAL_URL", "VITE_COMPANY_OS_URL"],
@@ -67,6 +38,7 @@
         "APP_SECRET",
         "AUTH_*",
         "CONTINUAL_*",
+        "DATABASE_MAX_CONNECTIONS",
         "DATABASE_SCHEMA",
         "DATABASE_URL"
       ],

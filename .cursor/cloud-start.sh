@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Per-boot Cloud Agent start: ensure PostgreSQL is up, then converge local app state.
+# Per-boot Cloud Agent start: ensure PostgreSQL is up before development runs migrations.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -71,4 +71,3 @@ SQL
 ensure_postgres
 
 echo "PostgreSQL ready · node $(node -v) · pnpm $(pnpm -v)"
-pnpm setup

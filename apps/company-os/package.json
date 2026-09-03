@@ -16,7 +16,6 @@
     "lint": "oxlint .",
     "preview": "vite preview --port 3102 --host 0.0.0.0",
     "reset": "pnpm run db:reset",
-    "setup": "tsx tools/setup.ts && pnpm run db:migrate",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

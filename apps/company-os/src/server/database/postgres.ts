@@ -58,7 +58,7 @@ const clientLayer = PgClient.layerConfig({
   applicationName: Config.succeed("company-os"),
   connectTimeout: Config.succeed("5 seconds"),
   maxConnections: Config.int("DATABASE_MAX_CONNECTIONS").pipe(
-    Config.withDefault(10)
+    Config.withDefault(2)
   ),
   url: connectionUrlConfig,
 })

@@ -8,12 +8,12 @@ to its repositories and services.
 Run the commands below from the repository root. Database-writing tasks explicitly target the
 central app because it is the only package that owns the Company OS database.
 
-| Command       | Purpose                                                          |
-| ------------- | ---------------------------------------------------------------- |
-| `db:generate` | Generate a committed migration from the schema projection.       |
-| `db:check`    | Validate the committed migration history.                        |
-| `db:migrate`  | Apply committed migrations and converge required system records. |
-| `db:reset`    | Destructively rebuild a dedicated local database.                |
+| Command       | Purpose                                                        |
+| ------------- | -------------------------------------------------------------- |
+| `db:generate` | Generate a committed migration from the schema projection.     |
+| `db:check`    | Validate the committed migration history.                      |
+| `db:migrate`  | Apply committed migrations and ensure required system records. |
+| `db:reset`    | Destructively rebuild a dedicated local database.              |
 
 ## Runtime composition
 
@@ -32,27 +32,28 @@ is not a second repository abstraction. The reusable `@company/postgres` functio
 concrete Drizzle value explicitly and implement the portable repository contracts. Production and
 tests use the same binding. They differ only in where the PostgreSQL URL and lifecycle come from.
 
-## Local setup
+## Local development
 
-Run PostgreSQL locally before starting Company OS. Then prepare the repository once:
+Run PostgreSQL locally before starting Company OS, then start development:
 
 ```sh
-pnpm setup
+pnpm dev
 ```
 
-The setup command creates `apps/company-os/.env` from `.env.example` when it is missing. Its default
-URL is the standard local endpoint `postgresql://127.0.0.1:5432/company_os`; edit `.env` when
-necessary. Setup creates that database when it targets local PostgreSQL, then applies committed
-migrations and converges required records. It does not install or start PostgreSQL. Run `pnpm dev`
-after setup to start the application.
+Turbo runs the App's `db:migrate` task before its development server. `.env.example` supplies the
+standard local endpoint `postgresql://localhost:5432/company_os`; create `.env.local` at the
+repository root or in `apps/company-os` only when local connection details differ. Injected
+environment variables take precedence over both. The migration task creates the database when it
+targets local PostgreSQL, then applies committed migrations and required records. It does not
+install or start PostgreSQL.
 
-The normal convergence command is:
+Run the migration without starting the server with:
 
 ```sh
 pnpm turbo run db:migrate --filter=company-os
 ```
 
-`db:migrate` applies pending committed migrations and then idempotently converges the required Root
+`db:migrate` applies pending committed migrations and then idempotently ensures the required Root
 and trusted system identity. Continual human actor IDs are stored directly and do not create local
 User or role records. The command is safe to run repeatedly.
 
@@ -152,8 +153,9 @@ Turbo to run the reset task of every application that owns local mutable state.
 ## Production migration
 
 The root `pnpm deploy` command dispatches application-owned deployment tasks through Turbo. The
-central application currently reports that deployment is not implemented, so run the migration job
-explicitly when preparing a real deployment.
+central application currently reports that deployment is not implemented. Continual's current
+publisher calls `bundle:continual`, which runs migrations whenever `DATABASE_URL` is configured
+before creating the artifact. Other hosting environments must run the migration job explicitly.
 
 Run one migration job from the same immutable revision as the application:
 

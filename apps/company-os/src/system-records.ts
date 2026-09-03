@@ -1,6 +1,6 @@
 import { RecordId } from "@company/runtime"
 
-/** Stable records owned by the application and converged at deployment. */
+/** Stable records owned by the application and ensured during migration. */
 // These persisted identifiers predate the Root terminology. They remain
 // stable application ABI; code derives semantics from their branded types.
 export const ROOT_ID = RecordId("root")("platform_system")

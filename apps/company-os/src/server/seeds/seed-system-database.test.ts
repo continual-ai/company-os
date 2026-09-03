@@ -32,7 +32,7 @@ import { seedSystem } from "./seed-system"
 
 describe("Company OS seeds", () => {
   itDatabase(
-    "converges stable system-managed records without aliases",
+    "ensures stable system-managed records without aliases",
     Effect.fn(function* () {
       const result = yield* Effect.gen(function* () {
         const database = yield* Database

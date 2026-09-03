@@ -69,6 +69,20 @@ function continualIdentityId(actorId: string): IdentityId {
   return actorId as IdentityId
 }
 
+function localDevelopmentIdentity(): VerifiedIdentityInvocation | null {
+  if (import.meta.env.MODE !== "development") return null
+  // The development server is the trust boundary. Do not accept a
+  // caller-supplied identity header that could be mistaken for provider proof.
+  const subject = {
+    email: "developer@company.test",
+    issuer: "local-development",
+    kind: "user" as const,
+    name: "Local Developer",
+    subject: "default",
+  } satisfies AuthenticatedSubject
+  return { actor: subject, authorizationSubject: subject }
+}
+
 const make = Effect.gen(function* () {
   const config = {
     executionToken: yield* Config.string("CONTINUAL_EXECUTION_TOKEN").pipe(
@@ -81,7 +95,7 @@ const make = Effect.gen(function* () {
     headers: Headers
   ) {
     const credential = runtimeCredential(headers, config)
-    if (credential === null) return null
+    if (credential === null) return localDevelopmentIdentity()
 
     const actor = yield* Effect.tryPromise({
       try: async () => {

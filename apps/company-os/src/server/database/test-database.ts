@@ -7,7 +7,7 @@ import { Client } from "pg"
 import { Database } from "./database"
 import { applyMigrations } from "./migrations"
 
-const defaultAdminUrl = "postgresql://127.0.0.1:5432/postgres"
+const defaultAdminUrl = "postgresql://localhost:5432/postgres"
 
 export interface TestDatabaseTemplate {
   readonly adminUrl: string
@@ -29,7 +29,7 @@ function databaseCreationError(cause: unknown): TestDatabaseError {
   return new TestDatabaseError({
     cause,
     message:
-      "Could not create an isolated PostgreSQL test database. Ensure DATABASE_URL reaches PostgreSQL with a role that has CREATEDB.",
+      "Could not create an isolated PostgreSQL test database. Ensure DATABASE_URL includes any required username and password, reaches PostgreSQL, and uses a role with CREATEDB.",
   })
 }
 

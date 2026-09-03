@@ -42,7 +42,6 @@ You need PostgreSQL 18 or newer, Node.js 24 or newer, and pnpm 11 or newer.
 git clone https://github.com/continual-ai/company-os.git
 cd company-os
 pnpm install
-pnpm setup
 pnpm dev
 ```
 
@@ -51,12 +50,14 @@ the App projects that `us_…` ID into its own role-assignable principal without
 ID. Create a lead, convert it, or inspect the model and generated interfaces in the **Developer
 Center**.
 
-`pnpm setup` creates `apps/company-os/.env` from the example when needed, creates the configured
-database on local PostgreSQL when needed, and applies migrations and required records. Edit that
-file when your local role, password, host, port, or database name differs. PostgreSQL itself must
-already be running. `pnpm dev` runs every application development task. Maintained template source
-is checked and built but does not run as an application until it is copied into `apps/*`. Use
-Turbo's `--filter` option directly when you want to run only part of the monorepo.
+`pnpm dev` runs each application's database migration task before starting its development server.
+The central App uses `.env.example` as its local defaults, creates the configured database on local
+PostgreSQL when needed, and applies migrations and required records. Injected environment variables
+take precedence; create `.env.local` at the repository root or in `apps/company-os` only when your
+local role, password, host, port, or database name differs. PostgreSQL itself must already be
+running. Maintained template source is checked and built but does not run as an application until
+it is copied into `apps/*`. Use Turbo's `--filter` option directly when you want to run only part of
+the monorepo.
 
 ## Try the included operation
 
@@ -170,10 +171,9 @@ The fork remains authoritative for its source, business policy, and records.
 
 | Command                         | Purpose                                                  |
 | ------------------------------- | -------------------------------------------------------- |
-| `pnpm dev`                      | Run every application development task                   |
-| `pnpm setup`                    | Create local config and prepare the application database |
+| `pnpm dev`                      | Migrate and run every application development task       |
 | `pnpm reset`                    | Destructively rebuild local application state            |
-| `pnpm deploy`                   | Run every application deployment task                    |
+| `pnpm deploy`                   | Run application deployment tasks; currently placeholders |
 | `pnpm app:create`               | List optional application templates                      |
 | `pnpm app:create client-portal` | Create and bootstrap an optional client portal           |
 | `pnpm format`                   | Format the repository                                    |
@@ -187,9 +187,10 @@ dependencies and dispatches package tasks such as model validation, tests, typec
 builds. Installing dependencies automatically connects the compatible Effect diagnostics to
 Oxlint; there is no separate developer command for that integration.
 
-Cloud Agents use [`.cursor/environment.json`](.cursor/environment.json) for install and
-startup. The install script refreshes dependencies; the start script brings up local PostgreSQL and
-runs `pnpm setup`. The Company OS app is available from the `company-os` terminal on port 3002.
+Cloud Agents use [`.cursor/environment.json`](.cursor/environment.json) for install and startup.
+The install script refreshes dependencies, the start script brings up local PostgreSQL, and the
+application development task migrates its database before serving. The Company OS app is available
+from the `company-os` terminal on port 3002.
 
 Repository-wide constraints live in [`AGENTS.md`](AGENTS.md). Product and ownership context for
 coding agents lives in [`.agents/skills`](.agents/skills).

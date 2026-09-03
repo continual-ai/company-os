@@ -7,22 +7,26 @@ maintaining separate business rules.
 
 ## Develop
 
-From the repository root, prepare the application once and then start it:
+From the repository root, start development:
 
 ```sh
-pnpm setup
 pnpm dev
 ```
 
-PostgreSQL must already be running at the configured `DATABASE_URL`; the repository does not manage
-the server. Open the development server through a Continual managed preview or proxied App URL so
-the request includes its runtime identity. Open `/developer` to inspect the current model,
-generated API and SDK, MCP tools, and design system.
+Turbo runs this application's idempotent `db:migrate` task before its development server. PostgreSQL
+must already be running at the configured `DATABASE_URL`; the repository does not manage the server.
+The Vite development server supplies a local development identity when no provider credential is
+present. Continual managed previews and proxied App URLs use the verified runtime identity supplied
+by Continual instead. Open `/developer` to inspect the current model, generated API and SDK, MCP
+tools, and design system.
 
-`pnpm setup` creates `.env` from [`.env.example`](.env.example) when it is missing. The example is
-the deployment configuration contract; the ignored `.env` contains local values. Only `VITE_`
-variables may enter browser code. Server code validates private configuration with Effect Config
-rather than reading the process environment directly.
+[`.env.example`](.env.example) supplies executable local defaults. Create an ignored `.env.local`
+at the repository root or in this App only to override them. Values injected by a sandbox or
+deployment take precedence over both. The migration command creates a configured local database
+when needed, then applies migrations and required records. Run it directly with
+`pnpm turbo run db:migrate --filter=company-os`. Node loads local values only for development and
+database commands; Effect Config is the application's single typed configuration interface in Node
+and workerd. Only `VITE_` variables may enter browser code.
 
 Set `VITE_COMPANY_OS_URL` to the public deployment origin when canonical URLs and the MCP Host/Origin
 allowlist should use it. When it is unset, the app omits canonical URLs instead of publishing a local
@@ -55,7 +59,7 @@ primitives belong in `@company/ui`. Server-only application code stays under `sr
 - `src/server/model` owns generic model execution bindings and repositories.
 - `src/server/modules/<module>` owns behavior specific to a business module.
 - `src/server/transport` projects the governed implementation to HTTP and MCP.
-- `tools` contains the app's explicit setup and database command entrypoints.
+- `tools` contains the app's explicit database command entrypoints and local environment loader.
 
 Put business behavior in the model and governed server path rather than duplicating policy in React
 or customization configuration.

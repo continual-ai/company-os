@@ -18,6 +18,6 @@ Migrations must stay schema-relative: no `public.` qualification and no cross-sc
 
 ## Local development
 
-`pnpm setup` then `pnpm dev` (port 3002).
+From the repository root, `pnpm dev` runs `db:migrate` and then starts the App on port 3002.
 Ordinary dev serves SSR from Node; `CONTINUAL_WORKERD_DEV=1` opts dev into workerd for full deploy fidelity, and preview always uses workerd.
 Under workerd the local `DATABASE_URL` needs an explicit user, and connection pools must never be shared across requests.

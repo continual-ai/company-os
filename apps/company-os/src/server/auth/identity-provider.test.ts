@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import { IdentityProvider } from "./identity-provider"
 
 afterEach(() => {
+  vi.unstubAllEnvs()
   vi.unstubAllGlobals()
 })
 
@@ -75,7 +76,31 @@ describe("IdentityProvider", () => {
     )
   })
 
-  it("treats requests without a provider credential as anonymous", async () => {
+  it("uses a stable local identity in the development server", async () => {
+    vi.stubEnv("MODE", "development")
+    const provider = Effect.runSync(IdentityProvider.make)
+    await expect(
+      Effect.runPromise(provider.identify(new Headers()))
+    ).resolves.toEqual({
+      actor: {
+        email: "developer@company.test",
+        issuer: "local-development",
+        kind: "user",
+        name: "Local Developer",
+        subject: "default",
+      },
+      authorizationSubject: {
+        email: "developer@company.test",
+        issuer: "local-development",
+        kind: "user",
+        name: "Local Developer",
+        subject: "default",
+      },
+    })
+  })
+
+  it("treats requests without a provider credential as anonymous outside development", async () => {
+    vi.stubEnv("MODE", "test")
     const provider = Effect.runSync(IdentityProvider.make)
     await expect(
       Effect.runPromise(provider.identify(new Headers()))
