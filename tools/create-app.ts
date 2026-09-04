@@ -33,7 +33,15 @@ const dependencyMapSchema = Schema.Record(
   nonEmptyStringSchema,
   nonEmptyStringSchema
 )
+const continualAppConfigSchema = Schema.Struct({
+  database: Schema.optionalKey(Schema.Boolean),
+  description: Schema.optionalKey(nonEmptyStringSchema),
+  key: nonEmptyStringSchema,
+  name: nonEmptyStringSchema,
+  output: Schema.optionalKey(nonEmptyStringSchema),
+})
 const packageJsonSchema = Schema.Struct({
+  continual: continualAppConfigSchema,
   dependencies: Schema.optionalKey(dependencyMapSchema),
   devDependencies: Schema.optionalKey(dependencyMapSchema),
   name: nonEmptyStringSchema,
@@ -121,6 +129,13 @@ function assertAppName(name: string): string {
   return name
 }
 
+function appDisplayName(name: string): string {
+  return name
+    .split("-")
+    .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
+    .join(" ")
+}
+
 // The manifest is written in terms of the template id (turbo filters, script
 // arguments), so every occurrence is retargeted to the created app's name.
 function retarget(value: string, definition: TemplateManifest, name: string) {
@@ -141,6 +156,11 @@ function rewritePackage(
     `${JSON.stringify(
       {
         ...packageJson,
+        continual: {
+          ...packageJson.continual,
+          key: name,
+          name: appDisplayName(name),
+        },
         name,
         scripts: Object.fromEntries(
           Object.entries(definition.scripts).map(([key, script]) => [
@@ -153,25 +173,6 @@ function rewritePackage(
       2
     )}\n`
   )
-}
-
-// wrangler.jsonc keeps comments, so the name is rewritten textually rather
-// than through a JSON round-trip.
-function rewriteWorkerName(
-  destination: string,
-  definition: TemplateManifest,
-  name: string
-) {
-  const path = resolve(destination, "wrangler.jsonc")
-  if (!existsSync(path)) return
-  const source = readFileSync(path, "utf8")
-  const marker = `"name": "${definition.id}"`
-  if (!source.includes(marker)) {
-    fail(
-      `templates/${definition.id}/wrangler.jsonc must declare "name": "${definition.id}".`
-    )
-  }
-  writeFileSync(path, source.replace(marker, `"name": "${name}"`))
 }
 
 function run(command: readonly [string, ...string[]]) {
@@ -202,7 +203,6 @@ function addApp(
     recursive: true,
   })
   rewritePackage(destination, definition, name)
-  rewriteWorkerName(destination, definition, name)
 
   if (!bootstrap) return
   if (definition.environmentExample !== undefined) {

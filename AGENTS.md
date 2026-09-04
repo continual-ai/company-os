@@ -88,13 +88,16 @@ Optional apps are copies of the repository's templates: run `pnpm app:create` to
 `pnpm app:create <template> <app-name>` to add one, using `base` when no closer starter exists.
 The app name becomes the directory under `apps/`, the package name, and the permanent app key on any
 hosting platform, so choose a short kebab-case name and never rename a deployed app's directory.
-Every app carries the same deployment contract: `pnpm bundle:continual` produces
-`dist/server/wrangler.json`, `dist/client`, and the Wrangler dry-run output in `.continual/wrangler`;
-the committed `wrangler.jsonc` holds build-time settings only; `GET /api/health` stays dependency-free.
-An app that owns migrations runs them inside `bundle:continual` whenever `DATABASE_URL` is configured,
-so deployment sequencing lives in this repository rather than in any platform.
-Publishing the artifact is a hosting platform's concern; this repository guarantees only the contract
-above and never encodes a platform's release or deployment records.
+Every app carries the same deployment contract: its package manifest declares the stable App key and
+user-visible name under `continual`; `pnpm build` creates conventional `.output`; and its atomic
+`deploy` task publishes that existing output. Root `pnpm deploy` asks Turbo to build before invoking
+each selected App's deployment task. An app that owns migrations runs them in its deployment task
+before publication whenever `DATABASE_URL` is configured, so sequencing lives in this repository
+rather than in any platform. `GET /api/health` stays dependency-free. The current Continual adapter
+is the repository-pinned CLI and standard TanStack Start Vite configuration; do not add Wrangler or
+another provider-specific build path to an App.
+Publishing the artifact is a hosting platform's concern; this repository never encodes a platform's
+release or deployment records.
 An optional app that calls the central app on behalf of the current user forwards the hosting
 platform's runtime identity headers from the incoming request; no app mints identity itself.
 

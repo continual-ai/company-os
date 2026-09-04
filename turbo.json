@@ -15,6 +15,7 @@
       "outputs": [".output/**", "dist/**", "!dist/**/.dev.vars"]
     },
     "deploy": {
+      "dependsOn": ["build"],
       "cache": false
     },
     "typecheck": {},
@@ -24,11 +25,6 @@
         "$TURBO_ROOT$/.oxlintrc.json",
         "$TURBO_ROOT$/tools/oxlint/company-os/**/*.ts"
       ]
-    },
-    "bundle:continual": {
-      "dependsOn": ["^build"],
-      "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "outputs": [".continual/**", "dist/**", "!dist/**/.dev.vars"]
     },
     "test": {},
     "dev": {

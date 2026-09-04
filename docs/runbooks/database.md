@@ -152,10 +152,11 @@ Turbo to run the reset task of every application that owns local mutable state.
 
 ## Production migration
 
-The root `pnpm deploy` command dispatches application-owned deployment tasks through Turbo. The
-central application currently reports that deployment is not implemented. Continual's current
-publisher calls `bundle:continual`, which runs migrations whenever `DATABASE_URL` is configured
-before creating the artifact. Other hosting environments must run the migration job explicitly.
+The root `pnpm deploy` command dispatches application-owned deployment tasks through Turbo. Turbo
+builds each selected App before its deployment task runs. The central App deployment task migrates
+whenever `DATABASE_URL` is configured, then asks the repository-pinned Continual CLI to publish the
+existing build output. Other hosting environments must preserve the same build, migrate, publish
+ordering or run the migration job explicitly.
 
 Run one migration job from the same immutable revision as the application:
 

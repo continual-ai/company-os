@@ -32,6 +32,13 @@ Set `VITE_COMPANY_OS_URL` to the public deployment origin when canonical URLs an
 allowlist should use it. When it is unset, the app omits canonical URLs instead of publishing a local
 development origin.
 
+## Deploy
+
+Run `pnpm deploy` from the repository root. Turbo builds this App before its deployment task runs;
+the task migrates a configured database and then asks the repository-pinned Continual CLI to publish
+the existing `.output` artifact. Continual remains an optional publisher—the App owns its build,
+migrations, and runtime configuration.
+
 ## Ownership
 
 This application owns:

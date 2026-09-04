@@ -1,4 +1,5 @@
 import { modelMetadata } from "@company/model/metadata"
+import { buttonVariants } from "@company/ui/components/button"
 import { initDesignMode, initTelemetry } from "@continual/sdk/app-preview"
 import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router"
 import { useEffect } from "react"
@@ -21,7 +22,10 @@ export const Route = createRootRoute({
         <h1 className="mt-3 text-3xl font-semibold tracking-tight">
           Page not found
         </h1>
-        <a href="/" className="mt-6 inline-block text-sm font-medium underline">
+        <a
+          href="/"
+          className={buttonVariants({ className: "mt-6", variant: "link" })}
+        >
           Return home
         </a>
       </div>

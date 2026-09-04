@@ -5,16 +5,14 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "bundle:continual": "tsx tools/db-migrate.ts --if-configured && pnpm build && pnpm clean:continual && pnpm exec wrangler deploy --dry-run --config dist/server/wrangler.json --outdir .continual/wrangler",
-    "clean:continual": "node -e \"require('node:fs').rmSync('.continual/wrangler',{recursive:true,force:true})\"",
     "db:check": "drizzle-kit check --config drizzle.config.ts",
     "db:generate": "drizzle-kit generate --config drizzle.config.ts",
     "db:migrate": "tsx tools/db-migrate.ts",
     "db:reset": "tsx tools/db-reset.ts",
-    "deploy": "echo \"No deploy implemented for company-os.\"",
+    "deploy": "tsx tools/db-migrate.ts --if-configured && continual deploy",
     "dev": "vite dev --port 3002 --host 0.0.0.0",
     "lint": "oxlint .",
-    "preview": "vite preview --port 3102 --host 0.0.0.0",
+    "preview": "pnpm build && vite preview --port 3102 --host 0.0.0.0",
     "reset": "pnpm run db:reset",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
@@ -27,7 +25,6 @@
     "@continual/sdk": "catalog:",
     "@effect/platform-node": "catalog:",
     "@effect/sql-pg": "catalog:",
-    "@tailwindcss/vite": "catalog:",
     "@tanstack/react-form": "catalog:",
     "@tanstack/react-router": "catalog:",
     "@tanstack/react-start": "catalog:",
@@ -41,23 +38,22 @@
     "recharts": "catalog:"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "catalog:",
+    "@continual/tanstack-start": "catalog:",
     "@effect/vitest": "catalog:",
-    "@tanstack/devtools-vite": "catalog:",
     "@types/node": "catalog:",
     "@types/pg": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
-    "@vitejs/plugin-react": "catalog:",
     "drizzle-kit": "catalog:",
     "tsx": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:",
-    "wrangler": "catalog:",
     "zod": "catalog:"
   },
   "continual": {
+    "key": "company-os",
+    "name": "Company OS",
     "database": true
   }
 }

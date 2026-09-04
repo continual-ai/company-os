@@ -6,8 +6,9 @@ It is not a business authority: durable records, rules, and authorization live i
 ## Deployment contract
 
 The app directory name is its stable app key; never rename a deployed app's directory.
-`pnpm bundle:continual` produces the deployable artifact: `dist/server/wrangler.json`, `dist/client`, and the dry-run output in `.continual/wrangler`.
-The committed `wrangler.jsonc` carries build-time configuration only; never add credentials or vars to it.
+The package manifest declares that key and its user-visible name under `continual`.
+`pnpm build` produces conventional `.output`; root `pnpm deploy` makes Turbo build first and then asks the repository-pinned Continual CLI to publish that existing output.
+Do not add provider-specific build configuration.
 `GET /api/health` is the platform liveness probe and must stay dependency-free.
 
 ## Working in this app

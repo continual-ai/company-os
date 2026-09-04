@@ -6,9 +6,9 @@ It already exists and stays on its checked-in stack; never scaffold a replacemen
 ## Deployment contract
 
 The app directory name is its stable app key.
-`pnpm bundle:continual` produces the deployable artifact: `dist/server/wrangler.json`, `dist/client`, and the dry-run output in `.continual/wrangler`.
-It runs `db:migrate` first whenever `DATABASE_URL` is configured and skips it otherwise, so deployment sequencing lives in this script rather than in any platform.
-The committed `wrangler.jsonc` carries build-time configuration only; runtime configuration arrives as deploy-time bindings (`DATABASE_URL`, `DATABASE_SCHEMA`, `APP_SECRET`) and Continual's request-bound runtime headers, so never add credentials or vars to it.
+The package manifest declares that key and its user-visible name under `continual`.
+`pnpm build` produces conventional `.output`; root `pnpm deploy` makes Turbo build first, then the App deployment task migrates a configured database and asks the repository-pinned Continual CLI to publish that existing output.
+Runtime configuration arrives as deploy-time bindings (`DATABASE_URL`, `DATABASE_SCHEMA`, `APP_SECRET`) and Continual's request-bound runtime headers; do not add provider-specific build configuration.
 `GET /api/health` is the platform liveness probe and must stay dependency-free; `GET /health` is the database-backed readiness check.
 
 ## Data
@@ -19,5 +19,5 @@ Migrations must stay schema-relative: no `public.` qualification and no cross-sc
 ## Local development
 
 From the repository root, `pnpm dev` runs `db:migrate` and then starts the App on port 3002.
-Ordinary dev serves SSR from Node; `CONTINUAL_WORKERD_DEV=1` opts dev into workerd for full deploy fidelity, and preview always uses workerd.
+Ordinary dev serves SSR from Node; `pnpm --dir apps/company-os preview` rebuilds and serves the production artifact locally.
 Under workerd the local `DATABASE_URL` needs an explicit user, and connection pools must never be shared across requests.

@@ -167,13 +167,28 @@ Company OS runs and can be customized independently. [Continual](https://continu
 optional platform being built to customize, deploy, upgrade, connect, and operate Company OS forks.
 The fork remains authoritative for its source, business policy, and records.
 
+To publish from a local checkout, authenticate outside the repository, link it to a Continual
+Project, and pull the selected Branch environment before deploying:
+
+```sh
+pnpm exec continual login
+pnpm exec continual link --project <project-id-or-url>
+pnpm exec continual env pull
+pnpm deploy
+```
+
+The root deployment asks Turbo to build each App first. The central App then migrates the selected
+Branch database and the repository-pinned CLI publishes the existing `.output` artifact. Use
+`pnpm build` followed by `pnpm --dir apps/company-os exec continual deploy --dry-run` to validate
+the artifact and platform context without uploading or changing a deployment.
+
 ## Development
 
 | Command                         | Purpose                                                  |
 | ------------------------------- | -------------------------------------------------------- |
 | `pnpm dev`                      | Migrate and run every application development task       |
 | `pnpm reset`                    | Destructively rebuild local application state            |
-| `pnpm deploy`                   | Run application deployment tasks; currently placeholders |
+| `pnpm deploy`                   | Build, migrate, and publish configured applications      |
 | `pnpm app:create`               | List optional application templates                      |
 | `pnpm app:create client-portal` | Create and bootstrap an optional client portal           |
 | `pnpm format`                   | Format the repository                                    |

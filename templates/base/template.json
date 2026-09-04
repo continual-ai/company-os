@@ -2,11 +2,10 @@
   "id": "base",
   "scripts": {
     "build": "vite build",
-    "bundle:continual": "pnpm build && pnpm clean:continual && pnpm exec wrangler deploy --dry-run --config dist/server/wrangler.json --outdir .continual/wrangler",
-    "clean:continual": "node -e \"require('node:fs').rmSync('.continual/wrangler',{recursive:true,force:true})\"",
+    "deploy": "continual deploy",
     "dev": "vite dev --port 3001 --host 0.0.0.0",
     "lint": "oxlint .",
-    "preview": "vite preview --host 0.0.0.0",
+    "preview": "pnpm build && vite preview --host 0.0.0.0",
     "typecheck": "tsc --noEmit"
   },
   "bootstrapCommands": [["pnpm", "turbo", "run", "typecheck", "--filter=base"]]

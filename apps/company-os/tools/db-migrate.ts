@@ -13,7 +13,7 @@ import { seedSystem } from "@/server/seeds/seed-system"
 import { loadLocalEnvironment } from "./local-environment"
 
 // Deployment sequencing lives in this application's own scripts, not in any
-// platform: bundle:continual invokes this tool with --if-configured so the
+// platform: the deploy task invokes this tool with --if-configured so the
 // same command migrates wherever a database is configured and stays a pure
 // build everywhere else.
 const skipWhenUnconfigured = process.argv.includes("--if-configured")

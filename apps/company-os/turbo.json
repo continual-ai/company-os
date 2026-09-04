@@ -2,11 +2,13 @@
   "$schema": "https://v2-10-12.turborepo.dev/schema.json",
   "extends": ["//"],
   "tasks": {
-    "bundle:continual": {
+    "deploy": {
       "cache": false,
       "passThroughEnv": [
-        "APP_SECRET",
+        "CONTINUAL_API_KEY",
+        "CONTINUAL_BRANCH_ID",
         "CONTINUAL_EXECUTION_TOKEN",
+        "CONTINUAL_PROJECT_ID",
         "CONTINUAL_URL",
         "DATABASE_MAX_CONNECTIONS",
         "DATABASE_SCHEMA",
