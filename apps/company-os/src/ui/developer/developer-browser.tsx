@@ -1,8 +1,8 @@
 import { Button } from "@company/ui/components/button"
 import { Input } from "@company/ui/components/input"
 import { cn } from "@company/ui/lib/utils"
-import { CheckIcon, CopyIcon, SearchIcon } from "lucide-react"
-import { useState, type ReactNode } from "react"
+import { CheckIcon, CopyIcon, SearchIcon, ListIcon } from "lucide-react"
+import { useId, useState, type ReactNode } from "react"
 
 export interface DeveloperBrowserStat {
   readonly label: string
@@ -34,6 +34,8 @@ export function DeveloperBrowser({
   stats: ReadonlyArray<DeveloperBrowserStat>
   title: string
 }) {
+  const catalogId = useId()
+  const [catalogOpen, setCatalogOpen] = useState(false)
   return (
     <section className="flex min-h-[calc(100svh-var(--header-height))] flex-col bg-background">
       <header className="shrink-0 border-b px-5 py-5 lg:px-7">
@@ -63,10 +65,26 @@ export function DeveloperBrowser({
         </div>
       </header>
 
+      <div className="border-b px-5 py-2 lg:hidden">
+        <Button
+          variant="outline"
+          size="sm"
+          aria-controls={catalogId}
+          aria-expanded={catalogOpen}
+          onClick={() => setCatalogOpen(!catalogOpen)}
+        >
+          <ListIcon />
+          {catalogOpen ? "Hide" : "Browse"} {sidebarLabel.toLowerCase()}
+        </Button>
+      </div>
       <div className="grid lg:min-h-0 lg:flex-1 lg:grid-cols-[18rem_minmax(0,1fr)]">
         <aside
+          id={catalogId}
           aria-label={sidebarLabel}
-          className="max-h-[22rem] min-w-0 overflow-y-auto border-b bg-muted/10 lg:sticky lg:top-0 lg:max-h-[calc(100svh-var(--header-height))] lg:self-start lg:border-r lg:border-b-0"
+          className={cn(
+            "max-h-[22rem] min-w-0 overflow-y-auto border-b bg-muted/10 lg:sticky lg:top-0 lg:block lg:max-h-[calc(100svh-var(--header-height))] lg:self-start lg:border-r lg:border-b-0",
+            !catalogOpen && "hidden"
+          )}
         >
           {sidebar}
         </aside>

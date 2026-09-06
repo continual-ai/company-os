@@ -29,6 +29,19 @@ export function CapabilityBoundary({
     )
   }
 
+  if (capabilities.error !== undefined) {
+    return (
+      <section className="flex min-h-40 flex-col items-center justify-center gap-4 p-6 text-center">
+        <p role="alert" className="text-sm">
+          Could not check access. Try again.
+        </p>
+        <Button variant="outline" onClick={capabilities.refresh}>
+          Retry
+        </Button>
+      </section>
+    )
+  }
+
   if (!capabilities.can({ permission })) {
     return (
       <section className="flex min-h-[60svh] items-center justify-center p-6">

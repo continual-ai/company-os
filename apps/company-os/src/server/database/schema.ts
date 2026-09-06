@@ -100,7 +100,7 @@ export const eventJournalState = pgTable("event_journal_state", {
   position: bigint("position", { mode: "bigint" }).notNull().default(0n),
 })
 
-/** Historical subjects deliberately have no live foreign keys. Payloads contain no record snapshots. */
+/** Historical subjects deliberately have no live foreign keys; snapshots survive record deletion. */
 export const eventJournal = pgTable(
   "event_journal",
   {

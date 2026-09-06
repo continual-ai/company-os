@@ -41,9 +41,10 @@ export const LeadConverted = defineEvent({
 ```
 
 Register its fact schema in the application's `src/events.ts` union. That union validates facts before
-persistence; the shared envelope is added to derive the generated HTTP client and OpenAPI. Standard Object and Link event types derive from
-the model automatically; they need no registration. Keep older payload versions readable when a
-contract changes. See the executable Lead conversion for the complete example.
+persistence. Replay uses a stable envelope with a JSON payload, so changing an Object or retiring a
+custom fact cannot make committed history unreadable. Standard Object and Link event types derive
+from the model automatically; they need no registration. Consumers decode the types and versions
+they understand. See the executable Lead conversion for the complete example.
 
 Inside the Action's existing database transaction:
 
@@ -129,8 +130,11 @@ Full snapshots are retained indefinitely in this release, including values later
 Current read grants authorize that retained history; this is not field-level redaction or immutable
 historical ACL enforcement. Do not place credentials in business object fields. A deployment with
 retention/erasure requirements must explicitly apply its policy to both business tables and the
-journal. Changing the schema of stored version 2 snapshots requires a migration or a new readable
-payload version; changing current object definitions alone does not migrate history.
+journal. Historical payloads retain their original shape. The browser validates snapshots against
+the current Object schema before applying them; incompatible snapshots trigger normal query
+revalidation without entering the cache. Custom consumers must handle their own supported versions.
+Migrations that change current record values must advance their etags so older snapshots cannot
+overwrite those changes. Changing current definitions does not rewrite history.
 
 ## Boundaries
 

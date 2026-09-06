@@ -220,11 +220,11 @@ export function ObjectTableToolbar({
 
   return (
     <>
-      <div className="flex h-10 shrink-0 items-center justify-between gap-3 border-b px-5">
+      <div className="flex min-h-10 shrink-0 flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b px-3 py-2 sm:px-5 sm:py-0">
         <div className="flex h-7 min-w-0 items-center text-xs font-medium">
           {tableTitle ?? `All ${object.pluralName}`}
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex max-w-full flex-wrap items-center gap-2">
           {selectedCount > 0 ? (
             <div className="flex items-center gap-2 text-xs">
               <span className="text-muted-foreground tabular-nums">
@@ -320,8 +320,8 @@ export function ObjectTableToolbar({
           {toolbarActions}
         </div>
       </div>
-      <div className="flex h-10 shrink-0 items-center gap-1.5 border-b px-5">
-        <div className="no-scrollbar flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto">
+      <div className="flex min-h-10 shrink-0 flex-wrap items-center gap-1.5 border-b px-3 py-1 sm:px-5">
+        <div className="no-scrollbar flex min-w-0 flex-1 basis-full items-center gap-1.5 overflow-x-auto sm:basis-auto">
           {canSort ? <ObjectTableSortMenu table={table} /> : null}
           {canFilter ? <ObjectTableFilters table={table} /> : null}
         </div>

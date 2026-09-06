@@ -241,7 +241,8 @@ state. These are TanStack Form input values; the model decoder runs at submissio
 [description editor](../apps/company-os/src/modules/engineering/issue/ui/description-field.tsx)
 demonstrates the pattern. Labels, error rendering, submission, and file integrity remain shared.
 
-Replacement pages receive the object and route state and own their loading and layout. They can
+Replacement pages receive the object and route state and own their loading and layout.
+Default route preloaders skip replaced pages; preload custom requests in an ordinary route loader. They can
 compose `ObjectCollection` or `ObjectRecordPage` with explicit props; these components do not look
 up page replacements, so there is no recursive dispatch. Full page replacements own the page's
 extensions rather than automatically inheriting hidden configuration. Standard form dialogs still

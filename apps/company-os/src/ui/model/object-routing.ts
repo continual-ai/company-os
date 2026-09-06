@@ -32,6 +32,7 @@ export async function preloadObject(
   object: ModelObject,
   recordId: string
 ) {
+  if (modelUi[object.id]?.record?.pageComponent !== undefined) return
   await cache.ensureQueryData(clientFor(object).get({ id: recordId }))
 }
 
@@ -43,6 +44,7 @@ export async function preloadCollection(
   views: ReadonlyArray<ObjectCollectionView> | undefined = modelUi[object.id]
     ?.collection?.views
 ) {
+  if (modelUi[object.id]?.collection?.pageComponent !== undefined) return
   const state =
     views === undefined
       ? (search.state ?? emptyObjectCollectionViewState)

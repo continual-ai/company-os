@@ -24,6 +24,7 @@ import { seedSystem } from "@/server/seeds/seed-system"
 import { ROOT_ID } from "@/system-records"
 
 import { EventJournal } from "./event-journal"
+import { flushEvents } from "./flush-events"
 
 function application<A, E, R>(program: Effect.Effect<A, E, R>) {
   return Effect.gen(function* () {
@@ -383,6 +384,47 @@ itDatabase(
         expect(
           (yield* database.delete(eventJournal).pipe(Effect.exit))._tag
         ).toBe("Failure")
+      })
+    )
+)
+
+itDatabase(
+  "replays stored JSON after its original model shape has changed",
+  () =>
+    application(
+      Effect.gen(function* () {
+        const database = yield* Database
+        const journal = yield* EventJournal
+        const { services } = yield* ModelImplementation
+        const start = yield* journal.list({ cursor: "now" })
+        const contact = yield* services.contact.create({
+          name: "Historical contact",
+        })
+        const original = (yield* journal.list({ cursor: start.nextCursor }))
+          .items[0]!
+        const historical = {
+          id: contact.id,
+          etag: contact.etag,
+          oldName: "Preserved history",
+        }
+        const [stored] = yield* database
+          .select()
+          .from(eventJournal)
+          .where(eq(eventJournal.id, original.id))
+        if (stored === undefined) throw new Error("Missing committed event")
+        // Seed an old format below today's writer decoder without rewriting history.
+        yield* database.transaction((tx) =>
+          flushEvents(tx, [
+            { ...stored, id: "ev_historical", data: historical },
+          ])
+        )
+        const replay = yield* journal.list({ cursor: start.nextCursor })
+        expect(
+          replay.items.find((event) => event.id === "ev_historical")?.data
+        ).toEqual(historical)
+        expect((yield* services.contact.get({ id: contact.id })).name).toBe(
+          "Historical contact"
+        )
       })
     )
 )

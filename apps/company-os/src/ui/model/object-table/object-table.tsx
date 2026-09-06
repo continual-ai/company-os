@@ -285,6 +285,20 @@ export function ObjectTable({
   const [isHorizontallyScrolled, setIsHorizontallyScrolled] = useState(false)
   const properties = useMemo(() => {
     const entries = [
+      ...(object.display.title === "id"
+        ? [
+            [
+              "id",
+              {
+                ...schema.string({ label: "Record ID" }),
+                immutable: true,
+                nullable: false,
+                outputOnly: true,
+                requiredOnCreate: false,
+              } satisfies PropertyDefinition,
+            ] as const,
+          ]
+        : []),
       ...(object.parent.kind === "root"
         ? []
         : [

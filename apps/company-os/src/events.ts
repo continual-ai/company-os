@@ -64,10 +64,15 @@ export const eventFactSchema = Schema.Union([
   )
 )
 
-/** The authorized feed includes versioned record snapshots, deletion tombstones, and declared business facts. */
-const eventSchema = eventFactSchema.mapMembers(
-  Tuple.map(Schema.fieldsAssign(envelope))
-)
+/** Replay is an immutable JSON document, independent of today's model schema.
+ * Writers validate eventFactSchema; consumers decode versions they understand. */
+const eventSchema = Schema.Struct({
+  ...envelope,
+  type: Schema.String,
+  version: Schema.Number.check(Schema.isInt(), Schema.isGreaterThan(0)),
+  subjects: Schema.Array(subject).check(Schema.isMinLength(1)),
+  data: Schema.Json,
+})
 
 export const eventPageSchema = Schema.Struct({
   items: Schema.Array(eventSchema),

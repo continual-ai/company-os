@@ -32,7 +32,7 @@ function DeveloperCenterOverview() {
         />
         <DeveloperSurface
           eyebrow="TypeScript"
-          title="SDK"
+          title="TypeScript"
           description="Use the model-inferred client from source or generate another client from the OpenAPI contract."
           to="/developer/sdk"
         />

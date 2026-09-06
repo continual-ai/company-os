@@ -2,9 +2,11 @@ import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
+  useSidebar,
 } from "@company/ui/components/sidebar"
 import { TooltipProvider } from "@company/ui/components/tooltip"
-import { useMatchRoute } from "@tanstack/react-router"
+import { useLocation, useMatchRoute } from "@tanstack/react-router"
+import { useEffect } from "react"
 
 import type { AuthenticatedUser } from "@/authentication"
 import { AppSidebar } from "@/ui/application/app-sidebar"
@@ -17,6 +19,15 @@ import { SettingsSidebar } from "@/ui/settings/settings-sidebar"
 
 const sidebarStyle: React.CSSProperties & Record<"--header-height", string> = {
   "--header-height": "3rem",
+}
+
+function SidebarNavigation() {
+  const href = useLocation({ select: (location) => location.href })
+  const { setOpenMobile } = useSidebar()
+  useEffect(() => {
+    setOpenMobile(false)
+  }, [href, setOpenMobile])
+  return null
 }
 
 export function AppShell({
@@ -51,6 +62,7 @@ export function AppShell({
               revealOnHover={!secondaryShell}
               style={sidebarStyle}
             >
+              <SidebarNavigation />
               {isSettings ? (
                 <SettingsSidebar />
               ) : isDeveloper ? (

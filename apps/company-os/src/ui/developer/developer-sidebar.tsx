@@ -22,7 +22,7 @@ const developerNavigation = [
     to: "/developer/api",
     icon: CodeXmlIcon,
   },
-  { label: "SDK", to: "/developer/sdk", icon: PackageIcon },
+  { label: "TypeScript", to: "/developer/sdk", icon: PackageIcon },
   { label: "MCP", to: "/developer/mcp", icon: PlugIcon },
   {
     label: "Design system",

@@ -12,7 +12,7 @@ export function useCapabilities(checks: ReadonlyArray<CapabilityCheck>) {
   return {
     can: (check: CapabilityCheck) =>
       result.data?.includes(capabilityKey(check)) ?? false,
-    error: result.error,
+    error: result.error ?? undefined,
     loading: result.isPending,
     refresh: () => {
       void cache.invalidateQueries({ queryKey: ["model", "@iam"] })

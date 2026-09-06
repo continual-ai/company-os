@@ -25,7 +25,12 @@ function displayValue(
   value: ObjectTableValue | undefined,
   referenceLabels: ReadonlyMap<string, string>
 ): ReactNode {
-  if (value === null || value === undefined || value === "") {
+  if (
+    value === null ||
+    value === undefined ||
+    value === "" ||
+    (Array.isArray(value) && value.length === 0)
+  ) {
     return <span className="text-muted-foreground/60">Empty</span>
   }
   if (propertyId === "parent" && typeof value === "string") {
@@ -159,7 +164,7 @@ export function ObjectPropertiesCard({
             <dt className="text-xs text-muted-foreground">
               {property.label ?? propertyId}
             </dt>
-            <dd className="min-w-0 text-sm wrap-break-word">
+            <dd className="min-w-0 text-sm wrap-break-word whitespace-pre-wrap">
               {displayValue(
                 object,
                 propertyId,

@@ -1,4 +1,7 @@
+import { toEffectObjectSchema } from "@company/runtime/effect"
 import type { QueryClient } from "@tanstack/react-query"
+import { Model } from "company-os/model"
+import { Schema } from "effect"
 
 import {
   cacheGeneration,
@@ -7,6 +10,13 @@ import {
   invalidateModelQueries,
 } from "./data-client"
 import type { EventPage } from "./events"
+
+const currentRecords = new Map<string, (value: unknown) => boolean>(
+  Object.values(Model.objects).map((object) => [
+    object.id,
+    Schema.is(toEffectObjectSchema(object)),
+  ])
+)
 
 interface Snapshot {
   readonly id: string
@@ -111,11 +121,22 @@ export async function applyEventPage(cache: QueryClient, page: EventPage) {
   }
   const changes: Change[] = []
   for (const event of page.items) {
-    if (event.version === 2 && isSnapshot(event.data))
-      changes.push({
-        record: event.data,
-        deleted: event.type.endsWith(".deleted"),
-      })
+    if (event.version !== 2 || !isSnapshot(event.data)) continue
+    const snapshotData = event.data
+    const target = event.subjects.find(
+      (subject) => subject.id === snapshotData.id
+    )
+    if (target === undefined) continue
+    const deleted = event.type === `${target.objectType}.deleted`
+    const snapshot =
+      event.type === `${target.objectType}.created` ||
+      event.type === `${target.objectType}.updated`
+    // Old schemas remain replayable but cannot introduce invalid records into today's UI.
+    if (
+      deleted ||
+      (snapshot && currentRecords.get(target.objectType)?.(event.data))
+    )
+      changes.push({ record: event.data, deleted })
   }
   await applyModelChanges(cache, changes, [
     ...new Set(

@@ -11,21 +11,17 @@ import {
   modelNavigationChecks,
 } from "@/ui/model/model-navigation"
 
-const homeCapabilityChecks = [
-  ...modelNavigationChecks,
-  applicationCapabilities.develop,
-]
-
 /** Source-owned workspace entry; destinations come from the installed modules. */
 export function Home() {
-  const capabilities = useCapabilities(homeCapabilityChecks)
+  const capabilities = useCapabilities(modelNavigationChecks)
   const modules = modelNavigation
     .map((module) => ({
       ...module,
       items: module.items.filter((item) => capabilities.can(item.check)),
     }))
     .filter((module) => module.items.length > 0)
-  const canDevelop = capabilities.can(applicationCapabilities.develop)
+  const developer = useCapabilities([applicationCapabilities.develop])
+  const canDevelop = developer.can(applicationCapabilities.develop)
 
   return (
     <div className="@container/main flex flex-1 flex-col">

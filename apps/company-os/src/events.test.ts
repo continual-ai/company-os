@@ -4,7 +4,7 @@ import { expect, expectTypeOf, it } from "vitest"
 
 import { eventFactSchema, eventPageSchema } from "./events"
 
-it("validates the same discriminated fact contract before persistence and after replay", () => {
+it("validates new facts strictly and replays them inside a stable envelope", () => {
   const fact = {
     type: "lead.converted",
     version: 1,
@@ -46,4 +46,26 @@ it("validates the same discriminated fact contract before persistence and after 
       items: [fact],
     })
   ).toThrow()
+})
+
+it("preserves historical payloads after model or event definitions change", () => {
+  const historical = {
+    id: "event_old",
+    transactionId: "transaction_old",
+    actorId: "user_old",
+    occurredAt: "2026-01-01T00:00:00.000Z",
+    recordedAt: "2026-01-01T00:00:00.000Z",
+    type: "contact.updated",
+    version: 2,
+    subjects: [{ id: "contact_old", objectType: "contact" }],
+    data: { id: "contact_old", etag: "2", retiredField: "Original value" },
+  }
+  const page = {
+    items: [historical, { ...historical, type: "retired.fact", version: 7 }],
+    nextCursor: "opaque",
+    hasMore: false,
+    reset: false,
+  }
+  expect(Schema.decodeUnknownSync(eventPageSchema)(page)).toEqual(page)
+  expect(() => Schema.decodeUnknownSync(eventFactSchema)(historical)).toThrow()
 })

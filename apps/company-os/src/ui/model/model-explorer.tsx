@@ -1,9 +1,10 @@
+import { modelRelationships, modelTypeAccepts } from "@company/runtime"
 import type {
   Action,
   AnySchema,
   Choice,
   InterfaceType,
-  LinkType,
+  ModelRelationship,
   ObjectType,
   PropertyDefinition,
 } from "@company/runtime"
@@ -32,7 +33,7 @@ import {
 type ModelDefinition = typeof Model
 type ModelObject = ObjectType
 type ModelInterface = InterfaceType
-type ModelLink = LinkType
+type Relationship = ModelRelationship
 type ModelAction = Action
 type ModelItem = ModelObject | ModelInterface
 
@@ -62,37 +63,20 @@ function displayRole(
 }
 
 function relationshipsForItem(
-  links: ReadonlyArray<ModelLink>,
+  model: ModelDefinition,
+  catalog: ReadonlyArray<Relationship>,
   item: ModelItem
 ) {
-  const relationships: Array<{
-    current: ModelLink["forward"]
-    link: ModelLink
-    related: ModelLink["forward"]["to"]
-  }> = []
-  for (const link of links) {
-    if (
-      link.forward.from.kind === item.kind &&
-      link.forward.from.typeId === item.id
-    ) {
-      relationships.push({
-        current: link.forward,
-        link,
-        related: link.forward.to,
-      })
-    }
-    if (
-      link.reverse.from.kind === item.kind &&
-      link.reverse.from.typeId === item.id
-    ) {
-      relationships.push({
-        current: link.reverse,
-        link,
-        related: link.reverse.to,
-      })
-    }
-  }
-  return relationships
+  return catalog.flatMap((relationship) =>
+    [relationship.forward, relationship.reverse]
+      .filter((direction) =>
+        item.kind === "object"
+          ? modelTypeAccepts(model, item.id, direction.from.typeId)
+          : direction.from.kind === "interface" &&
+            direction.from.typeId === item.id
+      )
+      .map((current) => ({ current, relationship, related: current.to }))
+  )
 }
 
 function countLabel(count: number, singular: string, plural = `${singular}s`) {
@@ -278,13 +262,13 @@ function RelationshipList({
 }) {
   if (items.length === 0) {
     return (
-      <DeveloperBrowserEmpty>No declared link types.</DeveloperBrowserEmpty>
+      <DeveloperBrowserEmpty>No declared relationships.</DeveloperBrowserEmpty>
     )
   }
 
   return (
     <div className="grid gap-3 md:grid-cols-2">
-      {items.map(({ current, link, related }) => {
+      {items.map(({ current, relationship, related }) => {
         const target =
           related.kind === "object"
             ? Object.values(model.objects).find(
@@ -295,7 +279,7 @@ function RelationshipList({
               )
         return (
           <button
-            key={link.id}
+            key={`${relationship.id}:${current.key}`}
             type="button"
             disabled={target === undefined}
             className="border p-4 text-left transition-colors outline-none hover:bg-muted/30 focus-visible:ring-1 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-60"
@@ -307,7 +291,10 @@ function RelationshipList({
               <div>
                 <p className="text-xs font-medium">{current.label}</p>
                 <p className="mt-1 text-[10px] text-muted-foreground">
-                  {cardinalityLabels[current.cardinality]} · {link.name}
+                  {cardinalityLabels[current.cardinality]} ·{" "}
+                  {relationship.storage.kind === "parent"
+                    ? "ownership"
+                    : relationship.storage.kind}
                 </p>
               </div>
               <Badge variant="outline">{related.kind}</Badge>
@@ -366,13 +353,13 @@ function ActionList({ actions }: { actions: ReadonlyArray<ModelAction> }) {
 
 function ObjectDetail({
   actions,
-  links,
+  catalog,
   model,
   object,
   onSelect,
 }: {
   actions: ReadonlyArray<ModelAction>
-  links: ReadonlyArray<ModelLink>
+  catalog: ReadonlyArray<Relationship>
   model: ModelDefinition
   object: ModelObject
   onSelect: (key: string) => void
@@ -381,7 +368,7 @@ function ObjectDetail({
   const module = modules.find((candidate) =>
     candidate.objects.some(({ id }) => id === object.id)
   )
-  const relationships = relationshipsForItem(links, object)
+  const relationships = relationshipsForItem(model, catalog, object)
   const implementations = Object.values(object.interfaces)
 
   return (
@@ -526,12 +513,12 @@ function ObjectDetail({
 }
 
 function InterfaceDetail({
-  links,
+  catalog,
   model,
   modelInterface,
   onSelect,
 }: {
-  links: ReadonlyArray<ModelLink>
+  catalog: ReadonlyArray<Relationship>
   model: ModelDefinition
   modelInterface: ModelInterface
   onSelect: (key: string) => void
@@ -540,7 +527,7 @@ function InterfaceDetail({
   const module = modules.find((candidate) =>
     candidate.interfaces.some(({ id }) => id === modelInterface.id)
   )
-  const relationships = relationshipsForItem(links, modelInterface)
+  const relationships = relationshipsForItem(model, catalog, modelInterface)
   const implementers = Object.values(model.objects).filter((object) =>
     Object.values(object.interfaces).some(
       ({ interfaceId }) => interfaceId === modelInterface.id
@@ -726,7 +713,7 @@ export function ModelExplorer({
     () => Object.values(model.interfaces),
     [model.interfaces]
   )
-  const links = useMemo(() => Object.values(model.links), [model.links])
+  const catalog = useMemo(() => modelRelationships(model), [model])
   const actions = useMemo(() => modelActions(model), [model])
   const defaultItem = itemKey(model.objects.company)
   const [internalSelection, setInternalSelection] = useState(defaultItem)
@@ -752,16 +739,7 @@ export function ModelExplorer({
     onSelectedItemChange?.(key)
   }
 
-  const activeModuleId = modules.find((module) =>
-    resolvedItem?.kind === "object"
-      ? module.objects.some(({ id }) => id === resolvedItem.id)
-      : module.interfaces.some(({ id }) => id === resolvedItem?.id)
-  )?.id
-  const orderedModules = [
-    ...modules.filter(({ id }) => id === activeModuleId),
-    ...modules.filter(({ id }) => id !== activeModuleId),
-  ]
-  const visibleGroups = orderedModules.flatMap((module) => {
+  const visibleGroups = modules.flatMap((module) => {
     if (selectedModule !== allModules && selectedModule !== module.id) return []
     const items: ReadonlyArray<ModelItem> = [
       ...module.objects,
@@ -787,7 +765,7 @@ export function ModelExplorer({
         { label: "modules", value: modules.length },
         { label: "objects", value: objects.length },
         { label: "interfaces", value: interfaces.length },
-        { label: "links", value: links.length },
+        { label: "relationships", value: catalog.length },
         { label: "actions", value: actions.length },
       ]}
       sidebarLabel="Domain model definitions"
@@ -839,7 +817,8 @@ export function ModelExplorer({
                   {items.map((item) => {
                     const key = itemKey(item)
                     const relationshipCount = relationshipsForItem(
-                      links,
+                      model,
+                      catalog,
                       item
                     ).length
                     const actionCount =
@@ -864,7 +843,7 @@ export function ModelExplorer({
                         }
                         meta={
                           item.kind === "object"
-                            ? `${countLabel(Object.keys(item.properties).length, "property", "properties")} · ${countLabel(relationshipCount, "link")} · ${countLabel(actionCount, "action")}`
+                            ? `${countLabel(Object.keys(item.properties).length, "property", "properties")} · ${countLabel(relationshipCount, "relationship")} · ${countLabel(actionCount, "action")}`
                             : `interface · ${countLabel(Object.keys(item.properties).length, "property", "properties")}`
                         }
                         onClick={() => selectItem(key)}
@@ -882,7 +861,7 @@ export function ModelExplorer({
     >
       {resolvedObject === undefined && resolvedInterface !== undefined ? (
         <InterfaceDetail
-          links={links}
+          catalog={catalog}
           model={model}
           modelInterface={resolvedInterface}
           onSelect={selectItem}
@@ -890,7 +869,7 @@ export function ModelExplorer({
       ) : resolvedObject !== undefined ? (
         <ObjectDetail
           actions={selectedActions}
-          links={links}
+          catalog={catalog}
           model={model}
           object={resolvedObject}
           onSelect={selectItem}

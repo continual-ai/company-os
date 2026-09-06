@@ -32,7 +32,7 @@ export function ObjectTableSearch({
   )
   if (!column?.getCanFilter()) return null
   return (
-    <div className="relative ml-auto w-44 shrink-0 sm:w-56">
+    <div className="relative w-full sm:ml-auto sm:w-56 sm:shrink-0">
       <SearchIcon className="pointer-events-none absolute top-1.5 left-2 size-3.5 text-muted-foreground" />
       <Input
         type="search"

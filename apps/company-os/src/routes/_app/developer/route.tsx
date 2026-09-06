@@ -3,6 +3,7 @@ import { Outlet, createFileRoute } from "@tanstack/react-router"
 import { applicationCapabilities } from "@/capabilities"
 import { pageOptions } from "@/route-metadata"
 import { CapabilityBoundary } from "@/ui/application/capability-boundary"
+import { allowedCapabilitiesQuery } from "@/ui/application/load-capabilities"
 
 const page = {
   breadcrumb: "Developer Center",
@@ -13,6 +14,11 @@ const page = {
 
 export const Route = createFileRoute("/_app/developer")({
   ...pageOptions(page),
+  loader: async ({ context }) => {
+    await context.queryClient.ensureQueryData(
+      allowedCapabilitiesQuery([applicationCapabilities.develop])
+    )
+  },
   component: DeveloperCenterLayout,
 })
 

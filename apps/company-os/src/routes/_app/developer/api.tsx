@@ -10,8 +10,8 @@ const page = {
   description: "Explore the OpenAPI contract generated from the domain model.",
   title: "API reference",
 }
-const salesApiTags = Model.modules.sales.objects.map(
-  (object) => object.pluralName
+const modelApiTags = Object.values(Model.modules).flatMap((module) =>
+  module.objects.map((object) => object.pluralName)
 )
 const ApiReferenceSearch = Schema.Struct({
   operation: Schema.optional(Schema.String),
@@ -29,8 +29,7 @@ function ApiReferencePage() {
 
   return (
     <OpenApiReference
-      initialTag={Model.objects.company.pluralName}
-      preferredTags={salesApiTags}
+      preferredTags={modelApiTags}
       {...(operation === undefined ? {} : { selectedOperationId: operation })}
       onSelectedOperationChange={(nextOperation) => {
         void navigate({
