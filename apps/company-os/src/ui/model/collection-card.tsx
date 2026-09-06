@@ -11,6 +11,7 @@ import {
   tableRecord,
   type ClientRecord,
   type ModelObject,
+  type ObjectRecordPresentation,
 } from "./object-client"
 import { objectPropertyValue } from "./object-property-value"
 import { objectHref } from "./object-routing"
@@ -24,7 +25,7 @@ export type CollectionDragData = {
 export interface CollectionPresentation {
   object: ModelObject
   columns: ReadonlyArray<string>
-  referenceLabels: ReadonlyMap<string, string>
+  references: ReadonlyMap<string, ObjectRecordPresentation>
   recordHref?: ((id: string) => string) | undefined
   canMove: (record: ClientRecord) => boolean
   canEdit: (record: ClientRecord) => boolean
@@ -116,7 +117,7 @@ export function CollectionCard({
                       p.object,
                       field,
                       projected[field],
-                      p.referenceLabels
+                      p.references
                     )}
                   </dd>
                 </div>

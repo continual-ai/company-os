@@ -43,6 +43,7 @@ import { type ComponentType, useEffect, useRef, useState } from "react"
 import { FileCell } from "@/modules/assets/asset/ui/file-cell"
 import { assetContentUrl } from "@/modules/assets/asset/ui/upload"
 import { ObjectRecordIdentity } from "@/ui/model/object-record-identity"
+import { objectHref } from "@/ui/model/object-routing"
 
 import {
   formatObjectTableCellText,
@@ -67,7 +68,7 @@ import {
 import {
   objectTableImageValue,
   type ObjectTableImageResolver,
-  type ObjectTableRecordLabelResolver,
+  type ObjectTableRecordResolver,
   type ObjectTableRecord,
   type ObjectTableValue,
 } from "./object-table-config"
@@ -117,7 +118,7 @@ interface ObjectTableCellProps {
   onEditingChange: ObjectTableCellEditingChange
   property: PropertyDefinition
   resolveImageSrc?: ObjectTableImageResolver | undefined
-  resolveRecordLabel?: ObjectTableRecordLabelResolver | undefined
+  resolveRecord?: ObjectTableRecordResolver | undefined
   value: ObjectTableValue
 }
 
@@ -132,7 +133,7 @@ function TextCell({
   onEditingChange,
   property,
   resolveImageSrc,
-  resolveRecordLabel,
+  resolveRecord,
   type,
   value,
 }: ObjectTableCellProps & { type: ObjectTableCellType }) {
@@ -231,10 +232,17 @@ function TextCell({
 
   const href = objectTableLinkHref(type, externalValue)
   const opensNewWindow = type === "url"
-  const formattedValue =
-    type === "recordId"
-      ? (resolveRecordLabel?.(externalValue) ?? externalValue)
-      : formatObjectTableCellText(type, externalValue)
+  const reference =
+    type === "recordId" ? resolveRecord?.(externalValue) : undefined
+  const displayIdentity =
+    identity ??
+    (reference === undefined
+      ? undefined
+      : {
+          ...reference,
+          href: objectHref(reference.object, externalValue),
+        })
+  const formattedValue = formatObjectTableCellText(type, externalValue)
 
   return (
     <ObjectTableCellSurface
@@ -247,8 +255,11 @@ function TextCell({
           : undefined
       }
     >
-      {identity !== undefined ? (
-        <ObjectRecordIdentity {...identity} resolveImageSrc={resolveImageSrc} />
+      {displayIdentity !== undefined ? (
+        <ObjectRecordIdentity
+          {...displayIdentity}
+          resolveImageSrc={resolveImageSrc}
+        />
       ) : href !== null ? (
         <a
           className={cn(

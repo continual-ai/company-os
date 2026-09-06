@@ -16,8 +16,8 @@ import type {
   ObjectCollectionSort,
 } from "./object-collection-view"
 import type { ObjectFormInput } from "./object-form"
+import { useObjectReferences } from "./object-references"
 import type { ObjectTableValue } from "./object-table/object-table-config"
-import { useReferenceLabels } from "./reference-labels"
 
 export type ObjectCollectionList = (
   request: ListRequest
@@ -53,7 +53,7 @@ export function useObjectCollection(
       }
     return [...unique.values()]
   }, [page.data])
-  const referenceLabels = useReferenceLabels(object, records)
+  const references = useObjectReferences(object, records)
   const checks = useMemo(
     () =>
       Object.keys(object.actions).flatMap((action) => {
@@ -124,7 +124,8 @@ export function useObjectCollection(
     nextPage,
     requestKey,
     records,
-    referenceLabels,
+    referenceLabels: references.labels,
+    references: references.records,
     sorting,
     totalSize,
     update,

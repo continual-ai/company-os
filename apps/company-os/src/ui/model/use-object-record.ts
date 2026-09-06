@@ -9,13 +9,13 @@ import {
 } from "./object-capabilities"
 import { clientFor, type ModelObject } from "./object-client"
 import type { ObjectFormInput } from "./object-form"
-import { useReferenceLabels } from "./reference-labels"
+import { useObjectReferences } from "./object-references"
 
 export function useObjectRecord(object: ModelObject, recordId: string) {
   const client = useMemo(() => clientFor(object), [object])
   const query = useMemo(() => client.get({ id: recordId }), [client, recordId])
   const record = useQuery(query)
-  const labels = useReferenceLabels(
+  const references = useObjectReferences(
     object,
     record.data === undefined ? [] : [record.data]
   )
@@ -37,7 +37,8 @@ export function useObjectRecord(object: ModelObject, recordId: string) {
           : "The record could not be loaded.",
     loading: record.isPending,
     record: record.data,
-    referenceLabels: labels,
+    referenceLabels: references.labels,
+    references: references.records,
     update: async (changes: ObjectFormInput) => {
       if (record.data === undefined || client.update === undefined)
         throw new Error("Updates are not available.")

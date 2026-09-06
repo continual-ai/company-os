@@ -1,3 +1,4 @@
+import type { ObjectType } from "@company/runtime"
 import type { QueryClient } from "@tanstack/react-query"
 import { notFound } from "@tanstack/react-router"
 import { Model } from "company-os/model"
@@ -15,7 +16,7 @@ import {
   type ObjectCollectionView,
 } from "./object-collection-view"
 
-export function objectHref(object: ModelObject, recordId?: string) {
+export function objectHref(object: ObjectType, recordId?: string) {
   const base = modelUi[object.id]?.navigation?.path ?? `/objects/${object.id}`
   return recordId === undefined
     ? base

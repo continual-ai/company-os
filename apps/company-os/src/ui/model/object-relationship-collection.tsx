@@ -192,9 +192,7 @@ export function ObjectRelationshipCollection({
           totalSize: collection.totalSize,
         }}
         recordHref={(recordId) => objectHref(targetObject, recordId)}
-        resolveRecordLabel={(recordId) =>
-          collection.referenceLabels.get(recordId)
-        }
+        resolveRecord={(recordId) => collection.references.get(recordId)}
         tableTitle={
           <span className="truncate text-muted-foreground">
             {traversal.traversal.description ?? traversal.traversal.label}

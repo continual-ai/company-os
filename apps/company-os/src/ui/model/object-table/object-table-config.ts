@@ -16,6 +16,8 @@ import {
   type ReactTable,
 } from "@tanstack/react-table"
 
+import type { ObjectRecordPresentation } from "@/ui/model/object-client"
+
 import { objectTableCellBehavior } from "./object-table-cell-types"
 
 export type ObjectTableValue =
@@ -36,9 +38,9 @@ export type ObjectTableImageResolver = (
   image: ImageRef
 ) => string | null | undefined
 
-export type ObjectTableRecordLabelResolver = (
+export type ObjectTableRecordResolver = (
   recordId: string
-) => string | undefined
+) => ObjectRecordPresentation | undefined
 
 export function objectTableImageValue(
   value: ObjectTableValue | undefined

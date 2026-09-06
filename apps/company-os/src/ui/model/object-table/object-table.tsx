@@ -67,7 +67,7 @@ import {
   objectTableFeatures,
   objectTableValueText,
   type ObjectTableImageResolver,
-  type ObjectTableRecordLabelResolver,
+  type ObjectTableRecordResolver,
   type ObjectTableRecord,
   type ObjectTableValue,
 } from "./object-table-config"
@@ -123,7 +123,7 @@ export interface ObjectTableProps {
   renderRecordActions?: ((record: ObjectTableRecord) => ReactNode) | undefined
   toolbarActions?: ReactNode
   resolveImageSrc?: ObjectTableImageResolver | undefined
-  resolveRecordLabel?: ObjectTableRecordLabelResolver | undefined
+  resolveRecord?: ObjectTableRecordResolver | undefined
   sorting?: SortingState | undefined
   tableTitle?: ReactNode
   visiblePropertyIds?: ReadonlyArray<string> | undefined
@@ -286,7 +286,7 @@ export function ObjectTable({
   renderRecordActions,
   toolbarActions,
   resolveImageSrc,
-  resolveRecordLabel,
+  resolveRecord,
   sorting,
   tableTitle,
   visiblePropertyIds,
@@ -786,7 +786,7 @@ export function ObjectTable({
                                 }
                                 property={meta.property}
                                 resolveImageSrc={resolveImageSrc}
-                                resolveRecordLabel={resolveRecordLabel}
+                                resolveRecord={resolveRecord}
                                 value={cellValue}
                                 onCancelEditing={() =>
                                   navigation.cancelCellEditing(address)

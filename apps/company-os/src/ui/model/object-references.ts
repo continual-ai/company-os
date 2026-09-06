@@ -8,6 +8,8 @@ import {
   clientFor,
   recordLabel,
   recordObjectTypes,
+  tableRecord,
+  type ObjectRecordPresentation,
   type ClientRecord,
   type ModelObject,
 } from "./object-client"
@@ -21,11 +23,11 @@ function chunks<T>(values: ReadonlyArray<T>, size: number): ReadonlyArray<T[]> {
   return result
 }
 
-/** Resolve only visible references in bounded batches; unavailable records stay unlabeled. */
-export function useReferenceLabels(
+/** Batch authorized references once for labels and rich identity displays; unavailable records stay unresolved. */
+export function useObjectReferences(
   object: ModelObject,
   records: ReadonlyArray<ClientRecord>
-): ReadonlyMap<string, string> {
+) {
   const references = new Map<string, Set<string>>()
   const add = (type: string, value: unknown) => {
     if (typeof value !== "string" || value === ROOT_ID) return
@@ -53,9 +55,16 @@ export function useReferenceLabels(
   )
   const results = useQueries({ queries: requests.map(({ query }) => query) })
   const labels = new Map<string, string>([[ROOT_ID, Model.root.name]])
+  const recordsById = new Map<string, ObjectRecordPresentation>()
   results.forEach((result, index) => {
-    for (const record of result.data?.items ?? [])
-      labels.set(record.id, recordLabel(requests[index]!.target, record))
+    const target = requests[index]!.target
+    for (const record of result.data?.items ?? []) {
+      labels.set(record.id, recordLabel(target, record))
+      recordsById.set(record.id, {
+        object: target,
+        record: tableRecord(target, record),
+      })
+    }
   })
-  return labels
+  return { labels, records: recordsById }
 }

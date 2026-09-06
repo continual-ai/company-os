@@ -209,7 +209,7 @@ export function ObjectRecordPage({
             <ObjectPropertiesCard
               object={object}
               record={record}
-              referenceLabels={recordState.referenceLabels}
+              references={recordState.references}
             />
           )}
         </div>

@@ -295,9 +295,7 @@ export function ObjectCollection({
             })
           }
           recordHref={recordHref}
-          resolveRecordLabel={(recordId) =>
-            collection.referenceLabels.get(recordId)
-          }
+          resolveRecord={(recordId) => collection.references.get(recordId)}
           onCellCommit={collection.updateCell}
           canUpdateRecord={collection.canUpdate}
           onCreateRecord={create === undefined ? undefined : () => create()}
@@ -401,7 +399,7 @@ export function ObjectCollection({
               presentation={{
                 object,
                 recordHref,
-                referenceLabels: collection.referenceLabels,
+                references: collection.references,
                 columns: Object.keys(columnVisibility).filter(
                   (id) => columnVisibility[id]
                 ),

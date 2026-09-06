@@ -5,6 +5,7 @@ import {
   tableRecord,
   type ClientRecord,
   type ModelObject,
+  type ObjectRecordPresentation,
 } from "./object-client"
 import { objectPropertyValue } from "./object-property-value"
 import { RecordIdentifier } from "./record-identifier"
@@ -12,11 +13,11 @@ import { RecordIdentifier } from "./record-identifier"
 export function ObjectPropertiesCard({
   object,
   record,
-  referenceLabels,
+  references,
 }: {
   readonly object: ModelObject
   readonly record: ClientRecord
-  readonly referenceLabels: ReadonlyMap<string, string>
+  readonly references: ReadonlyMap<string, ObjectRecordPresentation>
 }) {
   const projected = tableRecord(object, record)
   const properties = [
@@ -46,7 +47,7 @@ export function ObjectPropertiesCard({
                 object,
                 propertyId,
                 projected[propertyId],
-                referenceLabels
+                references
               )}
             </dd>
           </div>

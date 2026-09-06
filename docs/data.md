@@ -66,9 +66,10 @@ record. Pickers can create related records without losing the outer form's draft
 schema decoder and one API-error boundary, preserve edits on conflict, and confirm draft dismissal.
 
 Records render before reference labels or advisory permissions. Related-record pages already contain
-full records; the browser does not hydrate them again. Independent reference labels use bounded
-queries that omit inaccessible results. This avoids failing an otherwise readable record because
-one reference is unavailable.
+full records; the browser does not hydrate them again. References use bounded queries that omit
+inaccessible results. The same results supply form labels and the standard image/icon, linked name,
+and hover preview in table cells, detail fields, and collection cards. An unavailable reference stays
+unresolved rather than blocking the readable record or inventing a preview.
 
 There is no client SQL layer, normalized replica, offline write queue, or parallel Atom cache.
 Integration workers and future agents use the same governed actions and durable journal; provider
