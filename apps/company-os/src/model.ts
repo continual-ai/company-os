@@ -8,14 +8,23 @@ import type { Principal } from "./modules/access/interfaces/principal"
 import { AccessModule } from "./modules/access/model"
 import { AssetsModule } from "./modules/assets/model"
 import { EngineeringModule } from "./modules/engineering/model"
+import { MarketingModule } from "./modules/marketing/model"
 import { SalesModule } from "./modules/sales/model"
+import { SupportModule } from "./modules/support/model"
 
 export { modelMetadata } from "./model-metadata"
 
 export const Model = defineModel({
   actor: Actor,
   name: modelMetadata.name,
-  modules: [AccessModule, SalesModule, AssetsModule, EngineeringModule],
+  modules: [
+    AccessModule,
+    SalesModule,
+    MarketingModule,
+    SupportModule,
+    EngineeringModule,
+    AssetsModule,
+  ],
   root: Root,
 })
 

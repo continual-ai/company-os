@@ -1,150 +1,88 @@
-import { Effect } from "effect"
-import { AtomRegistry } from "effect/unstable/reactivity"
+import { QueryObserver } from "@tanstack/react-query"
 import { describe, expect, it } from "vitest"
 
-import { createModelDataClient, observeQuery } from "./data-client"
+import { createModelDataClient } from "./data-client"
+import { modelQuery } from "./model-query-client"
 
-describe("company data", () => {
-  it("shares in-flight reads and refreshes only affected object types", async () => {
+describe("model query cache", () => {
+  it("deduplicates preload and component reads and invalidates actual changed types", async () => {
     const data = createModelDataClient()
+    let companies = 0
+    let contacts = 0
+    const company = modelQuery(["company"], "list", {}, async () => ++companies)
+    const contact = modelQuery(["contact"], "list", {}, async () => ++contacts)
     try {
-      let companies = 0
-      let contacts = 0
-      const company = () =>
-        data.read(
-          "company",
-          "list",
-          {},
-          Effect.sync(() => ++companies)
-        )
-      const contact = () =>
-        data.read(
-          "contact",
-          "list",
-          {},
-          Effect.sync(() => ++contacts)
-        )
-      expect(await Promise.all([company(), company(), contact()])).toEqual([
-        1, 1, 1,
-      ])
+      expect(
+        await Promise.all([
+          data.queryClient.fetchQuery(company),
+          data.queryClient.fetchQuery(company),
+          data.queryClient.fetchQuery(contact),
+        ])
+      ).toEqual([1, 1, 1])
       data.invalidate(["company"])
-      expect(await Promise.all([company(), contact()])).toEqual([2, 1])
+      expect(
+        await Promise.all([
+          data.queryClient.fetchQuery(company),
+          data.queryClient.fetchQuery(contact),
+        ])
+      ).toEqual([2, 1])
       data.invalidate(["roleAssignment"])
-      expect(await Promise.all([company(), contact()])).toEqual([3, 2])
+      expect(await data.queryClient.fetchQuery(contact)).toBe(2)
     } finally {
       data.dispose()
     }
   })
-
-  it("refreshes observed hydration dependencies without reloading the owning record", async () => {
+  it("removes private data on revocation and permits recovery through the same observer", async () => {
     const data = createModelDataClient()
-    let leadReads = 0
-    let companyReads = 0
-    let companyName = "Before"
-    const query = observeQuery(
-      Effect.gen(function* () {
-        const lead = yield* data.query(
-          "lead",
-          "get",
-          { id: "lead" },
-          Effect.sync(() => {
-            leadReads++
-            return { company: "company" }
-          })
-        )
-        return yield* data.query(
-          "company",
-          "get",
-          { id: lead.company },
-          Effect.sync(() => {
-            companyReads++
-            return companyName
-          })
-        )
-      })
-    )
-    const unmount = data.registry.mount(query)
-    const read = () =>
-      Effect.runPromise(
-        AtomRegistry.getResult(data.registry, query, { suspendOnWaiting: true })
-      )
-    try {
-      expect(await read()).toBe("Before")
-      companyName = "After"
-      data.invalidate(["company"])
-      expect(await read()).toBe("After")
-      expect(leadReads).toBe(1)
-      expect(companyReads).toBe(2)
-    } finally {
-      unmount()
-      data.dispose()
-    }
-  })
-
-  it("allows a failed request to be retried immediately", async () => {
-    const data = createModelDataClient()
-    try {
-      let available = false
-      const request = Effect.suspend(() =>
-        available ? Effect.succeed("recovered") : Effect.fail("unavailable")
-      )
-      await expect(
-        data.read("company", "get", { id: "one" }, request)
-      ).rejects.toBeDefined()
-      available = true
-      expect(await data.read("company", "get", { id: "one" }, request)).toBe(
-        "recovered"
-      )
-    } finally {
-      data.dispose()
-    }
-  })
-
-  it("does not reuse authenticated results across identity changes", async () => {
-    const data = createModelDataClient()
-    try {
-      data.setIdentity("one")
-      expect(
-        await data.read("company", "list", {}, Effect.succeed("one"))
-      ).toBe("one")
-      data.setIdentity("two")
-      expect(
-        await data.read("company", "list", {}, Effect.succeed("two"))
-      ).toBe("two")
-    } finally {
-      data.dispose()
-    }
-  })
-})
-
-it("clears observed records on a permission reset and recovers through the same query", async () => {
-  const data = createModelDataClient()
-  let allowed = true
-  const query = observeQuery(
-    data.query(
-      "company",
+    let allowed = true
+    const options = modelQuery(
+      ["company"],
       "get",
       { id: "private" },
-      Effect.suspend(() =>
-        allowed ? Effect.succeed("private data") : Effect.fail("forbidden")
+      async () => {
+        if (!allowed) throw new Error("Forbidden")
+        return "private data"
+      }
+    )
+    const observer = new QueryObserver(data.queryClient, options)
+    const unsubscribe = observer.subscribe(() => undefined)
+    try {
+      expect(await data.queryClient.fetchQuery(options)).toBe("private data")
+      allowed = false
+      data.reset()
+      expect(data.queryClient.getQueryData(options.queryKey)).toBeUndefined()
+      await expect(data.queryClient.fetchQuery(options)).rejects.toThrow(
+        "Forbidden"
       )
-    )
-  )
-  const unmount = data.registry.mount(query)
-  const read = () =>
-    Effect.runPromise(
-      AtomRegistry.getResult(data.registry, query, { suspendOnWaiting: true })
-    )
-  try {
-    expect(await read()).toBe("private data")
-    allowed = false
-    data.reset()
-    await expect(read()).rejects.toBeDefined()
-    allowed = true
-    data.reset()
-    expect(await read()).toBe("private data")
-  } finally {
-    unmount()
-    data.dispose()
-  }
+      allowed = true
+      data.reset()
+      expect(await data.queryClient.fetchQuery(options)).toBe("private data")
+    } finally {
+      unsubscribe()
+      data.dispose()
+    }
+  })
+  it("never shares results across identities and lets failed reads retry", async () => {
+    const data = createModelDataClient()
+    let name = "first"
+    let failed = false
+    const options = modelQuery(["company"], "get", {}, async () => {
+      if (failed) throw new Error("Unavailable")
+      return name
+    })
+    try {
+      data.setIdentity("first")
+      expect(await data.queryClient.fetchQuery(options)).toBe("first")
+      name = "second"
+      data.setIdentity("second")
+      failed = true
+      await expect(data.queryClient.fetchQuery(options)).rejects.toThrow(
+        "Unavailable"
+      )
+      failed = false
+      expect(await data.queryClient.fetchQuery(options)).toBe("second")
+    } finally {
+      data.dispose()
+    }
+  })
 })

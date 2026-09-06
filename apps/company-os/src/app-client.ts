@@ -5,12 +5,17 @@ import {
 import { customMethodParams } from "@company/runtime/effect/http-custom-method"
 import { Model } from "company-os/model"
 import { Effect } from "effect"
-import { FetchHttpClient, HttpClient } from "effect/unstable/http"
+import {
+  FetchHttpClient,
+  HttpClient,
+  HttpClientRequest,
+} from "effect/unstable/http"
 import { HttpApiClient } from "effect/unstable/httpapi"
 
-import { modelData } from "./data-client"
 import { applicationHttpApi } from "./http-api"
 import type { capabilityGroup, eventGroup } from "./http-api"
+import { modelFetch, modelOrigin } from "./model-fetch"
+import { ClientChanges, createModelQueries } from "./model-query-client"
 
 type ApplicationTransportClient = ModelHttpClient<typeof Model> &
   HttpApiClient.Client<typeof capabilityGroup> &
@@ -24,30 +29,33 @@ const transportClient = Effect.runSync(
   HttpApiClient.make(applicationHttpApi, {
     transformClient: (http) =>
       http.pipe(
-        HttpClient.tap((response) =>
-          Effect.sync(() => {
-            const changes = response.headers["x-model-changes"]
-            if (
-              response.status < 400 &&
-              changes &&
-              typeof window !== "undefined"
+        HttpClient.mapRequestEffect((request) =>
+          Effect.promise(modelOrigin).pipe(
+            Effect.map((origin) =>
+              HttpClientRequest.prependUrl(request, origin)
             )
-              modelData().invalidate(changes.split(","))
+          )
+        ),
+        HttpClient.tap((response) =>
+          Effect.gen(function* () {
+            const changes = yield* ClientChanges
+            if (response.status < 400)
+              for (const type of response.headers["x-model-changes"]?.split(
+                ","
+              ) ?? [])
+                changes?.add(type)
           })
         )
       ),
-  }).pipe(Effect.provide(FetchHttpClient.layer))
+  }).pipe(
+    Effect.provide(FetchHttpClient.layer),
+    Effect.provideService(FetchHttpClient.Fetch, modelFetch)
+  )
 ) as unknown as ApplicationTransportClient
 
 /** Semantic object, Action, and Link client derived from the application contract. */
-export const client = createModelClient(Model, transportClient, {
-  transformQuery: (objectType, operation, input, effect) =>
-    Effect.suspend(() =>
-      typeof window === "undefined"
-        ? effect
-        : modelData().query(objectType, operation, input, effect)
-    ),
-})
+const client = createModelClient(Model, transportClient)
+export const data = createModelQueries(Model, client)
 
 /** Checks advisory UI capabilities through the generated application contract. */
 export const checkCapabilities = (
@@ -68,3 +76,10 @@ export const listEvents = (
     readonly pageSize?: number
   } = {}
 ) => transportClient.events.listEvents({ query })
+
+/** Typed streaming transport; checkpoints advance only after the cache applies each page. */
+export const subscribeEvents = (cursor: string) =>
+  transportClient.events.streamEvents({
+    params: customMethodParams("stream"),
+    query: { cursor },
+  })

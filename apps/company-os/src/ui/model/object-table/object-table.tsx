@@ -115,7 +115,7 @@ export interface ObjectTableProps {
   resolveRecordLabel?: ObjectTableRecordLabelResolver | undefined
   sorting?: SortingState | undefined
   tableTitle?: ReactNode
-  visiblePropertyIds?: ReadonlyArray<string>
+  visiblePropertyIds?: ReadonlyArray<string> | undefined
 }
 
 const columnHelper = createColumnHelper<

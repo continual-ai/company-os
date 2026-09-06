@@ -1,8 +1,8 @@
 import type { ModelLinkTraversal } from "@company/runtime"
 import { Button } from "@company/ui/components/button"
-import { Effect } from "effect"
+import { useQueries } from "@tanstack/react-query"
 import { XIcon } from "lucide-react"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useMemo, useState } from "react"
 
 import type { FormLinkDeltaValue, FormValue } from "@/ui/forms/form-value"
 
@@ -12,7 +12,6 @@ import {
   type ClientRecord,
   type DynamicLinkListInput,
   type ModelObject,
-  type RelatedRecord,
 } from "./object-client"
 import { ObjectRecordPill } from "./object-record-identity"
 import {
@@ -67,69 +66,35 @@ export function ObjectLinkEditField({
     () => linkClientFor(object, traversal),
     [object, traversal]
   )
-  const [current, setCurrent] = useState<ReadonlyArray<RelatedRecord>>([])
   const [addedOptions, setAddedOptions] = useState<
     ReadonlyMap<string, ReferenceOption>
   >(new Map())
-  const [loading, setLoading] = useState(true)
-  const [loadError, setLoadError] = useState<string>()
-  const [nextPageToken, setNextPageToken] = useState<string | null>(null)
-  const requestId = useRef(0)
-  const delta = linkDelta(value)
-
-  const load = useCallback(
-    async (pageToken?: string) => {
-      const currentRequest = ++requestId.current
-      setLoading(true)
-      setLoadError(undefined)
-      try {
-        const pageSize = traversal.traversal.cardinality === "many" ? 50 : 1
-        const request: DynamicLinkListInput =
-          pageToken === undefined
-            ? { id: record.id, pageSize }
-            : { id: record.id, pageSize, pageToken }
-        const page = await Effect.runPromise(client.list(request))
-        const described = await Effect.runPromise(
-          describeReferences(page.items)
-        )
-        if (requestId.current !== currentRequest) return
-        setCurrent((loaded) =>
-          pageToken === undefined
-            ? described
-            : [
-                ...loaded,
-                ...described.filter(
-                  ({ id: target }) =>
-                    !loaded.some(({ id: existing }) => existing === target)
-                ),
-              ]
-        )
-        setNextPageToken(page.nextPageToken)
-      } catch (cause) {
-        if (requestId.current !== currentRequest) return
-        setLoadError(
-          cause instanceof Error
-            ? cause.message
-            : `${traversal.traversal.label} could not be loaded.`
-        )
-      } finally {
-        if (requestId.current === currentRequest) setLoading(false)
+  const [pageTokens, setPageTokens] = useState<
+    ReadonlyArray<string | undefined>
+  >([undefined])
+  const pages = useQueries({
+    queries: pageTokens.map((pageToken) => {
+      const request: DynamicLinkListInput = {
+        id: record.id,
+        pageSize: traversal.traversal.cardinality === "many" ? 50 : 1,
+        ...(pageToken ? { pageToken } : {}),
       }
-    },
-    [
-      client,
-      record.id,
-      traversal.traversal.cardinality,
-      traversal.traversal.label,
-    ]
+      return client.list(request)
+    }),
+  })
+  const current = describeReferences(
+    pages.flatMap((page) => page.data?.items ?? [])
   )
-
-  useEffect(() => {
-    void load()
-    return () => {
-      requestId.current += 1
-    }
-  }, [load])
+  const loading = pages.some((page) => page.isPending)
+  const error = pages.find((page) => page.error !== null)?.error
+  const loadError =
+    error === null || error === undefined
+      ? undefined
+      : error instanceof Error
+        ? error.message
+        : "Relationships could not be loaded."
+  const nextPageToken = pages.at(-1)?.data?.nextPageToken ?? null
+  const delta = linkDelta(value)
 
   const setDelta = (
     add: ReadonlyArray<string>,
@@ -234,7 +199,9 @@ export function ObjectLinkEditField({
             type="button"
             size="sm"
             variant="ghost"
-            onClick={() => void load()}
+            onClick={() => {
+              for (const page of pages) void page.refetch()
+            }}
           >
             Retry
           </Button>
@@ -246,7 +213,7 @@ export function ObjectLinkEditField({
           size="sm"
           variant="outline"
           disabled={loading}
-          onClick={() => void load(nextPageToken)}
+          onClick={() => setPageTokens((tokens) => [...tokens, nextPageToken])}
         >
           {loading ? "Loading…" : "Load more"}
         </Button>

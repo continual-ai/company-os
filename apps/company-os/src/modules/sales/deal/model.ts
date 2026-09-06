@@ -1,6 +1,7 @@
 import { defineObject, schema } from "@company/runtime"
 
 import { AuthorizationScope } from "#modules/access/interfaces/authorization-scope"
+import { User } from "#modules/access/user/model"
 import { NoteSubject } from "#modules/sales/interfaces/note-subject"
 
 export const Deal = defineObject({
@@ -57,6 +58,17 @@ export const Deal = defineObject({
       label: "Expected close date",
       nullable: true,
     }),
+    owner: schema.reference(User, {
+      label: "Owner",
+      nullable: true,
+      inverse: { key: "deals", label: "Deals" },
+    }),
+    nextStep: schema.string({
+      label: "Next step",
+      maxLength: 5000,
+      nullable: true,
+    }),
+    nextStepDate: schema.date({ label: "Next step due", nullable: true }),
   },
   display: {
     icon: "handshake",

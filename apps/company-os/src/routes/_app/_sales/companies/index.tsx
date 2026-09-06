@@ -7,7 +7,8 @@ import { preloadCollection } from "@/ui/model/object-routing"
 
 export const Route = createFileRoute("/_app/_sales/companies/")({
   loaderDeps: ({ search }) => search,
-  loader: ({ deps }) => preloadCollection(Model.objects.company, deps),
+  loader: ({ deps, context }) =>
+    preloadCollection(context.queryClient, Model.objects.company, deps),
   validateSearch: validateObjectCollectionSearch,
   component: CompaniesPage,
 })

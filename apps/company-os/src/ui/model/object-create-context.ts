@@ -1,8 +1,11 @@
 import { createContext, useContext } from "react"
 
 import type { ClientRecord, ModelObject } from "./object-client"
+import type { ObjectFormInput } from "./object-form"
 
 export interface ObjectCreateOptions {
+  readonly initialValues?: ObjectFormInput | undefined
+  readonly referenceLabels?: ReadonlyMap<string, string> | undefined
   readonly onCreated?: ((record: ClientRecord) => void) | undefined
 }
 

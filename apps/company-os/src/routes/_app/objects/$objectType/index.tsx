@@ -7,9 +7,9 @@ import { preloadCollection, routeObject } from "@/ui/model/object-routing"
 export const Route = createFileRoute("/_app/objects/$objectType/")({
   validateSearch: validateObjectCollectionSearch,
   loaderDeps: ({ search }) => search,
-  loader: async ({ params, deps }) => {
+  loader: async ({ params, deps, context }) => {
     const object = routeObject(params.objectType)
-    await preloadCollection(object, deps)
+    await preloadCollection(context.queryClient, object, deps)
     return {
       page: {
         breadcrumb: object.pluralName,

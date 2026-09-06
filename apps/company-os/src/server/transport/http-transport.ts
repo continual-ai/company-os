@@ -5,7 +5,7 @@ import {
   type ModelHttpRequest,
 } from "@company/runtime/effect/http"
 import { CurrentInvocation } from "@company/runtime/effect/object-service"
-import { Context, Data, Effect, Layer } from "effect"
+import { Context, Data, Effect, Layer, Stream } from "effect"
 import {
   HttpEffect,
   HttpServerResponse,
@@ -23,6 +23,8 @@ import { Authorization } from "@/server/authorization/authorization-service"
 import { CommittedChanges } from "@/server/database/committed-changes"
 import { Database } from "@/server/database/database"
 import { EventJournal } from "@/server/events/event-journal"
+import { EventNotifications } from "@/server/events/event-notifications"
+import { streamEvents } from "@/server/events/event-stream"
 import { ModelImplementation } from "@/server/model/model-implementation"
 
 import {
@@ -43,6 +45,7 @@ const make = Effect.gen(function* () {
   const database = yield* Database
   const authentication = yield* Authentication
   const authorization = yield* Authorization
+  const notifications = yield* EventNotifications
   const events = yield* EventJournal
   const implementation = yield* ModelImplementation
 
@@ -124,32 +127,66 @@ const make = Effect.gen(function* () {
     applicationHttpApi,
     "events",
     (handlers) =>
-      handlers.handle("listEvents", (request) => {
-        HttpEffect.appendPreResponseHandlerUnsafe(
-          request.request,
-          (_request, response) =>
-            Effect.succeed(
-              HttpServerResponse.setHeader(
-                response,
-                "cache-control",
-                "private, no-store"
+      handlers
+        .handle("streamEvents", (request) => {
+          HttpEffect.appendPreResponseHandlerUnsafe(
+            request.request,
+            (_request, response) =>
+              Effect.succeed(
+                HttpServerResponse.setHeaders(response, {
+                  "cache-control": "private, no-store",
+                  "x-accel-buffering": "no",
+                })
               )
+          )
+          return authentication.invocation(requestHeaders(request)).pipe(
+            Effect.mapError(() =>
+              unauthenticatedApiError("Authentication credentials are invalid.")
+            ),
+            Effect.map((invocation) =>
+              streamEvents(
+                (cursor) =>
+                  events.list({ cursor, pageSize: 200 }).pipe(
+                    Effect.provideService(CurrentInvocation, invocation),
+                    Effect.catch((error) =>
+                      error instanceof InvalidEventCursor
+                        ? Effect.fail(error)
+                        : Effect.die(error)
+                    )
+                  ),
+                request.query.cursor ?? "now"
+              ).pipe(Stream.provideService(EventNotifications, notifications))
             )
-        )
-        return authentication.invocation(requestHeaders(request)).pipe(
-          Effect.mapError(() =>
-            unauthenticatedApiError("Authentication credentials are invalid.")
-          ),
-          Effect.flatMap((invocation) =>
-            events.list(request.query).pipe(
-              Effect.provideService(CurrentInvocation, invocation),
-              Effect.mapError((error) =>
-                error instanceof InvalidEventCursor ? error : internalApiError()
+          )
+        })
+        .handle("listEvents", (request) => {
+          HttpEffect.appendPreResponseHandlerUnsafe(
+            request.request,
+            (_request, response) =>
+              Effect.succeed(
+                HttpServerResponse.setHeader(
+                  response,
+                  "cache-control",
+                  "private, no-store"
+                )
+              )
+          )
+          return authentication.invocation(requestHeaders(request)).pipe(
+            Effect.mapError(() =>
+              unauthenticatedApiError("Authentication credentials are invalid.")
+            ),
+            Effect.flatMap((invocation) =>
+              events.list(request.query).pipe(
+                Effect.provideService(CurrentInvocation, invocation),
+                Effect.mapError((error) =>
+                  error instanceof InvalidEventCursor
+                    ? error
+                    : internalApiError()
+                )
               )
             )
           )
-        )
-      })
+        })
   )
   const apiLayer = HttpApiBuilder.layer(applicationHttpApi).pipe(
     Layer.provide(

@@ -66,7 +66,7 @@ model, even though all three module entrypoints live together. See
 | [`src/ui/model`](src/ui/model)               | Shared collection, record, relationship, and field components   |
 | [`src/ui/forms`](src/ui/forms)               | TanStack Form and schema/API error mapping                      |
 | [`src/app-client.ts`](src/app-client.ts)     | The generated semantic client used by feature code              |
-| [`src/data-client.ts`](src/data-client.ts)   | The shared Effect Atom query cache and invalidation             |
+| [`src/data-client.ts`](src/data-client.ts)   | The request-scoped TanStack Query cache and invalidation        |
 | [`src/server`](src/server)                   | Authentication, authorization, service assembly, and transports |
 | [`src/server/database`](src/server/database) | App-owned storage schema, transactions, and migrations          |
 | [`tools`](tools)                             | Database commands and checks for model/storage boundaries       |
@@ -77,15 +77,11 @@ PostgreSQL repository implementation in `@company/postgres`. Other apps may cons
 
 ## Read and write paths
 
-The semantic client returns Effects. `useModelQuery` observes cached reads; Router loaders preload
-the same queries in the browser. Reference labels hydrate separately with bounded batch requests,
-and advisory capability checks do not block the collection's read path. A custom React component
-uses the same client rather than hand-writing HTTP requests.
-
-Actions execute server-side authorization, validation, and transactions. Repositories report which
-object types changed, and the response invalidates affected cached reads. UI code does not maintain
-custom-action write sets or issue its own post-write reloads. Query and mutation examples are in the
-[module guide](../../docs/modules.md#read-and-write-data).
+The semantic client exports native query and mutation options. React uses `useQuery` and
+`useMutation`; Router preloads the same queries and hydrates them after server rendering. The
+Effect HTTP transport remains private. Reference labels and advisory IAM checks do not block
+records. Standard actions and authorized SSE events share one cache reconciliation path.
+Read [Data access](../../docs/data.md) for examples, cache ownership, and concurrency guarantees.
 
 Identity verification is replaceable infrastructure. Company OS owns the resulting principals,
 roles, groups, ownership scopes, and business policy. The

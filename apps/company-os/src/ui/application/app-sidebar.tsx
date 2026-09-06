@@ -33,6 +33,8 @@ import {
 import { useCapabilities } from "@/ui/application/use-capabilities"
 import { ModuleNavigation } from "@/ui/model/module-navigation"
 
+import { QuickNavigation } from "./quick-navigation"
+
 const navigationChecks = [applicationCapabilities.develop]
 
 export function AppSidebar() {
@@ -60,6 +62,9 @@ export function AppSidebar() {
                 </span>
               </span>
             </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <QuickNavigation />
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>

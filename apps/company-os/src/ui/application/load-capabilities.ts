@@ -1,5 +1,3 @@
-import { Effect } from "effect"
-
 import { checkCapabilities } from "@/app-client"
 import {
   allowedCapabilityKeys,
@@ -7,7 +5,7 @@ import {
   MAX_CAPABILITY_CHECKS,
   type CapabilityCheck,
 } from "@/capabilities"
-import { modelData } from "@/data-client"
+import { modelQuery, runClientEffect } from "@/model-query-client"
 
 function chunks<T>(values: ReadonlyArray<T>, size: number): ReadonlyArray<T[]> {
   const result: T[][] = []
@@ -18,32 +16,33 @@ function chunks<T>(values: ReadonlyArray<T>, size: number): ReadonlyArray<T[]> {
 }
 
 /** Resolves advisory UI capabilities in bounded batches and fails closed. */
-export function loadAllowedCapabilities(
+export function allowedCapabilitiesQuery(
   requestedChecks: ReadonlyArray<CapabilityCheck>
-): Effect.Effect<ReadonlySet<string>, unknown> {
-  return Effect.gen(function* () {
-    const checks = [
-      ...new Map(
-        requestedChecks.map((check) => [capabilityKey(check), check])
-      ).values(),
-    ]
-    if (checks.length === 0) return new Set()
-    const responses = yield* Effect.all(
-      chunks(checks, MAX_CAPABILITY_CHECKS).map((batch) =>
-        modelData().query(
-          "@iam",
-          "check",
-          batch,
-          checkCapabilities({
-            payload: { checks: batch },
-          })
+) {
+  const checks = [
+    ...new Map(
+      requestedChecks.map((check) => [capabilityKey(check), check])
+    ).values(),
+  ].sort((a, b) => capabilityKey(a).localeCompare(capabilityKey(b)))
+  return modelQuery<ReadonlyArray<string>, unknown>(
+    ["@iam"],
+    "check",
+    checks,
+    async (signal) => {
+      const responses = await Promise.all(
+        chunks(checks, MAX_CAPABILITY_CHECKS).map((batch) =>
+          runClientEffect(
+            checkCapabilities({ payload: { checks: batch } }),
+            signal
+          )
         )
-      ),
-      { concurrency: "unbounded" }
-    )
-    return allowedCapabilityKeys(
-      checks,
-      responses.flatMap(({ results }) => results)
-    )
-  })
+      )
+      return [
+        ...allowedCapabilityKeys(
+          checks,
+          responses.flatMap(({ results }) => results)
+        ),
+      ]
+    }
+  )
 }

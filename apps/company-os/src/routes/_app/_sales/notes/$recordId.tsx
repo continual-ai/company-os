@@ -16,7 +16,8 @@ const page = {
 }
 
 export const Route = createFileRoute("/_app/_sales/notes/$recordId")({
-  loader: ({ params }) => preloadObject(Model.objects.note, params.recordId),
+  loader: ({ params, context }) =>
+    preloadObject(context.queryClient, Model.objects.note, params.recordId),
   ...pageOptions(page),
   validateSearch: validateObjectRecordSearch,
   component: NoteRecord,

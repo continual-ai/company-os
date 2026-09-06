@@ -31,6 +31,15 @@ export const Contact = defineObject({
       nullable: true,
     }),
     email: schema.email({ label: "Email", maxLength: 320, nullable: true }),
+    emailPermission: schema.select({
+      label: "Email permission",
+      default: "unknown",
+      options: [
+        { value: "unknown", label: "Unknown" },
+        { value: "optedIn", label: "Opted in" },
+        { value: "optedOut", label: "Opted out" },
+      ],
+    }),
     phone: schema.phone({ label: "Phone", maxLength: 50, nullable: true }),
   },
   display: {

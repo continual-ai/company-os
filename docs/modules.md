@@ -164,8 +164,8 @@ by the current caller, sums exact decimals, and groups by currency. Granting rep
 returns no records. Do not fetch every deal into JavaScript to calculate a total.
 
 ```ts
-const summary = client.deal.pipelineSummary({}) // Effect; cached like list/get
-const conversion = client.lead.convert({ id: lead.id }) // Effect; executes a write
+const summary = data.deal.pipelineSummary({}) // TanStack Query options
+const conversion = data.lead.convert() // TanStack mutation options
 ```
 
 Generated OpenAPI describes these concrete endpoints and their model-defined result schemas:
@@ -255,80 +255,74 @@ extension point only when a concrete repeated need justifies it.
 
 ## Read and write data
 
-The application exports its generated semantic client from `src/app-client.ts`. Reads are Effects:
+The application exports `data` from `src/app-client.ts`. Model Queries produce native TanStack Query
+options; Actions produce mutation options. React and Router use the same request, cache, and types.
+There is no feature-specific fetching hook or second relational query language.
 
-```ts
-const backlog = client.issue.list({
+```tsx
+import { useQuery, useMutation } from "@tanstack/react-query"
+import { data } from "@/app-client"
+
+const backlog = data.issue.list({
   filter: { field: "status", operator: "eq", value: "backlog" },
   sort: [{ field: "createdAt", direction: "desc" }],
   pageSize: 50,
 })
-```
 
-`list` always uses GET and supports filters, sorting, and cursor pagination. The generated HTTP
-codec encodes structured `filter` and `sort` values as JSON query parameters. There is no duplicate
-`:search` operation. `batchGet` hydrates known identifiers; custom methods use colon suffixes.
-Large filters remain subject to the deployment's URL limits; do not split a filter into independently
-paginated requests and pretend the result preserves global ordering.
-
-The current React adapter is `useModelQuery`; it observes a stable Effect, including derived
-hydration dependencies. Keep dynamically constructed Effects stable with `useMemo`. This is the
-current Atom-backed request cache, not a normalized client database. The Atom/TanStack DB choice
-is still open; do not add a second business-record store. Router loaders preload the same query in
-the browser. Authenticated business-record SSR hydration is not implemented.
-
-A custom component uses the same typed read. For a static query, construct the Effect once outside
-the component; for a query derived from props, use `useMemo` with those props as dependencies:
-
-```tsx
-import { client } from "@/app-client"
-import { useModelQuery } from "@/use-model-query"
-
-const backlogQuery = client.issue.list({
-  filter: { field: "status", operator: "eq", value: "backlog" },
-  pageSize: 50,
-})
+// In a Router loader:
+// await context.queryClient.ensureQueryData(backlog)
 
 export function BacklogPreview() {
-  const { value: page, loading, error } = useModelQuery(backlogQuery)
-  if (error !== undefined)
-    return <p role="alert">Could not load the backlog.</p>
-  if (page === undefined) return <output>Loading backlog…</output>
-  if (page.items.length === 0) return <p>No backlog issues.</p>
-
+  const issues = useQuery(backlog)
+  const createIssue = useMutation(data.issue.create())
+  if (issues.isPending) return <p>Loading backlog…</p>
+  if (issues.isError) return <p role="alert">Could not load the backlog.</p>
   return (
-    <ul aria-busy={loading}>
-      {page.items.map((issue) => (
-        <li key={issue.id}>{issue.title}</li>
-      ))}
-    </ul>
+    <>
+      <button
+        disabled={createIssue.isPending}
+        onClick={() =>
+          createIssue.mutate({ title: "Investigate customer feedback" })
+        }
+      >
+        Add issue
+      </button>
+      {createIssue.isError && (
+        <p role="alert">The issue could not be created.</p>
+      )}
+      <ul>
+        {issues.data.items.map((issue) => (
+          <li key={issue.id}>{issue.title}</li>
+        ))}
+      </ul>
+    </>
   )
 }
 ```
 
-This preview reads one page; a full collection should use `ObjectCollection` or explicitly handle
-`nextPageToken`. During revalidation, the cache keeps the last successful result available. It does
-not optimistically invent the outcome of a mutation.
+This preview reads one page; use `ObjectCollection` or handle `nextPageToken` for a complete collection.
+Options can be constructed inline: request values determine cache identity, not object identity.
+Standard pages preload on the server and hydrate the browser's cache. Each server request owns an
+isolated QueryClient. Background refreshes keep the previous result visible; `isPending` represents
+initial loading and `isFetching` includes background work.
 
-Actions use the same client, for example `client.lead.convert({ id })`. Server transactions report
-changed object types using `x-model-changes`; observed reads refresh from those changes. Feature code
-never declares authoritative mutation dependencies or reloads collections after every successful
-write. Store interaction and unsaved draft state locally, not copies of remote records.
+`list` uses GET with filters, sorting, and cursor pagination. Structured filter and sort values are
+JSON query parameters. `batchGet` hydrates known identifiers; custom methods use colon suffixes.
+There is no duplicate generic search API. Large filters remain subject to URL limits: independently
+paginated chunks cannot preserve global ordering. Reference label hydration uses bounded authorized
+lists, so an unavailable reference never prevents rendering the main record.
 
-For custom work, compose Effects until the React event boundary, then run them. The module's
-`ConfirmActionButton` owns pending and failure presentation for this example:
+Actions such as `useMutation(data.lead.convert())` use the same model. Server transactions report
+actual changed types through `x-model-changes`; the shared reconciler updates returned record
+appearances and refreshes collection membership, counts, and custom reports. Feature code never
+lists mutation write sets or manually reloads after a successful write. Use `mutateAsync` when an
+existing dialog owns pending/error behavior. Effects stay inside the transport and server assembly.
 
-```tsx
-<ConfirmActionButton
-  actionLabel="Convert"
-  title="Convert this lead?"
-  description="Creates a company and contact linked to this lead."
-  destructive={false}
-  onConfirm={() =>
-    Effect.runPromise(client.lead.convert({ id }).pipe(Effect.asVoid))
-  }
-/>
-```
+The authorized SSE feed applies full standard record snapshots and deletion tombstones through the
+same reconciler. Older responses cannot overwrite newer revisions. Keep interaction state and
+unsaved drafts locally; do not copy query results into component state. Standard edit dialogs retain
+the opening etag and draft, reject conflicting edits, and ask before discarding unsaved changes.
+See [Data access](data.md) for cache, concurrency, and reconnect behavior.
 
 The resulting HTTP contract uses ordinary resources and colon custom methods:
 

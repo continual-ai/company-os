@@ -13,13 +13,12 @@ import {
   PopoverTrigger,
 } from "@company/ui/components/popover"
 import { cn } from "@company/ui/lib/utils"
+import { useQueries } from "@tanstack/react-query"
 import { Model } from "company-os/model"
-import { Effect } from "effect"
 import { CheckIcon, ChevronDownIcon } from "lucide-react"
-import { useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 
 import { ROOT_ID } from "@/system-records"
-import { useModelQuery } from "@/use-model-query"
 
 import {
   clientFor,
@@ -54,74 +53,53 @@ function findOptions(
   typeId: string,
   query: string,
   constraints: ReadonlyArray<ReferenceConstraint>
-): Effect.Effect<ReadonlyArray<ReferenceOption>, unknown> {
-  return Effect.gen(function* () {
-    const normalizedQuery = query.trim()
-    const pages = yield* Effect.forEach(
-      recordObjectTypes(typeId),
-      (object) =>
-        Effect.gen(function* () {
-          const title = object.display.title
-          const titleProperty = modelObjectProperty(object, title)
-          const titleFilter =
-            normalizedQuery !== "" && titleProperty?.kind === "string"
-              ? {
-                  field: title,
-                  operator: "contains" as const,
-                  value: normalizedQuery,
-                }
-              : undefined
-          const filters = [
-            ...constraints.map((constraint) => ({
-              field: constraint.field,
-              operator: "eq" as const,
-              value: constraint.value,
-            })),
-            ...(titleFilter === undefined ? [] : [titleFilter]),
+) {
+  const normalizedQuery = query.trim()
+  return recordObjectTypes(typeId).map((object) => {
+    const title = object.display.title
+    const titleProperty = modelObjectProperty(object, title)
+    const titleFilter =
+      normalizedQuery !== "" && titleProperty?.kind === "string"
+        ? {
+            field: title,
+            operator: "contains" as const,
+            value: normalizedQuery,
+          }
+        : undefined
+    const filters = [
+      ...constraints.map((constraint) => ({
+        field: constraint.field,
+        operator: "eq" as const,
+        value: constraint.value,
+      })),
+      ...(titleFilter === undefined ? [] : [titleFilter]),
+    ]
+    const filter =
+      filters.length === 0
+        ? undefined
+        : filters.length === 1
+          ? filters[0]!
+          : { and: filters }
+    const sort =
+      titleProperty !== undefined && canSortProperty(titleProperty)
+        ? [
+            {
+              direction: "asc" as const,
+              field: title,
+              nulls: "last" as const,
+            },
           ]
-          const filter =
-            filters.length === 0
-              ? undefined
-              : filters.length === 1
-                ? filters[0]!
-                : { and: filters }
-          const sort =
-            titleProperty !== undefined && canSortProperty(titleProperty)
-              ? [
-                  {
-                    direction: "asc" as const,
-                    field: title,
-                    nulls: "last" as const,
-                  },
-                ]
-              : undefined
-          const request: ReferenceListRequest = { pageSize: 20 }
-          if (filter !== undefined) {
-            request.filter = filter
-          }
-          if (sort !== undefined) {
-            // SAFETY: the selected title property is a sortable portable field.
-            // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-            request.sort = sort as Exclude<ListRequest["sort"], undefined>
-          }
-          return {
-            object,
-            page: yield* clientFor(object).list(request),
-          }
-        }),
-      { concurrency: "unbounded" }
-    )
-    const options: ReferenceOption[] = pages.flatMap(({ object, page }) =>
-      page.items.map((record) => ({
-        id: record.id,
-        label: recordLabel(object, record),
-        presentation: { object, record: tableRecord(object, record) },
-      }))
-    )
-    if (modelTypeAccepts(Model, Model.root.id, typeId)) {
-      options.unshift({ id: ROOT_ID, label: Model.root.name })
+        : undefined
+    const request: ReferenceListRequest = { pageSize: 20 }
+    if (filter !== undefined) {
+      request.filter = filter
     }
-    return options
+    if (sort !== undefined) {
+      // SAFETY: the selected title property is a sortable portable field.
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+      request.sort = sort as Exclude<ListRequest["sort"], undefined>
+    }
+    return { object, query: clientFor(object).list(request) }
   })
 }
 
@@ -166,23 +144,36 @@ export function ObjectReferenceSelect({
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState("")
   const [selection, setSelection] = useState<ReferenceOption>()
-  const optionsQuery = useMemo(
-    () =>
-      open
-        ? findOptions(typeId, query, constraints).pipe(
-            Effect.delay("150 millis")
-          )
-        : Effect.succeed([]),
-    [open, typeId, query, constraints]
-  )
-  const result = useModelQuery(optionsQuery)
-  const options = result.value ?? []
-  const loading = result.loading
+  const [search, setSearch] = useState("")
+  useEffect(() => {
+    const timer = setTimeout(() => setSearch(query), 150)
+    return () => clearTimeout(timer)
+  }, [query])
+  const requests = findOptions(typeId, search, constraints)
+  const results = useQueries({
+    queries: requests.map(({ query: options }) => ({
+      ...options,
+      enabled: open,
+    })),
+  })
+  const options: ReferenceOption[] = results.flatMap((result, index) => {
+    const object = requests[index]!.object
+    return (result.data?.items ?? []).map((record) => ({
+      id: record.id,
+      label: recordLabel(object, record),
+      presentation: { object, record: tableRecord(object, record) },
+    }))
+  })
+  if (modelTypeAccepts(Model, Model.root.id, typeId))
+    options.unshift({ id: ROOT_ID, label: Model.root.name })
+  const loading =
+    results.some((result) => result.isFetching) || search !== query
+  const cause = results.find((result) => result.error !== null)?.error
   const error =
-    result.error === undefined
+    cause === null || cause === undefined
       ? undefined
-      : result.error instanceof Error
-        ? result.error.message
+      : cause instanceof Error
+        ? cause.message
         : "References could not be loaded."
   const selected =
     options.find((option) => option.id === value) ??

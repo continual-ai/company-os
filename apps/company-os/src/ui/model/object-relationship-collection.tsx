@@ -11,6 +11,7 @@ import {
 import { PencilIcon, PlusIcon, UnlinkIcon } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 
+import { useObjectUi } from "./module-ui"
 import {
   linkClientFor,
   parentName,
@@ -24,7 +25,6 @@ import type {
   ObjectCollectionSort,
 } from "./object-collection-view"
 import { ObjectRecordDialog } from "./object-record-dialog"
-import { loadRelationshipCollectionPage } from "./object-relationship-collection-query"
 import { ObjectRelationshipForm } from "./object-relationship-form"
 import { objectHref } from "./object-routing"
 import { ObjectTable } from "./object-table/object-table"
@@ -87,19 +87,34 @@ export function ObjectRelationshipCollection({
   readonly targetObject: ModelObject
   readonly traversal: ModelLinkTraversal
 }) {
+  const ui = useObjectUi(targetObject)
+  const defaultVisibility = ui?.collection?.views?.[0]?.state.visibility
+  const visiblePropertyIds = useMemo(
+    () =>
+      defaultVisibility === undefined ||
+      Object.keys(defaultVisibility).length === 0
+        ? undefined
+        : Object.keys(defaultVisibility).filter(
+            (key) => defaultVisibility[key]
+          ),
+    [defaultVisibility]
+  )
   const relationshipClient = useMemo(
     () => linkClientFor(object, traversal),
     [object, traversal]
   )
   const listRecords = useCallback(
     (request: ListRequest) =>
-      loadRelationshipCollectionPage({
-        list: relationshipClient.list,
-        objectType: targetObject.id,
-        request,
-        sourceId: record.id,
+      relationshipClient.list({
+        id: record.id,
+        ...(request.pageSize === undefined
+          ? {}
+          : { pageSize: request.pageSize }),
+        ...(request.pageToken === undefined
+          ? {}
+          : { pageToken: request.pageToken }),
       }),
-    [record.id, relationshipClient.list, targetObject.id]
+    [record.id, relationshipClient]
   )
   const collection = useObjectCollection(
     targetObject,
@@ -160,6 +175,7 @@ export function ObjectRelationshipCollection({
       )}
       <ObjectTable
         object={targetObject}
+        visiblePropertyIds={visiblePropertyIds}
         parentLabel={parentName(targetObject)}
         records={tableRecords}
         canFilterProperty={unavailable}

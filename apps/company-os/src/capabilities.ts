@@ -104,7 +104,7 @@ export interface CapabilityCheck {
 }
 
 export function capabilityKey(check: CapabilityCheck): string {
-  return `${check.permission}\u0000${check.target ?? ""}`
+  return JSON.stringify([check.permission, check.target ?? null])
 }
 
 export function allowedCapabilityKeys(

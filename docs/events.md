@@ -15,7 +15,8 @@ Continual service, broker, or separate worker for browser updates.
 4. Immediately before the outer commit, the database allocates journal positions and inserts
    the events. A single counter row stays locked until commit. This makes committed positions
    safe to consume in order even when concurrent transactions finish out of order.
-5. After commit, the event subjects determine HTTP cache invalidation. There is no separate write-set
+5. The flush calls `pg_notify` in the same transaction. PostgreSQL delivers this wakeup only after
+   commit; its payload contains no records or credentials. The event subjects determine HTTP cache invalidation. There is no separate write-set
    or rollback tracker. Other open browsers discover the same facts through the authorized event feed.
 
 Events and business writes commit together. A process crash before commit leaves neither;
@@ -65,7 +66,11 @@ Append outside `Database.transaction` fails; it never silently creates an indepe
 
 The server derives actor identity from the invocation. Consumers cannot submit an actor or create
 journal records over HTTP. Events carry stable IDs, transaction IDs, versions, subjects, actor,
-occurrence time, and recording time. Standard change events omit record snapshots and field values.
+occurrence time, and recording time. Standard create/update events use version 2 and contain the full canonical record, including its
+ordered etag. Version 2 deletions contain `{ id, etag }`, where the tombstone advances the last record
+revision. Version 1 invalidation facts remain readable. Standard snapshots have the visibility of
+reading that object: reference IDs do not confer access to referenced records. Custom business facts
+continue to require read access to every derived subject.
 A custom SQL mutation must preserve normal write invariants and append an appropriate declared
 fact covering its affected records in the same transaction. Raw SQL is not intercepted. Bootstrap
 seed upserts are intentionally outside the runtime event history.
@@ -98,10 +103,34 @@ keys. Scope internals and numeric positions are never exposed. Responses are pri
 
 When first attaching a cache, obtain the head cursor **before** the final snapshot refresh. This
 closes the gap between an initial page load and starting the consumer. Each mounted authenticated
-shell polls every two seconds while visible and online, drains catch-up pages immediately, and
-retries failures with backoff capped at 30 seconds. It retains its acknowledged cursor across
-network interruptions; remounting starts from the head and resets the cache. Identity changes abort
-old requests. Permission changes clear cached records before fetching again.
+shell resumes the head captured before the server's child loaders read their records, then consumes `GET /api/v1/events:stream?cursor=...`. The generated
+Effect HTTP client decodes typed SSE pages, whose `id` equals `nextCursor`. The client advances its
+checkpoint only after applying the page, rather than assuming receipt means successful processing.
+A client-only mount obtains a head cursor and resets its data before continuing. The server-rendered
+path already has a checkpoint and avoids clearing hydrated records on startup.
+It reconnects with that applied cursor; the query parameter is the resume contract (not an automatic
+browser EventSource acknowledgement).
+
+`EventNotifications.layer` uses one shared PostgreSQL LISTEN connection per application runtime.
+Subscribers register before reading the journal, coalesce wakeups, and drain committed pages.
+Notifications are hints, not a second log. Every stream also catches up after 15 seconds of inactivity,
+covering missed wakeups and rechecking access. Connections close after 60 seconds so reconnecting
+repeats authentication. Revocation latency is therefore bounded by the page check/connection renewal,
+not by an indefinitely trusted session. A slow subscriber retains at most one wakeup and resumes
+from its journal cursor.
+
+Hidden/offline tabs disconnect. Reconnection starts with a durable pull and then opens SSE; failures
+back off to 30 seconds. Hosts that buffer SSE still recover through pull requests and periodic stream
+checkpoints. `EventNotifications.layerPolling` supplies the same journal feed without LISTEN, and
+`makeApplicationLayer` accepts either layer. PostgreSQL LISTEN requires a session connection rather
+than a transaction-pooling endpoint. Disconnecting the notification service cannot lose commits.
+
+Full snapshots are retained indefinitely in this release, including values later edited or deleted.
+Current read grants authorize that retained history; this is not field-level redaction or immutable
+historical ACL enforcement. Do not place credentials in business object fields. A deployment with
+retention/erasure requirements must explicitly apply its policy to both business tables and the
+journal. Changing the schema of stored version 2 snapshots requires a migration or a new readable
+payload version; changing current object definitions alone does not migrate history.
 
 ## Boundaries
 
@@ -111,10 +140,9 @@ or durable handoff. This checkpoint does not include worker leases, delivery sub
 jobs, or controller execution. Replaying history must not blindly repeat external side effects:
 those need stable operation keys and durable receipts.
 
-Browser updates currently invalidate cached queries and refetch through governed APIs. They do not
-replicate full records, provide offline writes, or establish a TanStack DB replica. Polling provides
-cross-client freshness on the current host; an SSE adapter can reuse the journal later. Authentication
-still runs on each request through the configured identity provider.
+Browser updates apply snapshots to existing cache appearances and refetch affected collections and
+reports. They do not replicate an entire database or infer server authorization locally. The journal
+is also suitable for integration consumers with their own durable checkpoints and idempotency keys.
 
 The portable event definition belongs to `@company/runtime`; composition, authorization, persistence,
 and migrations belong to the application. `EventJournal.layer` is an Effect v4 service using the

@@ -52,6 +52,8 @@ export function makeObjectRepository<const TObject extends ModelObjectType>(
             )
           yield* events.record({
             type: `${object.id}.${kind}`,
+            version: 2,
+            data: record,
             subjects: yield* events.subjects([record.id]),
             actorId: record.updatedBy,
           })
@@ -73,15 +75,29 @@ export function makeObjectRepository<const TObject extends ModelObjectType>(
                     id: core.id,
                     objectType: core.objectType,
                     ancestorIds: core.ancestorIds,
+                    etag: core.etag,
                   })
                   .from(core)
                   .where(inArray(core.id, [...ids]))
+                  .orderBy(core.id)
+                  .for("update")
           yield* deleting(ids)
           const result = yield* operation
           for (const target of targets)
             yield* events.record({
               type: `${object.id}.deleted`,
-              subjects: [target],
+              version: 2,
+              data: {
+                id: target.id,
+                etag: (BigInt(target.etag) + 1n).toString(),
+              },
+              subjects: [
+                {
+                  id: target.id,
+                  objectType: target.objectType,
+                  ancestorIds: target.ancestorIds,
+                },
+              ],
             })
           return result
         })

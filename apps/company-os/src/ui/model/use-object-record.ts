@@ -1,9 +1,8 @@
-import { Effect } from "effect"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useMemo } from "react"
 
 import { modelData } from "@/data-client"
 import { useCapabilities } from "@/ui/application/use-capabilities"
-import { useModelQuery } from "@/use-model-query"
 
 import {
   objectCapabilityCheck,
@@ -11,22 +10,17 @@ import {
 } from "./object-capabilities"
 import { clientFor, type ModelObject } from "./object-client"
 import type { ObjectFormInput } from "./object-form"
-import { loadReferenceLabels } from "./reference-labels"
-
-const noLabels: ReadonlyMap<string, string> = new Map()
+import { useReferenceLabels } from "./reference-labels"
 
 export function useObjectRecord(object: ModelObject, recordId: string) {
   const client = useMemo(() => clientFor(object), [object])
   const query = useMemo(() => client.get({ id: recordId }), [client, recordId])
-  const record = useModelQuery(query)
-  const labelsQuery = useMemo(
-    () =>
-      query.pipe(
-        Effect.flatMap((value) => loadReferenceLabels(object, [value]))
-      ),
-    [query, object]
+  const record = useQuery(query)
+  const labels = useReferenceLabels(
+    object,
+    record.data === undefined ? [] : [record.data]
   )
-  const labels = useModelQuery(labelsQuery)
+  const cache = useQueryClient()
   const checks = useMemo(
     () => objectCapabilityChecks(object, [recordId]),
     [object, recordId]
@@ -38,25 +32,25 @@ export function useObjectRecord(object: ModelObject, recordId: string) {
       return check !== undefined && capabilities.can(check)
     },
     error:
-      record.error === undefined
+      record.error === null
         ? undefined
         : record.error instanceof Error
           ? record.error.message
           : "The record could not be loaded.",
     load: async () => {
       modelData().invalidate(["*"])
-      await Effect.runPromise(query)
+      await cache.fetchQuery(query)
     },
-    loading: record.loading,
-    record: record.value,
-    referenceLabels: labels.value ?? noLabels,
+    loading: record.isPending,
+    record: record.data,
+    referenceLabels: labels,
     update: async (changes: ObjectFormInput) => {
-      if (record.value === undefined || client.update === undefined)
+      if (record.data === undefined || client.update === undefined)
         throw new Error("Updates are not available.")
       await client.update({
+        etag: record.data.etag,
         ...changes,
-        etag: record.value.etag,
-        id: record.value.id,
+        id: record.data.id,
       })
     },
   } as const

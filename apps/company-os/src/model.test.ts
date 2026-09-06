@@ -78,68 +78,17 @@ describe("model contract", () => {
         "pipelineSummary"
       >["groups"][number]["count"]
     >().toEqualTypeOf<number>()
-    expect(description.modules).toEqual([
-      {
-        id: "access",
-        interfaceIds: ["actor", "authorizationScope", "identity", "principal"],
-        linkIds: [],
-        name: "Access",
-        objectIds: [
-          "user",
-          "serviceAccount",
-          "anonymousActor",
-          "group",
-          "principalSet",
-          "groupMembership",
-          "role",
-          "roleAssignment",
-        ],
-      },
-      {
-        id: "sales",
-        interfaceIds: ["party", "noteSubject"],
-        linkIds: [
-          "contactCompanies",
-          "contactPrimaryCompany",
-          "dealCompanies",
-          "noteSubjects",
-        ],
-        name: "Sales",
-        objectIds: ["company", "contact", "lead", "deal", "lineItem", "note"],
-      },
-      {
-        id: "assets",
-        interfaceIds: [],
-        linkIds: [],
-        name: "Assets",
-        objectIds: ["asset"],
-      },
-      {
-        id: "engineering",
-        interfaceIds: [],
-        linkIds: [],
-        name: "Engineering",
-        objectIds: ["issue"],
-      },
+    expect(description.modules.map((module) => module.id)).toEqual([
+      "access",
+      "sales",
+      "marketing",
+      "support",
+      "engineering",
+      "assets",
     ])
-    expect(description.objects.map((object) => object.id)).toEqual([
-      "user",
-      "serviceAccount",
-      "anonymousActor",
-      "group",
-      "principalSet",
-      "groupMembership",
-      "role",
-      "roleAssignment",
-      "company",
-      "contact",
-      "lead",
-      "deal",
-      "lineItem",
-      "note",
-      "asset",
-      "issue",
-    ])
+    expect(
+      description.modules.flatMap((module) => module.objectIds).sort()
+    ).toEqual(description.objects.map((object) => object.id).sort())
     expect(description.interfaces.map((item) => item.id)).toEqual([
       "actor",
       "authorizationScope",
@@ -169,6 +118,8 @@ describe("model contract", () => {
       "contactPrimaryCompany",
       "dealCompanies",
       "noteSubjects",
+      "ticketIssues",
+      "issuePullRequests",
     ])
     expect(description.links).toEqual(
       expect.arrayContaining([
@@ -299,6 +250,17 @@ describe("model contract", () => {
           | RecordId<"contact">
           | RecordId<"deal">
           | RecordId<"lead">
+          | RecordId<"activity">
+          | RecordId<"campaign">
+          | RecordId<"content">
+          | RecordId<"enrollment">
+          | RecordId<"outreach">
+          | RecordId<"ticket">
+          | RecordId<"reply">
+          | RecordId<"issue">
+          | RecordId<"project">
+          | RecordId<"repository">
+          | RecordId<"pullRequest">
         >
       | undefined
     >()
@@ -320,6 +282,17 @@ describe("model contract", () => {
       | RecordId<"contact">
       | RecordId<"deal">
       | RecordId<"lead">
+      | RecordId<"activity">
+      | RecordId<"campaign">
+      | RecordId<"content">
+      | RecordId<"enrollment">
+      | RecordId<"outreach">
+      | RecordId<"ticket">
+      | RecordId<"reply">
+      | RecordId<"issue">
+      | RecordId<"project">
+      | RecordId<"repository">
+      | RecordId<"pullRequest">
     >()
     expectTypeOf<IdentityId>().toEqualTypeOf<
       RecordId<"serviceAccount"> | RecordId<"user">

@@ -1,20 +1,21 @@
-import { useMemo } from "react"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 
 import { capabilityKey, type CapabilityCheck } from "@/capabilities"
-import { modelData } from "@/data-client"
-import { useModelQuery } from "@/use-model-query"
 
-import { loadAllowedCapabilities } from "./load-capabilities"
+import { allowedCapabilitiesQuery } from "./load-capabilities"
 
 /** Fail-closed advisory checks share the same observable cache as business queries. */
 export function useCapabilities(checks: ReadonlyArray<CapabilityCheck>) {
-  const query = useMemo(() => loadAllowedCapabilities(checks), [checks])
-  const result = useModelQuery(query)
+  const cache = useQueryClient()
+  const query = allowedCapabilitiesQuery(checks)
+  const result = useQuery(query)
   return {
     can: (check: CapabilityCheck) =>
-      result.value?.has(capabilityKey(check)) ?? false,
+      result.data?.includes(capabilityKey(check)) ?? false,
     error: result.error,
-    loading: result.loading,
-    refresh: () => modelData().invalidate(["@iam"]),
+    loading: result.isPending,
+    refresh: () => {
+      void cache.invalidateQueries({ queryKey: ["model", "@iam"] })
+    },
   }
 }

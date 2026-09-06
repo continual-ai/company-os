@@ -654,7 +654,7 @@ function makeRepository<
               target: objects.id,
               set: {
                 metadata,
-                etag: sql`gen_random_uuid()::text`,
+                etag: sql`(${objects.etag}::numeric + 1)::text`,
                 systemManaged,
                 updatedAt: sql`now()`,
                 updatedById: updatedBy,
@@ -749,12 +749,12 @@ function makeRepository<
             .set(
               metadata === undefined
                 ? {
-                    etag: sql`gen_random_uuid()::text`,
+                    etag: sql`(${objects.etag}::numeric + 1)::text`,
                     updatedAt: sql`now()`,
                     updatedById: updatedBy,
                   }
                 : {
-                    etag: sql`gen_random_uuid()::text`,
+                    etag: sql`(${objects.etag}::numeric + 1)::text`,
                     metadata,
                     updatedAt: sql`now()`,
                     updatedById: updatedBy,

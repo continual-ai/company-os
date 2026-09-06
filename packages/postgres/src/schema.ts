@@ -252,9 +252,7 @@ function makeCoreTables<const TModel extends ModelCatalog>(
         .notNull()
         .default(sql`'{}'::jsonb`),
       systemManaged: boolean().notNull().default(false),
-      etag: text()
-        .default(sql`gen_random_uuid()::text`)
-        .notNull(),
+      etag: text().default("1").notNull(),
       createdAt: timestampWithTimezone()
         .default(sql`now()`)
         .notNull(),

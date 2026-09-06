@@ -420,13 +420,18 @@ export function objectFormDefaultValues(
   object: ModelObject,
   mode: ObjectFormMode,
   record?: ClientRecord,
-  now = new Date()
+  now = new Date(),
+  initialValues?: ObjectFormInput
 ): ObjectFormValues {
   const values: Record<string, FormValue> = {}
-  if (mode === "create" && object.parent.kind !== "root") values.parent = ""
+  if (mode === "create" && object.parent.kind !== "root")
+    values.parent = stringValue(initialValues?.parent)
 
   for (const { id, property, schema } of objectFormProperties(object, mode)) {
-    const value = initialValue(property, record, id, mode, now)
+    const value =
+      initialValues?.[id] !== undefined
+        ? initialValues[id]
+        : initialValue(property, record, id, mode, now)
     if (schema.kind === "boolean") {
       values[id] = value === true
       continue

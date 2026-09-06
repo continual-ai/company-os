@@ -1,10 +1,10 @@
 import { type ListRequest, type Page, type PageToken } from "@company/runtime"
-import { Effect } from "effect"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useMemo, useState } from "react"
 
 import { modelData } from "@/data-client"
+import type { ModelQueryOptions } from "@/model-query-client"
 import { useCapabilities } from "@/ui/application/use-capabilities"
-import { useModelQuery } from "@/use-model-query"
 
 import { objectCapabilityCheck } from "./object-capabilities"
 import { clientFor, type ClientRecord, type ModelObject } from "./object-client"
@@ -15,13 +15,12 @@ import type {
 } from "./object-collection-view"
 import type { ObjectFormInput } from "./object-form"
 import type { ObjectTableValue } from "./object-table/object-table-config"
-import { loadReferenceLabels } from "./reference-labels"
+import { useReferenceLabels } from "./reference-labels"
 
 export type ObjectCollectionList = (
   request: ListRequest
-) => Effect.Effect<Page<ClientRecord>, unknown>
+) => ModelQueryOptions<Page<ClientRecord>>
 const noRecords: ReadonlyArray<ClientRecord> = []
-const noLabels: ReadonlyMap<string, string> = new Map()
 
 export function useObjectCollection(
   object: ModelObject,
@@ -64,15 +63,12 @@ export function useObjectCollection(
     () => list(objectListRequest(object, columnFilters, sorting, pageToken)),
     [list, object, columnFilters, sorting, pageToken]
   )
-  const page = useModelQuery(pageQuery)
-  const labelsQuery = useMemo(
-    () =>
-      pageQuery.pipe(
-        Effect.flatMap((result) => loadReferenceLabels(object, result.items))
-      ),
-    [pageQuery, object]
+  const page = useQuery(pageQuery)
+  const referenceLabels = useReferenceLabels(
+    object,
+    page.data?.items ?? noRecords
   )
-  const labels = useModelQuery(labelsQuery)
+  const cache = useQueryClient()
   const checks = useMemo(
     () =>
       Object.keys(object.actions).flatMap((action) => {
@@ -82,13 +78,12 @@ export function useObjectCollection(
     [object]
   )
   const capabilities = useCapabilities(checks)
-  const records = page.value?.items ?? noRecords
-  const nextPageToken = page.value?.nextPageToken ?? null
-  const totalSize = page.value?.totalSize ?? 0
-  const referenceLabels = labels.value ?? noLabels
-  const loading = page.loading
+  const records = page.data?.items ?? noRecords
+  const nextPageToken = page.data?.nextPageToken ?? null
+  const totalSize = page.data?.totalSize ?? 0
+  const loading = page.isPending
   const error =
-    page.error === undefined
+    page.error === null
       ? undefined
       : page.error instanceof Error
         ? page.error.message
@@ -97,7 +92,7 @@ export function useObjectCollection(
   const update = async (record: ClientRecord, changes: ObjectFormInput) => {
     if (client.update === undefined)
       throw new Error("Updates are not available.")
-    await client.update({ ...changes, etag: record.etag, id: record.id })
+    await client.update({ etag: record.etag, ...changes, id: record.id })
   }
   const updateCell = async (
     recordId: string,
@@ -156,7 +151,7 @@ export function useObjectCollection(
     error,
     load: async () => {
       modelData().invalidate(["*"])
-      await Effect.runPromise(pageQuery)
+      await cache.fetchQuery(pageQuery)
     },
     loading,
     nextPage,

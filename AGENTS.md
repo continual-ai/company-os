@@ -162,7 +162,7 @@ Keep migration ownership central. Do not add a dynamic runtime plugin system or 
 - Feature code should consume the semantic client derived from the model contract. Keep the native
   Effect HTTP client inside the application client assembly and expose non-model API groups through
   purpose-named operations or a deliberate semantic namespace.
-- Generated Queries share the application query cache; React reads observe it through `useModelQuery`.
+- Generated Queries return TanStack Query options; React uses `useQuery(data.object.list(...))` and Actions use `useMutation(data.object.update())` with the same application cache.
   Keep only interaction and unsaved draft state in component state. Router loaders preload the same request
   used by the screen. Render records without waiting for reference labels or advisory IAM checks.
   Actual server writes determine invalidation; feature code never declares mutation write sets.

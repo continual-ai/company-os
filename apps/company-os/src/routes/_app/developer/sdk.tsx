@@ -2,12 +2,14 @@ import { createFileRoute } from "@tanstack/react-router"
 
 import { pageOptions } from "@/route-metadata"
 
-const sdkExample = `import { Effect } from "effect"
-import { client } from "@/app-client"
+const sdkExample = `import { useQuery, useMutation } from "@tanstack/react-query"
+import { data } from "@/app-client"
 
-const companies = await Effect.runPromise(
-  client.company.list()
-)`
+const companies = useQuery(data.company.list({ pageSize: 50 }))
+const createCompany = useMutation(data.company.create())
+
+// In a Router loader, preload the same options:
+await context.queryClient.ensureQueryData(data.company.list({ pageSize: 50 }))`
 
 const page = {
   breadcrumb: "SDK",
@@ -30,8 +32,8 @@ function SdkPage() {
           Use the operating model from TypeScript.
         </h1>
         <p className="mt-3 max-w-2xl leading-7 text-muted-foreground">
-          The Effect client is inferred from the same HttpApi contract served by
-          the backend. That contract is projected from the shared model and also
+          The model client is inferred from the same contract served by the
+          backend. That contract is projected from the shared model and also
           generates OpenAPI.
         </p>
       </section>
@@ -41,10 +43,13 @@ function SdkPage() {
           <p className="text-xs font-medium text-muted-foreground">
             TypeScript
           </p>
-          <h2 className="mt-8 text-lg font-medium">Effect HttpApi client</h2>
+          <h2 className="mt-8 text-lg font-medium">
+            Model-derived query options
+          </h2>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            Use the application client derived from its complete HTTP contract.
-            Effect owns request encoding, response decoding, and typed errors.
+            Use native TanStack Query for reads and mutations. The private
+            Effect HTTP transport handles encoding, decoding, and typed API
+            errors.
           </p>
           <pre className="mt-6 overflow-x-auto border bg-muted/50 p-4 text-xs leading-6">
             <code>{sdkExample}</code>

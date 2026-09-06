@@ -1,5 +1,6 @@
 import { defineModule } from "@company/runtime"
 
+import { Activity } from "./activity/model"
 import { Company } from "./company/model"
 import { Contact } from "./contact/model"
 import { Deal } from "./deal/model"
@@ -18,5 +19,5 @@ export const SalesModule = defineModule({
   name: "Sales",
   interfaces: [Party, NoteSubject],
   links: [ContactCompanies, ContactPrimaryCompany, DealCompanies, NoteSubjects],
-  objects: [Company, Contact, Lead, Deal, LineItem, Note],
+  objects: [Activity, Company, Contact, Lead, Deal, LineItem, Note],
 })

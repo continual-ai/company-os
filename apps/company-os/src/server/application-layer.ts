@@ -9,6 +9,7 @@ import { AuthorizationRepository } from "./authorization/authorization-repositor
 import { Authorization } from "./authorization/authorization-service"
 import type { Database } from "./database/database"
 import { EventJournal } from "./events/event-journal"
+import { EventNotifications } from "./events/event-notifications"
 import { Links } from "./model/link-service"
 import { ModelImplementation } from "./model/model-implementation"
 import { ObjectRepositories } from "./model/object-repositories"
@@ -20,6 +21,7 @@ import { HttpTransport } from "./transport/http-transport"
 import { McpTransport } from "./transport/mcp-transport"
 
 export interface ApplicationInfrastructure {
+  readonly eventNotifications?: Layer.Layer<EventNotifications, unknown>
   readonly blobStorage?: Layer.Layer<BlobStorage, unknown>
   readonly identityProvider?: Layer.Layer<IdentityProvider, unknown>
   readonly pageTokens?: Layer.Layer<PageTokens, unknown>
@@ -29,6 +31,7 @@ export interface ApplicationInfrastructure {
 /** Assembles the application from replaceable infrastructure capabilities. */
 export function makeApplicationLayer({
   database,
+  eventNotifications = EventNotifications.layerPolling,
   blobStorage: suppliedBlobStorage,
   identityProvider: suppliedIdentityProvider,
   pageTokens: suppliedPageTokens,
@@ -94,7 +97,8 @@ export function makeApplicationLayer({
         authorization,
         governedServices,
         database,
-        journal
+        journal,
+        eventNotifications
       )
     )
   )

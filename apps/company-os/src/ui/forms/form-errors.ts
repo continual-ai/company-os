@@ -31,7 +31,7 @@ export function formErrorFromViolations(
   const form: Violation[] = []
   for (const violation of violations) {
     const names = fieldNames(violation.path)
-    if (names.length === 0) {
+    if (names.length === 0 || violation.path?.[0] === "etag") {
       form.push(violation)
       continue
     }

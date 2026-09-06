@@ -1,9 +1,9 @@
 import { Model } from "company-os/model"
-import { BoxesIcon } from "lucide-react"
 
 import { modelUi } from "@/app-ui"
 import { capabilityPermission } from "@/capabilities"
 
+import { objectIcon } from "./object-icon"
 import { objectHref } from "./object-routing"
 
 /** Sidebar and home share the same module-owned destinations. */
@@ -22,7 +22,7 @@ export const modelNavigation = Object.values(Model.modules).map((module) => ({
           object,
           label: object.pluralName,
           description: navigation?.description ?? object.description,
-          icon: navigation?.icon ?? BoxesIcon,
+          icon: navigation?.icon ?? objectIcon(object.display.icon),
           order: navigation?.order ?? 100,
           to: objectHref(object),
           check: { permission: capabilityPermission(`${object.id}.list`) },

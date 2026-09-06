@@ -1,4 +1,4 @@
-import { toEffectSchema } from "@company/runtime/effect"
+import { toEffectSchema, toEffectObjectSchema } from "@company/runtime/effect"
 import { Model } from "company-os/model"
 import { Schema, Tuple } from "effect"
 
@@ -21,8 +21,26 @@ const linkEventTypes = Object.values(Model.links).flatMap((link) =>
   (["linked", "unlinked"] as const).map((kind) => `${link.id}.${kind}` as const)
 )
 
+// Version 1 facts remain readable after upgrading an existing journal.
+const snapshotFacts = Object.values(Model.objects).map((object) =>
+  Schema.Struct({
+    type: Schema.Literals([`${object.id}.created`, `${object.id}.updated`]),
+    version: Schema.Literal(2),
+    data: toEffectObjectSchema(object),
+  })
+)
+const deletionTypes = Object.values(Model.objects).map(
+  (object) => `${object.id}.deleted` as const
+)
+
 /** Validate facts before persistence; database-owned envelope fields are added only on replay. */
 export const eventFactSchema = Schema.Union([
+  ...snapshotFacts,
+  Schema.Struct({
+    type: Schema.Literals(deletionTypes),
+    version: Schema.Literal(2),
+    data: Schema.Struct({ id: Schema.String, etag: Schema.String }),
+  }),
   Schema.Struct({
     type: Schema.Literals(objectEventTypes),
     version: Schema.Literal(1),
@@ -46,7 +64,7 @@ export const eventFactSchema = Schema.Union([
   )
 )
 
-/** The public feed contains minimal change facts and explicitly declared business payloads. */
+/** The authorized feed includes versioned record snapshots, deletion tombstones, and declared business facts. */
 const eventSchema = eventFactSchema.mapMembers(
   Tuple.map(Schema.fieldsAssign(envelope))
 )

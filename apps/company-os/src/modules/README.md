@@ -12,6 +12,9 @@ module-level `links/` and `interfaces/` directories. Standard objects need only 
 
 Follow [Building a module](../../../../docs/modules.md) for the authoring path and
 [Architecture](../../../../docs/architecture.md) for data, policy, and ownership boundaries.
-The small Engineering Issue demonstrates a standard object with references and attachments;
+Engineering connects projects, repositories, issues, and pull requests. Marketing owns campaigns,
+content, enrollments, and outreach. Support owns tickets and replies, linked to engineering issues.
+These are editable records, not installed automation runtimes.
+
 Sales demonstrates a transactional lead conversion, scoped SQL report, and multiple affiliations; Assets demonstrates a complete module
 with portable actions, server implementation, and a reusable UI control.

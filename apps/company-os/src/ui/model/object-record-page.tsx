@@ -6,6 +6,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@company/ui/components/tabs"
+import { Link } from "@tanstack/react-router"
 import { Model } from "company-os/model"
 import { ArrowLeftIcon, PencilIcon } from "lucide-react"
 import { useCallback, useMemo, useState } from "react"
@@ -92,9 +93,9 @@ export function ObjectRecordPage({
             variant="outline"
             nativeButton={false}
             render={
-              <a
+              <Link
                 aria-label={`Back to ${object.pluralName.toLowerCase()}`}
-                href={objectHref(object)}
+                to={objectHref(object)}
               />
             }
           >
@@ -128,7 +129,12 @@ export function ObjectRecordPage({
       <header className="border-b bg-background">
         <div className="flex flex-wrap items-start justify-between gap-4 px-5 py-4">
           <div className="min-w-0">
-            <p className="text-xs text-muted-foreground">{object.name}</p>
+            <Link
+              to={objectHref(object)}
+              className="text-xs text-muted-foreground hover:text-foreground hover:underline"
+            >
+              {object.pluralName}
+            </Link>
             <h1 className="mt-1 truncate text-2xl font-semibold tracking-tight">
               {label}
             </h1>
@@ -234,6 +240,7 @@ export function ObjectRecordPage({
           <ObjectReferenceCollection
             key={`${record.id}.${relationship.key}`}
             recordId={record.id}
+            recordLabel={label ?? record.id}
             relationship={relationship}
           />
         </TabsContent>

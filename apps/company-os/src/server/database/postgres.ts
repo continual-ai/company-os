@@ -1,6 +1,8 @@
 import { PgClient } from "@effect/sql-pg"
 import { Config, Layer, Redacted } from "effect"
 
+import { EventNotifications } from "@/server/events/event-notifications"
+
 import { Database } from "./database"
 
 const SCHEMA_NAME_PATTERN = /^[a-z_][a-z0-9_]*$/
@@ -68,3 +70,7 @@ export const databaseLayer = Database.layer.pipe(Layer.provide(clientLayer))
 
 /** Raw PostgreSQL and typed Drizzle services used together by database administration commands. */
 export const databaseAndClientLayer = Layer.merge(clientLayer, databaseLayer)
+
+export const eventNotificationsLayer = EventNotifications.layer.pipe(
+  Layer.provide(clientLayer)
+)

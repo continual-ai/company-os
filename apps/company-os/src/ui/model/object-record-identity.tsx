@@ -8,11 +8,12 @@ import {
 } from "@company/ui/components/preview-card"
 import { cn } from "@company/ui/lib/utils"
 import { Link } from "@tanstack/react-router"
-import { BoxIcon, Building2Icon, UserRoundIcon, XIcon } from "lucide-react"
+import { XIcon } from "lucide-react"
 
 import { assetContentUrl } from "@/modules/assets/asset/ui/upload"
 
 import type { ObjectRecordPresentation } from "./object-client"
+import { objectIcon } from "./object-icon"
 import { objectTablePropertySchema } from "./object-table/object-table-cell-types"
 import {
   objectTableImageValue,
@@ -72,12 +73,7 @@ export function ObjectIcon({
   readonly object: ObjectType
   readonly className?: string | undefined
 }) {
-  const Icon =
-    object.display.icon === "building"
-      ? Building2Icon
-      : object.display.icon === "person" || object.display.icon === "party"
-        ? UserRoundIcon
-        : BoxIcon
+  const Icon = objectIcon(object.display.icon)
 
   return <Icon className={className} />
 }

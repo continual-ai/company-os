@@ -1,7 +1,8 @@
 import { RecordId } from "@company/runtime"
-import { Effect } from "effect"
 
-import { client } from "@/app-client"
+import { data } from "@/app-client"
+import { modelData } from "@/data-client"
+import { executeMutation } from "@/model-query-client"
 
 /** Stable authorized delivery path; never persist a signed or provider-specific URL. */
 export function assetContentUrl(assetId: string) {
@@ -56,27 +57,23 @@ export async function uploadAsset(
   signal: AbortSignal,
   progress: (percent: number) => void
 ) {
-  const reserved = await Effect.runPromise(
-    client.asset.beginUpload({
-      scope: RecordId("authorizationScope")(scope),
-      name: file.name,
-      contentType: file.type || "application/octet-stream",
-      size: file.size,
-    }),
-    { signal }
-  )
+  const cache = modelData().queryClient
+  const reserved = await executeMutation(cache, data.asset.beginUpload(), {
+    scope: RecordId("authorizationScope")(scope),
+    name: file.name,
+    contentType: file.type || "application/octet-stream",
+    size: file.size,
+  })
   try {
     await putUpload(reserved.uploadUrl, file, signal, progress)
-    await Effect.runPromise(
-      client.asset.completeUpload({ id: reserved.asset }),
-      { signal }
-    )
+    await executeMutation(cache, data.asset.completeUpload(), {
+      id: reserved.asset,
+    })
     return { assetId: reserved.asset }
   } catch (error) {
-    // Cancellation cleanup uses a new request, independent of the aborted transfer.
-    await Effect.runPromise(client.asset.delete({ id: reserved.asset })).catch(
-      () => undefined
-    )
+    await executeMutation(cache, data.asset.delete(), {
+      id: reserved.asset,
+    }).catch(() => undefined)
     throw error
   }
 }

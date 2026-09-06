@@ -51,8 +51,9 @@ function resolveRuntime(): ApplicationRuntime {
 /** Runs server effects on the runtime appropriate to the hosting environment. */
 export const applicationRuntime = {
   runPromise<A, E>(
-    effect: Effect.Effect<A, E, ApplicationServices>
+    effect: Effect.Effect<A, E, ApplicationServices>,
+    options?: Effect.RunOptions
   ): Promise<A> {
-    return resolveRuntime().runPromise(effect)
+    return resolveRuntime().runPromise(effect, options)
   },
 } as const

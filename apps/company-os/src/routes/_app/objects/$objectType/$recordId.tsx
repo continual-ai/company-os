@@ -4,9 +4,9 @@ import { documentHead } from "@/route-metadata"
 import { ModelRecordPage } from "@/ui/model/model-pages"
 import { preloadObject, routeObject } from "@/ui/model/object-routing"
 export const Route = createFileRoute("/_app/objects/$objectType/$recordId")({
-  loader: async ({ params }) => {
+  loader: async ({ params, context }) => {
     const object = routeObject(params.objectType)
-    await preloadObject(object, params.recordId)
+    await preloadObject(context.queryClient, object, params.recordId)
     return {
       page: {
         breadcrumb: object.name,

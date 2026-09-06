@@ -5,6 +5,20 @@ import { describe, expect, it } from "vitest"
 import { FormValidationError, formErrorFromCause } from "./form-errors"
 
 describe("form errors", () => {
+  it("shows concurrency conflicts at form level rather than an invisible etag field", () => {
+    const error = formErrorFromCause(
+      new FormValidationError([
+        {
+          path: ["etag"],
+          reason: "ETAG_MISMATCH",
+          message: "This record changed. Your draft is preserved.",
+        },
+      ]),
+      "Failed"
+    )
+    expect(error.fields).toEqual({})
+    expect(error.form?.[0]?.reason).toBe("ETAG_MISMATCH")
+  })
   it("partitions local violations by canonical field path", () => {
     const errors = formErrorFromCause(
       new FormValidationError([

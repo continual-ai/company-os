@@ -1,7 +1,11 @@
 import { Model } from "company-os/model"
 import { describe, expect, it } from "vitest"
 
-import { allowedCapabilityKeys, type CapabilityCheck } from "@/capabilities"
+import {
+  allowedCapabilityKeys,
+  capabilityKey,
+  type CapabilityCheck,
+} from "@/capabilities"
 import { ROOT_ID } from "@/system-records"
 
 import {
@@ -29,13 +33,15 @@ describe("object capabilities", () => {
     const checks = [
       { permission: "company.create", target: ROOT_ID },
       { permission: "company.update", target: "company_1" },
-    ] satisfies ReadonlyArray<CapabilityCheck>
+    ] as const satisfies ReadonlyArray<CapabilityCheck>
     const allowed = allowedCapabilityKeys(checks, [
       { allowed: true },
       { allowed: false },
     ])
-    expect(allowed.has(`company.create\u0000${ROOT_ID}`)).toBe(true)
-    expect(allowed.has("company.update\u0000company_1")).toBe(false)
+    expect(allowed.has(capabilityKey(checks[0]))).toBe(true)
+    expect(allowed.has(capabilityKey(checks[1]))).toBe(false)
+    // HTML parsing replaces raw null characters in streamed hydration payloads.
+    expect([...allowed].every((key) => !key.includes("\u0000"))).toBe(true)
     expect(() => allowedCapabilityKeys(checks, [])).toThrow(
       "Capability response does not match the request."
     )

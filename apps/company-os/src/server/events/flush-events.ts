@@ -39,6 +39,8 @@ export const flushEvents = <R extends AnyRelations>(
         }))
       )
     }
+    // Execute on the transaction connection; PostgreSQL delivers only after COMMIT.
+    yield* database.execute(sql`select pg_notify('company_events', 'changed')`)
     return undefined
   }).pipe(
     Effect.mapError(

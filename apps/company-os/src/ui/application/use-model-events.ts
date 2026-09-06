@@ -1,66 +1,87 @@
-import { Effect } from "effect"
+import { Effect, Stream } from "effect"
 import { useEffect } from "react"
 
-import { listEvents } from "@/app-client"
+import { listEvents, subscribeEvents } from "@/app-client"
 import { modelData } from "@/data-client"
 import { createEventConsumer } from "@/event-consumer"
 import { InvalidEventCursor } from "@/events"
+import { applyEventPage } from "@/model-cache"
+import { runClientEffect } from "@/model-query-client"
 
-/** One consumer per mounted authenticated shell, sharing the existing model cache. */
-export function useModelEvents(identity: string) {
+/** A single resumable feed per authenticated shell. Hidden tabs catch up on return. */
+export function useModelEvents(identity: string, initialCursor?: string) {
   useEffect(() => {
-    const abort = new AbortController()
+    let disposed = false
+    let connection: AbortController | undefined
     let timer: ReturnType<typeof setTimeout> | undefined
-    let running = false
     let failures = 0
-    const data = modelData()
     const consumer = createEventConsumer({
+      initialCursor,
       read: (cursor, signal) =>
-        Effect.runPromise(listEvents({ cursor, pageSize: 200 }), { signal }),
+        runClientEffect(listEvents({ cursor, pageSize: 200 }), signal),
       isInvalidCursor: (error) => error instanceof InvalidEventCursor,
-      apply: (page) => {
-        if (page.reset) data.reset()
-        else
-          data.invalidate([
-            ...new Set(
-              page.items.flatMap((event) =>
-                event.subjects.map((subject) => subject.objectType)
-              )
-            ),
-          ])
-      },
+      apply: (page) => applyEventPage(modelData().queryClient, page),
     })
-    const poll = async () => {
-      if (running || abort.signal.aborted) return
-      if (timer !== undefined) clearTimeout(timer)
-      if (document.visibilityState === "hidden" || !navigator.onLine) return
-      running = true
-      let more = false
+    const connect = async () => {
+      if (
+        disposed ||
+        connection ||
+        document.visibilityState === "hidden" ||
+        !navigator.onLine
+      )
+        return
+      const current = new AbortController()
+      connection = current
       try {
-        more = await consumer.poll(abort.signal)
+        // Pull also provides recovery on hosts that buffer or do not support SSE.
+        while (await consumer.poll(current.signal)) {
+          if (current.signal.aborted) return
+        }
+        await runClientEffect(
+          subscribeEvents(consumer.cursor).pipe(
+            Effect.flatMap((stream) =>
+              stream.pipe(
+                Stream.runForEach((message) =>
+                  Effect.promise(async () => {
+                    await consumer.apply(message.data, current.signal)
+                    failures = 0
+                  })
+                )
+              )
+            )
+          ),
+          current.signal
+        )
         failures = 0
-      } catch {
-        failures += 1
+      } catch (error) {
+        if (error instanceof InvalidEventCursor) consumer.restart()
+        if (!current.signal.aborted) failures++
       } finally {
-        running = false
-        if (!abort.signal.aborted)
+        if (connection === current) connection = undefined
+        if (!disposed)
           timer = setTimeout(
-            () => void poll(),
-            more ? 0 : Math.min(30_000, 2_000 * 2 ** Math.min(failures, 4))
+            () => void connect(),
+            Math.min(30_000, 1_000 * 2 ** Math.min(failures, 5))
           )
       }
     }
     const wake = () => {
-      void poll()
+      if (timer !== undefined) clearTimeout(timer)
+      if (document.visibilityState === "hidden" || !navigator.onLine)
+        connection?.abort()
+      else void connect()
     }
     document.addEventListener("visibilitychange", wake)
     window.addEventListener("online", wake)
+    window.addEventListener("offline", wake)
     wake()
     return () => {
-      abort.abort()
+      disposed = true
+      connection?.abort()
       if (timer !== undefined) clearTimeout(timer)
       document.removeEventListener("visibilitychange", wake)
       window.removeEventListener("online", wake)
+      window.removeEventListener("offline", wake)
     }
-  }, [identity])
+  }, [identity, initialCursor])
 }

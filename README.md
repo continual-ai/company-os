@@ -59,9 +59,10 @@ The development server is trusted local tooling; its automatic identity is disab
 5. Open **Developer Center** to inspect the model, generated HTTP API, client examples, and MCP tools.
    The OpenAPI document is at [`/api/openapi`](http://localhost:3002/api/openapi).
 
-Sales is an editable working example. Engineering is deliberately a small Issue module, useful for
-understanding what a new object gets by default. Neither is a complete replacement for a mature CRM
-or issue tracker. There is no fabricated business data to clean out of a new installation.
+Sales, Marketing, Support, and Engineering are editable starting models. Connect campaigns to
+contacts, support tickets to engineering issues, and issues to pull requests. These records hold
+shared operational state; sending, publishing, merging, and agent execution require explicit
+integrations. No business data is fabricated during setup.
 
 ## One module, three entrypoints
 
@@ -82,7 +83,7 @@ Only the model entrypoint is required. A standard object gets persistence, gover
 usable screens without its own service or route files. The application's model, server, and UI
 composition roots each register a module once; further changes stay inside the module.
 
-For example, a new Marketing module can start with:
+The included Marketing module follows this same pattern (simplified here):
 
 ```ts
 import { defineObject, schema } from "@company/runtime"
@@ -133,14 +134,15 @@ React UI       Typed client       HTTP / OpenAPI       MCP tools
   Drizzle and the Effect SQL driver implement persistence and explicit migrations.
 - **UI:** TanStack Start, Router, and Form with editable shadcn primitives and Tailwind CSS v4.
   Standard collection pages share filters, views, forms, relationships, and file fields.
-- **Data access:** a generated semantic client over HTTP. One Effect Atom request cache serves
-  preloading and React reads; successful transactions invalidate the object types actually changed.
+- **Data access:** a generated semantic client over HTTP. One TanStack Query cache serves
+  SSR, preloading, and React reads; successful transactions invalidate the object types actually changed.
   `list` supports filtering and pagination; relationship pages return complete target records.
   `batchGet` hydrates independently known references; custom Queries share the same cache.
 
 A [durable event journal](docs/events.md) records committed changes and typed business facts.
-Open browsers consume authorized events and refresh affected queries, including after reconnect.
-This is cached server state with resumable polling; offline writes, durable agent scheduling, and
+Open browsers apply authorized record snapshots and refresh affected queries, including after reconnect.
+Use `useQuery(data.contact.list(...))` and `useMutation(data.contact.update())`; [one data path](docs/data.md) handles caching and changes.
+This is cached server state with resumable SSE and pull recovery; offline writes, durable agent scheduling, and
 automation controllers are not included. [Architecture](docs/architecture.md) explains the current guarantees and boundaries.
 
 ## Read the code
@@ -148,7 +150,7 @@ automation controllers are not included. [Architecture](docs/architecture.md) ex
 | Start here                                       | What it owns                                                     |
 | ------------------------------------------------ | ---------------------------------------------------------------- |
 | [Company OS app](apps/company-os/README.md)      | The central UI, API, business policy, and server assembly        |
-| [Modules](apps/company-os/src/modules/README.md) | Editable Sales, Engineering, Access, and Assets domains          |
+| [Modules](apps/company-os/src/modules/README.md) | Editable Sales, Marketing, Support, and Engineering domains      |
 | [Runtime](packages/runtime/README.md)            | Portable model definitions and reusable execution/API machinery  |
 | [Postgres](packages/postgres/README.md)          | Model-to-storage projection and repository implementations       |
 | [UI](packages/ui/README.md)                      | Shared presentation primitives and design tokens                 |

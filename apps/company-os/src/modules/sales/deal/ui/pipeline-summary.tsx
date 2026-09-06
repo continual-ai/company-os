@@ -1,12 +1,13 @@
-import { client } from "@/app-client"
-import { useModelQuery } from "@/use-model-query"
+import { useQuery } from "@tanstack/react-query"
 
-const summaryQuery = client.deal.pipelineSummary({})
+import { data } from "@/app-client"
+
+const summaryQuery = data.deal.pipelineSummary({})
 
 /** Shares the model query cache with any loader or component using this request. */
 export function PipelineSummary() {
-  const { value, error } = useModelQuery(summaryQuery)
-  if (error !== undefined)
+  const { data: value, error } = useQuery(summaryQuery)
+  if (error !== null)
     return (
       <p role="alert">
         {error instanceof Error

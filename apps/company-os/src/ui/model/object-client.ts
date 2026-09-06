@@ -8,10 +8,12 @@ import {
   type Page,
   type PropertyDefinition,
 } from "@company/runtime"
+import type { UseMutationOptions } from "@tanstack/react-query"
 import { Model } from "company-os/model"
-import { Effect } from "effect"
 
-import { client } from "@/app-client"
+import { data } from "@/app-client"
+import { modelData } from "@/data-client"
+import { executeMutation, type ModelQueryOptions } from "@/model-query-client"
 
 import { objectTableValueText } from "./object-table/object-table-config"
 import type { ObjectTableRecord } from "./object-table/object-table-config"
@@ -48,7 +50,7 @@ export interface RelatedRecord {
 export interface DynamicObjectClient {
   readonly batchGet: (
     input: DynamicRecordIdsInput
-  ) => Effect.Effect<Batch<ClientRecord>, unknown>
+  ) => ModelQueryOptions<Batch<ClientRecord>>
   readonly batchDelete?: (input: {
     readonly ids: ReadonlyArray<string>
   }) => Promise<void>
@@ -59,12 +61,10 @@ export interface DynamicObjectClient {
     readonly etag?: string
     readonly id: string
   }) => Promise<void>
-  readonly get: (
-    input: DynamicRecordInput
-  ) => Effect.Effect<ClientRecord, unknown>
+  readonly get: (input: DynamicRecordInput) => ModelQueryOptions<ClientRecord>
   readonly list: (
     request?: ListRequest
-  ) => Effect.Effect<Page<ClientRecord>, unknown>
+  ) => ModelQueryOptions<Page<ClientRecord>>
   readonly update?: (
     input: Readonly<Record<string, ClientValue | undefined>> & {
       readonly etag?: string
@@ -77,7 +77,7 @@ export interface DynamicLinkClient {
   readonly link?: (input: DynamicLinkMutationInput) => Promise<void>
   readonly list: (
     input: DynamicLinkListInput
-  ) => Effect.Effect<Page<ClientRecord & ObjectRef>, unknown>
+  ) => ModelQueryOptions<Page<ClientRecord & ObjectRef>>
   readonly unlink?: (input: DynamicLinkMutationInput) => Promise<void>
 }
 
@@ -104,122 +104,94 @@ type ModelClientRequest =
   | DynamicRecordIdsInput
   | ListRequest
   | Readonly<Record<string, ClientValue | undefined>>
-type ModelMethod = (
-  request: ModelClientRequest
-) => Effect.Effect<unknown, unknown>
+type DynamicOptions =
+  | ModelQueryOptions<unknown>
+  | UseMutationOptions<unknown, unknown, ModelClientRequest>
 
-type DynamicObjectClientBuilder = {
-  -readonly [TKey in keyof DynamicObjectClient]: DynamicObjectClient[TKey]
-}
-
-interface DynamicLinkClientBuilder {
-  link?: NonNullable<DynamicLinkClient["link"]>
-  list: DynamicLinkClient["list"]
-  unlink?: NonNullable<DynamicLinkClient["unlink"]>
-}
-
-function modelMethod(object: ModelObject, operation: string): ModelMethod {
-  const group = Reflect.get(client, object.id)
-  const method = Reflect.get(group, operation)
-  if (typeof method !== "function") {
-    throw new Error(
-      `Model client method '${object.id}.${operation}' is missing.`
-    )
-  }
-  // SAFETY: client and this adapter are projected from the same closed Model.
+function operation(
+  group: object,
+  name: string
+): (input?: unknown) => DynamicOptions {
+  const value = Reflect.get(group, name)
+  if (typeof value !== "function")
+    throw new Error(`Missing model operation ${name}`)
+  // SAFETY: only the generated renderer erases concrete object types from the closed model.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  return method as ModelMethod
+  return value as (input?: unknown) => DynamicOptions
 }
 
-function linkMethod(
-  object: ModelObject,
-  traversal: ModelLinkTraversal,
-  operation: string
-): ModelMethod | undefined {
-  const group = Reflect.get(client, object.id)
-  const links = Reflect.get(group, traversal.traversal.key)
-  if (typeof links !== "object" || links === null) {
-    throw new Error(
-      `Model client Link '${object.id}.${traversal.traversal.key}' is missing.`
-    )
-  }
-  const method = Reflect.get(links, operation)
-  if (method === undefined) return undefined
-  if (typeof method !== "function") {
-    throw new Error(
-      `Model client Link method '${object.id}.${traversal.traversal.key}.${operation}' is invalid.`
-    )
-  }
-  // SAFETY: client and this adapter are projected from the same closed Model.
+function queryMethod<A>(options: DynamicOptions): ModelQueryOptions<A> {
+  // SAFETY: query names are selected from the generated model query contract.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  return method as ModelMethod
+  return options as ModelQueryOptions<A>
 }
 
-function queryMethod<TResult>(effect: Effect.Effect<unknown, unknown>) {
-  // SAFETY: the generated client decodes this model operation's result.
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  return effect as Effect.Effect<TResult, unknown>
-}
-
-async function runMethod<TResult>(effect: Effect.Effect<unknown, unknown>) {
-  // SAFETY: every result is decoded by the generated native Effect client.
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  return Effect.runPromise(effect) as Promise<TResult>
+function mutationMethod<A>(options: DynamicOptions, input: ModelClientRequest) {
+  // SAFETY: action names are selected from the generated model action contract.
+  return executeMutation(
+    modelData().queryClient,
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+    options as UseMutationOptions<A, unknown, ModelClientRequest>,
+    input
+  )
 }
 
 export function clientFor(object: ModelObject): DynamicObjectClient {
-  const batchGet = modelMethod(object, "batchGet")
-  const get = modelMethod(object, "get")
-  const list = modelMethod(object, "list")
-  const adapter: DynamicObjectClientBuilder = {
-    batchGet: (input) => queryMethod(batchGet(input)),
+  const group = Reflect.get(data, object.id)
+  const get = operation(group, "get")
+  const list = operation(group, "list")
+  const batchGet = operation(group, "batchGet")
+  return {
     get: (input) => queryMethod(get(input)),
-    list: (request = {}) => queryMethod(list(request)),
+    list: (input = {}) => queryMethod(list(input)),
+    batchGet: (input) => queryMethod(batchGet(input)),
+    ...("create" in object.actions
+      ? {
+          create: (input: ModelClientRequest) =>
+            mutationMethod<ClientRecord>(operation(group, "create")(), input),
+        }
+      : {}),
+    ...("update" in object.actions
+      ? {
+          update: (input: ModelClientRequest) =>
+            mutationMethod<ClientRecord>(operation(group, "update")(), input),
+        }
+      : {}),
+    ...("delete" in object.actions
+      ? {
+          delete: (input: ModelClientRequest) =>
+            mutationMethod<void>(operation(group, "delete")(), input),
+        }
+      : {}),
+    ...("batchDelete" in object.actions
+      ? {
+          batchDelete: (input: ModelClientRequest) =>
+            mutationMethod<void>(operation(group, "batchDelete")(), input),
+        }
+      : {}),
   }
-
-  if ("batchDelete" in object.actions) {
-    const method = modelMethod(object, "batchDelete")
-    adapter.batchDelete = (input) => runMethod(method(input))
-  }
-  if ("create" in object.actions) {
-    const method = modelMethod(object, "create")
-    adapter.create = (input) => runMethod(method(input))
-  }
-  if ("delete" in object.actions) {
-    const method = modelMethod(object, "delete")
-    adapter.delete = (input) => runMethod(method(input))
-  }
-  if ("update" in object.actions) {
-    const method = modelMethod(object, "update")
-    adapter.update = (input) => runMethod(method(input))
-  }
-
-  return adapter
 }
 
-/** Dynamic adapter used only by model-generated relationship UI. */
+/** Dynamic adapter only for the generated relationship renderer. */
 export function linkClientFor(
   object: ModelObject,
   traversal: ModelLinkTraversal
 ): DynamicLinkClient {
-  const list = linkMethod(object, traversal, "list")
-  if (list === undefined) {
-    throw new Error(
-      `Model client Link method '${object.id}.${traversal.traversal.key}.list' is missing.`
-    )
+  const group = Reflect.get(
+    Reflect.get(data, object.id),
+    traversal.traversal.key
+  )
+  return {
+    list: (input) => queryMethod(operation(group, "list")(input)),
+    ...(traversal.writable
+      ? {
+          link: (input: DynamicLinkMutationInput) =>
+            mutationMethod<void>(operation(group, "link")(), input),
+          unlink: (input: DynamicLinkMutationInput) =>
+            mutationMethod<void>(operation(group, "unlink")(), input),
+        }
+      : {}),
   }
-  const link = linkMethod(object, traversal, "link")
-  const unlink = linkMethod(object, traversal, "unlink")
-  const adapter: DynamicLinkClientBuilder = {
-    list: (input) => queryMethod(list(input)),
-  }
-  if (link !== undefined) {
-    adapter.link = (input) => runMethod<void>(link(input))
-  }
-  if (unlink !== undefined) {
-    adapter.unlink = (input) => runMethod<void>(unlink(input))
-  }
-  return adapter
 }
 
 export function modelObjectProperty(
@@ -265,51 +237,22 @@ export function recordObjectTypes(typeId: string): ReadonlyArray<ModelObject> {
   )
 }
 
+/** Relationship reads already return canonical records; never hydrate them again. */
 export function describeReferences(
-  references: ReadonlyArray<ObjectRef>
-): Effect.Effect<ReadonlyArray<RelatedRecord>, unknown> {
-  return Effect.gen(function* () {
-    const labels = new Map<string, string>()
-    const presentations = new Map<string, ObjectRecordPresentation>()
-    const byType = new Map<string, ObjectRef[]>()
-    for (const reference of references) {
-      const typedReferences = byType.get(reference.objectType) ?? []
-      typedReferences.push(reference)
-      byType.set(reference.objectType, typedReferences)
-    }
-    yield* Effect.forEach(
-      [...byType],
-      ([objectType, typedReferences]) =>
-        Effect.gen(function* () {
-          if (objectType === Model.root.id) {
-            for (const reference of typedReferences) {
-              labels.set(reference.id, Model.root.name)
-            }
-            return
-          }
-          const object = Object.values(Model.objects).find(
-            (candidate) => candidate.id === objectType
-          )
-          if (object === undefined) return
-          const records = yield* clientFor(object).batchGet({
-            ids: typedReferences.map(({ id }) => id),
-          })
-          for (const record of records.items) {
-            labels.set(record.id, recordLabel(object, record))
-            presentations.set(record.id, {
-              object,
-              record: tableRecord(object, record),
-            })
-          }
-        }),
-      { concurrency: "unbounded" }
+  records: ReadonlyArray<ClientRecord & ObjectRef>
+): ReadonlyArray<RelatedRecord> {
+  return records.map((record) => {
+    const object = Object.values(Model.objects).find(
+      (candidate) => candidate.id === record.objectType
     )
-    return references.map(({ id, objectType }) => ({
-      id,
-      label: labels.get(id) ?? id,
-      objectType,
-      presentation: presentations.get(id),
-    }))
+    return {
+      id: record.id,
+      objectType: record.objectType,
+      label: object === undefined ? record.id : recordLabel(object, record),
+      ...(object === undefined
+        ? {}
+        : { presentation: { object, record: tableRecord(object, record) } }),
+    }
   })
 }
 

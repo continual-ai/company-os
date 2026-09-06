@@ -9,6 +9,7 @@ import * as Postgres from "./database/postgres"
 
 const applicationLayer = makeApplicationLayer({
   database: Postgres.databaseLayer,
+  eventNotifications: Postgres.eventNotificationsLayer,
 })
 
 const modelDescription = describeModel(Model)

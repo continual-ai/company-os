@@ -10,8 +10,9 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@company/ui/components/empty"
+import { useQueries } from "@tanstack/react-query"
+import { Link } from "@tanstack/react-router"
 import { Model } from "company-os/model"
-import { Effect } from "effect"
 import {
   ChevronDownIcon,
   ChevronRightIcon,
@@ -22,7 +23,6 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 
 import { modelData } from "@/data-client"
 import { formErrorFromCause } from "@/ui/forms/form-errors"
-import { useModelQuery } from "@/use-model-query"
 
 import {
   describeReferences,
@@ -30,7 +30,6 @@ import {
   recordObjectTypes,
   type ClientRecord,
   type ModelObject,
-  type DynamicLinkClient,
 } from "./object-client"
 import { ObjectRelationshipCollection } from "./object-relationship-collection"
 import { ObjectRelationshipForm } from "./object-relationship-form"
@@ -45,31 +44,6 @@ function errorMessage(cause: unknown, fallback: string): string {
     Object.values(errors.fields)[0]?.[0]?.message ??
     fallback
   )
-}
-
-function relationshipQuery(
-  client: DynamicLinkClient,
-  recordId: string,
-  pageTokens: ReadonlyArray<string | undefined>
-) {
-  return Effect.gen(function* () {
-    const pages = yield* Effect.forEach(
-      pageTokens,
-      (pageToken) =>
-        client.list({
-          id: recordId,
-          pageSize: RELATIONSHIP_PAGE_SIZE,
-          ...(pageToken === undefined ? {} : { pageToken }),
-        }),
-      { concurrency: "unbounded" }
-    )
-    const items = yield* describeReferences(pages.flatMap((page) => page.items))
-    return {
-      items,
-      totalSize: pages[0]?.totalSize ?? 0,
-      nextPageToken: pages.at(-1)?.nextPageToken ?? null,
-    }
-  })
 }
 
 function Relationship({
@@ -101,23 +75,29 @@ function Relationship({
   const [removing, setRemoving] = useState<string>()
   const link = canUpdate ? client.link : undefined
   const unlink = canUpdate ? client.unlink : undefined
-  const query = useMemo(
-    () =>
-      expanded
-        ? relationshipQuery(client, record.id, pageTokens)
-        : Effect.succeed({ items: [], totalSize: 0, nextPageToken: null }),
-    [expanded, client, record.id, pageTokens]
+  const results = useQueries({
+    queries: pageTokens.map((pageToken) => ({
+      ...client.list({
+        id: record.id,
+        pageSize: RELATIONSHIP_PAGE_SIZE,
+        ...(pageToken === undefined ? {} : { pageToken }),
+      }),
+      enabled: expanded,
+    })),
+  })
+  const items = describeReferences(
+    results.flatMap((result) => result.data?.items ?? [])
   )
-  const result = useModelQuery(query)
-  const items = result.value?.items ?? []
-  const loading = result.loading
-  const nextPageToken = result.value?.nextPageToken ?? null
+  const loading = results.some((result) => result.isFetching)
+  const nextPageToken = results.at(-1)?.data?.nextPageToken ?? null
+  const totalSize = results[0]?.data?.totalSize
+  const error = results.find((result) => result.error !== null)?.error
   const loadError =
     mutationError ??
-    (result.error === undefined
+    (error === null || error === undefined
       ? undefined
       : errorMessage(
-          result.error,
+          error,
           `${traversal.traversal.label} could not be loaded.`
         ))
   const load = useCallback(
@@ -133,9 +113,9 @@ function Relationship({
     [object.id]
   )
   useEffect(() => {
-    if (result.value !== undefined)
-      onTotalSizeChange?.(traversal.traversal.key, result.value.totalSize)
-  }, [result.value, onTotalSizeChange, traversal.traversal.key])
+    if (totalSize !== undefined)
+      onTotalSizeChange?.(traversal.traversal.key, totalSize)
+  }, [totalSize, onTotalSizeChange, traversal.traversal.key])
 
   const canAdd =
     link !== undefined &&
@@ -233,12 +213,12 @@ function Relationship({
                     {href === undefined ? (
                       <span className="min-w-0 truncate">{item.label}</span>
                     ) : (
-                      <a
+                      <Link
                         className="min-w-0 truncate font-medium hover:underline"
-                        href={href}
+                        to={href}
                       >
                         {item.label}
-                      </a>
+                      </Link>
                     )}
                     {unlink === undefined ? null : (
                       <Button

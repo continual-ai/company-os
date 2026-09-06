@@ -46,6 +46,7 @@ import {
 import { type ObjectTableInstance } from "./object-table-config"
 import { ObjectTableFilters } from "./object-table-filter"
 import { ObjectTableProperty } from "./object-table-property"
+import { ObjectTableSearch } from "./object-table-search"
 
 interface ObjectTableToolbarProps {
   object: ObjectType
@@ -324,6 +325,11 @@ export function ObjectTableToolbar({
           {canSort ? <ObjectTableSortMenu table={table} /> : null}
           {canFilter ? <ObjectTableFilters table={table} /> : null}
         </div>
+        <ObjectTableSearch
+          table={table}
+          property={object.display.title}
+          label={object.pluralName}
+        />
         <div className="shrink-0">
           <ObjectTableColumnMenu table={table} />
         </div>

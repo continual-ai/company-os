@@ -55,6 +55,7 @@ export function ObjectCreateProvider({
           key={request.id}
           mode="create"
           object={request.object}
+          initialValues={request.initialValues}
           open
           onOpenChange={(nextOpen) => !nextOpen && close(request.id)}
           onSave={async (input) => {
@@ -68,7 +69,7 @@ export function ObjectCreateProvider({
             request.onCreated?.(record)
             close(request.id)
           }}
-          referenceLabels={emptyReferenceLabels}
+          referenceLabels={request.referenceLabels ?? emptyReferenceLabels}
         />
       ))}
     </ObjectCreateContext.Provider>

@@ -7,16 +7,16 @@ integrations, and agents use the same governed operations through HTTP, the type
 
 ## Boundaries
 
-| Source                         | Responsibility                                                                          |
-| ------------------------------ | --------------------------------------------------------------------------------------- |
-| `apps/company-os/src/modules`  | Editable business modules: Access, Sales, Assets, Engineering, and your additions       |
-| `apps/company-os/src/model.ts` | Explicit composition of the one closed model; public as `company-os/model`              |
-| `apps/company-os/src/server`   | Application assembly, identity, authorization, transactions, migrations, and transports |
-| `apps/company-os/src/ui/model` | Default tables, forms, detail pages, and relationship navigation                        |
-| `packages/runtime`             | Portable definitions and reusable Effect execution/HTTP/MCP machinery                   |
-| `packages/postgres`            | Server-only PostgreSQL projection and repository implementation                         |
-| `packages/ui`                  | Source-owned presentation primitives and design tokens                                  |
-| `templates/*`                  | Executable starters for optional interfaces over the central app                        |
+| Source                         | Responsibility                                                                                        |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------- |
+| `apps/company-os/src/modules`  | Editable business modules: Access, Sales, Marketing, Support, Engineering, Assets, and your additions |
+| `apps/company-os/src/model.ts` | Explicit composition of the one closed model; public as `company-os/model`                            |
+| `apps/company-os/src/server`   | Application assembly, identity, authorization, transactions, migrations, and transports               |
+| `apps/company-os/src/ui/model` | Default tables, forms, detail pages, and relationship navigation                                      |
+| `packages/runtime`             | Portable definitions and reusable Effect execution/HTTP/MCP machinery                                 |
+| `packages/postgres`            | Server-only PostgreSQL projection and repository implementation                                       |
+| `packages/ui`                  | Source-owned presentation primitives and design tokens                                                |
+| `templates/*`                  | Executable starters for optional interfaces over the central app                                      |
 
 The model export may depend only on portable `@company/runtime` definitions. A recursive import
 check rejects Effect, UI, server code, and provider imports anywhere in that export's dependency
@@ -73,38 +73,27 @@ aggregate and business writes must preserve model invariants. See [the operation
 
 ## Reads and changes
 
-`src/app-client.ts` is the one semantic client assembly. Its generated Queries use an Effect Atom
-registry keyed by object type, operation, and request. Feature code calls the same client for
-preloading and rendering. `useModelQuery` observes that same registry; derived queries track
-reference hydration through Effect Atom dependencies. Hooks own interaction state
-such as selected pages and unsaved form edits, not copies of remote records or request lifecycles.
-The UI adapter only bridges dynamic model components to that typed client. Cache entries have a bounded idle lifetime, reset when the
-browser identity changes, and revalidate on window focus.
+`src/app-client.ts` projects the portable model into native TanStack Query and mutation options.
+Feature code uses `useQuery(data.contact.list(...))` and `useMutation(data.contact.update())`.
+Router preloads the same options; SSR owns one cache per request and hydrates the browser cache.
+The Effect HTTP client remains private transport infrastructure. There is no Atom request cache,
+TanStack DB replica, or feature-specific query hook to learn.
 
-Collection loaders preload the selected view's exact filter and sort. Tables render after the
-list response. Reference labels hydrate with bounded `:batchGet` calls, with authorized
-filtered listing as a fallback for unavailable references. Advisory IAM checks run separately for
-controls. Relationship pages hydrate their bounded target set on the server, grouped by object type,
-and return complete discriminated records in one HTTP response. Collections do not perform per-row permission checks; an opened record may check its
-available actions in one batch. Server authorization still applies to every read and write.
+Collections render their authorized list response immediately. Reference labels use bounded,
+authorized list queries without blocking records. Relationship pages return full discriminated
+records in one HTTP response. Advisory IAM checks are batched separately; the server always
+authorizes reads and writes independently of those hints.
 
-Repositories record the object types actually written inside the current transaction. Link writes
-include both endpoint types. Deletion locks source records and captures affected Link endpoints
-before PostgreSQL cascades remove them, including batch deletion. The HTTP response carries `x-model-changes` only after a successful
-Action; rolled-back transactions and caught savepoint failures contribute no changes. The client
-refreshes affected cached Queries and visible collections, including writes performed by custom
-Actions. Standard create/edit/Link flows do not issue a second manual refresh after successful
-writes. Feature code never lists the authoritative dependencies of a mutation. Custom SQL writes
-must append a declared event covering their affected records inside the same transaction.
+Transactions supply canonical results and `x-model-changes`. The shared cache reconciler cancels
+older in-flight reads, updates existing appearances by ordered etag, removes tombstones, and
+revalidates affected membership, ordering, counts, and custom reports. It does not attempt to run
+server predicates or permissions locally. The journal streams authorized changes from other
+clients through the same reconciliation path. Permissions changes clear cached records.
 
-This is cached server state, not an offline database or a live sync engine. Business collection
-preloading currently runs in the browser; server rendering does not serialize authenticated
-business records. Writes from other clients are discovered through the authorized event feed while the app is visible;
-the consumer resumes after network interruption and resets its cache when read scopes change.
-See [Durable events](events.md) for transaction, replay, and visibility guarantees. TanStack
-DB remains a possible future replacement if local relational joins, optimistic transactions, or
-live sync justify translating its subset requests to the authorized cursor API. Do not add a
-second competing record store alongside this path.
+This is cached server state with realtime delivery and resumable catch-up. Writes require the
+server; there is no offline write queue. Forms own their drafts and starting etag until submission.
+Read [Data access](data.md) for the complete lifecycle and [Durable events](events.md) for journal
+ordering, full payload visibility, authentication renewal, and notification failure recovery.
 
 ## Identity and policy
 

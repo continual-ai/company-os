@@ -1,16 +1,19 @@
 import { Badge } from "@company/ui/components/badge"
 import { Separator } from "@company/ui/components/separator"
+import { Link } from "@tanstack/react-router"
 import type { ReactNode } from "react"
 
 import { AssetPreviews } from "@/modules/assets/asset/ui/asset-preview"
 
 import {
+  recordObjectTypes,
   modelObjectProperty,
   parentName,
   tableRecord,
   type ClientRecord,
   type ModelObject,
 } from "./object-client"
+import { objectHref } from "./object-routing"
 import { objectTablePropertySchema } from "./object-table/object-table-cell-types"
 import type { ObjectTableValue } from "./object-table/object-table-config"
 import { objectTableValueText } from "./object-table/object-table-config"
@@ -62,7 +65,18 @@ function displayValue(
     )
   }
   if (schema.kind === "recordId" && typeof value === "string") {
-    return referenceLabels.get(value) ?? value
+    const target = recordObjectTypes(schema.typeId)
+    const label = referenceLabels.get(value) ?? value
+    return target.length === 1 ? (
+      <Link
+        className="text-interactive hover:underline"
+        to={objectHref(target[0]!, value)}
+      >
+        {label}
+      </Link>
+    ) : (
+      label
+    )
   }
   if (schema.kind === "enum" && typeof value === "string") {
     const choices =

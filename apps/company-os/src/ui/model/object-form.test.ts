@@ -59,6 +59,9 @@ describe("object forms", () => {
     const form = {
       amount: { amount: "12500.00", currency: "eur" },
       expectedCloseDate: "2026-09-30",
+      owner: null,
+      nextStep: null,
+      nextStepDate: null,
       name: "Expansion",
       parent: "company_northstar",
       stage: "qualified",
@@ -67,6 +70,9 @@ describe("object forms", () => {
     expect(decodeObjectForm(Model.objects.deal, form, "create")).toEqual({
       amount: { amount: "12500.00", currency: "EUR" },
       expectedCloseDate: "2026-09-30",
+      owner: null,
+      nextStep: null,
+      nextStepDate: null,
       name: "Expansion",
       parent: "company_northstar",
       stage: "qualified",

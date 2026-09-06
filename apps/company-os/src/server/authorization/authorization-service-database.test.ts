@@ -73,7 +73,7 @@ function objectRow(
     metadata: {},
     createdAt: now,
     createdById: SYSTEM_SERVICE_ACCOUNT_ID,
-    etag: Etag(`etag_${input.id}`),
+    etag: Etag("1"),
     systemManaged: false,
     updatedAt: now,
     updatedById: SYSTEM_SERVICE_ACCOUNT_ID,

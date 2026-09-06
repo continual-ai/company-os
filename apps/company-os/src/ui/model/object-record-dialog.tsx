@@ -1,4 +1,14 @@
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@company/ui/components/alert-dialog"
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -7,7 +17,7 @@ import {
   DialogTitle,
 } from "@company/ui/components/dialog"
 import { FieldError } from "@company/ui/components/field"
-import { useEffect, useMemo, useRef } from "react"
+import { useMemo, useRef, useState } from "react"
 
 import { useAppForm } from "@/ui/forms/app-form"
 import {
@@ -28,8 +38,9 @@ import {
 } from "./object-form"
 import { ObjectFormFields } from "./object-form-fields"
 
-export function ObjectRecordDialog({
+function ObjectRecordEditor({
   mode,
+  initialValues,
   object,
   onOpenChange,
   onSave,
@@ -37,6 +48,7 @@ export function ObjectRecordDialog({
   record,
   referenceLabels,
 }: {
+  readonly initialValues?: ObjectFormInput | undefined
   readonly mode: ObjectFormMode
   readonly object: ModelObject
   readonly onOpenChange: (open: boolean) => void
@@ -45,14 +57,23 @@ export function ObjectRecordDialog({
   readonly record?: ClientRecord | undefined
   readonly referenceLabels: ReadonlyMap<string, string>
 }) {
+  const [initialRecord] = useState(record)
+  const [confirmDiscard, setConfirmDiscard] = useState(false)
   const ui = useObjectUi(object)
   const unsupported = objectFormProperties(object, mode).filter(
     ({ schema }) => !isSupportedFormSchema(schema)
   )
   const formElement = useRef<HTMLFormElement>(null)
   const defaultValues = useMemo(
-    () => objectFormDefaultValues(object, mode, record),
-    [mode, object, record]
+    () =>
+      objectFormDefaultValues(
+        object,
+        mode,
+        initialRecord,
+        new Date(),
+        initialValues
+      ),
+    [mode, object, initialRecord, initialValues]
   )
   const form = useAppForm({
     defaultValues,
@@ -69,7 +90,12 @@ export function ObjectRecordDialog({
     onSubmitInvalid: () => focusFirstFormError(formElement.current),
     onSubmit: async ({ formApi, value }) => {
       try {
-        await onSave(decodeObjectForm(object, value, mode))
+        await onSave({
+          ...decodeObjectForm(object, value, mode),
+          ...(mode === "edit" && initialRecord !== undefined
+            ? { etag: initialRecord.etag }
+            : {}),
+        })
         onOpenChange(false)
       } catch (cause) {
         formApi.setErrorMap({
@@ -81,56 +107,92 @@ export function ObjectRecordDialog({
     },
   })
 
-  useEffect(() => form.reset(defaultValues), [defaultValues, form])
-
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(nextOpen) => {
-        onOpenChange(nextOpen)
-        if (!nextOpen) form.reset(defaultValues)
-      }}
-    >
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
-        <form.AppForm>
-          <form
-            ref={formElement}
-            noValidate
-            className="grid gap-4"
-            onSubmit={(event) => {
-              event.preventDefault()
-              void form.handleSubmit().catch(() => undefined)
-            }}
-          >
-            <DialogHeader>
-              <DialogTitle>
-                {mode === "create"
-                  ? `New ${object.name}`
-                  : `Edit ${object.name}`}
-              </DialogTitle>
-              <DialogDescription>{object.description}</DialogDescription>
-            </DialogHeader>
-            <ObjectFormFields
-              fieldEditors={ui?.fieldEditors}
-              mode={mode}
-              object={object}
-              record={record}
-              referenceLabels={referenceLabels}
-            />
-            <form.Subscribe selector={({ errors }) => errors}>
-              {(errors) => <FieldError errors={formErrorMessages(errors)} />}
-            </form.Subscribe>
-            <DialogFooter>
-              <form.FormSubmitButton
-                disabled={unsupported.length > 0}
-                pendingChildren="Saving…"
-              >
-                Save
-              </form.FormSubmitButton>
-            </DialogFooter>
-          </form>
-        </form.AppForm>
-      </DialogContent>
-    </Dialog>
+    <>
+      <Dialog
+        open={open}
+        onOpenChange={(nextOpen) => {
+          if (form.state.isSubmitting) return
+          if (!nextOpen && form.state.isDirty) setConfirmDiscard(true)
+          else onOpenChange(nextOpen)
+        }}
+      >
+        <DialogContent
+          className="max-h-[85vh] overflow-y-auto sm:max-w-lg"
+          initialFocus={() =>
+            formElement.current?.querySelector<HTMLInputElement>(
+              `[name="${object.display.title}"]`
+            ) ?? true
+          }
+        >
+          <form.AppForm>
+            <form
+              ref={formElement}
+              noValidate
+              className="grid gap-4"
+              onSubmit={(event) => {
+                event.preventDefault()
+                void form.handleSubmit().catch(() => undefined)
+              }}
+            >
+              <DialogHeader>
+                <DialogTitle>
+                  {mode === "create"
+                    ? `New ${object.name}`
+                    : `Edit ${object.name}`}
+                </DialogTitle>
+                <DialogDescription>{object.description}</DialogDescription>
+              </DialogHeader>
+              <ObjectFormFields
+                fieldEditors={ui?.fieldEditors}
+                mode={mode}
+                object={object}
+                record={initialRecord}
+                referenceLabels={referenceLabels}
+              />
+              <form.Subscribe selector={({ errors }) => errors}>
+                {(errors) => <FieldError errors={formErrorMessages(errors)} />}
+              </form.Subscribe>
+              <DialogFooter>
+                <form.FormSubmitButton
+                  disabled={unsupported.length > 0}
+                  pendingChildren="Saving…"
+                >
+                  Save
+                </form.FormSubmitButton>
+              </DialogFooter>
+            </form>
+          </form.AppForm>
+        </DialogContent>
+      </Dialog>
+      <AlertDialog open={confirmDiscard} onOpenChange={setConfirmDiscard}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Discard unsaved changes?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Your changes have not been saved.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep editing</AlertDialogCancel>
+            <AlertDialogAction onClick={() => onOpenChange(false)}>
+              Discard changes
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
+}
+
+/** An open editor owns its draft and starting version until dismissed. */
+export function ObjectRecordDialog(
+  props: Parameters<typeof ObjectRecordEditor>[0]
+) {
+  return props.open ? (
+    <ObjectRecordEditor
+      key={`${props.object.id}:${props.mode}:${props.record?.id ?? "new"}`}
+      {...props}
+    />
+  ) : null
 }

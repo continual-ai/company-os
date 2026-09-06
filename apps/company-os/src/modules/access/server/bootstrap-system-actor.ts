@@ -49,7 +49,7 @@ export const bootstrapSystemActor = Effect.fn("@company/bootstrapSystemActor")(
           .onConflictDoUpdate({
             target: objects.id,
             set: {
-              etag: sql`gen_random_uuid()::text`,
+              etag: sql`(${objects.etag}::numeric + 1)::text`,
               systemManaged: true,
               updatedAt: sql`now()`,
               updatedById: SYSTEM_SERVICE_ACCOUNT_ID,
@@ -76,7 +76,7 @@ export const bootstrapSystemActor = Effect.fn("@company/bootstrapSystemActor")(
           .onConflictDoUpdate({
             target: objects.id,
             set: {
-              etag: sql`gen_random_uuid()::text`,
+              etag: sql`(${objects.etag}::numeric + 1)::text`,
               systemManaged: true,
               updatedAt: sql`now()`,
               updatedById: SYSTEM_SERVICE_ACCOUNT_ID,

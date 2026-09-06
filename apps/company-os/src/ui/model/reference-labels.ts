@@ -1,6 +1,6 @@
 import { MAX_PAGE_SIZE } from "@company/runtime"
+import { useQueries } from "@tanstack/react-query"
 import { Model } from "company-os/model"
-import { Effect } from "effect"
 
 import { ROOT_ID } from "@/system-records"
 
@@ -21,68 +21,41 @@ function chunks<T>(values: ReadonlyArray<T>, size: number): ReadonlyArray<T[]> {
   return result
 }
 
-export function loadReferenceLabels(
+/** Resolve only visible references in bounded batches; unavailable records stay unlabeled. */
+export function useReferenceLabels(
   object: ModelObject,
   records: ReadonlyArray<ClientRecord>
-): Effect.Effect<ReadonlyMap<string, string>, unknown> {
-  return Effect.gen(function* () {
-    const references = new Map<string, Set<string>>()
-    const addReferences = (typeId: string, ids: ReadonlyArray<string>) => {
-      const values = references.get(typeId) ?? new Set<string>()
-      for (const id of ids) values.add(id)
-      references.set(typeId, values)
+): ReadonlyMap<string, string> {
+  const references = new Map<string, Set<string>>()
+  const add = (type: string, value: unknown) => {
+    if (typeof value !== "string" || value === ROOT_ID) return
+    const ids = references.get(type) ?? new Set<string>()
+    ids.add(value)
+    references.set(type, ids)
+  }
+  for (const record of records) {
+    if (object.parent.kind !== "root") add(object.parent.typeId, record.parent)
+    for (const [key, property] of Object.entries(object.properties)) {
+      const field = objectTablePropertySchema(property)
+      if (field.kind === "recordId") add(field.typeId, record[key])
     }
-
-    if (object.parent.kind !== "root") {
-      addReferences(
-        object.parent.typeId,
-        records.flatMap((record) =>
-          record.parent === undefined ? [] : [record.parent]
-        )
-      )
-    }
-    for (const [propertyId, property] of Object.entries(object.properties)) {
-      const propertySchema = objectTablePropertySchema(property)
-      if (propertySchema.kind !== "recordId") continue
-      addReferences(
-        propertySchema.typeId,
-        records.flatMap((record) => {
-          const value = record[propertyId]
-          // The client record is the parsed API representation; references are
-          // the string member of its closed value union.
-          return typeof value === "string" ? [value] : []
-        })
-      )
-    }
-
-    const labels = new Map<string, string>([[ROOT_ID, Model.root.name]])
-    yield* Effect.all(
-      [...references].flatMap(([typeId, values]) =>
-        recordObjectTypes(typeId).flatMap((referencedObject) =>
-          chunks(
-            [...values].filter((id) => id !== ROOT_ID),
-            MAX_PAGE_SIZE
-          ).map((ids) =>
-            Effect.gen(function* () {
-              if (ids.length === 0) return
-              const referencedClient = clientFor(referencedObject)
-              const page = yield* referencedClient.batchGet({ ids }).pipe(
-                Effect.catch(() =>
-                  referencedClient.list({
-                    filter: { field: "id", operator: "in", value: ids },
-                    pageSize: MAX_PAGE_SIZE,
-                  })
-                )
-              )
-              for (const record of page.items) {
-                labels.set(record.id, recordLabel(referencedObject, record))
-              }
-            })
-          )
-        )
-      ),
-      { concurrency: "unbounded" }
+  }
+  const requests = [...references].flatMap(([type, ids]) =>
+    recordObjectTypes(type).flatMap((target) =>
+      chunks([...ids].sort(), MAX_PAGE_SIZE).map((batch) => ({
+        target,
+        query: clientFor(target).list({
+          filter: { field: "id", operator: "in", value: batch },
+          pageSize: MAX_PAGE_SIZE,
+        }),
+      }))
     )
-    return labels
+  )
+  const results = useQueries({ queries: requests.map(({ query }) => query) })
+  const labels = new Map<string, string>([[ROOT_ID, Model.root.name]])
+  results.forEach((result, index) => {
+    for (const record of result.data?.items ?? [])
+      labels.set(record.id, recordLabel(requests[index]!.target, record))
   })
+  return labels
 }

@@ -28,18 +28,24 @@ import {
   emptyObjectCollectionViewState,
   objectCollectionStateSearch,
   resolveObjectCollectionView,
+  type ObjectCollectionFilter,
   type ObjectCollectionSearch,
   type ObjectCollectionView,
   type ObjectCollectionViewState,
 } from "./object-collection-view"
 import { useObjectCreate } from "./object-create-context"
+import type { ObjectFormInput } from "./object-form"
 import { ObjectRecordDialog } from "./object-record-dialog"
 import { ObjectRelationshipsDialog } from "./object-relationships-dialog"
 import { ObjectTable } from "./object-table/object-table"
 import { readFilterValue } from "./object-table/object-table-config"
 import { useObjectCollection } from "./use-object-collection"
 
+const noFixedFilters: ReadonlyArray<ObjectCollectionFilter> = []
 interface ObjectCollectionProps {
+  readonly fixedFilters?: ReadonlyArray<ObjectCollectionFilter> | undefined
+  readonly createInitialValues?: ObjectFormInput | undefined
+  readonly createReferenceLabels?: ReadonlyMap<string, string> | undefined
   readonly object: ModelObject
   readonly onSearchChange?:
     | ((search: ObjectCollectionSearch) => void)
@@ -53,6 +59,9 @@ interface ObjectCollectionProps {
 
 export function ObjectCollection({
   object,
+  fixedFilters = noFixedFilters,
+  createInitialValues,
+  createReferenceLabels,
   onSearchChange,
   actions,
   toolbarComponent: Toolbar,
@@ -76,11 +85,11 @@ export function ObjectCollection({
     onSearchChange === undefined ? localSearch : (search ?? {})
   const resolved = resolveObjectCollectionView(availableViews, activeSearch)
   const viewState = resolved.state
-  const collection = useObjectCollection(
-    object,
-    viewState.filters,
-    viewState.sorting
+  const filters = useMemo(
+    () => [...fixedFilters, ...viewState.filters],
+    [fixedFilters, viewState.filters]
   )
+  const collection = useObjectCollection(object, filters, viewState.sorting)
   const openObjectCreate = useObjectCreate()
   const [editing, setEditing] = useState<ClientRecord>()
   const [relating, setRelating] = useState<ClientRecord>()
@@ -134,7 +143,7 @@ export function ObjectCollection({
         )}
         canFilterProperty={canFilterProperty}
         canSortProperty={canSortProperty}
-        columnFilters={[...collection.columnFilters]}
+        columnFilters={[...viewState.filters]}
         columnVisibility={columnVisibility}
         sorting={[...collection.sorting]}
         onColumnFiltersChange={(update) =>
@@ -162,7 +171,13 @@ export function ObjectCollection({
         onCellCommit={collection.updateCell}
         canUpdateRecord={collection.canUpdate}
         onCreateRecord={
-          collection.canCreate ? () => openObjectCreate(object) : undefined
+          collection.canCreate
+            ? () =>
+                openObjectCreate(object, {
+                  initialValues: createInitialValues,
+                  referenceLabels: createReferenceLabels,
+                })
+            : undefined
         }
         onDeleteRecords={
           collection.records.some(({ id }) => collection.canDelete(id))
