@@ -477,6 +477,16 @@ export function toEffectObjectSchema<TObject extends ObjectType>(
 export function toEffectObjectSchema(
   object: ObjectType
 ): Schema.Codec<unknown, unknown> {
+  return annotateObjectSchema(
+    object,
+    Schema.Struct(toEffectObjectFields(object)),
+    object.name,
+    pascalCase(object.id)
+  )
+}
+
+/** Shared record fields for full records and discriminated relationship results. */
+export function toEffectObjectFields(object: ObjectType) {
   const id = Schema.String.annotate({
     readOnly: true,
     title: `${object.name} ID`,
@@ -523,12 +533,7 @@ export function toEffectObjectSchema(
     entry("updatedBy", actorId),
     ...Object.entries(compileObjectProperties(object)),
   ])
-  return annotateObjectSchema(
-    object,
-    Schema.Struct(fields),
-    object.name,
-    pascalCase(object.id)
-  )
+  return fields
 }
 
 export function toEffectObjectCreateSchema(

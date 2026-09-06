@@ -1,10 +1,10 @@
-import { Model } from "@company/model"
 import {
   type Action,
   type ModelObject,
   type ObjectType,
   modelObjects,
 } from "@company/runtime"
+import { Model } from "company-os/model"
 
 /** Maximum number of authorization decisions accepted by one public request. */
 export const MAX_CAPABILITY_CHECKS = 200
@@ -26,6 +26,7 @@ type ObjectCapabilityPermission<TObject> = TObject extends ObjectType
   ?
       | `${TObject["id"]}.get`
       | `${TObject["id"]}.list`
+      | `${TObject["id"]}.${keyof TObject["queries"] & string}`
       | `${TObject["id"]}.${ActionPermissionId<TObject>}`
   : never
 
@@ -44,6 +45,7 @@ export type CapabilityPermission =
 const objectPermissions = modelObjects(Model).flatMap((object) => [
   `${object.id}.get`,
   `${object.id}.list`,
+  ...Object.keys(object.queries).map((id) => `${object.id}.${id}`),
   ...Object.values(object.actions).flatMap((action) =>
     action.id === "batchDelete" ? [] : [`${object.id}.${action.id}`]
   ),
@@ -63,6 +65,7 @@ function isModelCapabilityPermission(
   const object = modelObjects(Model).find(({ id }) => id === objectId)
   if (object === undefined) return false
   if (operation === "get" || operation === "list") return true
+  if (Object.hasOwn(object.queries, operation)) return true
   return Object.values(object.actions).some(
     (action) => action.id !== "batchDelete" && action.id === operation
   )

@@ -193,6 +193,12 @@ function preconditionViolation(error: TaggedFailure): Violation {
         message: "Another administrator is required.",
         reason: "LAST_ADMINISTRATOR",
       }
+    case "AssetPrecondition":
+      return {
+        message: stringProperty(error, "message") ?? "The asset is not ready.",
+        path: (stringProperty(error, "field") ?? "asset").split("."),
+        reason: "ASSET_PRECONDITION",
+      }
     case "LeadConversionConflict":
       return {
         message: "The lead has an incomplete prior conversion.",
@@ -290,6 +296,7 @@ const notFoundTags = new Set([
 const failedPreconditionTags = new Set([
   "LastAdministrator",
   "LeadConversionConflict",
+  "AssetPrecondition",
   "ObjectDeleteRestricted",
   "RoleScopeMismatch",
   "RequiredLinkUnlink",

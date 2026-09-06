@@ -23,7 +23,7 @@ declare module "@tanstack/react-router" {
 }
 
 type PageMatch = {
-  loaderData?: { page?: PageMetadata } | undefined
+  loaderData?: { page?: PageMetadata } | void | undefined
   pathname: string
   staticData: { page?: PageMetadata }
 }

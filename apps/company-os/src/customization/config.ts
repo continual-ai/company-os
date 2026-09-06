@@ -1,4 +1,4 @@
-import { modelMetadata } from "@company/model/metadata"
+import { modelMetadata } from "company-os/metadata"
 
 type BrandAsset = Readonly<{
   alt: string
@@ -67,9 +67,9 @@ export const applicationConfig: ApplicationConfig = {
   },
   home: {
     description:
-      "Qualify new interest, coordinate customer context, and move active opportunities toward a clear outcome.",
-    eyebrow: "Sales overview",
-    headline: "Turn interest into durable customer relationships.",
+      "Manage customer relationships, track delivery, and keep the work connected.",
+    eyebrow: companyName,
+    headline: "Workspace",
   },
   identity: {
     companyName,

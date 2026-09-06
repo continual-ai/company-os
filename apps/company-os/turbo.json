@@ -55,6 +55,7 @@
         "DATABASE_SCHEMA",
         "DATABASE_URL"
       ]
-    }
+    },
+    "model:check": {}
   }
 }

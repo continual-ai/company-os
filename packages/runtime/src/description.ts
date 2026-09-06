@@ -12,12 +12,19 @@ import {
   modelQueries,
 } from "./definition/model"
 import type { ObjectType } from "./definition/object"
-import type { Query } from "./definition/query"
+import type { Query, CustomQuery } from "./definition/query"
+import {
+  modelRelationships,
+  type ModelRelationship,
+} from "./definition/relationship"
 import type { RootType } from "./definition/root"
 
 export const MODEL_DESCRIPTION_VERSION = "0.30" as const
 
-type ObjectDescription = Omit<ObjectType, "actions" | "kind" | "parent"> & {
+type ObjectDescription = Omit<
+  ObjectType,
+  "actions" | "queries" | "kind" | "parent"
+> & {
   parent: {
     readonly kind: "interface" | "object" | "root"
     readonly typeId: string
@@ -45,13 +52,15 @@ export interface ModelDescription {
   readonly model: { readonly name: string }
   readonly modules: ReadonlyArray<ModuleDescription>
   readonly objects: ReadonlyArray<ObjectDescription>
-  readonly queries: ReadonlyArray<Query>
+  readonly queries: ReadonlyArray<Query | CustomQuery>
+  readonly relationships: ReadonlyArray<ModelRelationship>
   readonly root: RootType
   readonly version: typeof MODEL_DESCRIPTION_VERSION
 }
 
 function describeObject({
   actions: _actions,
+  queries: _queries,
   kind: _kind,
   ...description
 }: ModelObject<ModelCatalog>): ObjectDescription {
@@ -104,6 +113,7 @@ export function describeModel(model: ModelCatalog): ModelDescription {
       name: module.name,
       objectIds: module.objects.map((object) => object.id),
     })),
+    relationships: modelRelationships(model),
     queries: modelQueries(model).map((query) => ({ ...query })),
     root: { ...model.root, interfaces: { ...model.root.interfaces } },
     objects: modelObjects(model).map(describeObject),

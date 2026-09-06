@@ -4,7 +4,8 @@ Portable definitions and reusable machinery for describing, implementing, and pr
 OS model. It supplies application-neutral contracts; it does not know the company's model,
 database, policies, UI, or deployment.
 
-Model authors normally consume the portable root package through `@company/model`. Server
+Model authors import definition builders from this package and publish the composed contract through
+`company-os/model`. Feature code consumes that contract. Server
 applications opt into Effect-based schema, execution, HTTP, and MCP projections through explicit
 `@company/runtime/effect/*` subpaths so browser-safe consumers do not acquire server dependencies.
 
@@ -71,13 +72,14 @@ export const Model = defineModel({
 
 The root is the singleton top of the ownership hierarchy. Objects are durable records beneath it.
 Interfaces describe polymorphic roles, Links describe bidirectional relationships, Queries read
-state, and Actions perform governed operations. See
+state, and Actions perform governed operations. `modelRelationships` exposes the named directions
+of Links, inline references, and ownership parents in one derived catalog. See
 [Modeling company operations](../../docs/modeling.md) for the complete conceptual guide.
 
 ## Bind and project the contract
 
-The central application binds the closed model once to governed object services and custom Action
-implementations. The same binding drives HTTP handlers, OpenAPI, typed clients, MCP tools, and model
+The central application binds the closed model once to governed standard operations and named custom
+Query and Action implementations. The same binding drives HTTP handlers, OpenAPI, typed clients, MCP tools, and model
 descriptions. A transport partitions and reconstructs the semantic request mechanically; it does
 not authorize callers, implement business rules, or call repositories directly.
 

@@ -23,6 +23,12 @@ import {
   type Properties,
   normalizeProperties,
 } from "./property"
+import {
+  bindQueries,
+  type BoundQueries,
+  type CustomQuery,
+  type QueryDefinitions,
+} from "./query"
 import type { RootType } from "./root"
 import type {
   AnySchema,
@@ -129,9 +135,13 @@ export interface ObjectType<
   TInterfaces extends Readonly<Record<string, InterfaceImplementation>> =
     Readonly<Record<string, InterfaceImplementation>>,
   TActorRecordTypeId extends string = string,
+  TQueries extends Readonly<Record<string, CustomQuery>> = Readonly<
+    Record<string, CustomQuery>
+  >,
 > {
   readonly [actorRecordType]?: TActorRecordTypeId
   actions: TActions
+  queries: TQueries
   collection: TCollection
   description?: string
   display: {
@@ -328,8 +338,10 @@ export function defineObject<
   const TActionDefinitions extends ActionDefinitions = {},
   const TParent extends ParentDefinition = ParentDefinition,
   const TImplementations extends InterfaceImplementationInputs = [],
+  const TQueries extends QueryDefinitions = {},
 >(definition: {
   actions?: TActionDefinitions
+  queries?: TQueries
   collection: TCollection
   description?: string
   display: ObjectDisplay<NormalizeProperties<TProperties>>
@@ -349,7 +361,9 @@ export function defineObject<
   TParent["id"],
   TParent["kind"],
   TParent["id"],
-  InterfaceImplementationMap<TImplementations>
+  InterfaceImplementationMap<TImplementations>,
+  string,
+  BoundQueries<TId, TQueries>
 > {
   const semanticParentPropertyId = definition.parent.id
   if (Object.hasOwn(definition.properties, semanticParentPropertyId)) {
@@ -425,6 +439,11 @@ export function defineObject<
     collection: definitionId(definition.collection),
   }
   const bound = bindActions(identity, definition.actions)
+  const queries = bindQueries(identity, definition.queries)
+  for (const id of Object.keys(queries)) {
+    if (Object.hasOwn(bound.actions, id))
+      throw new Error(`Object '${identity.id}' duplicates operation '${id}'.`)
+  }
   const metadata = {
     kind: "object" as const,
     id: identity.id,
@@ -455,6 +474,7 @@ export function defineObject<
   const object = {
     ...metadata,
     actions,
+    queries,
   } as unknown as ObjectType<
     TId,
     TCollection,
@@ -463,7 +483,9 @@ export function defineObject<
     TParent["id"],
     TParent["kind"],
     TParent["id"],
-    InterfaceImplementationMap<TImplementations>
+    InterfaceImplementationMap<TImplementations>,
+    string,
+    BoundQueries<TId, TQueries>
   >
   if (definition.description !== undefined) {
     return { ...object, description: definition.description }

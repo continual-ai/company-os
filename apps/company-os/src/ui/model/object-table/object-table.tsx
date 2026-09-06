@@ -291,7 +291,7 @@ export function ObjectTable({
             [
               "parent",
               {
-                ...schema.recordId(
+                ...schema.reference(
                   { id: object.parent.typeId },
                   { label: parentLabel ?? "Parent" }
                 ),

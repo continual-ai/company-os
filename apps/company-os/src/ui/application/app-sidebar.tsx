@@ -13,7 +13,6 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -23,35 +22,24 @@ import {
 import { Link, useMatchRoute } from "@tanstack/react-router"
 import { BracesIcon, ChevronsUpDownIcon, SettingsIcon } from "lucide-react"
 
-import { applicationCapabilities, capabilityPermission } from "@/capabilities"
+import { applicationCapabilities } from "@/capabilities"
 import { BrandMark } from "@/customization/brand"
 import { applicationConfig } from "@/customization/config"
-import {
-  operateNavigation,
-  salesNavigation,
-  salesNavigationChecks,
-} from "@/customization/navigation"
+import { operateNavigation } from "@/customization/navigation"
 import {
   getUserInitials,
   useAuthenticatedUser,
 } from "@/ui/application/authenticated-user"
 import { useCapabilities } from "@/ui/application/use-capabilities"
+import { ModuleNavigation } from "@/ui/model/module-navigation"
 
-const navigationChecks = [
-  ...salesNavigationChecks,
-  applicationCapabilities.develop,
-]
+const navigationChecks = [applicationCapabilities.develop]
 
 export function AppSidebar() {
   const user = useAuthenticatedUser()
   const capabilities = useCapabilities(navigationChecks)
   const matchRoute = useMatchRoute()
   const canDevelop = capabilities.can(applicationCapabilities.develop)
-  const accessibleSalesNavigation = salesNavigation.filter((item) =>
-    capabilities.can({
-      permission: capabilityPermission(`${item.object.id}.list`),
-    })
-  )
   return (
     <Sidebar variant="sidebar" collapsible="offcanvas">
       <SidebarHeader>
@@ -96,27 +84,7 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {accessibleSalesNavigation.length === 0 ? null : (
-          <SidebarGroup>
-            <SidebarGroupLabel>Sales</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {accessibleSalesNavigation.map((item) => (
-                  <SidebarMenuItem key={item.object.id}>
-                    <SidebarMenuButton
-                      tooltip={item.label}
-                      isActive={Boolean(matchRoute({ to: item.to }))}
-                      render={<Link to={item.to} />}
-                    >
-                      <item.icon />
-                      <span>{item.label}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
+        <ModuleNavigation />
       </SidebarContent>
 
       <SidebarFooter>

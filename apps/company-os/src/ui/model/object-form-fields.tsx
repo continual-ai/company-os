@@ -11,9 +11,11 @@ import {
 } from "@company/ui/components/select"
 import { Textarea } from "@company/ui/components/textarea"
 
+import { FileField } from "@/modules/assets/asset/ui/file-field"
 import { useTypedAppFormContext } from "@/ui/forms/app-form"
 import type { FormValue, FormValueObject } from "@/ui/forms/form-value"
 
+import type { ResolvedObjectUi } from "./module-ui"
 import {
   parentName,
   type ClientRecord,
@@ -64,7 +66,9 @@ export function ObjectFormFields({
   object,
   record,
   referenceLabels,
+  fieldEditors,
 }: {
+  readonly fieldEditors?: ResolvedObjectUi["fieldEditors"]
   readonly mode: ObjectFormMode
   readonly object: ModelObject
   readonly record?: ClientRecord | undefined
@@ -111,6 +115,25 @@ export function ObjectFormFields({
           const fieldId = `${object.id}-${mode}-${id}`
           const label = property.label ?? id
           const required = objectFormFieldRequired(property)
+
+          const Editor = fieldEditors?.[id]
+          if (Editor)
+            return (
+              <form.AppField key={id} name={id}>
+                {(field) => (
+                  <field.FormField id={fieldId} label={label}>
+                    {(control) => (
+                      <Editor
+                        {...control}
+                        id={fieldId}
+                        name={id}
+                        required={required}
+                      />
+                    )}
+                  </field.FormField>
+                )}
+              </form.AppField>
+            )
 
           if (!isSupportedFormSchema(schema)) {
             return (
@@ -327,70 +350,81 @@ export function ObjectFormFields({
             )
           }
 
+          const assetSchema = schema.kind === "array" ? schema.items : schema
           if (
-            schema.kind === "file" ||
-            schema.kind === "image" ||
-            schema.kind === "media"
+            assetSchema.kind === "file" ||
+            assetSchema.kind === "image" ||
+            assetSchema.kind === "media"
           ) {
             return (
               <form.AppField key={id} name={id}>
                 {(field) => (
                   <field.FormField
-                    id={`${fieldId}-asset`}
+                    id={fieldId}
                     label={label}
-                    description={
-                      property.description ??
-                      "Enter an asset ID. A deployment can replace this with its media picker."
-                    }
+                    description={property.description}
                   >
-                    {({
-                      ariaDescribedBy,
-                      invalid,
-                      onBlur,
-                      onValueChange,
-                      value,
-                    }) => (
-                      <>
-                        <Input
-                          id={`${fieldId}-asset`}
-                          name={`${id}.assetId`}
-                          required={required}
-                          value={nestedValue(value, "assetId")}
-                          placeholder="Asset ID"
-                          aria-invalid={invalid}
-                          aria-describedby={ariaDescribedBy}
-                          onBlur={onBlur}
-                          onChange={(event) =>
-                            onValueChange(
-                              updateNested(
-                                value,
-                                "assetId",
-                                event.currentTarget.value
-                              )
-                            )
-                          }
-                        />
-                        {schema.kind === "file" ? null : (
-                          <Input
-                            name={`${id}.alt`}
-                            value={nestedValue(value, "alt")}
-                            placeholder="Alternative text"
-                            aria-invalid={invalid}
-                            aria-describedby={ariaDescribedBy}
-                            onBlur={onBlur}
-                            onChange={(event) =>
-                              onValueChange(
-                                updateNested(
-                                  value,
-                                  "alt",
-                                  event.currentTarget.value
+                    {({ value, onValueChange }) => {
+                      const values = (
+                        Array.isArray(value) ? value : [value]
+                      ).flatMap((item) => {
+                        if (
+                          typeof item !== "object" ||
+                          item === null ||
+                          !("assetId" in item) ||
+                          typeof item.assetId !== "string" ||
+                          item.assetId === ""
+                        )
+                          return []
+                        return [
+                          {
+                            assetId: item.assetId,
+                            ...(typeof item.alt === "string"
+                              ? { alt: item.alt }
+                              : {}),
+                          },
+                        ]
+                      })
+                      return (
+                        <form.Subscribe
+                          selector={(state) => state.values.parent}
+                        >
+                          {(parent) => (
+                            <FileField
+                              id={fieldId}
+                              value={values}
+                              image={assetSchema.kind === "image"}
+                              multiple={schema.kind === "array"}
+                              maxBytes={assetSchema.maxBytes}
+                              accept={assetSchema.accept}
+                              scope={
+                                record?.parent ??
+                                (typeof parent === "string" && parent !== ""
+                                  ? parent
+                                  : undefined)
+                              }
+                              onPendingChange={(pending) =>
+                                field.setMeta((meta) => ({
+                                  ...meta,
+                                  isValidating: pending,
+                                  isTouched: true,
+                                }))
+                              }
+                              onChange={(next) => {
+                                const nextValues = next.map((reference) => ({
+                                  ...reference,
+                                }))
+                                onValueChange(
+                                  schema.kind === "array"
+                                    ? nextValues
+                                    : (nextValues[0] ?? null)
                                 )
-                              )
-                            }
-                          />
-                        )}
-                      </>
-                    )}
+                              }}
+                            />
+                          )}
+                        </form.Subscribe>
+                      )
+                    }}
                   </field.FormField>
                 )}
               </form.AppField>

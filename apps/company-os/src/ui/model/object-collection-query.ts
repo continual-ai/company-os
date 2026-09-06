@@ -53,7 +53,7 @@ function objectProperty(
   if (propertyId !== "parent") return modelObjectProperty(object, propertyId)
   if (object.parent.kind === "root") return undefined
   return {
-    ...schema.recordId(
+    ...schema.reference(
       { id: object.parent.typeId },
       { label: "Parent", immutable: true }
     ),

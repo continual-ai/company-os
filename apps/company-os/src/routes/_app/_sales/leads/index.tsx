@@ -1,10 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router"
+import { Model } from "company-os/model"
 
-import { leadViews } from "@/customization/collection-views"
+import { ModelCollectionPage } from "@/ui/model/model-pages"
 import { validateObjectCollectionSearch } from "@/ui/model/object-collection-view"
-import { LeadsPage } from "@/ui/sales/leads-page"
+import { preloadCollection } from "@/ui/model/object-routing"
 
 export const Route = createFileRoute("/_app/_sales/leads/")({
+  loaderDeps: ({ search }) => search,
+  loader: ({ deps }) => preloadCollection(Model.objects.lead, deps),
   validateSearch: validateObjectCollectionSearch,
   component: LeadsRoute,
 })
@@ -13,9 +16,9 @@ function LeadsRoute() {
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
   return (
-    <LeadsPage
+    <ModelCollectionPage
+      object={Model.objects.lead}
       search={search}
-      views={leadViews}
       onSearchChange={(next) =>
         void navigate({ replace: next.state !== undefined, search: next })
       }

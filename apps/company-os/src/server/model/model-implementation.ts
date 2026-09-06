@@ -1,70 +1,56 @@
-import { Model } from "@company/model"
-import { implementModel } from "@company/runtime/effect/model-implementation"
+import type { PostgresRepositoryError } from "@company/postgres"
+import {
+  implementModel,
+  type ModelServiceMap,
+} from "@company/runtime/effect/model-implementation"
+import type { Repository } from "@company/runtime/effect/object-repository"
+import { Model } from "company-os/model"
 import { Context, Effect, Layer } from "effect"
 
-import { RoleAssignmentService } from "@/server/modules/access/role-assignment-service"
-import { ServiceAccountService } from "@/server/modules/access/service-account-service"
-import { UserService } from "@/server/modules/access/user-service"
-import { LeadService } from "@/server/modules/sales/lead-service"
+import type { AssetPrecondition } from "@/modules/assets/asset/server/asset-error"
+import { ModuleServices } from "@/server/module-services"
 
 import { Links } from "./link-service"
 import { ObjectRepositories } from "./object-repositories"
-import {
-  makeBaseObjectService,
-  makeMutableObjectService,
-  makeObjectService,
-} from "./object-service"
+import { makeObjectService } from "./object-service"
 
 const make = Effect.gen(function* () {
   const repositories = yield* ObjectRepositories
   const links = yield* Links
-  return implementModel(
-    Model,
-    {
-      anonymousActor: yield* makeBaseObjectService(
-        Model.objects.anonymousActor,
-        repositories.anonymousActor
-      ),
-      company: yield* makeMutableObjectService(
-        Model.objects.company,
-        repositories.company
-      ),
-      contact: yield* makeMutableObjectService(
-        Model.objects.contact,
-        repositories.contact
-      ),
-      deal: yield* makeMutableObjectService(
-        Model.objects.deal,
-        repositories.deal
-      ),
-      group: yield* makeMutableObjectService(
-        Model.objects.group,
-        repositories.group
-      ),
-      groupMembership: yield* makeObjectService(
-        Model.objects.groupMembership,
-        repositories.groupMembership
-      ),
-      lead: yield* LeadService,
-      lineItem: yield* makeMutableObjectService(
-        Model.objects.lineItem,
-        repositories.lineItem
-      ),
-      note: yield* makeMutableObjectService(
-        Model.objects.note,
-        repositories.note
-      ),
-      principalSet: yield* makeBaseObjectService(
-        Model.objects.principalSet,
-        repositories.principalSet
-      ),
-      role: yield* makeBaseObjectService(Model.objects.role, repositories.role),
-      roleAssignment: yield* RoleAssignmentService,
-      serviceAccount: yield* ServiceAccountService,
-      user: yield* UserService,
-    },
-    links
+  function repositoryFor<
+    TObject extends (typeof Model.objects)[keyof typeof Model.objects],
+  >(
+    object: TObject
+  ): Repository<TObject, PostgresRepositoryError | AssetPrecondition> {
+    // SAFETY: the repository registry was derived from the same object keys.
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+    return repositories[object.id] as unknown as Repository<
+      TObject,
+      PostgresRepositoryError | AssetPrecondition
+    >
+  }
+  const overrides = yield* ModuleServices
+  const entries = yield* Effect.forEach(
+    Object.values(Model.objects),
+    (object) =>
+      Effect.gen(function* () {
+        const override = Reflect.get(overrides, object.id)
+        return [
+          object.id,
+          {
+            ...(yield* makeObjectService(object, repositoryFor(object))),
+            ...override,
+          },
+        ] as const
+      })
   )
+  // SAFETY: every model object is bound once; implementModel verifies that all
+  // declared custom actions are actually implemented before the app can start.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  const services = Object.fromEntries(entries) as unknown as ModelServiceMap<
+    typeof Model
+  >
+  return implementModel<typeof Model>(Model, services, links)
 })
 
 /** The application model exhaustively bound to its governed services. */

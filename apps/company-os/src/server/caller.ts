@@ -1,4 +1,4 @@
-import type { ActorId, IdentityId } from "@company/model"
+import type { ActorId, IdentityId } from "company-os/model"
 
 import { ANONYMOUS_ACTOR_ID } from "@/system-records"
 

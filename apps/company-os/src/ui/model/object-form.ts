@@ -1,4 +1,3 @@
-import { Model, modelMetadata } from "@company/model"
 import {
   modelObjectLinkTraversals,
   type AnySchema,
@@ -10,6 +9,7 @@ import {
   toEffectModelObjectCreateSchema,
   toEffectModelObjectUpdateSchema,
 } from "@company/runtime/effect"
+import { Model, modelMetadata } from "company-os/model"
 
 import {
   decodeFormSchema,
@@ -95,7 +95,13 @@ export function isSupportedFormSchema(schema: AnySchema): boolean {
   }
   if (schema.kind !== "array") return false
   const item = objectTablePropertySchema(schema.items)
-  return item.kind === "enum" || item.kind === "string"
+  return (
+    item.kind === "enum" ||
+    item.kind === "string" ||
+    item.kind === "file" ||
+    item.kind === "image" ||
+    item.kind === "media"
+  )
 }
 
 function semanticFormViolation(
@@ -210,6 +216,8 @@ function scalarValue(
   }
 
   if (schema.kind === "array") {
+    if (["file", "image", "media"].includes(schema.items.kind))
+      return Array.isArray(raw) ? raw : []
     const value = stringValue(raw).trim()
     if (value === "") return []
     return value
@@ -454,7 +462,21 @@ export function objectFormDefaultValues(
       continue
     }
     if (schema.kind === "array") {
-      values[id] = Array.isArray(value) ? value.join("\n") : ""
+      if (["file", "image", "media"].includes(schema.items.kind)) {
+        values[id] = Array.isArray(value)
+          ? value
+              .filter(
+                (item) =>
+                  typeof item === "object" && item !== null && "assetId" in item
+              )
+              .map((item) => ({
+                assetId: String(item.assetId),
+                ...("alt" in item && typeof item.alt === "string"
+                  ? { alt: item.alt }
+                  : {}),
+              }))
+          : []
+      } else values[id] = Array.isArray(value) ? value.join("\n") : ""
       continue
     }
     if (schema.kind === "string" && schema.format === "timestamp") {

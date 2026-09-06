@@ -1,4 +1,3 @@
-import type { Model } from "@company/model"
 import type {
   Action,
   AnySchema,
@@ -10,6 +9,7 @@ import type {
 } from "@company/runtime"
 import { Badge } from "@company/ui/components/badge"
 import { Button } from "@company/ui/components/button"
+import type { Model } from "company-os/model"
 import {
   BoxesIcon,
   BracesIcon,

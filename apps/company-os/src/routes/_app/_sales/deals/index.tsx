@@ -1,12 +1,13 @@
-import { Model } from "@company/model"
-import { Button } from "@company/ui/components/button"
-import { Link, createFileRoute } from "@tanstack/react-router"
+import { createFileRoute } from "@tanstack/react-router"
+import { Model } from "company-os/model"
 
-import { dealViews } from "@/customization/collection-views"
-import { ObjectCollection } from "@/ui/model/object-collection"
+import { ModelCollectionPage } from "@/ui/model/model-pages"
 import { validateObjectCollectionSearch } from "@/ui/model/object-collection-view"
+import { preloadCollection } from "@/ui/model/object-routing"
 
 export const Route = createFileRoute("/_app/_sales/deals/")({
+  loaderDeps: ({ search }) => search,
+  loader: ({ deps }) => preloadCollection(Model.objects.deal, deps),
   validateSearch: validateObjectCollectionSearch,
   component: DealsPage,
 })
@@ -15,23 +16,12 @@ function DealsPage() {
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
   return (
-    <ObjectCollection
+    <ModelCollectionPage
       object={Model.objects.deal}
-      recordHref={(recordId) => `/deals/${recordId}`}
       search={search}
-      views={dealViews}
       onSearchChange={(next) =>
         void navigate({ replace: next.state !== undefined, search: next })
       }
-      renderCollectionActions={() => (
-        <Button
-          variant="outline"
-          nativeButton={false}
-          render={<Link to="/line-items" />}
-        >
-          Line items
-        </Button>
-      )}
     />
   )
 }

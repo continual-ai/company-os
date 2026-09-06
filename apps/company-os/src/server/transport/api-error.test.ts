@@ -1,9 +1,9 @@
-import { Model } from "@company/model"
 import type { ApiError, FailedPreconditionError } from "@company/runtime"
 import {
   executableModelOperation,
   type ExecutableModelOperation,
 } from "@company/runtime/effect/model-implementation"
+import { Model } from "company-os/model"
 import { Effect, Logger, Schema } from "effect"
 import { describe, expect, it } from "vitest"
 

@@ -1,10 +1,16 @@
-import { Model } from "@company/model"
 import { Etag, RecordId, Timestamp } from "@company/runtime"
 import { CurrentInvocation } from "@company/runtime/effect/object-service"
+import { Model } from "company-os/model"
 import { eq } from "drizzle-orm"
 import { Effect } from "effect"
 import { describe, expect } from "vitest"
 
+import { RoleAssignmentRepository } from "@/modules/access/role-assignment/server/role-assignment-repository"
+import {
+  LastAdministrator,
+  RoleAssignmentService,
+  RoleScopeMismatch,
+} from "@/modules/access/role-assignment/server/role-assignment-service"
 import { anonymousCaller, authenticatedCaller } from "@/server/caller"
 import { Database } from "@/server/database/database"
 import { itDatabase } from "@/server/database/it-database"
@@ -27,15 +33,10 @@ import {
   currentActorId,
   systemInvocation,
 } from "@/server/invocation-context"
+import { Links } from "@/server/model/link-service"
 import { ObjectRepositories } from "@/server/model/object-repositories"
-import { makeBaseObjectService } from "@/server/model/object-service"
+import { makeObjectService } from "@/server/model/object-service"
 import { RecordIdentifierResolver } from "@/server/model/record-identifier-resolver"
-import { RoleAssignmentRepository } from "@/server/modules/access/role-assignment-repository"
-import {
-  LastAdministrator,
-  RoleAssignmentService,
-  RoleScopeMismatch,
-} from "@/server/modules/access/role-assignment-service"
 import { PageTokens } from "@/server/page-tokens"
 import { seedSystem } from "@/server/seeds/seed-system"
 import {
@@ -234,10 +235,11 @@ describe("Authorization", () => {
           .where(eq(objects.id, publicAdmissionAssignmentId))
         const companyRepository = objectRepositories.company
         const identifiers = yield* RecordIdentifierResolver.make
-        const companyService = yield* makeBaseObjectService(
+        const companyService = yield* makeObjectService(
           Model.objects.company,
           companyRepository
         ).pipe(
+          Effect.provide(Links.layer),
           Effect.provideService(Authorization, authorization),
           Effect.provideService(RecordIdentifierResolver, identifiers)
         )
@@ -361,6 +363,7 @@ describe("Authorization", () => {
             Effect.provideService(ObjectRepositories, objectRepositories)
           )
         const roleAssignmentService = yield* RoleAssignmentService.make.pipe(
+          Effect.provide(Links.layer),
           Effect.provideService(
             AuthorizationRepository,
             authorizationRepository

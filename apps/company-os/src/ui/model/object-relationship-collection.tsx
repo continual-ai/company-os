@@ -12,7 +12,6 @@ import { PencilIcon, PlusIcon, UnlinkIcon } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 
 import {
-  clientFor,
   linkClientFor,
   parentName,
   tableRecord,
@@ -27,6 +26,7 @@ import type {
 import { ObjectRecordDialog } from "./object-record-dialog"
 import { loadRelationshipCollectionPage } from "./object-relationship-collection-query"
 import { ObjectRelationshipForm } from "./object-relationship-form"
+import { objectHref } from "./object-routing"
 import { ObjectTable } from "./object-table/object-table"
 import { useObjectCollection } from "./use-object-collection"
 
@@ -37,13 +37,11 @@ const unavailable = () => false
 function AddRelationshipDialog({
   link,
   object,
-  onLinked,
   recordId,
   traversal,
 }: {
   readonly link: NonNullable<DynamicLinkClient["link"]>
   readonly object: ModelObject
-  readonly onLinked: () => Promise<void>
   readonly recordId: string
   readonly traversal: ModelLinkTraversal
 }) {
@@ -65,10 +63,7 @@ function AddRelationshipDialog({
           link={link}
           recordId={recordId}
           traversal={traversal}
-          onLinked={async () => {
-            await onLinked()
-            setOpen(false)
-          }}
+          onLinked={() => setOpen(false)}
         />
       </DialogContent>
     </Dialog>
@@ -96,17 +91,15 @@ export function ObjectRelationshipCollection({
     () => linkClientFor(object, traversal),
     [object, traversal]
   )
-  const targetClient = useMemo(() => clientFor(targetObject), [targetObject])
   const listRecords = useCallback(
     (request: ListRequest) =>
       loadRelationshipCollectionPage({
-        batchGet: targetClient.batchGet,
         list: relationshipClient.list,
         objectType: targetObject.id,
         request,
         sourceId: record.id,
       }),
-    [record.id, relationshipClient.list, targetClient.batchGet, targetObject.id]
+    [record.id, relationshipClient.list, targetObject.id]
   )
   const collection = useObjectCollection(
     targetObject,
@@ -182,7 +175,7 @@ export function ObjectRelationshipCollection({
           onPreviousPage: collection.previousPage,
           totalSize: collection.totalSize,
         }}
-        recordHref={(recordId) => `/${targetObject.collection}/${recordId}`}
+        recordHref={(recordId) => objectHref(targetObject, recordId)}
         resolveRecordLabel={(recordId) =>
           collection.referenceLabels.get(recordId)
         }
@@ -198,7 +191,6 @@ export function ObjectRelationshipCollection({
               object={targetObject}
               recordId={record.id}
               traversal={traversal}
-              onLinked={collection.load}
             />
           ) : undefined
         }
@@ -226,15 +218,14 @@ export function ObjectRelationshipCollection({
                   disabled={collection.loading}
                   onClick={() => {
                     setMutationError(undefined)
-                    void unlink({ id: record.id, target: tableItem.id })
-                      .then(() => collection.load())
-                      .catch((cause: unknown) =>
+                    void unlink({ id: record.id, target: tableItem.id }).catch(
+                      (cause: unknown) =>
                         setMutationError(
                           cause instanceof Error
                             ? cause.message
                             : `${traversal.traversal.label} could not be unlinked.`
                         )
-                      )
+                    )
                   }}
                 >
                   <UnlinkIcon />

@@ -16,6 +16,7 @@ import {
   formErrorMessages,
 } from "@/ui/forms/form-errors"
 
+import { useObjectUi } from "./module-ui"
 import type { ClientRecord, ModelObject } from "./object-client"
 import {
   decodeObjectForm,
@@ -44,6 +45,7 @@ export function ObjectRecordDialog({
   readonly record?: ClientRecord | undefined
   readonly referenceLabels: ReadonlyMap<string, string>
 }) {
+  const ui = useObjectUi(object)
   const unsupported = objectFormProperties(object, mode).filter(
     ({ schema }) => !isSupportedFormSchema(schema)
   )
@@ -109,6 +111,7 @@ export function ObjectRecordDialog({
               <DialogDescription>{object.description}</DialogDescription>
             </DialogHeader>
             <ObjectFormFields
+              fieldEditors={ui?.fieldEditors}
               mode={mode}
               object={object}
               record={record}

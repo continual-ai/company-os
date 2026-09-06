@@ -1,4 +1,3 @@
-import { Model } from "@company/model"
 import { resolveRecordAliases as resolvePostgresRecordAliases } from "@company/postgres"
 import {
   isRecordAlias,
@@ -8,6 +7,7 @@ import {
   type RecordIdentifier,
 } from "@company/runtime"
 import { RecordAliasNotFound } from "@company/runtime/effect/object-repository"
+import { Model } from "company-os/model"
 import { Context, Effect, Layer } from "effect"
 
 import { Database } from "@/server/database/database"

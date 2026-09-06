@@ -99,21 +99,23 @@ describe("Effect HTTP projection", () => {
       get: { operationId: "listAccounts" },
       post: { operationId: "createAccount" },
     })
-    expect(document.paths["/api/v1/accounts/batchGet"]).toMatchObject({
-      post: { operationId: "batchGetAccounts" },
+    expect(document.paths["/api/v1/accounts:batchGet"]).toMatchObject({
+      post: { operationId: "batchGetAccounts", tags: ["Accounts"] },
     })
-    expect(document.paths["/api/v1/accounts/batchDelete"]).toBeUndefined()
-    expect(document.paths["/api/v1/accounts/actions/archiveAll"]).toMatchObject(
-      {
-        post: { operationId: "archiveAllAccounts" },
-      }
-    )
+    expect(document.paths["/api/v1/accounts:batchDelete"]).toBeUndefined()
+    expect(document.paths["/api/v1/accounts:archiveAll"]).toMatchObject({
+      post: { operationId: "archiveAllAccounts" },
+    })
     expect(
-      document.paths["/api/v1/accounts/actions/archiveAll"]?.post?.responses
+      document.paths["/api/v1/accounts:archiveAll"]?.post?.responses
     ).toHaveProperty("403")
-    expect(document.paths["/api/v1/accounts/search"]).toMatchObject({
-      post: { operationId: "searchAccounts" },
-    })
+    expect(document.paths["/api/v1/accounts:search"]).toBeUndefined()
+    expect(document.paths["/api/v1/accounts"]?.get?.parameters).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "filter", in: "query" }),
+        expect.objectContaining({ name: "sort", in: "query" }),
+      ])
+    )
     expect(document.paths["/api/v1/accounts/{id}"]).toMatchObject({
       get: { operationId: "getAccount" },
       patch: { operationId: "updateAccount" },
@@ -213,7 +215,7 @@ describe("Effect HTTP projection", () => {
     })
     const batchDocument = OpenApi.fromApi(createModelHttpApi(model))
 
-    expect(batchDocument.paths["/api/v1/deletables/batchDelete"]).toMatchObject(
+    expect(batchDocument.paths["/api/v1/deletables:batchDelete"]).toMatchObject(
       {
         post: {
           operationId: "batchDeleteDeletables",
@@ -237,7 +239,7 @@ describe("Effect HTTP projection", () => {
   })
 
   it("projects business actions to canonical paths and declared errors", () => {
-    const action = document.paths["/api/v1/accounts/{id}/actions/archive"]?.post
+    const action = document.paths["/api/v1/accounts/{id}:archive"]?.post
 
     expect(action).toMatchObject({
       operationId: "archiveAccount",

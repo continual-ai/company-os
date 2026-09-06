@@ -32,7 +32,7 @@ describe("PostgreSQL schema", () => {
     ).toEqualTypeOf<"company">()
     expectTypeOf<
       (typeof Storage.objects.deal)["$inferSelect"]["parentId"]
-    >().toEqualTypeOf<RecordId<"company">>()
+    >().toEqualTypeOf<RecordId<"authorizationScope">>()
     expectTypeOf<
       (typeof Storage.objects.lineItem)["$inferSelect"]["parentId"]
     >().toEqualTypeOf<RecordId<"deal">>()
@@ -74,6 +74,10 @@ describe("PostgreSQL schema", () => {
     const expectedKitTables = [
       ...Object.values(Storage.schema),
       DatabaseSchema.identityBindings,
+      DatabaseSchema.assetBlobs,
+      DatabaseSchema.assetReferences,
+      DatabaseSchema.eventJournal,
+      DatabaseSchema.eventJournalState,
     ]
     expect(new Set(kitTables)).toEqual(new Set(expectedKitTables))
   })

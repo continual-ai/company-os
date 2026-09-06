@@ -1,4 +1,4 @@
-import type { IdentityId, PrincipalId } from "@company/model"
+import type { IdentityId, PrincipalId } from "company-os/model"
 import { and, arrayOverlaps, eq, inArray, or, sql } from "drizzle-orm"
 import { Context, Effect, Layer } from "effect"
 

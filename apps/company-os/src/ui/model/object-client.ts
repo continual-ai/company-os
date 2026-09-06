@@ -1,4 +1,3 @@
-import { Model } from "@company/model"
 import {
   type Batch,
   type ModelLinkTraversal,
@@ -9,6 +8,7 @@ import {
   type Page,
   type PropertyDefinition,
 } from "@company/runtime"
+import { Model } from "company-os/model"
 import { Effect } from "effect"
 
 import { client } from "@/app-client"
@@ -48,7 +48,7 @@ export interface RelatedRecord {
 export interface DynamicObjectClient {
   readonly batchGet: (
     input: DynamicRecordIdsInput
-  ) => Promise<Batch<ClientRecord>>
+  ) => Effect.Effect<Batch<ClientRecord>, unknown>
   readonly batchDelete?: (input: {
     readonly ids: ReadonlyArray<string>
   }) => Promise<void>
@@ -59,8 +59,12 @@ export interface DynamicObjectClient {
     readonly etag?: string
     readonly id: string
   }) => Promise<void>
-  readonly get: (input: DynamicRecordInput) => Promise<ClientRecord>
-  readonly list: (request?: ListRequest) => Promise<Page<ClientRecord>>
+  readonly get: (
+    input: DynamicRecordInput
+  ) => Effect.Effect<ClientRecord, unknown>
+  readonly list: (
+    request?: ListRequest
+  ) => Effect.Effect<Page<ClientRecord>, unknown>
   readonly update?: (
     input: Readonly<Record<string, ClientValue | undefined>> & {
       readonly etag?: string
@@ -71,7 +75,9 @@ export interface DynamicObjectClient {
 
 export interface DynamicLinkClient {
   readonly link?: (input: DynamicLinkMutationInput) => Promise<void>
-  readonly list: (input: DynamicLinkListInput) => Promise<Page<ObjectRef>>
+  readonly list: (
+    input: DynamicLinkListInput
+  ) => Effect.Effect<Page<ClientRecord & ObjectRef>, unknown>
   readonly unlink?: (input: DynamicLinkMutationInput) => Promise<void>
 }
 
@@ -149,6 +155,12 @@ function linkMethod(
   return method as ModelMethod
 }
 
+function queryMethod<TResult>(effect: Effect.Effect<unknown, unknown>) {
+  // SAFETY: the generated client decodes this model operation's result.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  return effect as Effect.Effect<TResult, unknown>
+}
+
 async function runMethod<TResult>(effect: Effect.Effect<unknown, unknown>) {
   // SAFETY: every result is decoded by the generated native Effect client.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
@@ -160,9 +172,9 @@ export function clientFor(object: ModelObject): DynamicObjectClient {
   const get = modelMethod(object, "get")
   const list = modelMethod(object, "list")
   const adapter: DynamicObjectClientBuilder = {
-    batchGet: (input) => runMethod(batchGet(input)),
-    get: (input) => runMethod(get(input)),
-    list: (request = {}) => runMethod(list(request)),
+    batchGet: (input) => queryMethod(batchGet(input)),
+    get: (input) => queryMethod(get(input)),
+    list: (request = {}) => queryMethod(list(request)),
   }
 
   if ("batchDelete" in object.actions) {
@@ -199,7 +211,7 @@ export function linkClientFor(
   const link = linkMethod(object, traversal, "link")
   const unlink = linkMethod(object, traversal, "unlink")
   const adapter: DynamicLinkClientBuilder = {
-    list: (input) => runMethod(list(input)),
+    list: (input) => queryMethod(list(input)),
   }
   if (link !== undefined) {
     adapter.link = (input) => runMethod<void>(link(input))
@@ -253,47 +265,52 @@ export function recordObjectTypes(typeId: string): ReadonlyArray<ModelObject> {
   )
 }
 
-export async function describeReferences(
+export function describeReferences(
   references: ReadonlyArray<ObjectRef>
-): Promise<ReadonlyArray<RelatedRecord>> {
-  const labels = new Map<string, string>()
-  const presentations = new Map<string, ObjectRecordPresentation>()
-  const byType = new Map<string, ObjectRef[]>()
-  for (const reference of references) {
-    const typedReferences = byType.get(reference.objectType) ?? []
-    typedReferences.push(reference)
-    byType.set(reference.objectType, typedReferences)
-  }
-  await Promise.all(
-    [...byType].map(async ([objectType, typedReferences]) => {
-      if (objectType === Model.root.id) {
-        for (const reference of typedReferences) {
-          labels.set(reference.id, Model.root.name)
-        }
-        return
-      }
-      const object = Object.values(Model.objects).find(
-        (candidate) => candidate.id === objectType
-      )
-      if (object === undefined) return
-      const records = await clientFor(object).batchGet({
-        ids: typedReferences.map(({ id }) => id),
-      })
-      for (const record of records.items) {
-        labels.set(record.id, recordLabel(object, record))
-        presentations.set(record.id, {
-          object,
-          record: tableRecord(object, record),
-        })
-      }
-    })
-  )
-  return references.map(({ id, objectType }) => ({
-    id,
-    label: labels.get(id) ?? id,
-    objectType,
-    presentation: presentations.get(id),
-  }))
+): Effect.Effect<ReadonlyArray<RelatedRecord>, unknown> {
+  return Effect.gen(function* () {
+    const labels = new Map<string, string>()
+    const presentations = new Map<string, ObjectRecordPresentation>()
+    const byType = new Map<string, ObjectRef[]>()
+    for (const reference of references) {
+      const typedReferences = byType.get(reference.objectType) ?? []
+      typedReferences.push(reference)
+      byType.set(reference.objectType, typedReferences)
+    }
+    yield* Effect.forEach(
+      [...byType],
+      ([objectType, typedReferences]) =>
+        Effect.gen(function* () {
+          if (objectType === Model.root.id) {
+            for (const reference of typedReferences) {
+              labels.set(reference.id, Model.root.name)
+            }
+            return
+          }
+          const object = Object.values(Model.objects).find(
+            (candidate) => candidate.id === objectType
+          )
+          if (object === undefined) return
+          const records = yield* clientFor(object).batchGet({
+            ids: typedReferences.map(({ id }) => id),
+          })
+          for (const record of records.items) {
+            labels.set(record.id, recordLabel(object, record))
+            presentations.set(record.id, {
+              object,
+              record: tableRecord(object, record),
+            })
+          }
+        }),
+      { concurrency: "unbounded" }
+    )
+    return references.map(({ id, objectType }) => ({
+      id,
+      label: labels.get(id) ?? id,
+      objectType,
+      presentation: presentations.get(id),
+    }))
+  })
 }
 
 export function parentName(object: ModelObject): string {

@@ -1,5 +1,11 @@
 import { Schema } from "effect"
 
+import {
+  modelObjects,
+  modelTypeAccepts,
+  type ModelCatalog,
+  type ModelLinkTraversal,
+} from "./definition/model"
 import type { ObjectType } from "./definition/object"
 import {
   DEFAULT_PAGE_SIZE,
@@ -12,6 +18,7 @@ import {
 } from "./definition/request"
 import {
   toEffectObjectSchema,
+  toEffectObjectFields,
   toEffectRecordIdentifierSchema,
 } from "./effect-schema"
 
@@ -26,7 +33,7 @@ function pascalCase(value: string): string {
 const pageTokenSchema = Schema.String.pipe(
   Schema.fromBrand("PageToken", PageToken)
 )
-export const pageTotalSizeSchema = Schema.Number.check(
+const pageTotalSizeSchema = Schema.Number.check(
   Schema.isInt(),
   Schema.isGreaterThanOrEqualTo(0)
 ).annotate({
@@ -144,4 +151,25 @@ export function objectPageOutputSchema(object: ObjectType) {
     }),
     totalSize: pageTotalSizeSchema,
   }).annotate({ identifier: `${pascalCase(object.id)}Page` })
+}
+
+/** Relationship pages contain discriminated, complete target records. */
+export function linkPageOutputSchema(
+  model: ModelCatalog,
+  traversal: ModelLinkTraversal
+) {
+  const targets = modelObjects(model).filter((object) =>
+    modelTypeAccepts(model, object.id, traversal.target.from.typeId)
+  )
+  const records = targets.map((object) =>
+    Schema.Struct({
+      ...toEffectObjectFields(object),
+      objectType: Schema.Literal(object.id),
+    })
+  )
+  return Schema.Struct({
+    items: Schema.Array(Schema.Union(records)),
+    nextPageToken: Schema.NullOr(pageTokenSchema),
+    totalSize: pageTotalSizeSchema,
+  })
 }

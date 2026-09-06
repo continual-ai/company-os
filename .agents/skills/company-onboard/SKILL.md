@@ -12,7 +12,7 @@ Turn the starter into a coherent first version of the user's own company softwar
 the company is recognizable, one requested operation works end to end, its result is durable and
 reviewable, and the user has a credible next improvement to make.
 
-Every complete project has exactly one `apps/company-os` and one `@company/model`; onboarding
+Every complete project has exactly one `apps/company-os` and one composed browser-safe model; onboarding
 customizes those source-owned foundations rather than instantiating another central app. If either
 is absent, treat the checkout as incomplete instead of generating a replacement. Interpret all
 available user and company context without asking the user to repeat facts already present.

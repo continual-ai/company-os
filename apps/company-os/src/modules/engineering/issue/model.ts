@@ -1,0 +1,39 @@
+import { defineObject, schema } from "@company/runtime"
+
+import { AuthorizationScope } from "#modules/access/interfaces/authorization-scope"
+import { User } from "#modules/access/user/model"
+import { Root } from "#root"
+
+/** A minimal editable starting point for engineering work. */
+export const Issue = defineObject({
+  id: "issue",
+  collection: "issues",
+  name: "Issue",
+  pluralName: "Issues",
+  parent: Root,
+  implements: [{ interface: AuthorizationScope }],
+  properties: {
+    title: schema.string({ label: "Title", minLength: 1, maxLength: 300 }),
+    description: schema.string({
+      label: "Description",
+      nullable: true,
+      maxLength: 50_000,
+    }),
+    assignee: schema.reference(User, { label: "Assignee", nullable: true }),
+    status: schema.select({
+      label: "Status",
+      default: "backlog",
+      options: [
+        { value: "backlog", label: "Backlog" },
+        { value: "planned", label: "Planned" },
+        { value: "inProgress", label: "In progress" },
+        { value: "done", label: "Done" },
+      ],
+    }),
+    attachments: schema.array(schema.file({ maxBytes: 25_000_000 }), {
+      label: "Attachments",
+      default: [],
+    }),
+  },
+  display: { icon: "circleDot", title: "title", status: "status" },
+})

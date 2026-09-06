@@ -1,9 +1,12 @@
-import type { IdentityId } from "@company/model"
 import { EmailAddress, RecordId } from "@company/runtime"
 import { CurrentInvocation } from "@company/runtime/effect/object-service"
-import { Context, Data, Effect, Layer } from "effect"
+import type { IdentityId } from "company-os/model"
+import { Config, Context, Data, Effect, Layer } from "effect"
 
 import type { AuthenticatedUser } from "@/authentication"
+import { RoleAssignmentService } from "@/modules/access/role-assignment/server/role-assignment-service"
+import { ServiceAccountService } from "@/modules/access/service-account/server/service-account-service"
+import { UserService } from "@/modules/access/user/server/user-service"
 import { anonymousCaller, identityCaller } from "@/server/caller"
 import { Database } from "@/server/database/database"
 import {
@@ -11,9 +14,6 @@ import {
   authenticatedInvocation,
   systemInvocation,
 } from "@/server/invocation-context"
-import { RoleAssignmentService } from "@/server/modules/access/role-assignment-service"
-import { ServiceAccountService } from "@/server/modules/access/service-account-service"
-import { UserService } from "@/server/modules/access/user-service"
 
 import {
   IdentityBindingRepository,
@@ -38,6 +38,17 @@ class UserInterfaceRequired extends Data.TaggedError(
 )<{}> {}
 
 const make = Effect.gen(function* () {
+  const bootstrapSubject = yield* Config.string("AUTH_BOOTSTRAP_SUBJECT").pipe(
+    Config.withDefault("")
+  )
+  const bootstrapIssuer = yield* Config.string("AUTH_BOOTSTRAP_ISSUER").pipe(
+    Config.withDefault("continual")
+  )
+  const defaultRole = yield* Config.string("AUTH_DEFAULT_ROLE").pipe(
+    Config.withDefault("none")
+  )
+  if (defaultRole !== "none" && defaultRole !== "operator")
+    return yield* Effect.die("AUTH_DEFAULT_ROLE must be none or operator.")
   const database = yield* Database
   const bindings = yield* IdentityBindingRepository
   const provider = yield* IdentityProvider
@@ -129,7 +140,17 @@ const make = Effect.gen(function* () {
               )
 
         if (grantInitialRole) {
-          yield* roleAssignments.provisionInitialUserRole(identity.id)
+          const bootstrap =
+            (subject.issuer === bootstrapIssuer &&
+              subject.subject === bootstrapSubject &&
+              bootstrapSubject !== "") ||
+            (import.meta.env.MODE === "development" &&
+              subject.issuer === "local-development" &&
+              subject.subject === "default")
+          yield* roleAssignments.provisionInitialUserRole(
+            identity.id,
+            bootstrap ? "administrator" : defaultRole
+          )
         }
         yield* bindings.bind({
           identityId: identity.id,
@@ -172,22 +193,37 @@ const make = Effect.gen(function* () {
     }
   })
 
+  const resolveRequest = (headers: Headers) =>
+    Effect.gen(function* () {
+      const verified = yield* provider.identify(headers)
+      return verified === null ? null : yield* resolveInvocation(verified)
+    })
+  // Headers belong to one incoming request. Weak keys avoid retaining credentials
+  // or authorization state across requests while sharing concurrent consumers.
+  const requests = new WeakMap<Headers, ReturnType<typeof resolveRequest>>()
+  const requestIdentity = (headers: Headers) =>
+    Effect.gen(function* () {
+      const existing = requests.get(headers)
+      if (existing !== undefined) return yield* existing
+      const cached = yield* Effect.cached(resolveRequest(headers))
+      requests.set(headers, cached)
+      return yield* cached
+    })
+
   const identify = Effect.fn("@company/Authentication.identify")(function* (
     headers: Headers
   ) {
-    const verified = yield* provider.identify(headers)
-    if (verified === null) return anonymousCaller
-    return identityCaller(
-      (yield* resolveInvocation(verified)).authorizationIdentity.id
-    )
+    const resolved = yield* requestIdentity(headers)
+    return resolved === null
+      ? anonymousCaller
+      : identityCaller(resolved.authorizationIdentity.id)
   })
 
   const invocation = Effect.fn("@company/Authentication.invocation")(function* (
     headers: Headers
   ) {
-    const verified = yield* provider.identify(headers)
-    if (verified === null) return anonymousInvocation
-    const resolved = yield* resolveInvocation(verified)
+    const resolved = yield* requestIdentity(headers)
+    if (resolved === null) return anonymousInvocation
     return yield* authenticatedInvocation(
       resolved.actor.id,
       resolved.authorizationIdentity.id
@@ -196,10 +232,9 @@ const make = Effect.gen(function* () {
 
   const currentUser = Effect.fn("@company/Authentication.currentUser")(
     function* (headers: Headers) {
-      const verified = yield* provider.identify(headers)
-      if (verified === null) return null
-      const identity = (yield* resolveInvocation(verified))
-        .authorizationIdentity
+      const resolved = yield* requestIdentity(headers)
+      if (resolved === null) return null
+      const identity = resolved.authorizationIdentity
       if (identity.kind !== "user") {
         return yield* Effect.fail(new UserInterfaceRequired())
       }

@@ -1,8 +1,8 @@
-import { Model } from "@company/model"
 import { createFileRoute } from "@tanstack/react-router"
+import { Model } from "company-os/model"
 
 import { pageOptions } from "@/route-metadata"
-import { ObjectCollection } from "@/ui/model/object-collection"
+import { ModelCollectionPage } from "@/ui/model/model-pages"
 
 export const Route = createFileRoute(
   "/_app/settings/(access)/role-assignments"
@@ -13,5 +13,7 @@ export const Route = createFileRoute(
       "Grant a role to a user, service account, or group at one scope.",
     title: "Role assignments",
   }),
-  component: () => <ObjectCollection object={Model.objects.roleAssignment} />,
+  component: () => (
+    <ModelCollectionPage object={Model.objects.roleAssignment} />
+  ),
 })

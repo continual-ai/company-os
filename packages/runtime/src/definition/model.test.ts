@@ -355,7 +355,7 @@ describe("model definitions", () => {
         name: "Membership",
         parent: Account,
         pluralName: "Memberships",
-        properties: { account: schema.recordId(Account) },
+        properties: { account: schema.reference(Account) },
         display: { title: "account" },
       })
     ).toThrow(/use the standard 'parent'/)
@@ -415,7 +415,7 @@ describe("model definitions", () => {
         name: "Membership",
         parent: Root,
         pluralName: "Memberships",
-        properties: { accountId: schema.recordId(Account) },
+        properties: { accountId: schema.reference(Account) },
         display: { title: "accountId" },
       })
     ).toThrow(/record reference 'accountId'.*without an 'Id' suffix/)
@@ -425,19 +425,19 @@ describe("model definitions", () => {
         id: "accountHolder",
         name: "Account holder",
         pluralName: "Account holders",
-        properties: { accountId: schema.recordId(Account) },
+        properties: { accountId: schema.reference(Account) },
       })
     ).toThrow(/record reference 'accountId'.*without an 'Id' suffix/)
 
     expect(() =>
-      schema.object({ accountIds: schema.array(schema.recordId(Account)) })
+      schema.object({ accountIds: schema.array(schema.reference(Account)) })
     ).toThrow(/record reference 'accountIds'.*without an 'Id' suffix/)
 
     expect(
       schema.object({
         externalId: schema.string(),
-        id: schema.recordId(Account),
-        ids: schema.array(schema.recordId(Account)),
+        id: schema.reference(Account),
+        ids: schema.array(schema.reference(Account)),
       })
     ).toMatchObject({ kind: "struct" })
   })

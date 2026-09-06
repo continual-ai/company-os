@@ -1,6 +1,6 @@
-import { Model } from "@company/model"
 import type { ModelLinkTraversal } from "@company/runtime"
 import { FieldError } from "@company/ui/components/field"
+import { Model } from "company-os/model"
 import { PlusIcon } from "lucide-react"
 import { useRef } from "react"
 
@@ -33,7 +33,7 @@ export function ObjectRelationshipForm({
   traversal,
 }: {
   readonly link: NonNullable<DynamicLinkClient["link"]>
-  readonly onLinked: () => Promise<void>
+  readonly onLinked?: (() => void) | undefined
   readonly recordId: string
   readonly traversal: ModelLinkTraversal
 }) {
@@ -59,7 +59,7 @@ export function ObjectRelationshipForm({
       try {
         await link({ id: recordId, target: value.target.trim() })
         formApi.reset()
-        await onLinked()
+        onLinked?.()
       } catch (cause) {
         formApi.setErrorMap({
           onSubmit: formErrorFromCause(

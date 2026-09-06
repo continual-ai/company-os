@@ -18,7 +18,17 @@ describe("IdentityProvider", () => {
       })
     )
     vi.stubGlobal("fetch", fetch)
-    const provider = Effect.runSync(IdentityProvider.make)
+    const provider = Effect.runSync(
+      IdentityProvider.make.pipe(
+        Effect.provide(
+          ConfigProvider.layer(
+            ConfigProvider.fromEnvRecord({
+              CONTINUAL_URL: "https://continual.example",
+            })
+          )
+        )
+      )
+    )
     const identified = await Effect.runPromise(
       provider.identify(
         new Headers({
@@ -40,9 +50,38 @@ describe("IdentityProvider", () => {
       new URL("https://continual.example/api/apps/runtime/auth/me"),
       {
         method: "GET",
+        redirect: "error",
+        signal: expect.any(AbortSignal),
         headers: { authorization: "Bearer runtime-assertion" },
       }
     )
+  })
+
+  it("rejects caller-selected identity authorities before fetching", async () => {
+    const fetch = vi.fn()
+    vi.stubGlobal("fetch", fetch)
+    const provider = Effect.runSync(
+      IdentityProvider.make.pipe(
+        Effect.provide(
+          ConfigProvider.layer(
+            ConfigProvider.fromEnvRecord({
+              CONTINUAL_URL: "https://continual.example",
+            })
+          )
+        )
+      )
+    )
+    await expect(
+      Effect.runPromise(
+        provider.identify(
+          new Headers({
+            "x-continual-app-runtime-assertion": "forged",
+            "x-continual-app-runtime-origin": "https://untrusted.example",
+          })
+        )
+      )
+    ).rejects.toThrow()
+    expect(fetch).not.toHaveBeenCalled()
   })
 
   it("uses the managed preview credential in a Continual sandbox", async () => {
@@ -71,6 +110,8 @@ describe("IdentityProvider", () => {
       new URL("https://continual.example/api/apps/runtime/auth/preview-me"),
       {
         method: "GET",
+        redirect: "error",
+        signal: expect.any(AbortSignal),
         headers: { authorization: "Bearer execution-token" },
       }
     )
@@ -78,7 +119,17 @@ describe("IdentityProvider", () => {
 
   it("uses a stable local identity in the development server", async () => {
     vi.stubEnv("MODE", "development")
-    const provider = Effect.runSync(IdentityProvider.make)
+    const provider = Effect.runSync(
+      IdentityProvider.make.pipe(
+        Effect.provide(
+          ConfigProvider.layer(
+            ConfigProvider.fromEnvRecord({
+              CONTINUAL_URL: "https://continual.example",
+            })
+          )
+        )
+      )
+    )
     await expect(
       Effect.runPromise(provider.identify(new Headers()))
     ).resolves.toEqual({
@@ -101,7 +152,17 @@ describe("IdentityProvider", () => {
 
   it("treats requests without a provider credential as anonymous outside development", async () => {
     vi.stubEnv("MODE", "test")
-    const provider = Effect.runSync(IdentityProvider.make)
+    const provider = Effect.runSync(
+      IdentityProvider.make.pipe(
+        Effect.provide(
+          ConfigProvider.layer(
+            ConfigProvider.fromEnvRecord({
+              CONTINUAL_URL: "https://continual.example",
+            })
+          )
+        )
+      )
+    )
     await expect(
       Effect.runPromise(provider.identify(new Headers()))
     ).resolves.toBeNull()

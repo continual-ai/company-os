@@ -1,4 +1,4 @@
-import type { IdentityId } from "@company/model"
+import type { IdentityId } from "company-os/model"
 import { Config, Context, Data, Effect, Layer } from "effect"
 import { z } from "zod"
 
@@ -51,7 +51,21 @@ function runtimeCredential(
   const assertion = headers.get(APP_RUNTIME_ASSERTION_HEADER)?.trim()
   const forwardedOrigin = headers.get(APP_RUNTIME_ORIGIN_HEADER)?.trim()
   const configuredOrigin = config.origin.trim()
-  const publishedOrigin = forwardedOrigin || configuredOrigin
+  if (assertion && !configuredOrigin) {
+    throw new InvalidIdentityAssertion({
+      reason: "CONTINUAL_URL must configure the trusted identity verifier.",
+    })
+  }
+  if (
+    assertion &&
+    forwardedOrigin &&
+    new URL(forwardedOrigin).origin !== new URL(configuredOrigin).origin
+  ) {
+    throw new InvalidIdentityAssertion({
+      reason: "The forwarded identity origin is not trusted.",
+    })
+  }
+  const publishedOrigin = configuredOrigin
   if (assertion && publishedOrigin) {
     return { kind: "published", origin: publishedOrigin, token: assertion }
   }
@@ -94,7 +108,13 @@ const make = Effect.gen(function* () {
   const identify = Effect.fn("@company/IdentityProvider.identify")(function* (
     headers: Headers
   ) {
-    const credential = runtimeCredential(headers, config)
+    const credential = yield* Effect.try({
+      try: () => runtimeCredential(headers, config),
+      catch: () =>
+        new InvalidIdentityAssertion({
+          reason: "Invalid or unconfigured identity verification origin.",
+        }),
+    })
     if (credential === null) return localDevelopmentIdentity()
 
     const actor = yield* Effect.tryPromise({
@@ -105,6 +125,8 @@ const make = Effect.gen(function* () {
             : "/api/apps/runtime/auth/preview-me"
         const response = await fetch(new URL(path, credential.origin), {
           method: "GET",
+          redirect: "error",
+          signal: AbortSignal.timeout(10_000),
           headers: { authorization: `Bearer ${credential.token}` },
         })
         if (!response.ok)

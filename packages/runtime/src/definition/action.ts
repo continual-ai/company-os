@@ -1,5 +1,5 @@
 import type { ApiError, ErrorType } from "./error"
-import { definitionId } from "./identity"
+import { bindOperationContract } from "./operation-contract"
 import type { Properties, PropertyDefinition } from "./property"
 import { MAX_RECORD_ALIAS_LENGTH, schema } from "./schema"
 import type {
@@ -88,7 +88,7 @@ type InputProperties<
 > = TDefinition["scope"] extends "object"
   ? {
       readonly id: ReturnType<
-        typeof schema.recordId<{ readonly id: TObjectType }>
+        typeof schema.reference<{ readonly id: TObjectType }>
       >
     } & NonNullable<TDefinition["input"]>
   : NonNullable<TDefinition["input"]>
@@ -165,7 +165,10 @@ export type ActionError<TAction extends Action> = ApiError<
   TAction["errors"][number]
 >
 
-export function actionKey(action: Action): string {
+export function actionKey(action: {
+  readonly objectType: string
+  readonly id: string
+}): string {
   return `${action.objectType}.${action.id}`
 }
 
@@ -200,46 +203,12 @@ export function bindActions<
       )
     }
 
-    const actionId = definitionId(id)
-    if (definition.scope === "object" && definition.input?.id !== undefined) {
-      throw new Error(
-        `Action '${object.id}.${actionId}' receives its 'id' from the object scope and cannot redeclare it.`
-      )
-    }
-    const errors = definition.errors ?? []
-    const errorReasons = errors.map((error) => error.reason)
-    const duplicateError = errorReasons.find(
-      (reason, index) => errorReasons.indexOf(reason) !== index
-    )
-    if (duplicateError !== undefined) {
-      throw new Error(
-        `Action '${object.id}.${actionId}' declares error '${duplicateError}' more than once.`
-      )
-    }
-
-    const inputProperties =
-      definition.scope === "object"
-        ? {
-            id: schema.recordId(object),
-            ...definition.input,
-          }
-        : definition.input === undefined
-          ? {}
-          : definition.input
-    const input = schema.object(inputProperties)
-    const output = schema.object(definition.output ?? {})
-    actions[actionId] = {
+    const contract = bindOperationContract(object, id, definition)
+    actions[contract.id] = {
+      ...contract,
       kind: "action",
-      id: actionId,
-      objectType: object.id,
-      name: definition.name,
-      description: definition.description,
       destructive: definition.destructive === true,
       idempotent: definition.idempotent === true,
-      scope: definition.scope,
-      errors,
-      input,
-      output,
     }
   }
 
@@ -286,13 +255,13 @@ function objectRecordSchema(object: {
   readonly properties: Properties
 }) {
   return schema.object({
-    id: schema.recordId(object),
+    id: schema.reference(object),
     aliases: aliasesSchema(),
     metadata: schema.map(schema.string()),
     createdAt: schema.timestamp({ outputOnly: true }),
     createdBy: schema.string({ outputOnly: true }),
     etag: schema.string({ outputOnly: true }),
-    parent: schema.recordId({ id: object.parent.typeId }),
+    parent: schema.reference({ id: object.parent.typeId }),
     systemManaged: schema.boolean({ outputOnly: true }),
     updatedAt: schema.timestamp({ outputOnly: true }),
     updatedBy: schema.string({ outputOnly: true }),
@@ -330,7 +299,7 @@ export function standardActions(
     const parentInput =
       object.parent.kind === "root"
         ? {}
-        : { parent: schema.recordId({ id: object.parent.typeId }) }
+        : { parent: schema.reference({ id: object.parent.typeId }) }
     actions.push({
       kind: "action",
       id: "create",
@@ -361,7 +330,7 @@ export function standardActions(
       destructive: false,
       idempotent: true,
       input: schema.object({
-        id: schema.recordId(object),
+        id: schema.reference(object),
         aliases: schema.optional(aliasUpdateSchema()),
         etag: schema.optional(schema.string()),
         metadata: schema.optional(schema.map(schema.string())),
@@ -382,7 +351,7 @@ export function standardActions(
       destructive: true,
       idempotent: true,
       input: schema.object({
-        id: schema.recordId(object),
+        id: schema.reference(object),
         etag: schema.optional(schema.string()),
       }),
       output: schema.object({}),
@@ -399,7 +368,7 @@ export function standardActions(
       description: `Deletes multiple ${object.pluralName.toLowerCase()} atomically.`,
       destructive: true,
       idempotent: true,
-      input: schema.object({ ids: schema.array(schema.recordId(object)) }),
+      input: schema.object({ ids: schema.array(schema.reference(object)) }),
       output: schema.object({}),
       errors: [],
     })

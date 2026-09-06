@@ -1,4 +1,4 @@
-import { Model } from "@company/model"
+import { Model } from "company-os/model"
 import { describe, expect, it } from "vitest"
 
 import { creatableReferenceObjects } from "./object-reference-create-actions"

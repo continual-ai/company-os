@@ -1,6 +1,6 @@
-import { modelMetadata } from "@company/model/metadata"
 import { initDesignMode, initTelemetry } from "@continual/sdk/app-preview"
 import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router"
+import { modelMetadata } from "company-os/metadata"
 import { useEffect } from "react"
 
 import { appMetadata } from "@/app-metadata"

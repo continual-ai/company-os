@@ -1,7 +1,7 @@
-import { modelMetadata } from "@company/model/metadata"
 import { buttonVariants } from "@company/ui/components/button"
 import { cn } from "@company/ui/lib/utils"
 import { Link } from "@tanstack/react-router"
+import { modelMetadata } from "company-os/metadata"
 
 import { clientPortalUrl, companyOsUrl } from "@/lib/app-urls"
 

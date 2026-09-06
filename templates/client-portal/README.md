@@ -1,8 +1,18 @@
 # Client portal
 
-The customer-facing workspace, built with TanStack Start. It presents the subset of data and
-capabilities that the central Company OS application deliberately exposes to a customer. It is a
-separate interface and deployment, not a separate business authority.
+A customer-facing interface starter built with TanStack Start. The checked-in page contains static
+sample projects and a disabled sign-in control; authentication and governed data access are not
+wired up. Replace those placeholders when building a real customer workflow.
+
+Create your source-owned copy from the repository root:
+
+```sh
+pnpm app:create client-portal customer-portal
+pnpm turbo run dev --filter=customer-portal
+```
+
+The resulting app is a separate interface and deployment over the central Company OS governed API.
+It does not own a second business database or authorization system.
 
 ## Develop
 
@@ -19,7 +29,7 @@ The development server prints its local URL. Its exact package identity and port
 
 - `src/routes` owns portal URLs and page composition.
 - `src/styles` owns portal-specific styling over the shared theme.
-- `@company/model` supplies browser-safe business vocabulary.
+- `company-os/model` supplies browser-safe business vocabulary.
 - `@company/ui` supplies shared visual primitives.
 
 ## Boundaries

@@ -1,4 +1,3 @@
-import { Model } from "@company/model"
 import { modelTypeAccepts, type ListRequest } from "@company/runtime"
 import { Button } from "@company/ui/components/button"
 import {
@@ -14,10 +13,13 @@ import {
   PopoverTrigger,
 } from "@company/ui/components/popover"
 import { cn } from "@company/ui/lib/utils"
+import { Model } from "company-os/model"
+import { Effect } from "effect"
 import { CheckIcon, ChevronDownIcon } from "lucide-react"
-import { useEffect, useRef, useState } from "react"
+import { useMemo, useState } from "react"
 
 import { ROOT_ID } from "@/system-records"
+import { useModelQuery } from "@/use-model-query"
 
 import {
   clientFor,
@@ -48,74 +50,79 @@ interface ReferenceListRequest {
   sort?: Exclude<ListRequest["sort"], undefined>
 }
 
-async function findOptions(
+function findOptions(
   typeId: string,
   query: string,
   constraints: ReadonlyArray<ReferenceConstraint>
-): Promise<ReadonlyArray<ReferenceOption>> {
-  const normalizedQuery = query.trim()
-  const pages = await Promise.all(
-    recordObjectTypes(typeId).map(async (object) => {
-      const title = object.display.title
-      const titleProperty = modelObjectProperty(object, title)
-      const titleFilter =
-        normalizedQuery !== "" && titleProperty?.kind === "string"
-          ? {
-              field: title,
-              operator: "contains" as const,
-              value: normalizedQuery,
-            }
-          : undefined
-      const filters = [
-        ...constraints.map((constraint) => ({
-          field: constraint.field,
-          operator: "eq" as const,
-          value: constraint.value,
-        })),
-        ...(titleFilter === undefined ? [] : [titleFilter]),
-      ]
-      const filter =
-        filters.length === 0
-          ? undefined
-          : filters.length === 1
-            ? filters[0]!
-            : { and: filters }
-      const sort =
-        titleProperty !== undefined && canSortProperty(titleProperty)
-          ? [
-              {
-                direction: "asc" as const,
-                field: title,
-                nulls: "last" as const,
-              },
-            ]
-          : undefined
-      const request: ReferenceListRequest = { pageSize: 20 }
-      if (filter !== undefined) {
-        request.filter = filter
-      }
-      if (sort !== undefined) {
-        // SAFETY: the selected title property is a sortable portable field.
-        // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-        request.sort = sort as Exclude<ListRequest["sort"], undefined>
-      }
-      return {
-        object,
-        page: await clientFor(object).list(request),
-      }
-    })
-  )
-  const options: ReferenceOption[] = pages.flatMap(({ object, page }) =>
-    page.items.map((record) => ({
-      id: record.id,
-      label: recordLabel(object, record),
-      presentation: { object, record: tableRecord(object, record) },
-    }))
-  )
-  if (modelTypeAccepts(Model, Model.root.id, typeId)) {
-    options.unshift({ id: ROOT_ID, label: Model.root.name })
-  }
-  return options
+): Effect.Effect<ReadonlyArray<ReferenceOption>, unknown> {
+  return Effect.gen(function* () {
+    const normalizedQuery = query.trim()
+    const pages = yield* Effect.forEach(
+      recordObjectTypes(typeId),
+      (object) =>
+        Effect.gen(function* () {
+          const title = object.display.title
+          const titleProperty = modelObjectProperty(object, title)
+          const titleFilter =
+            normalizedQuery !== "" && titleProperty?.kind === "string"
+              ? {
+                  field: title,
+                  operator: "contains" as const,
+                  value: normalizedQuery,
+                }
+              : undefined
+          const filters = [
+            ...constraints.map((constraint) => ({
+              field: constraint.field,
+              operator: "eq" as const,
+              value: constraint.value,
+            })),
+            ...(titleFilter === undefined ? [] : [titleFilter]),
+          ]
+          const filter =
+            filters.length === 0
+              ? undefined
+              : filters.length === 1
+                ? filters[0]!
+                : { and: filters }
+          const sort =
+            titleProperty !== undefined && canSortProperty(titleProperty)
+              ? [
+                  {
+                    direction: "asc" as const,
+                    field: title,
+                    nulls: "last" as const,
+                  },
+                ]
+              : undefined
+          const request: ReferenceListRequest = { pageSize: 20 }
+          if (filter !== undefined) {
+            request.filter = filter
+          }
+          if (sort !== undefined) {
+            // SAFETY: the selected title property is a sortable portable field.
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+            request.sort = sort as Exclude<ListRequest["sort"], undefined>
+          }
+          return {
+            object,
+            page: yield* clientFor(object).list(request),
+          }
+        }),
+      { concurrency: "unbounded" }
+    )
+    const options: ReferenceOption[] = pages.flatMap(({ object, page }) =>
+      page.items.map((record) => ({
+        id: record.id,
+        label: recordLabel(object, record),
+        presentation: { object, record: tableRecord(object, record) },
+      }))
+    )
+    if (modelTypeAccepts(Model, Model.root.id, typeId)) {
+      options.unshift({ id: ROOT_ID, label: Model.root.name })
+    }
+    return options
+  })
 }
 
 export function ObjectReferenceSelect({
@@ -156,42 +163,30 @@ export function ObjectReferenceSelect({
   readonly value: string
 }) {
   const openObjectCreate = useObjectCreate()
-  const [error, setError] = useState<string>()
-  const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
-  const [options, setOptions] = useState<ReadonlyArray<ReferenceOption>>(
-    value === "" ? [] : [{ id: value, label: initialLabel ?? value }]
-  )
   const [query, setQuery] = useState("")
-  const requestId = useRef(0)
-
-  useEffect(() => {
-    if (!open) return undefined
-    const currentRequest = ++requestId.current
-    setLoading(true)
-    setError(undefined)
-    const timeout = window.setTimeout(() => {
-      void findOptions(typeId, query, constraints)
-        .then((loaded) => {
-          if (requestId.current !== currentRequest) return
-          setOptions(loaded)
-        })
-        .catch((cause: unknown) => {
-          if (requestId.current !== currentRequest) return
-          setError(
-            cause instanceof Error
-              ? cause.message
-              : "References could not be loaded."
+  const [selection, setSelection] = useState<ReferenceOption>()
+  const optionsQuery = useMemo(
+    () =>
+      open
+        ? findOptions(typeId, query, constraints).pipe(
+            Effect.delay("150 millis")
           )
-        })
-        .finally(() => {
-          if (requestId.current === currentRequest) setLoading(false)
-        })
-    }, 150)
-    return () => window.clearTimeout(timeout)
-  }, [constraints, open, query, typeId])
-
-  const selected = options.find((option) => option.id === value)
+        : Effect.succeed([]),
+    [open, typeId, query, constraints]
+  )
+  const result = useModelQuery(optionsQuery)
+  const options = result.value ?? []
+  const loading = result.loading
+  const error =
+    result.error === undefined
+      ? undefined
+      : result.error instanceof Error
+        ? result.error.message
+        : "References could not be loaded."
+  const selected =
+    options.find((option) => option.id === value) ??
+    (selection?.id === value ? selection : undefined)
 
   const create = (object: ModelObject) => {
     setOpen(false)
@@ -202,10 +197,7 @@ export function ObjectReferenceSelect({
           label: recordLabel(object, record),
           presentation: { object, record: tableRecord(object, record) },
         }
-        setOptions((current) => [
-          option,
-          ...current.filter((candidate) => candidate.id !== option.id),
-        ])
+        setSelection(option)
         onValueChange(option.id, option)
       },
     })
@@ -268,6 +260,7 @@ export function ObjectReferenceSelect({
                   value={option.id}
                   onSelect={() => {
                     if (selectedValues.includes(option.id)) return
+                    setSelection(option)
                     onValueChange(option.id, option)
                     if (closeOnSelect) {
                       setOpen(false)

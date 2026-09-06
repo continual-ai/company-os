@@ -1,4 +1,3 @@
-import { Model } from "@company/model"
 import {
   modelObjectLinkTraversals,
   type ModelLinkTraversal,
@@ -11,6 +10,8 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@company/ui/components/empty"
+import { Model } from "company-os/model"
+import { Effect } from "effect"
 import {
   ChevronDownIcon,
   ChevronRightIcon,
@@ -19,19 +20,21 @@ import {
 } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 
+import { modelData } from "@/data-client"
 import { formErrorFromCause } from "@/ui/forms/form-errors"
+import { useModelQuery } from "@/use-model-query"
 
 import {
   describeReferences,
-  type DynamicLinkListInput,
   linkClientFor,
   recordObjectTypes,
   type ClientRecord,
   type ModelObject,
-  type RelatedRecord,
+  type DynamicLinkClient,
 } from "./object-client"
 import { ObjectRelationshipCollection } from "./object-relationship-collection"
 import { ObjectRelationshipForm } from "./object-relationship-form"
+import { objectHref } from "./object-routing"
 
 const RELATIONSHIP_PAGE_SIZE = 20
 
@@ -42,6 +45,31 @@ function errorMessage(cause: unknown, fallback: string): string {
     Object.values(errors.fields)[0]?.[0]?.message ??
     fallback
   )
+}
+
+function relationshipQuery(
+  client: DynamicLinkClient,
+  recordId: string,
+  pageTokens: ReadonlyArray<string | undefined>
+) {
+  return Effect.gen(function* () {
+    const pages = yield* Effect.forEach(
+      pageTokens,
+      (pageToken) =>
+        client.list({
+          id: recordId,
+          pageSize: RELATIONSHIP_PAGE_SIZE,
+          ...(pageToken === undefined ? {} : { pageToken }),
+        }),
+      { concurrency: "unbounded" }
+    )
+    const items = yield* describeReferences(pages.flatMap((page) => page.items))
+    return {
+      items,
+      totalSize: pages[0]?.totalSize ?? 0,
+      nextPageToken: pages.at(-1)?.nextPageToken ?? null,
+    }
+  })
 }
 
 function Relationship({
@@ -65,53 +93,49 @@ function Relationship({
     () => linkClientFor(object, traversal),
     [object, traversal]
   )
-  const [items, setItems] = useState<ReadonlyArray<RelatedRecord>>([])
   const [expanded, setExpanded] = useState(!collapsible)
-  const [loading, setLoading] = useState(false)
-  const [loadError, setLoadError] = useState<string>()
-  const [nextPageToken, setNextPageToken] = useState<string | null>(null)
+  const [mutationError, setMutationError] = useState<string>()
+  const [pageTokens, setPageTokens] = useState<
+    ReadonlyArray<string | undefined>
+  >([undefined])
   const [removing, setRemoving] = useState<string>()
   const link = canUpdate ? client.link : undefined
   const unlink = canUpdate ? client.unlink : undefined
-
+  const query = useMemo(
+    () =>
+      expanded
+        ? relationshipQuery(client, record.id, pageTokens)
+        : Effect.succeed({ items: [], totalSize: 0, nextPageToken: null }),
+    [expanded, client, record.id, pageTokens]
+  )
+  const result = useModelQuery(query)
+  const items = result.value?.items ?? []
+  const loading = result.loading
+  const nextPageToken = result.value?.nextPageToken ?? null
+  const loadError =
+    mutationError ??
+    (result.error === undefined
+      ? undefined
+      : errorMessage(
+          result.error,
+          `${traversal.traversal.label} could not be loaded.`
+        ))
   const load = useCallback(
     async (pageToken?: string) => {
-      setLoading(true)
-      setLoadError(undefined)
-      try {
-        const request: DynamicLinkListInput =
-          pageToken === undefined
-            ? { id: record.id, pageSize: RELATIONSHIP_PAGE_SIZE }
-            : {
-                id: record.id,
-                pageSize: RELATIONSHIP_PAGE_SIZE,
-                pageToken,
-              }
-        const page = await client.list(request)
-        const described = await describeReferences(page.items)
-        setItems((current) =>
-          pageToken === undefined ? described : [...current, ...described]
-        )
-        setNextPageToken(page.nextPageToken)
-        onTotalSizeChange?.(traversal.traversal.key, page.totalSize)
-      } catch (cause) {
-        setLoadError(
-          errorMessage(
-            cause,
-            `${traversal.traversal.label} could not be loaded.`
-          )
-        )
-      } finally {
-        setLoading(false)
+      setMutationError(undefined)
+      if (pageToken !== undefined)
+        setPageTokens((tokens) => [...tokens, pageToken])
+      else {
+        modelData().invalidate([object.id])
+        setPageTokens([undefined])
       }
     },
-    [client, onTotalSizeChange, record.id, traversal.traversal]
+    [object.id]
   )
-
   useEffect(() => {
-    if (!expanded) return
-    void load()
-  }, [expanded, load])
+    if (result.value !== undefined)
+      onTotalSizeChange?.(traversal.traversal.key, result.value.totalSize)
+  }, [result.value, onTotalSizeChange, traversal.traversal.key])
 
   const canAdd =
     link !== undefined &&
@@ -200,7 +224,7 @@ function Relationship({
                 const href =
                   relatedObject === undefined
                     ? undefined
-                    : `/${relatedObject.collection}/${item.id}`
+                    : objectHref(relatedObject, item.id)
                 return (
                   <div
                     key={`${item.objectType}:${item.id}`}
@@ -225,11 +249,10 @@ function Relationship({
                         aria-label={`Unlink ${item.label}`}
                         onClick={() => {
                           setRemoving(item.id)
-                          setLoadError(undefined)
+                          setMutationError(undefined)
                           void unlink({ id: record.id, target: item.id })
-                            .then(() => load())
                             .catch((cause: unknown) =>
-                              setLoadError(
+                              setMutationError(
                                 errorMessage(
                                   cause,
                                   `${traversal.traversal.label} could not be unlinked.`
@@ -265,7 +288,6 @@ function Relationship({
               link={link}
               recordId={record.id}
               traversal={traversal}
-              onLinked={load}
             />
           ) : null}
         </div>

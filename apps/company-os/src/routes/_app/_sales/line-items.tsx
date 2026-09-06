@@ -1,8 +1,8 @@
-import { Model } from "@company/model"
 import { createFileRoute } from "@tanstack/react-router"
+import { Model } from "company-os/model"
 
 import { pageOptions } from "@/route-metadata"
-import { ObjectCollection } from "@/ui/model/object-collection"
+import { ModelCollectionPage } from "@/ui/model/model-pages"
 
 const page = {
   breadcrumb: "Deal line items",
@@ -12,5 +12,5 @@ const page = {
 
 export const Route = createFileRoute("/_app/_sales/line-items")({
   ...pageOptions(page),
-  component: () => <ObjectCollection object={Model.objects.lineItem} />,
+  component: () => <ModelCollectionPage object={Model.objects.lineItem} />,
 })

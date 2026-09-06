@@ -1,5 +1,5 @@
-import { modelMetadata } from "@company/model/metadata"
 import { createFileRoute } from "@tanstack/react-router"
+import { modelMetadata } from "company-os/metadata"
 
 export const Route = createFileRoute("/")({ component: Home })
 

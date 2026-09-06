@@ -1,5 +1,5 @@
-import { Model } from "@company/model"
 import { PageToken } from "@company/runtime"
+import { Model } from "company-os/model"
 import { describe, expect, it } from "vitest"
 
 import { objectListRequest } from "./object-collection-query"

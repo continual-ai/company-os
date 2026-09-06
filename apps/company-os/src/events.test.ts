@@ -1,0 +1,49 @@
+import type { RecordId } from "@company/runtime"
+import { Schema } from "effect"
+import { expect, expectTypeOf, it } from "vitest"
+
+import { eventFactSchema, eventPageSchema } from "./events"
+
+it("validates the same discriminated fact contract before persistence and after replay", () => {
+  const fact = {
+    type: "lead.converted",
+    version: 1,
+    subjects: [{ id: "ld_ada", objectType: "lead" }],
+    data: { company: "co_engine", contact: "ct_ada" },
+  }
+  const decode = Schema.decodeUnknownSync(eventFactSchema)
+  const decoded = decode(fact)
+  if (decoded.type !== "lead.converted") throw new Error("Wrong event type")
+  expectTypeOf(decoded.data.company).toEqualTypeOf<RecordId<"company">>()
+  expectTypeOf(decoded.data.contact).toEqualTypeOf<RecordId<"contact">>()
+  expect(decoded.data).toEqual(fact.data)
+
+  for (const invalid of [
+    { ...fact, type: "lead.unknown" },
+    { ...fact, version: 2 },
+    { ...fact, subjects: [] },
+    { ...fact, data: { company: "co_engine" } },
+  ])
+    expect(() => decode(invalid)).toThrow()
+
+  const envelope = {
+    id: "ev_conversion",
+    transactionId: "transaction",
+    actorId: "usr_actor",
+    occurredAt: "2026-09-05T00:00:00.000Z",
+    recordedAt: "2026-09-05T00:00:01.000Z",
+  }
+  const page = {
+    items: [{ ...fact, ...envelope }],
+    nextCursor: "opaque",
+    hasMore: false,
+    reset: false,
+  }
+  expect(Schema.decodeUnknownSync(eventPageSchema)(page)).toEqual(page)
+  expect(() =>
+    Schema.decodeUnknownSync(eventPageSchema)({
+      ...page,
+      items: [fact],
+    })
+  ).toThrow()
+})

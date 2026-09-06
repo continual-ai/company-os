@@ -73,7 +73,10 @@ function isPackage(specifier: string, packageName: string): boolean {
 
 function isServerSourceFile(filename: string): boolean {
   const normalizedFilename = filename.replaceAll("\\", "/")
-  return normalizedFilename.includes("/src/server/")
+  return (
+    normalizedFilename.includes("/server/") ||
+    /\/(?:server|[^/]+\.server)\.[cm]?[jt]sx?$/.test(normalizedFilename)
+  )
 }
 
 function forbiddenReason(
@@ -96,15 +99,6 @@ function forbiddenReason(
     !isPackage(specifier, "@company/runtime")
   ) {
     return "@company/postgres may depend only on @company/runtime; model and application policy remain outside the adapter."
-  }
-
-  if (
-    packageName === "@company/model" &&
-    specifier.startsWith("@company/") &&
-    !isPackage(specifier, "@company/model") &&
-    !isPackage(specifier, "@company/runtime")
-  ) {
-    return "@company/model may depend only on @company/runtime; it cannot depend on UI or implementations."
   }
 
   if (
@@ -134,6 +128,8 @@ function forbiddenReason(
 
   if (
     packageName.startsWith("app:") &&
+    specifier !== "company-os/model" &&
+    specifier !== "company-os/metadata" &&
     [...APPLICATION_PACKAGE_NAMES].some((appName) =>
       isPackage(specifier, appName)
     )

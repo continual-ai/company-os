@@ -10,6 +10,7 @@ export type ObjectTableCellType =
   | "domain"
   | "email"
   | "enum"
+  | "files"
   | "image"
   | "number"
   | "phone"
@@ -55,6 +56,12 @@ const objectTableCellBehaviors = {
   enum: {
     editable: true,
     filterFamily: "boolean",
+    inputType: "text",
+    overflow: "clip",
+  },
+  files: {
+    editable: false,
+    filterFamily: "text",
     inputType: "text",
     overflow: "clip",
   },
@@ -130,12 +137,16 @@ function resolveSchemaCellType(schema: AnySchema): ObjectTableCellType {
     case "number":
     case "recordId":
       return resolvedSchema.kind
+    case "file":
+    case "media":
+      return "files"
     case "money":
       return "readonly"
     case "string":
       return resolvedSchema.format ?? "text"
     case "array": {
       const itemSchema = objectTablePropertySchema(resolvedSchema.items)
+      if (["file", "image", "media"].includes(itemSchema.kind)) return "files"
       return itemSchema.kind === "enum" || itemSchema.kind === "string"
         ? "tags"
         : "readonly"

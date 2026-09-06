@@ -1,11 +1,24 @@
-import { Model } from "@company/model"
 import { makePostgresSchema } from "@company/postgres"
-import { pgTable, primaryKey, text, timestamp } from "drizzle-orm/pg-core"
+import { Model } from "company-os/model"
+import { sql } from "drizzle-orm"
+import {
+  bigint,
+  integer,
+  jsonb,
+  customType,
+  index,
+  pgTable,
+  primaryKey,
+  text,
+  timestamp,
+} from "drizzle-orm/pg-core"
+
+import type { EventSubject } from "@/server/events/event-buffer"
 
 export const Storage = makePostgresSchema(Model)
 
-// Drizzle Kit currently discovers top-level exported table instances. These
-// aliases expose the generated projection without duplicating its definition.
+// Named aliases support custom queries. Drizzle Kit reads the generated,
+// exhaustive projection in tools/drizzle-schema.generated.ts.
 export const objects = Storage.core.objects
 export const recordAliases = Storage.core.recordAliases
 export const roots = Storage.core.roots
@@ -29,6 +42,8 @@ export const roleAssignments = Storage.objects.roleAssignment
 export const roles = Storage.objects.role
 export const serviceAccounts = Storage.objects.serviceAccount
 export const users = Storage.objects.user
+export const contactCompanies = Storage.linkTables.contactCompanies
+export const dealCompanies = Storage.linkTables.dealCompanies
 export const contactPrimaryCompanies = Storage.linkTables.contactPrimaryCompany
 export const noteSubjectLinks = Storage.linkTables.noteSubjects
 export const relations = Storage.relations
@@ -47,4 +62,65 @@ export const identityBindings = pgTable(
       .notNull(),
   },
   (table) => [primaryKey({ columns: [table.issuer, table.subject] })]
+)
+
+export const assets = Storage.objects.asset
+export const issues = Storage.objects.issue
+const bytes = customType<{ data: Uint8Array; driverData: Buffer }>({
+  dataType: () => "bytea",
+  toDriver: (value) => Buffer.from(value),
+  fromDriver: (value) => new Uint8Array(value),
+})
+export const assetBlobs = pgTable("asset_blobs", {
+  assetId: text("asset_id")
+    .primaryKey()
+    .references(() => assets.id, { onDelete: "cascade" }),
+  bytes: bytes("bytes").notNull(),
+})
+export const assetReferences = pgTable(
+  "asset_references",
+  {
+    recordId: text("record_id")
+      .notNull()
+      .references(() => objects.id, { onDelete: "cascade" }),
+    field: text("field").notNull(),
+    assetId: text("asset_id")
+      .notNull()
+      .references(() => assets.id, { onDelete: "restrict" }),
+  },
+  (table) => [
+    primaryKey({ columns: [table.recordId, table.field] }),
+    index("asset_references_asset_id_idx").on(table.assetId),
+  ]
+)
+
+/** One row, locked only while assigning positions at the end of a writing transaction. */
+export const eventJournalState = pgTable("event_journal_state", {
+  id: integer("id").primaryKey(),
+  position: bigint("position", { mode: "bigint" }).notNull().default(0n),
+})
+
+/** Historical subjects deliberately have no live foreign keys. Payloads contain no record snapshots. */
+export const eventJournal = pgTable(
+  "event_journal",
+  {
+    position: bigint("position", { mode: "bigint" }).primaryKey(),
+    id: text("id").notNull().unique(),
+    transactionId: text("transaction_id").notNull(),
+    type: text("type").notNull(),
+    version: integer("version").notNull(),
+    subjects: jsonb("subjects").$type<ReadonlyArray<EventSubject>>().notNull(),
+    actorId: text("actor_id").notNull(),
+    data: jsonb("data").$type<unknown>().notNull(),
+    occurredAt: timestamp("occurred_at", {
+      withTimezone: true,
+      mode: "string",
+    }).notNull(),
+    recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .default(sql`clock_timestamp()`),
+  },
+  (table) => [
+    index("event_journal_type_position_idx").on(table.type, table.position),
+  ]
 )

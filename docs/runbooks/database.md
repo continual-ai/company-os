@@ -54,8 +54,8 @@ pnpm turbo run db:migrate --filter=company-os
 ```
 
 `db:migrate` applies pending committed migrations and then idempotently ensures the required Root
-and trusted system identity. Continual human actor IDs are stored directly and do not create local
-User or role records. The command is safe to run repeatedly.
+and trusted system identity. Verified provider subjects bind to local User or ServiceAccount records at authentication time.
+Role grants are separate and follow the configured bootstrap/provisioning policy. The command is safe to run repeatedly.
 
 ## Database tests
 
@@ -91,9 +91,10 @@ pnpm turbo run test --force
 
 ## Change persisted shape
 
-1. Edit the source contract under `packages/model`.
-2. Ensure `src/server/database/schema.ts` exposes any generated tables required by Drizzle Kit. The
-   schema coverage test detects omissions.
+1. Edit the source contract under `apps/company-os/src/modules`.
+2. The generator derives `tools/drizzle-schema.generated.ts` from the complete model and app-owned
+   infrastructure tables. Standard objects require no manual table exports. `model:check` detects
+   a stale projection.
 3. Generate a descriptive migration:
 
    ```sh

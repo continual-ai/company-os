@@ -40,6 +40,8 @@ import {
 } from "lucide-react"
 import { type ComponentType, useEffect, useRef, useState } from "react"
 
+import { FileCell } from "@/modules/assets/asset/ui/file-cell"
+import { assetContentUrl } from "@/modules/assets/asset/ui/upload"
 import { ObjectRecordIdentity } from "@/ui/model/object-record-identity"
 
 import {
@@ -293,7 +295,10 @@ function ImageCell({
   value,
 }: ObjectTableCellProps) {
   const image = objectTableImageValue(value)
-  const src = image === null ? null : (resolveImageSrc?.(image) ?? null)
+  const src =
+    image === null
+      ? null
+      : (resolveImageSrc?.(image) ?? assetContentUrl(image.assetId))
   const label = image?.alt ?? property.label ?? "Image"
 
   return (
@@ -671,6 +676,7 @@ const objectTableCellRenderers = {
   email: TextLikeCell,
   enum: SelectCell,
   image: ImageCell,
+  files: FileCell,
   number: TextLikeCell,
   phone: TextLikeCell,
   readonly: TextLikeCell,

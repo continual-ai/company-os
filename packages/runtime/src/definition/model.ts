@@ -8,7 +8,12 @@ import type {
   ObjectType,
   ObjectUpdateInput,
 } from "./object"
-import { standardQueries, type Query, type StandardQueries } from "./query"
+import {
+  standardQueries,
+  type Query,
+  type CustomQuery,
+  type StandardQueries,
+} from "./query"
 import type { RootType } from "./root"
 import type {
   AnySchema,
@@ -80,7 +85,8 @@ type BoundObject<
     infer TParentKind,
     infer TParentRecordTypeId,
     infer TInterfaces,
-    infer _TActorRecordTypeId
+    infer _TActorRecordTypeId,
+    infer TQueries
   >
     ? ObjectType<
         TId,
@@ -93,7 +99,8 @@ type BoundObject<
           ? InterfaceImplementerId<TObjects, TRoot, TParentTypeId>
           : TParentRecordTypeId,
         TInterfaces,
-        InterfaceImplementerId<TObjects, TRoot, TActor["id"]>
+        InterfaceImplementerId<TObjects, TRoot, TActor["id"]>,
+        TQueries
       >
     : never
 
@@ -125,7 +132,7 @@ type ActionRegistry<TObjects extends ReadonlyArray<ObjectType>> = {
 type QueryRegistry<TObjects extends ReadonlyArray<ObjectType>> = {
   readonly [
     TObject in TObjects[number] as TObject["id"]
-  ]: StandardQueries<TObject>
+  ]: StandardQueries<TObject> & TObject["queries"]
 }
 
 type ModuleInterfaces<TModules extends ReadonlyArray<ModuleDefinition>> =
@@ -158,7 +165,9 @@ export interface ModelCatalog {
   modules: Readonly<Record<string, ModuleDefinition>>
   name: string
   objects: Readonly<Record<string, ObjectType>>
-  queries: Readonly<Record<string, Readonly<Record<string, Query>>>>
+  queries: Readonly<
+    Record<string, Readonly<Record<string, Query | CustomQuery>>>
+  >
   root: RootType
 }
 
@@ -589,7 +598,10 @@ export function defineModel<
         )
       }
     }
-    for (const action of Object.values(object.actions)) {
+    for (const action of [
+      ...Object.values(object.actions),
+      ...Object.values(object.queries),
+    ]) {
       if (
         !isStandardActionId(action.id) &&
         generatedQueryMethodIds.has(action.id)
@@ -638,6 +650,14 @@ export function defineModel<
   }
 
   for (const link of moduleLinks) {
+    if (
+      link.subsetOf !== undefined &&
+      !moduleLinks.some((candidate) => candidate.id === link.subsetOf)
+    ) {
+      throw new Error(
+        `Link '${link.id}' selects from unregistered relationship '${link.subsetOf}'.`
+      )
+    }
     for (const traversal of [link.forward, link.reverse]) {
       const endpoint = traversal.from
       if (!registeredTypeIds.has(endpoint.typeId)) {
@@ -714,6 +734,7 @@ export function defineModel<
     const methodIds = new Set([
       ...generatedQueryMethodIds,
       ...Object.keys(object.actions),
+      ...Object.keys(object.queries),
     ])
     const methodConflict = traversals.find(({ key }) => methodIds.has(key))
     if (methodConflict !== undefined) {
@@ -745,7 +766,10 @@ export function defineModel<
     Object.values(objects).map((object) => [object.id, object.actions])
   )
   const queries = Object.fromEntries(
-    Object.values(objects).map((object) => [object.id, standardQueries(object)])
+    Object.values(objects).map((object) => [
+      object.id,
+      { ...standardQueries(object), ...object.queries },
+    ])
   )
   const modules = Object.fromEntries(
     definition.modules.map((module) => [module.id, module])
@@ -778,7 +802,9 @@ export function modelActions(model: ModelCatalog): ReadonlyArray<Action> {
   return Object.values(model.actions).flatMap((group) => Object.values(group))
 }
 
-export function modelQueries(model: ModelCatalog): ReadonlyArray<Query> {
+export function modelQueries(
+  model: ModelCatalog
+): ReadonlyArray<Query | CustomQuery> {
   return Object.values(model.queries).flatMap((group) => Object.values(group))
 }
 

@@ -1,4 +1,4 @@
-import type { IdentityId } from "@company/model"
+import type { IdentityId } from "company-os/model"
 
 /** Browser-safe projection of the authenticated App user. */
 export interface AuthenticatedUser {

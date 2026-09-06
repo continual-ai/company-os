@@ -13,16 +13,17 @@ export function FormSubmitButton({
   const form = useFormContext()
   return (
     <form.Subscribe
-      selector={({ canSubmit, isSubmitting }) => ({
+      selector={({ canSubmit, isSubmitting, isValidating }) => ({
         canSubmit,
         isSubmitting,
+        isValidating,
       })}
     >
-      {({ canSubmit, isSubmitting }) => (
+      {({ canSubmit, isSubmitting, isValidating }) => (
         <Button
           {...props}
           type="submit"
-          disabled={disabled || !canSubmit || isSubmitting}
+          disabled={disabled || !canSubmit || isSubmitting || isValidating}
         >
           {isSubmitting ? pendingChildren : children}
         </Button>

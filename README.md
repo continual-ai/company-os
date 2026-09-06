@@ -2,222 +2,205 @@
   <h1>Company OS</h1>
   <p><strong>Build the software your company runs on.</strong></p>
   <p>
-    A source-available TypeScript foundation for company-owned operational software.<br />
-    One model for the application, HTTP/OpenAPI, typed client, and MCP—backed by PostgreSQL.
+    An editable TypeScript foundation for business operations.<br />
+    Your records, rules, and workflows. One application for people, integrations, and agents.
   </p>
+  <p><strong>Early preview</strong> · TypeScript · Effect v4 · React · PostgreSQL</p>
   <p>
-    <strong>Early preview</strong> · Powered by <a href="https://continual.ai">Continual</a> · Runs standalone
-  </p>
-  <p>
-    <a href="#quick-start"><strong>Quick start</strong></a> ·
-    <a href="#try-the-included-operation"><strong>Example operation</strong></a> ·
-    <a href="#how-it-works"><strong>Architecture</strong></a> ·
-    <a href="#make-it-yours"><strong>Customize</strong></a>
+    <a href="#quick-start">Quick start</a> ·
+    <a href="#try-a-real-operation">Try it</a> ·
+    <a href="docs/modules.md">Build a module</a> ·
+    <a href="docs/architecture.md">Architecture</a>
   </p>
 </div>
 
----
+Company OS is a starting point for software that fits how your company works. Fork the repository,
+change its business model, and build the operations you need: customer relationships, engineering
+delivery, or a domain of your own. You own the source and database.
 
-Company OS works end to end, but its model APIs and package boundaries may change before the first
-stable release. The included CRM operation covers leads, companies, contacts, deals, line items,
-and notes.
+A module defines its objects and operations in TypeScript. That contract supplies PostgreSQL storage,
+validated APIs, a typed client, MCP tools, and default tables, forms, and record pages. Add business
+rules with Effect functions and customize the interface with ordinary React components. The same
+server-side permissions and transactions apply whether a person clicks a button or an agent calls a tool.
 
-## What works today
-
-- A typed business model with objects, properties, relationships, queries, and actions.
-- PostgreSQL persistence, explicit migrations, and transactional business operations.
-- Continual authentication by default, direct actor IDs, App-owned roles, and capability checks.
-- A source-owned operating application built with TanStack Start and shadcn/ui.
-- Generated HTTP endpoints, OpenAPI, a typed Effect client, and MCP tools from one model contract.
-- A CRM example that exercises ordinary CRUD and a custom lead-conversion action end to end.
-
-People, applications, integrations, and agents call the same governed operations. The repository
-and database remain the authority for business rules and records.
+The repository runs locally without a Continual account. [Continual](https://continual.ai) maintains
+the project and provides an optional hosting integration. Company OS is **source-available under
+[Elastic License 2.0](LICENSE.md)**. Its APIs are still evolving; expect changes before a stable release.
 
 ## Quick start
 
-You need PostgreSQL 18 or newer, Node.js 24 or newer, and pnpm 11 or newer.
+Install Node.js 24+, pnpm 11, and PostgreSQL 18+. PostgreSQL must be running and your local role must
+be able to create a database.
 
 ```sh
 git clone https://github.com/continual-ai/company-os.git
 cd company-os
-pnpm install
+pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-Open the App through its Continual preview or deployment URL. Continual authenticates the user and
-the App projects that `us_…` ID into its own role-assignable principal without issuing another user
-ID. Create a lead, convert it, or inspect the model and generated interfaces in the **Developer
-Center**.
+Open **[localhost:3002](http://localhost:3002)**. Development signs you in as a local administrator;
+no OAuth setup, API key, bucket, or hosted service is needed.
 
-`pnpm dev` runs each application's database migration task before starting its development server.
-The central App uses `.env.example` as its local defaults, creates the configured database on local
-PostgreSQL when needed, and applies migrations and required records. Injected environment variables
-take precedence; create `.env.local` at the repository root or in `apps/company-os` only when your
-local role, password, host, port, or database name differs. PostgreSQL itself must already be
-running. Maintained template source is checked and built but does not run as an application until
-it is copied into `apps/*`. Use Turbo's `--filter` option directly when you want to run only part of
-the monorepo.
+`pnpm dev` creates the local database when needed, applies committed migrations, and starts the app.
+The default connection is `postgresql://localhost:5432/company_os`. For another PostgreSQL role or
+endpoint, put `DATABASE_URL` in an ignored `.env.local` at the repository root. See the
+[database guide](docs/runbooks/database.md) for connection details, migrations, and test setup.
+The development server is trusted local tooling; its automatic identity is disabled in production.
 
-## Try the included operation
+## Try a real operation
 
-Lead conversion is a small example of a real business operation:
+1. Open **Sales → Leads** and create a lead with a company name and contact details.
+2. Open the lead and choose **Convert**. One authorized transaction creates a company and contact,
+   connects them, and records the conversion. Repeating conversion returns the existing result.
+3. Open the **Conversion** tab to continue in the new company or contact record.
+4. Open **Engineering → Issues**. Create an issue, assign an owner, and attach a file. The default
+   field handles upload, validation, and protected file delivery.
+5. Open **Developer Center** to inspect the model, generated HTTP API, client examples, and MCP tools.
+   The OpenAPI document is at [`/api/openapi`](http://localhost:3002/api/openapi).
 
-1. Create a lead in the application.
-2. Choose **Convert** from the lead's row menu.
-3. Company OS verifies the caller's capability.
-4. One transaction creates the company and contact and records the conversion on the lead.
-5. The same action is available through the application, HTTP API, typed client, and MCP.
+Sales is an editable working example. Engineering is deliberately a small Issue module, useful for
+understanding what a new object gets by default. Neither is a complete replacement for a mature CRM
+or issue tracker. There is no fabricated business data to clean out of a new installation.
 
-The interfaces do not maintain separate copies of this rule. They project the same model contract
-and call the same implementation.
-
-## How it works
+## One module, three entrypoints
 
 ```text
-people      applications      integrations      agents
-   \              |                 |              /
-    +-------------+-----------------+-------------+
-                          |
-                    UI / HTTP / MCP
-                          |
-                 model queries and actions
-                          |
-              authorization and business services
-                          |
-                       PostgreSQL
+apps/company-os/src/modules/sales/
+  model.ts                       Objects, interfaces, and links
+  server.ts                      Custom operation bindings
+  ui.ts                          Object UI composition
+  lead/model.ts                  Lead definition and operation contracts
+  lead/server/convert.ts         Transactional lead conversion
+  lead/ui/config.ts              Lead UI registration
+  lead/ui/conversion-tab.tsx      Ordinary React component
+  deal/server/pipeline-summary.ts Authorized aggregate SQL
+  links/contact-companies.ts     One bidirectional relationship
 ```
 
-The browser-safe model declares the business contract. The Company OS application binds that
-contract to authorization, transactions, and business services. HTTP, OpenAPI, the browser client,
-and MCP are derived interfaces over the same governed implementation.
+Only the model entrypoint is required. A standard object gets persistence, governed CRUD, APIs, and
+usable screens without its own service or route files. The application's model, server, and UI
+composition roots each register a module once; further changes stay inside the module.
 
-Code owns the work that must be predictable: durable state, permissions, invariants, transactions,
-and consequential actions. AI can interpret information, research, plan, recommend, and handle
-exceptions through those actions, with people deciding where approval is required.
+For example, a new Marketing module can start with:
 
-## Repository map
+```ts
+import { defineObject, schema } from "@company/runtime"
+import { User } from "#modules/access/user/model"
+import { Root } from "#root"
 
-| Path                                                             | Role                                                                      |
-| ---------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| [`packages/runtime`](packages/runtime/README.md)                 | Portable model definitions and reusable execution and transport machinery |
-| [`packages/model`](packages/model/README.md)                     | The browser-safe business contract shared by every interface              |
-| [`packages/postgres`](packages/postgres/README.md)               | The server-only PostgreSQL implementation of runtime repository contracts |
-| [`packages/ui`](packages/ui/README.md)                           | Shared design tokens and presentation primitives                          |
-| [`apps/company-os`](apps/company-os/README.md)                   | Required central backend and operating application                        |
-| [`templates/base`](templates/base/README.md)                     | Minimal starter for any optional application                              |
-| [`templates/client-portal`](templates/client-portal/README.md)   | Starter for a customer-facing interface over governed capabilities        |
-| [`templates/marketing-site`](templates/marketing-site/README.md) | Starter for the public website                                            |
+export const Campaign = defineObject({
+  id: "campaign",
+  collection: "campaigns",
+  name: "Campaign",
+  pluralName: "Campaigns",
+  parent: Root,
+  properties: {
+    name: schema.string({ minLength: 1, maxLength: 200 }),
+    owner: schema.reference(User, { nullable: true }),
+    attachments: schema.array(schema.file(), { default: [] }),
+  },
+  display: { title: "name" },
+})
+```
 
-`@company/*` is the stable import namespace for reusable source in this repository. It is not a
-placeholder for a company name. Packages under `@company-template/*` identify runnable optional
-app starters; adding one gives the copy its ordinary app package name.
+Put the object in `modules/marketing/campaign/model.ts`, include it in the Marketing module’s
+`model.ts`, and install that module in `src/model.ts`. Generate and review a migration, then assign
+the intended permissions.
+Its default page is `/objects/campaign`. See [Building a module](docs/modules.md) for the complete
+path, custom actions, React extensions, and client data access.
 
-For the complete dependency and authority model, read
-[`docs/architecture.md`](docs/architecture.md). When changing the business contract, start with
-[`docs/modeling.md`](docs/modeling.md).
+Modules are source you copy, compose, and edit. They are not dynamically loaded plugins. A custom
+page can replace a default screen, and custom operations can enforce rules that a schema cannot express.
 
-## Add optional apps
+## How the pieces fit
 
-Every checkout already contains one company model and one central application. `templates/*`
-contains executable starters for optional focused interfaces. `apps/*` contains ordinary
-company-owned source; added apps never import template source.
+```text
+React UI       Typed client       HTTP / OpenAPI       MCP tools
+    \               |                   |                /
+     +--------------+-------------------+---------------+
+                            |
+                   Queries and Actions
+                            |
+             Identity → authorization → operations
+                            |
+                 PostgreSQL transactions
+```
+
+- **Model:** portable, browser-safe TypeScript. Objects have durable identity; references, Links,
+  and association Objects describe different kinds of relationships.
+- **Server:** Effect v4 operations enforce permissions and business rules. PostgreSQL is authoritative;
+  Drizzle and the Effect SQL driver implement persistence and explicit migrations.
+- **UI:** TanStack Start, Router, and Form with editable shadcn primitives and Tailwind CSS v4.
+  Standard collection pages share filters, views, forms, relationships, and file fields.
+- **Data access:** a generated semantic client over HTTP. One Effect Atom request cache serves
+  preloading and React reads; successful transactions invalidate the object types actually changed.
+  `list` supports filtering and pagination; relationship pages return complete target records.
+  `batchGet` hydrates independently known references; custom Queries share the same cache.
+
+A [durable event journal](docs/events.md) records committed changes and typed business facts.
+Open browsers consume authorized events and refresh affected queries, including after reconnect.
+This is cached server state with resumable polling; offline writes, durable agent scheduling, and
+automation controllers are not included. [Architecture](docs/architecture.md) explains the current guarantees and boundaries.
+
+## Read the code
+
+| Start here                                       | What it owns                                                     |
+| ------------------------------------------------ | ---------------------------------------------------------------- |
+| [Company OS app](apps/company-os/README.md)      | The central UI, API, business policy, and server assembly        |
+| [Modules](apps/company-os/src/modules/README.md) | Editable Sales, Engineering, Access, and Assets domains          |
+| [Runtime](packages/runtime/README.md)            | Portable model definitions and reusable execution/API machinery  |
+| [Postgres](packages/postgres/README.md)          | Model-to-storage projection and repository implementations       |
+| [UI](packages/ui/README.md)                      | Shared presentation primitives and design tokens                 |
+| [Documentation](docs/README.md)                  | Module authoring, modeling, architecture, and operational guides |
+
+Start with the app and a concrete module; read the reusable packages when you need to change a
+shared mechanism. Business code stays in the app. Optional interfaces consume its public
+`company-os/model` contract and governed API.
+
+## Make it yours
+
+Change product identity and the entry experience in
+[`src/customization`](apps/company-os/src/customization), then build your operation in
+[`src/modules`](apps/company-os/src/modules). The included agent skills help with company onboarding,
+customization, and upstream upgrades. A useful first prompt is:
+
+> Use $company-onboard to build our customer onboarding process. Track customers, milestones,
+> owners, blockers, and launch dates. Let an agent prepare follow-ups, with a person approving
+> anything sent to a customer. Build one working operation through the UI and API.
+
+Need a separate portal or public website? Copy an optional app starter:
 
 ```sh
-pnpm app:create
+pnpm app:create                         # List templates
 pnpm app:create base vendor-portal
 pnpm turbo run dev --filter=vendor-portal
 ```
 
-The chosen app name becomes the directory under `apps/`, the package name, and the permanent app
-key on any hosting platform.
-The command refuses to overwrite an existing app, rewrites the package for its normal identity,
-installs the workspace, and runs the template's declared bootstrap checks. Templates remain
-runnable on isolated ports for evaluating them before adding one.
-
-## Make it yours
-
-A fork is meant to become your company's software, not another generic multi-tenant SaaS instance.
-The repository is already a complete project: customize its one model and central app directly.
-
-- [`packages/model/src/metadata.ts`](packages/model/src/metadata.ts) names the
-  company model.
-- [`apps/company-os/src/customization`](apps/company-os/src/customization) owns product identity,
-  entry, home, and navigation.
-- [`packages/model/src/modules/sales`](packages/model/src/modules/sales) is the
-  replaceable example business module.
-- [`apps/company-os/src/server/modules`](apps/company-os/src/server/modules) owns private business
-  implementations.
-
-The repository includes coding-agent skills for onboarding a company, extending an established
-fork, and incorporating upstream improvements:
-
-```text
-Use $company-onboard to adapt this repository to Acme and build our customer onboarding process.
-Track the customer, milestones, owners, blockers, and launch date. Let an agent prepare follow-ups,
-but require a person to approve anything sent to the customer.
-```
-
-See [`apps/company-os/README.md`](apps/company-os/README.md) for the central application's
-architecture and the repository map above for each package's public boundary.
-
-## Continual
-
-Company OS runs and can be customized independently. [Continual](https://continual.ai) is the
-optional platform being built to customize, deploy, upgrade, connect, and operate Company OS forks.
-The fork remains authoritative for its source, business policy, and records.
-
-To publish from a local checkout, authenticate outside the repository, link it to a Continual
-Project, and pull the selected Branch environment before deploying:
-
-```sh
-pnpm exec continual login
-pnpm exec continual link --project <project-id-or-url>
-pnpm exec continual env pull
-pnpm deploy
-```
-
-The root deployment asks Turbo to build each App first. The central App then migrates the selected
-Branch database and the repository-pinned CLI publishes the existing `.output` artifact. Use
-`pnpm build` followed by `pnpm --dir apps/company-os exec continual deploy --dry-run` to validate
-the artifact and platform context without uploading or changing a deployment.
+The [base](templates/base/README.md), [client portal](templates/client-portal/README.md), and
+[marketing site](templates/marketing-site/README.md) are editable starters. The central app remains
+the authority for business records and policy. See [deployment](docs/runbooks/deployment.md) for the
+current production build and identity integration, including the optional Continual publisher.
 
 ## Development
 
-| Command                         | Purpose                                                  |
-| ------------------------------- | -------------------------------------------------------- |
-| `pnpm dev`                      | Migrate and run every application development task       |
-| `pnpm reset`                    | Destructively rebuild local application state            |
-| `pnpm deploy`                   | Build, migrate, and publish configured applications      |
-| `pnpm app:create`               | List optional application templates                      |
-| `pnpm app:create client-portal` | Create and bootstrap an optional client portal           |
-| `pnpm format`                   | Format the repository                                    |
-| `pnpm lint`                     | Lint every workspace package                             |
-| `pnpm check`                    | Check formatting, lint, boundaries, dead code, and types |
-| `pnpm test`                     | Run the repository test suite using the Turbo cache      |
-| `pnpm build`                    | Build every application                                  |
+Run commands from the repository root:
 
-Oxlint owns source lint and Company OS ownership rules. Turbo validates declared package
-dependencies and dispatches package tasks such as model validation, tests, typechecking, and
-builds. Installing dependencies automatically connects the compatible Effect diagnostics to
-Oxlint; there is no separate developer command for that integration.
+| Command                                | Purpose                                                                 |
+| -------------------------------------- | ----------------------------------------------------------------------- |
+| `pnpm dev`                             | Migrate and run the apps in `apps/*`                                    |
+| `pnpm check`                           | Verify formatting, lint, package/model boundaries, dead code, and types |
+| `pnpm test`                            | Run unit and isolated PostgreSQL integration tests                      |
+| `pnpm build`                           | Build the application and maintained app starters                       |
+| `pnpm format`                          | Format source and documentation                                         |
+| `pnpm --filter company-os db:generate` | Generate storage exports and a migration after model changes            |
 
-Cloud Agents use [`.cursor/environment.json`](.cursor/environment.json) for install and startup.
-The install script refreshes dependencies, the start script brings up local PostgreSQL, and the
-application development task migrates its database before serving. The Company OS app is available
-from the `company-os` terminal on port 3002.
-
-Repository-wide constraints live in [`AGENTS.md`](AGENTS.md). Product and ownership context for
-coding agents lives in [`.agents/skills`](.agents/skills).
-
-Focused documentation lives under [`docs`](docs/README.md):
-
-- [Architecture](docs/architecture.md) explains package responsibilities and authority.
-- [Modeling](docs/modeling.md) explains the semantic vocabulary and relationship choices.
-- [Database workflow](docs/runbooks/database.md) covers migrations, resets, and deployment.
+Tests need a PostgreSQL role with `CREATEDB`; they create and remove isolated databases rather than
+changing your app's records. [Database workflow](docs/runbooks/database.md) covers this lifecycle.
+[AGENTS.md](AGENTS.md) defines repository-wide contributor constraints; package exports and automated
+checks enforce the code boundaries.
 
 ## License
 
-Company OS is source-available under the [Elastic License 2.0](LICENSE.md). You may use, modify,
-and redistribute it subject to the license, including its restriction on providing the software to
-third parties as a hosted or managed service.
+[Elastic License 2.0](LICENSE.md). Read the license before redistributing Company OS or offering it
+as a hosted service.

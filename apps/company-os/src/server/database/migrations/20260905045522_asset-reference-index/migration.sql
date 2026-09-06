@@ -1,0 +1,1 @@
+CREATE INDEX "asset_references_asset_id_idx" ON "asset_references" ("asset_id");

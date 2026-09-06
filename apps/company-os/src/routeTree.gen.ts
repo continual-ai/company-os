@@ -36,6 +36,7 @@ import { Route as AppSalesLeadsRouteRouteImport } from './routes/_app/_sales/lea
 import { Route as AppSalesDealsRouteRouteImport } from './routes/_app/_sales/deals/route'
 import { Route as AppSalesContactsRouteRouteImport } from './routes/_app/_sales/contacts/route'
 import { Route as AppSalesCompaniesRouteRouteImport } from './routes/_app/_sales/companies/route'
+import { Route as AppObjectsObjectTypeIndexRouteImport } from './routes/_app/objects/$objectType/index'
 import { Route as AppDeveloperDesignSystemIndexRouteImport } from './routes/_app/developer/design-system/index'
 import { Route as AppSalesNotesIndexRouteImport } from './routes/_app/_sales/notes/index'
 import { Route as AppSalesLeadsIndexRouteImport } from './routes/_app/_sales/leads/index'
@@ -48,12 +49,14 @@ import { Route as AppSettingsaccessRolesRouteImport } from './routes/_app/settin
 import { Route as AppSettingsaccessRoleAssignmentsRouteImport } from './routes/_app/settings/(access)/role-assignments'
 import { Route as AppSettingsaccessGroupsRouteImport } from './routes/_app/settings/(access)/groups'
 import { Route as AppSettingsaccessGroupMembershipsRouteImport } from './routes/_app/settings/(access)/group-memberships'
+import { Route as AppObjectsObjectTypeRecordIdRouteImport } from './routes/_app/objects/$objectType/$recordId'
 import { Route as AppDeveloperDesignSystemFoundationsRouteImport } from './routes/_app/developer/design-system/foundations'
 import { Route as AppSalesNotesRecordIdRouteImport } from './routes/_app/_sales/notes/$recordId'
 import { Route as AppSalesLeadsRecordIdRouteImport } from './routes/_app/_sales/leads/$recordId'
 import { Route as AppSalesDealsRecordIdRouteImport } from './routes/_app/_sales/deals/$recordId'
 import { Route as AppSalesContactsRecordIdRouteImport } from './routes/_app/_sales/contacts/$recordId'
 import { Route as AppSalesCompaniesRecordIdRouteImport } from './routes/_app/_sales/companies/$recordId'
+import { Route as ApiV1AssetsAssetIdContentRouteImport } from './routes/api/v1/assets/$assetId/content'
 import { Route as AppDeveloperDesignSystemPatternsObjectTableRouteImport } from './routes/_app/developer/design-system/patterns/object-table'
 import { Route as AppDeveloperDesignSystemComponentsComponentIdRouteRouteImport } from './routes/_app/developer/design-system/components/$componentId/route'
 
@@ -191,6 +194,12 @@ const AppSalesCompaniesRouteRoute = AppSalesCompaniesRouteRouteImport.update({
   path: '/companies',
   getParentRoute: () => AppSalesRouteRoute,
 } as any)
+const AppObjectsObjectTypeIndexRoute =
+  AppObjectsObjectTypeIndexRouteImport.update({
+    id: '/objects/$objectType/',
+    path: '/objects/$objectType/',
+    getParentRoute: () => AppRouteRoute,
+  } as any)
 const AppDeveloperDesignSystemIndexRoute =
   AppDeveloperDesignSystemIndexRouteImport.update({
     id: '/',
@@ -255,6 +264,12 @@ const AppSettingsaccessGroupMembershipsRoute =
     path: '/group-memberships',
     getParentRoute: () => AppSettingsRouteRoute,
   } as any)
+const AppObjectsObjectTypeRecordIdRoute =
+  AppObjectsObjectTypeRecordIdRouteImport.update({
+    id: '/objects/$objectType/$recordId',
+    path: '/objects/$objectType/$recordId',
+    getParentRoute: () => AppRouteRoute,
+  } as any)
 const AppDeveloperDesignSystemFoundationsRoute =
   AppDeveloperDesignSystemFoundationsRouteImport.update({
     id: '/foundations',
@@ -287,6 +302,12 @@ const AppSalesCompaniesRecordIdRoute =
     id: '/$recordId',
     path: '/$recordId',
     getParentRoute: () => AppSalesCompaniesRouteRoute,
+  } as any)
+const ApiV1AssetsAssetIdContentRoute =
+  ApiV1AssetsAssetIdContentRouteImport.update({
+    id: '/api/v1/assets/$assetId/content',
+    path: '/api/v1/assets/$assetId/content',
+    getParentRoute: () => rootRouteImport,
   } as any)
 const AppDeveloperDesignSystemPatternsObjectTableRoute =
   AppDeveloperDesignSystemPatternsObjectTableRouteImport.update({
@@ -333,6 +354,7 @@ export interface FileRoutesByFullPath {
   '/leads/$recordId': typeof AppSalesLeadsRecordIdRoute
   '/notes/$recordId': typeof AppSalesNotesRecordIdRoute
   '/developer/design-system/foundations': typeof AppDeveloperDesignSystemFoundationsRoute
+  '/objects/$objectType/$recordId': typeof AppObjectsObjectTypeRecordIdRoute
   '/settings/group-memberships': typeof AppSettingsaccessGroupMembershipsRoute
   '/settings/groups': typeof AppSettingsaccessGroupsRoute
   '/settings/role-assignments': typeof AppSettingsaccessRoleAssignmentsRoute
@@ -345,8 +367,10 @@ export interface FileRoutesByFullPath {
   '/leads/': typeof AppSalesLeadsIndexRoute
   '/notes/': typeof AppSalesNotesIndexRoute
   '/developer/design-system/': typeof AppDeveloperDesignSystemIndexRoute
+  '/objects/$objectType/': typeof AppObjectsObjectTypeIndexRoute
   '/developer/design-system/components/$componentId': typeof AppDeveloperDesignSystemComponentsComponentIdRouteRoute
   '/developer/design-system/patterns/object-table': typeof AppDeveloperDesignSystemPatternsObjectTableRoute
+  '/api/v1/assets/$assetId/content': typeof ApiV1AssetsAssetIdContentRoute
 }
 export interface FileRoutesByTo {
   '/health': typeof HealthRoute
@@ -372,6 +396,7 @@ export interface FileRoutesByTo {
   '/leads/$recordId': typeof AppSalesLeadsRecordIdRoute
   '/notes/$recordId': typeof AppSalesNotesRecordIdRoute
   '/developer/design-system/foundations': typeof AppDeveloperDesignSystemFoundationsRoute
+  '/objects/$objectType/$recordId': typeof AppObjectsObjectTypeRecordIdRoute
   '/settings/group-memberships': typeof AppSettingsaccessGroupMembershipsRoute
   '/settings/groups': typeof AppSettingsaccessGroupsRoute
   '/settings/role-assignments': typeof AppSettingsaccessRoleAssignmentsRoute
@@ -384,8 +409,10 @@ export interface FileRoutesByTo {
   '/leads': typeof AppSalesLeadsIndexRoute
   '/notes': typeof AppSalesNotesIndexRoute
   '/developer/design-system': typeof AppDeveloperDesignSystemIndexRoute
+  '/objects/$objectType': typeof AppObjectsObjectTypeIndexRoute
   '/developer/design-system/components/$componentId': typeof AppDeveloperDesignSystemComponentsComponentIdRouteRoute
   '/developer/design-system/patterns/object-table': typeof AppDeveloperDesignSystemPatternsObjectTableRoute
+  '/api/v1/assets/$assetId/content': typeof ApiV1AssetsAssetIdContentRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -422,6 +449,7 @@ export interface FileRoutesById {
   '/_app/_sales/leads/$recordId': typeof AppSalesLeadsRecordIdRoute
   '/_app/_sales/notes/$recordId': typeof AppSalesNotesRecordIdRoute
   '/_app/developer/design-system/foundations': typeof AppDeveloperDesignSystemFoundationsRoute
+  '/_app/objects/$objectType/$recordId': typeof AppObjectsObjectTypeRecordIdRoute
   '/_app/settings/(access)/group-memberships': typeof AppSettingsaccessGroupMembershipsRoute
   '/_app/settings/(access)/groups': typeof AppSettingsaccessGroupsRoute
   '/_app/settings/(access)/role-assignments': typeof AppSettingsaccessRoleAssignmentsRoute
@@ -434,8 +462,10 @@ export interface FileRoutesById {
   '/_app/_sales/leads/': typeof AppSalesLeadsIndexRoute
   '/_app/_sales/notes/': typeof AppSalesNotesIndexRoute
   '/_app/developer/design-system/': typeof AppDeveloperDesignSystemIndexRoute
+  '/_app/objects/$objectType/': typeof AppObjectsObjectTypeIndexRoute
   '/_app/developer/design-system/components/$componentId': typeof AppDeveloperDesignSystemComponentsComponentIdRouteRoute
   '/_app/developer/design-system/patterns/object-table': typeof AppDeveloperDesignSystemPatternsObjectTableRoute
+  '/api/v1/assets/$assetId/content': typeof ApiV1AssetsAssetIdContentRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -471,6 +501,7 @@ export interface FileRouteTypes {
     | '/leads/$recordId'
     | '/notes/$recordId'
     | '/developer/design-system/foundations'
+    | '/objects/$objectType/$recordId'
     | '/settings/group-memberships'
     | '/settings/groups'
     | '/settings/role-assignments'
@@ -483,8 +514,10 @@ export interface FileRouteTypes {
     | '/leads/'
     | '/notes/'
     | '/developer/design-system/'
+    | '/objects/$objectType/'
     | '/developer/design-system/components/$componentId'
     | '/developer/design-system/patterns/object-table'
+    | '/api/v1/assets/$assetId/content'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/health'
@@ -510,6 +543,7 @@ export interface FileRouteTypes {
     | '/leads/$recordId'
     | '/notes/$recordId'
     | '/developer/design-system/foundations'
+    | '/objects/$objectType/$recordId'
     | '/settings/group-memberships'
     | '/settings/groups'
     | '/settings/role-assignments'
@@ -522,8 +556,10 @@ export interface FileRouteTypes {
     | '/leads'
     | '/notes'
     | '/developer/design-system'
+    | '/objects/$objectType'
     | '/developer/design-system/components/$componentId'
     | '/developer/design-system/patterns/object-table'
+    | '/api/v1/assets/$assetId/content'
   id:
     | '__root__'
     | '/_app'
@@ -559,6 +595,7 @@ export interface FileRouteTypes {
     | '/_app/_sales/leads/$recordId'
     | '/_app/_sales/notes/$recordId'
     | '/_app/developer/design-system/foundations'
+    | '/_app/objects/$objectType/$recordId'
     | '/_app/settings/(access)/group-memberships'
     | '/_app/settings/(access)/groups'
     | '/_app/settings/(access)/role-assignments'
@@ -571,8 +608,10 @@ export interface FileRouteTypes {
     | '/_app/_sales/leads/'
     | '/_app/_sales/notes/'
     | '/_app/developer/design-system/'
+    | '/_app/objects/$objectType/'
     | '/_app/developer/design-system/components/$componentId'
     | '/_app/developer/design-system/patterns/object-table'
+    | '/api/v1/assets/$assetId/content'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -584,6 +623,7 @@ export interface RootRouteChildren {
   ApiMcpRoute: typeof ApiMcpRoute
   ApiOpenapiRoute: typeof ApiOpenapiRoute
   ApiV1SplatRoute: typeof ApiV1SplatRoute
+  ApiV1AssetsAssetIdContentRoute: typeof ApiV1AssetsAssetIdContentRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -777,6 +817,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSalesCompaniesRouteRouteImport
       parentRoute: typeof AppSalesRouteRoute
     }
+    '/_app/objects/$objectType/': {
+      id: '/_app/objects/$objectType/'
+      path: '/objects/$objectType'
+      fullPath: '/objects/$objectType/'
+      preLoaderRoute: typeof AppObjectsObjectTypeIndexRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
     '/_app/developer/design-system/': {
       id: '/_app/developer/design-system/'
       path: '/'
@@ -861,6 +908,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsaccessGroupMembershipsRouteImport
       parentRoute: typeof AppSettingsRouteRoute
     }
+    '/_app/objects/$objectType/$recordId': {
+      id: '/_app/objects/$objectType/$recordId'
+      path: '/objects/$objectType/$recordId'
+      fullPath: '/objects/$objectType/$recordId'
+      preLoaderRoute: typeof AppObjectsObjectTypeRecordIdRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
     '/_app/developer/design-system/foundations': {
       id: '/_app/developer/design-system/foundations'
       path: '/foundations'
@@ -902,6 +956,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/companies/$recordId'
       preLoaderRoute: typeof AppSalesCompaniesRecordIdRouteImport
       parentRoute: typeof AppSalesCompaniesRouteRoute
+    }
+    '/api/v1/assets/$assetId/content': {
+      id: '/api/v1/assets/$assetId/content'
+      path: '/api/v1/assets/$assetId/content'
+      fullPath: '/api/v1/assets/$assetId/content'
+      preLoaderRoute: typeof ApiV1AssetsAssetIdContentRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_app/developer/design-system/patterns/object-table': {
       id: '/_app/developer/design-system/patterns/object-table'
@@ -1090,6 +1151,8 @@ interface AppRouteRouteChildren {
   AppDeveloperRouteRoute: typeof AppDeveloperRouteRouteWithChildren
   AppSettingsRouteRoute: typeof AppSettingsRouteRouteWithChildren
   AppIndexRoute: typeof AppIndexRoute
+  AppObjectsObjectTypeRecordIdRoute: typeof AppObjectsObjectTypeRecordIdRoute
+  AppObjectsObjectTypeIndexRoute: typeof AppObjectsObjectTypeIndexRoute
 }
 
 const AppRouteRouteChildren: AppRouteRouteChildren = {
@@ -1097,6 +1160,8 @@ const AppRouteRouteChildren: AppRouteRouteChildren = {
   AppDeveloperRouteRoute: AppDeveloperRouteRouteWithChildren,
   AppSettingsRouteRoute: AppSettingsRouteRouteWithChildren,
   AppIndexRoute: AppIndexRoute,
+  AppObjectsObjectTypeRecordIdRoute: AppObjectsObjectTypeRecordIdRoute,
+  AppObjectsObjectTypeIndexRoute: AppObjectsObjectTypeIndexRoute,
 }
 
 const AppRouteRouteWithChildren = AppRouteRoute._addFileChildren(
@@ -1112,6 +1177,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiMcpRoute: ApiMcpRoute,
   ApiOpenapiRoute: ApiOpenapiRoute,
   ApiV1SplatRoute: ApiV1SplatRoute,
+  ApiV1AssetsAssetIdContentRoute: ApiV1AssetsAssetIdContentRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

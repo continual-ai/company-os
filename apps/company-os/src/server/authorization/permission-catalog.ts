@@ -1,6 +1,6 @@
-import { Model } from "@company/model"
 import { modelObjects } from "@company/runtime"
 import type { ObjectAccessRequest } from "@company/runtime/effect/object-service"
+import { Model } from "company-os/model"
 
 import {
   capabilityPermission,
@@ -64,6 +64,16 @@ for (const object of modelObjects(Model)) {
     permission: listPermission,
   })
 
+  for (const query of Object.values(object.queries)) {
+    const permission = capabilityPermission(`${object.id}.${query.id}`)
+    permissionDefinitions.set(permission, {
+      ...(query.scope === "object" ? { expectedType: object.id } : {}),
+      modifiesTarget: false,
+      objectType: object.id,
+      permission,
+      readPermission: query.scope === "object" ? readPermission : undefined,
+    })
+  }
   for (const action of Object.values(object.actions)) {
     const permission = `${object.id}.${permissionOperation(action.id)}`
     if (!isCapabilityPermission(permission)) continue
@@ -98,9 +108,21 @@ const operatorObjectTypes = new Set([
   "lead",
   "lineItem",
   "note",
+  "issue",
+  "asset",
 ])
 
 /** Business-data permissions granted to the built-in non-administrator role. */
-export const operatorPermissions = definedPermissions.filter((permission) =>
-  operatorObjectTypes.has(permission.slice(0, permission.indexOf(".")))
-)
+export const operatorPermissions = [
+  ...definedPermissions.filter(
+    (permission) =>
+      operatorObjectTypes.has(permission.slice(0, permission.indexOf("."))) &&
+      ["get", "list", "create", "update", "delete"].includes(
+        permission.slice(permission.indexOf(".") + 1)
+      )
+  ),
+  capabilityPermission("lead.convert"),
+  capabilityPermission("deal.pipelineSummary"),
+  capabilityPermission("asset.beginUpload"),
+  capabilityPermission("asset.completeUpload"),
+]

@@ -10,6 +10,8 @@ import { cn } from "@company/ui/lib/utils"
 import { Link } from "@tanstack/react-router"
 import { BoxIcon, Building2Icon, UserRoundIcon, XIcon } from "lucide-react"
 
+import { assetContentUrl } from "@/modules/assets/asset/ui/upload"
+
 import type { ObjectRecordPresentation } from "./object-client"
 import { objectTablePropertySchema } from "./object-table/object-table-cell-types"
 import {
@@ -41,7 +43,9 @@ function displayImage(
   resolveImageSrc: ObjectTableImageResolver | undefined
 ): string {
   const image = objectTableImageValue(value)
-  return image === null ? "" : (resolveImageSrc?.(image) ?? "")
+  return image === null
+    ? ""
+    : (resolveImageSrc?.(image) ?? assetContentUrl(image.assetId))
 }
 
 function displayStatus(object: ObjectType, record: ObjectTableRecord) {

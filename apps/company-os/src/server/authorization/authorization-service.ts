@@ -1,6 +1,6 @@
-import { Model, type PrincipalId } from "@company/model"
 import { modelTypeAccepts } from "@company/runtime"
 import { type ObjectAccessRequest } from "@company/runtime/effect/object-service"
+import { Model, type PrincipalId } from "company-os/model"
 import { Context, Data, Effect, Layer } from "effect"
 
 import {
@@ -42,8 +42,8 @@ function permittedAtTarget(
   )
 }
 
-interface ActionAccessRequest {
-  readonly actionId: string
+interface OperationAccessRequest {
+  readonly operationId: string
   readonly objectType: string
   readonly parentId?: string
   readonly recordIds?: ReadonlyArray<string>
@@ -221,10 +221,10 @@ const make = Effect.gen(function* () {
     })
   })
 
-  const requireAction = Effect.fn("@company/Authorization.requireAction")(
-    function* (request: ActionAccessRequest) {
+  const requireOperation = Effect.fn("@company/Authorization.requireOperation")(
+    function* (request: OperationAccessRequest) {
       const definition = permissionDefinition(
-        capabilityPermission(`${request.objectType}.${request.actionId}`)
+        capabilityPermission(`${request.objectType}.${request.operationId}`)
       )
       return yield* requirePermission({
         ...definition,
@@ -235,19 +235,19 @@ const make = Effect.gen(function* () {
     }
   )
 
-  const requireActionFor = Effect.fn("@company/Authorization.requireActionFor")(
-    function* (caller: Caller, request: ActionAccessRequest) {
-      const definition = permissionDefinition(
-        capabilityPermission(`${request.objectType}.${request.actionId}`)
-      )
-      return yield* requirePermissionFor(caller, {
-        ...definition,
-        targetIds:
-          request.recordIds ??
-          (request.parentId === undefined ? [ROOT_ID] : [request.parentId]),
-      })
-    }
-  )
+  const requireOperationFor = Effect.fn(
+    "@company/Authorization.requireOperationFor"
+  )(function* (caller: Caller, request: OperationAccessRequest) {
+    const definition = permissionDefinition(
+      capabilityPermission(`${request.objectType}.${request.operationId}`)
+    )
+    return yield* requirePermissionFor(caller, {
+      ...definition,
+      targetIds:
+        request.recordIds ??
+        (request.parentId === undefined ? [ROOT_ID] : [request.parentId]),
+    })
+  })
 
   const visibleWithin = Effect.fn("@company/Authorization.visibleWithin")(
     function* (request: ObjectAccessRequest) {
@@ -261,6 +261,34 @@ const make = Effect.gen(function* () {
         permissions: [permission],
       })
       return [...new Set(grants.map(({ scopeId }) => scopeId))]
+    }
+  )
+
+  /** One grant query for a heterogeneous feed; decisions still use current membership and roles. */
+  const readableScopes = Effect.fn("@company/Authorization.readableScopes")(
+    function* () {
+      const caller = callerForActor(yield* currentAuthorizationActorId)
+      const permissions = Object.values(Model.objects).map(
+        (object) => `${object.id}.get`
+      )
+      const grants = yield* repository.listGrants({
+        directPrincipalIds: directPrincipalIds(caller),
+        groupMemberId:
+          caller.kind === "identity" ? caller.identityId : undefined,
+        permissions,
+      })
+      return Object.fromEntries(
+        permissions.map((permission) => [
+          permission.slice(0, -4),
+          [
+            ...new Set(
+              grants
+                .filter((grant) => grant.permissions.includes(permission))
+                .map((grant) => grant.scopeId)
+            ),
+          ].sort(),
+        ])
+      )
     }
   )
 
@@ -291,11 +319,12 @@ const make = Effect.gen(function* () {
   })
 
   return {
+    readableScopes,
     checkCapabilities,
     checkCapabilitiesFor,
     require,
-    requireAction,
-    requireActionFor,
+    requireOperation,
+    requireOperationFor,
     visibleWithin,
   }
 })

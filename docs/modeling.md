@@ -1,6 +1,6 @@
 # Modeling company operations
 
-`@company/model` is the browser-safe source of business meaning. It declares the vocabulary that
+`company-os/model` is the browser-safe source of business meaning. It declares the vocabulary that
 the operating application, generated interfaces, integrations, and agents share. Implementations,
 authorization, persistence, and provider configuration remain in the central application.
 
@@ -64,24 +64,47 @@ The model declares what callers can understand and invoke. The central app suppl
 operations execute:
 
 - object services validate values, resolve identifiers, authorize callers, and supply audit context;
-- custom action services coordinate domain behavior and transactions;
+- custom operation functions coordinate domain behavior and transactions;
 - repositories preserve persistence, concurrency, and atomicity invariants; and
 - HTTP, OpenAPI, clients, and MCP project the same bound implementation.
 
 Keep Effect, repositories, handlers, database clients, secrets, provider SDKs, and React components
-out of `@company/model`. Use portable `@company/runtime` definitions where they support the shared
+out of `company-os/model`. Use portable `@company/runtime` definitions where they support the shared
 contract.
 
 ## Work on the model
 
-Model definitions live under `packages/model/src/modules`. The included sales module is an example
+Model definitions live under `apps/company-os/src/modules`. The included sales module is an example
 business slice and can be replaced. After changing the model, update its governed implementation
 and persistence projection in the central app, then run:
 
 ```sh
-pnpm turbo run test --filter=@company/model
+pnpm turbo run test --filter=company-os
 pnpm check
 pnpm test
 ```
 
 Follow the [database workflow](runbooks/database.md) when the persisted shape changes.
+
+## Relationships and primary roles
+
+`modelRelationships(Model)` projects Links, persisted references, and ownership into one catalog with
+two named directions. A reference owns its FK and may declare `inverse: { key, label }`; the inverse
+is derived, never independently stored. Reference deletion currently restricts deleting its target.
+Ownership relationships are explicitly marked as parents. This is metadata and navigation over the
+existing storage, not a second schema or a graph database.
+
+Use plural associations for business participation. ContactCompanies supports multiple affiliations.
+ContactPrimaryCompany declares `subsetOf: ContactCompanies` and at most one primary company. Selecting
+a primary adds the membership in the same transaction. A composite FK ensures every primary is a member;
+removing that membership clears the selection. Switching primary preserves other memberships. No
+implicit first-element selection or duplicate independently writable membership field is involved.
+
+DealCompanies describes commercial participation. Deal.parent accepts an AuthorizationScope and controls
+access independently. The migration copies existing Company parents into DealCompanies while preserving
+parent IDs, ancestry, and grants. Existing company-scoped deals retain their security scope; new deals
+can choose a root or another supported scope. Adding or removing a commercial company never reparents a deal.
+
+Use an association Object when participation needs dates, roles, allocation, lifecycle, history, or its
+own authorization. Its participant references get the same reverse navigation. Do not add hypothetical
+fields or a generic role engine before a real operation needs them.

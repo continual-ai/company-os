@@ -1,9 +1,8 @@
-import { Model } from "@company/model"
-import { Button } from "@company/ui/components/button"
-import { Link, createFileRoute } from "@tanstack/react-router"
+import { createFileRoute } from "@tanstack/react-router"
+import { Model } from "company-os/model"
 
 import { pageOptions } from "@/route-metadata"
-import { ObjectCollection } from "@/ui/model/object-collection"
+import { ModelCollectionPage } from "@/ui/model/model-pages"
 
 export const Route = createFileRoute("/_app/settings/(access)/roles")({
   ...pageOptions({
@@ -15,18 +14,5 @@ export const Route = createFileRoute("/_app/settings/(access)/roles")({
 })
 
 function RolesPage() {
-  return (
-    <ObjectCollection
-      object={Model.objects.role}
-      renderCollectionActions={() => (
-        <Button
-          variant="outline"
-          nativeButton={false}
-          render={<Link to="/settings/role-assignments" />}
-        >
-          Assignments
-        </Button>
-      )}
-    />
-  )
+  return <ModelCollectionPage object={Model.objects.role} />
 }

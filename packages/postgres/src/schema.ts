@@ -379,7 +379,10 @@ function jsonDefault(property: AnySchema): SQL {
   if (encoded === undefined) {
     throw new Error("A JSON property default must be serializable.")
   }
-  return sql`${encoded}::jsonb`
+  // DDL defaults cannot use bind parameters. JSON serialization and SQL quote
+  // escaping produce one literal from the source-owned model default.
+  // oxlint-disable-next-line company-os/no-unsafe-sql
+  return sql.raw(`'${encoded.replaceAll("'", "''")}'::jsonb`)
 }
 
 function baseColumn(property: AnySchema): PgColumnBuilder {
@@ -687,6 +690,18 @@ export function makePostgresSchema<const TModel extends ModelCatalog>(
           }),
       },
       (table) => [
+        ...(link.subsetOf === undefined
+          ? []
+          : [
+              foreignKey({
+                name: `${tableName}_membership_fk`,
+                columns: [table[forwardColumn], table[reverseColumn]],
+                foreignColumns: [
+                  getTableColumns(linkTables[link.subsetOf]!)[forwardColumn]!,
+                  getTableColumns(linkTables[link.subsetOf]!)[reverseColumn]!,
+                ],
+              }).onDelete("cascade"),
+            ]),
         primaryKey({
           columns: [table[forwardColumn], table[reverseColumn]],
         }),

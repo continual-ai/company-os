@@ -1,114 +1,115 @@
 # Company OS application
 
-The central backend and operating application in one TanStack Start deployment. It binds the
-browser-safe contract from `@company/model` to authorization, PostgreSQL, business services, HTTP,
-OpenAPI, MCP, and the human interface. Those surfaces share one governed implementation rather than
-maintaining separate business rules.
+The central operating application and backend, built with TanStack Start. Business modules live
+here alongside the UI and server that run them. The public `company-os/model` export is their
+browser-safe contract; the private server binds it to permissions, transactions, HTTP, and MCP.
 
-## Develop
+Start here to change a business operation. The reusable packages supply shared machinery, not the
+company's business rules.
 
-From the repository root, start development:
+## Run it
+
+From the repository root:
 
 ```sh
+pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-Turbo runs this application's idempotent `db:migrate` task before its development server. PostgreSQL
-must already be running at the configured `DATABASE_URL`; the repository does not manage the server.
-The Vite development server supplies a local development identity when no provider credential is
-present. Continual managed previews and proxied App URLs use the verified runtime identity supplied
-by Continual instead. Open `/developer` to inspect the current model, generated API and SDK, MCP
-tools, and design system.
+Open **http://localhost:3002**. With PostgreSQL running, Turbo migrates the local database before
+starting Vite. Development supplies a local administrator identity when no provider credential is
+present. Inspect the model and generated interfaces at `/developer` and the OpenAPI document at
+`/api/openapi`.
 
-[`.env.example`](.env.example) supplies executable local defaults. Create an ignored `.env.local`
-at the repository root or in this App only to override them. Values injected by a sandbox or
-deployment take precedence over both. The migration command creates a configured local database
-when needed, then applies migrations and required records. Run it directly with
-`pnpm turbo run db:migrate --filter=company-os`. Node loads local values only for development and
-database commands; Effect Config is the application's single typed configuration interface in Node
-and workerd. Only `VITE_` variables may enter browser code.
+[`.env.example`](.env.example) supplies local defaults. Injected environment variables take precedence,
+followed by app-local `.env.local`, repository `.env.local`, legacy app `.env`, and the example.
+Only `VITE_` values enter browser code. Effect Config owns typed server configuration.
 
-Set `VITE_COMPANY_OS_URL` to the public deployment origin when canonical URLs and the MCP Host/Origin
-allowlist should use it. When it is unset, the app omits canonical URLs instead of publishing a local
-development origin.
+Production disables the local identity. The default build and authentication adapters target
+Continual; using another host requires configuring the build target and a trusted identity adapter.
+Read [deployment](../../docs/runbooks/deployment.md) for the exact boundary. Local development needs
+no hosted platform.
 
-## Deploy
+## Follow a feature through the code
 
-Run `pnpm deploy` from the repository root. Turbo builds this App before its deployment task runs;
-the task migrates a configured database and then asks the repository-pinned Continual CLI to publish
-the existing `.output` artifact. Continual remains an optional publisher—the App owns its build,
-migrations, and runtime configuration.
+Start with [Engineering Issue](src/modules/engineering/issue/model.ts), a standard object with an assignee,
+status, and attachments. It needs no custom server or route. Its
+[UI contribution](src/modules/engineering/ui.ts) replaces the description editor with a multiline
+field while retaining the standard form and validation.
 
-## Ownership
+Then read [Sales Lead](src/modules/sales/lead/model.ts), its
+[conversion operation](src/modules/sales/lead/server/convert.ts), and its
+[UI contribution](src/modules/sales/ui.ts). Conversion is a custom multi-object transaction exposed
+through the same contract to every caller.
 
-This application owns:
+Module registration has three independent roots:
 
-- private business implementations and orchestration;
-- resolution of Continual App identity into business authorization;
-- persistence, migrations, transactions, and runtime configuration; and
-- the operating UI, developer surfaces, server functions, and external API routes.
+| Root                                                             | Contribution                                                       |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------ |
+| [`src/model.ts`](src/model.ts)                                   | Portable module definitions; exported as `company-os/model`        |
+| [`src/server/module-services.ts`](src/server/module-services.ts) | Custom Effect services and their layers                            |
+| [`src/app-ui.ts`](src/app-ui.ts)                                 | Module navigation, views, actions, tabs, editors, and custom pages |
 
-Reusable definitions belong in `@company/runtime`, the business contract belongs in
-`@company/model`, the reusable PostgreSQL adapter belongs in `@company/postgres`, and shared visual
-primitives belong in `@company/ui`. Server-only application code stays under `src/server`.
+Standard objects only need the model registration. The default services and generic routes derive
+from it. A recursive import check keeps React, Effect, storage, and provider code out of the public
+model, even though all three module entrypoints live together. See
+[Building a module](../../docs/modules.md) for an end-to-end example.
 
 ## Source map
 
-- `src/customization` owns product identity, assets, navigation, and the first authenticated
-  experience. It is ordinary source code, not a page schema or plugin system.
-- `src/routes` owns URL entry points and page metadata.
-- `src/ui/application` owns the shell; `src/ui/model` owns reusable model-driven UI; and
-  `src/ui/<module>` owns module-specific workflows.
-- `src/app-client.ts` exposes the semantic browser client derived from the application HTTP
-  contract.
-- `src/ui/forms` owns TanStack Form integration and the single mapping from schema or API violations
-  into form errors.
-- `src/server/model` owns generic model execution bindings and repositories.
-- `src/server/modules/<module>` owns behavior specific to a business module.
-- `src/server/transport` projects the governed implementation to HTTP and MCP.
-- `tools` contains the app's explicit database command entrypoints and local environment loader.
+| Directory or file                            | Responsibility                                                  |
+| -------------------------------------------- | --------------------------------------------------------------- |
+| [`src/modules`](src/modules/README.md)       | Business definitions, custom operations, and specialized UI     |
+| [`src/customization`](src/customization)     | Product identity, entry page, and authenticated home            |
+| [`src/routes`](src/routes)                   | URL entrypoints and route loaders                               |
+| [`src/ui/application`](src/ui/application)   | Shell, navigation, and session UI                               |
+| [`src/ui/model`](src/ui/model)               | Shared collection, record, relationship, and field components   |
+| [`src/ui/forms`](src/ui/forms)               | TanStack Form and schema/API error mapping                      |
+| [`src/app-client.ts`](src/app-client.ts)     | The generated semantic client used by feature code              |
+| [`src/data-client.ts`](src/data-client.ts)   | The shared Effect Atom query cache and invalidation             |
+| [`src/server`](src/server)                   | Authentication, authorization, service assembly, and transports |
+| [`src/server/database`](src/server/database) | App-owned storage schema, transactions, and migrations          |
+| [`tools`](tools)                             | Database commands and checks for model/storage boundaries       |
 
-Put business behavior in the model and governed server path rather than duplicating policy in React
-or customization configuration.
+Reusable primitives stay in `@company/ui`, portable definitions in `@company/runtime`, and the
+PostgreSQL repository implementation in `@company/postgres`. Other apps may consume public
+`company-os/model` and `company-os/metadata` exports; private services stay private.
 
-## Request path
+## Read and write paths
 
-```text
-UI / HTTP / MCP
-       |
-verified provider identity (Continual by default)
-       |
-App principal, roles, and invocation context
-       |
-governed object services and custom actions
-       |
-authorization and repositories
-       |
-PostgreSQL
-```
+The semantic client returns Effects. `useModelQuery` observes cached reads; Router loaders preload
+the same queries in the browser. Reference labels hydrate separately with bounded batch requests,
+and advisory capability checks do not block the collection's read path. A custom React component
+uses the same client rather than hand-writing HTTP requests.
 
-Custom Actions own explicit business transitions or invariants. Ordinary CRUD uses the standard
-model services. Both paths enforce authorization, validation, audit attribution, and transactions
-on the server even when the UI has already received an advisory capability result.
+Actions execute server-side authorization, validation, and transactions. Repositories report which
+object types changed, and the response invalidates affected cached reads. UI code does not maintain
+custom-action write sets or issue its own post-write reloads. Query and mutation examples are in the
+[module guide](../../docs/modules.md#read-and-write-data).
 
-## Database
+Identity verification is replaceable infrastructure. Company OS owns the resulting principals,
+roles, groups, ownership scopes, and business policy. The
+[architecture guide](../../docs/architecture.md) explains these boundaries and the current limits of
+caching, authorization, and asset storage.
 
-The model is the source of truth for persisted business shape. This app owns the resulting schema
-projection, explicit SQL migrations, generated snapshots, and release database job.
+## Change persisted shape
 
-From the repository root, use Turbo to target the app that owns the database:
+Edit a module, then from the repository root:
 
 ```sh
-pnpm turbo run db:check --filter=company-os
-pnpm turbo run db:migrate --filter=company-os
+pnpm --filter company-os db:generate
+# Review the generated migration before applying it.
+pnpm dev
 ```
 
-Read the [database workflow](../../docs/runbooks/database.md) before generating a migration,
-resetting local data, or deploying a schema change.
+The generator exposes all model tables to Drizzle Kit; ordinary object additions require no manual
+table registration. Migrations and snapshots are committed application history. Run `pnpm check`,
+relevant tests, and `pnpm build` after routing or bundling changes. Read the
+[database workflow](../../docs/runbooks/database.md) before resetting data or releasing a migration.
 
-## Further reading
+## Durable changes
 
-- [Architecture](../../docs/architecture.md)
-- [Modeling company operations](../../docs/modeling.md)
-- [`@company/model`](../../packages/model/README.md)
-- [`@company/runtime`](../../packages/runtime/README.md)
+The application owns a transactional event journal and an authorized cursor feed. Standard writes
+record events automatically; custom Actions can append typed facts. Open browsers consume that
+feed and refresh affected queries. Read [Durable events](../../docs/events.md) for the authoring
+path, transaction guarantees, and the current polling and retention behavior.

@@ -24,17 +24,17 @@ import type {
   ObjectDeleteInput,
   ObjectGetInput,
   ObjectRecord,
-  ObjectRef,
   ObjectType,
   ObjectUpdateInput,
 } from "./definition/object"
+import type { CustomQuery } from "./definition/query"
 import type { Batch, ListRequest, Page } from "./definition/request"
 import type {
   InferInputSchema,
   InferSchema,
   RecordIdentifier,
-  StructSchema,
 } from "./definition/schema"
+import { customMethodParams } from "./effect-http-custom-method"
 import type { LinkListInput, LinkMutationInput } from "./effect-link-service"
 
 function pascalCase(value: string): string {
@@ -54,7 +54,6 @@ export function httpEndpointId(
   const target =
     scope === "collection" ||
     operation === "list" ||
-    operation === "search" ||
     operation === "batchGet" ||
     operation === "batchDelete"
       ? object.collection
@@ -79,7 +78,6 @@ type OperationId<
   TScope extends "collection" ? TObject["collection"] : TObject["id"]
 >}`
 
-type ListQuery = Pick<ListRequest, "pageSize" | "pageToken">
 type UpdatePayload<
   TModel extends ModelCatalog,
   TObject extends ModelObject<TModel>,
@@ -91,26 +89,11 @@ type DeleteQuery<TObject extends ObjectType> = Pick<
 
 type NonEmpty<T> = keyof T extends never ? never : T
 
-type InputOf<TAction extends Action> =
-  TAction extends Action<
-    string,
-    string,
-    "collection" | "object",
-    infer TInput extends StructSchema
-  >
-    ? InferInputSchema<TInput>
-    : never
-
-type OutputOf<TAction extends Action> =
-  TAction extends Action<
-    string,
-    string,
-    "collection" | "object",
-    StructSchema,
-    infer TOutput extends StructSchema
-  >
-    ? InferSchema<TOutput>
-    : never
+type CustomOperation = Action | CustomQuery
+type ObjectCustomOperations<TObject extends ObjectType> = TObject["actions"] &
+  TObject["queries"]
+type InputOf<T extends CustomOperation> = InferInputSchema<T["input"]>
+type OutputOf<T extends CustomOperation> = InferSchema<T["output"]>
 
 type ClientRequestPart<TKey extends string, TValue> = [TValue] extends [never]
   ? object
@@ -128,12 +111,7 @@ type StandardClient<
   TObject extends ModelObject<TModel>,
 > = {
   readonly [TId in OperationId<"list", TObject, "collection">]: ClientMethod<
-    { readonly query: ListQuery },
-    Page<ObjectRecord<TObject>>
-  >
-} & {
-  readonly [TId in OperationId<"search", TObject, "collection">]: ClientMethod<
-    { readonly payload: ListRequest<TObject> },
+    { readonly query: ListRequest<TObject> },
     Page<ObjectRecord<TObject>>
   >
 } & {
@@ -196,7 +174,7 @@ type StandardClient<
 
 type ActionClientMethod<
   TObject extends ObjectType,
-  TAction extends Action,
+  TAction extends CustomOperation,
 > = ClientMethod<
   ClientRequestPart<
     "params",
@@ -210,12 +188,14 @@ type ActionClientMethod<
 
 type ActionClient<TObject extends ObjectType> = {
   readonly [
-    TAction in TObject["actions"][keyof TObject["actions"]] as TAction extends Action
+    TAction in ObjectCustomOperations<TObject>[keyof ObjectCustomOperations<TObject>] as TAction extends CustomOperation
       ? TAction["id"] extends StandardActionId
         ? never
         : OperationId<TAction["id"], TObject, TAction["scope"]>
       : never
-  ]: TAction extends Action ? ActionClientMethod<TObject, TAction> : never
+  ]: TAction extends CustomOperation
+    ? ActionClientMethod<TObject, TAction>
+    : never
 }
 
 type ObjectHttpClient<
@@ -274,6 +254,10 @@ type ClientLinkSides<
   ? ClientLinkSide<TObject, TLink>
   : never
 
+type RelatedRecord<O extends ObjectType> = O extends ObjectType
+  ? ObjectRecord<O> & { readonly objectType: O["id"] }
+  : never
+
 type LinkTraversalClient<TModel extends ModelCatalog, TSide> = TSide extends {
   readonly direction: "forward" | "reverse"
   readonly link: infer TLink extends LinkType
@@ -283,7 +267,16 @@ type LinkTraversalClient<TModel extends ModelCatalog, TSide> = TSide extends {
   ? {
       readonly list: ClientMethod<
         LinkListInput,
-        Page<ObjectRef<ModelEndpointObjectTypeId<TModel, TTarget["from"]>>>
+        Page<
+          RelatedRecord<
+            Extract<
+              ModelObject<TModel>,
+              {
+                readonly id: ModelEndpointObjectTypeId<TModel, TTarget["from"]>
+              }
+            >
+          >
+        >
       >
     } & (TLink["writeFrom"] extends TTraversal["key"]
       ? {
@@ -314,12 +307,12 @@ type DirectClientMethod<TInput, TOutput> = (
 
 type DirectActionClient<TObject extends ObjectType> = {
   readonly [
-    TAction in TObject["actions"][keyof TObject["actions"]] as TAction extends Action
+    TAction in ObjectCustomOperations<TObject>[keyof ObjectCustomOperations<TObject>] as TAction extends CustomOperation
       ? TAction["id"] extends StandardActionId
         ? never
         : TAction["id"]
       : never
-  ]: TAction extends Action
+  ]: TAction extends CustomOperation
     ? DirectClientMethod<InputOf<TAction>, OutputOf<TAction>>
     : never
 }
@@ -405,7 +398,16 @@ function nativeMethod(group: object, identifier: string): NativeModelMethod {
 /** Projects the native Effect client as direct object, Action, and Link methods. */
 export function createModelClient<TModel extends ModelCatalog>(
   model: TModel,
-  nativeClient: object
+  nativeClient: object,
+  options?: {
+    /** Application-owned query caching; actions always execute through the native client. */
+    readonly transformQuery?: (
+      objectType: string,
+      operation: string,
+      input: unknown,
+      effect: Effect.Effect<unknown, unknown>
+    ) => Effect.Effect<unknown, unknown>
+  }
 ): ModelClient<TModel> {
   const result: Record<string, Record<string, unknown>> = {}
   for (const object of modelObjects(model)) {
@@ -413,20 +415,33 @@ export function createModelClient<TModel extends ModelCatalog>(
     const endpoint = (operation: string, scope?: "collection" | "object") =>
       nativeMethod(group, httpEndpointId(operation, object, scope))
     const list = endpoint("list")
-    const search = endpoint("search")
+    const cachedQuery = (
+      operation: string,
+      input: unknown,
+      effect: Effect.Effect<unknown, unknown>
+    ) =>
+      options?.transformQuery?.(object.id, operation, input, effect) ?? effect
     const methods: Record<string, unknown> = {
       batchGet: (input: ObjectBatchGetInput<ObjectType>) =>
-        endpoint("batchGet")({ payload: input }),
+        cachedQuery(
+          "batchGet",
+          input,
+          endpoint("batchGet")({
+            params: customMethodParams("batchGet"),
+            payload: input,
+          })
+        ),
       get: (input: ObjectGetInput<ObjectType>) =>
-        endpoint("get")({ params: input }),
+        cachedQuery("get", input, endpoint("get")({ params: input })),
       list: (input: ListRequest = {}) =>
-        input.filter === undefined && input.sort === undefined
-          ? list({ query: input })
-          : search({ payload: input }),
+        cachedQuery("list", input, list({ query: input })),
     }
     if (Object.hasOwn(object.actions, "batchDelete")) {
       methods.batchDelete = (input: ObjectBatchDeleteInput<ObjectType>) =>
-        endpoint("batchDelete")({ payload: input })
+        endpoint("batchDelete")({
+          params: customMethodParams("batchDelete"),
+          payload: input,
+        })
     }
     if (Object.hasOwn(object.actions, "create")) {
       methods.create = (input: object) => endpoint("create")({ payload: input })
@@ -447,25 +462,43 @@ export function createModelClient<TModel extends ModelCatalog>(
         return endpoint("update")({ params: { id }, payload })
       }
     }
-    for (const action of Object.values(object.actions)) {
+    for (const action of [
+      ...Object.values(object.actions),
+      ...Object.values(object.queries),
+    ]) {
       if (isStandardActionId(action.id)) continue
       const actionEndpoint = endpoint(action.id, action.scope)
       methods[action.id] = (input: Readonly<Record<string, unknown>>) => {
-        if (action.scope === "collection") {
-          return actionEndpoint({ payload: input })
-        }
         const { id, ...payload } = input
-        return actionEndpoint({ params: { id }, payload })
+        const effect = actionEndpoint({
+          params: customMethodParams(
+            action.id,
+            action.scope === "object" ? { id } : {}
+          ),
+          payload: action.scope === "object" ? payload : input,
+        })
+        return action.kind === "query"
+          ? cachedQuery(action.id, input, effect)
+          : effect
       }
     }
+
     for (const traversal of modelObjectLinkTraversals(model, object)) {
       const traversalMethods: Record<string, unknown> = {
         list: (input: LinkListInput) => {
           const { id, ...query } = input
-          return nativeMethod(
+          const effect = nativeMethod(
             group,
             linkHttpEndpointId("list", object, traversal)
           )({ params: { id }, query })
+          return (
+            options?.transformQuery?.(
+              object.id,
+              `${traversal.traversal.key}.list`,
+              input,
+              effect
+            ) ?? effect
+          )
         },
       }
       if (traversal.writable) {
@@ -473,7 +506,10 @@ export function createModelClient<TModel extends ModelCatalog>(
           nativeMethod(
             group,
             linkHttpEndpointId("link", object, traversal)
-          )({ params: input })
+          )({
+            params: customMethodParams("link", { id: input.id }),
+            payload: { target: input.target },
+          })
         if (
           traversal.traversal.cardinality !== "one" &&
           traversal.target.cardinality !== "one"
@@ -482,7 +518,10 @@ export function createModelClient<TModel extends ModelCatalog>(
             nativeMethod(
               group,
               linkHttpEndpointId("unlink", object, traversal)
-            )({ params: input })
+            )({
+              params: customMethodParams("unlink", { id: input.id }),
+              payload: { target: input.target },
+            })
         }
       }
       methods[traversal.traversal.key] = traversalMethods

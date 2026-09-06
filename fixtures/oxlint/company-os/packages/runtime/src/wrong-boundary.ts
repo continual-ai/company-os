@@ -1,1 +1,1 @@
-import "@company/model"
+import "company-os/model"

@@ -6,6 +6,13 @@ operating policy.
 
 ## Develop
 
+Create your source-owned copy from the repository root:
+
+```sh
+pnpm app:create marketing-site website
+pnpm turbo run dev --filter=website
+```
+
 From this package directory:
 
 ```sh

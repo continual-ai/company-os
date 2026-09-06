@@ -1,8 +1,8 @@
-import { Model } from "@company/model"
 import { createFileRoute } from "@tanstack/react-router"
+import { Model } from "company-os/model"
 
 import { pageOptions } from "@/route-metadata"
-import { ObjectCollection } from "@/ui/model/object-collection"
+import { ModelCollectionPage } from "@/ui/model/model-pages"
 
 const page = {
   breadcrumb: "Service accounts",
@@ -19,5 +19,5 @@ export const Route = createFileRoute(
 })
 
 function ServiceAccountsSettings() {
-  return <ObjectCollection object={Model.objects.serviceAccount} />
+  return <ModelCollectionPage object={Model.objects.serviceAccount} />
 }

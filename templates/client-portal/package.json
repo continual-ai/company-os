@@ -10,11 +10,11 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@company/model": "workspace:*",
     "@company/ui": "workspace:*",
     "@continual/sdk": "catalog:",
     "@tanstack/react-router": "catalog:",
     "@tanstack/react-start": "catalog:",
+    "company-os": "workspace:*",
     "react": "catalog:",
     "react-dom": "catalog:"
   },

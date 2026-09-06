@@ -103,3 +103,26 @@ export function objectCollectionStateSearch(
 ): ObjectCollectionSearch {
   return state === view.state ? { view: view.id } : { state, view: view.id }
 }
+
+/** Defines a saved view with empty filters and sorting unless specified. */
+export function defineCollectionView(
+  id: string,
+  label: string,
+  options: {
+    readonly columns: ReadonlyArray<string>
+    readonly filters?: ObjectCollectionView["state"]["filters"]
+    readonly sorting?: ObjectCollectionView["state"]["sorting"]
+  }
+): ObjectCollectionView {
+  return {
+    id,
+    label,
+    state: {
+      filters: options.filters ?? [],
+      sorting: options.sorting ?? [],
+      visibility: Object.fromEntries(
+        options.columns.map((column) => [column, true])
+      ),
+    },
+  }
+}

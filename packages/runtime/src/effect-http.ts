@@ -22,11 +22,21 @@ import {
   modelObjects,
 } from "./definition/model"
 import { Etag, type ObjectType } from "./definition/object"
-import { standardQueries } from "./definition/query"
+import {
+  standardQueries,
+  type CustomQuery,
+  type Query,
+} from "./definition/query"
 import { MAX_BATCH_DELETE_SIZE, PageToken } from "./definition/request"
 import { schema } from "./definition/schema"
 import { ValidationError } from "./definition/standard-error"
 import { httpEndpointId, linkHttpEndpointId } from "./effect-http-client"
+import {
+  customMethodApi,
+  customMethodParameter,
+  customMethodPath,
+  customMethodServerApi,
+} from "./effect-http-custom-method"
 import type { LinkService } from "./effect-link-service"
 import {
   executableModelOperation,
@@ -37,13 +47,13 @@ import {
   modelOperationErrors,
 } from "./effect-model-implementation"
 import {
+  linkPageOutputSchema,
   objectBatchGetInputSchema,
   objectBatchOutputSchema,
   objectListInputSchema,
   objectPageOutputSchema,
   objectRecordOutputSchema,
   pageSizeSchema,
-  pageTotalSizeSchema,
 } from "./effect-model-schemas"
 import type { CurrentInvocation } from "./effect-object-service"
 import {
@@ -183,18 +193,14 @@ const validationErrorSchema = errorSchemas([ValidationError])[0]!
 
 function projectedErrorSchemas(
   object: ObjectType,
-  definition:
-    | Action
-    | ReturnType<typeof standardQueries>[keyof ReturnType<
-        typeof standardQueries
-      >]
+  definition: Action | Query | CustomQuery
 ) {
   return errorSchemas(
     modelOperationErrors({
       definition,
       key: `${object.id}.${definition.id}`,
       object,
-    })
+    }).filter((error) => error.reason !== ValidationError.reason)
   )
 }
 
@@ -236,16 +242,7 @@ function addLinkEndpoints(
           pageSize: Schema.optionalKey(pageSizeSchema),
           pageToken: Schema.optionalKey(pageTokenSchema),
         },
-        success: Schema.Struct({
-          items: Schema.Array(
-            Schema.Struct({
-              id: Schema.String,
-              objectType: Schema.String,
-            })
-          ),
-          nextPageToken: Schema.NullOr(pageTokenSchema),
-          totalSize: pageTotalSizeSchema,
-        }).annotate({
+        success: linkPageOutputSchema(model, traversal).annotate({
           identifier: `${pascalCase(object.id)}${pascalCase(traversal.traversal.key)}Page`,
         }),
         error: errorSchemas(modelOperationErrors(listDescriptor)),
@@ -267,9 +264,12 @@ function addLinkEndpoints(
     result = result.add(listEndpoint)
 
     if (!traversal.writable) continue
-    const targetPath = `${collectionPath}/:target` as const
-    const params = Schema.Struct({
-      id: toEffectRecordIdentifierSchema(object.id),
+    const mutationParams = (method: string) =>
+      Schema.Struct({
+        id: toEffectRecordIdentifierSchema(object.id),
+        [method]: customMethodParameter(method),
+      })
+    const payload = Schema.Struct({
       target: toEffectRecordIdentifierSchema(traversal.target.from.typeId),
     })
     const linkActionDescriptor = linkDescriptor(
@@ -279,11 +279,12 @@ function addLinkEndpoints(
       "link"
     )
     result = result.add(
-      HttpApiEndpoint.put(
+      HttpApiEndpoint.post(
         linkHttpEndpointId("link", object, traversal),
-        targetPath,
+        customMethodPath(collectionPath, "link"),
         {
-          params,
+          params: mutationParams("link"),
+          payload,
           success: HttpApiSchema.NoContent,
           error: errorSchemas(modelOperationErrors(linkActionDescriptor)),
         }
@@ -303,11 +304,12 @@ function addLinkEndpoints(
     }
     const unlinkDescriptor = linkDescriptor(model, object, traversal, "unlink")
     result = result.add(
-      HttpApiEndpoint.delete(
+      HttpApiEndpoint.post(
         linkHttpEndpointId("unlink", object, traversal),
-        targetPath,
+        customMethodPath(collectionPath, "unlink"),
         {
-          params,
+          params: mutationParams("unlink"),
+          payload,
           success: HttpApiSchema.NoContent,
           error: errorSchemas(modelOperationErrors(unlinkDescriptor)),
         }
@@ -359,12 +361,29 @@ function addDefaultEndpoints(
   const batchGetErrors = projectedErrorSchemas(object, queries.batchGet)
   let result = group
 
+  const listInput = objectListInputSchema(object)
   const listResponse = objectPageOutputSchema(object)
   const listEndpoint = HttpApiEndpoint.get(
     httpEndpointId("list", object),
     collectionPath,
     {
       query: {
+        filter: Schema.optionalKey(
+          Schema.fromJsonString(
+            Schema.requiredKey(listInput.fields.filter)
+          ).annotate({
+            description:
+              "JSON-encoded structured filter. Supports nested and/or/not expressions.",
+          })
+        ),
+        sort: Schema.optionalKey(
+          Schema.fromJsonString(
+            Schema.requiredKey(listInput.fields.sort)
+          ).annotate({
+            description:
+              "JSON-encoded array of field, direction, and optional nulls ordering.",
+          })
+        ),
         pageSize: Schema.optionalKey(pageSizeSchema),
         pageToken: Schema.optionalKey(
           pageTokenSchema.annotate({
@@ -384,29 +403,12 @@ function addDefaultEndpoints(
   )
   result = result.add(listEndpoint)
 
-  const searchEndpoint = HttpApiEndpoint.post(
-    httpEndpointId("search", object),
-    `${collectionPath}/search`,
-    {
-      payload: objectListInputSchema(object),
-      success: listResponse,
-      error: listErrors,
-    }
-  ).annotateMerge(
-    endpointAnnotations({
-      description:
-        "Standard object search with nested boolean filters, type-aware comparison operators, deterministic multi-property sorting, and cursor pagination.",
-      identifier: httpEndpointId("search", object),
-      summary: `Search ${object.pluralName.toLowerCase()}`,
-    })
-  )
-  result = result.add(searchEndpoint)
-
   const batchResponse = objectBatchOutputSchema(object)
   const batchEndpoint = HttpApiEndpoint.post(
     httpEndpointId("batchGet", object),
-    `${collectionPath}/batchGet`,
+    customMethodPath(collectionPath, "batchGet"),
     {
+      params: { batchGet: customMethodParameter("batchGet") },
       payload: objectBatchGetInputSchema(object),
       success: batchResponse,
       error: batchGetErrors,
@@ -423,8 +425,9 @@ function addDefaultEndpoints(
   if (object.actions.batchDelete !== undefined) {
     const endpoint = HttpApiEndpoint.post(
       httpEndpointId("batchDelete", object),
-      `${collectionPath}/batchDelete`,
+      customMethodPath(collectionPath, "batchDelete"),
       {
+        params: { batchDelete: customMethodParameter("batchDelete") },
         payload: Schema.Struct({
           ids: Schema.Array(
             toEffectRecordIdentifierSchema(object.id).annotate({
@@ -540,10 +543,10 @@ function addDefaultEndpoints(
   return result
 }
 
-function addActionEndpoint(
+function addCustomEndpoint(
   group: DynamicGroup,
   object: ObjectType,
-  action: Action,
+  action: Action | CustomQuery,
   basePath: `/${string}`
 ): DynamicGroup {
   const identifier = httpEndpointId(action.id, object, action.scope)
@@ -559,22 +562,23 @@ function addActionEndpoint(
   const hasBody = Object.keys(bodyProperties).length > 0
   const path =
     action.scope === "object"
-      ? (`${basePath}/${object.collection}/:id/actions/${action.id}` as const)
-      : (`${basePath}/${object.collection}/actions/${action.id}` as const)
+      ? customMethodPath(`${basePath}/${object.collection}/:id`, action.id)
+      : customMethodPath(`${basePath}/${object.collection}`, action.id)
   const error = projectedErrorSchemas(object, action)
   const payload = toEffectInputSchema(schema.object(bodyProperties)).annotate({
     identifier: `${pascalCase(identifier)}Input`,
     title: `${action.name} input`,
   })
-  const params = toEffectInputSchema(schema.object(pathProperties))
-  const transport =
-    placeholders.length === 0
-      ? hasBody
-        ? { payload }
-        : undefined
-      : hasBody
-        ? { params, payload }
-        : { params }
+  const params = Schema.Struct({
+    ...Object.fromEntries(
+      Object.entries(pathProperties).map(([key, property]) => [
+        key,
+        toEffectInputSchema(property),
+      ])
+    ),
+    [action.id]: customMethodParameter(action.id),
+  })
+  const transport = hasBody ? { params, payload } : { params }
   const options = {
     success: toEffectSchema(action.output).annotate({
       identifier: `${pascalCase(identifier)}Output`,
@@ -600,26 +604,6 @@ function addActionEndpoint(
   return group.add(endpoint)
 }
 
-const restoreActionPaths: (typeof OpenApi.Transform)["Service"] = (
-  document
-) => {
-  // SAFETY: Effect invokes this hook only with the OpenAPI document it just
-  // generated; the narrower type exposes that library-owned contract.
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  const openApi = document as OpenApi.OpenAPISpec
-  return {
-    ...openApi,
-    paths: Object.fromEntries(
-      Object.entries(openApi.paths).map(([path, operation]) => [
-        path
-          .replace(/\{([^}/]+)\}\(\1\)/g, ":$1")
-          .replace(/:\{([^}/]+)\}$/g, ":$1"),
-        operation,
-      ])
-    ),
-  }
-}
-
 /** Compiles a portable model into an Effect v4 HTTP contract. */
 export function createModelHttpApi(
   model: ModelCatalog,
@@ -632,7 +616,6 @@ export function createModelHttpApi(
       title: `${model.name} API`,
       version: options.version ?? "1.0.0",
       servers: [{ url: "/" }],
-      transform: restoreActionPaths,
     })
   )
   // SAFETY: Effect's group union is phantom state; widening it lets this
@@ -654,9 +637,12 @@ export function createModelHttpApi(
     group = addDefaultEndpoints(group, model, object, basePath)
     group = addLinkEndpoints(group, model, object, basePath)
 
-    for (const action of Object.values(object.actions)) {
+    for (const action of [
+      ...Object.values(object.actions),
+      ...Object.values(object.queries),
+    ]) {
       if (isStandardActionId(action.id)) continue
-      group = addActionEndpoint(group, object, action, basePath)
+      group = addCustomEndpoint(group, object, action, basePath)
     }
 
     httpApi = httpApi.add(group)
@@ -665,9 +651,10 @@ export function createModelHttpApi(
   // SAFETY: middleware changes only Effect's phantom requirements; every
   // generated server provides HttpValidationMiddleware.layer.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  return httpApi.middleware(
+  const validated = httpApi.middleware(
     HttpValidationMiddleware
   ) as unknown as DynamicHttpApi
+  return customMethodApi(validated)
 }
 
 function standardHandlers(
@@ -682,11 +669,11 @@ function standardHandlers(
   const descriptor = (id: string) =>
     executableModelOperation(implementation.model, object.id, id)
 
+  handlers = handlers.handle(httpEndpointId("get", object), (request) =>
+    invoke(request, descriptor("get"), call("get", request.params))
+  )
   handlers = handlers.handle(httpEndpointId("list", object), (request) =>
     invoke(request, descriptor("list"), call("list", request.query))
-  )
-  handlers = handlers.handle(httpEndpointId("search", object), (request) =>
-    invoke(request, descriptor("list"), call("list", request.payload))
   )
   handlers = handlers.handle(httpEndpointId("batchGet", object), (request) =>
     invoke(request, descriptor("batchGet"), call("batchGet", request.payload))
@@ -719,8 +706,10 @@ export function createModelHttpHandlers(
   // implementation.model; the dynamic compiler validates those same keys.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const dynamicApi = api as DynamicHttpApi
+  const ServerApi = customMethodServerApi(dynamicApi)
+
   const groupLayers = modelObjects(implementation.model).map((object) =>
-    HttpApiBuilder.group(dynamicApi, object.id, (initialHandlers) => {
+    HttpApiBuilder.group(ServerApi, object.id, (initialHandlers) => {
       // SAFETY: Effect decoded these handlers from the model-derived group.
       let handlers = standardHandlers(
         // oxlint-disable-next-line typescript/no-unsafe-type-assertion
@@ -730,7 +719,10 @@ export function createModelHttpHandlers(
         invoke
       )
 
-      for (const action of Object.values(object.actions)) {
+      for (const action of [
+        ...Object.values(object.actions),
+        ...Object.values(object.queries),
+      ]) {
         if (isStandardActionId(action.id)) continue
         handlers = handlers.handle(
           httpEndpointId(action.id, object, action.scope),
@@ -774,6 +766,7 @@ export function createModelHttpHandlers(
                 executeModelOperation(implementation, descriptor, {
                   ...request.params,
                   ...request.query,
+                  ...request.payload,
                 })
               )
           )

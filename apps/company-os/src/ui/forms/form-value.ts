@@ -19,4 +19,5 @@ export type FormValue =
   | number
   | string
   | ReadonlyArray<string>
+  | ReadonlyArray<FormValueObject>
   | FormValueObject

@@ -1,103 +1,27 @@
-import { Model } from "@company/model"
-import {
-  MAX_PAGE_SIZE,
-  type ListRequest,
-  type Page,
-  type PageToken,
-} from "@company/runtime"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { type ListRequest, type Page, type PageToken } from "@company/runtime"
+import { Effect } from "effect"
+import { useMemo, useState } from "react"
 
-import { capabilityKey } from "@/capabilities"
-import { ROOT_ID } from "@/system-records"
-import { loadAllowedCapabilities } from "@/ui/application/load-capabilities"
+import { modelData } from "@/data-client"
+import { useCapabilities } from "@/ui/application/use-capabilities"
+import { useModelQuery } from "@/use-model-query"
 
-import {
-  objectCapabilityCheck,
-  objectCapabilityChecks,
-} from "./object-capabilities"
-import {
-  clientFor,
-  recordLabel,
-  recordObjectTypes,
-  type ClientRecord,
-  type ModelObject,
-} from "./object-client"
+import { objectCapabilityCheck } from "./object-capabilities"
+import { clientFor, type ClientRecord, type ModelObject } from "./object-client"
 import { objectListRequest } from "./object-collection-query"
 import type {
   ObjectCollectionFilter,
   ObjectCollectionSort,
 } from "./object-collection-view"
 import type { ObjectFormInput } from "./object-form"
-import { objectTablePropertySchema } from "./object-table/object-table-cell-types"
 import type { ObjectTableValue } from "./object-table/object-table-config"
+import { loadReferenceLabels } from "./reference-labels"
 
 export type ObjectCollectionList = (
   request: ListRequest
-) => Promise<Page<ClientRecord>>
-
-function chunks<T>(values: ReadonlyArray<T>, size: number): ReadonlyArray<T[]> {
-  const result: T[][] = []
-  for (let index = 0; index < values.length; index += size) {
-    result.push(values.slice(index, index + size))
-  }
-  return result
-}
-
-export async function loadReferenceLabels(
-  object: ModelObject,
-  records: ReadonlyArray<ClientRecord>
-): Promise<ReadonlyMap<string, string>> {
-  const references = new Map<string, Set<string>>()
-  const addReferences = (typeId: string, ids: ReadonlyArray<string>) => {
-    const values = references.get(typeId) ?? new Set<string>()
-    for (const id of ids) values.add(id)
-    references.set(typeId, values)
-  }
-
-  if (object.parent.kind !== "root") {
-    addReferences(
-      object.parent.typeId,
-      records.flatMap((record) =>
-        record.parent === undefined ? [] : [record.parent]
-      )
-    )
-  }
-  for (const [propertyId, property] of Object.entries(object.properties)) {
-    const propertySchema = objectTablePropertySchema(property)
-    if (propertySchema.kind !== "recordId") continue
-    addReferences(
-      propertySchema.typeId,
-      records.flatMap((record) => {
-        const value = record[propertyId]
-        // The client record is the parsed API representation; references are
-        // the string member of its closed value union.
-        return typeof value === "string" ? [value] : []
-      })
-    )
-  }
-
-  const labels = new Map<string, string>([[ROOT_ID, Model.root.name]])
-  await Promise.all(
-    [...references].flatMap(([typeId, values]) =>
-      recordObjectTypes(typeId).flatMap((referencedObject) =>
-        chunks(
-          [...values].filter((id) => id !== ROOT_ID),
-          MAX_PAGE_SIZE
-        ).map(async (ids) => {
-          if (ids.length === 0) return
-          const page = await clientFor(referencedObject).list({
-            filter: { field: "id", operator: "in", value: ids },
-            pageSize: MAX_PAGE_SIZE,
-          })
-          for (const record of page.items) {
-            labels.set(record.id, recordLabel(referencedObject, record))
-          }
-        })
-      )
-    )
-  )
-  return labels
-}
+) => Effect.Effect<Page<ClientRecord>, unknown>
+const noRecords: ReadonlyArray<ClientRecord> = []
+const noLabels: ReadonlyMap<string, string> = new Map()
 
 export function useObjectCollection(
   object: ModelObject,
@@ -107,72 +31,73 @@ export function useObjectCollection(
 ) {
   const client = useMemo(() => clientFor(object), [object])
   const list = listRecords ?? client.list
-  const [pageIndex, setPageIndex] = useState(0)
-  const [pageTokens, setPageTokens] = useState<
-    ReadonlyArray<PageToken | undefined>
-  >([undefined])
-  const [nextPageToken, setNextPageToken] = useState<PageToken | null>(null)
-  const [totalSize, setTotalSize] = useState(0)
-  const [records, setRecords] = useState<ReadonlyArray<ClientRecord>>([])
-  const [allowedCapabilities, setAllowedCapabilities] = useState<
-    ReadonlySet<string>
-  >(new Set())
-  const [referenceLabels, setReferenceLabels] = useState<
-    ReadonlyMap<string, string>
-  >(new Map([[ROOT_ID, Model.root.name]]))
-  const [error, setError] = useState<string>()
-  const [loading, setLoading] = useState(true)
-  const requestId = useRef(0)
-  const pageToken = pageTokens[pageIndex]
-
-  const load = useCallback(async () => {
-    const currentRequest = ++requestId.current
-    setLoading(true)
-    setError(undefined)
-    setAllowedCapabilities(new Set())
-    try {
-      const page = await list(
-        objectListRequest(object, columnFilters, sorting, pageToken)
-      )
-      const checks = objectCapabilityChecks(
-        object,
-        page.items.map(({ id }) => id)
-      )
-      const [labels, nextAllowedCapabilities] = await Promise.all([
-        loadReferenceLabels(object, page.items),
-        loadAllowedCapabilities(checks),
-      ])
-      if (requestId.current !== currentRequest) return
-      setRecords(page.items)
-      setAllowedCapabilities(nextAllowedCapabilities)
-      setNextPageToken(page.nextPageToken)
-      setTotalSize(page.totalSize)
-      setReferenceLabels(labels)
-    } catch (cause) {
-      if (requestId.current === currentRequest) {
-        setError(
-          cause instanceof Error ? cause.message : "The operation failed."
-        )
-      }
-    } finally {
-      if (requestId.current === currentRequest) setLoading(false)
-    }
-  }, [columnFilters, list, object, pageToken, sorting])
-
-  useEffect(() => {
-    void load()
-  }, [load])
-
-  useEffect(() => {
-    setPageIndex(0)
-    setPageTokens([undefined])
-  }, [columnFilters, listRecords, sorting])
+  const [pagination, setPagination] = useState({
+    columnFilters,
+    sorting,
+    list,
+    index: 0,
+    tokens: [undefined] as ReadonlyArray<PageToken | undefined>,
+  })
+  if (
+    pagination.columnFilters !== columnFilters ||
+    pagination.sorting !== sorting ||
+    pagination.list !== list
+  )
+    setPagination({
+      columnFilters,
+      sorting,
+      list,
+      index: 0,
+      tokens: [undefined],
+    })
+  const pageIndex = pagination.index
+  const pageToken = pagination.tokens[pageIndex]
+  const setPageTokens = (
+    update: (
+      tokens: ReadonlyArray<PageToken | undefined>
+    ) => ReadonlyArray<PageToken | undefined>
+  ) =>
+    setPagination((current) => ({ ...current, tokens: update(current.tokens) }))
+  const setPageIndex = (update: (index: number) => number) =>
+    setPagination((current) => ({ ...current, index: update(current.index) }))
+  const pageQuery = useMemo(
+    () => list(objectListRequest(object, columnFilters, sorting, pageToken)),
+    [list, object, columnFilters, sorting, pageToken]
+  )
+  const page = useModelQuery(pageQuery)
+  const labelsQuery = useMemo(
+    () =>
+      pageQuery.pipe(
+        Effect.flatMap((result) => loadReferenceLabels(object, result.items))
+      ),
+    [pageQuery, object]
+  )
+  const labels = useModelQuery(labelsQuery)
+  const checks = useMemo(
+    () =>
+      Object.keys(object.actions).flatMap((action) => {
+        const check = objectCapabilityCheck(object, action)
+        return check === undefined ? [] : [check]
+      }),
+    [object]
+  )
+  const capabilities = useCapabilities(checks)
+  const records = page.value?.items ?? noRecords
+  const nextPageToken = page.value?.nextPageToken ?? null
+  const totalSize = page.value?.totalSize ?? 0
+  const referenceLabels = labels.value ?? noLabels
+  const loading = page.loading
+  const error =
+    page.error === undefined
+      ? undefined
+      : page.error instanceof Error
+        ? page.error.message
+        : "The operation failed."
 
   const update = async (record: ClientRecord, changes: ObjectFormInput) => {
     if (client.update === undefined)
       throw new Error("Updates are not available.")
     await client.update({ ...changes, etag: record.etag, id: record.id })
-    await load()
   }
   const updateCell = async (
     recordId: string,
@@ -198,7 +123,6 @@ export function useObjectCollection(
     } else {
       throw new Error("Deletion is not available.")
     }
-    await load()
   }
   const nextPage = () => {
     if (nextPageToken === null) return
@@ -211,7 +135,12 @@ export function useObjectCollection(
 
   const can = (actionId: string, target?: string) => {
     const check = objectCapabilityCheck(object, actionId, target)
-    return check !== undefined && allowedCapabilities.has(capabilityKey(check))
+    if (target !== undefined) {
+      if (actionId === "get") return true
+      const general = objectCapabilityCheck(object, actionId)
+      return general !== undefined && capabilities.can(general)
+    }
+    return check !== undefined && capabilities.can(check)
   }
 
   return {
@@ -225,7 +154,10 @@ export function useObjectCollection(
     columnFilters,
     deleteRecords,
     error,
-    load,
+    load: async () => {
+      modelData().invalidate(["*"])
+      await Effect.runPromise(pageQuery)
+    },
     loading,
     nextPage,
     pageIndex,

@@ -1,8 +1,8 @@
-import { Model } from "@company/model"
 import { createFileRoute } from "@tanstack/react-router"
+import { Model } from "company-os/model"
 
 import { pageOptions } from "@/route-metadata"
-import { ObjectCollection } from "@/ui/model/object-collection"
+import { ModelCollectionPage } from "@/ui/model/model-pages"
 
 export const Route = createFileRoute(
   "/_app/settings/(access)/group-memberships"
@@ -12,5 +12,7 @@ export const Route = createFileRoute(
     description: "Add users and service accounts to groups.",
     title: "Group memberships",
   }),
-  component: () => <ObjectCollection object={Model.objects.groupMembership} />,
+  component: () => (
+    <ModelCollectionPage object={Model.objects.groupMembership} />
+  ),
 })

@@ -7,6 +7,7 @@ import {
   MAX_CAPABILITY_CHECKS,
   type CapabilityCheck,
 } from "@/capabilities"
+import { modelData } from "@/data-client"
 
 function chunks<T>(values: ReadonlyArray<T>, size: number): ReadonlyArray<T[]> {
   const result: T[][] = []
@@ -17,26 +18,32 @@ function chunks<T>(values: ReadonlyArray<T>, size: number): ReadonlyArray<T[]> {
 }
 
 /** Resolves advisory UI capabilities in bounded batches and fails closed. */
-export async function loadAllowedCapabilities(
+export function loadAllowedCapabilities(
   requestedChecks: ReadonlyArray<CapabilityCheck>
-): Promise<ReadonlySet<string>> {
-  const checks = [
-    ...new Map(
-      requestedChecks.map((check) => [capabilityKey(check), check])
-    ).values(),
-  ]
-  if (checks.length === 0) return new Set()
-  const responses = await Promise.all(
-    chunks(checks, MAX_CAPABILITY_CHECKS).map((batch) =>
-      Effect.runPromise(
-        checkCapabilities({
-          payload: { checks: batch },
-        })
-      )
+): Effect.Effect<ReadonlySet<string>, unknown> {
+  return Effect.gen(function* () {
+    const checks = [
+      ...new Map(
+        requestedChecks.map((check) => [capabilityKey(check), check])
+      ).values(),
+    ]
+    if (checks.length === 0) return new Set()
+    const responses = yield* Effect.all(
+      chunks(checks, MAX_CAPABILITY_CHECKS).map((batch) =>
+        modelData().query(
+          "@iam",
+          "check",
+          batch,
+          checkCapabilities({
+            payload: { checks: batch },
+          })
+        )
+      ),
+      { concurrency: "unbounded" }
     )
-  )
-  return allowedCapabilityKeys(
-    checks,
-    responses.flatMap(({ results }) => results)
-  )
+    return allowedCapabilityKeys(
+      checks,
+      responses.flatMap(({ results }) => results)
+    )
+  })
 }

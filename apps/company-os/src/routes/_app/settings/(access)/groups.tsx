@@ -1,9 +1,8 @@
-import { Model } from "@company/model"
-import { Button } from "@company/ui/components/button"
-import { Link, createFileRoute } from "@tanstack/react-router"
+import { createFileRoute } from "@tanstack/react-router"
+import { Model } from "company-os/model"
 
 import { pageOptions } from "@/route-metadata"
-import { ObjectCollection } from "@/ui/model/object-collection"
+import { ModelCollectionPage } from "@/ui/model/model-pages"
 
 export const Route = createFileRoute("/_app/settings/(access)/groups")({
   ...pageOptions({
@@ -15,18 +14,5 @@ export const Route = createFileRoute("/_app/settings/(access)/groups")({
 })
 
 function GroupsPage() {
-  return (
-    <ObjectCollection
-      object={Model.objects.group}
-      renderCollectionActions={() => (
-        <Button
-          variant="outline"
-          nativeButton={false}
-          render={<Link to="/settings/group-memberships" />}
-        >
-          Memberships
-        </Button>
-      )}
-    />
-  )
+  return <ModelCollectionPage object={Model.objects.group} />
 }

@@ -1,6 +1,6 @@
-import { modelMetadata } from "@company/model/metadata"
 import { Button } from "@company/ui/components/button"
 import { createFileRoute } from "@tanstack/react-router"
+import { modelMetadata } from "company-os/metadata"
 
 import { appMetadata } from "@/app-metadata"
 

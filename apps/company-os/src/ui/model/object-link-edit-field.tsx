@@ -1,5 +1,6 @@
 import type { ModelLinkTraversal } from "@company/runtime"
 import { Button } from "@company/ui/components/button"
+import { Effect } from "effect"
 import { XIcon } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
@@ -87,8 +88,10 @@ export function ObjectLinkEditField({
           pageToken === undefined
             ? { id: record.id, pageSize }
             : { id: record.id, pageSize, pageToken }
-        const page = await client.list(request)
-        const described = await describeReferences(page.items)
+        const page = await Effect.runPromise(client.list(request))
+        const described = await Effect.runPromise(
+          describeReferences(page.items)
+        )
         if (requestId.current !== currentRequest) return
         setCurrent((loaded) =>
           pageToken === undefined

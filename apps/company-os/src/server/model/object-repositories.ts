@@ -1,14 +1,15 @@
-import { Model } from "@company/model"
 import type { PostgresRepositoryError } from "@company/postgres"
 import type { Repository } from "@company/runtime/effect/object-repository"
+import { Model } from "company-os/model"
 import { Context, Effect, Layer } from "effect"
 
+import type { AssetPrecondition } from "@/modules/assets/asset/server/asset-error"
 import { makeObjectRepository } from "@/server/database/object-repository"
 
 type ObjectRepositoryMap = {
   readonly [TObjectId in keyof typeof Model.objects]: Repository<
     (typeof Model.objects)[TObjectId],
-    PostgresRepositoryError
+    PostgresRepositoryError | AssetPrecondition
   >
 }
 
@@ -25,7 +26,7 @@ const make = Effect.gen(function* () {
   // SAFETY: modelObjects returns every object in Model exactly once and each
   // repository is constructed from that same object definition.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  return Object.fromEntries(entries) as ObjectRepositoryMap
+  return Object.fromEntries(entries) as unknown as ObjectRepositoryMap
 })
 
 /** Model-derived persistence capabilities for standard object behavior. */

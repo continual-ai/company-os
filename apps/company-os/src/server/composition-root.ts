@@ -1,5 +1,5 @@
-import { Model } from "@company/model"
 import { describeModel } from "@company/runtime"
+import { Model } from "company-os/model"
 import { OpenApi } from "effect/unstable/httpapi"
 
 import { applicationHttpApi } from "@/http-api"

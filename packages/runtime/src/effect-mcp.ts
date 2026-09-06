@@ -17,7 +17,7 @@ import type { Effect } from "effect"
 import type { ApiError } from "./definition/error"
 import type { ModelCatalog } from "./definition/model"
 import type { ObjectType } from "./definition/object"
-import type { Query } from "./definition/query"
+import type { Query, CustomQuery } from "./definition/query"
 import type { LinkService } from "./effect-link-service"
 import {
   executableModelOperations,
@@ -25,6 +25,7 @@ import {
   type ExecutableModelOperation,
 } from "./effect-model-implementation"
 import {
+  linkPageOutputSchema,
   objectBatchGetInputSchema,
   objectBatchOutputSchema,
   objectGetInputSchema,
@@ -32,7 +33,6 @@ import {
   objectPageOutputSchema,
   objectRecordOutputSchema,
   pageSizeSchema,
-  pageTotalSizeSchema,
 } from "./effect-model-schemas"
 import type { CurrentInvocation } from "./effect-object-service"
 import {
@@ -74,7 +74,12 @@ export interface ModelMcpRequestPolicy {
   readonly allowedOriginHostnames?: ReadonlyArray<string>
 }
 
-function querySchemas(object: ObjectType, query: Query) {
+function querySchemas(object: ObjectType, query: Query | CustomQuery) {
+  if ("input" in query)
+    return {
+      input: toEffectInputSchema(query.input),
+      output: toEffectSchema(query.output),
+    }
   switch (query.id) {
     case "batchGet":
       return {
@@ -180,13 +185,7 @@ export function createModelMcpServer({
       })
       const output =
         definition.id === "list"
-          ? Schema.Struct({
-              items: Schema.Array(
-                Schema.Struct({ id: Schema.String, objectType: Schema.String })
-              ),
-              nextPageToken: Schema.NullOr(Schema.String),
-              totalSize: pageTotalSizeSchema,
-            })
+          ? linkPageOutputSchema(implementation.model, traversal)
           : Schema.Struct({})
       server.registerTool(
         descriptor.key,

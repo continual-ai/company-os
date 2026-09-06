@@ -1,8 +1,8 @@
-import type { ActorId, IdentityId } from "@company/model"
 import {
   CurrentInvocation,
   type InvocationContext,
 } from "@company/runtime/effect/object-service"
+import type { ActorId, IdentityId } from "company-os/model"
 import { Data, Effect } from "effect"
 
 import { ANONYMOUS_ACTOR_ID, SYSTEM_SERVICE_ACCOUNT_ID } from "@/system-records"

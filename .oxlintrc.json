@@ -38,6 +38,7 @@
     ".roo/**",
     ".windsurf/**",
     "**/routeTree.gen.ts",
+    "**/drizzle-schema.generated.ts",
     "fixtures/**"
   ],
   "rules": {

@@ -55,15 +55,16 @@ Direction, and Vision distinct. The canonical skills live in `.agents/skills`; `
   executable starters for optional apps; copied apps must never import template source.
 - `@company/runtime` is the portable definition and execution foundation. It must not import the
   company model, UI, storage adapter, or applications.
-- `@company/model` is the project's single browser-safe semantic model source. It may depend on the
+- `company-os/model` is the project's single browser-safe semantic model source. It may depend on the
   portable `@company/runtime` surface, but not on UI, handlers, persistence, providers, or Effect.
 - `@company/postgres` is the reusable server-only PostgreSQL adapter. It implements runtime
   repository contracts and may depend on `@company/runtime`, but it does not own model definitions,
   migrations, credentials, custom persistence queries, or application Effect service identities.
 - `@company/ui` owns shared presentation primitives and does not depend on the model, runtime,
   persistence, or applications.
-- Browser applications may use public browser-safe package exports. They must not import another
-  app or private Company OS server modules.
+- Other apps may consume only `company-os/model` and `company-os/metadata` from the central app.
+  They must not import its private implementations. The recursive model import check enforces
+  browser safety even though domain definitions and implementations are colocated.
 - `apps/company-os` is the required singleton central product and private server composition
   boundary. Other apps are optional focused interfaces over its governed capabilities, not
   independent business authorities.
@@ -82,7 +83,7 @@ and `turbo boundaries` enforce these conventions.
 
 ## Adding and deploying apps
 
-Every checkout has one central `apps/company-os` and one `@company/model`; never scaffold a replacement
+Every checkout has one central `apps/company-os` and one composed model; never scaffold a replacement
 or a parallel app for capabilities that belong to them.
 Optional apps are copies of the repository's templates: run `pnpm app:create` to list them and
 `pnpm app:create <template> <app-name>` to add one, using `base` when no closer starter exists.
@@ -118,11 +119,53 @@ platform's runtime identity headers from the incoming request; no app mints iden
   rebuild an existing app on one; a request for another framework is met on the checked-in stack.
 - Preserve an ordinary Fetch-compatible runtime boundary where practical.
 
+## Domain modules
+
+Keep domain definitions, custom server behavior, and specialized UI under `src/modules/<domain>`.
+Each object lives in `<object>/model.ts`, with custom operations in `<object>/server/` and presentation
+in `<object>/ui/`. Names use singular kebab-case. `ui/config.ts` registers typed extensions; named
+`.tsx` files implement components. Module-level `model.ts`, `server.ts`, and `ui.ts` only compose
+contributions. Put Links in `links/` and interfaces in `interfaces/`; a relationship has one owner.
+Use a module-level `server/` directory only for capabilities shared across objects.
+Compose portable definitions explicitly in `src/model.ts`; standard services and default routes
+are derived. Custom Queries and Actions bind named Effect functions in the module's `server.ts`; compose
+server contributions in `src/server/module-services.ts`. Module-owned `ui.ts` contributions supply
+standard page extensions through `src/app-ui.ts`. Do not add object-specific branches to shared
+routes, navigation, or page components.
+Page/form assembly resolves UI registrations and passes explicit props to renderers. Use named
+additions/replacements for light customization; use ordinary module-owned React pages for distinct
+workflows. Do not add object branches to shared components or automatic plugin merging.
+Use [the module guide](docs/modules.md) and executable neighboring modules for the authoring path.
+Keep migration ownership central. Do not add a dynamic runtime plugin system or a second schema.
+
+## Server operations
+
+- Implement custom Queries and Actions as named `Effect.fn` functions. Bind only custom methods and
+  deliberate standard-operation overrides; the framework supplies standard CRUD.
+- Use `Context.Service` for dependencies and cohesive capabilities. A feature does not need its own
+  service identity or repository. Keep small operation-specific SQL beside its operation; extract a
+  repository when shared persistence behavior, locking, or a meaningful substitute warrants it.
+- Decode the shared model contract at invocation boundaries. Operations enforce business authorization,
+  invariants, and transaction boundaries for every caller. Transport handlers only adapt protocols.
+- Queries are read-only. SQL aggregates must filter authorized rows before aggregating; permission to
+  invoke a report does not grant access to every underlying record. Keep currencies separate and use
+  PostgreSQL numeric arithmetic for money.
+- Custom Actions use model writers for standard persistence guarantees. Custom SQL writes must preserve
+  concurrency and integrity rules and append a declared event covering affected records inside the transaction.
+  Standard writers record events automatically; custom facts use `EventJournal.append` inside
+  `Database.transaction`. See [durable events](docs/events.md) for replay and visibility contracts.
+- Test pure rules directly, SQL and transactions against PostgreSQL, and provider effects with supplied
+  test services. Do not add forwarding layers just to mock them.
+
 ## Application clients and forms
 
 - Feature code should consume the semantic client derived from the model contract. Keep the native
   Effect HTTP client inside the application client assembly and expose non-model API groups through
   purpose-named operations or a deliberate semantic namespace.
+- Generated Queries share the application query cache; React reads observe it through `useModelQuery`.
+  Keep only interaction and unsaved draft state in component state. Router loaders preload the same request
+  used by the screen. Render records without waiting for reference labels or advisory IAM checks.
+  Actual server writes determine invalidation; feature code never declares mutation write sets.
 - Keep application services out of TanStack Start's reserved `src/client.*` and `src/server.*`
   entrypoints. Use names such as `src/app-client.ts`; an accidental `src/client.ts` replaces the
   framework hydration entrypoint.
@@ -147,8 +190,10 @@ a richer connector.
 ## Modeling relationships
 
 Use `parent` only for durable ownership and authorization hierarchy. Use a record-reference property
-for directional state that belongs inline on one Object. Use a Link for a bidirectional relationship
-without independent identity. Use an Object when the relationship has attributes, lifecycle,
+for directional state that belongs inline on one Object. References and Links project into one relationship catalog with two named directions.
+Use reference `inverse` metadata for intentional reverse names; foreign keys restrict target deletion.
+Use a Link for an association without independent identity. Prefer many-to-many for business
+participation; a primary role may be a singular `subsetOf` selection from that relationship. Use an Object when the relationship has attributes, lifecycle,
 history, or distinct authorization. Do not encode one fact as both a property and a Link, and do not
 declare exact cardinality unless services, storage, deletion behavior, and tests preserve it.
 

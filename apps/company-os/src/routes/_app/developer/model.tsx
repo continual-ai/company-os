@@ -1,5 +1,5 @@
-import { Model } from "@company/model"
 import { createFileRoute } from "@tanstack/react-router"
+import { Model } from "company-os/model"
 import { Schema } from "effect"
 
 import { pageOptions } from "@/route-metadata"

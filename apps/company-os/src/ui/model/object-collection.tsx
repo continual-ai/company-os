@@ -1,4 +1,3 @@
-import { Model } from "@company/model"
 import { modelObjectLinkTraversals } from "@company/runtime"
 import { Button } from "@company/ui/components/button"
 import {
@@ -9,11 +8,15 @@ import {
   SelectValue,
 } from "@company/ui/components/select"
 import { functionalUpdate, type OnChangeFn } from "@tanstack/react-table"
+import { Model } from "company-os/model"
 import { LinkIcon, PencilIcon } from "lucide-react"
-import { useMemo, useState, type ReactNode } from "react"
+import { useMemo, useState, type ComponentType } from "react"
 
-import { CapabilityBoundary } from "@/ui/application/capability-boundary"
-
+import {
+  ObjectActions,
+  type ResolvedObjectUi,
+  type CollectionToolbarProps,
+} from "./module-ui"
 import {
   parentName,
   tableRecord,
@@ -33,19 +36,8 @@ import { useObjectCreate } from "./object-create-context"
 import { ObjectRecordDialog } from "./object-record-dialog"
 import { ObjectRelationshipsDialog } from "./object-relationships-dialog"
 import { ObjectTable } from "./object-table/object-table"
-import type { ObjectTableRecord } from "./object-table/object-table-config"
 import { readFilterValue } from "./object-table/object-table-config"
 import { useObjectCollection } from "./use-object-collection"
-
-interface CollectionActionContext {
-  readonly can: (actionId: string, target?: string) => boolean
-  readonly refresh: () => Promise<void>
-}
-
-interface RecordActionContext {
-  readonly can: (actionId: string) => boolean
-  readonly refresh: () => Promise<void>
-}
 
 interface ObjectCollectionProps {
   readonly object: ModelObject
@@ -55,31 +47,15 @@ interface ObjectCollectionProps {
   readonly search?: ObjectCollectionSearch | undefined
   readonly recordHref?: ((recordId: string) => string) | undefined
   readonly views?: ReadonlyArray<ObjectCollectionView> | undefined
-  readonly renderRecordActions?:
-    | ((record: ObjectTableRecord, context: RecordActionContext) => ReactNode)
-    | undefined
-  readonly renderCollectionActions?:
-    | ((context: CollectionActionContext) => ReactNode)
-    | undefined
+  readonly actions?: ResolvedObjectUi["actions"]
+  readonly toolbarComponent?: ComponentType<CollectionToolbarProps> | undefined
 }
 
-export function ObjectCollection(props: ObjectCollectionProps) {
-  return (
-    <CapabilityBoundary
-      permission={`${props.object.id}.list`}
-      title={`No access to ${props.object.pluralName.toLowerCase()}`}
-      description={`This identity cannot view ${props.object.pluralName.toLowerCase()}. Ask an administrator to grant access if this work should be available.`}
-    >
-      <AuthorizedObjectCollection {...props} />
-    </CapabilityBoundary>
-  )
-}
-
-function AuthorizedObjectCollection({
+export function ObjectCollection({
   object,
   onSearchChange,
-  renderRecordActions,
-  renderCollectionActions,
+  actions,
+  toolbarComponent: Toolbar,
   recordHref,
   search,
   views,
@@ -186,12 +162,7 @@ function AuthorizedObjectCollection({
         onCellCommit={collection.updateCell}
         canUpdateRecord={collection.canUpdate}
         onCreateRecord={
-          collection.canCreate
-            ? () =>
-                openObjectCreate(object, {
-                  onCreated: () => void collection.load(),
-                })
-            : undefined
+          collection.canCreate ? () => openObjectCreate(object) : undefined
         }
         onDeleteRecords={
           collection.records.some(({ id }) => collection.canDelete(id))
@@ -207,10 +178,15 @@ function AuthorizedObjectCollection({
           onPreviousPage: collection.previousPage,
           totalSize: collection.totalSize,
         }}
-        toolbarActions={renderCollectionActions?.({
-          can: collection.can,
-          refresh: collection.load,
-        })}
+        toolbarActions={
+          Toolbar ? (
+            <Toolbar
+              object={object}
+              search={{ view: resolved.view.id, state: viewState }}
+              can={collection.can}
+            />
+          ) : undefined
+        }
         tableTitle={
           <Select
             value={resolved.view.id}
@@ -264,10 +240,14 @@ function AuthorizedObjectCollection({
                   <LinkIcon />
                 </Button>
               ) : null}
-              {renderRecordActions?.(record, {
-                can: (actionId) => collection.can(actionId, record.id),
-                refresh: collection.load,
-              })}
+              {source && (
+                <ObjectActions
+                  actions={actions}
+                  record={source}
+                  can={(action) => collection.can(action, record.id)}
+                  placement="row"
+                />
+              )}
             </>
           )
         }}

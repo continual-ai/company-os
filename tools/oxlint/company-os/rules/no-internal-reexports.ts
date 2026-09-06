@@ -2,8 +2,11 @@ import { defineRule } from "@oxlint/plugins"
 
 function isPublicPackageEntrypoint(filename: string): boolean {
   const normalizedFilename = filename.replaceAll("\\", "/")
-  return /(?:^|\/)packages\/[^/]+\/src\/index\.[cm]?[jt]sx?$/.test(
-    normalizedFilename
+  return (
+    normalizedFilename.endsWith("/apps/company-os/src/model.ts") ||
+    /(?:^|\/)packages\/[^/]+\/src\/index\.[cm]?[jt]sx?$/.test(
+      normalizedFilename
+    )
   )
 }
 

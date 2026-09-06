@@ -1,3 +1,5 @@
+export { defineEvent } from "./definition/event"
+
 export type {
   Action,
   ActionDefinition,
@@ -6,6 +8,7 @@ export type {
   ActionInput,
   ActionOutput,
   ActionScope,
+  StandardActionId,
 } from "./definition/action"
 export { isStandardActionId } from "./definition/action"
 export {
@@ -80,6 +83,8 @@ export type { RootType } from "./definition/root"
 export { queryKey, standardQueries, standardQueryIds } from "./definition/query"
 export type {
   Query,
+  CustomQuery,
+  QueryDefinition,
   QueryInput,
   QueryOutput,
   QueryScope,
@@ -164,3 +169,6 @@ export { describeModel, MODEL_DESCRIPTION_VERSION } from "./description"
 export type { ModelDescription, ModuleDescription } from "./description"
 export { lintModelDescription } from "./model-lint"
 export type { ModelDiagnostic } from "./model-lint"
+
+export { modelRelationships } from "./definition/relationship"
+export type { ModelRelationship } from "./definition/relationship"

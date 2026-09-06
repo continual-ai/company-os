@@ -1,4 +1,3 @@
-import { Model } from "@company/model"
 import {
   DomainName,
   EmailAddress,
@@ -15,6 +14,7 @@ import {
   ObjectWriteConflict,
 } from "@company/runtime/effect/object-repository"
 import * as ObjectService from "@company/runtime/effect/object-service"
+import { Model } from "company-os/model"
 import { eq } from "drizzle-orm"
 import { Effect } from "effect"
 import { describe, expect, expectTypeOf } from "vitest"
@@ -279,7 +279,7 @@ describe("Drizzle object repository", () => {
         const storedDeals = yield* database.query.deal.findMany()
         type StoredDeal = (typeof storedDeals)[number]
         expectTypeOf<StoredDeal["parentId"]>().toEqualTypeOf<
-          RecordId<"company">
+          RecordId<"authorizationScope">
         >()
         const lineItemRepository = yield* makeObjectRepository(
           Model.objects.lineItem

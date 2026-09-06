@@ -5,7 +5,7 @@ model into a deterministic Drizzle schema and implements the standard object and
 contracts used by application backends.
 
 ```ts
-import { Model } from "@company/model"
+import { Model } from "company-os/model"
 import { makePostgresSchema } from "@company/postgres"
 
 export const Storage = makePostgresSchema(Model)
@@ -22,7 +22,9 @@ transactional invariants. PostgreSQL supplies authoritative record timestamps an
 tags in the same statements that enforce write preconditions.
 
 The compiler maps portable persisted shape into native columns, defaults, nullability, foreign keys,
-declared uniqueness rules, indexes, and structural checks. Governed object services remain
+declared uniqueness rules, indexes, and structural checks. A Link declared as `subsetOf` another Link
+gets a composite foreign key: removing membership clears its primary selection. Inline references
+restrict target deletion. Data backfills remain explicit migration SQL. Governed object services remain
 responsible for portable schema validation and canonicalization before writes reach a repository.
 
 The central application owns its model, migrations, credentials, custom persistence queries,
@@ -32,7 +34,7 @@ history beside that backend; follow the [database workflow](../../docs/runbooks/
 ## Boundaries
 
 This package may depend on `@company/runtime` and server-side PostgreSQL libraries. It must not
-depend on `@company/model`, an application, or `@company/ui`, and it does not create a second copy of
+depend on `company-os/model`, an application, or `@company/ui`, and it does not create a second copy of
 application policy.
 
 Read the [architecture guide](../../docs/architecture.md) for the complete persistence and service

@@ -40,6 +40,8 @@ export interface LinkType<
     | false,
 > {
   description?: string
+  /** A role selection within another relationship, with identical endpoint orientation. */
+  subsetOf?: string
   forward: TForward
   id: TId
   kind: "link"
@@ -64,6 +66,7 @@ export function defineLink<
   const TWriteFrom extends TForwardKey | TReverseKey | false,
 >(definition: {
   description?: string
+  subsetOf?: LinkType
   forward: {
     cardinality: TForwardCardinality
     description?: string
@@ -100,6 +103,17 @@ export function defineLink<
   TWriteFrom
 > {
   const { forward, reverse } = definition
+  if (
+    definition.subsetOf !== undefined &&
+    (definition.subsetOf.forward.from.typeId !== forward.from.id ||
+      definition.subsetOf.reverse.from.typeId !== reverse.from.id ||
+      definition.subsetOf.forward.cardinality !== "many" ||
+      definition.subsetOf.reverse.cardinality !== "many" ||
+      definition.subsetOf.subsetOf !== undefined)
+  )
+    throw new Error(
+      `Link '${definition.id}' must select from a many-to-many relationship with identical endpoints.`
+    )
 
   definitionId(forward.key)
   definitionId(reverse.key)
@@ -140,6 +154,9 @@ export function defineLink<
     TWriteFrom
   > = {
     kind: "link",
+    ...(definition.subsetOf === undefined
+      ? {}
+      : { subsetOf: definition.subsetOf.id }),
     id: definitionId(definition.id),
     name: definition.name,
     forward: {

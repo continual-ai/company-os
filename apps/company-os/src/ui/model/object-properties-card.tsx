@@ -2,6 +2,8 @@ import { Badge } from "@company/ui/components/badge"
 import { Separator } from "@company/ui/components/separator"
 import type { ReactNode } from "react"
 
+import { AssetPreviews } from "@/modules/assets/asset/ui/asset-preview"
+
 import {
   modelObjectProperty,
   parentName,
@@ -29,6 +31,36 @@ function displayValue(
   const property = modelObjectProperty(object, propertyId)
   if (property === undefined) return objectTableValueText(value)
   const schema = objectTablePropertySchema(property)
+  const fileSchema =
+    schema.kind === "array" ? objectTablePropertySchema(schema.items) : schema
+  if (
+    fileSchema.kind === "file" ||
+    fileSchema.kind === "image" ||
+    fileSchema.kind === "media"
+  ) {
+    const values = Array.isArray(value) ? value : [value]
+    const references = values.flatMap((item) => {
+      if (
+        typeof item !== "object" ||
+        item === null ||
+        !("assetId" in item) ||
+        typeof item.assetId !== "string"
+      )
+        return []
+      return [
+        {
+          assetId: item.assetId,
+          alt: "alt" in item && typeof item.alt === "string" ? item.alt : "",
+        },
+      ]
+    })
+    return (
+      <AssetPreviews
+        references={references}
+        image={fileSchema.kind === "image"}
+      />
+    )
+  }
   if (schema.kind === "recordId" && typeof value === "string") {
     return referenceLabels.get(value) ?? value
   }

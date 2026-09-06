@@ -1,38 +1,20 @@
-import { useEffect, useState } from "react"
+import { useMemo } from "react"
 
 import { capabilityKey, type CapabilityCheck } from "@/capabilities"
+import { modelData } from "@/data-client"
+import { useModelQuery } from "@/use-model-query"
 
 import { loadAllowedCapabilities } from "./load-capabilities"
 
-/** Fail-closed advisory capability state for rendering client controls. */
+/** Fail-closed advisory checks share the same observable cache as business queries. */
 export function useCapabilities(checks: ReadonlyArray<CapabilityCheck>) {
-  const [allowed, setAllowed] = useState<ReadonlySet<string>>(new Set())
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    let current = true
-    setAllowed(new Set())
-    setLoading(true)
-    void loadAllowedCapabilities(checks)
-      .then((next) => {
-        if (current) {
-          setAllowed(next)
-          setLoading(false)
-        }
-      })
-      .catch(() => {
-        if (current) {
-          setAllowed(new Set())
-          setLoading(false)
-        }
-      })
-    return () => {
-      current = false
-    }
-  }, [checks])
-
+  const query = useMemo(() => loadAllowedCapabilities(checks), [checks])
+  const result = useModelQuery(query)
   return {
-    can: (check: CapabilityCheck): boolean => allowed.has(capabilityKey(check)),
-    loading,
-  } as const
+    can: (check: CapabilityCheck) =>
+      result.value?.has(capabilityKey(check)) ?? false,
+    error: result.error,
+    loading: result.loading,
+    refresh: () => modelData().invalidate(["@iam"]),
+  }
 }

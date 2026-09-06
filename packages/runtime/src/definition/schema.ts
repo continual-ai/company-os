@@ -246,12 +246,19 @@ export type RecordIdentifier<TTypeId extends string = string> =
   | RecordIds<TTypeId>
   | RecordAlias
 
+interface ReferenceInverse {
+  readonly key: string
+  readonly label: string
+  readonly description?: string
+}
+
 export interface RecordIdSchema<
   TTargetTypeId extends string = string,
   TRecordTypeId extends string = TTargetTypeId,
 > extends SchemaDefinition<RecordIds<TRecordTypeId>> {
   kind: "recordId"
   typeId: TTargetTypeId
+  inverse?: ReferenceInverse
 }
 
 export interface StringSchema<
@@ -621,9 +628,11 @@ function optional<TValue extends AnySchema>(
   return { kind: "optional", value }
 }
 
-function recordId<
+function reference<
   const TType extends { readonly id: string },
-  const TOptions extends SchemaAnnotations<RecordIds<TType["id"]>> = {},
+  const TOptions extends SchemaAnnotations<RecordIds<TType["id"]>> & {
+    readonly inverse?: ReferenceInverse
+  } = {},
 >(
   targetType: TType,
   options?: TOptions
@@ -717,7 +726,7 @@ export const schema = {
   object,
   optional,
   phone,
-  recordId,
+  reference,
   select,
   string,
   timestamp,

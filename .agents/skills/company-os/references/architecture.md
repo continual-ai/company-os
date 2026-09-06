@@ -13,7 +13,7 @@ because it hosts or observes the system.
 The repository expresses that ownership with vendored `@company/*` packages, source-owned
 `apps/*`, and executable starters for optional apps under `templates/*`. `@company/*` is a stable
 source-ownership namespace, not a configured organization name. Each project has one closed
-`@company/model` and one `apps/company-os` composition root; cloning or forking the repository
+model and one `apps/company-os` composition root; cloning or forking the repository
 instantiates both. Focused apps such as a portal or marketing site remain interfaces over the
 central app's governed capabilities. Added apps never import template source. Continual-specific
 code should appear only at a real hosted integration boundary, never as a required foundation for
@@ -81,3 +81,14 @@ Treat at least these as revisable unless the user explicitly settles them:
 - persistence mapping and migration ownership;
 - authorization and approval semantics;
 - the long-term split between reusable runtime, company source, and hosted services.
+
+## Source-owned starting points
+
+A starter domain is editable company source, not a provider-owned product schema. Prefer a useful
+initial model with a complete operation over a generic plugin mechanism. Companies can replace
+its vocabulary and policy. Keep the one authority and explicit dependencies while allowing that
+control; do not turn a particular CRM or engineering workflow into a platform requirement.
+
+The distinction between login and business policy is durable: a host may verify who entered the
+application, while the company decides what that principal can do to its records. A cached UI
+capability result is never the authority for a business transition.
