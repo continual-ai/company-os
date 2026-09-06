@@ -174,6 +174,7 @@ export function ObjectRelationshipCollection({
         </div>
       )}
       <ObjectTable
+        resetKey={collection.requestKey}
         object={targetObject}
         visiblePropertyIds={visiblePropertyIds}
         parentLabel={parentName(targetObject)}
@@ -185,10 +186,9 @@ export function ObjectRelationshipCollection({
         onCellCommit={collection.updateCell}
         pagination={{
           hasNextPage: collection.hasNextPage,
-          hasPreviousPage: collection.hasPreviousPage,
+          error: collection.error,
           loading: collection.loading,
           onNextPage: collection.nextPage,
-          onPreviousPage: collection.previousPage,
           totalSize: collection.totalSize,
         }}
         recordHref={(recordId) => objectHref(targetObject, recordId)}

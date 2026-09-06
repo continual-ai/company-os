@@ -76,6 +76,19 @@ export async function applyModelChanges(
         : { ...value, ...change.record }
       : value
   }
+  const patchPage = (value: unknown): unknown => {
+    if (
+      typeof value !== "object" ||
+      value === null ||
+      !("items" in value) ||
+      !Array.isArray(value.items)
+    )
+      return value
+    return {
+      ...value,
+      items: value.items.map(patch).filter((item) => item !== undefined),
+    }
+  }
   for (const query of cache.getQueryCache().findAll(affected)) {
     if (query.meta?.custom === true) continue
     const value = query.state.data
@@ -84,15 +97,19 @@ export async function applyModelChanges(
       if (updated === undefined) query.reset()
       else if (updated !== value) cache.setQueryData(query.queryKey, updated)
     } else if (
+      query.meta?.paginated === true &&
       typeof value === "object" &&
       value !== null &&
-      "items" in value &&
-      Array.isArray(value.items)
+      "pages" in value &&
+      Array.isArray(value.pages)
     ) {
       cache.setQueryData(query.queryKey, {
         ...value,
-        items: value.items.map(patch).filter((item) => item !== undefined),
+        pages: value.pages.map(patchPage),
       })
+    } else {
+      const updated = patchPage(value)
+      if (updated !== value) cache.setQueryData(query.queryKey, updated)
     }
   }
   invalidateModelQueries(cache, types)

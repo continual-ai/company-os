@@ -1,4 +1,4 @@
-import type { ObjectType } from "@company/runtime"
+import { MAX_BATCH_DELETE_SIZE, type ObjectType } from "@company/runtime"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -264,7 +264,9 @@ export function ObjectTableToolbar({
                         ?
                       </AlertDialogTitle>
                       <AlertDialogDescription>
-                        This removes the selected records and cannot be undone.
+                        {selectedCount > MAX_BATCH_DELETE_SIZE
+                          ? `Select at most ${MAX_BATCH_DELETE_SIZE} records to delete at a time.`
+                          : "This removes the selected records and cannot be undone."}
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     {deleteError === undefined ? null : (
@@ -278,7 +280,9 @@ export function ObjectTableToolbar({
                       </AlertDialogCancel>
                       <AlertDialogAction
                         variant="destructive"
-                        disabled={deletePending}
+                        disabled={
+                          deletePending || selectedCount > MAX_BATCH_DELETE_SIZE
+                        }
                         onClick={() => {
                           setDeletePending(true)
                           setDeleteError(undefined)

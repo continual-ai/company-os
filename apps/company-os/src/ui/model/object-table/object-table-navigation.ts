@@ -245,6 +245,7 @@ export function useObjectTableNavigation({
   )
 
   return {
+    activeCell: resolvedActiveCell,
     activateCell,
     cancelCellEditing,
     clearCell,

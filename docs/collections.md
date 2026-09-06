@@ -34,7 +34,7 @@ fields for the pipeline and Campaign fields for the calendar and timeline.
 
 | Layout   | Mapping                           | Behavior                                                                                                |
 | -------- | --------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| Table    | Visible columns, filters, sorting | Inline editing, selection, atomic batch deletion, pagination                                            |
+| Table    | Visible columns, filters, sorting | Virtualized rows, automatic incremental loading, inline editing, selection, atomic batch deletion       |
 | Kanban   | One select field                  | Columns follow declared choice order, including empty columns; nullable fields get an Unassigned column |
 | Calendar | Start date; optional end date     | Six-week month grid, multi-day entries, overflow lists, and a mobile day picker with agenda             |
 | Gantt    | Distinct start and end dates      | One row per record, date bars, sticky record names, range movement, and end resizing                    |
@@ -61,11 +61,23 @@ start earlier but overlap the window and undated records. Existing view and rela
 still apply. These are presentation filters, **not authorization boundaries**; the server enforces
 permissions independently.
 
-Visual layouts initially request one bounded page. **Load more** observes additional ordinary page
-queries in the existing cache. Counts describe loaded records and the server's matching total; they
-do not pretend the whole dataset has been downloaded. Duplicate records across cursor boundaries
-are collapsed using the same etag comparison as event reconciliation. Changing the actual request
-resets pagination; changing card fields does not. Table pagination remains page-by-page.
+Collections initially request one bounded page. Tables load the next cursor as the viewport approaches
+the last loaded rows; **Load more** remains available for keyboard users and explicit retries. Failures
+retain loaded records and stop automatic loading until retried. Relationship tables follow the same
+pattern. Calendar, Kanban, and Gantt keep explicit **Load more** controls within their current query.
+
+`modelCollectionQuery` adapts the existing model list operation to TanStack Query's native infinite
+queries. The Router preloads that same cache entry. Refetching rebuilds the cursor chain sequentially,
+so an insertion or deletion at a page boundary does not leave a gap caused by an obsolete cursor.
+Committed snapshots patch all loaded pages; server queries still determine membership, ordering,
+and totals. No separate client record store is introduced.
+
+Table rows are virtualized with TanStack Virtual. A small overscan keeps scrolling smooth, and active
+cells and open editors remain mounted outside the viewport. Keyboard navigation can reveal a loaded
+row outside the rendered range. Selection applies to loaded records, not an unseen server result set.
+Counts describe loaded records and the server's matching total. Changing filters or sorting resets
+the viewport and selection; changing visible columns does not. Loaded pages remain in the session's
+query cache under its normal lifetime policy; virtualization bounds DOM work, not all cache memory.
 
 A drop submits one revision-checked update and displays a pending state. Failed writes retain the
 existing server-confirmed record and show the error. Cache updates and live events use the normal
@@ -81,6 +93,8 @@ application path; these layouts do not own a second record store or optimistic m
 - `collection-card.tsx` shares record presentation and drag/drop primitives; field values reuse the
   same semantic renderer as record details.
 - `collection-dates.ts` contains pure date-window and rescheduling rules.
+- `model-collection-query.ts` adapts model list queries to the shared infinite-query cache.
+- `object-table-virtualization.ts` isolates row windowing and React Compiler compatibility.
 
 Use ordinary custom React pages for workflows that need a different interaction model. These
 layouts do not add a plugin registry, workflow engine, dependency scheduler, or automatic resource

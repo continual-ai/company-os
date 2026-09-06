@@ -111,7 +111,7 @@ export function ObjectCollection({
     filters,
     viewState.sorting,
     undefined,
-    { window, append: layout.type !== "table" }
+    { window }
   )
   const openObjectCreate = useObjectCreate()
   const [editing, setEditing] = useState<ClientRecord>()
@@ -265,6 +265,7 @@ export function ObjectCollection({
       )}
       {layout.type === "table" ? (
         <ObjectTable
+          resetKey={collection.requestKey}
           object={object}
           parentLabel={parentName(object)}
           records={collection.records.map((record) =>
@@ -308,10 +309,9 @@ export function ObjectCollection({
           canDeleteRecord={collection.canDelete}
           pagination={{
             hasNextPage: collection.hasNextPage,
-            hasPreviousPage: collection.hasPreviousPage,
+            error: collection.error,
             loading: collection.loading,
             onNextPage: collection.nextPage,
-            onPreviousPage: collection.previousPage,
             totalSize: collection.totalSize,
           }}
           toolbarActions={layoutControls}
@@ -424,9 +424,7 @@ export function ObjectCollection({
               {collection.records.length} shown · {collection.totalSize}{" "}
               matching records
               {layout.type === "kanban" ? "" : " in this window or unscheduled"}
-              {collection.hasNextPage || collection.hasPreviousPage
-                ? " · Counts reflect loaded records"
-                : ""}
+              {collection.hasNextPage ? " · Counts reflect loaded records" : ""}
             </span>
             {collection.hasNextPage && (
               <Button

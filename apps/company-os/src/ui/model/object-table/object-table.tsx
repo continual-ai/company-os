@@ -36,14 +36,19 @@ import {
   ArrowDownIcon,
   ArrowRightIcon,
   ArrowUpIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
   GripVerticalIcon,
   LoaderCircleIcon,
   PlusIcon,
   SearchXIcon,
 } from "lucide-react"
-import { type CSSProperties, useMemo, useState } from "react"
+import {
+  Fragment,
+  type CSSProperties,
+  useEffect,
+  useEffectEvent,
+  useMemo,
+  useState,
+} from "react"
 import type { ReactNode } from "react"
 
 import { ObjectIcon } from "@/ui/model/object-record-identity"
@@ -72,6 +77,12 @@ import {
   ObjectTableColumnMenu,
   ObjectTableToolbar,
 } from "./object-table-toolbar"
+import {
+  useObjectTableRows,
+  tableHeaderHeight,
+  tableRowHeight,
+  tableFooterHeight,
+} from "./object-table-virtualization"
 
 export interface ObjectTableProps {
   canDeleteRecord?: ((recordId: string) => boolean) | undefined
@@ -94,16 +105,16 @@ export interface ObjectTableProps {
     | ((recordIds: ReadonlyArray<string>) => Promise<void> | void)
     | undefined
   records: ObjectTableRecord[]
+  resetKey?: string | undefined
   onColumnFiltersChange?: OnChangeFn<ColumnFiltersState> | undefined
   onColumnVisibilityChange?: OnChangeFn<Record<string, boolean>> | undefined
   onSortingChange?: OnChangeFn<SortingState> | undefined
   pagination?:
     | {
         readonly hasNextPage: boolean
-        readonly hasPreviousPage: boolean
+        readonly error?: string | undefined
         readonly loading: boolean
         readonly onNextPage: () => void
-        readonly onPreviousPage: () => void
         readonly totalSize: number
       }
     | undefined
@@ -126,9 +137,6 @@ const columnHelper = createColumnHelper<
 const selectionControlWidth = 36
 const titleColumnWidth = 276
 const addColumnWidth = 136
-const tableHeaderHeight = 33
-const tableRowHeight = 32
-const tableFooterHeight = 32
 
 function ObjectTableViewportState({
   onClearFilters,
@@ -215,7 +223,7 @@ function SelectionHeader({
   return (
     <div className="flex size-full items-center justify-center">
       <Checkbox
-        aria-label="Select all rows"
+        aria-label="Select all loaded rows"
         disabled={!table.getRowModel().rows.some((row) => row.getCanSelect())}
         checked={table.getIsAllRowsSelected()}
         indeterminate={
@@ -269,6 +277,7 @@ export function ObjectTable({
   onDeleteRecords,
   parentLabel,
   records,
+  resetKey,
   recordHref,
   onColumnFiltersChange,
   onColumnVisibilityChange,
@@ -438,13 +447,43 @@ export function ObjectTable({
     columnIds: navigableColumns.map((column) => column.id),
     rowIds: visibleRows.map((row) => row.id),
   })
+  const {
+    scrollRef,
+    rows: virtualRows,
+    lastVisibleIndex,
+    remainingHeight,
+  } = useObjectTableRows(
+    visibleRows.map((row) => row.id),
+    [
+      navigation.activeCell?.rowId ?? visibleRows[0]?.id,
+      navigation.editingCell?.rowId,
+    ]
+  )
+  const resetViewport = useEffectEvent(() => {
+    table.resetRowSelection(true)
+    navigation.clearCell()
+    scrollRef.current?.scrollTo({ top: 0 })
+  })
+  useEffect(() => {
+    resetViewport()
+  }, [resetKey])
+  useEffect(() => {
+    if (
+      visibleRows.length > 0 &&
+      lastVisibleIndex >= visibleRows.length - 12 &&
+      pagination?.hasNextPage &&
+      !pagination.loading &&
+      pagination.error === undefined
+    )
+      pagination.onNextPage()
+  }, [lastVisibleIndex, visibleRows.length, pagination])
   const renderedTableWidth = table.getTotalSize() + addColumnWidth
   const renderedTableSurfaceHeight =
     tableHeaderHeight +
     tableRowHeight * visibleRows.length +
     (hasNoVisibleRows ? 0 : tableFooterHeight)
   const recordCountLabel = pagination
-    ? `${pagination.totalSize} total`
+    ? `${visibleRows.length} of ${pagination.totalSize}`
     : visibleRows.length === records.length
       ? `${records.length} ${records.length === 1 ? object.name.toLowerCase() : object.pluralName.toLowerCase()}`
       : `${visibleRows.length} of ${records.length} ${object.pluralName.toLowerCase()}`
@@ -471,10 +510,14 @@ export function ObjectTable({
       <div className="relative min-h-0 flex-1 overflow-hidden">
         <Table
           containerClassName="size-full overflow-auto"
+          containerRef={scrollRef}
           className="table-fixed border-separate border-spacing-0"
           role="grid"
           aria-colcount={visibleColumns.length + 1}
-          aria-rowcount={visibleRows.length + (hasNoVisibleRows ? 1 : 2)}
+          aria-rowcount={
+            (pagination?.totalSize ?? visibleRows.length) +
+            (hasNoVisibleRows ? 1 : 2)
+          }
           style={{ minWidth: "100%", width: renderedTableWidth }}
           onContainerScroll={(event) =>
             setIsHorizontallyScrolled(event.currentTarget.scrollLeft !== 0)
@@ -579,178 +622,213 @@ export function ObjectTable({
             ))}
           </TableHeader>
           <TableBody>
-            {visibleRows.map((row, rowIndex) => (
-              <TableRow
-                key={row.id}
-                data-state={row.getIsSelected() ? "selected" : undefined}
-                className="group h-8 hover:bg-muted/30"
-              >
-                {row.getVisibleCells().map((cell) => {
-                  const meta = cell.column.columnDef.meta
-                  const pinned = cell.column.getIsPinned()
-                  if (
-                    meta?.property === undefined ||
-                    meta.propertyId === undefined
-                  ) {
-                    return (
+            {virtualRows.map((virtualRow) => {
+              const rowIndex = virtualRow.index
+              const row = visibleRows[rowIndex]!
+              const gap = virtualRow.gap
+              return (
+                <Fragment key={row.id}>
+                  {gap > 0 && (
+                    <TableRow aria-hidden="true">
                       <TableCell
-                        key={cell.id}
-                        className={cn(
-                          "h-8 overflow-hidden border-r p-0",
-                          pinned && objectTablePinnedCellClassName
-                        )}
-                        style={pinnedColumnStyle(cell.column)}
-                      >
-                        <table.FlexRender cell={cell} />
-                      </TableCell>
-                    )
-                  }
+                        colSpan={visibleColumns.length + 1}
+                        className="border-0 p-0"
+                        style={{ height: gap }}
+                      />
+                    </TableRow>
+                  )}
 
-                  const address = {
-                    rowId: row.id,
-                    columnId: cell.column.id,
-                  }
-                  const propertyId = meta.propertyId
-                  const cellValue = row.original[propertyId] ?? null
-                  const active = navigation.isActive(address)
-                  const tabbable = navigation.isTabbable(address)
-                  const editing = navigation.isEditing(address)
-                  const expandActive =
-                    active &&
-                    !editing &&
-                    objectTableCellShouldExpand(meta.property, {
-                      displayLength: objectTableValueText(cellValue).length,
-                      valueCount: Array.isArray(cellValue)
-                        ? cellValue.length
-                        : 0,
-                    })
-                  const columnIndex = navigableColumns.findIndex(
-                    (column) => column.id === cell.column.id
-                  )
-                  const commitCell =
-                    onCellCommit === undefined ||
-                    (canUpdateRecord !== undefined &&
-                      !canUpdateRecord(row.original.id)) ||
-                    !isObjectTableCellEditable(meta.property)
-                      ? undefined
-                      : (nextValue: ObjectTableValue) =>
-                          onCellCommit(row.original.id, propertyId, nextValue)
-                  const editable = commitCell !== undefined
-
-                  return (
-                    <TableCell
-                      key={cell.id}
-                      ref={(element) =>
-                        navigation.registerCell(address, element)
-                      }
-                      data-object-table-cell=""
-                      aria-selected={active}
-                      tabIndex={tabbable ? 0 : -1}
-                      className={cn(
-                        "relative z-0 h-8 border-r p-0",
-                        pinned && objectTablePinnedCellClassName,
-                        active
-                          ? cn(
-                              pinned
-                                ? "z-30 overflow-visible"
-                                : "z-[1] overflow-visible",
-                              objectTableCellSelectionClassName
-                            )
-                          : "overflow-hidden outline-none"
-                      )}
-                      style={pinnedColumnStyle(cell.column)}
-                      onClick={(event) => {
-                        if (editing) return
-                        if (event.detail > 1 && editable) {
-                          event.preventDefault()
-                          navigation.setCellEditing(address, true)
-                          return
-                        }
-                        navigation.activateCell(address, true)
-                      }}
-                      onDoubleClick={(event) => {
-                        if (!editable) return
-                        event.preventDefault()
-                        navigation.setCellEditing(address, true)
-                      }}
-                      onFocus={(event) => {
-                        if (event.target === event.currentTarget) {
-                          navigation.activateCell(address)
-                        }
-                      }}
-                      onKeyDown={(event) =>
-                        navigation.handleCellKeyDown(
-                          event,
-                          rowIndex,
-                          columnIndex,
-                          editable,
-                          address
+                  <TableRow
+                    aria-rowindex={rowIndex + 2}
+                    data-state={row.getIsSelected() ? "selected" : undefined}
+                    className="group h-8 hover:bg-muted/30"
+                  >
+                    {row.getVisibleCells().map((cell) => {
+                      const meta = cell.column.columnDef.meta
+                      const pinned = cell.column.getIsPinned()
+                      if (
+                        meta?.property === undefined ||
+                        meta.propertyId === undefined
+                      ) {
+                        return (
+                          <TableCell
+                            key={cell.id}
+                            className={cn(
+                              "h-8 overflow-hidden border-r p-0",
+                              pinned && objectTablePinnedCellClassName
+                            )}
+                            style={pinnedColumnStyle(cell.column)}
+                          >
+                            <table.FlexRender cell={cell} />
+                          </TableCell>
                         )
                       }
-                    >
-                      <div
-                        className={cn(
-                          "h-full min-w-0",
-                          meta.propertyId === object.display.title && "flex"
-                        )}
-                      >
-                        {meta.propertyId === object.display.title &&
-                        enableRowSelection ? (
+
+                      const address = {
+                        rowId: row.id,
+                        columnId: cell.column.id,
+                      }
+                      const propertyId = meta.propertyId
+                      const cellValue = row.original[propertyId] ?? null
+                      const active = navigation.isActive(address)
+                      const tabbable = navigation.isTabbable(address)
+                      const editing = navigation.isEditing(address)
+                      const expandActive =
+                        active &&
+                        !editing &&
+                        objectTableCellShouldExpand(meta.property, {
+                          displayLength: objectTableValueText(cellValue).length,
+                          valueCount: Array.isArray(cellValue)
+                            ? cellValue.length
+                            : 0,
+                        })
+                      const columnIndex = navigableColumns.findIndex(
+                        (column) => column.id === cell.column.id
+                      )
+                      const commitCell =
+                        onCellCommit === undefined ||
+                        (canUpdateRecord !== undefined &&
+                          !canUpdateRecord(row.original.id)) ||
+                        !isObjectTableCellEditable(meta.property)
+                          ? undefined
+                          : (nextValue: ObjectTableValue) =>
+                              onCellCommit(
+                                row.original.id,
+                                propertyId,
+                                nextValue
+                              )
+                      const editable = commitCell !== undefined
+
+                      return (
+                        <TableCell
+                          key={cell.id}
+                          ref={(element) =>
+                            navigation.registerCell(address, element)
+                          }
+                          data-object-table-cell=""
+                          aria-selected={active}
+                          tabIndex={tabbable ? 0 : -1}
+                          className={cn(
+                            "relative z-0 h-8 scroll-mt-9 scroll-mb-9 border-r p-0",
+                            pinned && objectTablePinnedCellClassName,
+                            active
+                              ? cn(
+                                  pinned
+                                    ? "z-30 overflow-visible"
+                                    : "z-[1] overflow-visible",
+                                  objectTableCellSelectionClassName
+                                )
+                              : "overflow-hidden outline-none"
+                          )}
+                          style={pinnedColumnStyle(cell.column)}
+                          onClick={(event) => {
+                            if (editing) return
+                            if (event.detail > 1 && editable) {
+                              event.preventDefault()
+                              navigation.setCellEditing(address, true)
+                              return
+                            }
+                            navigation.activateCell(address, true)
+                          }}
+                          onDoubleClick={(event) => {
+                            if (!editable) return
+                            event.preventDefault()
+                            navigation.setCellEditing(address, true)
+                          }}
+                          onFocus={(event) => {
+                            if (event.target === event.currentTarget) {
+                              navigation.activateCell(address)
+                            }
+                          }}
+                          onKeyDown={(event) =>
+                            navigation.handleCellKeyDown(
+                              event,
+                              rowIndex,
+                              columnIndex,
+                              editable,
+                              address
+                            )
+                          }
+                        >
                           <div
-                            className="h-full shrink-0"
-                            style={{ width: selectionControlWidth }}
+                            className={cn(
+                              "h-full min-w-0",
+                              meta.propertyId === object.display.title && "flex"
+                            )}
                           >
-                            <SelectionCell row={row} />
+                            {meta.propertyId === object.display.title &&
+                            enableRowSelection ? (
+                              <div
+                                className="h-full shrink-0"
+                                style={{ width: selectionControlWidth }}
+                              >
+                                <SelectionCell row={row} />
+                              </div>
+                            ) : null}
+                            <div className="min-w-0 flex-1">
+                              <ObjectTableCell
+                                active={active}
+                                editing={editing}
+                                expandActive={expandActive}
+                                initialEditValue={
+                                  editing
+                                    ? navigation.editingCell?.initialValue
+                                    : undefined
+                                }
+                                identity={
+                                  meta.propertyId === object.display.title
+                                    ? {
+                                        href: recordHref?.(row.original.id),
+                                        object,
+                                        record: row.original,
+                                      }
+                                    : undefined
+                                }
+                                property={meta.property}
+                                resolveImageSrc={resolveImageSrc}
+                                resolveRecordLabel={resolveRecordLabel}
+                                value={cellValue}
+                                onCancelEditing={() =>
+                                  navigation.cancelCellEditing(address)
+                                }
+                                onEditingChange={(nextEditing) =>
+                                  navigation.setCellEditing(
+                                    address,
+                                    nextEditing
+                                  )
+                                }
+                                onCommit={commitCell}
+                              />
+                            </div>
                           </div>
-                        ) : null}
-                        <div className="min-w-0 flex-1">
-                          <ObjectTableCell
-                            active={active}
-                            editing={editing}
-                            expandActive={expandActive}
-                            initialEditValue={
-                              editing
-                                ? navigation.editingCell?.initialValue
-                                : undefined
-                            }
-                            identity={
-                              meta.propertyId === object.display.title
-                                ? {
-                                    href: recordHref?.(row.original.id),
-                                    object,
-                                    record: row.original,
-                                  }
-                                : undefined
-                            }
-                            property={meta.property}
-                            resolveImageSrc={resolveImageSrc}
-                            resolveRecordLabel={resolveRecordLabel}
-                            value={cellValue}
-                            onCancelEditing={() =>
-                              navigation.cancelCellEditing(address)
-                            }
-                            onEditingChange={(nextEditing) =>
-                              navigation.setCellEditing(address, nextEditing)
-                            }
-                            onCommit={commitCell}
-                          />
+                        </TableCell>
+                      )
+                    })}
+                    <TableCell
+                      className="h-8 border-r p-0"
+                      style={{ width: addColumnWidth }}
+                    >
+                      {renderRecordActions === undefined ? null : (
+                        <div className="flex h-full items-center justify-end gap-1 px-1">
+                          {renderRecordActions(row.original)}
                         </div>
-                      </div>
+                      )}
                     </TableCell>
-                  )
-                })}
+                  </TableRow>
+                </Fragment>
+              )
+            })}
+            {virtualRows.length > 0 && (
+              <TableRow aria-hidden="true">
                 <TableCell
-                  className="h-8 border-r p-0"
-                  style={{ width: addColumnWidth }}
-                >
-                  {renderRecordActions === undefined ? null : (
-                    <div className="flex h-full items-center justify-end gap-1 px-1">
-                      {renderRecordActions(row.original)}
-                    </div>
-                  )}
-                </TableCell>
+                  colSpan={visibleColumns.length + 1}
+                  className="border-0 p-0"
+                  style={{
+                    height: remainingHeight,
+                  }}
+                />
               </TableRow>
-            ))}
+            )}
           </TableBody>
           {hasNoVisibleRows ? null : (
             <TableFooter className="sticky bottom-0 z-20 bg-background font-normal">
@@ -777,28 +855,20 @@ export function ObjectTable({
                 >
                   {pagination === undefined ? null : (
                     <div className="flex h-full items-center justify-end px-1">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-xs"
-                        aria-label="Previous page"
-                        disabled={
-                          pagination.loading || !pagination.hasPreviousPage
-                        }
-                        onClick={pagination.onPreviousPage}
-                      >
-                        <ChevronLeftIcon />
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-xs"
-                        aria-label="Next page"
-                        disabled={pagination.loading || !pagination.hasNextPage}
-                        onClick={pagination.onNextPage}
-                      >
-                        <ChevronRightIcon />
-                      </Button>
+                      {pagination.hasNextPage ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="xs"
+                          disabled={pagination.loading}
+                          onClick={pagination.onNextPage}
+                        >
+                          {pagination.loading ? (
+                            <LoaderCircleIcon className="animate-spin" />
+                          ) : null}
+                          {pagination.error ? "Retry loading" : "Load more"}
+                        </Button>
+                      ) : null}
                     </div>
                   )}
                 </TableCell>

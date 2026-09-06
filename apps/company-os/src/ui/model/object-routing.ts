@@ -3,6 +3,7 @@ import { notFound } from "@tanstack/react-router"
 import { Model } from "company-os/model"
 
 import { modelUi } from "@/app-ui"
+import { modelCollectionQuery } from "@/model-collection-query"
 
 import { calendarDay, collectionDateWindow } from "./collection-dates"
 import { clientFor, type ModelObject } from "./object-client"
@@ -50,8 +51,9 @@ export async function preloadCollection(
     views === undefined
       ? (search.state ?? emptyObjectCollectionViewState)
       : resolveObjectCollectionView(views, search).state
-  await cache.ensureQueryData(
-    clientFor(object).list(
+  await cache.ensureInfiniteQueryData(
+    modelCollectionQuery(
+      clientFor(object).list,
       objectListRequest(
         object,
         state.filters,

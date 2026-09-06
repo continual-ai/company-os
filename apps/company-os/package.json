@@ -40,6 +40,7 @@
     "@tanstack/react-router-ssr-query": "1.167.2",
     "@tanstack/react-start": "catalog:",
     "@tanstack/react-table": "catalog:",
+    "@tanstack/react-virtual": "^3.14.10",
     "drizzle-orm": "catalog:",
     "effect": "catalog:",
     "file-type": "22.0.2",

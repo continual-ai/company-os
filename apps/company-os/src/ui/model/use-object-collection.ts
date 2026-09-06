@@ -1,8 +1,9 @@
-import { type ListRequest, type Page, type PageToken } from "@company/runtime"
-import { hashKey, useQueries } from "@tanstack/react-query"
-import { useMemo, useState } from "react"
+import { type ListRequest, type Page } from "@company/runtime"
+import { hashKey, useInfiniteQuery } from "@tanstack/react-query"
+import { useMemo } from "react"
 
 import { isNewerOrEqualRecord } from "@/model-cache"
+import { modelCollectionQuery } from "@/model-collection-query"
 import type { ModelQueryOptions } from "@/model-query-client"
 import { useCapabilities } from "@/ui/application/use-capabilities"
 
@@ -28,7 +29,7 @@ export function useObjectCollection(
   columnFilters: ReadonlyArray<ObjectCollectionFilter>,
   sorting: ReadonlyArray<ObjectCollectionSort>,
   listRecords?: ObjectCollectionList,
-  options: { window?: CollectionDateWindow | undefined; append?: boolean } = {}
+  options: { window?: CollectionDateWindow | undefined } = {}
 ) {
   const client = useMemo(() => clientFor(object), [object])
   const list = listRecords ?? client.list
@@ -39,40 +40,19 @@ export function useObjectCollection(
     undefined,
     options.window
   )
-  const requestKey = hashKey([object.id, request, options.append === true])
-  const firstPage = {
-    requestKey,
-    list,
-    index: 0,
-    tokens: [undefined] as ReadonlyArray<PageToken | undefined>,
-  }
-  const [pagination, setPagination] = useState(firstPage)
-  const activePage =
-    pagination.requestKey === requestKey && pagination.list === list
-      ? pagination
-      : firstPage
-  if (activePage !== pagination) setPagination(activePage)
-  const pageIndex = activePage.index
-  const pageToken = activePage.tokens[pageIndex]
-  const queries = useQueries({
-    queries: (options.append
-      ? activePage.tokens.slice(0, pageIndex + 1)
-      : [pageToken]
-    ).map((token) =>
-      list({ ...request, ...(token === undefined ? {} : { pageToken: token }) })
-    ),
-  })
-  const page = queries.at(-1)!
+  const query = modelCollectionQuery(list, request)
+  const requestKey = hashKey(query.queryKey)
+  const page = useInfiniteQuery(query)
   const records = useMemo(() => {
     const unique = new Map<string, ClientRecord>()
-    for (const result of queries)
-      for (const record of result.data?.items ?? noRecords) {
+    for (const result of page.data?.pages ?? [])
+      for (const record of result.items ?? noRecords) {
         const previous = unique.get(record.id)
         if (previous === undefined || isNewerOrEqualRecord(record, previous))
           unique.set(record.id, record)
       }
     return [...unique.values()]
-  }, [queries])
+  }, [page.data])
   const referenceLabels = useReferenceLabels(object, records)
   const checks = useMemo(
     () =>
@@ -83,15 +63,13 @@ export function useObjectCollection(
     [object]
   )
   const capabilities = useCapabilities(checks)
-  const nextPageToken = page.data?.nextPageToken ?? null
-  const totalSize = queries[0]?.data?.totalSize ?? 0
-  const loading = queries.some((result) => result.isFetching)
-  const cause = queries.find((result) => result.error !== null)?.error
+  const totalSize = page.data?.pages[0]?.totalSize ?? 0
+  const loading = page.isFetching
   const error =
-    cause === undefined
+    page.error === null
       ? undefined
-      : cause instanceof Error
-        ? cause.message
+      : page.error instanceof Error
+        ? page.error.message
         : "The operation failed."
 
   const update = async (record: ClientRecord, changes: ObjectFormInput) => {
@@ -114,12 +92,8 @@ export function useObjectCollection(
     await client.batchDelete({ ids: recordIds })
   }
   const nextPage = () => {
-    if (nextPageToken === null) return
-    setPagination((current) => ({
-      ...current,
-      tokens: [...current.tokens.slice(0, current.index + 1), nextPageToken],
-      index: current.index + 1,
-    }))
+    if (page.hasNextPage && !page.isFetching)
+      void page.fetchNextPage({ cancelRefetch: false })
   }
 
   const can = (actionId: string, target?: string) => {
@@ -142,22 +116,19 @@ export function useObjectCollection(
     columnFilters,
     deleteRecords,
     error,
-    load: () => Promise.all(queries.map((result) => result.refetch())),
+    load: () =>
+      page.isFetchNextPageError
+        ? page.fetchNextPage({ cancelRefetch: false })
+        : page.refetch(),
     loading,
     nextPage,
-    pageIndex,
-    previousPage: () =>
-      setPagination((current) => ({
-        ...current,
-        index: Math.max(0, current.index - 1),
-      })),
+    requestKey,
     records,
     referenceLabels,
     sorting,
     totalSize,
     update,
     updateCell,
-    hasNextPage: nextPageToken !== null,
-    hasPreviousPage: options.append !== true && pageIndex > 0,
+    hasNextPage: page.hasNextPage,
   } as const
 }
