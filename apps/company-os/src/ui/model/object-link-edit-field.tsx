@@ -120,46 +120,66 @@ export function ObjectLinkEditField({
     }
   })
 
+  const loadFailure =
+    loadError === undefined ? null : (
+      <div className="flex items-center justify-between gap-2 text-xs text-destructive">
+        <span>{loadError}</span>
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          onClick={() => {
+            for (const page of pages) void page.refetch()
+          }}
+        >
+          Retry
+        </Button>
+      </div>
+    )
+
   if (traversal.traversal.cardinality !== "many") {
     const original = current[0]
     const selected = added[0] ?? activeCurrent[0]
     const canClear = client.unlink !== undefined && selected !== undefined
     return (
-      <div className="flex items-center gap-2">
-        <ObjectReferenceSelect
-          ariaDescribedBy={ariaDescribedBy}
-          disabled={loading}
-          id={id}
-          includeHiddenInput={false}
-          initialLabel={selected?.label}
-          invalid={invalid}
-          name={name}
-          placeholder={loading ? "Loading…" : "Select a record"}
-          required={traversal.traversal.cardinality === "one"}
-          typeId={traversal.target.from.typeId}
-          value={selected?.id ?? ""}
-          onBlur={onBlur}
-          onValueChange={(target, option) => {
-            remember(option)
-            setDelta(
-              target === original?.id ? [] : [target],
-              delta.remove.filter((candidate) => candidate !== target)
-            )
-          }}
-        />
-        {canClear ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            aria-label={`Clear ${traversal.traversal.label.toLowerCase()}`}
-            onClick={() =>
-              setDelta([], original === undefined ? [] : [original.id])
-            }
-          >
-            <XIcon />
-          </Button>
-        ) : null}
+      <div className="grid gap-2">
+        {loadFailure}
+        <div className="flex items-center gap-2">
+          <ObjectReferenceSelect
+            ariaDescribedBy={ariaDescribedBy}
+            disabled={loading || loadError !== undefined}
+            id={id}
+            includeHiddenInput={false}
+            initialLabel={selected?.label}
+            invalid={invalid}
+            name={name}
+            placeholder={loading ? "Loading…" : "Select a record"}
+            required={traversal.traversal.cardinality === "one"}
+            typeId={traversal.target.from.typeId}
+            value={selected?.id ?? ""}
+            onBlur={onBlur}
+            onValueChange={(target, option) => {
+              remember(option)
+              setDelta(
+                target === original?.id ? [] : [target],
+                delta.remove.filter((candidate) => candidate !== target)
+              )
+            }}
+          />
+          {canClear ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label={`Clear ${traversal.traversal.label.toLowerCase()}`}
+              onClick={() =>
+                setDelta([], original === undefined ? [] : [original.id])
+              }
+            >
+              <XIcon />
+            </Button>
+          ) : null}
+        </div>
       </div>
     )
   }
@@ -192,21 +212,7 @@ export function ObjectLinkEditField({
           }
         />
       ))}
-      {loadError === undefined ? null : (
-        <div className="flex items-center justify-between gap-2 text-xs text-destructive">
-          <span>{loadError}</span>
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            onClick={() => {
-              for (const page of pages) void page.refetch()
-            }}
-          >
-            Retry
-          </Button>
-        </div>
-      )}
+      {loadFailure}
       {nextPageToken === null ? null : (
         <Button
           type="button"

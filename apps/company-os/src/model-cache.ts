@@ -1,7 +1,8 @@
-import type { QueryClient, QueryFilters } from "@tanstack/react-query"
+import type { QueryClient } from "@tanstack/react-query"
 
 import {
   cacheGeneration,
+  changedModelQueries,
   resetModelCache,
   invalidateModelQueries,
 } from "./data-client"
@@ -42,13 +43,7 @@ export async function applyModelChanges(
 ) {
   if (types.length === 0) return
   const generation = cacheGeneration(cache)
-  const affected: QueryFilters = {
-    predicate: (query) =>
-      query.queryKey[0] === "model" &&
-      (query.meta?.custom === true ||
-        (Array.isArray(query.meta?.objectTypes) &&
-          query.meta.objectTypes.some((type) => types.includes(type)))),
-  }
+  const affected = changedModelQueries(types)
   // Cancel first: a read started before this commit must not overwrite its snapshot.
   await cache.cancelQueries(affected, { revert: false })
   if (cacheGeneration(cache) !== generation) return
@@ -92,12 +87,15 @@ export async function applyModelChanges(
 /** Standard actions return canonical records; custom actions report their actual writes in HTTP headers. */
 export function applyMutationResult(
   cache: QueryClient,
+  operation: string,
   result: unknown,
   types: ReadonlyArray<string>
 ) {
   return applyModelChanges(
     cache,
-    isSnapshot(result) ? [{ record: result }] : [],
+    (operation === "create" || operation === "update") && isSnapshot(result)
+      ? [{ record: result }]
+      : [],
     types
   )
 }

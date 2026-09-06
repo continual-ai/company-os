@@ -46,7 +46,9 @@ The default is immediate feedback with pending controls and confirmed writes. It
 optimistic results for arbitrary Actions. Records have decimal-string ordered etags; feature code
 passes them unchanged. Only the central reconciler compares revisions. A stale mutation response
 cannot roll back a newer cached record. Deletions remove existing appearances and reload membership.
-Custom queries are conservatively invalidated after business writes because their SQL dependencies
+Custom Action outputs are receipts, not implicitly canonical records, even if they contain `id` and
+`etag`. Only standard create/update responses patch records; custom Actions invalidate their actual
+write sets and their journal events supply snapshots. Custom queries are conservatively invalidated after business writes because their SQL dependencies
 are not declared by React components.
 
 Permission changes reset data, rather than leaving previously authorized records visible during
@@ -57,7 +59,8 @@ history visibility and the bounded authentication-renewal window of streaming co
 ## Shared UX
 
 Collections support shareable filters and views, direct title search, sorting, pagination, inline
-editing, selection, and batch deletion. Command/Ctrl-K jumps between collections. Default detail
+editing, selection, and atomic batch deletion. The generated table uses the batch endpoint; it never
+substitutes parallel single-record deletes. Command/Ctrl-K jumps between collections. Default detail
 pages expose both relationship directions; concrete reference fields navigate directly to their
 record. Pickers can create related records without losing the outer form's draft. Forms use one
 schema decoder and one API-error boundary, preserve edits on conflict, and confirm draft dismissal.

@@ -104,7 +104,8 @@ export function createModelQueries<M extends ModelCatalog>(
   client: ModelClient<M>
 ): ModelQueries<M> {
   const mutation = (
-    fn: (input: unknown) => Effect.Effect<unknown, unknown>
+    fn: (input: unknown) => Effect.Effect<unknown, unknown>,
+    operation: string
   ): UseMutationOptions<unknown, unknown, unknown> => ({
     mutationFn: async (input, { client: cache }) => {
       const generation = cacheGeneration(cache)
@@ -113,7 +114,7 @@ export function createModelQueries<M extends ModelCatalog>(
         fn(input).pipe(Effect.provideService(ClientChanges, changes))
       )
       if (generation === cacheGeneration(cache))
-        await applyMutationResult(cache, result, [...changes])
+        await applyMutationResult(cache, operation, result, [...changes])
       return result
     },
   })
@@ -141,7 +142,7 @@ export function createModelQueries<M extends ModelCatalog>(
       }
       for (const name of Object.keys(object.actions)) {
         const fn = method(group, name)
-        operations[name] = () => mutation(fn)
+        operations[name] = () => mutation(fn, name)
       }
       for (const traversal of modelObjectLinkTraversals(model, object)) {
         const key = traversal.traversal.key
@@ -157,12 +158,11 @@ export function createModelQueries<M extends ModelCatalog>(
             modelQuery([object.id, ...types], `${key}.list`, input, (signal) =>
               runClientEffect(list(input), signal)
             ),
-          ...(traversal.writable
-            ? {
-                link: () => mutation(method(links, "link")),
-                unlink: () => mutation(method(links, "unlink")),
-              }
-            : {}),
+          ...Object.fromEntries(
+            ["link", "unlink"]
+              .filter((name) => Object.hasOwn(links, name))
+              .map((name) => [name, () => mutation(method(links, name), name)])
+          ),
         }
       }
       return [object.id, operations]

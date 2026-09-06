@@ -1,8 +1,7 @@
 import { type ListRequest, type Page, type PageToken } from "@company/runtime"
-import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { useQuery } from "@tanstack/react-query"
 import { useMemo, useState } from "react"
 
-import { modelData } from "@/data-client"
 import type { ModelQueryOptions } from "@/model-query-client"
 import { useCapabilities } from "@/ui/application/use-capabilities"
 
@@ -51,14 +50,6 @@ export function useObjectCollection(
     })
   const pageIndex = pagination.index
   const pageToken = pagination.tokens[pageIndex]
-  const setPageTokens = (
-    update: (
-      tokens: ReadonlyArray<PageToken | undefined>
-    ) => ReadonlyArray<PageToken | undefined>
-  ) =>
-    setPagination((current) => ({ ...current, tokens: update(current.tokens) }))
-  const setPageIndex = (update: (index: number) => number) =>
-    setPagination((current) => ({ ...current, index: update(current.index) }))
   const pageQuery = useMemo(
     () => list(objectListRequest(object, columnFilters, sorting, pageToken)),
     [list, object, columnFilters, sorting, pageToken]
@@ -68,7 +59,6 @@ export function useObjectCollection(
     object,
     page.data?.items ?? noRecords
   )
-  const cache = useQueryClient()
   const checks = useMemo(
     () =>
       Object.keys(object.actions).flatMap((action) => {
@@ -104,28 +94,17 @@ export function useObjectCollection(
     await update(record, { [propertyId]: value })
   }
   const deleteRecords = async (recordIds: ReadonlyArray<string>) => {
-    if (client.batchDelete !== undefined) {
-      await client.batchDelete({ ids: recordIds })
-    } else if (client.delete !== undefined) {
-      await Promise.all(
-        recordIds.map((id) => {
-          const record = records.find((candidate) => candidate.id === id)
-          return record === undefined
-            ? client.delete!({ id })
-            : client.delete!({ etag: record.etag, id })
-        })
-      )
-    } else {
-      throw new Error("Deletion is not available.")
-    }
+    if (client.batchDelete === undefined)
+      throw new Error("Batch deletion is not available.")
+    await client.batchDelete({ ids: recordIds })
   }
   const nextPage = () => {
     if (nextPageToken === null) return
-    setPageTokens((current) => [
-      ...current.slice(0, pageIndex + 1),
-      nextPageToken,
-    ])
-    setPageIndex((current) => current + 1)
+    setPagination((current) => ({
+      ...current,
+      tokens: [...current.tokens.slice(0, current.index + 1), nextPageToken],
+      index: current.index + 1,
+    }))
   }
 
   const can = (actionId: string, target?: string) => {
@@ -142,21 +121,21 @@ export function useObjectCollection(
     can,
     canCreate: client.create !== undefined && can("create"),
     canDelete: (recordId: string) =>
-      (client.delete !== undefined || client.batchDelete !== undefined) &&
-      can("delete", recordId),
+      client.batchDelete !== undefined && can("delete", recordId),
     canUpdate: (recordId: string) =>
       client.update !== undefined && can("update", recordId),
     columnFilters,
     deleteRecords,
     error,
-    load: async () => {
-      modelData().invalidate(["*"])
-      await cache.fetchQuery(pageQuery)
-    },
+    load: () => page.refetch(),
     loading,
     nextPage,
     pageIndex,
-    previousPage: () => setPageIndex((current) => Math.max(0, current - 1)),
+    previousPage: () =>
+      setPagination((current) => ({
+        ...current,
+        index: Math.max(0, current.index - 1),
+      })),
     records,
     referenceLabels,
     sorting,

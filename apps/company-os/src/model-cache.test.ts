@@ -25,13 +25,16 @@ describe("committed cache changes", () => {
     )
     try {
       await Promise.all([cache.fetchQuery(list), cache.fetchQuery(get)])
-      await applyMutationResult(cache, record("3"), ["company"])
-      await applyMutationResult(cache, record("2"), ["company"])
+      await applyMutationResult(cache, "update", record("3"), ["company"])
+      await applyMutationResult(cache, "update", record("2"), ["company"])
       expect(cache.getQueryData(get.queryKey)?.etag).toBe("3")
       expect(cache.getQueryData(list.queryKey)?.items[0]?.etag).toBe("3")
-      await applyMutationResult(cache, { ...record("1"), id: "company_new" }, [
-        "company",
-      ])
+      await applyMutationResult(
+        cache,
+        "update",
+        { ...record("1"), id: "company_new" },
+        ["company"]
+      )
       expect(cache.getQueryData(list.queryKey)?.items).toHaveLength(1)
       await applyModelChanges(
         cache,
@@ -44,6 +47,34 @@ describe("committed cache changes", () => {
       dispose()
     }
   })
+  it("does not treat a custom action receipt as a canonical record", async () => {
+    const { queryClient: cache, dispose } = createModelDataClient()
+    const get = modelQuery(
+      ["company"],
+      "get",
+      { id: "company_test" },
+      async () => record("1")
+    )
+    try {
+      await cache.fetchQuery(get)
+      await applyMutationResult(
+        cache,
+        "inspect",
+        {
+          id: "company_test",
+          etag: "99",
+          name: "Receipt title",
+          accepted: true,
+        },
+        ["company"]
+      )
+      expect(cache.getQueryData(get.queryKey)).toEqual(record("1"))
+      expect(cache.getQueryState(get.queryKey)?.isInvalidated).toBe(true)
+    } finally {
+      dispose()
+    }
+  })
+
   it("cancels a stale in-flight read before applying the committed snapshot", async () => {
     const { queryClient: cache, dispose } = createModelDataClient()
     let resolve: ((value: ReturnType<typeof record>) => void) | undefined
@@ -65,11 +96,13 @@ describe("committed cache changes", () => {
       const pending = cache
         .fetchQuery({ ...get, staleTime: 0 })
         .catch(() => undefined)
-      await applyMutationResult(cache, record("2"), ["company"])
+      await applyMutationResult(cache, "update", record("2"), ["*"])
       resolve?.(record("1"))
       await pending
       expect(cache.getQueryData(get.queryKey)?.etag).toBe("2")
-      const applying = applyMutationResult(cache, record("3"), ["company"])
+      const applying = applyMutationResult(cache, "update", record("3"), [
+        "company",
+      ])
       resetModelCache(cache)
       await applying
       expect(cache.getQueryData(get.queryKey)).toBeUndefined()

@@ -1,7 +1,6 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { useQuery } from "@tanstack/react-query"
 import { useMemo } from "react"
 
-import { modelData } from "@/data-client"
 import { useCapabilities } from "@/ui/application/use-capabilities"
 
 import {
@@ -20,7 +19,6 @@ export function useObjectRecord(object: ModelObject, recordId: string) {
     object,
     record.data === undefined ? [] : [record.data]
   )
-  const cache = useQueryClient()
   const checks = useMemo(
     () => objectCapabilityChecks(object, [recordId]),
     [object, recordId]
@@ -37,10 +35,6 @@ export function useObjectRecord(object: ModelObject, recordId: string) {
         : record.error instanceof Error
           ? record.error.message
           : "The record could not be loaded.",
-    load: async () => {
-      modelData().invalidate(["*"])
-      await cache.fetchQuery(query)
-    },
     loading: record.isPending,
     record: record.data,
     referenceLabels: labels,

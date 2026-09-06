@@ -57,10 +57,6 @@ export interface DynamicObjectClient {
   readonly create?: (
     input: Readonly<Record<string, ClientValue | undefined>>
   ) => Promise<ClientRecord>
-  readonly delete?: (input: {
-    readonly etag?: string
-    readonly id: string
-  }) => Promise<void>
   readonly get: (input: DynamicRecordInput) => ModelQueryOptions<ClientRecord>
   readonly list: (
     request?: ListRequest
@@ -157,12 +153,6 @@ export function clientFor(object: ModelObject): DynamicObjectClient {
             mutationMethod<ClientRecord>(operation(group, "update")(), input),
         }
       : {}),
-    ...("delete" in object.actions
-      ? {
-          delete: (input: ModelClientRequest) =>
-            mutationMethod<void>(operation(group, "delete")(), input),
-        }
-      : {}),
     ...("batchDelete" in object.actions
       ? {
           batchDelete: (input: ModelClientRequest) =>
@@ -183,10 +173,14 @@ export function linkClientFor(
   )
   return {
     list: (input) => queryMethod(operation(group, "list")(input)),
-    ...(traversal.writable
+    ...(Object.hasOwn(group, "link")
       ? {
           link: (input: DynamicLinkMutationInput) =>
             mutationMethod<void>(operation(group, "link")(), input),
+        }
+      : {}),
+    ...(Object.hasOwn(group, "unlink")
+      ? {
           unlink: (input: DynamicLinkMutationInput) =>
             mutationMethod<void>(operation(group, "unlink")(), input),
         }

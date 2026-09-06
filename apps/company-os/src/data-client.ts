@@ -1,4 +1,4 @@
-import { QueryClient } from "@tanstack/react-query"
+import { QueryClient, type QueryFilters } from "@tanstack/react-query"
 
 const generations = new WeakMap<QueryClient, number>()
 export const cacheGeneration = (cache: QueryClient) =>
@@ -58,14 +58,22 @@ export function invalidateModelQueries(
     resetModelCache(queryClient)
     return
   }
-  void queryClient.invalidateQueries({
+  void queryClient.invalidateQueries(changedModelQueries(types))
+}
+
+/** The same affected set must be canceled, patched, and revalidated. */
+export function changedModelQueries(
+  types: ReadonlyArray<string>
+): QueryFilters {
+  const changed = new Set(types)
+  return {
     predicate: (query) =>
       query.queryKey[0] === "model" &&
       (changed.has("*") ||
         query.meta?.custom === true ||
         (Array.isArray(query.meta?.objectTypes) &&
           query.meta.objectTypes.some((type: string) => changed.has(type)))),
-  })
+  }
 }
 
 let browserClient: ReturnType<typeof createModelDataClient> | undefined

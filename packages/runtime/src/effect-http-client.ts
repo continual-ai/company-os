@@ -398,16 +398,7 @@ function nativeMethod(group: object, identifier: string): NativeModelMethod {
 /** Projects the native Effect client as direct object, Action, and Link methods. */
 export function createModelClient<TModel extends ModelCatalog>(
   model: TModel,
-  nativeClient: object,
-  options?: {
-    /** Application-owned query caching; actions always execute through the native client. */
-    readonly transformQuery?: (
-      objectType: string,
-      operation: string,
-      input: unknown,
-      effect: Effect.Effect<unknown, unknown>
-    ) => Effect.Effect<unknown, unknown>
-  }
+  nativeClient: object
 ): ModelClient<TModel> {
   const result: Record<string, Record<string, unknown>> = {}
   for (const object of modelObjects(model)) {
@@ -415,26 +406,15 @@ export function createModelClient<TModel extends ModelCatalog>(
     const endpoint = (operation: string, scope?: "collection" | "object") =>
       nativeMethod(group, httpEndpointId(operation, object, scope))
     const list = endpoint("list")
-    const cachedQuery = (
-      operation: string,
-      input: unknown,
-      effect: Effect.Effect<unknown, unknown>
-    ) =>
-      options?.transformQuery?.(object.id, operation, input, effect) ?? effect
     const methods: Record<string, unknown> = {
       batchGet: (input: ObjectBatchGetInput<ObjectType>) =>
-        cachedQuery(
-          "batchGet",
-          input,
-          endpoint("batchGet")({
-            params: customMethodParams("batchGet"),
-            payload: input,
-          })
-        ),
+        endpoint("batchGet")({
+          params: customMethodParams("batchGet"),
+          payload: input,
+        }),
       get: (input: ObjectGetInput<ObjectType>) =>
-        cachedQuery("get", input, endpoint("get")({ params: input })),
-      list: (input: ListRequest = {}) =>
-        cachedQuery("list", input, list({ query: input })),
+        endpoint("get")({ params: input }),
+      list: (input: ListRequest = {}) => list({ query: input }),
     }
     if (Object.hasOwn(object.actions, "batchDelete")) {
       methods.batchDelete = (input: ObjectBatchDeleteInput<ObjectType>) =>
@@ -470,16 +450,13 @@ export function createModelClient<TModel extends ModelCatalog>(
       const actionEndpoint = endpoint(action.id, action.scope)
       methods[action.id] = (input: Readonly<Record<string, unknown>>) => {
         const { id, ...payload } = input
-        const effect = actionEndpoint({
+        return actionEndpoint({
           params: customMethodParams(
             action.id,
             action.scope === "object" ? { id } : {}
           ),
           payload: action.scope === "object" ? payload : input,
         })
-        return action.kind === "query"
-          ? cachedQuery(action.id, input, effect)
-          : effect
       }
     }
 
@@ -487,18 +464,10 @@ export function createModelClient<TModel extends ModelCatalog>(
       const traversalMethods: Record<string, unknown> = {
         list: (input: LinkListInput) => {
           const { id, ...query } = input
-          const effect = nativeMethod(
+          return nativeMethod(
             group,
             linkHttpEndpointId("list", object, traversal)
           )({ params: { id }, query })
-          return (
-            options?.transformQuery?.(
-              object.id,
-              `${traversal.traversal.key}.list`,
-              input,
-              effect
-            ) ?? effect
-          )
         },
       }
       if (traversal.writable) {
