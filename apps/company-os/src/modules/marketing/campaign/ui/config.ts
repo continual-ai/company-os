@@ -25,6 +25,18 @@ export const campaignUi = {
           },
         ],
       }),
+      defineCollectionView("board", "Board", {
+        layout: { type: "kanban", groupBy: "status" },
+        columns: ["name", "channel", "owner", "startDate"],
+      }),
+      defineCollectionView("calendar", "Calendar", {
+        layout: { type: "calendar", start: "startDate", end: "endDate" },
+        columns: ["name", "channel", "owner"],
+      }),
+      defineCollectionView("timeline", "Timeline", {
+        layout: { type: "gantt", start: "startDate", end: "endDate" },
+        columns: ["name", "status", "owner"],
+      }),
     ],
   },
 } satisfies ObjectUi<typeof Model.objects.campaign>

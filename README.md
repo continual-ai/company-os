@@ -57,6 +57,8 @@ The development server is trusted local tooling; its automatic identity is disab
 4. Open **Engineering → Issues**. Create an issue, assign an owner, and attach a file. The default
    field handles upload, validation, and protected file delivery.
 5. Open **Developer Center** to inspect the model, generated HTTP API, client examples, and MCP tools.
+6. Try **Pipeline** on Deals, **Board** on Issues, and **Calendar** or **Timeline** on Campaigns.
+   Layout settings select model fields; temporary changes stay in the URL. [Define collection views](docs/collections.md).
    The OpenAPI document is at [`/api/openapi`](http://localhost:3002/api/openapi).
 
 Sales, Marketing, Support, and Engineering are editable starting models. Connect campaigns to

@@ -13,6 +13,7 @@ import {
 
 import type { FormControlAccessibility } from "@/ui/forms/form-field"
 
+import { collectionLayoutError } from "./collection-layout"
 import type { ClientRecord, ModelObject } from "./object-client"
 import type {
   ObjectCollectionSearch,
@@ -161,6 +162,17 @@ export function defineModuleUi<M extends ModuleDefinition>(
     if (!owned.has(id))
       throw new Error(`Module '${module.id}' cannot extend '${id}'.`)
     const object = module.objects.find((candidate) => candidate.id === id)!
+    const viewIds = new Set<string>()
+    for (const view of config.collection?.views ?? []) {
+      if (viewIds.has(view.id))
+        throw new Error(`Duplicate collection view '${id}.${view.id}'.`)
+      viewIds.add(view.id)
+      const error = collectionLayoutError(
+        object,
+        view.state.layout ?? { type: "table" }
+      )
+      if (error) throw new Error(`Invalid view '${id}.${view.id}': ${error}`)
+    }
     for (const field of Object.keys(config.fieldEditors ?? {})) {
       if (!Object.hasOwn(object.properties, field))
         throw new Error(`Unknown field '${id}.${field}'.`)

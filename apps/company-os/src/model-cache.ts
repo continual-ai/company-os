@@ -39,7 +39,11 @@ function isSnapshot(value: unknown): value is Snapshot {
   )
 }
 
-function newerOrEqual(incoming: Snapshot, current: Snapshot) {
+/** Numeric etags are ordered; legacy opaque etags are comparable only for equality. */
+export function isNewerOrEqualRecord(
+  incoming: { readonly etag: string },
+  current: { readonly etag: string }
+) {
   return /^\d+$/.test(incoming.etag) && /^\d+$/.test(current.etag)
     ? BigInt(incoming.etag) >= BigInt(current.etag)
     : incoming.etag === current.etag
@@ -60,13 +64,13 @@ export async function applyModelChanges(
   const latest = new Map<string, Change>()
   for (const change of changes) {
     const previous = latest.get(change.record.id)
-    if (!previous || newerOrEqual(change.record, previous.record))
+    if (!previous || isNewerOrEqualRecord(change.record, previous.record))
       latest.set(change.record.id, change)
   }
   const patch = (value: unknown): unknown => {
     if (!isSnapshot(value)) return value
     const change = latest.get(value.id)
-    return change && newerOrEqual(change.record, value)
+    return change && isNewerOrEqualRecord(change.record, value)
       ? change.deleted
         ? undefined
         : { ...value, ...change.record }

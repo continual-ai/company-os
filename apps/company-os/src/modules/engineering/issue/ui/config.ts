@@ -52,6 +52,14 @@ export const issueUi = {
           { id: "status", value: { operator: "equals", values: ["backlog"] } },
         ],
       }),
+      defineCollectionView("board", "Board", {
+        layout: { type: "kanban", groupBy: "status" },
+        columns: ["title", "priority", "assignee", "dueDate"],
+      }),
+      defineCollectionView("calendar", "Due dates", {
+        layout: { type: "calendar", start: "dueDate" },
+        columns: ["title", "status", "assignee"],
+      }),
     ],
   },
   fieldEditors: { description: IssueDescription },

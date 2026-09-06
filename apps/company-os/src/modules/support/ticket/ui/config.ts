@@ -62,6 +62,14 @@ export const ticketUi = {
           },
         ],
       }),
+      defineCollectionView("board", "Board", {
+        layout: { type: "kanban", groupBy: "status" },
+        columns: ["subject", "priority", "company", "owner"],
+      }),
+      defineCollectionView("calendar", "Response calendar", {
+        layout: { type: "calendar", start: "respondByAt" },
+        columns: ["subject", "priority", "owner"],
+      }),
     ],
   },
 } satisfies ObjectUi<typeof Model.objects.ticket>

@@ -31,6 +31,7 @@
     "@company/runtime": "workspace:*",
     "@company/ui": "workspace:*",
     "@continual/sdk": "catalog:",
+    "@dnd-kit/react": "^0.5.0",
     "@effect/platform-node": "catalog:",
     "@effect/sql-pg": "catalog:",
     "@tanstack/react-form": "catalog:",

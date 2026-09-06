@@ -254,6 +254,10 @@ and governed operations. Add shell navigation explicitly when needed; object con
 create arbitrary workflow URLs. Edit shared shell code when changing the shell itself. Add a new
 extension point only when a concrete repeated need justifies it.
 
+Collection layouts include Table, Kanban, Calendar, and Gantt. Declare their field mappings in the
+existing view definition; users can adjust them in the URL without saving new database records.
+See [collection views](collections.md) for examples and data-loading semantics.
+
 ## Read and write data
 
 The application exports `data` from `src/app-client.ts`. Model Queries produce native TanStack Query

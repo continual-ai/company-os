@@ -1,5 +1,10 @@
 import { Schema } from "effect"
 
+import { calendarDay } from "./collection-dates"
+import {
+  CollectionLayoutSchema,
+  type CollectionLayout,
+} from "./collection-layout"
 import type {
   ObjectTableFilterOperator,
   ObjectTableFilterValue,
@@ -16,6 +21,8 @@ export interface ObjectCollectionSort {
 }
 
 export interface ObjectCollectionViewState {
+  readonly layout?: CollectionLayout
+  readonly date?: string
   readonly filters: ReadonlyArray<ObjectCollectionFilter>
   readonly sorting: ReadonlyArray<ObjectCollectionSort>
   readonly visibility: Readonly<Record<string, boolean>>
@@ -62,6 +69,14 @@ const filterOperators = [
 ] as const satisfies ReadonlyArray<ObjectTableFilterOperator>
 
 const ObjectCollectionViewStateSchema = Schema.Struct({
+  layout: Schema.optionalKey(CollectionLayoutSchema),
+  date: Schema.optionalKey(
+    Schema.String.check(
+      Schema.makeFilter(
+        (value) => value.length === 10 && calendarDay(value) === value
+      )
+    )
+  ),
   filters: Schema.Array(
     Schema.Struct({
       id: Schema.String,
@@ -109,6 +124,7 @@ export function defineCollectionView(
   id: string,
   label: string,
   options: {
+    readonly layout?: CollectionLayout
     readonly columns: ReadonlyArray<string>
     readonly filters?: ObjectCollectionView["state"]["filters"]
     readonly sorting?: ObjectCollectionView["state"]["sorting"]
@@ -118,6 +134,7 @@ export function defineCollectionView(
     id,
     label,
     state: {
+      ...(options.layout === undefined ? {} : { layout: options.layout }),
       filters: options.filters ?? [],
       sorting: options.sorting ?? [],
       visibility: Object.fromEntries(

@@ -1,10 +1,12 @@
 import { type ListRequest, type Page, type PageToken } from "@company/runtime"
-import { useQuery } from "@tanstack/react-query"
+import { hashKey, useQueries } from "@tanstack/react-query"
 import { useMemo, useState } from "react"
 
+import { isNewerOrEqualRecord } from "@/model-cache"
 import type { ModelQueryOptions } from "@/model-query-client"
 import { useCapabilities } from "@/ui/application/use-capabilities"
 
+import type { CollectionDateWindow } from "./collection-dates"
 import { objectCapabilityCheck } from "./object-capabilities"
 import { clientFor, type ClientRecord, type ModelObject } from "./object-client"
 import { objectListRequest } from "./object-collection-query"
@@ -25,40 +27,53 @@ export function useObjectCollection(
   object: ModelObject,
   columnFilters: ReadonlyArray<ObjectCollectionFilter>,
   sorting: ReadonlyArray<ObjectCollectionSort>,
-  listRecords?: ObjectCollectionList
+  listRecords?: ObjectCollectionList,
+  options: { window?: CollectionDateWindow | undefined; append?: boolean } = {}
 ) {
   const client = useMemo(() => clientFor(object), [object])
   const list = listRecords ?? client.list
-  const [pagination, setPagination] = useState({
+  const request = objectListRequest(
+    object,
     columnFilters,
     sorting,
+    undefined,
+    options.window
+  )
+  const requestKey = hashKey([object.id, request, options.append === true])
+  const firstPage = {
+    requestKey,
     list,
     index: 0,
     tokens: [undefined] as ReadonlyArray<PageToken | undefined>,
+  }
+  const [pagination, setPagination] = useState(firstPage)
+  const activePage =
+    pagination.requestKey === requestKey && pagination.list === list
+      ? pagination
+      : firstPage
+  if (activePage !== pagination) setPagination(activePage)
+  const pageIndex = activePage.index
+  const pageToken = activePage.tokens[pageIndex]
+  const queries = useQueries({
+    queries: (options.append
+      ? activePage.tokens.slice(0, pageIndex + 1)
+      : [pageToken]
+    ).map((token) =>
+      list({ ...request, ...(token === undefined ? {} : { pageToken: token }) })
+    ),
   })
-  if (
-    pagination.columnFilters !== columnFilters ||
-    pagination.sorting !== sorting ||
-    pagination.list !== list
-  )
-    setPagination({
-      columnFilters,
-      sorting,
-      list,
-      index: 0,
-      tokens: [undefined],
-    })
-  const pageIndex = pagination.index
-  const pageToken = pagination.tokens[pageIndex]
-  const pageQuery = useMemo(
-    () => list(objectListRequest(object, columnFilters, sorting, pageToken)),
-    [list, object, columnFilters, sorting, pageToken]
-  )
-  const page = useQuery(pageQuery)
-  const referenceLabels = useReferenceLabels(
-    object,
-    page.data?.items ?? noRecords
-  )
+  const page = queries.at(-1)!
+  const records = useMemo(() => {
+    const unique = new Map<string, ClientRecord>()
+    for (const result of queries)
+      for (const record of result.data?.items ?? noRecords) {
+        const previous = unique.get(record.id)
+        if (previous === undefined || isNewerOrEqualRecord(record, previous))
+          unique.set(record.id, record)
+      }
+    return [...unique.values()]
+  }, [queries])
+  const referenceLabels = useReferenceLabels(object, records)
   const checks = useMemo(
     () =>
       Object.keys(object.actions).flatMap((action) => {
@@ -68,15 +83,15 @@ export function useObjectCollection(
     [object]
   )
   const capabilities = useCapabilities(checks)
-  const records = page.data?.items ?? noRecords
   const nextPageToken = page.data?.nextPageToken ?? null
-  const totalSize = page.data?.totalSize ?? 0
-  const loading = page.isPending
+  const totalSize = queries[0]?.data?.totalSize ?? 0
+  const loading = queries.some((result) => result.isFetching)
+  const cause = queries.find((result) => result.error !== null)?.error
   const error =
-    page.error === null
+    cause === undefined
       ? undefined
-      : page.error instanceof Error
-        ? page.error.message
+      : cause instanceof Error
+        ? cause.message
         : "The operation failed."
 
   const update = async (record: ClientRecord, changes: ObjectFormInput) => {
@@ -127,7 +142,7 @@ export function useObjectCollection(
     columnFilters,
     deleteRecords,
     error,
-    load: () => page.refetch(),
+    load: () => Promise.all(queries.map((result) => result.refetch())),
     loading,
     nextPage,
     pageIndex,
@@ -143,6 +158,6 @@ export function useObjectCollection(
     update,
     updateCell,
     hasNextPage: nextPageToken !== null,
-    hasPreviousPage: pageIndex > 0,
+    hasPreviousPage: options.append !== true && pageIndex > 0,
   } as const
 }

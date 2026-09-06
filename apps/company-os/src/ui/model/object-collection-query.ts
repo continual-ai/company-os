@@ -4,6 +4,7 @@ import {
   type PropertyDefinition,
 } from "@company/runtime"
 
+import { type CollectionDateWindow } from "./collection-dates"
 import { modelObjectProperty, type ModelObject } from "./object-client"
 import type {
   ObjectCollectionFilter,
@@ -31,6 +32,7 @@ type RuntimeFilter =
       readonly value?: unknown
     }
   | { readonly and: ReadonlyArray<RuntimeFilter> }
+  | { readonly or: ReadonlyArray<RuntimeFilter> }
   | { readonly not: RuntimeFilter }
 
 interface CollectionSort {
@@ -144,11 +146,17 @@ function propertyFilter(
   }
 }
 
+const boundary = (field: PropertyDefinition, value: string) =>
+  field.kind === "string" && field.format === "timestamp"
+    ? `${value}T00:00:00.000Z`
+    : value
+
 export function objectListRequest(
   object: ModelObject,
   columnFilters: ReadonlyArray<ObjectCollectionFilter>,
   sorting: ReadonlyArray<ObjectCollectionSort>,
-  pageToken?: ListRequest["pageToken"]
+  pageToken?: ListRequest["pageToken"],
+  window?: CollectionDateWindow
 ): ListRequest {
   const filters = columnFilters.flatMap((columnFilter) => {
     const property = objectProperty(object, columnFilter.id)
@@ -160,6 +168,48 @@ export function objectListRequest(
     )
     return filter === undefined ? [] : [filter]
   })
+  if (window !== undefined) {
+    const start = objectProperty(object, window.startField)
+    const end =
+      window.endField === undefined
+        ? undefined
+        : objectProperty(object, window.endField)
+    if (start?.kind === "string") {
+      const inWindow: RuntimeFilter = {
+        and: [
+          {
+            field: window.startField,
+            operator: "gte",
+            value: boundary(start, window.first),
+          },
+          {
+            field: window.startField,
+            operator: "lt",
+            value: boundary(start, window.after),
+          },
+        ],
+      }
+      const alternatives: RuntimeFilter[] = [inWindow]
+      if (start.nullable)
+        alternatives.push({ field: window.startField, operator: "isNull" })
+      if (end !== undefined && window.endField !== undefined)
+        alternatives.push({
+          and: [
+            {
+              field: window.startField,
+              operator: "lt",
+              value: boundary(start, window.first),
+            },
+            {
+              field: window.endField,
+              operator: "gte",
+              value: boundary(end, window.first),
+            },
+          ],
+        })
+      filters.push({ or: alternatives })
+    }
+  }
   const sort = sorting.flatMap((columnSort) => {
     const property = objectProperty(object, columnSort.id)
     if (property === undefined || !canSortProperty(property)) return []

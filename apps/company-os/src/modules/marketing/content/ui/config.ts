@@ -46,6 +46,14 @@ export const contentUi = {
           },
         ],
       }),
+      defineCollectionView("calendar", "Publishing calendar", {
+        layout: { type: "calendar", start: "scheduledAt" },
+        columns: ["title", "status"],
+      }),
+      defineCollectionView("board", "Board", {
+        layout: { type: "kanban", groupBy: "status" },
+        columns: ["title", "format", "scheduledAt"],
+      }),
     ],
   },
 } satisfies ObjectUi<typeof Model.objects.content>

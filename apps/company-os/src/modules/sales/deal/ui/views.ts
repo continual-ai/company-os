@@ -23,4 +23,12 @@ export const dealViews = [
     filters: [{ id: "stage", value: { operator: "equals", values: ["won"] } }],
     sorting: [{ id: "expectedCloseDate", desc: true }],
   }),
+  defineCollectionView("pipeline", "Pipeline", {
+    layout: { type: "kanban", groupBy: "stage" },
+    columns: ["name", "amount", "expectedCloseDate"],
+  }),
+  defineCollectionView("closing-calendar", "Closing calendar", {
+    layout: { type: "calendar", start: "expectedCloseDate" },
+    columns: ["name", "stage", "amount"],
+  }),
 ] as const

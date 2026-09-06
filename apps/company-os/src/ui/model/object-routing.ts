@@ -4,6 +4,7 @@ import { Model } from "company-os/model"
 
 import { modelUi } from "@/app-ui"
 
+import { calendarDay, collectionDateWindow } from "./collection-dates"
 import { clientFor, type ModelObject } from "./object-client"
 import { objectListRequest } from "./object-collection-query"
 import {
@@ -51,7 +52,16 @@ export async function preloadCollection(
       : resolveObjectCollectionView(views, search).state
   await cache.ensureQueryData(
     clientFor(object).list(
-      objectListRequest(object, state.filters, state.sorting)
+      objectListRequest(
+        object,
+        state.filters,
+        state.sorting,
+        undefined,
+        collectionDateWindow(
+          state.layout,
+          calendarDay(state.date) ?? new Date().toISOString().slice(0, 10)
+        )
+      )
     )
   )
 }
