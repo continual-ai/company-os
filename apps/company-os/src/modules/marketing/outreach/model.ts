@@ -67,5 +67,6 @@ export const Outreach = defineObject({
       nullable: true,
     }),
   },
+  search: { fields: ["subject", "body"] },
   display: { title: "subject", icon: "mail", status: "status" },
 })

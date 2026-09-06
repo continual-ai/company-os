@@ -31,7 +31,8 @@ export const Route = createFileRoute("/_app")({
     return { authenticatedUser: currentUser.user, eventCursor }
   },
   loader: async ({ context }) => {
-    await context.queryClient.ensureQueryData(
+    // Advisory navigation checks must not fail the route when their observer unmounts or a check fails.
+    await context.queryClient.prefetchQuery(
       allowedCapabilitiesQuery(modelNavigationChecks)
     )
   },

@@ -12,7 +12,8 @@ Continual service, broker, or separate worker for browser updates.
    an existing Link does not produce another event.
 3. `Database.transaction` keeps a separate event buffer for each savepoint. Successful inner
    transactions merge their events; rollback discards them.
-4. Immediately before the outer commit, the database allocates journal positions and inserts
+4. Immediately before the outer commit, the database updates the [search index](search.md) for staged
+   subjects, then allocates journal positions and inserts
    the events. A single counter row stays locked until commit. This makes committed positions
    safe to consume in order even when concurrent transactions finish out of order.
 5. The flush calls `pg_notify` in the same transaction. PostgreSQL delivers this wakeup only after

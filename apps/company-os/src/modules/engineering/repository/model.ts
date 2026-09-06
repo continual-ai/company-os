@@ -33,5 +33,6 @@ export const Repository = defineObject({
       inverse: { key: "repositories", label: "Repositories" },
     }),
   },
+  search: { fields: ["name", "url"] },
   display: { title: "name", icon: "code" },
 })

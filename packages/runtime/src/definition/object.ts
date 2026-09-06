@@ -158,6 +158,7 @@ export interface ObjectType<
   parent: ObjectParent<TParentTypeId, TParentKind, TParentRecordTypeId>
   pluralName: string
   properties: TProperties
+  search?: { readonly fields: ReadonlyArray<string> } | undefined
   uniqueBy: Readonly<Record<string, ReadonlyArray<string>>>
 }
 
@@ -352,6 +353,8 @@ export function defineObject<
   parent: TParent
   pluralName: string
   properties: TProperties
+  /** Opts into cross-object search. Only these text fields are indexed; display title matches rank higher. */
+  search?: { readonly fields: ReadonlyArray<keyof TProperties & string> }
   uniqueBy?: Readonly<Record<string, ReadonlyArray<string>>>
 }): ObjectType<
   TId,
@@ -403,6 +406,23 @@ export function defineObject<
   }
 
   const properties = normalizeProperties(definition.properties)
+  if (definition.search !== undefined) {
+    if (definition.search.fields.length === 0)
+      throw new Error(
+        `Object '${definition.id}' search requires at least one field.`
+      )
+    for (const field of definition.search.fields) {
+      const property = properties[field]
+      if (
+        property?.kind !== "string" ||
+        property.format === "date" ||
+        property.format === "timestamp"
+      )
+        throw new Error(
+          `Object '${definition.id}' search field '${field}' must be text.`
+        )
+    }
+  }
   const interfaces = bindInterfaceImplementations(
     definition.id,
     properties,
@@ -458,6 +478,7 @@ export function defineObject<
     display: definition.display,
     properties,
     uniqueBy,
+    ...(definition.search === undefined ? {} : { search: definition.search }),
   }
   const actions = {
     ...Object.fromEntries(

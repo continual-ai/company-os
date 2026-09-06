@@ -51,5 +51,6 @@ export const Campaign = defineObject({
     startDate: schema.date({ label: "Starts on", nullable: true }),
     endDate: schema.date({ label: "Ends on", nullable: true }),
   },
+  search: { fields: ["name", "objective"] },
   display: { title: "name", icon: "megaphone", status: "status" },
 })

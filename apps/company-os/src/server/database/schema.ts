@@ -1,4 +1,5 @@
 import { makePostgresSchema } from "@company/postgres"
+import type { ImageRef } from "@company/runtime"
 import { Model } from "company-os/model"
 import { sql } from "drizzle-orm"
 import {
@@ -124,3 +125,27 @@ export const eventJournal = pgTable(
     index("event_journal_type_position_idx").on(table.type, table.position),
   ]
 )
+
+const tsvector = customType<{ data: string }>({ dataType: () => "tsvector" })
+
+/** Derived search documents. Live objects remain authoritative for identity and access. */
+export const recordSearch = pgTable(
+  "record_search",
+  {
+    id: text("id")
+      .primaryKey()
+      .references(() => objects.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    subtitle: text("subtitle"),
+    image: jsonb("image").$type<ImageRef>(),
+    status: text("status"),
+    document: tsvector("document").notNull(),
+  },
+  (table) => [index("record_search_document_idx").using("gin", table.document)]
+)
+
+/** Changes to the source-owned search projection trigger one atomic rebuild during migration. */
+export const searchIndexState = pgTable("search_index_state", {
+  id: integer("id").primaryKey(),
+  definition: text("definition").notNull(),
+})

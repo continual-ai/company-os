@@ -48,5 +48,6 @@ export const Enrollment = defineObject({
       nullable: true,
     }),
   },
+  search: { fields: ["name", "context"] },
   display: { title: "name", icon: "users", status: "status" },
 })

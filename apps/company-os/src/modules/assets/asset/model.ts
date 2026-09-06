@@ -61,6 +61,7 @@ export const Asset = defineObject({
     height: schema.number({ integer: true, minimum: 1, nullable: true }),
     checksum: schema.string({ nullable: true, maxLength: 64 }),
   },
+  search: { fields: ["name"] },
   display: {
     icon: "file",
     title: "name",

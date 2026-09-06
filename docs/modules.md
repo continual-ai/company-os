@@ -364,3 +364,5 @@ beside their owning Object, register their public payload in `src/events.ts`, an
 inside the Action's transaction. [Durable events](events.md) explains the Lead conversion example,
 automatic reference visibility, replay, and browser updates. An event never executes subscribers
 inside the business transaction.
+
+Opt objects into [global search](search.md) with `search: { fields: ["name", "email"] }`. Indexed fields live beside the properties they describe; run `db:migrate` after changing them to rebuild the derived index.

@@ -23,6 +23,7 @@ export const LineItem = defineObject({
     }),
     unitPrice: schema.money({ label: "Unit price", nullable: true }),
   },
+  search: { fields: ["name"] },
   display: {
     icon: "lineItem",
     title: "name",

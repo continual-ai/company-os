@@ -71,5 +71,6 @@ export const Ticket = defineObject({
       nullable: true,
     }),
   },
+  search: { fields: ["subject", "description", "resolution", "externalId"] },
   display: { title: "subject", icon: "messageSquare", status: "status" },
 })

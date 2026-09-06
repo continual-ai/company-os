@@ -6,6 +6,7 @@ import { flushEvents } from "@/server/events/flush-events"
 
 import { CommittedChanges } from "./committed-changes"
 import { relations } from "./schema"
+import { updateSearchIndex } from "./search-index"
 
 function trackTransactions(
   database: PgDrizzle.EffectPgDatabase<typeof relations>
@@ -20,7 +21,13 @@ function trackTransactions(
           Effect.gen(function* () {
             trackTransactions(tx)
             const value = yield* body(tx)
-            if (parent === undefined) yield* flushEvents(tx, events)
+            if (parent === undefined) {
+              yield* updateSearchIndex(
+                tx,
+                events.flatMap((event) => event.subjects)
+              )
+              yield* flushEvents(tx, events)
+            }
             return value
           }).pipe(Effect.provideService(PendingEvents, events)),
         config

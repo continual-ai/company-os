@@ -3,11 +3,13 @@ import { PgClient } from "@effect/sql-pg"
 import { Config, Effect, Option, Redacted } from "effect"
 import { Client } from "pg"
 
+import { Database } from "@/server/database/database"
 import {
   applyMigrations,
   ensureDatabaseSchema,
 } from "@/server/database/migrations"
 import * as Postgres from "@/server/database/postgres"
+import { ensureSearchIndex } from "@/server/database/search-index"
 import { seedSystem } from "@/server/seeds/seed-system"
 
 import { loadLocalEnvironment } from "./local-environment"
@@ -116,6 +118,10 @@ const migrate = Effect.gen(function* () {
   yield* adoptLegacyMigrationBookkeeping()
   yield* applyMigrations()
   yield* seedSystem()
+  yield* ensureSearchIndex(
+    yield* Database,
+    process.argv.includes("--rebuild-search")
+  )
   yield* Effect.log("Database migrated and required records ensured.")
 }).pipe(Effect.provide(Postgres.databaseAndClientLayer))
 

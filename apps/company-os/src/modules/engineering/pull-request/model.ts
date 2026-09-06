@@ -61,5 +61,6 @@ export const PullRequest = defineObject({
     }),
     observedAt: schema.timestamp({ label: "Last observed", nullable: true }),
   },
+  search: { fields: ["title", "url", "headCommit"] },
   display: { title: "title", icon: "gitPullRequest", status: "status" },
 })

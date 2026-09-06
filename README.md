@@ -59,7 +59,10 @@ The development server is trusted local tooling; its automatic identity is disab
 5. Open **Developer Center** to inspect the model, generated HTTP API, client examples, and MCP tools.
 6. Try **Pipeline** on Deals, **Board** on Issues, and **Calendar** or **Timeline** on Campaigns.
    Layout settings select model fields; temporary changes stay in the URL. [Define collection views](docs/collections.md).
-   The OpenAPI document is at [`/api/openapi`](http://localhost:3002/api/openapi).
+7. Press **Command/Ctrl-K** to search records across modules, jump to a collection, or create a record.
+   [Search fields are declared on each object](docs/search.md).
+
+The OpenAPI document is at [`/api/openapi`](http://localhost:3002/api/openapi).
 
 Sales, Marketing, Support, and Engineering are editable starting models. Connect campaigns to
 contacts, support tickets to engineering issues, and issues to pull requests. These records hold

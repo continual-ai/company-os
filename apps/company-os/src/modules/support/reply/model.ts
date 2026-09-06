@@ -51,5 +51,6 @@ export const Reply = defineObject({
       default: [],
     }),
   },
+  search: { fields: ["subject", "body", "externalId"] },
   display: { title: "subject", icon: "mail", status: "status" },
 })

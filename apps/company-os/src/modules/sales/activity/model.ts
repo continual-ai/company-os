@@ -63,5 +63,6 @@ export const Activity = defineObject({
       nullable: true,
     }),
   },
+  search: { fields: ["title", "outcome"] },
   display: { title: "title", icon: "checkSquare", status: "status" },
 })

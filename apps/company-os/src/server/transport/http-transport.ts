@@ -26,6 +26,7 @@ import { EventJournal } from "@/server/events/event-journal"
 import { EventNotifications } from "@/server/events/event-notifications"
 import { streamEvents } from "@/server/events/event-stream"
 import { ModelImplementation } from "@/server/model/model-implementation"
+import { searchRecords } from "@/server/model/search-records"
 
 import {
   internalApiError,
@@ -188,9 +189,38 @@ const make = Effect.gen(function* () {
           )
         })
   )
+  const recordGroupLayer = HttpApiBuilder.group(
+    applicationHttpApi,
+    "records",
+    (handlers) =>
+      handlers.handle("searchRecords", (request) =>
+        authentication.invocation(requestHeaders(request)).pipe(
+          Effect.mapError(() =>
+            unauthenticatedApiError("Authentication credentials are invalid.")
+          ),
+          Effect.flatMap((invocation) =>
+            searchRecords(request.payload).pipe(
+              Effect.provideService(CurrentInvocation, invocation),
+              Effect.provideService(Database, database),
+              Effect.provideService(Authorization, authorization),
+              Effect.catch((error) =>
+                Effect.logError("Record search failed", error).pipe(
+                  Effect.andThen(Effect.fail(internalApiError()))
+                )
+              )
+            )
+          )
+        )
+      )
+  )
   const apiLayer = HttpApiBuilder.layer(applicationHttpApi).pipe(
     Layer.provide(
-      Layer.mergeAll(objectGroupsLayer, capabilityGroupLayer, eventGroupLayer)
+      Layer.mergeAll(
+        objectGroupsLayer,
+        capabilityGroupLayer,
+        eventGroupLayer,
+        recordGroupLayer
+      )
     ),
     Layer.provide(HttpValidationMiddleware.layer),
     Layer.provide(HttpServer.layerServices)

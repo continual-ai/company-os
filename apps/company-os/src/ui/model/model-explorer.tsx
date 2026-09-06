@@ -198,6 +198,10 @@ function PropertyTable({
                 {metadata?.immutable ? <span>immutable</span> : null}
                 {metadata?.outputOnly ? <span>output only</span> : null}
                 {role === undefined ? null : <span>display: {role}</span>}
+                {definition.kind === "object" &&
+                definition.search?.fields.includes(propertyId) ? (
+                  <span>search indexed</span>
+                ) : null}
                 {details.map((detail) => (
                   <span key={detail}>{detail}</span>
                 ))}

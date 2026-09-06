@@ -70,6 +70,7 @@ export const Deal = defineObject({
     }),
     nextStepDate: schema.date({ label: "Next step due", nullable: true }),
   },
+  search: { fields: ["name", "nextStep"] },
   display: {
     icon: "handshake",
     title: "name",

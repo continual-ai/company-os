@@ -42,6 +42,7 @@ export const Contact = defineObject({
     }),
     phone: schema.phone({ label: "Phone", maxLength: 50, nullable: true }),
   },
+  search: { fields: ["name", "email", "jobTitle", "phone"] },
   display: {
     icon: "person",
     image: "photo",

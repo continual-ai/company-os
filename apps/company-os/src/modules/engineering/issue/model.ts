@@ -52,5 +52,6 @@ export const Issue = defineObject({
       default: [],
     }),
   },
+  search: { fields: ["title", "description"] },
   display: { icon: "circleDot", title: "title", status: "status" },
 })

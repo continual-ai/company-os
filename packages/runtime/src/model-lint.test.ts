@@ -49,6 +49,35 @@ const Model = defineModel({
 })
 
 describe("model policy", () => {
+  it("requires explicit text fields for search and publishes their metadata", () => {
+    const definition = {
+      id: "searchable",
+      collection: "searchables",
+      name: "Searchable",
+      pluralName: "Searchables",
+      parent: Root,
+      display: { title: "name" as const },
+      properties: {
+        name: schema.string(),
+        date: schema.date(),
+        count: schema.number(),
+      },
+    }
+    expect(defineObject(definition).search).toBeUndefined()
+    expect(
+      defineObject({ ...definition, search: { fields: ["name"] } }).search
+    ).toEqual({ fields: ["name"] })
+    expect(() =>
+      defineObject({ ...definition, search: { fields: [] } })
+    ).toThrow("at least one field")
+    expect(() =>
+      defineObject({ ...definition, search: { fields: ["date"] } })
+    ).toThrow("must be text")
+    expect(() =>
+      defineObject({ ...definition, search: { fields: ["count"] } })
+    ).toThrow("must be text")
+  })
+
   it("accepts the canonical model naming contract", () => {
     expect(lintModelDescription(describeModel(Model))).toEqual([])
   })

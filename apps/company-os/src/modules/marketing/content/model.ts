@@ -58,5 +58,6 @@ export const Content = defineObject({
       default: [],
     }),
   },
+  search: { fields: ["title", "brief", "body"] },
   display: { title: "title", icon: "fileText", status: "status" },
 })

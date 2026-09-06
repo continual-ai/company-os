@@ -11,6 +11,7 @@ import { useEffect } from "react"
 import type { AuthenticatedUser } from "@/authentication"
 import { AppSidebar } from "@/ui/application/app-sidebar"
 import { AuthenticatedUserProvider } from "@/ui/application/authenticated-user"
+import { CommandPalette } from "@/ui/application/command-palette"
 import { PageChromeProvider } from "@/ui/application/page-chrome"
 import { SiteHeader } from "@/ui/application/site-header"
 import { DeveloperSidebar } from "@/ui/developer/developer-sidebar"
@@ -51,40 +52,44 @@ export function AppShell({
     <AuthenticatedUserProvider user={user}>
       <TooltipProvider>
         <ObjectCreateProvider>
-          <PageChromeProvider>
-            <SidebarProvider
-              key={secondaryShell ? utilityTitle : "app"}
-              className="h-svh min-h-0 overflow-hidden"
-              defaultWidth={secondaryShell ? 240 : 256}
-              minWidth={224}
-              maxWidth={384}
-              resizable={!secondaryShell}
-              revealOnHover={!secondaryShell}
-              style={sidebarStyle}
-            >
-              <SidebarNavigation />
-              {isSettings ? (
-                <SettingsSidebar />
-              ) : isDeveloper ? (
-                <DeveloperSidebar />
-              ) : (
-                <AppSidebar />
-              )}
-              <SidebarInset className="h-svh min-h-0 min-w-0 overflow-hidden">
-                {secondaryShell ? (
-                  <header className="flex h-(--header-height) shrink-0 items-center gap-3 border-b bg-background px-4 md:hidden">
-                    <SidebarTrigger className="-ml-1" />
-                    <span className="text-sm font-medium">{utilityTitle}</span>
-                  </header>
+          <CommandPalette>
+            <PageChromeProvider>
+              <SidebarProvider
+                key={secondaryShell ? utilityTitle : "app"}
+                className="h-svh min-h-0 overflow-hidden"
+                defaultWidth={secondaryShell ? 240 : 256}
+                minWidth={224}
+                maxWidth={384}
+                resizable={!secondaryShell}
+                revealOnHover={!secondaryShell}
+                style={sidebarStyle}
+              >
+                <SidebarNavigation />
+                {isSettings ? (
+                  <SettingsSidebar />
+                ) : isDeveloper ? (
+                  <DeveloperSidebar />
                 ) : (
-                  <SiteHeader />
+                  <AppSidebar />
                 )}
-                <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-                  {children}
-                </div>
-              </SidebarInset>
-            </SidebarProvider>
-          </PageChromeProvider>
+                <SidebarInset className="h-svh min-h-0 min-w-0 overflow-hidden">
+                  {secondaryShell ? (
+                    <header className="flex h-(--header-height) shrink-0 items-center gap-3 border-b bg-background px-4 md:hidden">
+                      <SidebarTrigger className="-ml-1" />
+                      <span className="text-sm font-medium">
+                        {utilityTitle}
+                      </span>
+                    </header>
+                  ) : (
+                    <SiteHeader />
+                  )}
+                  <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+                    {children}
+                  </div>
+                </SidebarInset>
+              </SidebarProvider>
+            </PageChromeProvider>
+          </CommandPalette>
         </ObjectCreateProvider>
       </TooltipProvider>
     </AuthenticatedUserProvider>

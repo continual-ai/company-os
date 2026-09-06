@@ -13,6 +13,8 @@ import { Link } from "@tanstack/react-router"
 import { ArrowLeftIcon, type LucideIcon } from "lucide-react"
 import type { ReactElement, ReactNode } from "react"
 
+import { CommandPaletteButton } from "./command-palette"
+
 export function SecondarySidebar({ children }: { children: ReactNode }) {
   return (
     <Sidebar variant="sidebar" collapsible="offcanvas">
@@ -23,6 +25,9 @@ export function SecondarySidebar({ children }: { children: ReactNode }) {
               <ArrowLeftIcon />
               <span>Back to app</span>
             </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <CommandPaletteButton />
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>

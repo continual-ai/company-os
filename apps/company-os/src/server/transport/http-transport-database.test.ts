@@ -327,6 +327,16 @@ describe("application HTTP server", () => {
         lifecycleStage: "prospect",
         name: "Northstar",
       })
+      const search = yield* useTestFetch(
+        nativeClient.records.searchRecords({
+          params: customMethodParams("search"),
+          payload: { query: "north", objectTypes: ["company"] },
+        })
+      )
+      expect(search.hits).toMatchObject([
+        { id: created.id, objectType: "company", title: "Northstar" },
+      ])
+      expect(search.hasMore).toBe(false)
       const note = yield* useTestFetch(
         model.note.create({
           content: "Introductory call",

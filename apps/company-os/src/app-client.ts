@@ -13,13 +13,20 @@ import {
 import { HttpApiClient } from "effect/unstable/httpapi"
 
 import { applicationHttpApi } from "./http-api"
-import type { capabilityGroup, eventGroup } from "./http-api"
+import type { capabilityGroup, eventGroup, recordGroup } from "./http-api"
 import { modelFetch, modelOrigin } from "./model-fetch"
-import { ClientChanges, createModelQueries } from "./model-query-client"
+import {
+  ClientChanges,
+  createModelQueries,
+  modelQuery,
+  runClientEffect,
+} from "./model-query-client"
+import { searchableObjects, type RecordSearchInput } from "./records"
 
 type ApplicationTransportClient = ModelHttpClient<typeof Model> &
   HttpApiClient.Client<typeof capabilityGroup> &
-  HttpApiClient.Client<typeof eventGroup>
+  HttpApiClient.Client<typeof eventGroup> &
+  HttpApiClient.Client<typeof recordGroup>
 
 /** Native Effect client derived from the same HTTP contract as the server. */
 // SAFETY: Model generates the widened portion of applicationHttpApi at runtime;
@@ -55,7 +62,25 @@ const transportClient = Effect.runSync(
 
 /** Semantic object, Action, and Link client derived from the application contract. */
 const client = createModelClient(Model, transportClient)
-export const data = createModelQueries(Model, client)
+export const data = {
+  ...createModelQueries(Model, client),
+  records: {
+    search: (input: RecordSearchInput) =>
+      modelQuery(
+        input.objectTypes ?? searchableObjects.map((object) => object.id),
+        "records.search",
+        input,
+        (signal) =>
+          runClientEffect(
+            transportClient.records.searchRecords({
+              params: customMethodParams("search"),
+              payload: input,
+            }),
+            signal
+          )
+      ),
+  },
+}
 
 /** Checks advisory UI capabilities through the generated application contract. */
 export const checkCapabilities = (

@@ -37,5 +37,6 @@ export const Project = defineObject({
     }),
     targetDate: schema.date({ label: "Target date", nullable: true }),
   },
+  search: { fields: ["name", "objective"] },
   display: { title: "name", icon: "folder", status: "status" },
 })

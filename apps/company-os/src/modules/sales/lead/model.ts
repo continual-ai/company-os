@@ -91,6 +91,7 @@ export const Lead = defineObject({
       outputOnly: true,
     }),
   },
+  search: { fields: ["name", "companyName", "email", "phone"] },
   display: {
     icon: "lead",
     title: "name",

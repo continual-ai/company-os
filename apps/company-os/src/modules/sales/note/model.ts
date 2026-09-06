@@ -16,6 +16,7 @@ export const Note = defineObject({
       maxLength: 10_000,
     }),
   },
+  search: { fields: ["content"] },
   display: {
     icon: "note",
     title: "content",

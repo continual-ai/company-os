@@ -67,6 +67,7 @@ export const Company = defineObject({
       ],
     }),
   },
+  search: { fields: ["name", "website"] },
   display: {
     icon: "building",
     image: "logo",

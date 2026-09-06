@@ -83,6 +83,8 @@ describe("PostgreSQL schema", () => {
       DatabaseSchema.assetReferences,
       DatabaseSchema.eventJournal,
       DatabaseSchema.eventJournalState,
+      DatabaseSchema.recordSearch,
+      DatabaseSchema.searchIndexState,
     ]
     // The authoring projection is exhaustive; convenience aliases are intentionally optional.
     for (const table of kitTables) expect(expectedKitTables).toContain(table)

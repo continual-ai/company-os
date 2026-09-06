@@ -19,6 +19,7 @@ import { isCapabilityPermission, MAX_CAPABILITY_CHECKS } from "@/capabilities"
 
 import { eventPageSchema, InvalidEventCursor } from "./events"
 import { documentIdentity } from "./openapi-identity"
+import { recordSearchInput, recordSearchResult } from "./records"
 
 const permissionSchema = Schema.String.check(
   Schema.makeFilter(isCapabilityPermission, {
@@ -137,6 +138,31 @@ export const eventGroup = HttpApiGroup.make("events")
     )
   )
 
+export const recordGroup = HttpApiGroup.make("records").add(
+  HttpApiEndpoint.post(
+    "searchRecords",
+    customMethodPath("/api/v1/records", "search"),
+    {
+      params: { search: customMethodParameter("search") },
+      payload: recordSearchInput,
+      success: recordSearchResult,
+      error: [
+        toEffectErrorSchema(UnauthenticatedError).pipe(
+          HttpApiSchema.status(401)
+        ),
+        toEffectErrorSchema(InternalError).pipe(HttpApiSchema.status(500)),
+      ],
+    }
+  ).annotateMerge(
+    OpenApi.annotations({
+      identifier: "searchRecords",
+      summary: "Search records across objects",
+      description:
+        "Searches explicitly indexed model fields using word prefixes, with all terms required. Returns ranked display summaries, filtered by current read permissions. Optional objectTypes narrows the search. hasMore means narrow the query or increase limit (maximum 50); use object list APIs for exhaustive traversal.",
+    })
+  )
+)
+
 /** The one HTTP contract used by handlers, clients, OpenAPI, and documentation. */
 export const applicationHttpApi = documentIdentity(
   createModelHttpApi(Model, {
@@ -145,4 +171,5 @@ export const applicationHttpApi = documentIdentity(
   })
     .add(capabilityGroup)
     .add(eventGroup)
+    .add(recordGroup)
 )

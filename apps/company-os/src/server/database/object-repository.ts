@@ -14,6 +14,7 @@ import { PageTokens } from "@/server/page-tokens"
 import { Database } from "./database"
 import { deletionChanges } from "./deletion-changes"
 import { Storage } from "./schema"
+import { updateSearchIndex } from "./search-index"
 
 type ModelObjectType = (typeof Model.objects)[keyof typeof Model.objects]
 
@@ -144,6 +145,22 @@ export function makeObjectSeedRepository<const TObject extends ModelObjectType>(
 ) {
   return Effect.gen(function* () {
     const database = yield* Database
-    return yield* makePostgresObjectSeedRepository(Storage, object, database)
+    const repository = yield* makePostgresObjectSeedRepository(
+      Storage,
+      object,
+      database
+    )
+    return {
+      upsert: (input: Parameters<typeof repository.upsert>[0]) =>
+        database.transaction(() =>
+          Effect.gen(function* () {
+            const record = yield* repository.upsert(input)
+            yield* updateSearchIndex(database, [
+              { id: input.id, objectType: object.id },
+            ])
+            return record
+          })
+        ),
+    }
   })
 }
