@@ -8,11 +8,14 @@ import {
   type RecordId,
   schema,
 } from "@company/runtime"
-import { getTableColumns, getTableName } from "drizzle-orm"
-import { getTableConfig } from "drizzle-orm/pg-core"
 import { describe, expect, expectTypeOf, it } from "vitest"
 
 import { makePostgresSchema } from "./schema"
+import type { TableRow } from "./statement"
+import {
+  tableColumns as getTableColumns,
+  tableName as getTableName,
+} from "./table"
 
 const Identity = defineInterface({
   id: "identity",
@@ -97,19 +100,17 @@ describe("makePostgresSchema", () => {
       "interface_authorization_scope"
     )
     expectTypeOf<
-      typeof storage.interfaces.authorizationScope.$inferSelect.id
+      TableRow<typeof storage.interfaces.authorizationScope>["id"]
     >().toEqualTypeOf<RecordId<"root"> | RecordId<"workspace">>()
     expectTypeOf<
-      typeof storage.linkTables.permissionScope.$inferSelect.reverseId
+      TableRow<typeof storage.linkTables.permissionScope>["reverseId"]
     >().toEqualTypeOf<RecordId<"root"> | RecordId<"workspace">>()
     expectTypeOf<
-      typeof storage.objects.workspace.$inferSelect.parentId
+      TableRow<typeof storage.objects.workspace>["parentId"]
     >().toEqualTypeOf<RecordId<"root">>()
-    expect(
-      getTableConfig(storage.objects.permission).indexes.map(
-        ({ config }) => config.name
-      )
-    ).toContain("permissions_name_unique")
+    expect(storage.ddl.join("\n")).toContain(
+      'create unique index "permissions_name_unique" on "permissions" ("name")'
+    )
   })
 
   it("projects many-to-many links through one generated junction table", () => {
@@ -173,15 +174,14 @@ describe("makePostgresSchema", () => {
     expect(
       Object.keys(getTableColumns(storage.linkTables.teamMembership))
     ).toEqual(["forwardId", "reverseId"])
-    expect(storage.relations.person?.relations.teams?.targetTableName).toBe(
-      "team"
+    const ddl = storage.ddl.join("\n")
+    expect(ddl).toContain(
+      'foreign key(forward_id) references "people"(id) on delete cascade'
     )
-    expect(storage.relations.team?.relations.members?.targetTableName).toBe(
-      "person"
+    expect(ddl).toContain(
+      'foreign key(reverse_id) references "teams"(id) on delete cascade'
     )
-    expect(
-      getTableConfig(storage.linkTables.teamMembership).primaryKeys
-    ).toHaveLength(1)
+    expect(ddl).toContain("primary key(forward_id,reverse_id)")
   })
 
   it("derives one-to-one uniqueness from link cardinality", () => {
@@ -239,16 +239,10 @@ describe("makePostgresSchema", () => {
 
     const storage = makePostgresSchema(model)
 
-    expect(
-      getTableConfig(storage.linkTables.personBadge).indexes.map(
-        ({ config }) => config.name
+    for (const side of ["forward", "reverse"])
+      expect(storage.ddl.join("\n")).toContain(
+        `create unique index "person_badge_${side}_id_unique" on "person_badge"(${side}_id)`
       )
-    ).toEqual(
-      expect.arrayContaining([
-        "person_badge_forward_id_unique",
-        "person_badge_reverse_id_unique",
-      ])
-    )
   })
 
   it("rejects physical table-name collisions after normalization", () => {
@@ -277,7 +271,7 @@ describe("makePostgresSchema", () => {
     })
 
     expect(() => makePostgresSchema(model)).toThrow(
-      /table 'objects' is required by both core objects and object 'collision'/
+      /Duplicate PostgreSQL table 'objects'/
     )
   })
 
@@ -318,13 +312,19 @@ describe("makePostgresSchema", () => {
 
     const storage = makePostgresSchema(model)
 
-    expect(getTableConfig(storage.objects.validatedRecord).checks).toEqual([])
+    const ddl = storage.ddl.join("\n")
     expect(
-      getTableConfig(storage.core.objects).checks.map(({ name }) => name)
-    ).toEqual(["objects_object_type_check", "objects_parent_required"])
+      storage.ddl.find((statement) =>
+        statement.startsWith('create table "validated_records"')
+      )
+    ).not.toContain("check")
+    expect(ddl).toContain("constraint objects_object_type_check check")
+    expect(ddl).toContain("constraint objects_parent_required check")
     expect(
-      getTableConfig(storage.core.recordAliases).checks.map(({ name }) => name)
-    ).toEqual([])
-    expect(storage.objects.validatedRecord.labels.dimensions).toBe(1)
+      storage.ddl.find((statement) =>
+        statement.startsWith('create table "record_aliases"')
+      )
+    ).not.toContain("check")
+    expect(storage.objects.validatedRecord.columns.labels.type).toBe("text[]")
   })
 })

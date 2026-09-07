@@ -1,5 +1,6 @@
+import { insertValues } from "@company/postgres"
+import { tableProjection, type TableRow } from "@company/postgres"
 import { CurrentInvocation } from "@company/runtime/effect/object-service"
-import { eq, sql } from "drizzle-orm"
 import { Effect, Layer } from "effect"
 
 import {
@@ -26,18 +27,18 @@ export const runSeedScenario = Effect.fn("@company/runSeedScenario")(function* (
   infrastructure: Omit<ApplicationServicesInfrastructure, "database"> = {}
 ) {
   const database = yield* Database
+  const sql = database.sql
   const parameters = JSON.stringify(
     Object.entries(scenario.parameters).sort(([a], [b]) => a.localeCompare(b))
   )
   return yield* database.transaction((tx) =>
     Effect.gen(function* () {
-      yield* tx.execute(
-        sql`select pg_advisory_xact_lock(hashtext('company-os:seed'))`
-      )
-      const [existing] = yield* tx
-        .select()
-        .from(seedRuns)
-        .where(eq(seedRuns.name, scenario.name))
+      yield* sql`select pg_advisory_xact_lock(hashtext('company-os:seed'))`
+      const [existing] = yield* sql<
+        TableRow<typeof seedRuns>
+      >`select ${tableProjection(seedRuns)}
+          from ${seedRuns}
+          where ${seedRuns.columns.name} = ${scenario.name}`
       if (existing !== undefined) {
         if (existing.parameters !== parameters)
           return yield* Effect.fail(
@@ -53,13 +54,13 @@ export const runSeedScenario = Effect.fn("@company/runSeedScenario")(function* (
             ...infrastructure,
             database: Layer.succeed(
               Database,
-              Object.assign(tx, { $client: database.$client })
+              Object.assign(tx, { $client: database.sql })
             ),
           })
         ),
         Effect.provideService(CurrentInvocation, systemInvocation)
       )
-      yield* tx.insert(seedRuns).values({ name: scenario.name, parameters })
+      yield* sql`insert into ${seedRuns} ${insertValues(sql, seedRuns, { name: scenario.name, parameters })}`
       return "seeded" as const
     })
   )

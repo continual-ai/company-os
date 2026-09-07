@@ -111,7 +111,7 @@ export const Campaign = defineObject({
 ```
 
 Put the object in `modules/marketing/campaign/model.ts`, include it in the Marketing module’s
-`model.ts`, and install that module in `src/model.ts`. Generate and review a migration, then assign
+`model.ts`, and install that module in `src/model.ts`. Regenerate `schema.sql`, write and review the corresponding SQL migration, then assign
 the intended permissions.
 Its default page is `/objects/campaign`. See [Building a module](docs/modules.md) for the complete
 path, custom actions, React extensions, and client data access.
@@ -136,7 +136,7 @@ React UI       Typed client       HTTP / OpenAPI       MCP tools
 - **Model:** portable, browser-safe TypeScript. Objects have durable identity; references, Links,
   and association Objects describe different kinds of relationships.
 - **Server:** Effect v4 operations enforce permissions and business rules. PostgreSQL is authoritative;
-  Drizzle and the Effect SQL driver implement persistence and explicit migrations.
+  Effect SQL implements persistence and explicit migrations over model-derived PostgreSQL tables.
 - **UI:** TanStack Start, Router, and Form with editable shadcn primitives and Tailwind CSS v4.
   Standard collection pages share filters, views, forms, relationships, and file fields.
 - **Data access:** a generated semantic client over HTTP. One TanStack Query cache serves
@@ -200,7 +200,7 @@ Run commands from the repository root:
 | `pnpm test`                            | Run unit and isolated PostgreSQL integration tests                      |
 | `pnpm build`                           | Build the application and maintained app starters                       |
 | `pnpm format`                          | Format source and documentation                                         |
-| `pnpm --filter company-os db:generate` | Generate storage exports and a migration after model changes            |
+| `pnpm --filter company-os db:generate` | Regenerate the current model-derived `schema.sql`                       |
 
 Tests need a PostgreSQL role with `CREATEDB`; they create and remove isolated databases rather than
 changing your app's records. [Database workflow](docs/runbooks/database.md) covers this lifecycle.

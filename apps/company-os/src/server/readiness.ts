@@ -1,13 +1,13 @@
-import { sql } from "drizzle-orm"
 import { Context, Effect, Layer } from "effect"
 
 import { Database } from "./database/database"
 
 const make = Effect.gen(function* () {
   const database = yield* Database
+  const sql = database.sql
   return {
     check: Effect.fn("@company/Readiness.check")(function* () {
-      yield* database.execute(sql`select 1`)
+      yield* sql`select 1`
     }),
   }
 })

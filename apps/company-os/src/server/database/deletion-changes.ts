@@ -1,6 +1,11 @@
+import {
+  projection,
+  type SelectionRow,
+  inValues,
+  sqlValue,
+} from "@company/postgres"
 import { modelTypeAccepts, type ObjectType } from "@company/runtime"
 import { Model } from "company-os/model"
-import { inArray, sql } from "drizzle-orm"
 import { Effect } from "effect"
 
 import { makeEventWriter } from "@/server/events/event-writer"
@@ -15,16 +20,18 @@ export function deletionChanges(
   database: typeof Database.Service,
   object: ObjectType
 ) {
+  const sql = database.sql
+
   const traversals = Object.values(Model.links).flatMap((link) => {
     const table = Storage.linkTables[link.id]
     return [
       ...(modelTypeAccepts(Model, object.id, link.forward.from.typeId) &&
       cascades(link.reverse.cardinality)
-        ? [{ source: table.forwardId, table, linkId: link.id }]
+        ? [{ source: table.columns.forwardId, table, linkId: link.id }]
         : []),
       ...(modelTypeAccepts(Model, object.id, link.reverse.from.typeId) &&
       cascades(link.forward.cardinality)
-        ? [{ source: table.reverseId, table, linkId: link.id }]
+        ? [{ source: table.columns.reverseId, table, linkId: link.id }]
         : []),
     ]
   })
@@ -32,22 +39,23 @@ export function deletionChanges(
     Effect.gen(function* () {
       if (ids.length === 0 || traversals.length === 0) return
       const objects = Storage.core.objects
-      yield* database
-        .select({ id: objects.id })
-        .from(objects)
-        .where(inArray(objects.id, [...ids]))
-        .orderBy(objects.id)
-        .for("update")
+      const selection = { id: objects.columns.id }
+      yield* sql<SelectionRow<typeof selection>>`select ${projection(selection)}
+          from ${objects}
+          where ${inValues(sql, objects.columns.id, [...ids])}
+          order by ${sql.csv([objects.columns.id])} for update`
       const events = makeEventWriter(database)
       const seen = new Set<string>()
       for (const { source, table, linkId } of traversals) {
-        const rows = yield* database
-          .select({
-            forwardId: sql<string>`${table.forwardId}`,
-            reverseId: sql<string>`${table.reverseId}`,
-          })
-          .from(table)
-          .where(inArray(source, [...ids]))
+        const rowsFields = {
+          forwardId: sqlValue<string>(sql`${table.columns.forwardId}`),
+          reverseId: sqlValue<string>(sql`${table.columns.reverseId}`),
+        }
+        const rows = yield* sql<
+          SelectionRow<typeof rowsFields>
+        >`select ${projection(rowsFields)}
+          from ${table}
+          where ${inValues(sql, source, [...ids])}`
         for (const pair of rows) {
           const key = JSON.stringify([linkId, pair.forwardId, pair.reverseId])
           if (seen.has(key)) continue

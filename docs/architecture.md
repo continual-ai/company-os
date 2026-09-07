@@ -63,8 +63,8 @@ operation. Lists and hydration return ordinary resources, without BASIC/FULL vie
 Effect v4 services use `Context.Service(..., { make })`, named `Effect.fn` operations, and static
 `.layer` implementations. Acquire dependencies in `make`, compose layers at the application
 boundary, and use typed failures for expected business outcomes. Portable model definitions do not
-require Effect. Drizzle implements ordinary typed SQL and transactions over the Effect PostgreSQL
-client; replacing it would not improve the domain boundary by itself.
+require Effect. Effect SQL supplies parameterized statements and transactions. The PostgreSQL adapter derives
+physical storage and standard repositories from the portable model; custom operations share that client.
 
 Custom operations default to named Effect functions. Services represent dependencies and cohesive
 capabilities; repositories encapsulate persistence when useful. There is no mandatory service/repository

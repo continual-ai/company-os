@@ -1,3 +1,5 @@
+import { assignments } from "@company/postgres"
+import { tableProjection, type TableRow } from "@company/postgres"
 import {
   DomainName,
   EmailAddress,
@@ -15,7 +17,6 @@ import {
 } from "@company/runtime/effect/object-repository"
 import * as ObjectService from "@company/runtime/effect/object-service"
 import { Model } from "company-os/model"
-import { eq } from "drizzle-orm"
 import { Effect } from "effect"
 import { describe, expect, expectTypeOf } from "vitest"
 
@@ -29,6 +30,7 @@ import { Database } from "./database"
 import { itDatabase } from "./it-database"
 import { applyMigrations } from "./migrations"
 import { makeObjectRepository } from "./object-repository"
+import { Storage } from "./schema"
 import { lineItems, recordAliases, objects, parties } from "./schema"
 
 const CompanyId = RecordId("company")
@@ -54,7 +56,7 @@ function snakeCase(value: string): string {
   return value.replaceAll(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase()
 }
 
-describe("Drizzle object repository", () => {
+describe("Effect SQL object repository", () => {
   itDatabase(
     "migrates and preserves object invariants across standard methods",
     Effect.fn(function* () {
@@ -63,6 +65,7 @@ describe("Drizzle object repository", () => {
       const context = systemInvocation
       const result = yield* Effect.gen(function* () {
         const database = yield* Database
+        const sql = database.sql
         yield* applyMigrations()
         yield* applyMigrations()
 
@@ -129,14 +132,10 @@ describe("Drizzle object repository", () => {
         const clearedAlias = yield* identifiers
           .resolve("company", hubspotBravo)
           .pipe(Effect.flip)
-        yield* database
-          .update(objects)
-          .set({ createdAt: "2001-01-01T00:00:00.000123Z" })
-          .where(eq(objects.id, first.id))
-        yield* database
-          .update(objects)
-          .set({ createdAt: "2001-01-01T00:00:00.000456Z" })
-          .where(eq(objects.id, second.id))
+        yield* sql`update ${objects} set ${assignments(sql, objects, { createdAt: "2001-01-01T00:00:00.000123Z" })}
+          where ${objects.columns.id} = ${first.id}`
+        yield* sql`update ${objects} set ${assignments(sql, objects, { createdAt: "2001-01-01T00:00:00.000456Z" })}
+          where ${objects.columns.id} = ${second.id}`
         const firstPage = yield* service.list({ pageSize: 1 })
         if (firstPage.nextPageToken === null) {
           return yield* Effect.die("Expected another page")
@@ -145,10 +144,8 @@ describe("Drizzle object repository", () => {
           pageSize: 1,
           pageToken: firstPage.nextPageToken,
         })
-        yield* database
-          .update(objects)
-          .set({ createdAt: "2001-01-01T00:00:00.000123Z" })
-          .where(eq(objects.id, second.id))
+        yield* sql`update ${objects} set ${assignments(sql, objects, { createdAt: "2001-01-01T00:00:00.000123Z" })}
+          where ${objects.columns.id} = ${second.id}`
         const tiedFirst = yield* service.list({ pageSize: 1 })
         expect(tiedFirst.items.map(({ id }) => id)).toEqual([second.id])
         if (tiedFirst.nextPageToken === null)
@@ -297,7 +294,10 @@ describe("Drizzle object repository", () => {
           name: "Expansion",
           parent: legacyExample,
         })
-        const storedDeals = yield* database.query.deal.findMany()
+        const storedDeals = yield* sql<
+          TableRow<typeof Storage.objects.deal>
+        >`select ${tableProjection(Storage.objects.deal)}
+          from ${Storage.objects.deal}`
         type StoredDeal = (typeof storedDeals)[number]
         expectTypeOf<StoredDeal["parentId"]>().toEqualTypeOf<
           RecordId<"authorizationScope">
@@ -320,30 +320,43 @@ describe("Drizzle object repository", () => {
           name: "Implementation",
           parent: deal.id,
         })
-        const inconsistentParent = yield* database
-          .update(objects)
-          .set({ parentId: root })
-          .where(eq(objects.id, lineItem.id))
-          .pipe(Effect.flip)
+        const inconsistentParent =
+          yield* sql`update ${objects} set ${assignments(sql, objects, { parentId: root })}
+          where ${objects.columns.id} = ${lineItem.id}`.pipe(Effect.flip)
         const batchDeleteFailure = yield* service
           .batchDelete({ ids: [second.id, first.id] })
           .pipe(Effect.flip)
         const retainedAfterBatchDelete = yield* service.batchGet({
           ids: [second.id, first.id],
         })
-        const lineItemKindRows = yield* database.select().from(lineItems)
-        const lineItemObjectRows = yield* database.select().from(objects)
-        const aliasRows = yield* database.select().from(recordAliases)
-        const partyRows = yield* database.select().from(parties)
-        const columns = yield* database.$client<{
+        const lineItemKindRows = yield* sql<
+          TableRow<typeof lineItems>
+        >`select ${tableProjection(lineItems)}
+          from ${lineItems}`
+        const lineItemObjectRows = yield* sql<
+          TableRow<typeof objects>
+        >`select ${tableProjection(objects)}
+          from ${objects}`
+        const aliasRows = yield* sql<
+          TableRow<typeof recordAliases>
+        >`select ${tableProjection(recordAliases)}
+          from ${recordAliases}`
+        const partyRows = yield* sql<
+          TableRow<typeof parties>
+        >`select ${tableProjection(parties)}
+          from ${parties}`
+        const columns = yield* sql<{
           columnName: string
           tableName: string
         }>`
           select
             column_name as "columnName",
             table_name as "tableName"
+
           from information_schema.columns
+
           where table_schema = 'public'
+
           order by table_name, column_name
         `
 

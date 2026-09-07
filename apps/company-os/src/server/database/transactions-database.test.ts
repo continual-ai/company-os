@@ -1,4 +1,5 @@
-import { sql } from "drizzle-orm"
+import { insertValues } from "@company/postgres"
+import { tableProjection, type TableRow } from "@company/postgres"
 import { Effect } from "effect"
 import { expect } from "vitest"
 
@@ -10,19 +11,22 @@ itDatabase(
   "releases nested savepoints while preserving rollback and sibling isolation",
   Effect.fn(function* () {
     const database = yield* Database
+    const sql = database.sql
     yield* database.transaction((tx) =>
       Effect.forEach(
         ["one", "two", "three"],
         (name) =>
           tx.transaction((child) =>
             Effect.gen(function* () {
-              yield* child.insert(seedRuns).values({ name, parameters: "{}" })
+              yield* child.sql<
+                Record<string, unknown>
+              >`insert into ${seedRuns} ${insertValues(sql, seedRuns, { name, parameters: "{}" })}`
               const failed = yield* Effect.result(
                 child.transaction((inner) =>
                   Effect.gen(function* () {
-                    yield* inner
-                      .insert(seedRuns)
-                      .values({ name: `${name}-failed`, parameters: "{}" })
+                    yield* inner.sql<
+                      Record<string, unknown>
+                    >`insert into ${seedRuns} ${insertValues(sql, seedRuns, { name: `${name}-failed`, parameters: "{}" })}`
                     return yield* Effect.fail(new Error("rollback child only"))
                   })
                 )
@@ -34,32 +38,38 @@ itDatabase(
       ).pipe(
         Effect.tap(() =>
           Effect.gen(function* () {
-            const locks = yield* tx.execute<{ count: number }>(
-              sql`select count(*)::integer as count from pg_locks
-              where pid = pg_backend_pid() and locktype = 'transactionid'`,
-              "objects"
-            )
+            const locks = yield* sql`select count(*)::double precision as count
+          from pg_locks
+
+          where pid = pg_backend_pid() and locktype = 'transactionid'`
             expect(locks[0]!.count).toBe(1)
           })
         )
       )
     )
     expect(
-      (yield* database.select().from(seedRuns)).map(({ name }) => name).sort()
+      (yield* sql<TableRow<typeof seedRuns>>`select ${tableProjection(seedRuns)}
+          from ${seedRuns}`)
+        .map(({ name }) => name)
+        .sort()
     ).toEqual(["one", "three", "two"])
     const failed = yield* Effect.result(
       database.transaction((tx) =>
         Effect.gen(function* () {
-          yield* tx.transaction((inner) =>
-            inner
-              .insert(seedRuns)
-              .values({ name: "rolled-back", parameters: "{}" })
+          yield* tx.transaction(
+            (inner) =>
+              inner.sql<
+                Record<string, unknown>
+              >`insert into ${seedRuns} ${insertValues(sql, seedRuns, { name: "rolled-back", parameters: "{}" })}`
           )
           return yield* Effect.fail(new Error("rollback outer"))
         })
       )
     )
     expect(failed._tag).toBe("Failure")
-    expect(yield* database.select().from(seedRuns)).toHaveLength(3)
+    expect(
+      yield* sql<TableRow<typeof seedRuns>>`select ${tableProjection(seedRuns)}
+          from ${seedRuns}`
+    ).toHaveLength(3)
   })
 )

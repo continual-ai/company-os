@@ -16,11 +16,12 @@
   "dependencies": {
     "@company/runtime": "workspace:*",
     "@effect/sql-pg": "catalog:",
-    "drizzle-orm": "catalog:",
-    "effect": "catalog:"
+    "effect": "catalog:",
+    "pg": "catalog:"
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "@types/pg": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }

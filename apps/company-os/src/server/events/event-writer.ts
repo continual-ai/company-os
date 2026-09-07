@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto"
 
+import { projection, type SelectionRow, inValues } from "@company/postgres"
 import { modelTypeAccepts } from "@company/runtime"
 import type {
   AnySchema,
@@ -10,7 +11,6 @@ import type {
 import { toEffectSchema } from "@company/runtime/effect"
 import { CurrentInvocation } from "@company/runtime/effect/object-service"
 import { Model } from "company-os/model"
-import { inArray } from "drizzle-orm"
 import { DateTime, Effect, Option, Schema } from "effect"
 
 import { eventFactSchema } from "@/events"
@@ -20,21 +20,25 @@ import { objects } from "@/server/database/schema"
 import { stageEvent, type EventSubject } from "./event-buffer"
 import { eventReferences } from "./event-references"
 
-/** Shared by standard writers and EventJournal; uses the caller's existing SQL transaction. */
+/** Shared by standard writers and EventJournal; uses the caller's existing Fragment transaction. */
 export function makeEventWriter(database: typeof Database.Service) {
+  const sql = database.sql
+
   const subjects = (ids: ReadonlyArray<string>) =>
     Effect.gen(function* () {
+      const rowsFields = {
+        id: objects.columns.id,
+        objectType: objects.columns.objectType,
+        ancestorIds: objects.columns.ancestorIds,
+      }
       const rows =
         ids.length === 0
           ? []
-          : yield* database
-              .select({
-                id: objects.id,
-                objectType: objects.objectType,
-                ancestorIds: objects.ancestorIds,
-              })
-              .from(objects)
-              .where(inArray(objects.id, [...new Set(ids)]))
+          : yield* sql<
+              SelectionRow<typeof rowsFields>
+            >`select ${projection(rowsFields)}
+          from ${objects}
+          where ${inValues(sql, objects.columns.id, [...new Set(ids)])}`
       const byId = new Map(rows.map((row) => [row.id, row]))
       return yield* Effect.forEach([...new Set(ids)], (id) => {
         const row = byId.get(id)

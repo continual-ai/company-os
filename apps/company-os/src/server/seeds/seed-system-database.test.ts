@@ -1,5 +1,12 @@
+import { assignments, insertValues } from "@company/postgres"
+import {
+  tableProjection,
+  type TableRow,
+  projection,
+  type SelectionRow,
+  inValues,
+} from "@company/postgres"
 import { Etag } from "@company/runtime"
-import { eq, inArray, sql } from "drizzle-orm"
 import { Effect } from "effect"
 import { describe, expect } from "vitest"
 
@@ -36,82 +43,99 @@ describe("Company OS seeds", () => {
     Effect.fn(function* () {
       const result = yield* Effect.gen(function* () {
         const database = yield* Database
+        const sql = database.sql
 
-        const auditConstraints = yield* database.execute<{
-          constraintName: string
-          deferrable: boolean
-          initiallyDeferred: boolean
-        }>(
-          sql`select
+        const auditConstraints = yield* sql`select
                 conname as "constraintName",
                 condeferrable as "deferrable",
                 condeferred as "initiallyDeferred"
-              from pg_constraint
-              where conname in (
+
+          from pg_constraint
+
+          where conname in (
                 'objects_created_by_id_interface_actor_id_fkey',
                 'objects_updated_by_id_interface_actor_id_fkey'
               )
-              order by conname`,
-          "objects"
-        )
+
+          order by conname`
 
         yield* seedSystem()
-        yield* database
-          .update(roles)
-          .set({ name: "Drifted", permissions: [] })
-          .where(eq(roles.id, ADMINISTRATOR_ROLE_ID))
-        yield* database
-          .update(objects)
-          .set({ systemManaged: false })
-          .where(eq(objects.id, ADMINISTRATOR_ROLE_ID))
-        yield* database
-          .delete(objects)
-          .where(eq(objects.id, SYSTEM_ROLE_ASSIGNMENT_ID))
+        yield* sql`update ${roles} set ${assignments(sql, roles, { name: "Drifted", permissions: [] })}
+          where ${roles.columns.id} = ${ADMINISTRATOR_ROLE_ID}`
+        yield* sql`update ${objects} set ${assignments(sql, objects, { systemManaged: false })}
+          where ${objects.columns.id} = ${ADMINISTRATOR_ROLE_ID}`
+        yield* sql`delete
+          from ${objects}
+          where ${objects.columns.id} = ${SYSTEM_ROLE_ASSIGNMENT_ID}`
 
         yield* seedSystem()
 
-        const seededObjects = yield* database
-          .select({ id: objects.id, systemManaged: objects.systemManaged })
-          .from(objects)
-          .where(
-            inArray(objects.id, [
-              ROOT_ID,
-              SYSTEM_SERVICE_ACCOUNT_ID,
-              ANONYMOUS_ACTOR_ID,
-              ADMINISTRATOR_ROLE_ID,
-              SYSTEM_ROLE_ASSIGNMENT_ID,
-            ])
-          )
-        const role = yield* database
-          .select({ name: roles.name, permissions: roles.permissions })
-          .from(roles)
-          .where(eq(roles.id, ADMINISTRATOR_ROLE_ID))
-          .limit(1)
-        const callerSets = yield* database
-          .select({ id: principalSets.id, kind: principalSets.kind })
-          .from(principalSets)
-          .orderBy(principalSets.id)
-        const anonymousActor = yield* database
-          .select({ actorId: actors.id, id: anonymousActors.id })
-          .from(anonymousActors)
-          .innerJoin(actors, eq(actors.id, anonymousActors.id))
-          .where(eq(anonymousActors.id, ANONYMOUS_ACTOR_ID))
-          .limit(1)
-        const assignment = yield* database
-          .select({
-            principalId: roleAssignments.principalId,
-            roleId: roleAssignments.roleId,
-          })
-          .from(roleAssignments)
-          .where(eq(roleAssignments.id, SYSTEM_ROLE_ASSIGNMENT_ID))
-          .limit(1)
-        const aliases = yield* database.select().from(recordAliases)
+        const seededObjectsFields = {
+          id: objects.columns.id,
+          systemManaged: objects.columns.systemManaged,
+        }
+        const seededObjects = yield* sql<
+          SelectionRow<typeof seededObjectsFields>
+        >`select ${projection(seededObjectsFields)}
+          from ${objects}
+          where ${inValues(sql, objects.columns.id, [
+            ROOT_ID,
+            SYSTEM_SERVICE_ACCOUNT_ID,
+            ANONYMOUS_ACTOR_ID,
+            ADMINISTRATOR_ROLE_ID,
+            SYSTEM_ROLE_ASSIGNMENT_ID,
+          ])}`
+        const roleFields = {
+          name: roles.columns.name,
+          permissions: roles.columns.permissions,
+        }
+        const role = yield* sql<
+          SelectionRow<typeof roleFields>
+        >`select ${projection(roleFields)}
+          from ${roles}
+          where ${roles.columns.id} = ${ADMINISTRATOR_ROLE_ID}
+          limit ${1}`
+        const callerSetsFields = {
+          id: principalSets.columns.id,
+          kind: principalSets.columns.kind,
+        }
+        const callerSets = yield* sql<
+          SelectionRow<typeof callerSetsFields>
+        >`select ${projection(callerSetsFields)}
+          from ${principalSets}
+          order by ${sql.csv([principalSets.columns.id])}`
+        const anonymousActorFields = {
+          actorId: actors.columns.id,
+          id: anonymousActors.columns.id,
+        }
+        const anonymousActor = yield* sql<
+          SelectionRow<typeof anonymousActorFields>
+        >`select ${projection(anonymousActorFields)}
+          from ${anonymousActors}
+          inner join ${actors} on ${actors.columns.id} = ${anonymousActors.columns.id}
+          where ${anonymousActors.columns.id} = ${ANONYMOUS_ACTOR_ID}
+          limit ${1}`
+        const assignmentFields = {
+          principalId: roleAssignments.columns.principalId,
+          roleId: roleAssignments.columns.roleId,
+        }
+        const assignment = yield* sql<
+          SelectionRow<typeof assignmentFields>
+        >`select ${projection(assignmentFields)}
+          from ${roleAssignments}
+          where ${roleAssignments.columns.id} = ${SYSTEM_ROLE_ASSIGNMENT_ID}
+          limit ${1}`
+        const aliases = yield* sql<
+          TableRow<typeof recordAliases>
+        >`select ${tableProjection(recordAliases)}
+          from ${recordAliases}`
         const impersonation = yield* authenticatedInvocation(
           SYSTEM_SERVICE_ACCOUNT_ID
         ).pipe(Effect.flip)
-        const unknownActor = yield* database
-          .insert(objects)
-          .values({
+        const unknownActor = yield* sql`insert into ${objects} ${insertValues(
+          sql,
+          objects,
+          {
             ancestorIds: [ROOT_ID],
             metadata: {},
             createdAt: "2026-08-24T00:00:00.000Z",
@@ -123,8 +147,8 @@ describe("Company OS seeds", () => {
             systemManaged: false,
             updatedAt: "2026-08-24T00:00:00.000Z",
             updatedById: SYSTEM_SERVICE_ACCOUNT_ID,
-          })
-          .pipe(Effect.flip)
+          }
+        )}`.pipe(Effect.flip)
 
         return {
           aliases,

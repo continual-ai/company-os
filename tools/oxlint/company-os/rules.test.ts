@@ -72,10 +72,6 @@ describe("Company OS Oxlint rules", () => {
         fixture: "packages/runtime/src/internal-reexport.ts",
       },
       {
-        code: "company-os(no-unsafe-sql)",
-        fixture: "packages/runtime/src/unsafe-sql.ts",
-      },
-      {
         code: "company-os(package-boundaries)",
         fixture: "packages/runtime/src/wrong-boundary.ts",
       },

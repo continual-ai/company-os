@@ -38,13 +38,11 @@
     ".roo/**",
     ".windsurf/**",
     "**/routeTree.gen.ts",
-    "**/drizzle-schema.generated.ts",
     "fixtures/**"
   ],
   "rules": {
     "company-os/filename-case": "error",
     "company-os/no-internal-reexports": "error",
-    "company-os/no-unsafe-sql": "error",
     "company-os/package-boundaries": "error",
     "company-os/visual-drift": "error",
     "effecttsgo/any-unknown-in-error-context": "off",

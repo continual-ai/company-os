@@ -1,7 +1,8 @@
+import type { TableRow } from "@company/postgres"
+import { insertValues, assignments } from "@company/postgres"
 import { Etag, RecordId, Timestamp } from "@company/runtime"
 import { CurrentInvocation } from "@company/runtime/effect/object-service"
 import { Model } from "company-os/model"
-import { eq } from "drizzle-orm"
 import { Effect, Layer } from "effect"
 import { describe, expect } from "vitest"
 
@@ -63,7 +64,7 @@ const GroupMembershipId = RecordId("groupMembership")
 const RoleId = RecordId("role")
 const RoleAssignmentId = RecordId("roleAssignment")
 
-type ObjectInsert = typeof objects.$inferInsert
+type ObjectInsert = TableRow<typeof objects>
 
 function objectRow(
   input: Pick<ObjectInsert, "ancestorIds" | "id" | "objectType" | "parentId">
@@ -95,10 +96,11 @@ describe("Authorization", () => {
 
       const result = yield* Effect.gen(function* () {
         const database = yield* Database
+        const sql = database.sql
         yield* seedSystem()
         const objectRepositories = yield* ObjectRepositories.make
 
-        yield* database.insert(objects).values([
+        yield* sql`insert into ${objects} ${insertValues(sql, objects, [
           objectRow({
             ancestorIds: [ROOT_ID],
             id: userId,
@@ -123,17 +125,17 @@ describe("Authorization", () => {
             objectType: "role",
             parentId: ROOT_ID,
           }),
-        ])
-        yield* database.insert(users).values({
+        ])}`
+        yield* sql`insert into ${users} ${insertValues(sql, users, {
           email: "actor@example.com",
           id: userId,
           image: null,
           name: "Ada Lovelace",
           parentId: ROOT_ID,
-        })
-        yield* database.insert(identities).values({ id: userId })
-        yield* database.insert(principals).values({ id: userId })
-        yield* database.insert(companies).values([
+        })}`
+        yield* sql`insert into ${identities} ${insertValues(sql, identities, { id: userId })}`
+        yield* sql`insert into ${principals} ${insertValues(sql, principals, { id: userId })}`
+        yield* sql`insert into ${companies} ${insertValues(sql, companies, [
           {
             domain: null,
             id: allowedCompanyId,
@@ -154,40 +156,44 @@ describe("Authorization", () => {
             parentId: ROOT_ID,
             website: null,
           },
-        ])
-        yield* database
-          .insert(authorizationScopes)
-          .values([{ id: allowedCompanyId }, { id: groupCompanyId }])
-        yield* database.insert(parties).values([
-          { id: allowedCompanyId, image: null, name: "Allowed" },
-          { id: groupCompanyId, image: null, name: "Via group" },
-        ])
-        yield* database.insert(roles).values({
+        ])}`
+        yield* sql`insert into ${authorizationScopes} ${insertValues(sql, authorizationScopes, [{ id: allowedCompanyId }, { id: groupCompanyId }])}`
+        yield* sql`insert into ${parties} ${insertValues(sql, parties, [
+          { id: allowedCompanyId },
+          { id: groupCompanyId },
+        ])}`
+        yield* sql`insert into ${roles} ${insertValues(sql, roles, {
           description: null,
           id: readerRoleId,
           name: "Company reader",
           permissions: ["company.get", "company.list"],
           parentId: ROOT_ID,
           scopeType: "company",
-        })
+        })}`
 
         const directAssignmentId = RoleAssignmentId(
           "roleAssignment_00000000000000000000000001"
         )
-        yield* database.insert(objects).values(
+        yield* sql`insert into ${objects} ${insertValues(
+          sql,
+          objects,
           objectRow({
             ancestorIds: [allowedCompanyId, ROOT_ID],
             id: directAssignmentId,
             objectType: "roleAssignment",
             parentId: allowedCompanyId,
           })
-        )
-        yield* database.insert(roleAssignments).values({
-          parentId: allowedCompanyId,
-          id: directAssignmentId,
-          principalId: userId,
-          roleId: readerRoleId,
-        })
+        )}`
+        yield* sql`insert into ${roleAssignments} ${insertValues(
+          sql,
+          roleAssignments,
+          {
+            parentId: allowedCompanyId,
+            id: directAssignmentId,
+            principalId: userId,
+            roleId: readerRoleId,
+          }
+        )}`
 
         const authorizationRepository = yield* AuthorizationRepository.make
         const authorization = yield* Authorization.make.pipe(
@@ -207,20 +213,26 @@ describe("Authorization", () => {
         const publicAdmissionAssignmentId = RoleAssignmentId(
           "role_assignment_public_admission_test"
         )
-        yield* database.insert(objects).values(
+        yield* sql`insert into ${objects} ${insertValues(
+          sql,
+          objects,
           objectRow({
             ancestorIds: [ROOT_ID],
             id: publicAdmissionAssignmentId,
             objectType: "roleAssignment",
             parentId: ROOT_ID,
           })
-        )
-        yield* database.insert(roleAssignments).values({
-          id: publicAdmissionAssignmentId,
-          parentId: ROOT_ID,
-          principalId: ALL_CALLERS_PRINCIPAL_SET_ID,
-          roleId: ADMINISTRATOR_ROLE_ID,
-        })
+        )}`
+        yield* sql`insert into ${roleAssignments} ${insertValues(
+          sql,
+          roleAssignments,
+          {
+            id: publicAdmissionAssignmentId,
+            parentId: ROOT_ID,
+            principalId: ALL_CALLERS_PRINCIPAL_SET_ID,
+            roleId: ADMINISTRATOR_ROLE_ID,
+          }
+        )}`
         const publicAdmission = yield* authorization.checkCapabilitiesFor(
           anonymousCaller,
           [{ permission: "company.get", target: allowedCompanyId }]
@@ -230,9 +242,9 @@ describe("Authorization", () => {
             { permission: "company.get", target: allowedCompanyId },
           ])
           .pipe(Effect.provideService(CurrentInvocation, anonymousInvocation))
-        yield* database
-          .delete(objects)
-          .where(eq(objects.id, publicAdmissionAssignmentId))
+        yield* sql`delete
+          from ${objects}
+          where ${objects.columns.id} = ${publicAdmissionAssignmentId}`
         const companyRepository = objectRepositories.company
         const identifiers = yield* RecordIdentifierResolver.make
         const companyService = yield* makeObjectService(
@@ -282,20 +294,16 @@ describe("Authorization", () => {
           ])
         )
         // List admission and row readability are separate: list-only never exposes records.
-        yield* database
-          .update(roles)
-          .set({ permissions: ["company.list"] })
-          .where(eq(roles.id, readerRoleId))
+        yield* sql`update ${roles} set ${assignments(sql, roles, { permissions: ["company.list"] })}
+          where ${roles.columns.id} = ${readerRoleId}`
         expect((yield* asUser(companyService.list())).items).toEqual([])
         expect(
           yield* asUser(
             companyService.get({ id: allowedCompanyId }).pipe(Effect.flip)
           )
         ).toMatchObject({ _tag: "AuthorizationTargetNotFound" })
-        yield* database
-          .update(roles)
-          .set({ permissions: ["company.get"] })
-          .where(eq(roles.id, readerRoleId))
+        yield* sql`update ${roles} set ${assignments(sql, roles, { permissions: ["company.get"] })}
+          where ${roles.columns.id} = ${readerRoleId}`
         expect(
           (yield* asUser(companyService.get({ id: allowedCompanyId }))).id
         ).toBe(allowedCompanyId)
@@ -305,10 +313,8 @@ describe("Authorization", () => {
           _tag: "PermissionDenied",
           permission: "company.list",
         })
-        yield* database
-          .update(roles)
-          .set({ permissions: ["company.get", "company.list"] })
-          .where(eq(roles.id, readerRoleId))
+        yield* sql`update ${roles} set ${assignments(sql, roles, { permissions: ["company.get", "company.list"] })}
+          where ${roles.columns.id} = ${readerRoleId}`
         const delegatedCapabilities = yield* authorization
           .checkCapabilities([
             { permission: "company.get", target: allowedCompanyId },
@@ -318,51 +324,65 @@ describe("Authorization", () => {
           Effect.provideService(CurrentInvocation, delegatedContext)
         )
 
-        yield* database.insert(objects).values(
+        yield* sql`insert into ${objects} ${insertValues(
+          sql,
+          objects,
           objectRow({
             ancestorIds: [ROOT_ID],
             id: groupId,
             objectType: "group",
             parentId: ROOT_ID,
           })
-        )
-        yield* database.insert(groups).values({
+        )}`
+        yield* sql`insert into ${groups} ${insertValues(sql, groups, {
           description: null,
           id: groupId,
           name: "Sales",
           parentId: ROOT_ID,
-        })
-        yield* database.insert(principals).values({ id: groupId })
-        yield* database.insert(objects).values(
+        })}`
+        yield* sql`insert into ${principals} ${insertValues(sql, principals, { id: groupId })}`
+        yield* sql`insert into ${objects} ${insertValues(
+          sql,
+          objects,
           objectRow({
             ancestorIds: [groupId, ROOT_ID],
             id: membershipId,
             objectType: "groupMembership",
             parentId: groupId,
           })
-        )
-        yield* database.insert(groupMemberships).values({
-          parentId: groupId,
-          id: membershipId,
-          memberId: userId,
-        })
+        )}`
+        yield* sql`insert into ${groupMemberships} ${insertValues(
+          sql,
+          groupMemberships,
+          {
+            parentId: groupId,
+            id: membershipId,
+            memberId: userId,
+          }
+        )}`
         const groupAssignmentId = RoleAssignmentId(
           "roleAssignment_00000000000000000000000002"
         )
-        yield* database.insert(objects).values(
+        yield* sql`insert into ${objects} ${insertValues(
+          sql,
+          objects,
           objectRow({
             ancestorIds: [groupCompanyId, ROOT_ID],
             id: groupAssignmentId,
             objectType: "roleAssignment",
             parentId: groupCompanyId,
           })
-        )
-        yield* database.insert(roleAssignments).values({
-          parentId: groupCompanyId,
-          id: groupAssignmentId,
-          principalId: groupId,
-          roleId: readerRoleId,
-        })
+        )}`
+        yield* sql`insert into ${roleAssignments} ${insertValues(
+          sql,
+          roleAssignments,
+          {
+            parentId: groupCompanyId,
+            id: groupAssignmentId,
+            principalId: groupId,
+            roleId: readerRoleId,
+          }
+        )}`
 
         const groupList = yield* asUser(companyService.list())
         const allowedBatch = yield* asUser(
@@ -376,7 +396,9 @@ describe("Authorization", () => {
           ])
         )
 
-        yield* database.delete(objects).where(eq(objects.id, membershipId))
+        yield* sql`delete
+          from ${objects}
+          where ${objects.columns.id} = ${membershipId}`
         const afterRevocation = yield* asUser(companyService.list())
         const revokedCapability = yield* asUser(
           authorization.checkCapabilities([
@@ -411,20 +433,26 @@ describe("Authorization", () => {
         const userAdministratorAssignmentId = RoleAssignmentId(
           "role_assignment_user_root_admin"
         )
-        yield* database.insert(objects).values(
+        yield* sql`insert into ${objects} ${insertValues(
+          sql,
+          objects,
           objectRow({
             ancestorIds: [ROOT_ID],
             id: userAdministratorAssignmentId,
             objectType: "roleAssignment",
             parentId: ROOT_ID,
           })
-        )
-        yield* database.insert(roleAssignments).values({
-          parentId: ROOT_ID,
-          id: userAdministratorAssignmentId,
-          principalId: userId,
-          roleId: ADMINISTRATOR_ROLE_ID,
-        })
+        )}`
+        yield* sql`insert into ${roleAssignments} ${insertValues(
+          sql,
+          roleAssignments,
+          {
+            parentId: ROOT_ID,
+            id: userAdministratorAssignmentId,
+            principalId: userId,
+            roleId: ADMINISTRATOR_ROLE_ID,
+          }
+        )}`
         const protectedSystemAssignment = yield* asUser(
           roleAssignmentService
             .delete({ id: SYSTEM_ROLE_ASSIGNMENT_ID })
@@ -449,9 +477,9 @@ describe("Authorization", () => {
             Effect.flip,
             Effect.provideService(CurrentInvocation, systemInvocation)
           )
-        yield* database
-          .delete(objects)
-          .where(eq(objects.id, SYSTEM_ROLE_ASSIGNMENT_ID))
+        yield* sql`delete
+          from ${objects}
+          where ${objects.columns.id} = ${SYSTEM_ROLE_ASSIGNMENT_ID}`
         const systemAfterGrantRemoval = yield* companyService
           .list()
           .pipe(

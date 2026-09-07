@@ -1,13 +1,20 @@
-import { fileURLToPath } from "node:url"
+import { readFile } from "node:fs/promises"
 
 import { PgClient } from "@effect/sql-pg"
-import { migrate } from "drizzle-orm/effect-postgres/migrator"
 import { Effect } from "effect"
+import * as Migrator from "effect/unstable/sql/Migrator"
+import * as SqlClient from "effect/unstable/sql/SqlClient"
 
 import { Database } from "./database"
 import { databaseSchemaConfig } from "./postgres"
 
-const migrationsFolder = fileURLToPath(new URL("./migrations", import.meta.url))
+const sqlMigration = (file: URL) =>
+  Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient
+    const source = yield* Effect.tryPromise(() => readFile(file, "utf8"))
+    // The driver executes the complete checked-in file, including function bodies.
+    yield* sql.unsafe(source)
+  })
 
 /**
  * Creates the deployment's business schema when it does not exist yet. The
@@ -31,12 +38,14 @@ export const ensureDatabaseSchema = Effect.fn("@company/ensureDatabaseSchema")(
  */
 export const applyMigrations = Effect.fn("@company/applyMigrations")(
   function* () {
-    const schema = yield* databaseSchemaConfig
     const database = yield* Database
-    yield* migrate(database, {
-      migrationsFolder,
-      migrationsSchema: schema,
-      migrationsTable: "__drizzle_migrations_company_os",
-    })
+    yield* Migrator.make({})({
+      table: "company_os_migrations",
+      loader: Migrator.fromRecord({
+        "1_initial": sqlMigration(
+          new URL("./migrations/0001_initial.sql", import.meta.url)
+        ),
+      }),
+    }).pipe(Effect.provideService(SqlClient.SqlClient, database.sql))
   }
 )

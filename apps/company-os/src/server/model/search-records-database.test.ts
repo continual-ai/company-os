@@ -1,7 +1,7 @@
+import { assignments } from "@company/postgres"
 import { EmailAddress } from "@company/runtime"
 import { CurrentInvocation } from "@company/runtime/effect/object-service"
 import { Model } from "company-os/model"
-import { eq, sql } from "drizzle-orm"
 import { Effect, Layer } from "effect"
 import { expect } from "vitest"
 
@@ -48,6 +48,7 @@ itDatabase(
     application(
       Effect.gen(function* () {
         const database = yield* Database
+        const sql = database.sql
         const { services } = yield* ModelImplementation
         const company = yield* services.company.create({
           name: "Quasar laboratories",
@@ -93,11 +94,9 @@ itDatabase(
         yield* database
           .transaction(() =>
             Effect.gen(function* () {
-              // Custom SQL declares its affected records through the same transactional fact boundary.
-              yield* database
-                .update(companies)
-                .set({ name: "Renamed foundation" })
-                .where(eq(companies.id, company.id))
+              // Custom Fragment declares its affected records through the same transactional fact boundary.
+              yield* sql`update ${companies} set ${assignments(sql, companies, { name: "Renamed foundation" })}
+          where ${companies.columns.id} = ${company.id}`
               const events = makeEventWriter(database)
               yield* events.record({
                 type: "company.updated",
@@ -125,7 +124,8 @@ itDatabase(
         yield* services.company.delete({ id: company.id })
         expect((yield* searchRecords({ query: "renamed" })).hits).toEqual([])
 
-        yield* database.delete(recordSearch)
+        yield* sql`delete
+          from ${recordSearch}`
         expect((yield* searchRecords({ query: "quas" })).hits).toEqual([])
         yield* ensureSearchIndex(database, true)
         expect(
@@ -133,10 +133,10 @@ itDatabase(
         ).toEqual(expect.arrayContaining([contact.id, issue.id]))
         const plan = yield* database.transaction(() =>
           Effect.gen(function* () {
-            yield* database.execute(sql`set local enable_seqscan = off`)
-            return yield* database.execute(
-              sql`explain (format json) select id from ${recordSearch} where ${recordSearch.document} @@ to_tsquery('simple', 'quas:*')`
-            )
+            yield* sql`set local enable_seqscan = off`
+            return yield* sql`explain (format json) select id
+          from ${recordSearch}
+          where ${recordSearch.columns.document} @@ to_tsquery('simple', 'quas:*')`
           })
         )
         expect(JSON.stringify(plan)).toContain("record_search_document_idx")

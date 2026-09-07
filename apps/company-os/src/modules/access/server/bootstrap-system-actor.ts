@@ -1,5 +1,11 @@
+import { insertValues, assignments } from "@company/postgres"
+import {
+  conflictColumns,
+  projection,
+  type SelectionRow,
+  inValues,
+} from "@company/postgres"
 import type { Model } from "company-os/model"
-import { inArray, sql } from "drizzle-orm"
 import { Data, Effect } from "effect"
 
 import { Database } from "@/server/database/database"
@@ -35,7 +41,8 @@ function objectRow(input: {
 export const bootstrapSystemActor = Effect.fn("@company/bootstrapSystemActor")(
   function* () {
     const database = yield* Database
-    yield* database.transaction((transaction) =>
+    const sql = database.sql
+    yield* database.transaction(() =>
       Effect.gen(function* () {
         const root = objectRow({
           ancestorIds: [],
@@ -43,26 +50,18 @@ export const bootstrapSystemActor = Effect.fn("@company/bootstrapSystemActor")(
           objectType: "root",
           parentId: null,
         })
-        yield* transaction
-          .insert(objects)
-          .values(root)
-          .onConflictDoUpdate({
-            target: objects.id,
-            set: {
-              etag: sql`(${objects.etag}::numeric + 1)::text`,
-              systemManaged: true,
-              updatedAt: sql`now()`,
-              updatedById: SYSTEM_SERVICE_ACCOUNT_ID,
-            },
-          })
-        yield* transaction
-          .insert(roots)
-          .values({ id: ROOT_ID })
-          .onConflictDoNothing()
-        yield* transaction
-          .insert(authorizationScopes)
-          .values({ id: ROOT_ID })
-          .onConflictDoNothing()
+        yield* sql`insert into ${objects} ${insertValues(sql, objects, root)}
+          on conflict (${conflictColumns(sql, objects.columns.id)})
+          do update set ${assignments(sql, objects, {
+            etag: sql`(${objects.columns.etag}::numeric + 1)::text`,
+            systemManaged: true,
+            updatedAt: sql`now()`,
+            updatedById: SYSTEM_SERVICE_ACCOUNT_ID,
+          })}`
+        yield* sql`insert into ${roots} ${insertValues(sql, roots, { id: ROOT_ID })}
+          on conflict do nothing`
+        yield* sql`insert into ${authorizationScopes} ${insertValues(sql, authorizationScopes, { id: ROOT_ID })}
+          on conflict do nothing`
 
         const systemAccount = objectRow({
           ancestorIds: [ROOT_ID],
@@ -70,26 +69,18 @@ export const bootstrapSystemActor = Effect.fn("@company/bootstrapSystemActor")(
           objectType: "serviceAccount",
           parentId: ROOT_ID,
         })
-        yield* transaction
-          .insert(objects)
-          .values(systemAccount)
-          .onConflictDoUpdate({
-            target: objects.id,
-            set: {
-              etag: sql`(${objects.etag}::numeric + 1)::text`,
-              systemManaged: true,
-              updatedAt: sql`now()`,
-              updatedById: SYSTEM_SERVICE_ACCOUNT_ID,
-            },
-          })
-        yield* transaction
-          .insert(actors)
-          .values({ id: SYSTEM_SERVICE_ACCOUNT_ID })
-          .onConflictDoNothing()
-        yield* transaction
-          .insert(identities)
-          .values({ id: SYSTEM_SERVICE_ACCOUNT_ID })
-          .onConflictDoNothing()
+        yield* sql`insert into ${objects} ${insertValues(sql, objects, systemAccount)}
+          on conflict (${conflictColumns(sql, objects.columns.id)})
+          do update set ${assignments(sql, objects, {
+            etag: sql`(${objects.columns.etag}::numeric + 1)::text`,
+            systemManaged: true,
+            updatedAt: sql`now()`,
+            updatedById: SYSTEM_SERVICE_ACCOUNT_ID,
+          })}`
+        yield* sql`insert into ${actors} ${insertValues(sql, actors, { id: SYSTEM_SERVICE_ACCOUNT_ID })}
+          on conflict do nothing`
+        yield* sql`insert into ${identities} ${insertValues(sql, identities, { id: SYSTEM_SERVICE_ACCOUNT_ID })}
+          on conflict do nothing`
 
         const expectedObjects = [
           {
@@ -105,20 +96,21 @@ export const bootstrapSystemActor = Effect.fn("@company/bootstrapSystemActor")(
             parentId: ROOT_ID,
           },
         ] as const
-        const storedObjects = yield* transaction
-          .select({
-            ancestorIds: objects.ancestorIds,
-            id: objects.id,
-            objectType: objects.objectType,
-            parentId: objects.parentId,
-          })
-          .from(objects)
-          .where(
-            inArray(
-              objects.id,
-              expectedObjects.map(({ id }) => id)
-            )
-          )
+        const storedObjectsFields = {
+          ancestorIds: objects.columns.ancestorIds,
+          id: objects.columns.id,
+          objectType: objects.columns.objectType,
+          parentId: objects.columns.parentId,
+        }
+        const storedObjects = yield* sql<
+          SelectionRow<typeof storedObjectsFields>
+        >`select ${projection(storedObjectsFields)}
+          from ${objects}
+          where ${inValues(
+            sql,
+            objects.columns.id,
+            expectedObjects.map(({ id }) => id)
+          )}`
         const storedById = new Map(
           storedObjects.map((record) => [record.id, record])
         )

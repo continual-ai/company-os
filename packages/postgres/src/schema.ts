@@ -1,413 +1,115 @@
-import {
-  type AnySchema,
-  type InferSchema,
-  type LinkTraversal,
-  type LinkType,
-  type ModelCatalog,
-  type ObjectType,
-  type RecordId,
-  type RecordIdOf,
-  type SchemaDefinition,
+import type {
+  AnySchema,
+  RecordId,
+  RecordIdOf,
+  LinkTraversal,
+  InferSchema,
+  ModelCatalog,
+  ObjectType,
 } from "@company/runtime"
+
 import {
-  defineRelations,
-  getTableColumns,
-  sql,
-  type AnyRelation,
-  type AnyRelations,
-  type Many,
-  type One,
-  type RelationsBuilder,
-  type RelationsBuilderColumn,
-  type SchemaEntry,
-  type SQL,
-} from "drizzle-orm"
-import {
-  type AnyPgColumn,
-  type AnyPgTable,
-  boolean,
-  check,
-  customType,
-  date,
-  doublePrecision,
-  foreignKey,
-  index,
-  integer,
-  jsonb,
-  numeric,
-  type PgColumnBuilder,
-  type PgNumericConfig,
-  type PgTableExtraConfigValue,
-  pgTableCreator,
-  primaryKey,
-  text,
-  uniqueIndex,
-} from "drizzle-orm/pg-core"
+  defineTable,
+  tableColumns,
+  snakeCase,
+  quoteIdentifier,
+  quoteLiteral as literal,
+  type Table,
+  type ColumnDefinition,
+} from "./table"
 
-const pgTable = pgTableCreator((name) => name, "snake_case")
-const timestampWithTimezone = customType<{
-  data: string
-  driverData: string
-}>({
-  codec: "timestamptz:string",
-  dataType: () => "timestamp with time zone",
-  fromDriver: (value) => new Date(value).toISOString(),
-})
+type TraversalId<
+  M extends ModelCatalog,
+  T extends LinkTraversal,
+> = T["from"]["kind"] extends "interface"
+  ? RecordIdOf<M, M["interfaces"][T["from"]["typeId"]]>
+  : RecordId<T["from"]["typeId"]>
 
-type ObjectPropertyKey<TObject extends ObjectType> =
-  keyof TObject["properties"] & string
-
-type PhysicalObjectPropertyKey<
-  TObject extends ObjectType,
-  TKey extends ObjectPropertyKey<TObject>,
-> =
-  Extract<
-    TObject["properties"][TKey],
-    { readonly kind: "recordId" }
-  > extends never
-    ? TKey
-    : `${TKey}Id`
-
-type PhysicalObjectPropertyKeys<TObject extends ObjectType> = {
-  [TKey in ObjectPropertyKey<TObject>]: PhysicalObjectPropertyKey<TObject, TKey>
-}[ObjectPropertyKey<TObject>]
-
-type PhysicalObjectColumn<TObject extends ObjectType> =
-  | "id"
-  | "parentId"
-  | PhysicalObjectPropertyKeys<TObject>
-
-type StoredObjectRow<TObject extends ObjectType> = {
-  readonly id: RecordId<TObject["id"]>
-  readonly parentId: RecordId<TObject["parent"]["typeId"]>
+type ObjectRow<O extends ObjectType> = {
+  readonly id: RecordId<O["id"]>
+  readonly parentId: RecordId<O["parent"]["typeId"]>
 } & {
   readonly [
-    TKey in ObjectPropertyKey<TObject> as PhysicalObjectPropertyKey<
-      TObject,
-      TKey
-    >
-  ]: InferSchema<TObject["properties"][TKey]>
-}
-
-type ObjectTable<TObject extends ObjectType> = AnyPgTable & {
-  readonly [TKey in PhysicalObjectColumn<TObject>]: AnyPgColumn
-} & {
-  readonly $inferSelect: StoredObjectRow<TObject>
-}
-
-type ObjectTables<TModel extends ModelCatalog> = {
-  readonly [TObjectType in keyof TModel["objects"]]: ObjectTable<
-    TModel["objects"][TObjectType]
-  >
-}
-
-type TraversalRecordId<
-  TModel extends ModelCatalog,
-  TTraversal extends LinkTraversal,
-> = TTraversal["from"]["kind"] extends "interface"
-  ? RecordIdOf<
-      TModel,
-      TModel["interfaces"][TTraversal["from"]["typeId"] &
-        keyof TModel["interfaces"]]
-    >
-  : RecordId<TTraversal["from"]["typeId"]>
-
-type InterfaceTables<TModel extends ModelCatalog> = {
-  readonly [TInterfaceType in keyof TModel["interfaces"]]: AnyPgTable & {
-    readonly id: AnyPgColumn
-    readonly $inferSelect: {
-      readonly id: RecordIdOf<TModel, TModel["interfaces"][TInterfaceType]>
+    K in keyof O["properties"] as O["properties"][K] extends {
+      kind: "recordId"
     }
+      ? `${K & string}Id`
+      : K
+  ]: InferSchema<O["properties"][K]>
+}
+export interface PostgresStorage<M extends ModelCatalog> {
+  readonly model: M
+  readonly objects: {
+    readonly [K in keyof M["objects"]]: Table<ObjectRow<M["objects"][K]>>
   }
-}
-
-type LinkTable<TModel extends ModelCatalog, TLink> =
-  TLink extends LinkType<string, infer TForward, infer TReverse>
-    ? AnyPgTable & {
-        readonly forwardId: AnyPgColumn
-        readonly reverseId: AnyPgColumn
-      } & {
-        readonly $inferSelect: {
-          readonly forwardId: TraversalRecordId<TModel, TForward>
-        } & {
-          readonly reverseId: TraversalRecordId<TModel, TReverse>
-        }
-      }
-    : never
-
-type LinkTables<TModel extends ModelCatalog> = {
-  readonly [TLinkId in keyof TModel["links"]]: LinkTable<
-    TModel,
-    TModel["links"][TLinkId]
-  >
-}
-
-type SchemaTables<TModel extends ModelCatalog> = {
-  readonly __recordAliases: CoreTables<TModel>["recordAliases"]
-  readonly __objects: CoreTables<TModel>["objects"]
-  readonly __roots: CoreTables<TModel>["roots"]
-} & InterfaceTables<TModel> &
-  ObjectTables<TModel> & {
-    readonly [
-      TLinkId in keyof LinkTables<TModel> as TLinkId extends string
-        ? `__link_${TLinkId}`
-        : never
-    ]: LinkTables<TModel>[TLinkId]
+  readonly interfaces: {
+    readonly [K in keyof M["interfaces"]]: Table<{
+      id: RecordIdOf<M, M["interfaces"][K]>
+    }>
   }
-
-type RelationForSide<
-  TSide extends LinkTraversal,
-  TTarget extends LinkTraversal,
-> = TSide["cardinality"] extends "many"
-  ? Many<TTarget["from"]["typeId"]>
-  : One<
-      TTarget["from"]["typeId"],
-      TSide["cardinality"] extends "zeroOrOne" ? true : false
-    >
-
-type NoRelations = Readonly<Record<never, never>>
-
-type RelationsForLink<TTypeId extends string, TLink> =
-  TLink extends LinkType<string, infer TForward, infer TReverse>
-    ? (TForward["from"]["typeId"] extends TTypeId
-        ? {
-            readonly [TKey in TForward["key"]]: RelationForSide<
-              TForward,
-              TReverse
-            >
-          }
-        : NoRelations) &
-        (TReverse["from"]["typeId"] extends TTypeId
-          ? {
-              readonly [TKey in TReverse["key"]]: RelationForSide<
-                TReverse,
-                TForward
-              >
-            }
-          : NoRelations)
-    : NoRelations
-
-type UnionToIntersection<TValue> = (
-  TValue extends unknown ? (value: TValue) => void : never
-) extends (value: infer TIntersection) => void
-  ? TIntersection
-  : never
-
-type LinkRelations<
-  TModel extends ModelCatalog,
-  TTypeId extends string,
-> = UnionToIntersection<
-  RelationsForLink<TTypeId, TModel["links"][keyof TModel["links"]]>
->
-
-type ModelTypeId<TModel extends ModelCatalog> =
-  | (keyof TModel["interfaces"] & string)
-  | (keyof TModel["objects"] & string)
-
-type ModelRelations<TModel extends ModelCatalog> = {
-  readonly [TTableId in keyof SchemaTables<TModel>]: {
-    readonly name: TTableId & string
-    readonly relations: TTableId extends ModelTypeId<TModel>
-      ? LinkRelations<TModel, TTableId & string>
-      : NoRelations
-    readonly table: SchemaTables<TModel>[TTableId]
+  readonly linkTables: {
+    readonly [K in keyof M["links"]]: Table<{
+      forwardId: TraversalId<M, M["links"][K]["forward"]>
+      reverseId: TraversalId<M, M["links"][K]["reverse"]>
+    }>
   }
-}
-
-interface ColumnBuilderRegistry {
-  [columnId: string]: PgColumnBuilder
-}
-
-function makeCoreTables<const TModel extends ModelCatalog>(
-  model: TModel,
-  actorIdColumn: () => AnyPgColumn
-) {
-  type StoredObjectType =
-    | TModel["root"]["id"]
-    | (keyof TModel["objects"] & string)
-  const storedObjectTypes = [model.root.id, ...Object.keys(model.objects)]
-  const storedObjectTypeList = sql.join(
-    storedObjectTypes.map((objectType) => sql`${objectType}`),
-    sql`, `
-  )
-  const auditActor = () => {
-    // A model whose initial root and actor refer to each other requires these
-    // constraints to be DEFERRABLE in the committed SQL migration.
-    return text().notNull().references(actorIdColumn, { onDelete: "restrict" })
+  readonly core: {
+    readonly objects: Table<{
+      id: string
+      objectType: string
+      parentId: string | null
+      ancestorIds: ReadonlyArray<string>
+      metadata: Readonly<Record<string, string>>
+      systemManaged: boolean
+      etag: string
+      createdAt: string
+      updatedAt: string
+      createdById: string
+      updatedById: string
+    }>
+    readonly roots: Table<{ id: string }>
+    readonly recordAliases: Table<{ alias: string; objectId: string }>
   }
-  const objects = pgTable(
-    "objects",
-    {
-      id: text().primaryKey(),
-      objectType: text().$type<StoredObjectType>().notNull(),
-      parentId: text().references((): AnyPgColumn => objects.id, {
-        onDelete: "restrict",
-      }),
-      ancestorIds: text()
-        .array()
-        .notNull()
-        .default(sql`'{}'::text[]`),
-      metadata: jsonb()
-        .$type<Readonly<Record<string, string>>>()
-        .notNull()
-        .default(sql`'{}'::jsonb`),
-      systemManaged: boolean().notNull().default(false),
-      etag: text().default("1").notNull(),
-      createdAt: timestampWithTimezone()
-        .default(sql`now()`)
-        .notNull(),
-      createdById: auditActor(),
-      updatedAt: timestampWithTimezone()
-        .default(sql`now()`)
-        .notNull(),
-      updatedById: auditActor(),
-    },
-    (table) => [
-      check(
-        "objects_object_type_check",
-        sql`${table.objectType} in (${storedObjectTypeList})`
-      ),
-      check(
-        "objects_parent_required",
-        sql`(${table.objectType} = ${model.root.id} and ${table.parentId} is null)
-          or (${table.objectType} <> ${model.root.id} and ${table.parentId} is not null)`
-      ),
-      index("objects_object_type_idx").on(table.objectType),
-      index("objects_parent_id_idx").on(table.parentId),
-      index("objects_ancestor_ids_idx").using("gin", table.ancestorIds),
-      uniqueIndex("objects_id_parent_id_unique").on(table.id, table.parentId),
-    ]
-  )
-  const recordAliases = pgTable(
-    "record_aliases",
-    {
-      alias: text().primaryKey(),
-      objectId: text()
-        .notNull()
-        .references(() => objects.id, { onDelete: "cascade" }),
-    },
-    (table) => [index("record_aliases_object_id_idx").on(table.objectId)]
-  )
-  const roots = pgTable("roots", {
-    id: text()
-      .primaryKey()
-      .references(() => objects.id, { onDelete: "cascade" }),
-  })
-  return { recordAliases, objects, roots }
+  readonly ddl: ReadonlyArray<string>
 }
 
-type CoreTables<TModel extends ModelCatalog> = ReturnType<
-  typeof makeCoreTables<TModel>
->
-
-export interface PostgresStorage<TModel extends ModelCatalog> {
-  readonly core: CoreTables<TModel>
-  readonly interfaces: InterfaceTables<TModel>
-  readonly linkTables: LinkTables<TModel>
-  readonly model: TModel
-  readonly objects: ObjectTables<TModel>
-  readonly relations: ModelRelations<TModel>
-  readonly schema: SchemaTables<TModel>
-}
-
-function snakeCase(value: string): string {
-  return value
-    .replaceAll(/([a-z0-9])([A-Z])/g, "$1_$2")
-    .replaceAll(/[^a-zA-Z0-9]+/g, "_")
-    .replaceAll(/^_+|_+$/g, "")
-    .toLowerCase()
-}
-
-export function objectUniqueConstraintName(
-  tableName: string,
+export const objectUniqueConstraintName = (
+  physicalName: string,
   ruleId: string
-): string {
-  return `${tableName}_${snakeCase(ruleId)}_unique`
-}
+) => `${physicalName}_${snakeCase(ruleId)}_unique`
+export const physicalPropertyKey = (id: string, property: AnySchema) =>
+  property.kind === "recordId" ? `${id}Id` : id
 
-export function physicalPropertyKey(
-  propertyId: string,
-  property: AnySchema
-): string {
-  return property.kind === "recordId" ? `${propertyId}Id` : propertyId
+function nativeArray(schema: AnySchema): boolean {
+  return ["boolean", "decimal", "enum", "number", "string"].includes(
+    schema.kind
+  )
 }
-
-function columnId(table: AnyPgTable): AnyPgColumn {
-  const id = getTableColumns(table).id
-  if (id === undefined) throw new Error("A model storage table requires an ID.")
-  return id
-}
-
-function usesJsonColumn(property: AnySchema): boolean {
-  switch (property.kind) {
-    case "array":
-      return !usesNativeArray(property.items)
-    case "file":
-    case "geoPoint":
-    case "image":
-    case "literal":
-    case "map":
-    case "media":
-    case "money":
-    case "struct":
-    case "union":
-      return true
-    case "optional":
-      return usesJsonColumn(property.value)
-    default:
-      return false
-  }
-}
-
-function usesNativeArray(property: AnySchema): boolean {
+function propertySqlType(property: AnySchema): string {
   switch (property.kind) {
     case "boolean":
+      return "boolean"
     case "decimal":
-    case "enum":
+      return property.precision === undefined
+        ? "numeric"
+        : `numeric(${property.precision}${property.scale === undefined ? "" : `,${property.scale}`})`
     case "number":
-    case "string":
-      return true
-    default:
-      return false
-  }
-}
-
-function jsonDefault(property: AnySchema): SQL {
-  const encoded = JSON.stringify(property.default)
-  if (encoded === undefined) {
-    throw new Error("A JSON property default must be serializable.")
-  }
-  // DDL defaults cannot use bind parameters. JSON serialization and SQL quote
-  // escaping produce one literal from the source-owned model default.
-  // oxlint-disable-next-line company-os/no-unsafe-sql
-  return sql.raw(`'${encoded.replaceAll("'", "''")}'::jsonb`)
-}
-
-function baseColumn(property: AnySchema): PgColumnBuilder {
-  switch (property.kind) {
-    case "boolean":
-      return boolean()
-    case "decimal":
-      const numericConfig: PgNumericConfig<"string"> = { mode: "string" }
-      if (property.precision !== undefined) {
-        numericConfig.precision = property.precision
-      }
-      if (property.scale !== undefined) numericConfig.scale = property.scale
-      return numeric(numericConfig).$type<string>()
-    case "number":
-      return property.integer ? integer() : doublePrecision()
+      return property.integer ? "integer" : "double precision"
     case "recordId":
-      return text()
+    case "enum":
+      return "text"
     case "string":
-      if (property.format === "date") return date({ mode: "string" })
-      if (property.format === "timestamp") {
-        return timestampWithTimezone()
-      }
-      return text()
+      return property.format === "date"
+        ? "date"
+        : property.format === "timestamp"
+          ? "timestamp with time zone"
+          : "text"
     case "array":
-      return usesNativeArray(property.items)
-        ? baseColumn(property.items).array()
-        : jsonb().$type<unknown>()
+      return nativeArray(property.items)
+        ? `${propertySqlType(property.items)}[]`
+        : "jsonb"
+    case "optional":
+      return propertySqlType(property.value)
     case "file":
     case "geoPoint":
     case "image":
@@ -417,341 +119,269 @@ function baseColumn(property: AnySchema): PgColumnBuilder {
     case "money":
     case "struct":
     case "union":
-      return jsonb().$type<unknown>()
-    case "enum":
-      return text().$type<string>()
-    case "optional":
-      return baseColumn(property.value)
+      return "jsonb"
     default:
-      throw new Error("The schema kind is not supported by PostgreSQL.")
-  }
-}
-
-function configuredColumn(
-  property: AnySchema,
-  tableForType: (typeId: string) => AnyPgTable
-): PgColumnBuilder {
-  let column = baseColumn(property)
-  const metadata: SchemaDefinition = property
-  if (property.kind === "recordId") {
-    column = column.references(() => columnId(tableForType(property.typeId)), {
-      onDelete: "restrict",
-    })
-  }
-  if (metadata.nullable !== true) column = column.notNull()
-  if (Object.hasOwn(metadata, "default")) {
-    column = column.default(
-      usesJsonColumn(property) ? jsonDefault(property) : metadata.default
-    )
-  }
-  return column
-}
-
-type DynamicRelationsBuilder = RelationsBuilder<
-  Readonly<Record<string, SchemaEntry>>
->
-
-function relationTable(relations: DynamicRelationsBuilder, tableId: string) {
-  const table = relations[tableId]
-  if (table === undefined) {
-    throw new Error(`Type '${tableId}' does not have a relation table.`)
-  }
-  return table
-}
-
-function relationColumn(
-  table: ReturnType<typeof relationTable>,
-  columnKey: string
-): RelationsBuilderColumn {
-  const column = table[columnKey]
-  if (column === undefined) {
-    throw new Error(`Relation column '${columnKey}' does not exist.`)
-  }
-  return column
-}
-
-function addRelation(
-  config: Record<string, Record<string, AnyRelation>>,
-  tableId: string,
-  key: string,
-  relation: AnyRelation
-): void {
-  const tableConfig = config[tableId] ?? {}
-  if (tableConfig[key] !== undefined) {
-    throw new Error(`Relation '${tableId}.${key}' is defined more than once.`)
-  }
-  tableConfig[key] = relation
-  config[tableId] = tableConfig
-}
-
-function makeRelations(
-  model: ModelCatalog,
-  schema: Readonly<Record<string, AnyPgTable>>
-): AnyRelations {
-  return defineRelations(schema, (relations) => {
-    const config: Record<string, Record<string, AnyRelation>> = {}
-
-    for (const link of Object.values(model.links)) {
-      const forwardTable = relationTable(relations, link.forward.from.typeId)
-      const reverseTable = relationTable(relations, link.reverse.from.typeId)
-      const junctionId = `__link_${link.id}`
-      const junction = relationTable(relations, junctionId)
-      const forwardId = relationColumn(forwardTable, "id")
-      const reverseId = relationColumn(reverseTable, "id")
-      const forwardJunctionColumn = relationColumn(junction, "forwardId")
-      const reverseJunctionColumn = relationColumn(junction, "reverseId")
-      const forwardFactory =
-        link.forward.cardinality === "many"
-          ? relations.many[link.reverse.from.typeId]
-          : relations.one[link.reverse.from.typeId]
-      const reverseFactory =
-        link.reverse.cardinality === "many"
-          ? relations.many[link.forward.from.typeId]
-          : relations.one[link.forward.from.typeId]
-      if (forwardFactory === undefined || reverseFactory === undefined) {
-        throw new Error(`Link '${link.id}' is incomplete.`)
-      }
-      addRelation(
-        config,
-        link.forward.from.typeId,
-        link.forward.key,
-        forwardFactory({
-          alias: link.id,
-          from: forwardId.through(forwardJunctionColumn),
-          optional: link.forward.cardinality === "zeroOrOne",
-          to: reverseId.through(reverseJunctionColumn),
-        })
-      )
-      addRelation(
-        config,
-        link.reverse.from.typeId,
-        link.reverse.key,
-        reverseFactory({
-          alias: link.id,
-          from: reverseId.through(reverseJunctionColumn),
-          optional: link.reverse.cardinality === "zeroOrOne",
-          to: forwardId.through(forwardJunctionColumn),
-        })
-      )
-    }
-
-    return config
-  })
-}
-
-/** Compiles a portable closed-world model into deterministic Drizzle tables. */
-export function makePostgresSchema<const TModel extends ModelCatalog>(
-  model: TModel
-): PostgresStorage<TModel> {
-  const actorInterface = model.actor
-  let actorTable: AnyPgTable | undefined
-  const actorIdColumn = () => {
-    if (actorTable === undefined) {
       throw new Error(
-        `Actor interface '${actorInterface.id}' does not have a storage table.`
+        `Unsupported PostgreSQL schema kind '${String(property)}'.`
       )
-    }
-    return columnId(actorTable)
   }
-  const { recordAliases, objects, roots } = makeCoreTables(model, actorIdColumn)
-  const tableOwners = new Map([
-    ["record_aliases", "core record aliases"],
-    ["objects", "core objects"],
-    ["roots", "core roots"],
-  ])
-  const claimTableName = (tableName: string, owner: string): void => {
-    const existingOwner = tableOwners.get(tableName)
-    if (existingOwner !== undefined) {
-      throw new Error(
-        `PostgreSQL table '${tableName}' is required by both ${existingOwner} and ${owner}.`
-      )
-    }
-    tableOwners.set(tableName, owner)
-  }
+}
+function defaultSql(type: string, value: unknown): string {
+  if (value === null) return "null"
+  if (type === "jsonb") return `${literal(JSON.stringify(value))}::jsonb`
+  if (Array.isArray(value))
+    return `array[${value.map((v) => defaultSql(type.slice(0, -2), v)).join(", ")}]::${type}`
+  return typeof value === "number" || typeof value === "boolean"
+    ? String(value)
+    : typeof value === "string"
+      ? literal(value)
+      : (() => {
+          throw new Error("Invalid scalar PostgreSQL default.")
+        })()
+}
 
-  const interfaceTables: Record<string, AnyPgTable> = {}
-  for (const interfaceType of Object.values(model.interfaces)) {
-    const tableName = `interface_${snakeCase(interfaceType.id)}`
-    claimTableName(tableName, `interface '${interfaceType.id}'`)
-    interfaceTables[interfaceType.id] = pgTable(tableName, {
-      id: text()
-        .primaryKey()
-        .references(() => objects.id, { onDelete: "cascade" }),
-    })
-  }
-  actorTable = interfaceTables[actorInterface.id]
-
-  const objectTables: Record<string, AnyPgTable> = {}
-  const tableForType = (typeId: string): AnyPgTable => {
-    if (typeId === model.root.id) return roots
-    const table = objectTables[typeId] ?? interfaceTables[typeId]
-    if (table === undefined) {
-      throw new Error(`Type '${typeId}' does not have a storage table.`)
-    }
-    return table
-  }
-
-  for (const object of Object.values(model.objects)) {
-    const tableName = snakeCase(object.collection)
-    claimTableName(tableName, `object '${object.id}'`)
-    const columns: ColumnBuilderRegistry = {
-      id: text()
-        .primaryKey()
-        .references(() => objects.id, { onDelete: "cascade" }),
-      parentId: text().notNull(),
-    }
-    for (const [propertyId, property] of Object.entries(object.properties)) {
-      const columnKey = physicalPropertyKey(propertyId, property)
-      if (columns[columnKey] !== undefined) {
-        throw new Error(
-          `Object '${object.id}' properties produce duplicate PostgreSQL column '${columnKey}'.`
-        )
-      }
-      columns[columnKey] = configuredColumn(property, tableForType)
-    }
-
-    objectTables[object.id] = pgTable(tableName, columns, (table) => {
-      const constraints: Array<PgTableExtraConfigValue> = [
-        index(`${tableName}_parent_id_idx`).on(table.parentId!),
-        foreignKey({
-          columns: [table.parentId!],
-          foreignColumns: [columnId(tableForType(object.parent.typeId))],
-          name: `${tableName}_parent_${snakeCase(object.parent.typeId)}_fk`,
-        }).onDelete("restrict"),
-        foreignKey({
-          columns: [table.id!, table.parentId!],
-          foreignColumns: [objects.id, objects.parentId],
-          name: `${tableName}_object_parent_fk`,
-        }).onDelete("cascade"),
-      ]
-      for (const [propertyId, property] of Object.entries(object.properties)) {
-        const columnKey = physicalPropertyKey(propertyId, property)
-        const column = table[columnKey]
-        if (column === undefined) continue
-        if (property.kind === "recordId") {
-          constraints.push(
-            index(`${tableName}_${snakeCase(columnKey)}_idx`).on(column)
-          )
-        }
-      }
-      for (const [ruleId, fields] of Object.entries(object.uniqueBy)) {
-        const uniqueColumns = fields.map((field) => {
-          const columnKey =
-            field === "parent"
-              ? "parentId"
-              : physicalPropertyKey(field, object.properties[field]!)
-          const column = table[columnKey]
-          if (column === undefined) {
-            throw new Error(
-              `Object '${object.id}' unique rule '${ruleId}' references missing column '${columnKey}'.`
-            )
-          }
-          return column
-        })
-        const first = uniqueColumns[0]
-        if (first === undefined) {
-          throw new Error(
-            `Object '${object.id}' unique rule '${ruleId}' must reference at least one field.`
-          )
-        }
-        constraints.push(
-          uniqueIndex(objectUniqueConstraintName(tableName, ruleId)).on(
-            first,
-            ...uniqueColumns.slice(1)
-          )
-        )
-      }
-      return constraints
-    })
-  }
-
-  const linkTables: Record<string, AnyPgTable> = {}
-  for (const link of Object.values(model.links)) {
-    const tableName = snakeCase(link.id)
-    claimTableName(tableName, `link '${link.id}'`)
-    const forwardColumn = "forwardId"
-    const reverseColumn = "reverseId"
-    linkTables[link.id] = pgTable(
-      tableName,
+/** Compiles the portable model into PostgreSQL tables and documented current-state DDL. */
+export function makePostgresSchema<const M extends ModelCatalog>(
+  model: M
+): PostgresStorage<M> {
+  const q = quoteIdentifier
+  const core = {
+    objects: defineTable(
+      "objects",
       {
-        [forwardColumn]: text()
-          .notNull()
-          .references(() => columnId(tableForType(link.forward.from.typeId)), {
-            onDelete:
-              link.reverse.cardinality === "one" ? "restrict" : "cascade",
-          }),
-        [reverseColumn]: text()
-          .notNull()
-          .references(() => columnId(tableForType(link.reverse.from.typeId)), {
-            onDelete:
-              link.forward.cardinality === "one" ? "restrict" : "cascade",
-          }),
+        id: {
+          type: "text",
+          description:
+            "Stable identity shared by the domain row and its interface memberships.",
+        },
+        objectType: {
+          type: "text",
+          description: "Object type declared in the company model.",
+        },
+        parentId: {
+          type: "text",
+          nullable: true,
+          description: "Ownership parent. Only the root has no parent.",
+        },
+        ancestorIds: {
+          type: "text[]",
+          default: "'{}'",
+          description:
+            "Ownership ancestry used when filtering records by access scope.",
+        },
+        metadata: { type: "jsonb", default: "'{}'" },
+        systemManaged: { type: "boolean", default: "false" },
+        etag: {
+          type: "text",
+          default: "'1'",
+          description: "Version precondition for optimistic writes.",
+        },
+        createdAt: { type: "timestamp with time zone", default: "now()" },
+        createdById: { type: "text" },
+        updatedAt: { type: "timestamp with time zone", default: "now()" },
+        updatedById: { type: "text" },
       },
-      (table) => [
-        ...(link.subsetOf === undefined
-          ? []
-          : [
-              foreignKey({
-                name: `${tableName}_membership_fk`,
-                columns: [table[forwardColumn], table[reverseColumn]],
-                foreignColumns: [
-                  getTableColumns(linkTables[link.subsetOf]!)[forwardColumn]!,
-                  getTableColumns(linkTables[link.subsetOf]!)[reverseColumn]!,
-                ],
-              }).onDelete("cascade"),
-            ]),
-        primaryKey({
-          columns: [table[forwardColumn], table[reverseColumn]],
-        }),
-        index(`${tableName}_${snakeCase(forwardColumn)}_idx`).on(
-          table[forwardColumn]
-        ),
-        index(`${tableName}_${snakeCase(reverseColumn)}_idx`).on(
-          table[reverseColumn]
-        ),
-        ...(link.forward.cardinality === "many"
-          ? []
-          : [
-              uniqueIndex(`${tableName}_${snakeCase(forwardColumn)}_unique`).on(
-                table[forwardColumn]
-              ),
-            ]),
-        ...(link.reverse.cardinality === "many"
-          ? []
-          : [
-              uniqueIndex(`${tableName}_${snakeCase(reverseColumn)}_unique`).on(
-                table[reverseColumn]
-              ),
-            ]),
-      ]
-    )
-  }
-
-  const schemaEntries: Array<readonly [string, AnyPgTable]> = [
-    ["__objects", objects],
-    ["__recordAliases", recordAliases],
-    ["__roots", roots],
-    ...Object.entries(interfaceTables),
-    ...Object.entries(objectTables),
-    ...Object.entries(linkTables).map(
-      ([linkId, table]) => [`__link_${linkId}`, table] as const
+      {
+        description:
+          "Shared record identity, ownership, audit fields, and concurrency state. Domain properties live in their object tables.",
+        constraints: [
+          "primary key (id)",
+          "foreign key (parent_id) references objects(id) on delete restrict",
+          `constraint objects_object_type_check check (object_type in (${[model.root.id, ...Object.keys(model.objects)].map(literal).join(", ")}))`,
+          `constraint objects_parent_required check ((object_type=${literal(model.root.id)} and parent_id is null) or (object_type<>${literal(model.root.id)} and parent_id is not null))`,
+          "constraint objects_id_parent_id_unique unique(id,parent_id)",
+        ],
+      }
     ),
-  ]
-  const schema = Object.fromEntries(schemaEntries)
-  if (Object.keys(schema).length !== schemaEntries.length) {
-    throw new Error("Model type IDs must be unique across storage tables.")
+    roots: defineTable(
+      "roots",
+      { id: { type: "text" } },
+      {
+        description: "Root membership for the company ownership tree.",
+        constraints: [
+          "primary key (id)",
+          "foreign key (id) references objects(id) on delete cascade",
+        ],
+      }
+    ),
+    recordAliases: defineTable(
+      "record_aliases",
+      { alias: { type: "text" }, objectId: { type: "text" } },
+      {
+        description: "Alternate identifiers resolving to one canonical record.",
+        constraints: [
+          "primary key (alias)",
+          "foreign key (object_id) references objects(id) on delete cascade",
+        ],
+      }
+    ),
   }
+  const interfaces: Record<string, Table<object>> = {}
+  const objects: Record<string, Table<object>> = {}
+  const linkTables: Record<string, Table<object>> = {}
+  const names = new Set(["objects", "roots", "record_aliases"])
+  const claim = (name: string) => {
+    if (names.has(name))
+      throw new Error(`Duplicate PostgreSQL table '${name}'.`)
+    names.add(name)
+    return name
+  }
+  const tableFor = (id: string): string => {
+    if (id === model.root.id) return "roots"
+    if (model.interfaces[id]) return `interface_${snakeCase(id)}`
+    const object = model.objects[id]
+    if (!object) throw new Error(`Type '${id}' has no PostgreSQL table.`)
+    return snakeCase(object.collection)
+  }
+  const ddl = [
+    "-- Core record storage",
+    ...core.objects.ddl,
+    "create index objects_object_type_idx on objects(object_type)",
+    "create index objects_parent_id_idx on objects(parent_id)",
+    "create index objects_ancestor_ids_idx on objects using gin(ancestor_ids)",
+    ...core.roots.ddl,
+    ...core.recordAliases.ddl,
+    "create index record_aliases_object_id_idx on record_aliases(object_id)",
+    "-- Interface membership: each row identifies an implementing record; no duplicated domain properties",
+  ]
+  const constraints: string[] = []
+  for (const item of Object.values(model.interfaces)) {
+    const table = defineTable(
+      claim(tableFor(item.id)),
+      { id: { type: "text" } },
+      {
+        description: `Membership in ${item.name} (${item.id}). IDs refer to implementing records; properties remain on their domain tables.${item.description ? ` ${item.description}` : ""}`,
+        constraints: [
+          "primary key (id)",
+          "foreign key (id) references objects(id) on delete cascade",
+        ],
+      }
+    )
+    interfaces[item.id] = table
+    ddl.push(...table.ddl)
+  }
+  for (const field of ["created_by_id", "updated_by_id"])
+    constraints.push(
+      `alter table objects add constraint ${q(`objects_${field}_${tableFor(model.actor.id)}_id_fkey`)} foreign key (${field}) references ${q(tableFor(model.actor.id))}(id) on delete restrict deferrable initially deferred`
+    )
 
-  // SAFETY: every model object and interface was materialized under its
-  // validated type ID and each table contains the derived physical columns.
+  let previousModule: string | undefined
+  for (const object of Object.values(model.objects)) {
+    const module = Object.values(model.modules).find((item) =>
+      item.objects.some((member) => member.id === object.id)
+    )
+    if (module?.id !== previousModule) {
+      ddl.push(`-- Domain objects: ${module?.name ?? model.name}`)
+      previousModule = module?.id
+    }
+    const fields: Record<string, ColumnDefinition> = {
+      id: {
+        type: "text",
+        description: "Same identity as the corresponding row in objects.",
+      },
+      parentId: {
+        type: "text",
+        description: `Ownership parent implementing ${object.parent.typeId}.`,
+      },
+    }
+    for (const [id, property] of Object.entries(object.properties)) {
+      const key = physicalPropertyKey(id, property)
+      if (Object.hasOwn(fields, key))
+        throw new Error(
+          `Object '${object.id}' produces duplicate PostgreSQL column '${key}'.`
+        )
+      const type = propertySqlType(property)
+      fields[key] = {
+        type,
+        nullable: property.nullable,
+        default: Object.hasOwn(property, "default")
+          ? defaultSql(type, property.default)
+          : undefined,
+        description: property.description,
+      }
+    }
+    const table = defineTable(claim(tableFor(object.id)), fields, {
+      description: `${object.name} (${object.id}).${object.description ? ` ${object.description}` : ""}`,
+      constraints: [
+        "primary key (id)",
+        "foreign key (id) references objects(id) on delete cascade",
+      ],
+    })
+    objects[object.id] = table
+    const name = q(table.name)
+    const columns = tableColumns(table)
+    ddl.push(
+      ...table.ddl,
+      `create index ${q(`${table.name}_parent_id_idx`)} on ${name}(parent_id)`
+    )
+    for (const [id, property] of Object.entries(object.properties)) {
+      if (property.kind !== "recordId") continue
+      const column = columns[physicalPropertyKey(id, property)]!
+      constraints.push(
+        `alter table ${name} add foreign key (${q(column.name)}) references ${q(tableFor(property.typeId))}(id) on delete restrict`
+      )
+      ddl.push(
+        `create index ${q(`${table.name}_${column.name}_idx`)} on ${name}(${q(column.name)})`
+      )
+    }
+    constraints.push(
+      `alter table ${name} add constraint ${q(`${table.name}_parent_${snakeCase(object.parent.typeId)}_fk`)} foreign key(parent_id) references ${q(tableFor(object.parent.typeId))}(id) on delete restrict`,
+      `alter table ${name} add constraint ${q(`${table.name}_object_parent_fk`)} foreign key(id,parent_id) references objects(id,parent_id) on delete cascade`
+    )
+    for (const [rule, keys] of Object.entries(object.uniqueBy))
+      ddl.push(
+        `create unique index ${q(objectUniqueConstraintName(table.name, rule))} on ${name} (${keys.map((key) => q(columns[key === "parent" ? "parentId" : physicalPropertyKey(key, object.properties[key]!)]!.name)).join(", ")})`
+      )
+  }
+  ddl.push("-- Relationships: association pairs and cardinality constraints")
+  for (const link of Object.values(model.links)) {
+    const table = defineTable(
+      claim(snakeCase(link.id)),
+      {
+        forwardId: {
+          type: "text",
+          description: `${link.forward.from.typeId}: ${link.forward.key}.`,
+        },
+        reverseId: {
+          type: "text",
+          description: `${link.reverse.from.typeId}: ${link.reverse.key}.`,
+        },
+      },
+      {
+        description: `${link.name} (${link.id}).${link.subsetOf ? ` A selection from ${link.subsetOf}; removing membership clears the selection.` : ""}`,
+        constraints: [
+          "primary key(forward_id,reverse_id)",
+          `foreign key(forward_id) references ${q(tableFor(link.forward.from.typeId))}(id) on delete ${link.reverse.cardinality === "one" ? "restrict" : "cascade"}`,
+          `foreign key(reverse_id) references ${q(tableFor(link.reverse.from.typeId))}(id) on delete ${link.forward.cardinality === "one" ? "restrict" : "cascade"}`,
+        ],
+      }
+    )
+    linkTables[link.id] = table
+    ddl.push(...table.ddl)
+    for (const [side, definition] of [
+      ["forward", link.forward],
+      ["reverse", link.reverse],
+    ] as const)
+      ddl.push(
+        `create ${definition.cardinality === "many" ? "" : "unique "}index ${q(`${table.name}_${side}_id_${definition.cardinality === "many" ? "idx" : "unique"}`)} on ${q(table.name)}(${side}_id)`
+      )
+    if (link.subsetOf)
+      constraints.push(
+        `alter table ${q(table.name)} add constraint ${q(`${table.name}_membership_fk`)} foreign key(forward_id,reverse_id) references ${q(snakeCase(link.subsetOf))}(forward_id,reverse_id) on delete cascade`
+      )
+  }
+  // The closed model supplies every table and its exact physical row type.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   return {
-    core: { recordAliases, objects, roots },
-    interfaces: interfaceTables,
-    linkTables,
     model,
-    objects: objectTables,
-    relations: makeRelations(model, schema),
-    schema,
-  } as unknown as PostgresStorage<TModel>
+    core,
+    objects,
+    interfaces,
+    linkTables,
+    ddl: [
+      ...ddl,
+      "-- Cross-table constraints (declared after their targets to support cycles)",
+      ...constraints,
+    ],
+  } as unknown as PostgresStorage<M>
 }

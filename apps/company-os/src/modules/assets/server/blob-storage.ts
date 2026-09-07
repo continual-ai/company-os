@@ -1,4 +1,9 @@
-import { eq } from "drizzle-orm"
+import { insertValues, assignments } from "@company/postgres"
+import {
+  conflictColumns,
+  projection,
+  type SelectionRow,
+} from "@company/postgres"
 import { Context, Effect, Layer } from "effect"
 
 import { Database } from "@/server/database/database"
@@ -10,20 +15,20 @@ export class BlobStorage extends Context.Service<BlobStorage>()(
   {
     make: Effect.gen(function* () {
       const database = yield* Database
+      const sql = database.sql
+      const selection = { bytes: assetBlobs.columns.bytes }
       return {
         put: (assetId: string, bytes: Uint8Array) =>
-          database
-            .insert(assetBlobs)
-            .values({ assetId, bytes })
-            .onConflictDoUpdate({ target: assetBlobs.assetId, set: { bytes } })
-            .pipe(Effect.asVoid),
+          sql`insert into ${assetBlobs} ${insertValues(sql, assetBlobs, { assetId, bytes })}
+          on conflict (${conflictColumns(sql, assetBlobs.columns.assetId)})
+          do update set ${assignments(sql, assetBlobs, { bytes })}`.pipe(
+            Effect.asVoid
+          ),
         get: (assetId: string) =>
-          database
-            .select({ bytes: assetBlobs.bytes })
-            .from(assetBlobs)
-            .where(eq(assetBlobs.assetId, assetId))
-            .limit(1)
-            .pipe(Effect.map((rows) => rows[0]?.bytes)),
+          sql<SelectionRow<typeof selection>>`select ${projection(selection)}
+          from ${assetBlobs}
+          where ${assetBlobs.columns.assetId} = ${assetId}
+          limit ${1}`.pipe(Effect.map((rows) => rows[0]?.bytes)),
       }
     }),
   }

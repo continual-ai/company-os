@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm"
+import { projection, type SelectionRow } from "@company/postgres"
 import { Context, Effect, Layer } from "effect"
 
 import { Database } from "@/server/database/database"
@@ -7,33 +7,32 @@ import { ObjectRepositories } from "@/server/model/object-repositories"
 
 const make = Effect.gen(function* () {
   const database = yield* Database
+  const sql = database.sql
   const base = (yield* ObjectRepositories).roleAssignment
 
   const getScopeObjectType = Effect.fn(
     "@company/RoleAssignmentRepository.getScopeObjectType"
   )(function* (scopeId: string) {
-    const rows = yield* database
-      .select({ objectType: objects.objectType })
-      .from(objects)
-      .where(eq(objects.id, scopeId))
-      .limit(1)
+    const rowsFields = { objectType: objects.columns.objectType }
+    const rows = yield* sql<
+      SelectionRow<typeof rowsFields>
+    >`select ${projection(rowsFields)}
+          from ${objects}
+          where ${objects.columns.id} = ${scopeId}
+          limit ${1}`
     return rows[0]?.objectType
   })
 
   const lockRoleAssignments = Effect.fn(
     "@company/RoleAssignmentRepository.lockRoleAssignments"
   )(function* (input: { readonly roleId: string; readonly scopeId: string }) {
-    return yield* database
-      .select({ id: roleAssignments.id })
-      .from(roleAssignments)
-      .where(
-        and(
-          eq(roleAssignments.parentId, input.scopeId),
-          eq(roleAssignments.roleId, input.roleId)
-        )
-      )
-      .orderBy(roleAssignments.id)
-      .for("update")
+    const selection = { id: roleAssignments.columns.id }
+    return yield* sql<
+      SelectionRow<typeof selection>
+    >`select ${projection(selection)}
+          from ${roleAssignments}
+          where (${roleAssignments.columns.parentId} = ${input.scopeId} and ${roleAssignments.columns.roleId} = ${input.roleId})
+          order by ${sql.csv([roleAssignments.columns.id])} for update`
   })
 
   const findAssignment = Effect.fn(
@@ -43,17 +42,13 @@ const make = Effect.gen(function* () {
     readonly roleId: string
     readonly scopeId: string
   }) {
-    const rows = yield* database
-      .select({ id: roleAssignments.id })
-      .from(roleAssignments)
-      .where(
-        and(
-          eq(roleAssignments.parentId, input.scopeId),
-          eq(roleAssignments.principalId, input.principalId),
-          eq(roleAssignments.roleId, input.roleId)
-        )
-      )
-      .limit(1)
+    const rowsFields2 = { id: roleAssignments.columns.id }
+    const rows = yield* sql<
+      SelectionRow<typeof rowsFields2>
+    >`select ${projection(rowsFields2)}
+          from ${roleAssignments}
+          where (${roleAssignments.columns.parentId} = ${input.scopeId} and ${roleAssignments.columns.principalId} = ${input.principalId} and ${roleAssignments.columns.roleId} = ${input.roleId})
+          limit ${1}`
     return rows[0]
   })
 

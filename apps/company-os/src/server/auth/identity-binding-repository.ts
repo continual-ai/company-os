@@ -1,5 +1,6 @@
+import { insertValues } from "@company/postgres"
+import { projection, type SelectionRow } from "@company/postgres"
 import { RecordId, type RecordId as RecordIdType } from "@company/runtime"
-import { and, eq } from "drizzle-orm"
 import { Context, Effect, Layer } from "effect"
 
 import { Database } from "@/server/database/database"
@@ -11,25 +12,23 @@ export type BoundIdentity =
 
 const make = Effect.gen(function* () {
   const database = yield* Database
+  const sql = database.sql
 
   const find = Effect.fn("@company/IdentityBindingRepository.find")(function* (
     issuer: string,
     subject: string
   ) {
-    const rows = yield* database
-      .select({
-        identityId: identityBindings.identityId,
-        objectType: objects.objectType,
-      })
-      .from(identityBindings)
-      .innerJoin(objects, eq(identityBindings.identityId, objects.id))
-      .where(
-        and(
-          eq(identityBindings.issuer, issuer),
-          eq(identityBindings.subject, subject)
-        )
-      )
-      .limit(1)
+    const rowsFields = {
+      identityId: identityBindings.columns.identityId,
+      objectType: objects.columns.objectType,
+    }
+    const rows = yield* sql<
+      SelectionRow<typeof rowsFields>
+    >`select ${projection(rowsFields)}
+          from ${identityBindings}
+          inner join ${objects} on ${identityBindings.columns.identityId} = ${objects.columns.id}
+          where (${identityBindings.columns.issuer} = ${issuer} and ${identityBindings.columns.subject} = ${subject})
+          limit ${1}`
     const binding = rows[0]
     if (binding === undefined) return undefined
     if (binding.objectType === "user") {
@@ -55,7 +54,7 @@ const make = Effect.gen(function* () {
       readonly issuer: string
       readonly subject: string
     }) {
-      yield* database.insert(identityBindings).values(input)
+      yield* sql`insert into ${identityBindings} ${insertValues(sql, identityBindings, input)}`
     }
   )
 

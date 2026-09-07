@@ -6,16 +6,14 @@ import {
   type ModelObjectRef,
 } from "@company/runtime"
 import { RecordAliasNotFound } from "@company/runtime/effect/object-repository"
-import { eq, inArray, type AnyRelations } from "drizzle-orm"
-import type { EffectDrizzleQueryError } from "drizzle-orm/effect-core/errors"
-import type { EffectPgDatabase } from "drizzle-orm/effect-postgres"
 import { Effect } from "effect"
+import type { SqlError } from "effect/unstable/sql/SqlError"
 
+import { type PostgresDatabase } from "./database"
 import type { PostgresStorage } from "./schema"
+import { projection, type SelectionRow, inValues } from "./statement"
 
-export type PostgresRecordAliasResolutionError =
-  | EffectDrizzleQueryError
-  | RecordAliasNotFound
+export type PostgresRecordAliasResolutionError = RecordAliasNotFound | SqlError
 
 function makeObjectRef<const TObjectType extends string>(
   objectType: TObjectType,
@@ -30,29 +28,29 @@ function makeObjectRef<const TObjectType extends string>(
 }
 
 /** Resolves globally unique aliases in input order without requiring object types. */
-export function resolveRecordAliases<
-  const TModel extends ModelCatalog,
-  const TRelations extends AnyRelations,
->(
+export function resolveRecordAliases<const TModel extends ModelCatalog>(
   storage: PostgresStorage<TModel>,
-  db: EffectPgDatabase<TRelations>,
+  db: PostgresDatabase,
   aliases: ReadonlyArray<RecordAlias>
 ): Effect.Effect<
   ReadonlyArray<ModelObjectRef<TModel>>,
   PostgresRecordAliasResolutionError
 > {
   if (aliases.length === 0) return Effect.succeed([])
+  const sql = db.sql
   const { recordAliases, objects } = storage.core
   return Effect.gen(function* () {
-    const rows = yield* db
-      .select({
-        alias: recordAliases.alias,
-        id: objects.id,
-        objectType: objects.objectType,
-      })
-      .from(recordAliases)
-      .innerJoin(objects, eq(recordAliases.objectId, objects.id))
-      .where(inArray(recordAliases.alias, [...new Set(aliases)]))
+    const rowsFields = {
+      alias: recordAliases.columns.alias,
+      id: objects.columns.id,
+      objectType: objects.columns.objectType,
+    }
+    const rows = yield* sql<
+      SelectionRow<typeof rowsFields>
+    >`select ${projection(rowsFields)}
+          from ${recordAliases}
+          inner join ${objects} on ${recordAliases.columns.objectId} = ${objects.columns.id}
+          where ${inValues(sql, recordAliases.columns.alias, [...new Set(aliases)])}`
     const byAlias = new Map(rows.map((row) => [row.alias, row]))
     const references: Array<ModelObjectRef<TModel>> = []
     for (const alias of aliases) {
@@ -70,7 +68,14 @@ export function resolveRecordAliases<
           `Alias '${alias}' resolved to unknown object type '${resolved.objectType}'.`
         )
       }
-      references.push(makeObjectRef(resolved.objectType, resolved.id))
+      references.push(
+        // The discriminator is a model object and the ID has been validated above.
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+        makeObjectRef(
+          resolved.objectType,
+          resolved.id
+        ) as ModelObjectRef<TModel>
+      )
     }
     return references
   })

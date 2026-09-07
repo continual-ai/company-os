@@ -1,3 +1,5 @@
+import { assignments } from "@company/postgres"
+import { projection, type SelectionRow } from "@company/postgres"
 import { makeLinkRepository } from "@company/postgres"
 import { isStandardActionId, RecordAlias } from "@company/runtime"
 import {
@@ -9,7 +11,6 @@ import {
 import { customMethodParams } from "@company/runtime/effect/http-custom-method"
 import { executableModelOperations } from "@company/runtime/effect/model-implementation"
 import { Model } from "company-os/model"
-import { eq } from "drizzle-orm"
 import {
   ConfigProvider,
   Effect,
@@ -115,6 +116,7 @@ describe("application HTTP server", () => {
         )
       )
       const database = yield* Database
+      const sql = database.sql
       yield* seedSystem().pipe(
         Effect.provideService(PageTokens, testPageTokens)
       )
@@ -454,14 +456,10 @@ describe("application HTTP server", () => {
         totalSize: 1,
       })
 
-      yield* database
-        .update(objects)
-        .set({ createdAt: "2001-01-01T00:00:00.000123Z" })
-        .where(eq(objects.id, contact.id))
-      yield* database
-        .update(objects)
-        .set({ createdAt: "2001-01-01T00:00:00.000456Z" })
-        .where(eq(objects.id, secondContact.id))
+      yield* sql`update ${objects} set ${assignments(sql, objects, { createdAt: "2001-01-01T00:00:00.000123Z" })}
+          where ${objects.columns.id} = ${contact.id}`
+      yield* sql`update ${objects} set ${assignments(sql, objects, { createdAt: "2001-01-01T00:00:00.000456Z" })}
+          where ${objects.columns.id} = ${secondContact.id}`
       const firstContactPage = yield* useTestFetch(
         model.company.contacts.list({ id: created.id, pageSize: 1 })
       )
@@ -501,10 +499,8 @@ describe("application HTTP server", () => {
       expect(secondContactPage.items.map(({ id }) => id)).toEqual([contact.id])
       expect(secondContactPage.nextPageToken).toBeNull()
       expect(secondContactPage.totalSize).toBe(2)
-      yield* database
-        .update(objects)
-        .set({ createdAt: "2001-01-01T00:00:00.000123Z" })
-        .where(eq(objects.id, secondContact.id))
+      yield* sql`update ${objects} set ${assignments(sql, objects, { createdAt: "2001-01-01T00:00:00.000123Z" })}
+          where ${objects.columns.id} = ${secondContact.id}`
       const tiedFirst = yield* useTestFetch(
         model.company.contacts.list({ id: created.id, pageSize: 1 })
       )
@@ -712,33 +708,43 @@ describe("application HTTP server", () => {
       yield* Effect.promise(() => consumer.poll(signal))
       expect((yield* readCached()).name).toBe("Changed in the first browser")
 
-      const [persistedNote] = yield* database
-        .select({ content: notes.content })
-        .from(notes)
-        .where(eq(notes.id, note.id))
+      const rowFields = { content: notes.columns.content }
+      const [persistedNote] = yield* sql<
+        SelectionRow<typeof rowFields>
+      >`select ${projection(rowFields)}
+          from ${notes}
+          where ${notes.columns.id} = ${note.id}`
       expect(persistedNote).toEqual({ content: "Introductory call" })
-      const [auditedObject] = yield* database
-        .select({ createdById: objects.createdById })
-        .from(objects)
-        .where(eq(objects.id, destination.id))
+      const rowFields2 = { createdById: objects.columns.createdById }
+      const [auditedObject] = yield* sql<
+        SelectionRow<typeof rowFields2>
+      >`select ${projection(rowFields2)}
+          from ${objects}
+          where ${objects.columns.id} = ${destination.id}`
       expect(auditedObject?.createdById).toBe("us_test")
-      const [projectedUser] = yield* database
-        .select({ id: users.id, name: users.name })
-        .from(users)
-        .where(eq(users.id, "us_test"))
+      const rowFields3 = { id: users.columns.id, name: users.columns.name }
+      const [projectedUser] = yield* sql<
+        SelectionRow<typeof rowFields3>
+      >`select ${projection(rowFields3)}
+          from ${users}
+          where ${users.columns.id} = ${"us_test"}`
       expect(projectedUser).toEqual({ id: "us_test", name: "Owner" })
-      const [binding] = yield* database
-        .select({ identityId: identityBindings.identityId })
-        .from(identityBindings)
-        .where(eq(identityBindings.subject, "us_test"))
+      const rowFields4 = { identityId: identityBindings.columns.identityId }
+      const [binding] = yield* sql<
+        SelectionRow<typeof rowFields4>
+      >`select ${projection(rowFields4)}
+          from ${identityBindings}
+          where ${identityBindings.columns.subject} = ${"us_test"}`
       expect(binding).toEqual({ identityId: "us_test" })
-      const [assignment] = yield* database
-        .select({
-          principalId: roleAssignments.principalId,
-          roleId: roleAssignments.roleId,
-        })
-        .from(roleAssignments)
-        .where(eq(roleAssignments.principalId, "us_test"))
+      const rowFields5 = {
+        principalId: roleAssignments.columns.principalId,
+        roleId: roleAssignments.columns.roleId,
+      }
+      const [assignment] = yield* sql<
+        SelectionRow<typeof rowFields5>
+      >`select ${projection(rowFields5)}
+          from ${roleAssignments}
+          where ${roleAssignments.columns.principalId} = ${"us_test"}`
       expect(assignment).toEqual({
         principalId: "us_test",
         roleId: ADMINISTRATOR_ROLE_ID,

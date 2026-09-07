@@ -1,6 +1,6 @@
+import { inValues } from "@company/postgres"
 import { toEffectSchema } from "@company/runtime/effect"
 import { Model } from "company-os/model"
-import { count, eq, inArray, or, sql } from "drizzle-orm"
 import { Effect, Schema } from "effect"
 
 import { Authorization } from "@/server/authorization/authorization-service"
@@ -13,6 +13,7 @@ const Output = toEffectSchema(Model.objects.deal.queries.pipelineSummary.output)
 export const pipelineSummary = Effect.fn("sales.pipelineSummary")(function* () {
   const authorization = yield* Authorization
   const database = yield* Database
+  const sql = database.sql
   yield* authorization.requireOperation({
     objectType: "deal",
     operationId: "pipelineSummary",
@@ -22,28 +23,16 @@ export const pipelineSummary = Effect.fn("sales.pipelineSummary")(function* () {
     operation: "get",
   })
   if (scopes.length === 0) return { groups: [] }
-  const currency = sql<string | null>`${deals.amount}->>'currency'`
-  const groups = yield* database
-    .select({
-      stage: deals.stage,
-      currency,
-      count: count(),
-      amount: sql<
-        string | null
-      >`sum((${deals.amount}->>'amount')::numeric)::text`,
-    })
-    .from(deals)
-    .innerJoin(objects, eq(objects.id, deals.id))
-    .where(
-      or(
-        inArray(objects.id, scopes),
-        sql`${objects.ancestorIds} && array[${sql.join(
-          scopes.map((id) => sql`${id}`),
-          sql`, `
-        )}]::text[]`
-      )
-    )
-    .groupBy(deals.stage, currency)
-    .orderBy(deals.stage, currency)
+  const currency = sql`${deals.columns.amount}->>'currency'`
+  const groups = yield* sql`select
+            ${deals.columns.stage} as stage,
+            ${currency} as currency,
+            count(*)::double precision as count,
+            sum((${deals.columns.amount}->>'amount')::numeric)::text as amount
+          from ${deals}
+          inner join ${objects} on ${objects.columns.id} = ${deals.columns.id}
+          where (${inValues(sql, objects.columns.id, scopes)} or ${objects.columns.ancestorIds} && array[${sql.join(", ", false)(scopes.map((id) => sql`${id}`))}]::text[])
+          group by ${sql.csv([deals.columns.stage, currency])}
+          order by ${sql.csv([deals.columns.stage, currency])}`
   return yield* Schema.decodeUnknownEffect(Output)({ groups })
 })

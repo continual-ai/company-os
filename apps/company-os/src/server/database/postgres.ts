@@ -1,3 +1,4 @@
+import { pgTypes } from "@company/postgres"
 import { PgClient } from "@effect/sql-pg"
 import { Config, Layer, Redacted } from "effect"
 
@@ -57,6 +58,7 @@ const connectionUrlConfig = Config.all({
 
 /** Configured PostgreSQL client used to construct the application database. */
 const clientLayer = PgClient.layerConfig({
+  types: Config.succeed(pgTypes),
   applicationName: Config.succeed("company-os"),
   connectTimeout: Config.succeed("5 seconds"),
   maxConnections: Config.int("DATABASE_MAX_CONNECTIONS").pipe(
@@ -65,10 +67,10 @@ const clientLayer = PgClient.layerConfig({
   url: connectionUrlConfig,
 })
 
-/** The application-typed Drizzle database backed by the configured PostgreSQL client. */
+/** The application-typed Effect SQL database backed by the configured PostgreSQL client. */
 export const databaseLayer = Database.layer.pipe(Layer.provide(clientLayer))
 
-/** Raw PostgreSQL and typed Drizzle services used together by database administration commands. */
+/** Raw PostgreSQL and typed Effect SQL services used together by database administration commands. */
 export const databaseAndClientLayer = Layer.merge(clientLayer, databaseLayer)
 
 export const eventNotificationsLayer = EventNotifications.layer.pipe(

@@ -1,4 +1,10 @@
-import { eq, inArray, sql } from "drizzle-orm"
+import { insertValues } from "@company/postgres"
+import {
+  sqlValue,
+  projection,
+  type SelectionRow,
+  inValues,
+} from "@company/postgres"
 import { Effect } from "effect"
 
 import type { AssetReference } from "@/modules/assets/asset/references"
@@ -13,24 +19,26 @@ export function replaceAssetReferences(
   recordId: string,
   references: ReadonlyArray<AssetReference>
 ) {
+  const sql = database.sql
+
   return Effect.gen(function* () {
     if (references.length > 0) {
-      const rows = yield* database
-        .select({
-          id: sql<string>`${assets.id}`,
-          name: sql<string>`${assets.name}`,
-          state: sql<string>`${assets.state}`,
-          contentType: sql<string>`${assets.contentType}`,
-          size: sql<number>`${assets.size}`,
-        })
-        .from(assets)
-        .where(
-          inArray(
-            assets.id,
+      const rowsFields = {
+        id: sqlValue<string>(sql`${assets.columns.id}`),
+        name: sqlValue<string>(sql`${assets.columns.name}`),
+        state: sqlValue<string>(sql`${assets.columns.state}`),
+        contentType: sqlValue<string>(sql`${assets.columns.contentType}`),
+        size: sqlValue<number>(sql`${assets.columns.size}`),
+      }
+      const rows = yield* sql<
+        SelectionRow<typeof rowsFields>
+      >`select ${projection(rowsFields)}
+          from ${assets}
+          where ${inValues(
+            sql,
+            assets.columns.id,
             references.map((ref) => ref.assetId)
-          )
-        )
-        .for("share")
+          )} for share`
       for (const reference of references) {
         const asset = rows.find((row) => row.id === reference.assetId)
         const accepted = reference.schema.accept
@@ -59,17 +67,19 @@ export function replaceAssetReferences(
           )
       }
     }
-    yield* database
-      .delete(assetReferences)
-      .where(eq(assetReferences.recordId, recordId))
+    yield* sql`delete
+          from ${assetReferences}
+          where ${assetReferences.columns.recordId} = ${recordId}`
     if (references.length > 0)
-      yield* database.insert(assetReferences).values(
+      yield* sql`insert into ${assetReferences} ${insertValues(
+        sql,
+        assetReferences,
         references.map((reference) => ({
           recordId: recordId,
           field: reference.field,
           assetId: reference.assetId,
         }))
-      )
+      )}`
     return undefined
   })
 }

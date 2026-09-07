@@ -94,12 +94,13 @@ Edit a module, then from the repository root:
 
 ```sh
 pnpm --filter company-os db:generate
-# Review the generated migration before applying it.
+# Review schema.sql, then write and register the corresponding SQL migration.
 pnpm dev
 ```
 
-The generator exposes all model tables to Drizzle Kit; ordinary object additions require no manual
-table registration. Migrations and snapshots are committed application history. Run `pnpm check`,
+The generator derives the current `schema.sql` from the model; ordinary object additions require no manual
+table registration. Numbered handwritten migrations are separate, immutable application history.
+Database tests compare their replayed schema with the declarations. Run `pnpm check`,
 relevant tests, and `pnpm build` after routing or bundling changes. Read the
 [database workflow](../../docs/runbooks/database.md) before resetting data or releasing a migration.
 

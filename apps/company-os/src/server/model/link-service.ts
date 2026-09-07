@@ -1,3 +1,9 @@
+import {
+  projection,
+  type SelectionRow,
+  inValues,
+  sqlValue,
+} from "@company/postgres"
 import type { PostgresRepositoryError } from "@company/postgres"
 import { makeLinkRepository } from "@company/postgres"
 import type { ObjectType } from "@company/runtime"
@@ -9,7 +15,6 @@ import {
 import type { Repository } from "@company/runtime/effect/object-repository"
 import { ObjectNotFound } from "@company/runtime/effect/object-repository"
 import { Model } from "company-os/model"
-import { eq, inArray, or, sql } from "drizzle-orm"
 import { Context, Effect, Layer } from "effect"
 
 import type { AssetPrecondition } from "@/modules/assets/asset/server/asset-error"
@@ -26,6 +31,8 @@ function trackedLinkRepository(
   database: typeof Database.Service,
   pageTokens: typeof PageTokens.Service
 ) {
+  const sql = database.sql
+
   const repository = makeLinkRepository(Storage, database, pageTokens)
   const events = makeEventWriter(database)
   type Pair = Parameters<typeof repository.link>[0]
@@ -33,12 +40,13 @@ function trackedLinkRepository(
     database.transaction(() =>
       Effect.gen(function* () {
         const ids = [input.sourceId, input.targetId].sort()
-        yield* database
-          .select({ id: Storage.core.objects.id })
-          .from(Storage.core.objects)
-          .where(inArray(Storage.core.objects.id, ids))
-          .orderBy(Storage.core.objects.id)
-          .for("update")
+        const selection = { id: Storage.core.objects.columns.id }
+        yield* sql<
+          SelectionRow<typeof selection>
+        >`select ${projection(selection)}
+          from ${Storage.core.objects}
+          where ${inValues(sql, Storage.core.objects.columns.id, ids)}
+          order by ${sql.csv([Storage.core.objects.columns.id])} for update`
         // Include subset edges: replacing a primary or removing its superset can delete another edge.
         const family = new Set([input.linkId])
         for (let size = 0; size !== family.size;) {
@@ -65,18 +73,15 @@ function trackedLinkRepository(
               )?.[1]
               if (table === undefined)
                 return yield* Effect.die(`Unknown Link '${linkId}'.`)
-              const rows = yield* database
-                .select({
-                  forwardId: sql<string>`${table.forwardId}`,
-                  reverseId: sql<string>`${table.reverseId}`,
-                })
-                .from(table)
-                .where(
-                  or(
-                    inArray(table.forwardId, ids),
-                    inArray(table.reverseId, ids)
-                  )
-                )
+              const rowsFields = {
+                forwardId: sqlValue<string>(sql`${table.columns.forwardId}`),
+                reverseId: sqlValue<string>(sql`${table.columns.reverseId}`),
+              }
+              const rows = yield* sql<
+                SelectionRow<typeof rowsFields>
+              >`select ${projection(rowsFields)}
+          from ${table}
+          where (${inValues(sql, table.columns.forwardId, ids)} or ${inValues(sql, table.columns.reverseId, ids)})`
               for (const row of rows)
                 pairs.set(
                   JSON.stringify([linkId, row.forwardId, row.reverseId]),
@@ -121,6 +126,7 @@ function trackedLinkRepository(
 const make = Effect.gen(function* () {
   const authorization = yield* Authorization
   const database = yield* Database
+  const sql = database.sql
   const identifiers = yield* RecordIdentifierResolver
   const pageTokens = yield* PageTokens
   const repository = trackedLinkRepository(database, pageTokens)
@@ -154,11 +160,15 @@ const make = Effect.gen(function* () {
             })
           }
           if (request.targetId === undefined) return undefined
-          const [target] = yield* database
-            .select({ objectType: Storage.core.objects.objectType })
-            .from(Storage.core.objects)
-            .where(eq(Storage.core.objects.id, request.targetId))
-            .limit(1)
+          const rowFields = {
+            objectType: Storage.core.objects.columns.objectType,
+          }
+          const [target] = yield* sql<
+            SelectionRow<typeof rowFields>
+          >`select ${projection(rowFields)}
+          from ${Storage.core.objects}
+          where ${Storage.core.objects.columns.id} = ${request.targetId}
+          limit ${1}`
           if (target === undefined) {
             return yield* Effect.fail(
               new ObjectNotFound({

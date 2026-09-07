@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm"
+import { tableProjection, type TableRow } from "@company/postgres"
 import { ConfigProvider, Effect, Layer } from "effect"
 import { expect } from "vitest"
 
@@ -17,6 +17,7 @@ itDatabase(
   "shares verification within a request and reserves bootstrap for the configured subject",
   Effect.fn(function* () {
     const database = yield* Database
+    const sql = database.sql
     yield* seedSystem().pipe(Effect.provide(PageTokens.layerTest))
     let verifications = 0
     const provider = Layer.succeed(IdentityProvider, {
@@ -42,19 +43,21 @@ itDatabase(
       yield* authentication.invocation(firstRequest)
       expect(verifications).toBe(1)
       expect(first).not.toBeNull()
-      const firstGrants = yield* database
-        .select()
-        .from(roleAssignments)
-        .where(eq(roleAssignments.principalId, first!.id))
+      const firstGrants = yield* sql<
+        TableRow<typeof roleAssignments>
+      >`select ${tableProjection(roleAssignments)}
+          from ${roleAssignments}
+          where ${roleAssignments.columns.principalId} = ${first!.id}`
       expect(firstGrants).toEqual([])
       const owner = yield* authentication.currentUser(
         new Headers({ "x-test-subject": "owner" })
       )
       expect(owner).not.toBeNull()
-      const ownerGrants = yield* database
-        .select()
-        .from(roleAssignments)
-        .where(eq(roleAssignments.principalId, owner!.id))
+      const ownerGrants = yield* sql<
+        TableRow<typeof roleAssignments>
+      >`select ${tableProjection(roleAssignments)}
+          from ${roleAssignments}
+          where ${roleAssignments.columns.principalId} = ${owner!.id}`
       expect(ownerGrants.map((grant) => grant.roleId)).toEqual([
         ADMINISTRATOR_ROLE_ID,
       ])

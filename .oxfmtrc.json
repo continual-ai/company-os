@@ -26,7 +26,6 @@
     ".roo/**",
     ".windsurf/**",
     "**/routeTree.gen.ts",
-    "pnpm-lock.yaml",
-    "**/drizzle-schema.generated.ts"
+    "pnpm-lock.yaml"
   ]
 }

@@ -1,5 +1,5 @@
+import { projection, type SelectionRow, inValues } from "@company/postgres"
 import type { IdentityId, PrincipalId } from "company-os/model"
-import { and, arrayOverlaps, eq, inArray, or, sql } from "drizzle-orm"
 import { Context, Effect, Layer } from "effect"
 
 import { Database } from "@/server/database/database"
@@ -12,19 +12,22 @@ import {
 
 const make = Effect.gen(function* () {
   const database = yield* Database
+  const sql = database.sql
 
   const getTargets = Effect.fn("@company/AuthorizationRepository.getTargets")(
     function* (ids: ReadonlyArray<string>) {
       if (ids.length === 0) return []
-      return yield* database
-        .select({
-          ancestorIds: objects.ancestorIds,
-          id: objects.id,
-          objectType: objects.objectType,
-          systemManaged: objects.systemManaged,
-        })
-        .from(objects)
-        .where(inArray(objects.id, ids))
+      const selection = {
+        ancestorIds: objects.columns.ancestorIds,
+        id: objects.columns.id,
+        objectType: objects.columns.objectType,
+        systemManaged: objects.columns.systemManaged,
+      }
+      return yield* sql<
+        SelectionRow<typeof selection>
+      >`select ${projection(selection)}
+          from ${objects}
+          where ${inValues(sql, objects.columns.id, ids)}`
     }
   )
 
@@ -40,37 +43,39 @@ const make = Effect.gen(function* () {
       const scopeCondition =
         input.scopeIds === undefined
           ? undefined
-          : inArray(roleAssignments.parentId, input.scopeIds)
+          : inValues(sql, roleAssignments.columns.parentId, input.scopeIds)
+      const direct = inValues(
+        sql,
+        roleAssignments.columns.principalId,
+        input.directPrincipalIds
+      )
       const principalCondition =
         input.groupMemberId === undefined
-          ? inArray(roleAssignments.principalId, input.directPrincipalIds)
-          : or(
-              inArray(roleAssignments.principalId, input.directPrincipalIds),
-              inArray(
-                roleAssignments.principalId,
-                database
-                  .select({ id: groupMemberships.parentId })
-                  .from(groupMemberships)
-                  .where(eq(groupMemberships.memberId, input.groupMemberId))
-              )
-            )
-      const rows = yield* database
-        .selectDistinct({
-          permissions: sql<ReadonlyArray<string>>`${roles.permissions}`,
-          scopeId: sql<string>`${roleAssignments.parentId}`,
-        })
-        .from(roleAssignments)
-        .innerJoin(roles, eq(roleAssignments.roleId, roles.id))
-        .innerJoin(objects, eq(roleAssignments.parentId, objects.id))
-        .where(
-          and(
-            principalCondition,
-            eq(roles.scopeType, objects.objectType),
-            arrayOverlaps(roles.permissions, input.permissions),
-            scopeCondition
-          )
-        )
-        .orderBy(roleAssignments.parentId)
+          ? direct
+          : sql`(${direct} or ${roleAssignments.columns.principalId} in (select ${groupMemberships.columns.parentId}
+          from ${groupMemberships}
+          where ${groupMemberships.columns.memberId} = ${input.groupMemberId}))`
+      const condition = sql.and(
+        [
+          principalCondition,
+          sql`${roles.columns.scopeType} = ${objects.columns.objectType}`,
+          sql`${roles.columns.permissions} && ${input.permissions}::text[]`,
+          scopeCondition,
+        ].filter((part) => part !== undefined)
+      )
+      const rows = yield* sql<{
+        permissions: ReadonlyArray<string>
+        scopeId: string
+      }>`
+        select distinct ${roles.columns.permissions} as permissions, ${roleAssignments.columns.parentId} as "scopeId"
+
+          from ${roleAssignments}
+          inner join ${roles} on ${roleAssignments.columns.roleId} = ${roles.columns.id}
+
+          inner join ${objects} on ${roleAssignments.columns.parentId} = ${objects.columns.id}
+
+          where ${condition}
+          order by ${roleAssignments.columns.parentId}`
       return rows
     }
   )

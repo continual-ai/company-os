@@ -1,18 +1,13 @@
+import { tableColumns, tableName, type TableRow } from "@company/postgres"
 import type { RecordId } from "@company/runtime"
-import { getTableColumns, getTableName, is, Table } from "drizzle-orm"
-import { getTableConfig } from "drizzle-orm/pg-core"
 import { describe, expect, expectTypeOf, it } from "vitest"
 
-import * as DatabaseSchema from "./schema"
-
-const { Storage } = DatabaseSchema
+import { Storage, schemaSql } from "./schema"
 
 describe("PostgreSQL schema", () => {
-  it("projects object properties, Links, and relation metadata", () => {
-    expect(
-      new Set(Object.keys(getTableColumns(Storage.objects.contact)))
-    ).toEqual(
-      new Set([
+  it("projects model fields, relationships, and infrastructure constraints", () => {
+    expect(Object.keys(tableColumns(Storage.objects.contact))).toEqual(
+      expect.arrayContaining([
         "id",
         "parentId",
         "emailPermission",
@@ -25,70 +20,39 @@ describe("PostgreSQL schema", () => {
       ])
     )
     expect(
-      Object.keys(getTableColumns(Storage.linkTables.contactPrimaryCompany))
+      Object.keys(tableColumns(Storage.linkTables.contactPrimaryCompany))
     ).toEqual(["forwardId", "reverseId"])
-    expect(
-      Storage.relations.contact?.relations.primaryCompany?.targetTableName
-    ).toBe("company")
-    expect(Storage.relations.company?.relations.contacts?.relationType).toBe(
-      "many"
-    )
-    expectTypeOf(
-      Storage.relations.contact.relations.primaryCompany.targetTableName
-    ).toEqualTypeOf<"company">()
     expectTypeOf<
-      (typeof Storage.objects.deal)["$inferSelect"]["parentId"]
+      TableRow<typeof Storage.objects.deal>["parentId"]
     >().toEqualTypeOf<RecordId<"authorizationScope">>()
     expectTypeOf<
-      (typeof Storage.objects.lineItem)["$inferSelect"]["parentId"]
+      TableRow<typeof Storage.objects.lineItem>["parentId"]
     >().toEqualTypeOf<RecordId<"deal">>()
-    expect(getTableName(Storage.interfaces.party)).toBe("interface_party")
-    const objectColumns = getTableColumns(Storage.core.objects)
-    expect(objectColumns.createdAt.getSQLType()).toBe(
-      "timestamp with time zone"
-    )
-    expect(objectColumns.createdAt.hasDefault).toBe(true)
-    expect(objectColumns.etag.hasDefault).toBe(true)
-    expect(objectColumns.updatedAt.hasDefault).toBe(true)
-    expect(getTableName(Storage.interfaces.noteSubject)).toBe(
+    expect(tableName(Storage.interfaces.party)).toBe("interface_party")
+    expect(tableName(Storage.interfaces.noteSubject)).toBe(
       "interface_note_subject"
     )
-    expect(Object.keys(getTableColumns(Storage.objects.note))).toEqual([
+    expect(Object.keys(tableColumns(Storage.objects.note))).toEqual([
       "id",
       "parentId",
       "content",
     ])
-    expect(Storage.relations.note?.relations.subjects?.relationType).toBe(
-      "many"
+    expect(Storage.core.objects.columns.createdAt.type).toBe(
+      "timestamp with time zone"
     )
-    expect(Storage.objects.deal.expectedCloseDate.getSQLType()).toBe("date")
-    expect(Storage.objects.role.permissions.dimensions).toBe(1)
-    expect(
-      getTableConfig(Storage.objects.user).indexes.map(
-        ({ config }) => config.name
-      )
-    ).not.toContain("users_email_unique")
-    expect(
-      getTableConfig(Storage.objects.lineItem).foreignKeys.map((key) =>
-        key.getName()
-      )
-    ).toContain("line_items_object_parent_fk")
-
-    const kitTables: ReadonlyArray<unknown> = Object.values(
-      DatabaseSchema
-    ).filter((value) => is(value, Table))
-    const expectedKitTables = [
-      ...Object.values(Storage.schema),
-      DatabaseSchema.identityBindings,
-      DatabaseSchema.assetBlobs,
-      DatabaseSchema.assetReferences,
-      DatabaseSchema.eventJournal,
-      DatabaseSchema.eventJournalState,
-      DatabaseSchema.recordSearch,
-      DatabaseSchema.searchIndexState,
-      DatabaseSchema.seedRuns,
-    ]
-    // The authoring projection is exhaustive; convenience aliases are intentionally optional.
-    for (const table of kitTables) expect(expectedKitTables).toContain(table)
+    expect(Storage.objects.deal.columns.expectedCloseDate.type).toBe("date")
+    expect(Storage.objects.role.columns.permissions.type).toBe("text[]")
+    const ddl = schemaSql
+    expect(ddl).toContain(
+      '"created_at" timestamp with time zone not null default now()'
+    )
+    expect(ddl).toContain(
+      '"updated_at" timestamp with time zone not null default now()'
+    )
+    expect(ddl).toContain(`"etag" text not null default '1'`)
+    expect(ddl).not.toContain("users_email_unique")
+    expect(ddl).toContain('"line_items_object_parent_fk"')
+    expect(ddl).toContain("create trigger event_journal_append_only")
+    expect(ddl).toContain("create index record_search_document_idx")
   })
 })

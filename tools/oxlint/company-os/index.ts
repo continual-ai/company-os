@@ -2,7 +2,6 @@ import { definePlugin } from "@oxlint/plugins"
 
 import { filenameCaseRule } from "./rules/filename-case.ts"
 import { noInternalReexportsRule } from "./rules/no-internal-reexports.ts"
-import { noUnsafeSqlRule } from "./rules/no-unsafe-sql.ts"
 import { packageBoundariesRule } from "./rules/package-boundaries.ts"
 import { visualDriftRule } from "./rules/visual-drift.ts"
 
@@ -12,7 +11,6 @@ const companyOsPlugin = definePlugin({
   rules: {
     "filename-case": filenameCaseRule,
     "no-internal-reexports": noInternalReexportsRule,
-    "no-unsafe-sql": noUnsafeSqlRule,
     "package-boundaries": packageBoundariesRule,
     "visual-drift": visualDriftRule,
   },

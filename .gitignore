@@ -22,3 +22,6 @@ todos.json
 
 # typescript
 *.tsbuildinfo
+
+# Local live-database schema inspection
+schema.actual.sql

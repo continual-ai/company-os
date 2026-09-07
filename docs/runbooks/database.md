@@ -10,8 +10,9 @@ central app because it is the only package that owns the Company OS database.
 
 | Command       | Purpose                                                        |
 | ------------- | -------------------------------------------------------------- |
-| `db:generate` | Generate a committed migration from the schema projection.     |
-| `db:check`    | Validate the committed migration history.                      |
+| `db:generate` | Regenerate the model-derived current `schema.sql`.             |
+| `db:check`    | Check that `schema.sql` matches the declared storage.          |
+| `db:dump`     | Write the installed schema to ignored `schema.actual.sql`.     |
 | `db:migrate`  | Apply committed migrations and ensure required system records. |
 | `db:seed`     | Explicit development scenarios; see [demo data](demo-data.md). |
 | `db:reset`    | Destructively rebuild a dedicated local database.              |
@@ -23,14 +24,14 @@ The database path has one implementation in production and tests:
 ```text
 PostgreSQL URL
   -> Effect PgClient managed pool
-  -> app-typed Drizzle Database with the generated relations
+  -> Database transaction boundary with event and search updates
   -> PostgreSQL repository implementations
   -> governed application services
 ```
 
-`Database` is an Effect service for sharing the app-typed Drizzle value and transaction boundary; it
+`Database` is an Effect service for sharing the Effect SQL client and transaction boundary; it
 is not a second repository abstraction. The reusable `@company/postgres` functions receive that
-concrete Drizzle value explicitly and implement the portable repository contracts. Production and
+database value explicitly and implement the portable repository contracts. Production and
 tests use the same binding. They differ only in where the PostgreSQL URL and lifecycle come from.
 
 ## Local development
@@ -68,7 +69,7 @@ same PostgreSQL server.
 
 The test project creates one migrated template database for the run. Every `itDatabase` test clones
 that immutable template into a uniquely named database, uses the same Effect PostgreSQL client and
-typed Drizzle binding as production, closes its pool, and drops the clone. Tests therefore share no
+transaction binding as production, closes its pool, and drops the clone. Tests therefore share no
 mutable database state and may run concurrently. The template is dropped after the project finishes.
 
 On Neon, the sibling databases live in the same existing Neon branch as the database named by
@@ -92,53 +93,44 @@ pnpm turbo run test --force
 
 ## Change persisted shape
 
-1. Edit the source contract under `apps/company-os/src/modules`.
-2. The generator derives `tools/drizzle-schema.generated.ts` from the complete model and app-owned
-   infrastructure tables. Standard objects require no manual table exports. `model:check` detects
-   a stale projection.
-3. Generate a descriptive migration:
+1. Edit the source contract under `apps/company-os/src/modules`, or the app-owned infrastructure
+   declarations in `src/server/database/schema.ts`.
+2. Run `pnpm turbo run db:generate --filter=company-os` and review `apps/company-os/schema.sql`.
+3. Write the corresponding numbered SQL migration under `src/server/database/migrations` and
+   register it in the explicit loader in `migrations.ts`. Use the generated diff to guide the SQL;
+   generation never writes migration files. Keep already-applied migrations unchanged.
+4. Run `pnpm check` and `pnpm turbo run test --force`. The database suite replays migrations into an
+   empty database and compares its schema dump with a separate database built from `schema.sql`.
+5. Apply the reviewed migration with `pnpm turbo run db:migrate --filter=company-os`.
 
-   ```sh
-   pnpm turbo run db:generate --filter=company-os -- --name add_company_owner
-   ```
+`schema.sql` is the desired current schema, including all domain and infrastructure tables, indexes,
+constraints, functions, triggers, and stored descriptions. `db:check` and `model:check` detect a stale
+artifact without contacting a database. Required initial journal state belongs in the initial
+migration; system records are ensured separately by `db:migrate`.
 
-4. Review the generated SQL for renames, destructive DDL, defaults, indexes, foreign keys, locks,
-   and required backfills. Confirm that the generated snapshot is present; do not edit it by hand.
-5. Validate the history and rebuild it through the integration tests:
+Effect SQL's Migrator executes whole numbered SQL files transactionally, including PL/pgSQL bodies,
+and records completed IDs in `company_os_migrations`. It does not verify historical file contents or
+generate schema diffs. There is no custom SQL splitter, snapshot chain, or schema-diff engine.
 
-   ```sh
-   pnpm turbo run db:check --filter=company-os
-   pnpm test
-   ```
-
-Keep the model, schema projection, reviewed SQL, generated snapshot, implementation, and tests in
-the same change.
-
-### Template baseline
-
-This template starts from one initial migration generated from the current model. It carries no
-upgrade path, data backfills, or compatibility with earlier template revisions. While designing
-the template, replace this baseline and reset disposable development databases instead of appending
-historical migrations. Database tests always verify installation into an empty database.
-
-After a customized application stores durable customer data, its owner can use the same Drizzle
-tooling to generate and apply reviewed schema changes. That lifecycle belongs to the application;
-it does not require the template to preserve its own development history.
-
-For SQL that Drizzle cannot derive, create an empty tracked migration:
+## Inspect the installed schema
 
 ```sh
-pnpm turbo run db:generate --filter=company-os -- --custom --name backfill_company_owner
+pnpm --filter company-os db:dump
 ```
 
-Do not use `drizzle-kit push`. Every environment should exercise the same committed history.
+This writes `apps/company-os/schema.actual.sql` using `pg_dump --schema-only` for `DATABASE_SCHEMA`
+(default `public`). It includes database comments, indexes, and functions, but excludes record data,
+roles/grants, and migration bookkeeping. The ignored diagnostic file never replaces the desired
+`schema.sql`. Dump failure fails the command.
 
-### Deferrable audit constraints
+The dump command and migration parity test require `pg_dump` on PATH, with a major version at least
+as new as the server. CI installs PostgreSQL 18's client alongside its PostgreSQL 18 service. Both
+sides of the parity test use the same client and server; only random psql restriction tokens are
+removed before comparison. Missing indexes, constraints, defaults, or comments therefore fail the
+comparison. This validates fresh replay, not a data migration against an existing customer database.
 
-Drizzle does not express PostgreSQL constraint deferrability. A migration that creates or replaces
-the audit actor foreign keys on `objects` must retain `DEFERRABLE INITIALLY DEFERRED`; bootstrapping
-the mutually dependent Root and system Actor requires those checks to run at transaction commit.
-Integration tests verify this invariant.
+The compiler includes `DEFERRABLE INITIALLY DEFERRED` audit actor foreign keys. These allow the
+Root and system Actor to be bootstrapped together; database tests verify the cycle at commit.
 
 ## Reset local data
 
@@ -178,5 +170,5 @@ DATABASE_URL="$PRODUCTION_DATABASE_URL" pnpm turbo run db:migrate --filter=compa
 
 Production migrations are forward-only. Application rollback does not roll back the database. Use
 backward-compatible expand/contract changes while revisions may overlap, and append corrective
-migrations when necessary. Never run `db:reset`, `drizzle-kit push`, or an automatically derived
+migrations when necessary. Never run `db:reset`, or an automatically derived
 production migration against a shared environment.

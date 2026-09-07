@@ -1,3 +1,4 @@
+import { RecordId } from "@company/runtime"
 import {
   type PageToken,
   type PageTokenCodec,
@@ -9,28 +10,14 @@ import {
   LinkCardinalityConflict,
   type LinkRepository,
 } from "@company/runtime/effect/link-repository"
-import {
-  and,
-  desc,
-  count,
-  eq,
-  getTableColumns,
-  inArray,
-  or,
-  sql,
-} from "drizzle-orm"
-import type { AnyRelations } from "drizzle-orm"
-import type { EffectDrizzleQueryError } from "drizzle-orm/effect-core/errors"
-import type { EffectPgDatabase } from "drizzle-orm/effect-postgres"
-import type {
-  AnyPgColumn,
-  AnyPgTable,
-  PgInsertValue,
-} from "drizzle-orm/pg-core"
 import { Effect, Schema } from "effect"
 import type { SqlError } from "effect/unstable/sql/SqlError"
 
+import { type PostgresDatabase } from "./database"
 import type { PostgresStorage } from "./schema"
+import { insertValues } from "./statement"
+import { projection, type SelectionRow, inValues, sqlValue } from "./statement"
+import { tableColumns, type Column, type Table } from "./table"
 
 interface LinkCursor {
   readonly fingerprint: string
@@ -55,7 +42,6 @@ const linkRowsSchema = Schema.Array(
 )
 
 export type PostgresLinkRepositoryError =
-  | EffectDrizzleQueryError
   | InvalidLinkListRequest
   | Schema.SchemaError
   | SqlError
@@ -129,8 +115,11 @@ function decodeCursor(
   )
 }
 
-function linkColumn(table: AnyPgTable, key: string): AnyPgColumn {
-  const value = getTableColumns(table)[key]
+function linkColumn(
+  table: Table<{ forwardId: string; reverseId: string }>,
+  key: "forwardId" | "reverseId"
+): Column<string> {
+  const value = tableColumns(table)[key]
   if (value === undefined) {
     throw new Error(`Link storage column '${key}' is missing.`)
   }
@@ -138,18 +127,18 @@ function linkColumn(table: AnyPgTable, key: string): AnyPgColumn {
 }
 
 /** Builds the PostgreSQL edge repository for every Link in one closed model. */
-export function makeLinkRepository<
-  const TModel extends ModelCatalog,
-  const TRelations extends AnyRelations,
->(
+export function makeLinkRepository<const TModel extends ModelCatalog>(
   storage: PostgresStorage<TModel>,
-  db: EffectPgDatabase<TRelations>,
+  db: PostgresDatabase,
   pageTokens: PageTokenCodec
 ): LinkRepository<PostgresLinkRepositoryError> {
+  const sql = db.sql
   const definition = (linkId: string) => {
     const link = storage.model.links[linkId]
-    // SAFETY: PostgresStorage materializes each model Link as an AnyPgTable.
-    const table = storage.linkTables[linkId] as AnyPgTable | undefined
+    // SAFETY: PostgresStorage materializes each model Link as a Table.
+    const table = storage.linkTables[linkId] as
+      | Table<{ forwardId: string; reverseId: string }>
+      | undefined
     if (link === undefined || table === undefined) {
       throw new Error(`Link '${linkId}' does not have PostgreSQL storage.`)
     }
@@ -171,26 +160,27 @@ export function makeLinkRepository<
       const values = {
         [sourceKey]: pair.sourceId,
         [targetKey]: pair.targetId,
-      } as PgInsertValue<AnyPgTable>
-      return yield* db.transaction((tx) =>
+      }
+      return yield* db.transaction(() =>
         Effect.gen(function* () {
-          const exactPair = and(
-            eq(sourceColumn, pair.sourceId),
-            eq(targetColumn, pair.targetId)
-          )
-          const [existingPair] = yield* tx
-            .select({ targetId: targetColumn })
-            .from(table)
-            .where(exactPair)
-            .limit(1)
+          const exactPair = sql`(${sourceColumn} = ${pair.sourceId} and ${targetColumn} = ${pair.targetId})`
+          const rowFields = { targetId: targetColumn }
+          const [existingPair] = yield* sql<
+            SelectionRow<typeof rowFields>
+          >`select ${projection(rowFields)}
+          from ${table}
+          where ${exactPair}
+          limit ${1}`
           if (existingPair !== undefined) return undefined
 
           if (sourceTraversal.cardinality !== "many") {
-            const [sourceConflict] = yield* tx
-              .select({ targetId: targetColumn })
-              .from(table)
-              .where(eq(sourceColumn, pair.sourceId))
-              .limit(1)
+            const rowFields2 = { targetId: targetColumn }
+            const [sourceConflict] = yield* sql<
+              SelectionRow<typeof rowFields2>
+            >`select ${projection(rowFields2)}
+          from ${table}
+          where ${sourceColumn} = ${pair.sourceId}
+          limit ${1}`
             if (sourceConflict !== undefined) {
               if (targetTraversal.cardinality === "one") {
                 return yield* Effect.fail(
@@ -201,16 +191,20 @@ export function makeLinkRepository<
                   })
                 )
               }
-              yield* tx.delete(table).where(eq(sourceColumn, pair.sourceId))
+              yield* sql`delete
+          from ${table}
+          where ${sourceColumn} = ${pair.sourceId}`
             }
           }
 
           if (targetTraversal.cardinality !== "many") {
-            const [targetConflict] = yield* tx
-              .select({ sourceId: sourceColumn })
-              .from(table)
-              .where(eq(targetColumn, pair.targetId))
-              .limit(1)
+            const rowFields3 = { sourceId: sourceColumn }
+            const [targetConflict] = yield* sql<
+              SelectionRow<typeof rowFields3>
+            >`select ${projection(rowFields3)}
+          from ${table}
+          where ${targetColumn} = ${pair.targetId}
+          limit ${1}`
             if (targetConflict !== undefined) {
               if (sourceTraversal.cardinality === "one") {
                 return yield* Effect.fail(
@@ -221,22 +215,27 @@ export function makeLinkRepository<
                   })
                 )
               }
-              yield* tx.delete(table).where(eq(targetColumn, pair.targetId))
+              yield* sql`delete
+          from ${table}
+          where ${targetColumn} = ${pair.targetId}`
             }
           }
 
-          const inserted = yield* tx
-            .insert(table)
-            .values(values)
-            .onConflictDoNothing()
-            .returning({ sourceId: sourceColumn })
+          const insertedFields = { sourceId: sourceColumn }
+          const inserted = yield* sql<
+            SelectionRow<typeof insertedFields>
+          >`insert into ${table} ${insertValues(sql, table, values)}
+          on conflict do nothing
+          returning ${projection(insertedFields)}`
           if (inserted.length > 0) return undefined
 
-          const [concurrentPair] = yield* tx
-            .select({ targetId: targetColumn })
-            .from(table)
-            .where(exactPair)
-            .limit(1)
+          const rowFields4 = { targetId: targetColumn }
+          const [concurrentPair] = yield* sql<
+            SelectionRow<typeof rowFields4>
+          >`select ${projection(rowFields4)}
+          from ${table}
+          where ${exactPair}
+          limit ${1}`
           if (concurrentPair !== undefined) return undefined
           return yield* Effect.fail(
             new LinkCardinalityConflict({
@@ -275,74 +274,79 @@ export function makeLinkRepository<
             ? undefined
             : visibility.targets.length === 0
               ? sql`false`
-              : or(
-                  ...visibility.targets.map(({ objectType, visibleWithin }) =>
-                    and(
-                      eq(storage.core.objects.objectType, objectType),
-                      visibleWithin.length === 0
-                        ? sql`false`
-                        : or(
-                            inArray(targetColumn, visibleWithin),
-                            sql`${storage.core.objects.ancestorIds} && array[${sql.join(
-                              visibleWithin.map((scopeId) => sql`${scopeId}`),
-                              sql`, `
-                            )}]::text[]`
-                          )
+              : sql.join(
+                  " OR ",
+                  true,
+                  "false"
+                )(
+                  visibility.targets
+                    .map(({ objectType, visibleWithin }) =>
+                      sql.and(
+                        [
+                          sql`${storage.core.objects.columns.objectType} = ${objectType}`,
+                          visibleWithin.length === 0
+                            ? sql`false`
+                            : sql`(${inValues(sql, targetColumn, visibleWithin)} or ${storage.core.objects.columns.ancestorIds} && array[${sql.join(", ", false)(visibleWithin.map((scopeId) => sql`${scopeId}`))}]::text[])`,
+                        ].filter((part) => part !== undefined)
+                      )
                     )
-                  )
+                    .filter((part) => part !== undefined)
                 )
-        const matching = and(
-          eq(sourceColumn, request.sourceId),
-          targetVisibility
-        )
-        const rows = yield* db
-          .select({
-            id: targetColumn,
-            objectType: storage.core.objects.objectType,
-            createdAt: sql<string>`${storage.core.objects.createdAt}::text`,
-          })
-          .from(table)
-          .innerJoin(
-            storage.core.objects,
-            eq(targetColumn, storage.core.objects.id)
+        const matching = sql.and(
+          [sql`${sourceColumn} = ${request.sourceId}`, targetVisibility].filter(
+            (part) => part !== undefined
           )
-          .where(
-            and(
+        )
+        const rowsFields = {
+          id: targetColumn,
+          objectType: storage.core.objects.columns.objectType,
+          createdAt: sqlValue<string>(
+            sql`${storage.core.objects.columns.createdAt}::text`
+          ),
+        }
+        const rows = yield* sql<
+          SelectionRow<typeof rowsFields>
+        >`select ${projection(rowsFields)}
+          from ${table}
+          inner join ${storage.core.objects} on ${targetColumn} = ${storage.core.objects.columns.id}
+          where ${sql.and(
+            [
               matching,
               after === undefined
                 ? undefined
-                : sql`(${storage.core.objects.createdAt}, ${targetColumn}) < (${after.createdAt}::timestamptz, ${after.id})`
-            )
-          )
-          .orderBy(desc(storage.core.objects.createdAt), desc(targetColumn))
-          .limit(request.pageSize + 1)
+                : sql`(${storage.core.objects.columns.createdAt}, ${targetColumn}) < (${after.createdAt}::timestamptz, ${after.id})`,
+            ].filter((part) => part !== undefined)
+          )}
+          order by ${sql.csv([sql`${storage.core.objects.columns.createdAt} desc`, sql`${targetColumn} desc`])}
+          limit ${request.pageSize + 1}`
         const hasMore = rows.length > request.pageSize
         const pageRows = yield* Schema.decodeUnknownEffect(linkRowsSchema)(
           rows.slice(0, request.pageSize)
         )
         const last = pageRows.at(-1)
+        const totalSizeFields = {
+          totalSize: sqlValue<number>(sql`count(*)::double precision`),
+        }
         const totalSize =
           request.pageToken === undefined && !hasMore
             ? pageRows.length
             : ((visibility === undefined
-                ? yield* db
-                    .select({ totalSize: count() })
-                    .from(table)
-                    .where(eq(sourceColumn, request.sourceId))
-                : yield* db
-                    .select({ totalSize: count() })
-                    .from(table)
-                    .innerJoin(
-                      storage.core.objects,
-                      eq(targetColumn, storage.core.objects.id)
-                    )
-                    .where(matching))[0]?.totalSize ?? 0)
+                ? yield* sql<
+                    SelectionRow<typeof totalSizeFields>
+                  >`select ${projection(totalSizeFields)}
+          from ${table}
+          where ${sourceColumn} = ${request.sourceId}`
+                : yield* sql<
+                    SelectionRow<typeof totalSizeFields>
+                  >`select ${projection(totalSizeFields)}
+          from ${table}
+          inner join ${storage.core.objects} on ${targetColumn} = ${storage.core.objects.columns.id}
+          where ${matching}`)[0]?.totalSize ?? 0)
         return {
           items: pageRows.map(({ id, objectType }): ObjectRef => ({
             // SAFETY: the target column is a foreign key to the same core row
             // that supplied objectType, so this pair is a valid ObjectRef.
-            // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-            id: id as ObjectRef["id"],
+            id: RecordId(objectType)(id),
             objectType,
           })),
           nextPageToken:
@@ -357,26 +361,15 @@ export function makeLinkRepository<
     unlink: Effect.fn("@company/postgres/LinkRepository.unlink")(
       function* (pair) {
         const { table } = definition(pair.linkId)
-        yield* db
-          .delete(table)
-          .where(
-            and(
-              eq(
-                linkColumn(
-                  table,
-                  pair.direction === "forward" ? "forwardId" : "reverseId"
-                ),
-                pair.sourceId
-              ),
-              eq(
-                linkColumn(
-                  table,
-                  pair.direction === "forward" ? "reverseId" : "forwardId"
-                ),
-                pair.targetId
-              )
-            )
-          )
+        yield* sql`delete
+          from ${table}
+          where (${linkColumn(
+            table,
+            pair.direction === "forward" ? "forwardId" : "reverseId"
+          )} = ${pair.sourceId} and ${linkColumn(
+            table,
+            pair.direction === "forward" ? "reverseId" : "forwardId"
+          )} = ${pair.targetId})`
         return undefined
       }
     ),

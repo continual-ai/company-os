@@ -1,38 +1,20 @@
-import { makePostgresSchema } from "@company/postgres"
+import { makePostgresSchema, defineTable } from "@company/postgres"
 import type { ImageRef } from "@company/runtime"
 import { Model } from "company-os/model"
-import { sql } from "drizzle-orm"
-import {
-  bigint,
-  integer,
-  jsonb,
-  customType,
-  index,
-  pgTable,
-  primaryKey,
-  text,
-  timestamp,
-} from "drizzle-orm/pg-core"
 
 import type { EventSubject } from "@/server/events/event-buffer"
-
 export const Storage = makePostgresSchema(Model)
-
-// Named aliases support custom queries. Drizzle Kit reads the generated,
-// exhaustive projection in tools/drizzle-schema.generated.ts.
 export const objects = Storage.core.objects
 export const recordAliases = Storage.core.recordAliases
 export const roots = Storage.core.roots
 export const actors = Storage.interfaces.actor
 export const authorizationScopes = Storage.interfaces.authorizationScope
 export const identities = Storage.interfaces.identity
-export const noteSubjects = Storage.interfaces.noteSubject
 export const parties = Storage.interfaces.party
 export const principals = Storage.interfaces.principal
 export const principalSets = Storage.objects.principalSet
 export const anonymousActors = Storage.objects.anonymousActor
 export const companies = Storage.objects.company
-export const contacts = Storage.objects.contact
 export const deals = Storage.objects.deal
 export const groupMemberships = Storage.objects.groupMembership
 export const groups = Storage.objects.group
@@ -41,120 +23,198 @@ export const lineItems = Storage.objects.lineItem
 export const notes = Storage.objects.note
 export const roleAssignments = Storage.objects.roleAssignment
 export const roles = Storage.objects.role
-export const serviceAccounts = Storage.objects.serviceAccount
 export const users = Storage.objects.user
-export const contactCompanies = Storage.linkTables.contactCompanies
-export const dealCompanies = Storage.linkTables.dealCompanies
-export const contactPrimaryCompanies = Storage.linkTables.contactPrimaryCompany
-export const noteSubjectLinks = Storage.linkTables.noteSubjects
-export const relations = Storage.relations
-
-/** Maps provider subjects to App principals; credentials remain provider-owned. */
-export const identityBindings = pgTable(
-  "identity_bindings",
-  {
-    issuer: text("issuer").notNull(),
-    subject: text("subject").notNull(),
-    identityId: text("identity_id")
-      .notNull()
-      .references(() => identities.id, { onDelete: "cascade" }),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .defaultNow()
-      .notNull(),
-  },
-  (table) => [primaryKey({ columns: [table.issuer, table.subject] })]
-)
 
 export const assets = Storage.objects.asset
-export const issues = Storage.objects.issue
-const bytes = customType<{ data: Uint8Array; driverData: Buffer }>({
-  dataType: () => "bytea",
-  toDriver: (value) => Buffer.from(value),
-  fromDriver: (value) => new Uint8Array(value),
-})
-export const assetBlobs = pgTable("asset_blobs", {
-  assetId: text("asset_id")
-    .primaryKey()
-    .references(() => assets.id, { onDelete: "cascade" }),
-  bytes: bytes("bytes").notNull(),
-})
-export const assetReferences = pgTable(
+export const identityBindings = defineTable<{
+  issuer: string
+  subject: string
+  identityId: string
+  createdAt: string
+}>(
+  "identity_bindings",
+  {
+    issuer: { type: "text" },
+    subject: { type: "text" },
+    identityId: { type: "text" },
+    createdAt: { type: "timestamptz", default: "now()" },
+  },
+  {
+    description:
+      "Maps verified provider subjects to local identities. Credentials remain provider-owned.",
+    constraints: [
+      "primary key(issuer,subject)",
+      "foreign key(identity_id) references interface_identity(id) on delete cascade",
+    ],
+  }
+)
+export const assetBlobs = defineTable<{ assetId: string; bytes: Uint8Array }>(
+  "asset_blobs",
+  {
+    assetId: { type: "text" },
+    bytes: { type: "bytea" },
+  },
+  {
+    description:
+      "Local asset payloads; business-facing file metadata lives on the asset record.",
+    constraints: [
+      "primary key(asset_id)",
+      "foreign key(asset_id) references assets(id) on delete cascade",
+    ],
+  }
+)
+export const assetReferences = defineTable<{
+  recordId: string
+  field: string
+  assetId: string
+}>(
   "asset_references",
   {
-    recordId: text("record_id")
-      .notNull()
-      .references(() => objects.id, { onDelete: "cascade" }),
-    field: text("field").notNull(),
-    assetId: text("asset_id")
-      .notNull()
-      .references(() => assets.id, { onDelete: "restrict" }),
+    recordId: { type: "text" },
+    field: { type: "text" },
+    assetId: { type: "text" },
   },
-  (table) => [
-    primaryKey({ columns: [table.recordId, table.field] }),
-    index("asset_references_asset_id_idx").on(table.assetId),
-  ]
+  {
+    description:
+      "Tracks which record fields retain an asset and prevents deletion while referenced.",
+    constraints: [
+      "primary key(record_id,field)",
+      "foreign key(record_id) references objects(id) on delete cascade",
+      "foreign key(asset_id) references assets(id) on delete restrict",
+    ],
+  }
 )
-
-/** One row, locked only while assigning positions at the end of a writing transaction. */
-export const eventJournalState = pgTable("event_journal_state", {
-  id: integer("id").primaryKey(),
-  position: bigint("position", { mode: "bigint" }).notNull().default(0n),
-})
-
-/** Historical subjects deliberately have no live foreign keys; snapshots survive record deletion. */
-export const eventJournal = pgTable(
+export const eventJournalState = defineTable<{ id: number; position: bigint }>(
+  "event_journal_state",
+  {
+    id: { type: "integer" },
+    position: { type: "bigint", default: "0" },
+  },
+  {
+    description:
+      "One row locked at commit to assign journal positions in commit order.",
+    constraints: ["primary key(id)"],
+  }
+)
+export const eventJournal = defineTable<{
+  position: bigint
+  id: string
+  transactionId: string
+  type: string
+  version: number
+  subjects: ReadonlyArray<EventSubject>
+  actorId: string
+  data: unknown
+  occurredAt: string
+  recordedAt: string
+}>(
   "event_journal",
   {
-    position: bigint("position", { mode: "bigint" }).primaryKey(),
-    id: text("id").notNull().unique(),
-    transactionId: text("transaction_id").notNull(),
-    type: text("type").notNull(),
-    version: integer("version").notNull(),
-    subjects: jsonb("subjects").$type<ReadonlyArray<EventSubject>>().notNull(),
-    actorId: text("actor_id").notNull(),
-    data: jsonb("data").$type<unknown>().notNull(),
-    occurredAt: timestamp("occurred_at", {
-      withTimezone: true,
-      mode: "string",
-    }).notNull(),
-    recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" })
-      .notNull()
-      .default(sql`clock_timestamp()`),
+    position: { type: "bigint" },
+    id: { type: "text" },
+    transactionId: { type: "text" },
+    type: { type: "text" },
+    version: { type: "integer" },
+    subjects: {
+      type: "jsonb",
+      description:
+        "Historical subject snapshots deliberately have no live foreign keys; they survive record deletion.",
+    },
+    actorId: { type: "text" },
+    data: { type: "jsonb" },
+    occurredAt: { type: "timestamptz" },
+    recordedAt: { type: "timestamptz", default: "clock_timestamp()" },
   },
-  (table) => [
-    index("event_journal_type_position_idx").on(table.type, table.position),
-  ]
+  {
+    description:
+      "Append-only business facts recorded atomically with the writes they describe.",
+    constraints: ["primary key(position)", "unique(id)"],
+  }
 )
-
-const tsvector = customType<{ data: string }>({ dataType: () => "tsvector" })
-
-/** Derived search documents. Live objects remain authoritative for identity and access. */
-export const recordSearch = pgTable(
+export const recordSearch = defineTable<{
+  id: string
+  title: string
+  subtitle: string | null
+  image: ImageRef | null
+  status: string | null
+  document: string
+}>(
   "record_search",
   {
-    id: text("id")
-      .primaryKey()
-      .references(() => objects.id, { onDelete: "cascade" }),
-    title: text("title").notNull(),
-    subtitle: text("subtitle"),
-    image: jsonb("image").$type<ImageRef>(),
-    status: text("status"),
-    document: tsvector("document").notNull(),
+    id: { type: "text" },
+    title: { type: "text" },
+    subtitle: { type: "text", nullable: true },
+    image: { type: "jsonb", nullable: true },
+    status: { type: "text", nullable: true },
+    document: { type: "tsvector" },
   },
-  (table) => [index("record_search_document_idx").using("gin", table.document)]
+  {
+    description:
+      "Rebuildable search projection. Live records remain authoritative for identity and access.",
+    constraints: [
+      "primary key(id)",
+      "foreign key(id) references objects(id) on delete cascade",
+    ],
+  }
+)
+export const searchIndexState = defineTable<{ id: number; definition: string }>(
+  "search_index_state",
+  {
+    id: { type: "integer" },
+    definition: { type: "text" },
+  },
+  {
+    description:
+      "Tracks the search projection definition so changes trigger an atomic rebuild.",
+    constraints: ["primary key(id)"],
+  }
+)
+export const seedRuns = defineTable<{
+  name: string
+  parameters: string
+  completedAt: string
+}>(
+  "seed_runs",
+  {
+    name: { type: "text" },
+    parameters: { type: "text" },
+    completedAt: { type: "timestamptz", default: "now()" },
+  },
+  {
+    description:
+      "Development scenario receipts, separate from business records and system bootstrap.",
+    constraints: ["primary key(name)"],
+  }
 )
 
-/** Changes to the source-owned search projection trigger one atomic rebuild during migration. */
-export const searchIndexState = pgTable("search_index_state", {
-  id: integer("id").primaryKey(),
-  definition: text("definition").notNull(),
-})
+/** Desired current DDL. Migration history and required bootstrap data have separate owners. */
+const schemaStatements = [
+  ...Storage.ddl,
+  "-- Application infrastructure",
+  ...identityBindings.ddl,
+  ...assetBlobs.ddl,
+  ...assetReferences.ddl,
+  "create index asset_references_asset_id_idx on asset_references(asset_id)",
+  ...eventJournalState.ddl,
+  ...eventJournal.ddl,
+  "create index event_journal_type_position_idx on event_journal(type,position)",
+  `create function reject_event_journal_mutation() returns trigger language plpgsql as $$
+begin
+  raise exception 'The event journal is append-only' using errcode = '55000';
+end;
+$$`,
+  "create trigger event_journal_append_only before update or delete on event_journal for each statement execute function reject_event_journal_mutation()",
+  ...recordSearch.ddl,
+  "create index record_search_document_idx on record_search using gin(document)",
+  ...searchIndexState.ddl,
+  ...seedRuns.ddl,
+]
 
-/** Development scenario receipts; separate from business records and production bootstrap. */
-export const seedRuns = pgTable("seed_runs", {
-  name: text("name").primaryKey(),
-  parameters: text("parameters").notNull(),
-  completedAt: timestamp("completed_at", { withTimezone: true })
-    .defaultNow()
-    .notNull(),
-})
+export const schemaSql =
+  "-- Generated current schema. Edit the company model or server storage definitions.\n-- Run pnpm turbo run db:generate --filter=company-os. This file is not migration history.\n\n" +
+  schemaStatements
+    .map((statement) =>
+      statement.startsWith("--") ? statement : `${statement};`
+    )
+    .join("\n\n") +
+  "\n"

@@ -1,7 +1,8 @@
+import { assignments } from "@company/postgres"
+import { tableProjection, type TableRow } from "@company/postgres"
 import { EmailAddress, modelObjectLinkTraversals } from "@company/runtime"
 import { CurrentInvocation } from "@company/runtime/effect/object-service"
 import { Model } from "company-os/model"
-import { eq } from "drizzle-orm"
 import { Deferred, Effect, Fiber, Layer } from "effect"
 import { expect } from "vitest"
 
@@ -175,6 +176,7 @@ itDatabase(
     application(
       Effect.gen(function* () {
         const database = yield* Database
+        const sql = database.sql
         const journal = yield* EventJournal
         const { services } = yield* ModelImplementation
         const start = yield* journal.list({ cursor: "now" })
@@ -205,11 +207,15 @@ itDatabase(
             (event) => event.subjects[0]?.id
           )
         ).toEqual([late.id])
-        const rows = yield* database
-          .select()
-          .from(eventJournal)
-          .orderBy(eventJournal.position)
-        const [state] = yield* database.select().from(eventJournalState)
+        const rows = yield* sql<
+          TableRow<typeof eventJournal>
+        >`select ${tableProjection(eventJournal)}
+          from ${eventJournal}
+          order by ${sql.csv([eventJournal.columns.position])}`
+        const [state] = yield* sql<
+          TableRow<typeof eventJournalState>
+        >`select ${tableProjection(eventJournalState)}
+          from ${eventJournalState}`
         expect(rows.at(-1)?.position).toBe(state?.position)
       })
     )
@@ -221,6 +227,7 @@ itDatabase(
     application(
       Effect.gen(function* () {
         const database = yield* Database
+        const sql = database.sql
         const journal = yield* EventJournal
         const { services } = yield* ModelImplementation
         const user = yield* (yield* UserService).provision({
@@ -308,10 +315,11 @@ itDatabase(
           })).items.map((event) => event.type)
         ).toEqual(["company.created", "company.deleted"])
         expect(
-          (yield* database
-            .select()
-            .from(eventJournal)
-            .where(eq(eventJournal.type, "company.deleted"))).length
+          (yield* sql<
+            TableRow<typeof eventJournal>
+          >`select ${tableProjection(eventJournal)}
+          from ${eventJournal}
+          where ${eventJournal.columns.type} = ${"company.deleted"}`).length
         ).toBe(1)
       })
     )
@@ -350,6 +358,7 @@ itDatabase(
     application(
       Effect.gen(function* () {
         const database = yield* Database
+        const sql = database.sql
         const journal = yield* EventJournal
         const { services } = yield* ModelImplementation
         yield* services.company.create({ name: "Committed" })
@@ -359,10 +368,8 @@ itDatabase(
         const failed = yield* database
           .transaction(() =>
             Effect.gen(function* () {
-              yield* database
-                .update(eventJournalState)
-                .set({ position: 0n })
-                .where(eq(eventJournalState.id, 1))
+              yield* sql`update ${eventJournalState} set ${assignments(sql, eventJournalState, { position: 0n })}
+          where ${eventJournalState.columns.id} = ${1}`
               yield* services.company.create({ name: "Must roll back" })
             })
           )
@@ -376,13 +383,13 @@ itDatabase(
           (yield* journal.list({ cursor: before.nextCursor })).items
         ).toEqual([])
         expect(
-          (yield* database
-            .update(eventJournal)
-            .set({ actorId: "forged" })
-            .pipe(Effect.exit))._tag
+          (yield* sql`update ${eventJournal} set ${assignments(sql, eventJournal, { actorId: "forged" })}`.pipe(
+            Effect.exit
+          ))._tag
         ).toBe("Failure")
         expect(
-          (yield* database.delete(eventJournal).pipe(Effect.exit))._tag
+          (yield* sql`delete
+          from ${eventJournal}`.pipe(Effect.exit))._tag
         ).toBe("Failure")
       })
     )
@@ -394,6 +401,7 @@ itDatabase(
     application(
       Effect.gen(function* () {
         const database = yield* Database
+        const sql = database.sql
         const journal = yield* EventJournal
         const { services } = yield* ModelImplementation
         const start = yield* journal.list({ cursor: "now" })
@@ -407,10 +415,11 @@ itDatabase(
           etag: contact.etag,
           oldName: "Preserved history",
         }
-        const [stored] = yield* database
-          .select()
-          .from(eventJournal)
-          .where(eq(eventJournal.id, original.id))
+        const [stored] = yield* sql<
+          TableRow<typeof eventJournal>
+        >`select ${tableProjection(eventJournal)}
+          from ${eventJournal}
+          where ${eventJournal.columns.id} = ${original.id}`
         if (stored === undefined) throw new Error("Missing committed event")
         // Seed an old format below today's writer decoder without rewriting history.
         yield* database.transaction((tx) =>

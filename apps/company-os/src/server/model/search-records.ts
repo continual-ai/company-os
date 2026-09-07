@@ -1,4 +1,3 @@
-import { sql } from "drizzle-orm"
 import { Effect, Schema } from "effect"
 
 import {
@@ -19,6 +18,7 @@ export const searchRecords = Effect.fn("@company/records.search")(function* (
   const request = yield* Schema.decodeUnknownEffect(recordSearchInput)(input)
   if (request.query.trim().length === 0) return { hits: [], hasMore: false }
   const database = yield* Database
+  const sql = database.sql
   const authorization = yield* Authorization
   const scopes = yield* authorization.readableScopes()
   const visible = Object.entries(scopes)
@@ -30,34 +30,33 @@ export const searchRecords = Effect.fn("@company/records.search")(function* (
           request.objectTypes.some((id) => id === type))
     )
     .map(([type, ids]) => {
-      const scopeIds = sql`array[${sql.join(
-        ids.map((id) => sql`${id}`),
-        sql`, `
-      )}]::text[]`
-      return sql`(${objects.objectType} = ${type} and (${objects.id} = any(${scopeIds}) or ${objects.ancestorIds} && ${scopeIds}))`
+      const scopeIds = sql`array[${sql.join(", ", false)(ids.map((id) => sql`${id}`))}]::text[]`
+      return sql`(${objects.columns.objectType} = ${type} and (${objects.columns.id} = any(${scopeIds}) or ${objects.columns.ancestorIds} && ${scopeIds}))`
     })
   if (visible.length === 0) return { hits: [], hasMore: false }
   const limit = request.limit ?? 20
   // The same PostgreSQL parser handles indexed text and user input. Escaping lexemes
   // prevents punctuation from becoming tsquery operators; all word prefixes must match.
-  const rows = yield* database.execute(
-    sql`
+  const rows = yield* sql`
     with search_query as (
       select to_tsquery('simple', coalesce(string_agg(quote_literal(lexeme) || ':*', ' & '), '')) as query
-      from unnest(tsvector_to_array(${searchVector(sql`${request.query}`)})) as lexeme
+
+          from unnest(tsvector_to_array(${searchVector(sql, sql`${request.query}`)})) as lexeme
     )
-    select ${recordSearch.id} as id, ${objects.objectType} as "objectType",
-      ${recordSearch.title} as title, ${recordSearch.subtitle} as subtitle,
-      ${recordSearch.image} as image, ${recordSearch.status} as status
-    from ${recordSearch}
-    join ${objects} on ${objects.id} = ${recordSearch.id}
+    select ${recordSearch.columns.id} as id, ${objects.columns.objectType} as "objectType",
+      ${recordSearch.columns.title} as title, ${recordSearch.columns.subtitle} as subtitle,
+      ${recordSearch.columns.image} as image, ${recordSearch.columns.status} as status
+
+          from ${recordSearch}
+    join ${objects} on ${objects.columns.id} = ${recordSearch.columns.id}
     cross join search_query q
-    where ${recordSearch.document} @@ q.query and (${sql.join(visible, sql` or `)})
-    order by ts_rank(${recordSearch.document}, q.query) desc, ${recordSearch.title}, ${recordSearch.id}
-    limit ${limit + 1}
-  `,
-    "objects"
-  )
+
+          where ${recordSearch.columns.document} @@ q.query and (${sql.join(" OR ")(visible)})
+
+          order by ts_rank(${recordSearch.columns.document}, q.query) desc, ${recordSearch.columns.title}, ${recordSearch.columns.id}
+
+          limit ${limit + 1}
+  `
   return yield* Schema.decodeUnknownEffect(recordSearchResult)({
     hits: rows.slice(0, limit),
     hasMore: rows.length > limit,

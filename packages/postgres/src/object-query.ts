@@ -15,26 +15,11 @@ import {
   type RepositoryFilter,
   type RepositoryListRequest,
 } from "@company/runtime/effect/object-repository"
-import {
-  and,
-  asc,
-  desc,
-  eq,
-  gt,
-  gte,
-  ilike,
-  inArray,
-  isNotNull,
-  isNull,
-  lt,
-  lte,
-  not,
-  or,
-  sql,
-  type Column,
-  type SQL,
-} from "drizzle-orm"
 import { Schema } from "effect"
+import type { Constructor, Fragment } from "effect/unstable/sql/Statement"
+
+import { inValues } from "./statement"
+import { type Column } from "./table"
 
 export type QueryValue = boolean | null | number | string
 
@@ -74,45 +59,66 @@ export function invalidListRequest(object: ObjectType, message: string) {
   return new InvalidListRequest({ message, objectType: object.id })
 }
 
-export function orderExpression(sort: ResolvedSort): SQL {
+export function orderExpression(
+  sql: Constructor,
+  sort: ResolvedSort
+): Fragment {
   const ordered =
-    sort.direction === "asc" ? asc(sort.column) : desc(sort.column)
+    sort.direction === "asc"
+      ? sql`${sort.column} asc`
+      : sql`${sort.column} desc`
   return sort.nulls === "first"
     ? sql`${ordered} nulls first`
     : sql`${ordered} nulls last`
 }
 
-function equalCursorValue(sort: ResolvedSort, value: QueryValue): SQL {
-  return value === null ? isNull(sort.column) : eq(sort.column, value)
+function equalCursorValue(
+  sql: Constructor,
+  sort: ResolvedSort,
+  value: QueryValue
+): Fragment {
+  return value === null
+    ? sql`${sort.column} is null`
+    : sql`${sort.column} = ${value}`
 }
 
 function laterCursorValue(
+  sql: Constructor,
   sort: ResolvedSort,
   value: QueryValue
-): SQL | undefined {
+): Fragment | undefined {
   if (value === null) {
-    return sort.nulls === "first" ? isNotNull(sort.column) : undefined
+    return sort.nulls === "first" ? sql`${sort.column} is not null` : undefined
   }
   const comparison =
-    sort.direction === "asc" ? gt(sort.column, value) : lt(sort.column, value)
+    sort.direction === "asc"
+      ? sql`${sort.column} > ${value}`
+      : sql`${sort.column} < ${value}`
   return sort.nulls === "last"
-    ? or(comparison, isNull(sort.column))
+    ? sql`(${comparison} or ${sort.column} is null)`
     : comparison
 }
 
 export function cursorCondition(
+  sql: Constructor,
   sort: ReadonlyArray<ResolvedSort>,
   values: ReadonlyArray<QueryValue>,
   index = 0
-): SQL | undefined {
+): Fragment | undefined {
   const current = sort[index]
   const value = values[index]
   if (current === undefined || value === undefined) return undefined
-  const later = laterCursorValue(current, value)
-  const tied = cursorCondition(sort, values, index + 1)
+  const later = laterCursorValue(sql, current, value)
+  const tied = cursorCondition(sql, sort, values, index + 1)
   const tiedAndLater =
-    tied === undefined ? undefined : and(equalCursorValue(current, value), tied)
-  return or(later, tiedAndLater)
+    tied === undefined
+      ? undefined
+      : sql`(${equalCursorValue(sql, current, value)} and ${tied})`
+  return sql.join(
+    " OR ",
+    true,
+    "false"
+  )([later, tiedAndLater].filter((part) => part !== undefined))
 }
 
 export function recordValue<TObject extends ObjectType>(
@@ -200,6 +206,7 @@ function escapeLike(value: string): string {
 }
 
 export function makeObjectQueryCompiler<TObject extends ObjectType>(
+  sql: Constructor,
   object: TObject,
   queryColumns: Readonly<Record<string, Column>>
 ) {
@@ -300,20 +307,20 @@ export function makeObjectQueryCompiler<TObject extends ObjectType>(
   const decodeStringFilterValue = (field: string, value: string): string =>
     Schema.decodeUnknownSync(Schema.String)(decodeFilterValue(field, value))
 
-  const compileFilter = (filter: RepositoryFilter<TObject>): SQL => {
+  const compileFilter = (filter: RepositoryFilter<TObject>): Fragment => {
     if ("and" in filter) {
       if (filter.and.length === 0) {
         throw invalidListRequest(object, "An 'and' filter cannot be empty.")
       }
-      return and(...filter.and.map(compileFilter))!
+      return sql.and(filter.and.map(compileFilter))
     }
     if ("or" in filter) {
       if (filter.or.length === 0) {
         throw invalidListRequest(object, "An 'or' filter cannot be empty.")
       }
-      return or(...filter.or.map(compileFilter))!
+      return sql.or(filter.or.map(compileFilter))
     }
-    if ("not" in filter) return not(compileFilter(filter.not))!
+    if ("not" in filter) return sql`not (${compileFilter(filter.not)})`
 
     const column = columnFor(filter.field)
     if (!allowedOperators(filter.field).has(filter.operator)) {
@@ -326,36 +333,27 @@ export function makeObjectQueryCompiler<TObject extends ObjectType>(
     switch (filter.operator) {
       case "contains": {
         const value = decodeStringFilterValue(filter.field, filter.value)
-        return ilike(column, `%${escapeLike(value)}%`)
+        return sql`${column} ilike ${`%${escapeLike(value)}%`}`
       }
       case "endsWith": {
         const value = decodeStringFilterValue(filter.field, filter.value)
-        return ilike(column, `%${escapeLike(value)}`)
+        return sql`${column} ilike ${`%${escapeLike(value)}`}`
       }
       case "eq":
-        return eq(
-          column,
-          decodeFilterValue(
-            filter.field,
-            Schema.decodeUnknownSync(queryValueSchema)(filter.value)
-          )
-        )
+        return sql`${column} = ${decodeFilterValue(
+          filter.field,
+          Schema.decodeUnknownSync(queryValueSchema)(filter.value)
+        )}`
       case "gt":
-        return gt(
-          column,
-          decodeFilterValue(
-            filter.field,
-            Schema.decodeUnknownSync(queryValueSchema)(filter.value)
-          )
-        )
+        return sql`${column} > ${decodeFilterValue(
+          filter.field,
+          Schema.decodeUnknownSync(queryValueSchema)(filter.value)
+        )}`
       case "gte":
-        return gte(
-          column,
-          decodeFilterValue(
-            filter.field,
-            Schema.decodeUnknownSync(queryValueSchema)(filter.value)
-          )
-        )
+        return sql`${column} >= ${decodeFilterValue(
+          filter.field,
+          Schema.decodeUnknownSync(queryValueSchema)(filter.value)
+        )}`
       case "in": {
         if (!Array.isArray(filter.value)) {
           throw invalidListRequest(
@@ -369,29 +367,23 @@ export function makeObjectQueryCompiler<TObject extends ObjectType>(
             Schema.decodeUnknownSync(queryValueSchema)(value)
           )
         )
-        return values.length === 0 ? sql`false` : inArray(column, values)
+        return values.length === 0 ? sql`false` : inValues(sql, column, values)
       }
       case "isNull":
-        return isNull(column)
+        return sql`${column} is null`
       case "lt":
-        return lt(
-          column,
-          decodeFilterValue(
-            filter.field,
-            Schema.decodeUnknownSync(queryValueSchema)(filter.value)
-          )
-        )
+        return sql`${column} < ${decodeFilterValue(
+          filter.field,
+          Schema.decodeUnknownSync(queryValueSchema)(filter.value)
+        )}`
       case "lte":
-        return lte(
-          column,
-          decodeFilterValue(
-            filter.field,
-            Schema.decodeUnknownSync(queryValueSchema)(filter.value)
-          )
-        )
+        return sql`${column} <= ${decodeFilterValue(
+          filter.field,
+          Schema.decodeUnknownSync(queryValueSchema)(filter.value)
+        )}`
       case "startsWith": {
         const value = decodeStringFilterValue(filter.field, filter.value)
-        return ilike(column, `${escapeLike(value)}%`)
+        return sql`${column} ilike ${`${escapeLike(value)}%`}`
       }
     }
     throw invalidListRequest(object, "The filter operator is invalid.")

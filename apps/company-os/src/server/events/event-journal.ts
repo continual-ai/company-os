@@ -1,8 +1,14 @@
 import { createHash } from "node:crypto"
 
+import {
+  tableProjection,
+  type TableRow,
+  projection,
+  type SelectionRow,
+  inValues,
+} from "@company/postgres"
 import { PageToken } from "@company/runtime"
 import { CurrentInvocation } from "@company/runtime/effect/object-service"
-import { and, eq, gt, inArray, lte } from "drizzle-orm"
 import { Context, Effect, Layer, Schema } from "effect"
 
 import { eventPageSchema, InvalidEventCursor } from "@/events"
@@ -27,6 +33,7 @@ const cursorSchema = Schema.Struct({
 
 const make = Effect.gen(function* () {
   const database = yield* Database
+  const sql = database.sql
   const authorization = yield* Authorization
   const tokens = yield* PageTokens
   const writer = makeEventWriter(database)
@@ -57,10 +64,11 @@ const make = Effect.gen(function* () {
             invocation.actorId,
             invocation.authorizationActorId,
           ])
-          const [state] = yield* database
-            .select()
-            .from(eventJournalState)
-            .where(eq(eventJournalState.id, 1))
+          const [state] = yield* sql<
+            TableRow<typeof eventJournalState>
+          >`select ${tableProjection(eventJournalState)}
+          from ${eventJournalState}
+          where ${eventJournalState.columns.id} = ${1}`
           if (state === undefined)
             return yield* Effect.die("Event journal state is missing.")
           let position = input.cursor === "now" ? state.position : 0n
@@ -98,20 +106,21 @@ const make = Effect.gen(function* () {
             reset = cursor.authorization !== fingerprint
           }
           // Bound scanned rows, not just visible rows. Empty pages can still advance the cursor.
-          const rows = yield* database
-            .select()
-            .from(eventJournal)
-            .where(
-              and(
-                gt(eventJournal.position, position),
-                lte(eventJournal.position, state.position),
-                input.type === undefined
-                  ? undefined
-                  : eq(eventJournal.type, input.type)
-              )
-            )
-            .orderBy(eventJournal.position)
-            .limit(size + 1)
+          const rows = yield* sql<
+            TableRow<typeof eventJournal>
+          >`select ${tableProjection(eventJournal)}
+          from ${eventJournal}
+          where ${sql.and(
+            [
+              sql`${eventJournal.columns.position} > ${position}`,
+              sql`${eventJournal.columns.position} <= ${state.position}`,
+              input.type === undefined
+                ? undefined
+                : sql`${eventJournal.columns.type} = ${input.type}`,
+            ].filter((part) => part !== undefined)
+          )}
+          order by ${sql.csv([eventJournal.columns.position])}
+          limit ${size + 1}`
           const hasMore = rows.length > size
           const page = rows.slice(0, size)
           const ids = [
@@ -119,17 +128,19 @@ const make = Effect.gen(function* () {
               page.flatMap((event) => event.subjects.map((target) => target.id))
             ),
           ]
+          const currentFields = {
+            id: objects.columns.id,
+            ancestorIds: objects.columns.ancestorIds,
+            objectType: objects.columns.objectType,
+          }
           const current =
             ids.length === 0
               ? []
-              : yield* database
-                  .select({
-                    id: objects.id,
-                    ancestorIds: objects.ancestorIds,
-                    objectType: objects.objectType,
-                  })
-                  .from(objects)
-                  .where(inArray(objects.id, ids))
+              : yield* sql<
+                  SelectionRow<typeof currentFields>
+                >`select ${projection(currentFields)}
+          from ${objects}
+          where ${inValues(sql, objects.columns.id, ids)}`
           const byId = new Map(current.map((target) => [target.id, target]))
           const items = page
             .filter(

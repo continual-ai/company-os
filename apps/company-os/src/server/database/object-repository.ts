@@ -1,9 +1,9 @@
+import { projection, type SelectionRow, inValues } from "@company/postgres"
 import {
   makeObjectRepository as makePostgresObjectRepository,
   makeObjectSeedRepository as makePostgresObjectSeedRepository,
 } from "@company/postgres"
 import type { Model } from "company-os/model"
-import { eq, inArray, sql } from "drizzle-orm"
 import { Effect } from "effect"
 
 import { compileAssetReferences } from "@/modules/assets/asset/references"
@@ -24,6 +24,7 @@ export function makeObjectRepository<const TObject extends ModelObjectType>(
 ) {
   return Effect.gen(function* () {
     const database = yield* Database
+    const sql = database.sql
     const pageTokens = yield* PageTokens
     const repository = yield* makePostgresObjectRepository(
       Storage,
@@ -68,20 +69,21 @@ export function makeObjectRepository<const TObject extends ModelObjectType>(
       database.transaction(() =>
         Effect.gen(function* () {
           const core = Storage.core.objects
+          const targetsFields = {
+            id: core.columns.id,
+            objectType: core.columns.objectType,
+            ancestorIds: core.columns.ancestorIds,
+            etag: core.columns.etag,
+          }
           const targets =
             ids.length === 0
               ? []
-              : yield* database
-                  .select({
-                    id: core.id,
-                    objectType: core.objectType,
-                    ancestorIds: core.ancestorIds,
-                    etag: core.etag,
-                  })
-                  .from(core)
-                  .where(inArray(core.id, [...ids]))
-                  .orderBy(core.id)
-                  .for("update")
+              : yield* sql<
+                  SelectionRow<typeof targetsFields>
+                >`select ${projection(targetsFields)}
+          from ${core}
+          where ${inValues(sql, core.columns.id, [...ids])}
+          order by ${sql.csv([core.columns.id])} for update`
           yield* deleting(ids)
           const result = yield* operation
           for (const target of targets)
@@ -121,14 +123,14 @@ export function makeObjectRepository<const TObject extends ModelObjectType>(
         database.transaction(() =>
           Effect.gen(function* () {
             // Serialize concurrent upserts of the same identity before deciding its lifecycle event.
-            yield* database.execute(
-              sql`select pg_advisory_xact_lock(hashtextextended(${input.id}, 0))`
-            )
-            const existing = yield* database
-              .select({ id: Storage.core.objects.id })
-              .from(Storage.core.objects)
-              .where(eq(Storage.core.objects.id, input.id))
-              .limit(1)
+            yield* sql`select pg_advisory_xact_lock(hashtextextended(${input.id}, 0))`
+            const existingFields = { id: Storage.core.objects.columns.id }
+            const existing = yield* sql<
+              SelectionRow<typeof existingFields>
+            >`select ${projection(existingFields)}
+          from ${Storage.core.objects}
+          where ${Storage.core.objects.columns.id} = ${input.id}
+          limit ${1}`
             return yield* track(
               repository.upsert(input),
               existing.length === 0 ? "created" : "updated"

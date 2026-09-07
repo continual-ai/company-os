@@ -1,5 +1,10 @@
+import {
+  tableProjection,
+  type TableRow,
+  projection,
+  type SelectionRow,
+} from "@company/postgres"
 import { CurrentInvocation } from "@company/runtime/effect/object-service"
-import { eq } from "drizzle-orm"
 import { Effect, Layer } from "effect"
 import { expect } from "vitest"
 
@@ -26,20 +31,27 @@ itDatabase(
   "seeds connected records and real assets once, preserves edits, and rolls back failures",
   Effect.fn(function* () {
     const database = yield* Database
+    const sql = database.sql
     yield* seedSystem().pipe(Effect.provide(PageTokens.layerTest))
     const infrastructure = { pageTokens: PageTokens.layerTest }
     expect(yield* runSeedScenario(demoScenario, infrastructure)).toBe("seeded")
-    const blobs = yield* database.select().from(assetBlobs)
+    const blobs = yield* sql<
+      TableRow<typeof assetBlobs>
+    >`select ${tableProjection(assetBlobs)}
+          from ${assetBlobs}`
     expect(blobs).toHaveLength(7)
     expect(blobs.every(({ bytes }) => bytes.byteLength > 100)).toBe(true)
-    const [customer] = yield* database
-      .select()
-      .from(companies)
-      .where(eq(companies.name, "Northstar Robotics"))
+    const [customer] = yield* sql<
+      TableRow<typeof companies>
+    >`select ${tableProjection(companies)}
+          from ${companies}
+          where ${companies.columns.name} = ${"Northstar Robotics"}`
     expect(customer?.logo).not.toBeNull()
-    const originalEvents = yield* database
-      .select({ id: eventJournal.id })
-      .from(eventJournal)
+    const originalEventsFields = { id: eventJournal.columns.id }
+    const originalEvents = yield* sql<
+      SelectionRow<typeof originalEventsFields>
+    >`select ${projection(originalEventsFields)}
+          from ${eventJournal}`
     yield* Effect.gen(function* () {
       const { services } = yield* ModelImplementation
       const record = (yield* services.company.list({
@@ -61,21 +73,34 @@ itDatabase(
       ),
       Effect.provideService(CurrentInvocation, systemInvocation)
     )
-    const afterEdit = yield* database
-      .select({ id: eventJournal.id })
-      .from(eventJournal)
+    const afterEditFields = { id: eventJournal.columns.id }
+    const afterEdit = yield* sql<
+      SelectionRow<typeof afterEditFields>
+    >`select ${projection(afterEditFields)}
+          from ${eventJournal}`
     expect(afterEdit.length).toBeGreaterThan(originalEvents.length)
     expect(yield* runSeedScenario(demoScenario, infrastructure)).toBe("skipped")
-    expect(yield* database.select().from(leads)).toHaveLength(7)
     expect(
-      (yield* database
-        .select()
-        .from(companies)
-        .where(eq(companies.id, customer!.id)))[0]!.name
+      yield* sql<TableRow<typeof leads>>`select ${tableProjection(leads)}
+          from ${leads}`
+    ).toHaveLength(7)
+    expect(
+      (yield* sql<
+        TableRow<typeof companies>
+      >`select ${tableProjection(companies)}
+          from ${companies}
+          where ${companies.columns.id} = ${customer!.id}`)[0]!.name
     ).toBe("Manually renamed")
-    expect(yield* database.select().from(assetBlobs)).toHaveLength(7)
     expect(
-      yield* database.select({ id: eventJournal.id }).from(eventJournal)
+      yield* sql<
+        TableRow<typeof assetBlobs>
+      >`select ${tableProjection(assetBlobs)}
+          from ${assetBlobs}`
+    ).toHaveLength(7)
+    const selection = { id: eventJournal.columns.id }
+    expect(
+      yield* sql<SelectionRow<typeof selection>>`select ${projection(selection)}
+          from ${eventJournal}`
     ).toHaveLength(afterEdit.length)
     const broken: SeedScenario = {
       name: "broken",
@@ -91,13 +116,16 @@ itDatabase(
       (yield* Effect.result(runSeedScenario(broken, infrastructure)))._tag
     ).toBe("Failure")
     expect(
-      yield* database
-        .select()
-        .from(companies)
-        .where(eq(companies.name, "Must roll back"))
+      yield* sql<
+        TableRow<typeof companies>
+      >`select ${tableProjection(companies)}
+          from ${companies}
+          where ${companies.columns.name} = ${"Must roll back"}`
     ).toHaveLength(0)
     expect(
-      yield* database.select().from(seedRuns).where(eq(seedRuns.name, "broken"))
+      yield* sql<TableRow<typeof seedRuns>>`select ${tableProjection(seedRuns)}
+          from ${seedRuns}
+          where ${seedRuns.columns.name} = ${"broken"}`
     ).toHaveLength(0)
   })
 )

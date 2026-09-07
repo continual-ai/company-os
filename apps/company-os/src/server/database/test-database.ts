@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto"
 
+import { pgTypes } from "@company/postgres"
 import { PgClient } from "@effect/sql-pg"
 import { Config, Data, Effect, Layer, Redacted } from "effect"
 import { Client } from "pg"
@@ -102,6 +103,7 @@ function postgresDatabaseLayer(url: string) {
   return Database.layer.pipe(
     Layer.provide(
       PgClient.layer({
+        types: pgTypes,
         applicationName: "company-os-test",
         connectTimeout: "5 seconds",
         maxConnections: 10,
@@ -119,7 +121,7 @@ async function migrateDatabase(url: string): Promise<void> {
   )
 }
 
-async function createTemplate(): Promise<TestDatabaseTemplate> {
+async function createTemplate(schema?: string): Promise<TestDatabaseTemplate> {
   const adminUrl = await Effect.runPromise(
     Config.string("DATABASE_URL").pipe(Config.withDefault(defaultAdminUrl))
   )
@@ -130,7 +132,9 @@ async function createTemplate(): Promise<TestDatabaseTemplate> {
     throw databaseCreationError(cause)
   }
   try {
-    await migrateDatabase(databaseUrl(adminUrl, name))
+    const url = databaseUrl(adminUrl, name)
+    if (schema === undefined) await migrateDatabase(url)
+    else await withAdminClient(url, (client) => client.query(schema))
   } catch (error) {
     await dropDatabase(adminUrl, name)
     throw error
@@ -167,6 +171,8 @@ function layer(template: TestDatabaseTemplate) {
 
 export const TestDatabase = {
   createTemplate,
+  url: (template: TestDatabaseTemplate) =>
+    databaseUrl(template.adminUrl, template.databaseName),
   drop: (template: TestDatabaseTemplate) =>
     dropDatabase(template.adminUrl, template.databaseName),
   layer,

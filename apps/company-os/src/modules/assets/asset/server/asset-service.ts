@@ -1,3 +1,4 @@
+import { projection, type SelectionRow } from "@company/postgres"
 import {
   RecordId,
   type ActionInput,
@@ -5,7 +6,6 @@ import {
   type ObjectGetInput,
 } from "@company/runtime"
 import { Model } from "company-os/model"
-import { eq } from "drizzle-orm"
 import { Context, Effect, Layer } from "effect"
 
 import { BlobStorage } from "@/modules/assets/server/blob-storage"
@@ -25,6 +25,7 @@ import { inspectUpload } from "./inspect-upload"
 
 const make = Effect.gen(function* () {
   const database = yield* Database
+  const sql = database.sql
   const authorization = yield* Authorization
   const blobs = yield* BlobStorage
   const identifiers = yield* RecordIdentifierResolver
@@ -58,12 +59,11 @@ const make = Effect.gen(function* () {
     }
   })
 
+  const lockFields = { id: assets.columns.id }
   const lock = (id: string) =>
-    database
-      .select({ id: assets.id })
-      .from(assets)
-      .where(eq(assets.id, id))
-      .for("update")
+    sql<SelectionRow<typeof lockFields>>`select ${projection(lockFields)}
+          from ${assets}
+          where ${assets.columns.id} = ${id} for update`
   const requireUploader = Effect.fn("@company/Assets.requireUploader")(
     function* (id: string) {
       yield* authorization.requireOperation({
