@@ -9,7 +9,7 @@ import {
 } from "@company/runtime/effect/http-client"
 import { executableModelOperations } from "@company/runtime/effect/model-implementation"
 import { eq } from "drizzle-orm"
-import { Effect, Layer, ManagedRuntime, Schema } from "effect"
+import { ConfigProvider, Effect, Layer, ManagedRuntime, Schema } from "effect"
 import { FetchHttpClient } from "effect/unstable/http"
 import { HttpApiClient, OpenApi } from "effect/unstable/httpapi"
 import { describe, expect, vi } from "vitest"
@@ -18,6 +18,7 @@ import { applicationHttpApi } from "@/http-api"
 import type { capabilityGroup } from "@/http-api"
 import { makeApplicationKeys } from "@/server/application-keys"
 import { makeApplicationLayer } from "@/server/application-layer"
+import { IdentityProvider } from "@/server/auth/identity-provider"
 import { Database } from "@/server/database/database"
 import { itDatabase } from "@/server/database/it-database"
 import {
@@ -111,6 +112,15 @@ describe("application HTTP server", () => {
           ManagedRuntime.make(
             makeApplicationLayer({
               database: Layer.succeed(Database, database),
+              identityProvider: IdentityProvider.layer.pipe(
+                Layer.provide(
+                  ConfigProvider.layer(
+                    ConfigProvider.fromEnvRecord({
+                      CONTINUAL_URL: "https://continual.example",
+                    })
+                  )
+                )
+              ),
               pageTokens: Layer.succeed(PageTokens, testPageTokens),
             })
           )

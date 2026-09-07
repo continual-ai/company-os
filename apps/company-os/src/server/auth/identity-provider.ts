@@ -3,7 +3,6 @@ import { Config, Context, Data, Effect, Layer } from "effect"
 import { z } from "zod"
 
 const APP_RUNTIME_ASSERTION_HEADER = "x-continual-app-runtime-assertion"
-const APP_RUNTIME_ORIGIN_HEADER = "x-continual-app-runtime-origin"
 
 const ContinualActorSchema = z.object({
   actorId: z.string().min(1),
@@ -48,16 +47,18 @@ function runtimeCredential(
       readonly token: string
     }
   | null {
-  const assertion = headers.get(APP_RUNTIME_ASSERTION_HEADER)?.trim()
-  const forwardedOrigin = headers.get(APP_RUNTIME_ORIGIN_HEADER)?.trim()
+  // Verification always uses server-side CONTINUAL_URL. A caller-supplied
+  // origin header is not provider proof and must not choose the IdP.
   const configuredOrigin = config.origin.trim()
-  const publishedOrigin = forwardedOrigin || configuredOrigin
-  if (assertion && publishedOrigin) {
-    return { kind: "published", origin: publishedOrigin, token: assertion }
+  if (!configuredOrigin) return null
+
+  const assertion = headers.get(APP_RUNTIME_ASSERTION_HEADER)?.trim()
+  if (assertion) {
+    return { kind: "published", origin: configuredOrigin, token: assertion }
   }
 
   const executionToken = config.executionToken.trim()
-  return executionToken && configuredOrigin
+  return executionToken
     ? { kind: "preview", origin: configuredOrigin, token: executionToken }
     : null
 }
@@ -106,6 +107,7 @@ const make = Effect.gen(function* () {
         const response = await fetch(new URL(path, credential.origin), {
           method: "GET",
           headers: { authorization: `Bearer ${credential.token}` },
+          redirect: "error",
         })
         if (!response.ok)
           throw new Error(`Continual returned ${response.status}.`)

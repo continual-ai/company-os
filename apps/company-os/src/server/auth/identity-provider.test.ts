@@ -8,8 +8,16 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
+function providerWithConfig(env: Readonly<Record<string, string>> = {}) {
+  return Effect.runSync(
+    IdentityProvider.make.pipe(
+      Effect.provide(ConfigProvider.layer(ConfigProvider.fromEnvRecord(env)))
+    )
+  )
+}
+
 describe("IdentityProvider", () => {
-  it("uses the App runtime assertion and preserves the Continual actor ID", async () => {
+  it("uses the App runtime assertion against CONTINUAL_URL", async () => {
     const fetch = vi.fn().mockResolvedValue(
       Response.json({
         actorId: "us_123",
@@ -18,12 +26,14 @@ describe("IdentityProvider", () => {
       })
     )
     vi.stubGlobal("fetch", fetch)
-    const provider = Effect.runSync(IdentityProvider.make)
+    const provider = providerWithConfig({
+      CONTINUAL_URL: "https://continual.example",
+    })
     const identified = await Effect.runPromise(
       provider.identify(
         new Headers({
           "x-continual-app-runtime-assertion": "runtime-assertion",
-          "x-continual-app-runtime-origin": "https://continual.example",
+          "x-continual-app-runtime-origin": "https://attacker.example",
         })
       )
     )
@@ -41,6 +51,7 @@ describe("IdentityProvider", () => {
       {
         method: "GET",
         headers: { authorization: "Bearer runtime-assertion" },
+        redirect: "error",
       }
     )
   })
@@ -52,18 +63,10 @@ describe("IdentityProvider", () => {
         Response.json({ actorId: "us_123", email: null, name: "Person" })
       )
     vi.stubGlobal("fetch", fetch)
-    const provider = Effect.runSync(
-      IdentityProvider.make.pipe(
-        Effect.provide(
-          ConfigProvider.layer(
-            ConfigProvider.fromEnvRecord({
-              CONTINUAL_EXECUTION_TOKEN: "execution-token",
-              CONTINUAL_URL: "https://continual.example",
-            })
-          )
-        )
-      )
-    )
+    const provider = providerWithConfig({
+      CONTINUAL_EXECUTION_TOKEN: "execution-token",
+      CONTINUAL_URL: "https://continual.example",
+    })
 
     await Effect.runPromise(provider.identify(new Headers()))
 
@@ -72,13 +75,32 @@ describe("IdentityProvider", () => {
       {
         method: "GET",
         headers: { authorization: "Bearer execution-token" },
+        redirect: "error",
       }
     )
   })
 
+  it("ignores a runtime assertion when CONTINUAL_URL is unset", async () => {
+    vi.stubEnv("MODE", "test")
+    const fetch = vi.fn()
+    vi.stubGlobal("fetch", fetch)
+    const provider = providerWithConfig()
+    await expect(
+      Effect.runPromise(
+        provider.identify(
+          new Headers({
+            "x-continual-app-runtime-assertion": "runtime-assertion",
+            "x-continual-app-runtime-origin": "https://attacker.example",
+          })
+        )
+      )
+    ).resolves.toBeNull()
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
   it("uses a stable local identity in the development server", async () => {
     vi.stubEnv("MODE", "development")
-    const provider = Effect.runSync(IdentityProvider.make)
+    const provider = providerWithConfig()
     await expect(
       Effect.runPromise(provider.identify(new Headers()))
     ).resolves.toEqual({
@@ -101,7 +123,7 @@ describe("IdentityProvider", () => {
 
   it("treats requests without a provider credential as anonymous outside development", async () => {
     vi.stubEnv("MODE", "test")
-    const provider = Effect.runSync(IdentityProvider.make)
+    const provider = providerWithConfig()
     await expect(
       Effect.runPromise(provider.identify(new Headers()))
     ).resolves.toBeNull()
