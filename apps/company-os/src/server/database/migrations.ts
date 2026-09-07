@@ -24,7 +24,7 @@ export const ensureDatabaseSchema = Effect.fn("@company/ensureDatabaseSchema")(
 )
 
 /**
- * Applies the committed, forward-only database migration history. Migration
+ * Installs the template baseline and any migrations added by its owner. Migration
  * bookkeeping lives in the deployment schema under an application-specific
  * table so other company applications can migrate the shared schema without
  * colliding.

@@ -11,6 +11,7 @@ export const Issue = defineObject({
   collection: "issues",
   name: "Issue",
   pluralName: "Issues",
+  description: "A bug, request, or task to investigate and resolve.",
   parent: Root,
   implements: [{ interface: AuthorizationScope }, { interface: NoteSubject }],
   properties: {

@@ -8,7 +8,6 @@ export const activityUi = {
     views: [
       defineCollectionView("all", "All activities", {
         columns: ["title", "kind", "status", "owner", "dueAt"],
-        sorting: [{ id: "title", desc: false }],
       }),
       defineCollectionView("planned", "Planned", {
         columns: ["title", "kind", "status", "owner", "dueAt"],

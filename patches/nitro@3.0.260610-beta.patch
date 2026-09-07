@@ -1,0 +1,12 @@
+diff --git a/dist/_build/vite.dev.mjs b/dist/_build/vite.dev.mjs
+index 472be3bfa5a0c8e675fc20f086df62ea833c9543..b1307ec337317546a8ccfc07dc79dc8825b6957b 100644
+--- a/dist/_build/vite.dev.mjs
++++ b/dist/_build/vite.dev.mjs
+@@ -139,7 +139,6 @@ async function configureViteDevServer(ctx, server) {
+ 		const isAssetByExt = !!ext && ASSET_EXT_RE.test(ext) && !/\btext\/html\b/.test(req.headers["accept"] || "");
+ 		const isAsset = typeof fetchDest === "string" && fetchDest !== "empty" ? !/^(?:document|iframe|frame)$/.test(fetchDest) : isAssetByExt;
+ 		if (!isAsset && (matchedHandlers.length > 0 || !ext)) return nitroDevMiddleware(req, res, next);
+-		if (isAsset) req._nitroHandled = true;
+ 		next();
+ 	});
+ 	return () => {

@@ -55,8 +55,11 @@ export function CollectionGantt({
         style={{ width: `calc(var(--record-width) + ${42 * dayWidth}px)` }}
       >
         <div
-          className="absolute top-0 right-0 bottom-0 flex"
-          style={{ width: 42 * dayWidth }}
+          className="absolute top-0 right-0 bottom-0 grid"
+          style={{
+            width: days.length * dayWidth,
+            gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))`,
+          }}
         >
           {days.map((day) => (
             <CollectionDropZone
@@ -64,14 +67,12 @@ export function CollectionGantt({
               id={`gantt:${day}`}
               value={day}
               className={cn(
-                "h-full shrink-0 border-r",
+                "h-full min-w-0 border-r",
                 [0, 6].includes(new Date(`${day}T00:00:00Z`).getUTCDay()) &&
                   "bg-muted/35",
                 day === today && "bg-primary/5"
               )}
-            >
-              <div style={{ width: dayWidth }} className="h-full" />
-            </CollectionDropZone>
+            />
           ))}
         </div>
         <header className="relative flex h-14 border-b text-xs">
@@ -163,14 +164,16 @@ export function CollectionGantt({
         )}
         {onCreate && (
           <div className="relative border-b">
-            <Button
-              variant="ghost"
-              className="sticky left-0 m-2"
-              onClick={() => onCreate({})}
-            >
-              <PlusIcon />
-              Add {p.object.name.toLowerCase()}
-            </Button>
+            <div className="sticky left-0 w-(--record-width) border-r bg-background p-2">
+              <Button
+                variant="ghost"
+                className="w-full justify-start"
+                onClick={() => onCreate({})}
+              >
+                <PlusIcon />
+                Add {p.object.name.toLowerCase()}
+              </Button>
+            </div>
           </div>
         )}
       </div>
@@ -222,7 +225,7 @@ function GanttBar({
           ref={handleRef}
           type="button"
           aria-label={`Move ${recordLabel(p.object, record)}`}
-          className="cursor-grab touch-none rounded p-1 focus-visible:outline-ring"
+          className="cursor-grab touch-none rounded-sm p-1 focus-visible:outline-ring"
         >
           <GripVerticalIcon className="size-3" />
         </button>

@@ -135,6 +135,7 @@ it("revalidates incompatible historical snapshots without poisoning current reco
     email: null,
     phone: null,
     emailPermission: "unknown",
+    marketingStatus: "nonMarketing",
   }
   const get = modelQuery(
     ["contact"],
@@ -149,7 +150,7 @@ it("revalidates incompatible historical snapshots without poisoning current reco
     occurredAt: contact.updatedAt,
     recordedAt: contact.updatedAt,
     subjects: [{ id: contact.id, objectType: "contact" }],
-    version: 2,
+    version: 1,
   }
   const page = { nextCursor: "opaque", hasMore: false, reset: false }
   try {

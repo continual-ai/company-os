@@ -48,6 +48,7 @@ import {
 } from "./effect-model-implementation"
 import {
   linkPageOutputSchema,
+  linkListInputSchema,
   objectBatchGetInputSchema,
   objectBatchOutputSchema,
   objectListInputSchema,
@@ -231,6 +232,7 @@ function addLinkEndpoints(
     const collectionPath =
       `${basePath}/${object.collection}/:id/${traversal.traversal.key}` as const
     const listDescriptor = linkDescriptor(model, object, traversal, "list")
+    const listFields = linkListInputSchema(model, traversal)?.fields
     const listEndpoint = HttpApiEndpoint.get(
       linkHttpEndpointId("list", object, traversal),
       collectionPath,
@@ -241,6 +243,16 @@ function addLinkEndpoints(
         query: {
           pageSize: Schema.optionalKey(pageSizeSchema),
           pageToken: Schema.optionalKey(pageTokenSchema),
+          ...(listFields !== undefined
+            ? {
+                filter: Schema.optionalKey(
+                  Schema.fromJsonString(Schema.requiredKey(listFields.filter))
+                ),
+                sort: Schema.optionalKey(
+                  Schema.fromJsonString(Schema.requiredKey(listFields.sort))
+                ),
+              }
+            : {}),
         },
         success: linkPageOutputSchema(model, traversal).annotate({
           identifier: `${pascalCase(object.id)}${pascalCase(traversal.traversal.key)}Page`,

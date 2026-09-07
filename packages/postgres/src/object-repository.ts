@@ -174,7 +174,7 @@ function isAliasReplacement(
 
 function makeRepository<
   const TModel extends ModelCatalog,
-  const TObject extends TModel["objects"][keyof TModel["objects"] & string],
+  const TObject extends ObjectType,
   const TRelations extends AnyRelations,
 >(
   storage: PostgresStorage<TModel>,
@@ -274,6 +274,8 @@ function makeRepository<
         order by ${recordAliases.alias}
       )`,
       metadata: objects.metadata,
+      createdAtCursor: sql<string>`${objects.createdAt}::text`,
+      updatedAtCursor: sql<string>`${objects.updatedAt}::text`,
       createdAt: objects.createdAt,
       createdBy: objects.createdById,
       etag: objects.etag,
@@ -430,13 +432,27 @@ function makeRepository<
                     sql`, `
                   )}]::text[]`
                 )
-        const matching = and(filter, visible)
-        const records = yield* select(
+        let related
+        if (request.relatedTo !== undefined) {
+          const { linkId, direction, sourceId } = request.relatedTo
+          const edge = storage.linkTables[linkId]
+          if (edge === undefined)
+            return yield* Effect.fail(
+              invalidListRequest(object, "Unknown relationship.")
+            )
+          const edgeColumns = getTableColumns(edge)
+          const source =
+            edgeColumns[direction === "forward" ? "forwardId" : "reverseId"]!
+          const target =
+            edgeColumns[direction === "forward" ? "reverseId" : "forwardId"]!
+          related = sql`exists (select 1 from ${edge} where ${source} = ${sourceId} and ${target} = ${idColumn})`
+        }
+        const matching = and(filter, visible, related)
+        const rows = yield* select(
           and(matching, after),
           resolvedSort.map(orderExpression)
-        )
-          .limit(size + 1)
-          .pipe(Effect.flatMap((rows) => decodeRecords(rows)))
+        ).limit(size + 1)
+        const records = yield* decodeRecords(rows)
         const hasNextPage = records.length > size
         const items = hasNextPage ? records.slice(0, size) : records
         const last = items.at(-1)
@@ -445,7 +461,9 @@ function makeRepository<
             ? items.length
             : ((yield* countMatching(
                 matching,
-                filter !== undefined || visible !== undefined
+                filter !== undefined ||
+                  visible !== undefined ||
+                  related !== undefined
               ))[0]?.totalSize ?? 0)
         return {
           items,
@@ -453,8 +471,13 @@ function makeRepository<
             hasNextPage && last !== undefined
               ? encodeCursor(pageTokens, {
                   fingerprint,
+                  // Preserve PostgreSQL timestamp precision across page boundaries.
                   values: resolvedSort.map(({ field }) =>
-                    recordValue(last, field)
+                    field === "createdAt"
+                      ? rows[items.length - 1]!.createdAtCursor
+                      : field === "updatedAt"
+                        ? rows[items.length - 1]!.updatedAtCursor
+                        : recordValue(last, field)
                   ),
                   version: 1,
                 })
@@ -919,7 +942,7 @@ function makeRepository<
  */
 export function makeObjectRepository<
   const TModel extends ModelCatalog,
-  const TObject extends TModel["objects"][keyof TModel["objects"] & string],
+  const TObject extends ObjectType,
   const TRelations extends AnyRelations,
 >(
   storage: PostgresStorage<TModel>,

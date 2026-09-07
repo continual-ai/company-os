@@ -1,16 +1,15 @@
 import type { ModelLinkTraversal } from "@company/runtime"
 import { Button } from "@company/ui/components/button"
-import { useQueries } from "@tanstack/react-query"
-import { XIcon } from "lucide-react"
+import { useInfiniteQuery } from "@tanstack/react-query"
 import { useMemo, useState } from "react"
 
+import { modelCollectionQuery } from "@/model-collection-query"
 import type { FormLinkDeltaValue, FormValue } from "@/ui/forms/form-value"
 
 import {
   describeReferences,
   linkClientFor,
   type ClientRecord,
-  type DynamicLinkListInput,
   type ModelObject,
 } from "./object-client"
 import { ObjectRecordPill } from "./object-record-identity"
@@ -69,31 +68,17 @@ export function ObjectLinkEditField({
   const [addedOptions, setAddedOptions] = useState<
     ReadonlyMap<string, ReferenceOption>
   >(new Map())
-  const [pageTokens, setPageTokens] = useState<
-    ReadonlyArray<string | undefined>
-  >([undefined])
-  const pages = useQueries({
-    queries: pageTokens.map((pageToken) => {
-      const request: DynamicLinkListInput = {
-        id: record.id,
-        pageSize: traversal.traversal.cardinality === "many" ? 50 : 1,
-        ...(pageToken ? { pageToken } : {}),
-      }
-      return client.list(request)
-    }),
-  })
-  const current = describeReferences(
-    pages.flatMap((page) => page.data?.items ?? [])
+  const page = useInfiniteQuery(
+    modelCollectionQuery(
+      (request) => client.list({ ...request, id: record.id }),
+      { pageSize: traversal.traversal.cardinality === "many" ? 50 : 1 }
+    )
   )
-  const loading = pages.some((page) => page.isPending)
-  const error = pages.find((page) => page.error !== null)?.error
-  const loadError =
-    error === null || error === undefined
-      ? undefined
-      : error instanceof Error
-        ? error.message
-        : "Relationships could not be loaded."
-  const nextPageToken = pages.at(-1)?.data?.nextPageToken ?? null
+  const current = describeReferences(
+    page.data?.pages.flatMap((result) => result.items) ?? []
+  )
+  const loading = page.isFetching
+  const loadError = page.error?.message
   const delta = linkDelta(value)
 
   const setDelta = (
@@ -129,7 +114,7 @@ export function ObjectLinkEditField({
           size="sm"
           variant="ghost"
           onClick={() => {
-            for (const page of pages) void page.refetch()
+            void page.refetch()
           }}
         >
           Retry
@@ -140,12 +125,15 @@ export function ObjectLinkEditField({
   if (traversal.traversal.cardinality !== "many") {
     const original = current[0]
     const selected = added[0] ?? activeCurrent[0]
-    const canClear = client.unlink !== undefined && selected !== undefined
     return (
       <div className="grid gap-2">
         {loadFailure}
         <div className="flex items-center gap-2">
           <ObjectReferenceSelect
+            clearable={
+              client.unlink !== undefined &&
+              traversal.traversal.cardinality !== "one"
+            }
             ariaDescribedBy={ariaDescribedBy}
             disabled={loading || loadError !== undefined}
             id={id}
@@ -160,25 +148,16 @@ export function ObjectLinkEditField({
             onBlur={onBlur}
             onValueChange={(target, option) => {
               remember(option)
+              if (target === "") {
+                setDelta([], original === undefined ? [] : [original.id])
+                return
+              }
               setDelta(
                 target === original?.id ? [] : [target],
                 delta.remove.filter((candidate) => candidate !== target)
               )
             }}
           />
-          {canClear ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              aria-label={`Clear ${traversal.traversal.label.toLowerCase()}`}
-              onClick={() =>
-                setDelta([], original === undefined ? [] : [original.id])
-              }
-            >
-              <XIcon />
-            </Button>
-          ) : null}
         </div>
       </div>
     )
@@ -190,7 +169,7 @@ export function ObjectLinkEditField({
   ]
   return (
     <div
-      className="flex min-h-9 flex-wrap items-center gap-1.5 border border-input bg-transparent p-1.5"
+      className="flex min-h-9 flex-wrap items-center gap-1.5 rounded-md border border-input bg-transparent p-1.5"
       aria-describedby={ariaDescribedBy}
       aria-invalid={invalid}
     >
@@ -213,13 +192,16 @@ export function ObjectLinkEditField({
         />
       ))}
       {loadFailure}
-      {nextPageToken === null ? null : (
+      {!page.hasNextPage ? null : (
         <Button
           type="button"
           size="sm"
           variant="outline"
           disabled={loading}
-          onClick={() => setPageTokens((tokens) => [...tokens, nextPageToken])}
+          onClick={() => {
+            if (!page.isFetching)
+              void page.fetchNextPage({ cancelRefetch: false })
+          }}
         >
           {loading ? "Loading…" : "Load more"}
         </Button>

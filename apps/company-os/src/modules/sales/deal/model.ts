@@ -10,14 +10,13 @@ export const Deal = defineObject({
   name: "Deal",
   parent: AuthorizationScope,
   pluralName: "Deals",
-  description:
-    "A potential commercial agreement involving one or more companies.",
+  description: "A sales opportunity with its value, stage, and next steps.",
   implements: [{ interface: NoteSubject }],
   queries: {
     pipelineSummary: {
       name: "Pipeline summary",
       description:
-        "Counts readable deals by stage and currency. Amounts in different currencies are never combined; unpriced deals form a separate group.",
+        "Summarize deals you can view by stage and currency. Keep currencies and unpriced deals separate.",
       scope: "collection",
       output: {
         groups: schema.array(

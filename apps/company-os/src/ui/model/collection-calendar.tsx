@@ -130,7 +130,7 @@ export function CollectionCalendar({
                 {onDay(day).length > 3 && (
                   <button
                     type="button"
-                    className="w-full rounded px-1 py-1 text-left text-xs font-medium text-muted-foreground hover:bg-muted"
+                    className="w-full rounded-sm px-1 py-1 text-left text-xs font-medium text-muted-foreground hover:bg-muted"
                     onClick={() => setExpandedDay(day)}
                   >
                     +{onDay(day).length - 3} more

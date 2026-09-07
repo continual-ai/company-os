@@ -7,11 +7,13 @@ import { companyViews } from "./views"
 
 export const companyUi = {
   navigation: {
-    path: "/companies",
     order: 1,
     icon: Building2Icon,
-    description:
-      "Keep organizations and their customer relationships connected.",
+    description: "Customers, prospects, and partner organizations.",
   },
   collection: { views: companyViews },
+  record: {
+    properties: ["domain", "industry", "lifecycleStage", "website"],
+    relationships: ["contacts", "deals", "notes"],
+  },
 } satisfies ObjectUi<typeof Model.objects.company>

@@ -7,6 +7,7 @@ import {
 } from "@company/ui/components/popover"
 import {
   CalendarDaysIcon,
+  ListIcon,
   ChartGanttIcon,
   Columns3Icon,
   Table2Icon,
@@ -20,6 +21,7 @@ import {
 } from "./collection-layout"
 
 const layouts = [
+  { type: "feed", label: "Feed", icon: ListIcon },
   { type: "table", label: "Table", icon: Table2Icon },
   { type: "kanban", label: "Kanban", icon: Columns3Icon },
   { type: "calendar", label: "Calendar", icon: CalendarDaysIcon },
@@ -43,7 +45,14 @@ export function CollectionLayoutControl({
   const active = layouts.find(({ type }) => type === layout.type)!
   return (
     <Popover>
-      <PopoverTrigger render={<Button variant="outline" size="sm" />}>
+      <PopoverTrigger
+        render={
+          <Button
+            variant="secondary"
+            className="border-border/60 bg-muted/60 hover:bg-muted"
+          />
+        }
+      >
         <active.icon />
         {active.label}
         <Settings2Icon className="size-3" />
@@ -76,7 +85,7 @@ export function CollectionLayoutControl({
             fields={groups}
             onChange={(groupBy) => onChange({ ...layout, groupBy })}
           />
-        ) : layout.type !== "table" ? (
+        ) : layout.type !== "table" && layout.type !== "feed" ? (
           <>
             <FieldSelect
               label="Start date"

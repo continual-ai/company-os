@@ -12,8 +12,7 @@ export const Activity = defineObject({
   collection: "activities",
   name: "Activity",
   pluralName: "Activities",
-  description:
-    "A sales task, call, or meeting tied to customer context, with an owner and a recorded outcome.",
+  description: "A task, call, or meeting with a customer or prospect.",
   parent: Root,
   implements: [{ interface: NoteSubject }],
   properties: {

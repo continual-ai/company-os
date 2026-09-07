@@ -15,7 +15,6 @@ export const ticketUi = {
           "owner",
           "respondByAt",
         ],
-        sorting: [{ id: "subject", desc: false }],
       }),
       defineCollectionView("triage", "Triage", {
         columns: [

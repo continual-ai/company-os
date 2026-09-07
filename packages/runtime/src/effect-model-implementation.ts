@@ -1,18 +1,19 @@
 // Model authors retain precise service types; transport projections need one
 // checked dynamic dispatch seam because model operation IDs are runtime data.
-import { Effect } from "effect"
+import type { Effect } from "effect"
 
 import { type Action, isStandardActionId } from "./definition/action"
 import type { ErrorType } from "./definition/error"
 import {
   type ModelCatalog,
+  type ModelObjectCreateInput,
+  type ModelObjectUpdateInput,
   type ModelLinkTraversal,
   modelObjectLinkTraversals,
   modelObjects,
 } from "./definition/model"
-import type { ObjectType, ObjectRecord } from "./definition/object"
+import type { ObjectType } from "./definition/object"
 import { type Query, type CustomQuery } from "./definition/query"
-import type { Batch } from "./definition/request"
 import {
   type InferInputSchema,
   type InferSchema,
@@ -60,11 +61,32 @@ export type ObjectImplementation<
   R = CurrentInvocation,
 > = Service<TObject, unknown, R> & CustomOperationService<TObject, R>
 
+/** Closed-model writes include declared relationship initialization and deltas. */
+export type ModelObjectService<
+  TModel extends ModelCatalog,
+  TObject extends ObjectType,
+  TService,
+> = {
+  readonly [K in keyof TService]: K extends "create"
+    ? (
+        input: ModelObjectCreateInput<TModel, TObject>
+      ) => ReturnType<Extract<TService[K], (...args: never[]) => unknown>>
+    : K extends "update"
+      ? (
+          input: ModelObjectUpdateInput<TModel, TObject>
+        ) => ReturnType<Extract<TService[K], (...args: never[]) => unknown>>
+      : TService[K]
+}
+
 export type ModelServiceMap<TModel extends ModelCatalog> = {
   readonly [
     TObjectId in keyof TModel["objects"]
   ]: TModel["objects"][TObjectId] extends ObjectType
-    ? ObjectImplementation<TModel["objects"][TObjectId]>
+    ? ModelObjectService<
+        TModel,
+        TModel["objects"][TObjectId],
+        ObjectImplementation<TModel["objects"][TObjectId]>
+      >
     : never
 }
 
@@ -299,45 +321,7 @@ export function executeModelOperation(
   if (descriptor.definition.id === "list") {
     // SAFETY: each protocol compiler decoded input from this generated list operation.
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-    return implementation.links.list(traversal, input as LinkListInput).pipe(
-      Effect.flatMap((page) =>
-        Effect.gen(function* () {
-          const types = [...new Set(page.items.map((item) => item.objectType))]
-          const batches = yield* Effect.forEach(
-            types,
-            (objectType) =>
-              Effect.gen(function* () {
-                const ids = page.items
-                  .filter((item) => item.objectType === objectType)
-                  .map((item) => item.id)
-                // SAFETY: the closed model guarantees the generated batchGet contract for every object.
-                // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-                const batch = (yield* modelOperation(
-                  implementation,
-                  objectType,
-                  "batchGet"
-                )({ ids })) as Batch<ObjectRecord<ObjectType>>
-                return batch.items.map((record) => ({ ...record, objectType }))
-              }),
-            { concurrency: "unbounded" }
-          )
-          const records = new Map(
-            batches.flat().map((record) => [record.id, record])
-          )
-          return {
-            ...page,
-            items: page.items.map(({ id }) => {
-              const record = records.get(id)
-              if (record === undefined)
-                throw new Error(
-                  `Related record '${id}' was not returned by batchGet.`
-                )
-              return record
-            }),
-          }
-        })
-      )
-    )
+    return implementation.links.list(traversal, input as LinkListInput)
   }
   // SAFETY: each protocol compiler decoded input from this generated mutation.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion

@@ -8,7 +8,7 @@ export const Role = defineObject({
   name: "Role",
   parent: Root,
   pluralName: "Roles",
-  description: "A set of exact permissions assignable at one scope type.",
+  description: "The actions someone can perform when given this role.",
   actions: { create: false, delete: false, update: false },
   properties: {
     name: schema.string({ label: "Name", minLength: 1, maxLength: 200 }),

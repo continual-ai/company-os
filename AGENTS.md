@@ -11,6 +11,12 @@ The product and architecture are still being designed. Treat code and tests as t
 current behavior, not proof that a design should become permanent. Recommend stronger alternatives
 when a concrete slice provides better evidence.
 
+This is a from-scratch template. Do not preserve earlier template APIs, URLs, data shapes, or
+migration history. Update callers directly, remove replaced paths, and regenerate the initial
+database baseline when the model changes. Do not add redirects, compatibility adapters, or data
+backfills for disposable template data. Customized applications with durable data own their later
+migration lifecycle.
+
 Prefer work that makes one real operation run end to end. Identify the incoming work, desired
 outcome, authoritative records, deterministic rules, places where AI may exercise judgment, human
 decisions, failure behavior, and evidence of success. Do not let the repository collapse into a

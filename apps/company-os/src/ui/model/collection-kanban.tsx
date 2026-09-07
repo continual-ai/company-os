@@ -39,7 +39,7 @@ export function CollectionKanban({
             key={JSON.stringify(choice.value)}
             id={JSON.stringify(["group", choice.value])}
             value={choice.value}
-            className="flex w-[min(82vw,19rem)] shrink-0 flex-col rounded-xl border bg-muted/35"
+            className="flex w-[min(82vw,19rem)] shrink-0 flex-col rounded-lg border bg-muted/35"
           >
             <header className="flex items-center gap-2 p-3">
               <span

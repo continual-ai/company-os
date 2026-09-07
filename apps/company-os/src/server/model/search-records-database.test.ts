@@ -101,7 +101,7 @@ itDatabase(
               const events = makeEventWriter(database)
               yield* events.record({
                 type: "company.updated",
-                version: 2,
+                version: 1,
                 subjects: yield* events.subjects([company.id]),
                 data: yield* services.company.get({ id: company.id }),
               })

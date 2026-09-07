@@ -81,6 +81,50 @@ it("moves both dates together and rejects an inverted resize", () => {
   ).toEqual({ sentAt: "2026-03-10T06:30:00.000Z" })
 })
 
+it("unschedules mapped dates together while protecting required fields", () => {
+  const record = {
+    id: "campaign_test",
+    etag: "1",
+    startDate: "2026-09-01",
+    endDate: "2026-09-03",
+  }
+  expect(
+    scheduleChanges(
+      Model.objects.campaign,
+      { type: "calendar", start: "startDate", end: "endDate" },
+      record,
+      null
+    )
+  ).toEqual({ startDate: null, endDate: null })
+  expect(
+    scheduleChanges(
+      Model.objects.content,
+      { type: "calendar", start: "scheduledAt" },
+      {
+        id: "content_test",
+        etag: "1",
+        scheduledAt: "2026-09-01T09:00:00.000Z",
+      },
+      null
+    )
+  ).toEqual({ scheduledAt: null })
+  const campaign = Model.objects.campaign
+  expect(() =>
+    scheduleChanges(
+      {
+        ...campaign,
+        properties: {
+          ...campaign.properties,
+          startDate: { ...campaign.properties.startDate, nullable: false },
+        },
+      },
+      { type: "calendar", start: "startDate" },
+      record,
+      null
+    )
+  ).toThrow("Required dates")
+})
+
 it("queries overlapping ranges and undated records using the standard list contract", () => {
   const window = collectionDateWindow(
     { type: "gantt", start: "startDate", end: "endDate" },

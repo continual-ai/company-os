@@ -29,7 +29,7 @@ export function AssetPreviews({
               alt={reference.alt ?? ""}
               width={64}
               height={64}
-              className="size-16 rounded object-cover"
+              className="size-16 rounded-sm object-cover"
             />
           )}
           {names.get(reference.assetId) ?? "Download file"}

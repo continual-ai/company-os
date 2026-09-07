@@ -12,20 +12,14 @@ const envelope = {
   occurredAt: Schema.String,
   recordedAt: Schema.String,
 }
-const objectEventTypes = Object.values(Model.objects).flatMap((object) =>
-  (["created", "updated", "deleted"] as const).map(
-    (kind) => `${object.id}.${kind}` as const
-  )
-)
 const linkEventTypes = Object.values(Model.links).flatMap((link) =>
   (["linked", "unlinked"] as const).map((kind) => `${link.id}.${kind}` as const)
 )
 
-// Version 1 facts remain readable after upgrading an existing journal.
 const snapshotFacts = Object.values(Model.objects).map((object) =>
   Schema.Struct({
     type: Schema.Literals([`${object.id}.created`, `${object.id}.updated`]),
-    version: Schema.Literal(2),
+    version: Schema.Literal(1),
     data: toEffectObjectSchema(object),
   })
 )
@@ -38,13 +32,8 @@ export const eventFactSchema = Schema.Union([
   ...snapshotFacts,
   Schema.Struct({
     type: Schema.Literals(deletionTypes),
-    version: Schema.Literal(2),
-    data: Schema.Struct({ id: Schema.String, etag: Schema.String }),
-  }),
-  Schema.Struct({
-    type: Schema.Literals(objectEventTypes),
     version: Schema.Literal(1),
-    data: Schema.Struct({}),
+    data: Schema.Struct({ id: Schema.String, etag: Schema.String }),
   }),
   Schema.Struct({
     type: Schema.Literals(linkEventTypes),

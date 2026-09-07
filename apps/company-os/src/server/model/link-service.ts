@@ -1,20 +1,25 @@
+import type { PostgresRepositoryError } from "@company/postgres"
 import { makeLinkRepository } from "@company/postgres"
-import { modelObjects, modelTypeAccepts } from "@company/runtime"
+import type { ObjectType } from "@company/runtime"
+import { modelTypeAccepts } from "@company/runtime"
 import {
   makeLinkService,
   makeLinkWriter as makeRuntimeLinkWriter,
 } from "@company/runtime/effect/link-service"
+import type { Repository } from "@company/runtime/effect/object-repository"
 import { ObjectNotFound } from "@company/runtime/effect/object-repository"
 import { Model } from "company-os/model"
 import { eq, inArray, or, sql } from "drizzle-orm"
 import { Context, Effect, Layer } from "effect"
 
+import type { AssetPrecondition } from "@/modules/assets/asset/server/asset-error"
 import { Authorization } from "@/server/authorization/authorization-service"
 import { Database } from "@/server/database/database"
 import { Storage } from "@/server/database/schema"
 import { makeEventWriter } from "@/server/events/event-writer"
 import { PageTokens } from "@/server/page-tokens"
 
+import { ObjectRepositories } from "./object-repositories"
 import { RecordIdentifierResolver } from "./record-identifier-resolver"
 
 function trackedLinkRepository(
@@ -119,57 +124,83 @@ const make = Effect.gen(function* () {
   const identifiers = yield* RecordIdentifierResolver
   const pageTokens = yield* PageTokens
   const repository = trackedLinkRepository(database, pageTokens)
+  const records = yield* ObjectRepositories
 
-  return makeLinkService(Model, repository, {
-    resolve: identifiers.resolve,
-    visibility: Effect.fn("@company/LinkService.visibility")(
-      function* (traversal) {
-        return yield* Effect.forEach(
-          modelObjects(Model).filter((object) =>
-            modelTypeAccepts(Model, object.id, traversal.target.from.typeId)
-          ),
-          (object) =>
-            authorization
-              .visibleWithin({ objectType: object.id, operation: "get" })
-              .pipe(
-                Effect.map((visibleWithin) => ({
-                  objectType: object.id,
-                  visibleWithin,
-                }))
-              )
-        )
-      }
-    ),
-    authorize: Effect.fn("@company/LinkService.authorize")(function* (request) {
-      if (request.operation !== "initialize") {
-        yield* authorization.requireOperation({
-          operationId: request.operation === "list" ? "get" : "update",
-          objectType: request.source.id,
-          recordIds: [request.sourceId],
-        })
-      }
-      if (request.targetId === undefined) return undefined
-      const [target] = yield* database
-        .select({ objectType: Storage.core.objects.objectType })
-        .from(Storage.core.objects)
-        .where(eq(Storage.core.objects.id, request.targetId))
-        .limit(1)
-      if (target === undefined) {
-        return yield* Effect.fail(
-          new ObjectNotFound({
-            objectType: request.traversal.target.from.typeId,
-            recordId: request.targetId,
+  return makeLinkService(
+    Model,
+    repository,
+    {
+      resolve: identifiers.resolve,
+      visibility: Effect.fn("@company/LinkService.visibility")(
+        function* (traversal) {
+          const scopes = yield* authorization.readableScopes()
+          return Object.entries(scopes)
+            .filter(([typeId]) =>
+              modelTypeAccepts(Model, typeId, traversal.target.from.typeId)
+            )
+            .map(([objectType, visibleWithin]) => ({
+              objectType,
+              visibleWithin,
+            }))
+        }
+      ),
+      authorize: Effect.fn("@company/LinkService.authorize")(
+        function* (request) {
+          if (request.operation !== "initialize") {
+            yield* authorization.requireOperation({
+              operationId: request.operation === "list" ? "get" : "update",
+              objectType: request.source.id,
+              recordIds: [request.sourceId],
+            })
+          }
+          if (request.targetId === undefined) return undefined
+          const [target] = yield* database
+            .select({ objectType: Storage.core.objects.objectType })
+            .from(Storage.core.objects)
+            .where(eq(Storage.core.objects.id, request.targetId))
+            .limit(1)
+          if (target === undefined) {
+            return yield* Effect.fail(
+              new ObjectNotFound({
+                objectType: request.traversal.target.from.typeId,
+                recordId: request.targetId,
+              })
+            )
+          }
+          if (
+            request.operation === "initialize" &&
+            !request.traversal.writable
+          ) {
+            yield* authorization.requireOperation({
+              operationId: "update",
+              objectType: target.objectType,
+              recordIds: [request.targetId],
+            })
+          }
+          yield* authorization.requireOperation({
+            operationId: "get",
+            objectType: target.objectType,
+            recordIds: [request.targetId],
           })
-        )
-      }
-      yield* authorization.requireOperation({
-        operationId: "get",
-        objectType: target.objectType,
-        recordIds: [request.targetId],
-      })
-      return undefined
-    }),
-  })
+          return undefined
+        }
+      ),
+    },
+    (object, request, visibility) => {
+      const targetRepository = Object.entries(records).find(
+        ([id]) => id === object.id
+      )?.[1]
+      if (!targetRepository)
+        return Effect.die(`Unknown object repository '${object.id}'.`)
+      // The registry and object are projections of the same closed model.
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+      const reader = targetRepository as unknown as Repository<
+        ObjectType,
+        PostgresRepositoryError | AssetPrecondition
+      >
+      return reader.list(request, visibility)
+    }
+  )
 })
 
 /** Validated Link writes for custom Actions that already established authority. */

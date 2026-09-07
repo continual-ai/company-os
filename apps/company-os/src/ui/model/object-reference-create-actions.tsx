@@ -1,4 +1,10 @@
 import { Button } from "@company/ui/components/button"
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@company/ui/components/dropdown-menu"
 import { PlusIcon } from "lucide-react"
 import { useMemo } from "react"
 
@@ -6,6 +12,7 @@ import { useCapabilities } from "@/ui/application/use-capabilities"
 
 import { objectCapabilityCheck } from "./object-capabilities"
 import { recordObjectTypes, type ModelObject } from "./object-client"
+import { ObjectIcon } from "./object-record-identity"
 
 export function creatableReferenceObjects(
   typeId: string
@@ -38,18 +45,42 @@ export function ObjectReferenceCreateActions({
 
   return (
     <div className="grid border-t p-1">
-      {available.map(({ object }) => (
+      {available.length === 1 ? (
         <Button
-          key={object.id}
           type="button"
           variant="ghost"
           className="justify-start"
-          onClick={() => onCreate(object)}
+          onClick={() => onCreate(available[0]!.object)}
         >
           <PlusIcon />
-          Create new {object.name.toLowerCase()}
+          Create new {available[0]!.object.name.toLowerCase()}
         </Button>
-      ))}
+      ) : (
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full justify-start"
+              />
+            }
+          >
+            <PlusIcon /> Create new record
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="max-h-64 w-64">
+            {available.map(({ object }) => (
+              <DropdownMenuItem
+                key={object.id}
+                onClick={() => onCreate(object)}
+              >
+                <ObjectIcon object={object} />
+                {object.name}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
     </div>
   )
 }

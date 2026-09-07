@@ -15,6 +15,8 @@ class LeadConversionConflict extends Data.TaggedError(
   "LeadConversionConflict"
 )<{}> {}
 
+class LeadCompanyRequired extends Data.TaggedError("LeadCompanyRequired")<{}> {}
+
 export const convertLead = Effect.fn("sales.convertLead")(function* (
   input: ObjectGetInput<typeof Model.objects.lead>
 ) {
@@ -63,28 +65,41 @@ export const convertLead = Effect.fn("sales.convertLead")(function* (
         return yield* Effect.fail(new LeadConversionConflict())
       }
 
-      const company = yield* companies.create({ name: lead.companyName })
+      let companyId = lead.company
+      if (companyId !== null) {
+        yield* authorization.requireOperation({
+          objectType: "company",
+          operationId: "get",
+          recordIds: [companyId],
+        })
+      } else {
+        if (lead.companyName === null || lead.companyName.trim() === "") {
+          return yield* Effect.fail(new LeadCompanyRequired())
+        }
+        companyId = (yield* companies.create({ name: lead.companyName })).id
+      }
       const contact = yield* contacts.create({
         email: lead.email,
         name: lead.name,
         phone: lead.phone,
       })
       yield* links.initialize(Model.objects.contact, contact.id, {
-        primaryCompany: company.id,
+        primaryCompany: companyId,
       })
       const convertedAt = yield* DateTime.now
       yield* leads.update({
+        company: companyId,
         convertedAt: Timestamp(DateTime.formatIso(convertedAt)),
-        convertedCompany: company.id,
+        convertedCompany: companyId,
         convertedContact: contact.id,
         etag: lead.etag,
         id,
       })
       yield* events.append(LeadConverted, {
         subject: id,
-        data: { company: company.id, contact: contact.id },
+        data: { company: companyId, contact: contact.id },
       })
-      return { company: company.id, contact: contact.id }
+      return { company: companyId, contact: contact.id }
     })
   )
 })

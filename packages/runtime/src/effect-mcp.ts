@@ -26,6 +26,7 @@ import {
 } from "./effect-model-implementation"
 import {
   linkPageOutputSchema,
+  linkListInputSchema,
   objectBatchGetInputSchema,
   objectBatchOutputSchema,
   objectGetInputSchema,
@@ -173,10 +174,10 @@ export function createModelMcpServer({
       const input = Schema.Struct({
         id: toEffectRecordIdentifierSchema(object.id),
         ...(definition.id === "list"
-          ? {
+          ? (linkListInputSchema(implementation.model, traversal)?.fields ?? {
               pageSize: Schema.optionalKey(pageSizeSchema),
               pageToken: Schema.optionalKey(Schema.String),
-            }
+            })
           : {
               target: toEffectRecordIdentifierSchema(
                 traversal.target.from.typeId

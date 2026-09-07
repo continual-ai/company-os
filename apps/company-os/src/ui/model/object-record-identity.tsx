@@ -24,6 +24,7 @@ import {
 } from "./object-table/object-table-config"
 
 interface ObjectRecordIdentityProps extends ObjectRecordPresentation {
+  readonly expanded?: boolean | undefined
   readonly className?: string | undefined
   readonly href?: string | undefined
   readonly resolveImageSrc?: ObjectTableImageResolver | undefined
@@ -92,8 +93,8 @@ function ObjectMark({
       aria-hidden="true"
       className={
         size === "lg"
-          ? "flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-none border bg-background"
-          : "flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-none border bg-background"
+          ? "flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border/60 bg-muted/30"
+          : "flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border/60 bg-muted/30"
       }
     >
       {image.length > 0 ? (
@@ -110,6 +111,7 @@ function ObjectMark({
 
 export function ObjectRecordIdentity({
   className,
+  expanded = false,
   href,
   object,
   record,
@@ -141,18 +143,33 @@ export function ObjectRecordIdentity({
           ) : (
             <Link
               to={href}
+              data-record-id={record.id}
               className={cn(
-                "inline-flex min-w-0 items-center gap-1.5 text-interactive underline-offset-2 hover:underline focus-visible:underline focus-visible:outline-none",
+                "inline-flex min-w-0 items-center gap-1.5 text-foreground underline-offset-2 hover:underline focus-visible:underline focus-visible:outline-none",
                 className
               )}
-              onClick={(event) => event.stopPropagation()}
+              onClick={(event) => {
+                event.stopPropagation()
+              }}
               onDoubleClick={(event) => event.stopPropagation()}
             />
           )
         }
       >
         <ObjectMark image={image} object={object} />
-        <span className="truncate font-medium">{resolvedTitle}</span>
+        <span className="min-w-0">
+          <span className="block truncate font-medium">{resolvedTitle}</span>
+          {expanded && subtitle && (
+            <span className="block truncate text-xs text-muted-foreground">
+              {subtitle}
+            </span>
+          )}
+        </span>
+        {expanded && status && (
+          <Badge variant="secondary" className="ml-auto shrink-0 font-normal">
+            {status}
+          </Badge>
+        )}
       </PreviewCardTrigger>
       <PreviewCardContent>
         <div className="flex min-w-0 items-start gap-2.5">
@@ -189,7 +206,7 @@ export function ObjectRecordPill({
   readonly presentation?: ObjectRecordPresentation | undefined
 }) {
   return (
-    <span className="inline-flex min-w-0 items-center gap-1 border bg-muted py-1 pr-1 pl-1.5 text-xs">
+    <span className="inline-flex min-w-0 items-center gap-1 rounded-sm border bg-muted py-1 pr-1 pl-1.5 text-xs">
       {presentation === undefined ? (
         <span className="max-w-56 truncate px-1">{label}</span>
       ) : (

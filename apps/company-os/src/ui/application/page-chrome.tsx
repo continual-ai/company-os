@@ -9,6 +9,8 @@ import {
 
 interface PageChrome {
   readonly breadcrumb?: string | undefined
+  readonly collectionHref?: string | undefined
+  readonly collectionLabel?: string | undefined
 }
 
 interface PageChromeContextValue {
@@ -50,11 +52,11 @@ export function usePageChromeOverride(chrome: PageChrome): void {
       "usePageChromeOverride must be used within PageChromeProvider."
     )
   }
-  const { breadcrumb } = chrome
+  const { breadcrumb, collectionHref, collectionLabel } = chrome
   const { setCurrent } = context
 
   useEffect(() => {
-    setCurrent({ breadcrumb })
+    setCurrent({ breadcrumb, collectionHref, collectionLabel })
     return () => setCurrent({})
-  }, [breadcrumb, setCurrent])
+  }, [breadcrumb, collectionHref, collectionLabel, setCurrent])
 }

@@ -129,6 +129,14 @@ describe("Drizzle object repository", () => {
         const clearedAlias = yield* identifiers
           .resolve("company", hubspotBravo)
           .pipe(Effect.flip)
+        yield* database
+          .update(objects)
+          .set({ createdAt: "2001-01-01T00:00:00.000123Z" })
+          .where(eq(objects.id, first.id))
+        yield* database
+          .update(objects)
+          .set({ createdAt: "2001-01-01T00:00:00.000456Z" })
+          .where(eq(objects.id, second.id))
         const firstPage = yield* service.list({ pageSize: 1 })
         if (firstPage.nextPageToken === null) {
           return yield* Effect.die("Expected another page")
@@ -137,6 +145,19 @@ describe("Drizzle object repository", () => {
           pageSize: 1,
           pageToken: firstPage.nextPageToken,
         })
+        yield* database
+          .update(objects)
+          .set({ createdAt: "2001-01-01T00:00:00.000123Z" })
+          .where(eq(objects.id, second.id))
+        const tiedFirst = yield* service.list({ pageSize: 1 })
+        expect(tiedFirst.items.map(({ id }) => id)).toEqual([second.id])
+        if (tiedFirst.nextPageToken === null)
+          return yield* Effect.die("Expected tied timestamp page")
+        const tiedSecond = yield* service.list({
+          pageSize: 1,
+          pageToken: tiedFirst.nextPageToken,
+        })
+        expect(tiedSecond.items.map(({ id }) => id)).toEqual([first.id])
         const zeroPageSize = yield* service.list({ pageSize: 0 })
         const oversizedPage = yield* service.list({ pageSize: 10_000 })
         const tamperedCursor = yield* service
@@ -415,13 +436,17 @@ describe("Drizzle object repository", () => {
       expect(result.retainedAfterBatchDelete.items.map(({ id }) => id)).toEqual(
         [result.second.id, result.first.id]
       )
-      expect(result.firstPage.items).toHaveLength(1)
+      expect(result.firstPage.items.map(({ id }) => id)).toEqual([
+        result.second.id,
+      ])
       expect(result.firstPage.nextPageToken).not.toBeNull()
       if (result.firstPage.nextPageToken !== null) {
         expect(result.firstPage.nextPageToken.length).toBeLessThan(256)
       }
       expect(result.firstPage.totalSize).toBe(2)
-      expect(result.secondPage.items).toHaveLength(1)
+      expect(result.secondPage.items.map(({ id }) => id)).toEqual([
+        result.first.id,
+      ])
       expect(result.secondPage.nextPageToken).toBeNull()
       expect(result.secondPage.totalSize).toBe(2)
       expect(result.zeroPageSize.items).toHaveLength(2)

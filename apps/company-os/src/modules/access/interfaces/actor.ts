@@ -5,5 +5,5 @@ export const Actor = defineInterface({
   name: "Actor",
   pluralName: "Actors",
   description:
-    "A durable object that may be recorded as performing an operation.",
+    "Who performed an action, such as a user, agent, or anonymous visitor.",
 })

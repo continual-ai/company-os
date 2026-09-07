@@ -36,6 +36,7 @@ export function useObjectRecord(object: ModelObject, recordId: string) {
           ? record.error.message
           : "The record could not be loaded.",
     loading: record.isPending,
+    reload: () => record.refetch(),
     record: record.data,
     referenceLabels: references.labels,
     references: references.records,

@@ -9,8 +9,7 @@ export const Project = defineObject({
   collection: "projects",
   name: "Project",
   pluralName: "Projects",
-  description:
-    "An engineering outcome with an owner, scope, and delivery target.",
+  description: "Related work organized around a goal and target date.",
   parent: Root,
   implements: [{ interface: NoteSubject }],
   properties: {

@@ -1,17 +1,20 @@
 import { Badge } from "@company/ui/components/badge"
 import { Button } from "@company/ui/components/button"
+import { CodeBlock } from "@company/ui/components/code-block"
 import { cn } from "@company/ui/lib/utils"
 import { CodeXmlIcon, ExternalLinkIcon, FileJsonIcon } from "lucide-react"
 import { useDeferredValue, useEffect, useMemo, useState } from "react"
 
 import {
+  DeveloperNavigationGroup,
+  DeveloperNavigationItem,
+} from "@/ui/developer/developer-layout"
+
+import {
   DeveloperBrowser,
   DeveloperBrowserEmpty,
-  DeveloperBrowserNavGroup,
-  DeveloperBrowserNavItem,
   DeveloperBrowserOutline,
   DeveloperBrowserSearch,
-  DeveloperCodeBlock,
 } from "./developer-browser"
 import {
   curlExample,
@@ -102,7 +105,7 @@ function SchemaCard({
   const alternatives = resolved.oneOf ?? resolved.anyOf
 
   return (
-    <div className="overflow-hidden border">
+    <div className="overflow-hidden rounded-lg border">
       <div className="flex flex-wrap items-start justify-between gap-3 bg-muted/20 px-4 py-3">
         <div>
           <p className="text-xs font-medium">
@@ -197,7 +200,7 @@ function RequestSection({
       </div>
 
       {parameters.length === 0 ? null : (
-        <div className="mb-4 overflow-hidden border">
+        <div className="mb-4 overflow-hidden rounded-lg border">
           <div className="bg-muted/20 px-4 py-2 text-[11px] font-medium text-muted-foreground">
             Parameters
           </div>
@@ -250,7 +253,7 @@ function ResponsesSection({
           {responses.length} documented
         </span>
       </div>
-      <div className="divide-y border">
+      <div className="divide-y overflow-hidden rounded-lg border">
         {responses.map(([status, response]) => {
           const responseSchema = Object.values(response.content ?? {})[0]
             ?.schema
@@ -349,7 +352,8 @@ function OperationDetail({
 
       <div className="mt-7 space-y-9">
         <section id="example" className="scroll-mt-4">
-          <DeveloperCodeBlock
+          <CodeBlock
+            language="bash"
             code={curlExample(operation, schemas)}
             label="cURL request"
           />
@@ -450,7 +454,10 @@ export function OpenApiReference({
 
   if (error !== undefined) {
     return (
-      <div role="alert" className="m-6 border border-destructive/30 p-5">
+      <div
+        role="alert"
+        className="m-6 rounded-lg border border-destructive/30 p-5"
+      >
         <p className="text-sm font-medium">API reference unavailable</p>
         <p className="mt-1 text-sm text-muted-foreground">{error}</p>
       </div>
@@ -527,7 +534,7 @@ export function OpenApiReference({
               </div>
             ) : (
               groups.map((group) => (
-                <DeveloperBrowserNavGroup
+                <DeveloperNavigationGroup
                   key={group.tag}
                   title={group.tag}
                   count={group.operations.length}
@@ -535,7 +542,7 @@ export function OpenApiReference({
                   {group.operations.map((operation) => {
                     const key = operationKey(operation)
                     return (
-                      <DeveloperBrowserNavItem
+                      <DeveloperNavigationItem
                         key={key}
                         active={key === operationKey(selectedOperation)}
                         code={<MethodBadge method={operation.method} />}
@@ -543,10 +550,10 @@ export function OpenApiReference({
                         onClick={() => selectOperation(key)}
                       >
                         {operation.summary ?? operation.operationId ?? key}
-                      </DeveloperBrowserNavItem>
+                      </DeveloperNavigationItem>
                     )
                   })}
-                </DeveloperBrowserNavGroup>
+                </DeveloperNavigationGroup>
               ))
             )}
           </nav>

@@ -53,7 +53,7 @@ export function makeObjectRepository<const TObject extends ModelObjectType>(
             )
           yield* events.record({
             type: `${object.id}.${kind}`,
-            version: 2,
+            version: 1,
             data: record,
             subjects: yield* events.subjects([record.id]),
             actorId: record.updatedBy,
@@ -87,7 +87,7 @@ export function makeObjectRepository<const TObject extends ModelObjectType>(
           for (const target of targets)
             yield* events.record({
               type: `${object.id}.deleted`,
-              version: 2,
+              version: 1,
               data: {
                 id: target.id,
                 etag: (BigInt(target.etag) + 1n).toString(),

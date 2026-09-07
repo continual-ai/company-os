@@ -5,5 +5,5 @@ export const Principal = defineInterface({
   name: "Principal",
   pluralName: "Principals",
   description:
-    "An identity, group, or system-defined principal set that may receive a role assignment.",
+    "A user, service account, group, or audience that can receive access.",
 })

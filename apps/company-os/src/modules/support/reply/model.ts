@@ -9,8 +9,7 @@ export const Reply = defineObject({
   collection: "replies",
   name: "Reply",
   pluralName: "Replies",
-  description:
-    "A customer-support message, including draft responses and observed delivery. Outbound execution is an explicit integration boundary.",
+  description: "A message about a support ticket. Saving does not send it.",
   parent: Root,
   implements: [{ interface: NoteSubject }],
   properties: {

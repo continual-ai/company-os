@@ -10,8 +10,7 @@ export const Content = defineObject({
   collection: "contents",
   name: "Content",
   pluralName: "Content",
-  description:
-    "An owned content asset or ad creative. Publication is recorded here; creating a record does not publish externally.",
+  description: "Track an article, post, or ad. Saving does not publish it.",
   parent: Root,
   implements: [{ interface: NoteSubject }],
   properties: {

@@ -6,6 +6,7 @@ import { useRef, useState } from "react"
 import { CollectionCalendar } from "./collection-calendar"
 import {
   CollectionCard,
+  CollectionDropZone,
   type CollectionDragData,
   type CollectionPresentation,
 } from "./collection-card"
@@ -37,7 +38,7 @@ export function CollectionVisual({
 }: {
   presentation: CollectionPresentation
   records: ReadonlyArray<ClientRecord>
-  layout: Exclude<CollectionLayout, { type: "table" }>
+  layout: Exclude<CollectionLayout, { type: "table" | "feed" }>
   anchor: string
   onDateChange: (day: string) => void
   onUpdate: (record: ClientRecord, changes: ObjectFormInput) => Promise<void>
@@ -61,6 +62,9 @@ export function CollectionVisual({
   )
     ? onCreate
     : undefined
+  const canUnschedule =
+    mutable &&
+    fields.every((id) => modelObjectProperty(presentation.object, id)?.nullable)
   const p: CollectionPresentation = {
     ...presentation,
     canMove: (record) => !pending && mutable && presentation.canMove(record),
@@ -68,18 +72,17 @@ export function CollectionVisual({
   const window = collectionDateWindow(layout, anchor)
   const saveDrop = async (data: CollectionDragData, value: string | null) => {
     if (data.record === undefined || !p.canMove(data.record)) return
+    if (layout.type !== "kanban" && value === null && !canUnschedule) return
     setError(undefined)
     setPending(true)
     try {
       const changes =
         layout.type === "kanban"
           ? { [layout.groupBy]: value }
-          : value === null
-            ? {}
-            : scheduleChanges(p.object, layout, data.record, value, {
-                resize: data.resize,
-                anchor: data.anchor,
-              })
+          : scheduleChanges(p.object, layout, data.record, value, {
+              resize: data.resize,
+              anchor: data.anchor,
+            })
       if (
         Object.entries(changes).some(
           ([field, next]) => data.record?.[field] !== next
@@ -204,7 +207,12 @@ export function CollectionVisual({
                     onCreate={createInLayout}
                   />
                 )}
-                <section className="border-t bg-muted/15 p-4">
+                <CollectionDropZone
+                  id="unscheduled"
+                  value={null}
+                  disabled={!canUnschedule || pending}
+                  className="min-h-28 border-t bg-muted/15 p-4"
+                >
                   <h2 className="mb-3 text-xs font-semibold text-muted-foreground">
                     Unscheduled
                   </h2>
@@ -226,10 +234,12 @@ export function CollectionVisual({
                     (record) => calendarDay(record[layout.start]) !== undefined
                   ) && (
                     <p className="text-xs text-muted-foreground">
-                      Every loaded record has a start date.
+                      {canUnschedule
+                        ? "Drag a record here to clear its schedule."
+                        : "Every loaded record has a start date."}
                     </p>
                   )}
-                </section>
+                </CollectionDropZone>
               </>
             )
           )}

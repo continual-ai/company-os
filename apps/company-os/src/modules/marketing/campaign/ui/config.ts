@@ -8,7 +8,6 @@ export const campaignUi = {
     views: [
       defineCollectionView("all", "All campaigns", {
         columns: ["name", "channel", "status", "owner", "startDate"],
-        sorting: [{ id: "name", desc: false }],
       }),
       defineCollectionView("active", "Active", {
         columns: ["name", "channel", "status", "owner", "startDate"],

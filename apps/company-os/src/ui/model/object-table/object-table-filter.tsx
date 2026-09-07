@@ -495,7 +495,7 @@ function ObjectTableFilterItem({
   if (meta?.property === undefined) return null
 
   return (
-    <div className="flex h-7 shrink-0 items-center divide-x border bg-background text-xs">
+    <div className="flex h-7 shrink-0 items-center divide-x overflow-hidden rounded-md border bg-background text-xs">
       <div className="flex h-full items-center px-2 font-medium">
         <ObjectTableProperty label={meta.label} property={meta.property} />
       </div>

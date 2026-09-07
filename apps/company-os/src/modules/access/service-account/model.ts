@@ -11,8 +11,7 @@ export const ServiceAccount = defineObject({
   name: "Service account",
   parent: Root,
   pluralName: "Service accounts",
-  description:
-    "The local projection of an identity used by software, integrations, and agents.",
+  description: "An account for an integration, application, or agent.",
   actions: {
     create: false,
     delete: false,

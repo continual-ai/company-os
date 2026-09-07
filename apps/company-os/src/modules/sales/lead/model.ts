@@ -19,13 +19,13 @@ export const Lead = defineObject({
   name: "Lead",
   parent: Root,
   pluralName: "Leads",
-  description:
-    "An unqualified person or organization that may become a customer.",
+  description: "A potential customer to qualify and follow up with.",
   implements: [{ interface: NoteSubject }],
   actions: {
     convert: {
       name: "Convert lead",
-      description: "Atomically creates a company and contact from this lead.",
+      description:
+        "Creates a contact and links it to the selected company, or creates a company from the supplied name.",
       idempotent: true,
       scope: "object",
       output: {
@@ -46,9 +46,17 @@ export const Lead = defineObject({
       maxLength: 200,
     }),
     companyName: schema.string({
-      label: "Company",
+      label: "Company name",
+      description:
+        "For a new company. Leave blank when linking an existing company.",
       minLength: 1,
       maxLength: 200,
+      nullable: true,
+    }),
+    company: schema.reference(Company, {
+      label: "Company",
+      inverse: { key: "leads", label: "Leads" },
+      nullable: true,
     }),
     email: schema.email({ label: "Email", maxLength: 320, nullable: true }),
     phone: schema.phone({ label: "Phone", maxLength: 50, nullable: true }),

@@ -1,7 +1,7 @@
+import { CodeBlock } from "@company/ui/components/code-block"
 import { Link, createFileRoute } from "@tanstack/react-router"
 
 import { pageOptions } from "@/route-metadata"
-import { DeveloperCodeBlock } from "@/ui/developer/developer-browser"
 
 const page = {
   breadcrumb: "MCP",
@@ -37,7 +37,7 @@ function McpPage() {
           authenticate an external agent; Company OS does not issue a separate
           MCP credential.
         </p>
-        <DeveloperCodeBlock
+        <CodeBlock
           label="Endpoint path · prepend your deployment origin"
           code="/api/mcp"
         />
@@ -51,7 +51,8 @@ function McpPage() {
             <code> tools/list</code>. Each tool includes its input schema and
             annotations identifying read-only or destructive behavior.
           </p>
-          <DeveloperCodeBlock
+          <CodeBlock
+            language="json"
             label="MCP request"
             code={JSON.stringify(
               { jsonrpc: "2.0", id: 1, method: "tools/list", params: {} },
@@ -68,7 +69,8 @@ function McpPage() {
             not grant access: each call checks the agent’s effective
             permissions.
           </p>
-          <DeveloperCodeBlock
+          <CodeBlock
+            language="json"
             label="List companies"
             code={JSON.stringify(
               {
@@ -83,7 +85,7 @@ function McpPage() {
           />
         </article>
       </section>
-      <section className="border p-5 sm:p-6">
+      <section className="rounded-lg border p-5 sm:p-6">
         <h2 className="text-lg font-medium">
           Choose an agent’s authority deliberately
         </h2>

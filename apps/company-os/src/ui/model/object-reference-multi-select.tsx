@@ -11,6 +11,7 @@ export function ObjectReferenceMultiSelect({
   id,
   invalid = false,
   name,
+  referenceLabels,
   onBlur,
   onValueChange,
   typeId,
@@ -22,6 +23,7 @@ export function ObjectReferenceMultiSelect({
   readonly name: string
   readonly onBlur: () => void
   readonly onValueChange: (value: ReadonlyArray<string>) => void
+  readonly referenceLabels?: ReadonlyMap<string, string> | undefined
   readonly typeId: string
   readonly value: ReadonlyArray<string>
 }) {
@@ -39,7 +41,7 @@ export function ObjectReferenceMultiSelect({
 
   return (
     <div
-      className="flex min-h-9 flex-wrap items-center gap-1.5 border border-input bg-transparent p-1.5"
+      className="flex min-h-9 flex-wrap items-center gap-1.5 rounded-md border border-input bg-transparent p-1.5"
       aria-describedby={ariaDescribedBy}
       aria-invalid={invalid}
     >
@@ -48,7 +50,7 @@ export function ObjectReferenceMultiSelect({
         return (
           <ObjectRecordPill
             key={target}
-            label={option?.label ?? target}
+            label={option?.label ?? referenceLabels?.get(target) ?? target}
             presentation={option?.presentation}
             onRemove={() =>
               onValueChange(value.filter((candidate) => candidate !== target))

@@ -13,6 +13,7 @@ central app because it is the only package that owns the Company OS database.
 | `db:generate` | Generate a committed migration from the schema projection.     |
 | `db:check`    | Validate the committed migration history.                      |
 | `db:migrate`  | Apply committed migrations and ensure required system records. |
+| `db:seed`     | Explicit development scenarios; see [demo data](demo-data.md). |
 | `db:reset`    | Destructively rebuild a dedicated local database.              |
 
 ## Runtime composition
@@ -113,11 +114,16 @@ pnpm turbo run test --force
 Keep the model, schema projection, reviewed SQL, generated snapshot, implementation, and tests in
 the same change.
 
-### Initial baseline
+### Template baseline
 
-Before the initial migration has been shared or applied outside a disposable local database, it may
-be replaced with one reviewed `initial` migration. Once a migration may have reached another
-developer or environment, never edit it; append a forward-only migration.
+This template starts from one initial migration generated from the current model. It carries no
+upgrade path, data backfills, or compatibility with earlier template revisions. While designing
+the template, replace this baseline and reset disposable development databases instead of appending
+historical migrations. Database tests always verify installation into an empty database.
+
+After a customized application stores durable customer data, its owner can use the same Drizzle
+tooling to generate and apply reviewed schema changes. That lifecycle belongs to the application;
+it does not require the template to preserve its own development history.
 
 For SQL that Drizzle cannot derive, create an empty tracked migration:
 

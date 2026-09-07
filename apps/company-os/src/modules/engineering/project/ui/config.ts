@@ -8,7 +8,6 @@ export const projectUi = {
     views: [
       defineCollectionView("all", "All projects", {
         columns: ["name", "status", "owner", "targetDate"],
-        sorting: [{ id: "name", desc: false }],
       }),
       defineCollectionView("active", "Active", {
         columns: ["name", "status", "owner", "targetDate"],

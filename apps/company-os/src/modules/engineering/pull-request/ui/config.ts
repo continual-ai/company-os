@@ -8,7 +8,6 @@ export const pullRequestUi = {
     views: [
       defineCollectionView("all", "All pull requests", {
         columns: ["title", "repository", "status", "review", "checks"],
-        sorting: [{ id: "title", desc: false }],
       }),
       defineCollectionView("open", "Open", {
         columns: ["title", "repository", "status", "review", "checks"],

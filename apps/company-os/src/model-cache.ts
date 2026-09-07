@@ -39,14 +39,12 @@ function isSnapshot(value: unknown): value is Snapshot {
   )
 }
 
-/** Numeric etags are ordered; legacy opaque etags are comparable only for equality. */
+/** The application repository issues monotonically increasing numeric etags. */
 export function isNewerOrEqualRecord(
   incoming: { readonly etag: string },
   current: { readonly etag: string }
 ) {
-  return /^\d+$/.test(incoming.etag) && /^\d+$/.test(current.etag)
-    ? BigInt(incoming.etag) >= BigInt(current.etag)
-    : incoming.etag === current.etag
+  return BigInt(incoming.etag) >= BigInt(current.etag)
 }
 
 /** Replace appearances, never infer filtered membership, ordering, totals, or aggregate results. */
@@ -142,7 +140,7 @@ export async function applyEventPage(cache: QueryClient, page: EventPage) {
   }
   const changes: Change[] = []
   for (const event of page.items) {
-    if (event.version !== 2 || !isSnapshot(event.data)) continue
+    if (event.version !== 1 || !isSnapshot(event.data)) continue
     const snapshotData = event.data
     const target = event.subjects.find(
       (subject) => subject.id === snapshotData.id

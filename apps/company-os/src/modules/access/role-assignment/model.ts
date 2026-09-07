@@ -10,7 +10,7 @@ export const RoleAssignment = defineObject({
   name: "Role assignment",
   parent: AuthorizationScope,
   pluralName: "Role assignments",
-  description: "One role granted to one principal at one authorization scope.",
+  description: "Give a user, group, or service account a role on a resource.",
   actions: { batchDelete: false, update: false },
   properties: {
     principal: schema.reference(Principal, { label: "Principal" }),

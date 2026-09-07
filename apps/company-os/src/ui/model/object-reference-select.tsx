@@ -15,8 +15,8 @@ import {
 import { cn } from "@company/ui/lib/utils"
 import { useQueries } from "@tanstack/react-query"
 import { Model } from "company-os/model"
-import { CheckIcon, ChevronDownIcon } from "lucide-react"
-import { useEffect, useState } from "react"
+import { CheckIcon, ChevronDownIcon, XIcon } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
 
 import { ROOT_ID } from "@/system-records"
 
@@ -95,9 +95,7 @@ function findOptions(
       request.filter = filter
     }
     if (sort !== undefined) {
-      // SAFETY: the selected title property is a sortable portable field.
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-      request.sort = sort as Exclude<ListRequest["sort"], undefined>
+      request.sort = sort
     }
     return { object, query: clientFor(object).list(request) }
   })
@@ -105,8 +103,10 @@ function findOptions(
 
 export function ObjectReferenceSelect({
   appearance = "field",
+  allowCreate = true,
   ariaDescribedBy,
   closeOnSelect = true,
+  clearable,
   constraints = noConstraints,
   disabled = false,
   id,
@@ -122,9 +122,11 @@ export function ObjectReferenceSelect({
   typeId,
   value,
 }: {
-  readonly appearance?: "field" | "inline"
+  readonly allowCreate?: boolean
+  readonly appearance?: "field" | "inline" | "action"
   readonly ariaDescribedBy?: string | undefined
   readonly closeOnSelect?: boolean
+  readonly clearable?: boolean
   readonly disabled?: boolean
   readonly id?: string | undefined
   readonly includeHiddenInput?: boolean
@@ -145,6 +147,7 @@ export function ObjectReferenceSelect({
   const [query, setQuery] = useState("")
   const [selection, setSelection] = useState<ReferenceOption>()
   const [search, setSearch] = useState("")
+  const searchInput = useRef<HTMLInputElement>(null)
   useEffect(() => {
     const timer = setTimeout(() => setSearch(query), 150)
     return () => clearTimeout(timer)
@@ -212,15 +215,36 @@ export function ObjectReferenceSelect({
               aria-required={required}
               data-form-field={name}
               className={cn(
-                appearance === "field"
-                  ? "w-full justify-between border-input bg-transparent font-normal hover:bg-transparent"
-                  : "h-7 min-w-36 flex-1 justify-between border-0 bg-transparent px-2 font-normal text-muted-foreground shadow-none hover:bg-muted/60 hover:text-foreground"
+                appearance === "action"
+                  ? "h-8 bg-muted/50"
+                  : appearance === "field"
+                    ? "w-full justify-between border-input bg-transparent font-normal hover:bg-transparent"
+                    : "h-7 min-w-36 flex-1 justify-between border-0 bg-transparent px-2 font-normal text-muted-foreground shadow-none hover:bg-muted/60 hover:text-foreground"
               )}
               onBlur={onBlur}
+              onKeyDown={(event) => {
+                if (
+                  event.ctrlKey ||
+                  event.metaKey ||
+                  event.altKey ||
+                  event.nativeEvent.isComposing
+                )
+                  return
+                if (event.key === "ArrowDown") {
+                  event.preventDefault()
+                  setOpen(true)
+                } else if (event.key.length === 1 && event.key !== " ") {
+                  event.preventDefault()
+                  setQuery((current) =>
+                    open ? current + event.key : event.key
+                  )
+                  setOpen(true)
+                }
+              }}
             />
           }
         >
-          {selected === undefined ? (
+          {selected === undefined || appearance === "action" ? (
             <span className="truncate">{initialLabel ?? placeholder}</span>
           ) : (
             <ObjectRecordOption
@@ -230,9 +254,14 @@ export function ObjectReferenceSelect({
           )}
           <ChevronDownIcon className="text-muted-foreground" />
         </PopoverTrigger>
-        <PopoverContent align="start" className="w-80 gap-0 p-0">
+        <PopoverContent
+          align="start"
+          initialFocus={searchInput}
+          className="w-80 max-w-[calc(100vw-2rem)] gap-0 p-0"
+        >
           <Command shouldFilter={false}>
             <CommandInput
+              ref={searchInput}
               placeholder="Search records…"
               value={query}
               onValueChange={setQuery}
@@ -245,10 +274,26 @@ export function ObjectReferenceSelect({
                     ? "No matching records"
                     : error}
               </CommandEmpty>
+              {(clearable ?? !required) &&
+                value !== "" &&
+                appearance !== "action" && (
+                  <CommandItem
+                    value="__clear_selection"
+                    onSelect={() => {
+                      setSelection(undefined)
+                      onValueChange("")
+                      setOpen(false)
+                    }}
+                  >
+                    <XIcon className="text-muted-foreground" />
+                    Clear selection
+                  </CommandItem>
+                )}
               {options.map((option) => (
                 <CommandItem
                   key={option.id}
                   value={option.id}
+                  disabled={selectedValues.includes(option.id)}
                   onSelect={() => {
                     if (selectedValues.includes(option.id)) return
                     setSelection(option)
@@ -271,7 +316,9 @@ export function ObjectReferenceSelect({
               ))}
             </CommandList>
           </Command>
-          <ObjectReferenceCreateActions typeId={typeId} onCreate={create} />
+          {allowCreate && (
+            <ObjectReferenceCreateActions typeId={typeId} onCreate={create} />
+          )}
         </PopoverContent>
       </Popover>
     </>

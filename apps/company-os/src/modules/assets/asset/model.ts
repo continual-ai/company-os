@@ -8,6 +8,7 @@ export const Asset = defineObject({
   collection: "assets",
   name: "Asset",
   pluralName: "Assets",
+  description: "A file or image attached to your work.",
   parent: AuthorizationScope,
   actions: {
     create: false,
@@ -15,7 +16,7 @@ export const Asset = defineObject({
     beginUpload: {
       name: "Begin upload",
       description:
-        "Reserve a private file in an authorized scope before transferring its bytes.",
+        "Start a private upload and get the URL for transferring the file.",
       scope: "collection",
       idempotent: false,
       input: {
@@ -33,7 +34,7 @@ export const Asset = defineObject({
     completeUpload: {
       name: "Complete upload",
       description:
-        "Verify stored bytes and make an immutable asset available for use.",
+        "Check the upload and make the file available. Uploaded files cannot be changed.",
       scope: "object",
       idempotent: true,
       output: { asset: schema.reference({ id: "asset" }) },

@@ -57,10 +57,14 @@ export function useObjectCollection(
   const checks = useMemo(
     () =>
       Object.keys(object.actions).flatMap((action) => {
-        const check = objectCapabilityCheck(object, action)
-        return check === undefined ? [] : [check]
+        return [undefined, ...records.map((record) => record.id)].flatMap(
+          (target) => {
+            const check = objectCapabilityCheck(object, action, target)
+            return check === undefined ? [] : [check]
+          }
+        )
       }),
-    [object]
+    [object, records]
   )
   const capabilities = useCapabilities(checks)
   const totalSize = page.data?.pages[0]?.totalSize ?? 0
@@ -98,11 +102,8 @@ export function useObjectCollection(
 
   const can = (actionId: string, target?: string) => {
     const check = objectCapabilityCheck(object, actionId, target)
-    if (target !== undefined) {
-      if (actionId === "get") return true
-      const general = objectCapabilityCheck(object, actionId)
-      return general !== undefined && capabilities.can(general)
-    }
+    if (target !== undefined && actionId === "get")
+      return records.some((record) => record.id === target)
     return check !== undefined && capabilities.can(check)
   }
 

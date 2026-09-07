@@ -1,3 +1,5 @@
+import { useRecordVisit } from "@/ui/application/use-recent-records"
+
 import {
   useObjectUi,
   type CollectionUiProps,
@@ -24,14 +26,19 @@ export function ModelCollectionPage(props: CollectionUiProps) {
   )
 }
 export function ModelRecordPage(props: RecordPageUiProps) {
+  useRecordVisit(props.object.id, props.recordId)
   const ui = useObjectUi(props.object)
   const Component = ui?.record?.pageComponent
   return Component ? (
     <Component {...props} />
   ) : (
     <ObjectRecordPage
+      key={`${props.object.id}:${props.recordId}`}
       {...props}
+      properties={ui?.record?.properties}
+      relationships={ui?.record?.relationships}
       overviewComponent={ui?.record?.overviewComponent}
+      title={ui?.record?.title}
       additionalTabs={ui?.record?.additionalTabs}
       actions={ui?.actions}
     />

@@ -5,5 +5,5 @@ export const AuthorizationScope = defineInterface({
   name: "Authorization scope",
   pluralName: "Authorization scopes",
   description:
-    "An object on which roles may be assigned and inherited by descendants.",
+    "A resource where roles can be granted and inherited by records it owns.",
 })

@@ -212,9 +212,12 @@ const make = Effect.gen(function* () {
     request: ObjectAccessRequest
   ) {
     const definition = permissionDefinition(objectPermission(request))
+    // Enumeration is an object-level gate; readable records are filtered separately.
     const targetIds =
-      request.recordIds ??
-      (request.parentId === undefined ? [ROOT_ID] : [request.parentId])
+      request.operation === "list"
+        ? undefined
+        : (request.recordIds ??
+          (request.parentId === undefined ? [ROOT_ID] : [request.parentId]))
     return yield* requirePermission({
       ...definition,
       targetIds,

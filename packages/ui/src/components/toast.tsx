@@ -63,7 +63,7 @@ function ToastList() {
       data-slot="toast"
       swipeDirection={["right", "down"]}
       className={cn(
-        "pointer-events-auto flex w-full items-start gap-2 rounded-none border bg-popover px-3 py-2.5 text-xs text-popover-foreground shadow-md transition-all duration-200 select-none",
+        "pointer-events-auto flex w-full items-start gap-2 rounded-lg border bg-popover px-3 py-2.5 text-xs text-popover-foreground shadow-md transition-all duration-200 select-none",
         "data-[ending-style]:opacity-0 data-[limited]:hidden data-[starting-style]:translate-y-2 data-[starting-style]:opacity-0",
         "[transform:translate(var(--toast-swipe-movement-x),var(--toast-swipe-movement-y))]",
         (activeToast.type === "error" || activeToast.type === "warning") &&
@@ -84,7 +84,7 @@ function ToastList() {
       <ToastPrimitive.Close
         data-slot="toast-close"
         aria-label="Dismiss notification"
-        className="flex size-5 shrink-0 items-center justify-center rounded-none text-muted-foreground transition-colors outline-none hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring/50"
+        className="flex size-5 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors outline-none hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring/50"
       >
         <XIcon className="size-3.5" />
       </ToastPrimitive.Close>

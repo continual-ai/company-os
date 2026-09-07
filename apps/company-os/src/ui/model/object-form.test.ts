@@ -13,6 +13,48 @@ import {
 } from "./object-form"
 
 describe("object forms", () => {
+  it("preserves initial relationship targets through create decoding", () => {
+    const values = objectFormDefaultValues(
+      Model.objects.note,
+      "create",
+      undefined,
+      new Date(),
+      {
+        content: "Follow up",
+        links: { subjects: ["lead-one"] },
+      }
+    )
+    expect(values.links).toEqual({ subjects: ["lead-one"] })
+    expect(
+      decodeObjectForm(Model.objects.note, values, "create")
+    ).toMatchObject({ content: "Follow up", links: { subjects: ["lead-one"] } })
+    expect(
+      objectFormDefaultValues(
+        Model.objects.note,
+        "edit",
+        undefined,
+        new Date(),
+        { links: { subjects: ["lead-one"] } }
+      ).links
+    ).toEqual({ subjects: { add: [], remove: [] } })
+  })
+  it("keeps focused updates separate from other fields and relationship drafts", () => {
+    expect(
+      decodeObjectForm(
+        Model.objects.company,
+        {
+          name: "",
+          website: "https://example.com",
+          links: { contacts: { add: ["contact-other"] } },
+        },
+        "edit",
+        ["website"]
+      )
+    ).toEqual({ website: "https://example.com" })
+    expect(() =>
+      decodeObjectForm(Model.objects.company, { name: "" }, "edit", ["name"])
+    ).toThrow("Name is required")
+  })
   it("derives controlled defaults from the model", () => {
     expect(
       objectFormDefaultValues(Model.objects.company, "create")

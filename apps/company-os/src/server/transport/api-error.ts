@@ -199,6 +199,13 @@ function preconditionViolation(error: TaggedFailure): Violation {
         path: (stringProperty(error, "field") ?? "asset").split("."),
         reason: "ASSET_PRECONDITION",
       }
+    case "LeadCompanyRequired":
+      return {
+        message:
+          "Select a company or enter a company name before converting this lead.",
+        path: ["companyName"],
+        reason: "LEAD_COMPANY_REQUIRED",
+      }
     case "LeadConversionConflict":
       return {
         message: "The lead has an incomplete prior conversion.",
@@ -296,6 +303,7 @@ const notFoundTags = new Set([
 const failedPreconditionTags = new Set([
   "LastAdministrator",
   "LeadConversionConflict",
+  "LeadCompanyRequired",
   "AssetPrecondition",
   "ObjectDeleteRestricted",
   "RoleScopeMismatch",

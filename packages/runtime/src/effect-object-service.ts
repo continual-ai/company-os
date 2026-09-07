@@ -535,9 +535,10 @@ export function make<
   const list = Effect.fn(`${object.id}.list`)(function* (
     request?: ListRequest<TObject>
   ) {
+    yield* authorize("list")
     const authorizationRequest: ObjectAccessRequest = {
       objectType: object.id,
-      operation: "list",
+      operation: "get",
     }
     const visibleWithin = yield* options.visibleWithin(authorizationRequest)
     const resolvedRequest =

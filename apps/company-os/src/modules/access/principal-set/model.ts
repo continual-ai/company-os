@@ -9,8 +9,7 @@ export const PrincipalSet = defineObject({
   name: "Principal set",
   parent: Root,
   pluralName: "Principal sets",
-  description:
-    "A system-defined set of callers whose membership follows authentication state.",
+  description: "A built-in audience, such as everyone or signed-in users.",
   actions: { create: false, delete: false, update: false },
   implements: [{ interface: Principal }],
   properties: {

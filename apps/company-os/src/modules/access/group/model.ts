@@ -9,7 +9,7 @@ export const Group = defineObject({
   name: "Group",
   parent: Root,
   pluralName: "Groups",
-  description: "A principal that grants the same access to several identities.",
+  description: "Manage access for a group of users and service accounts.",
   implements: [{ interface: Principal }],
   properties: {
     name: schema.string({ label: "Name", minLength: 1, maxLength: 200 }),

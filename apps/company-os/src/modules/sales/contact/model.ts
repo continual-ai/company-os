@@ -10,7 +10,7 @@ export const Contact = defineObject({
   name: "Contact",
   parent: Root,
   pluralName: "Contacts",
-  description: "A person associated with business activity.",
+  description: "A customer, prospect, or partner you work with.",
   implements: [
     { interface: NoteSubject },
     {
@@ -31,11 +31,23 @@ export const Contact = defineObject({
       nullable: true,
     }),
     email: schema.email({ label: "Email", maxLength: 320, nullable: true }),
+    marketingStatus: schema.select({
+      label: "Marketing status",
+      description:
+        "Choose whether to include this person in marketing audiences.",
+      default: "nonMarketing",
+      options: [
+        { value: "nonMarketing", label: "Non-marketing contact" },
+        { value: "marketing", label: "Marketing contact" },
+      ],
+    }),
     emailPermission: schema.select({
-      label: "Email permission",
+      label: "Marketing email consent",
+      description:
+        "Record permission to send marketing emails. Marketing status alone is not consent.",
       default: "unknown",
       options: [
-        { value: "unknown", label: "Unknown" },
+        { value: "unknown", label: "Not recorded" },
         { value: "optedIn", label: "Opted in" },
         { value: "optedOut", label: "Opted out" },
       ],

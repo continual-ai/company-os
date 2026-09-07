@@ -562,9 +562,7 @@ export function toEffectModelObjectCreateSchema(
   model: ModelCatalog,
   object: ObjectType
 ): Schema.Codec<unknown, unknown> {
-  const traversals = modelObjectLinkTraversals(model, object).filter(
-    ({ initializable }) => initializable
-  )
+  const traversals = modelObjectLinkTraversals(model, object)
   const linkFields: CompiledSchemaFields = Object.fromEntries(
     traversals.map(({ target, traversal }) => {
       const identifier = toEffectRecordIdentifierSchema(

@@ -24,7 +24,7 @@ function fieldNames(path: Violation["path"]): ReadonlyArray<string> {
   return path.map((_, index) => path.slice(0, index + 1).join("."))
 }
 
-export function formErrorFromViolations(
+function formErrorFromViolations(
   violations: ReadonlyArray<Violation>
 ): ApplicationFormError {
   const fields: Record<string, Violation[]> = {}

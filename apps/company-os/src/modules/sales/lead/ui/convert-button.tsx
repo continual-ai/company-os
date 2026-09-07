@@ -15,7 +15,11 @@ export function ConvertLeadAction({
       actionLabel="Convert"
       destructive={false}
       title="Convert this lead?"
-      description="Creates a company and contact linked to this lead."
+      description={
+        record.company
+          ? "Creates a contact at the linked company."
+          : "Creates a company and contact linked to this lead."
+      }
       onConfirm={async () => {
         await convert.mutateAsync({ id: record.id })
       }}

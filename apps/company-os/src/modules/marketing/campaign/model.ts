@@ -10,7 +10,7 @@ export const Campaign = defineObject({
   name: "Campaign",
   pluralName: "Campaigns",
   description:
-    "A coordinated marketing initiative with an objective, budget, owner, and operating window.",
+    "Plan a marketing campaign and track its budget, dates, and audience.",
   parent: Root,
   implements: [{ interface: NoteSubject }],
   properties: {

@@ -5,6 +5,7 @@ import type {
   ObjectRecord,
   ObjectUpdateInput,
 } from "@company/runtime"
+import type { ModelObjectService } from "@company/runtime/effect/model-implementation"
 import type { Repository } from "@company/runtime/effect/object-repository"
 import * as ObjectService from "@company/runtime/effect/object-service"
 import type { CurrentInvocation } from "@company/runtime/effect/object-service"
@@ -36,18 +37,6 @@ export function makeObjectWriter<
       resolveRecordAliases: identifiers.resolveAliases,
     })
   })
-}
-
-type CoordinatedService<TObject extends ModelObject, TService> = {
-  readonly [K in keyof TService]: K extends "create"
-    ? (
-        input: ModelObjectCreateInput<typeof Model, TObject>
-      ) => ReturnType<Extract<TService[K], (...args: never[]) => unknown>>
-    : K extends "update"
-      ? (
-          input: ModelObjectUpdateInput<typeof Model, TObject>
-        ) => ReturnType<Extract<TService[K], (...args: never[]) => unknown>>
-      : TService[K]
 }
 
 /** Derives each enabled operation with application policy and atomic Link coordination. */
@@ -151,6 +140,6 @@ export function makeObjectService<
     }
     // SAFETY: the operation keys are unchanged; only create/update accept their model Link envelope.
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-    return coordinated as CoordinatedService<TObject, typeof base>
+    return coordinated as ModelObjectService<typeof Model, TObject, typeof base>
   })
 }

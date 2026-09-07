@@ -19,7 +19,6 @@ import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApiDescriptionRouteImport } from './routes/api/description'
 import { Route as AppSettingsRouteRouteImport } from './routes/_app/settings/route'
 import { Route as AppDeveloperRouteRouteImport } from './routes/_app/developer/route'
-import { Route as AppSalesRouteRouteImport } from './routes/_app/_sales/route'
 import { Route as AppSettingsIndexRouteImport } from './routes/_app/settings/index'
 import { Route as AppDeveloperIndexRouteImport } from './routes/_app/developer/index'
 import { Route as ApiV1SplatRouteImport } from './routes/api/v1/$'
@@ -29,20 +28,9 @@ import { Route as AppDeveloperSdkRouteImport } from './routes/_app/developer/sdk
 import { Route as AppDeveloperModelRouteImport } from './routes/_app/developer/model'
 import { Route as AppDeveloperMcpRouteImport } from './routes/_app/developer/mcp'
 import { Route as AppDeveloperApiRouteImport } from './routes/_app/developer/api'
-import { Route as AppSalesLineItemsRouteImport } from './routes/_app/_sales/line-items'
 import { Route as AppDeveloperDesignSystemRouteRouteImport } from './routes/_app/developer/design-system/route'
-import { Route as AppSalesNotesRouteRouteImport } from './routes/_app/_sales/notes/route'
-import { Route as AppSalesLeadsRouteRouteImport } from './routes/_app/_sales/leads/route'
-import { Route as AppSalesDealsRouteRouteImport } from './routes/_app/_sales/deals/route'
-import { Route as AppSalesContactsRouteRouteImport } from './routes/_app/_sales/contacts/route'
-import { Route as AppSalesCompaniesRouteRouteImport } from './routes/_app/_sales/companies/route'
 import { Route as AppObjectsObjectTypeIndexRouteImport } from './routes/_app/objects/$objectType/index'
 import { Route as AppDeveloperDesignSystemIndexRouteImport } from './routes/_app/developer/design-system/index'
-import { Route as AppSalesNotesIndexRouteImport } from './routes/_app/_sales/notes/index'
-import { Route as AppSalesLeadsIndexRouteImport } from './routes/_app/_sales/leads/index'
-import { Route as AppSalesDealsIndexRouteImport } from './routes/_app/_sales/deals/index'
-import { Route as AppSalesContactsIndexRouteImport } from './routes/_app/_sales/contacts/index'
-import { Route as AppSalesCompaniesIndexRouteImport } from './routes/_app/_sales/companies/index'
 import { Route as AppSettingsaccessUsersRouteImport } from './routes/_app/settings/(access)/users'
 import { Route as AppSettingsaccessServiceAccountsRouteImport } from './routes/_app/settings/(access)/service-accounts'
 import { Route as AppSettingsaccessRolesRouteImport } from './routes/_app/settings/(access)/roles'
@@ -51,11 +39,6 @@ import { Route as AppSettingsaccessGroupsRouteImport } from './routes/_app/setti
 import { Route as AppSettingsaccessGroupMembershipsRouteImport } from './routes/_app/settings/(access)/group-memberships'
 import { Route as AppObjectsObjectTypeRecordIdRouteImport } from './routes/_app/objects/$objectType/$recordId'
 import { Route as AppDeveloperDesignSystemFoundationsRouteImport } from './routes/_app/developer/design-system/foundations'
-import { Route as AppSalesNotesRecordIdRouteImport } from './routes/_app/_sales/notes/$recordId'
-import { Route as AppSalesLeadsRecordIdRouteImport } from './routes/_app/_sales/leads/$recordId'
-import { Route as AppSalesDealsRecordIdRouteImport } from './routes/_app/_sales/deals/$recordId'
-import { Route as AppSalesContactsRecordIdRouteImport } from './routes/_app/_sales/contacts/$recordId'
-import { Route as AppSalesCompaniesRecordIdRouteImport } from './routes/_app/_sales/companies/$recordId'
 import { Route as ApiV1AssetsAssetIdContentRouteImport } from './routes/api/v1/assets/$assetId/content'
 import { Route as AppDeveloperDesignSystemPatternsObjectTableRouteImport } from './routes/_app/developer/design-system/patterns/object-table'
 import { Route as AppDeveloperDesignSystemComponentsComponentIdRouteRouteImport } from './routes/_app/developer/design-system/components/$componentId/route'
@@ -109,10 +92,6 @@ const AppDeveloperRouteRoute = AppDeveloperRouteRouteImport.update({
   path: '/developer',
   getParentRoute: () => AppRouteRoute,
 } as any)
-const AppSalesRouteRoute = AppSalesRouteRouteImport.update({
-  id: '/_sales',
-  getParentRoute: () => AppRouteRoute,
-} as any)
 const AppSettingsIndexRoute = AppSettingsIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -158,42 +137,12 @@ const AppDeveloperApiRoute = AppDeveloperApiRouteImport.update({
   path: '/api',
   getParentRoute: () => AppDeveloperRouteRoute,
 } as any)
-const AppSalesLineItemsRoute = AppSalesLineItemsRouteImport.update({
-  id: '/line-items',
-  path: '/line-items',
-  getParentRoute: () => AppSalesRouteRoute,
-} as any)
 const AppDeveloperDesignSystemRouteRoute =
   AppDeveloperDesignSystemRouteRouteImport.update({
     id: '/design-system',
     path: '/design-system',
     getParentRoute: () => AppDeveloperRouteRoute,
   } as any)
-const AppSalesNotesRouteRoute = AppSalesNotesRouteRouteImport.update({
-  id: '/notes',
-  path: '/notes',
-  getParentRoute: () => AppSalesRouteRoute,
-} as any)
-const AppSalesLeadsRouteRoute = AppSalesLeadsRouteRouteImport.update({
-  id: '/leads',
-  path: '/leads',
-  getParentRoute: () => AppSalesRouteRoute,
-} as any)
-const AppSalesDealsRouteRoute = AppSalesDealsRouteRouteImport.update({
-  id: '/deals',
-  path: '/deals',
-  getParentRoute: () => AppSalesRouteRoute,
-} as any)
-const AppSalesContactsRouteRoute = AppSalesContactsRouteRouteImport.update({
-  id: '/contacts',
-  path: '/contacts',
-  getParentRoute: () => AppSalesRouteRoute,
-} as any)
-const AppSalesCompaniesRouteRoute = AppSalesCompaniesRouteRouteImport.update({
-  id: '/companies',
-  path: '/companies',
-  getParentRoute: () => AppSalesRouteRoute,
-} as any)
 const AppObjectsObjectTypeIndexRoute =
   AppObjectsObjectTypeIndexRouteImport.update({
     id: '/objects/$objectType/',
@@ -206,31 +155,6 @@ const AppDeveloperDesignSystemIndexRoute =
     path: '/',
     getParentRoute: () => AppDeveloperDesignSystemRouteRoute,
   } as any)
-const AppSalesNotesIndexRoute = AppSalesNotesIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AppSalesNotesRouteRoute,
-} as any)
-const AppSalesLeadsIndexRoute = AppSalesLeadsIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AppSalesLeadsRouteRoute,
-} as any)
-const AppSalesDealsIndexRoute = AppSalesDealsIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AppSalesDealsRouteRoute,
-} as any)
-const AppSalesContactsIndexRoute = AppSalesContactsIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AppSalesContactsRouteRoute,
-} as any)
-const AppSalesCompaniesIndexRoute = AppSalesCompaniesIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AppSalesCompaniesRouteRoute,
-} as any)
 const AppSettingsaccessUsersRoute = AppSettingsaccessUsersRouteImport.update({
   id: '/(access)/users',
   path: '/users',
@@ -276,33 +200,6 @@ const AppDeveloperDesignSystemFoundationsRoute =
     path: '/foundations',
     getParentRoute: () => AppDeveloperDesignSystemRouteRoute,
   } as any)
-const AppSalesNotesRecordIdRoute = AppSalesNotesRecordIdRouteImport.update({
-  id: '/$recordId',
-  path: '/$recordId',
-  getParentRoute: () => AppSalesNotesRouteRoute,
-} as any)
-const AppSalesLeadsRecordIdRoute = AppSalesLeadsRecordIdRouteImport.update({
-  id: '/$recordId',
-  path: '/$recordId',
-  getParentRoute: () => AppSalesLeadsRouteRoute,
-} as any)
-const AppSalesDealsRecordIdRoute = AppSalesDealsRecordIdRouteImport.update({
-  id: '/$recordId',
-  path: '/$recordId',
-  getParentRoute: () => AppSalesDealsRouteRoute,
-} as any)
-const AppSalesContactsRecordIdRoute =
-  AppSalesContactsRecordIdRouteImport.update({
-    id: '/$recordId',
-    path: '/$recordId',
-    getParentRoute: () => AppSalesContactsRouteRoute,
-  } as any)
-const AppSalesCompaniesRecordIdRoute =
-  AppSalesCompaniesRecordIdRouteImport.update({
-    id: '/$recordId',
-    path: '/$recordId',
-    getParentRoute: () => AppSalesCompaniesRouteRoute,
-  } as any)
 const ApiV1AssetsAssetIdContentRoute =
   ApiV1AssetsAssetIdContentRouteImport.update({
     id: '/api/v1/assets/$assetId/content',
@@ -332,13 +229,7 @@ export interface FileRoutesByFullPath {
   '/api/health': typeof ApiHealthRoute
   '/api/mcp': typeof ApiMcpRoute
   '/api/openapi': typeof ApiOpenapiRoute
-  '/companies': typeof AppSalesCompaniesRouteRouteWithChildren
-  '/contacts': typeof AppSalesContactsRouteRouteWithChildren
-  '/deals': typeof AppSalesDealsRouteRouteWithChildren
-  '/leads': typeof AppSalesLeadsRouteRouteWithChildren
-  '/notes': typeof AppSalesNotesRouteRouteWithChildren
   '/developer/design-system': typeof AppDeveloperDesignSystemRouteRouteWithChildren
-  '/line-items': typeof AppSalesLineItemsRoute
   '/developer/api': typeof AppDeveloperApiRoute
   '/developer/mcp': typeof AppDeveloperMcpRoute
   '/developer/model': typeof AppDeveloperModelRoute
@@ -348,11 +239,6 @@ export interface FileRoutesByFullPath {
   '/api/v1/$': typeof ApiV1SplatRoute
   '/developer/': typeof AppDeveloperIndexRoute
   '/settings/': typeof AppSettingsIndexRoute
-  '/companies/$recordId': typeof AppSalesCompaniesRecordIdRoute
-  '/contacts/$recordId': typeof AppSalesContactsRecordIdRoute
-  '/deals/$recordId': typeof AppSalesDealsRecordIdRoute
-  '/leads/$recordId': typeof AppSalesLeadsRecordIdRoute
-  '/notes/$recordId': typeof AppSalesNotesRecordIdRoute
   '/developer/design-system/foundations': typeof AppDeveloperDesignSystemFoundationsRoute
   '/objects/$objectType/$recordId': typeof AppObjectsObjectTypeRecordIdRoute
   '/settings/group-memberships': typeof AppSettingsaccessGroupMembershipsRoute
@@ -361,11 +247,6 @@ export interface FileRoutesByFullPath {
   '/settings/roles': typeof AppSettingsaccessRolesRoute
   '/settings/service-accounts': typeof AppSettingsaccessServiceAccountsRoute
   '/settings/users': typeof AppSettingsaccessUsersRoute
-  '/companies/': typeof AppSalesCompaniesIndexRoute
-  '/contacts/': typeof AppSalesContactsIndexRoute
-  '/deals/': typeof AppSalesDealsIndexRoute
-  '/leads/': typeof AppSalesLeadsIndexRoute
-  '/notes/': typeof AppSalesNotesIndexRoute
   '/developer/design-system/': typeof AppDeveloperDesignSystemIndexRoute
   '/objects/$objectType/': typeof AppObjectsObjectTypeIndexRoute
   '/developer/design-system/components/$componentId': typeof AppDeveloperDesignSystemComponentsComponentIdRouteRoute
@@ -375,12 +256,11 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/health': typeof HealthRoute
   '/sign-in': typeof SignInRoute
-  '/': typeof AppIndexRoute
   '/api/description': typeof ApiDescriptionRoute
   '/api/health': typeof ApiHealthRoute
   '/api/mcp': typeof ApiMcpRoute
   '/api/openapi': typeof ApiOpenapiRoute
-  '/line-items': typeof AppSalesLineItemsRoute
+  '/': typeof AppIndexRoute
   '/developer/api': typeof AppDeveloperApiRoute
   '/developer/mcp': typeof AppDeveloperMcpRoute
   '/developer/model': typeof AppDeveloperModelRoute
@@ -390,11 +270,6 @@ export interface FileRoutesByTo {
   '/api/v1/$': typeof ApiV1SplatRoute
   '/developer': typeof AppDeveloperIndexRoute
   '/settings': typeof AppSettingsIndexRoute
-  '/companies/$recordId': typeof AppSalesCompaniesRecordIdRoute
-  '/contacts/$recordId': typeof AppSalesContactsRecordIdRoute
-  '/deals/$recordId': typeof AppSalesDealsRecordIdRoute
-  '/leads/$recordId': typeof AppSalesLeadsRecordIdRoute
-  '/notes/$recordId': typeof AppSalesNotesRecordIdRoute
   '/developer/design-system/foundations': typeof AppDeveloperDesignSystemFoundationsRoute
   '/objects/$objectType/$recordId': typeof AppObjectsObjectTypeRecordIdRoute
   '/settings/group-memberships': typeof AppSettingsaccessGroupMembershipsRoute
@@ -403,11 +278,6 @@ export interface FileRoutesByTo {
   '/settings/roles': typeof AppSettingsaccessRolesRoute
   '/settings/service-accounts': typeof AppSettingsaccessServiceAccountsRoute
   '/settings/users': typeof AppSettingsaccessUsersRoute
-  '/companies': typeof AppSalesCompaniesIndexRoute
-  '/contacts': typeof AppSalesContactsIndexRoute
-  '/deals': typeof AppSalesDealsIndexRoute
-  '/leads': typeof AppSalesLeadsIndexRoute
-  '/notes': typeof AppSalesNotesIndexRoute
   '/developer/design-system': typeof AppDeveloperDesignSystemIndexRoute
   '/objects/$objectType': typeof AppObjectsObjectTypeIndexRoute
   '/developer/design-system/components/$componentId': typeof AppDeveloperDesignSystemComponentsComponentIdRouteRoute
@@ -419,7 +289,6 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteRouteWithChildren
   '/health': typeof HealthRoute
   '/sign-in': typeof SignInRoute
-  '/_app/_sales': typeof AppSalesRouteRouteWithChildren
   '/_app/developer': typeof AppDeveloperRouteRouteWithChildren
   '/_app/settings': typeof AppSettingsRouteRouteWithChildren
   '/api/description': typeof ApiDescriptionRoute
@@ -427,13 +296,7 @@ export interface FileRoutesById {
   '/api/mcp': typeof ApiMcpRoute
   '/api/openapi': typeof ApiOpenapiRoute
   '/_app/': typeof AppIndexRoute
-  '/_app/_sales/companies': typeof AppSalesCompaniesRouteRouteWithChildren
-  '/_app/_sales/contacts': typeof AppSalesContactsRouteRouteWithChildren
-  '/_app/_sales/deals': typeof AppSalesDealsRouteRouteWithChildren
-  '/_app/_sales/leads': typeof AppSalesLeadsRouteRouteWithChildren
-  '/_app/_sales/notes': typeof AppSalesNotesRouteRouteWithChildren
   '/_app/developer/design-system': typeof AppDeveloperDesignSystemRouteRouteWithChildren
-  '/_app/_sales/line-items': typeof AppSalesLineItemsRoute
   '/_app/developer/api': typeof AppDeveloperApiRoute
   '/_app/developer/mcp': typeof AppDeveloperMcpRoute
   '/_app/developer/model': typeof AppDeveloperModelRoute
@@ -443,11 +306,6 @@ export interface FileRoutesById {
   '/api/v1/$': typeof ApiV1SplatRoute
   '/_app/developer/': typeof AppDeveloperIndexRoute
   '/_app/settings/': typeof AppSettingsIndexRoute
-  '/_app/_sales/companies/$recordId': typeof AppSalesCompaniesRecordIdRoute
-  '/_app/_sales/contacts/$recordId': typeof AppSalesContactsRecordIdRoute
-  '/_app/_sales/deals/$recordId': typeof AppSalesDealsRecordIdRoute
-  '/_app/_sales/leads/$recordId': typeof AppSalesLeadsRecordIdRoute
-  '/_app/_sales/notes/$recordId': typeof AppSalesNotesRecordIdRoute
   '/_app/developer/design-system/foundations': typeof AppDeveloperDesignSystemFoundationsRoute
   '/_app/objects/$objectType/$recordId': typeof AppObjectsObjectTypeRecordIdRoute
   '/_app/settings/(access)/group-memberships': typeof AppSettingsaccessGroupMembershipsRoute
@@ -456,11 +314,6 @@ export interface FileRoutesById {
   '/_app/settings/(access)/roles': typeof AppSettingsaccessRolesRoute
   '/_app/settings/(access)/service-accounts': typeof AppSettingsaccessServiceAccountsRoute
   '/_app/settings/(access)/users': typeof AppSettingsaccessUsersRoute
-  '/_app/_sales/companies/': typeof AppSalesCompaniesIndexRoute
-  '/_app/_sales/contacts/': typeof AppSalesContactsIndexRoute
-  '/_app/_sales/deals/': typeof AppSalesDealsIndexRoute
-  '/_app/_sales/leads/': typeof AppSalesLeadsIndexRoute
-  '/_app/_sales/notes/': typeof AppSalesNotesIndexRoute
   '/_app/developer/design-system/': typeof AppDeveloperDesignSystemIndexRoute
   '/_app/objects/$objectType/': typeof AppObjectsObjectTypeIndexRoute
   '/_app/developer/design-system/components/$componentId': typeof AppDeveloperDesignSystemComponentsComponentIdRouteRoute
@@ -479,13 +332,7 @@ export interface FileRouteTypes {
     | '/api/health'
     | '/api/mcp'
     | '/api/openapi'
-    | '/companies'
-    | '/contacts'
-    | '/deals'
-    | '/leads'
-    | '/notes'
     | '/developer/design-system'
-    | '/line-items'
     | '/developer/api'
     | '/developer/mcp'
     | '/developer/model'
@@ -495,11 +342,6 @@ export interface FileRouteTypes {
     | '/api/v1/$'
     | '/developer/'
     | '/settings/'
-    | '/companies/$recordId'
-    | '/contacts/$recordId'
-    | '/deals/$recordId'
-    | '/leads/$recordId'
-    | '/notes/$recordId'
     | '/developer/design-system/foundations'
     | '/objects/$objectType/$recordId'
     | '/settings/group-memberships'
@@ -508,11 +350,6 @@ export interface FileRouteTypes {
     | '/settings/roles'
     | '/settings/service-accounts'
     | '/settings/users'
-    | '/companies/'
-    | '/contacts/'
-    | '/deals/'
-    | '/leads/'
-    | '/notes/'
     | '/developer/design-system/'
     | '/objects/$objectType/'
     | '/developer/design-system/components/$componentId'
@@ -522,12 +359,11 @@ export interface FileRouteTypes {
   to:
     | '/health'
     | '/sign-in'
-    | '/'
     | '/api/description'
     | '/api/health'
     | '/api/mcp'
     | '/api/openapi'
-    | '/line-items'
+    | '/'
     | '/developer/api'
     | '/developer/mcp'
     | '/developer/model'
@@ -537,11 +373,6 @@ export interface FileRouteTypes {
     | '/api/v1/$'
     | '/developer'
     | '/settings'
-    | '/companies/$recordId'
-    | '/contacts/$recordId'
-    | '/deals/$recordId'
-    | '/leads/$recordId'
-    | '/notes/$recordId'
     | '/developer/design-system/foundations'
     | '/objects/$objectType/$recordId'
     | '/settings/group-memberships'
@@ -550,11 +381,6 @@ export interface FileRouteTypes {
     | '/settings/roles'
     | '/settings/service-accounts'
     | '/settings/users'
-    | '/companies'
-    | '/contacts'
-    | '/deals'
-    | '/leads'
-    | '/notes'
     | '/developer/design-system'
     | '/objects/$objectType'
     | '/developer/design-system/components/$componentId'
@@ -565,7 +391,6 @@ export interface FileRouteTypes {
     | '/_app'
     | '/health'
     | '/sign-in'
-    | '/_app/_sales'
     | '/_app/developer'
     | '/_app/settings'
     | '/api/description'
@@ -573,13 +398,7 @@ export interface FileRouteTypes {
     | '/api/mcp'
     | '/api/openapi'
     | '/_app/'
-    | '/_app/_sales/companies'
-    | '/_app/_sales/contacts'
-    | '/_app/_sales/deals'
-    | '/_app/_sales/leads'
-    | '/_app/_sales/notes'
     | '/_app/developer/design-system'
-    | '/_app/_sales/line-items'
     | '/_app/developer/api'
     | '/_app/developer/mcp'
     | '/_app/developer/model'
@@ -589,11 +408,6 @@ export interface FileRouteTypes {
     | '/api/v1/$'
     | '/_app/developer/'
     | '/_app/settings/'
-    | '/_app/_sales/companies/$recordId'
-    | '/_app/_sales/contacts/$recordId'
-    | '/_app/_sales/deals/$recordId'
-    | '/_app/_sales/leads/$recordId'
-    | '/_app/_sales/notes/$recordId'
     | '/_app/developer/design-system/foundations'
     | '/_app/objects/$objectType/$recordId'
     | '/_app/settings/(access)/group-memberships'
@@ -602,11 +416,6 @@ export interface FileRouteTypes {
     | '/_app/settings/(access)/roles'
     | '/_app/settings/(access)/service-accounts'
     | '/_app/settings/(access)/users'
-    | '/_app/_sales/companies/'
-    | '/_app/_sales/contacts/'
-    | '/_app/_sales/deals/'
-    | '/_app/_sales/leads/'
-    | '/_app/_sales/notes/'
     | '/_app/developer/design-system/'
     | '/_app/objects/$objectType/'
     | '/_app/developer/design-system/components/$componentId'
@@ -698,13 +507,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDeveloperRouteRouteImport
       parentRoute: typeof AppRouteRoute
     }
-    '/_app/_sales': {
-      id: '/_app/_sales'
-      path: ''
-      fullPath: '/'
-      preLoaderRoute: typeof AppSalesRouteRouteImport
-      parentRoute: typeof AppRouteRoute
-    }
     '/_app/settings/': {
       id: '/_app/settings/'
       path: '/'
@@ -768,54 +570,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDeveloperApiRouteImport
       parentRoute: typeof AppDeveloperRouteRoute
     }
-    '/_app/_sales/line-items': {
-      id: '/_app/_sales/line-items'
-      path: '/line-items'
-      fullPath: '/line-items'
-      preLoaderRoute: typeof AppSalesLineItemsRouteImport
-      parentRoute: typeof AppSalesRouteRoute
-    }
     '/_app/developer/design-system': {
       id: '/_app/developer/design-system'
       path: '/design-system'
       fullPath: '/developer/design-system'
       preLoaderRoute: typeof AppDeveloperDesignSystemRouteRouteImport
       parentRoute: typeof AppDeveloperRouteRoute
-    }
-    '/_app/_sales/notes': {
-      id: '/_app/_sales/notes'
-      path: '/notes'
-      fullPath: '/notes'
-      preLoaderRoute: typeof AppSalesNotesRouteRouteImport
-      parentRoute: typeof AppSalesRouteRoute
-    }
-    '/_app/_sales/leads': {
-      id: '/_app/_sales/leads'
-      path: '/leads'
-      fullPath: '/leads'
-      preLoaderRoute: typeof AppSalesLeadsRouteRouteImport
-      parentRoute: typeof AppSalesRouteRoute
-    }
-    '/_app/_sales/deals': {
-      id: '/_app/_sales/deals'
-      path: '/deals'
-      fullPath: '/deals'
-      preLoaderRoute: typeof AppSalesDealsRouteRouteImport
-      parentRoute: typeof AppSalesRouteRoute
-    }
-    '/_app/_sales/contacts': {
-      id: '/_app/_sales/contacts'
-      path: '/contacts'
-      fullPath: '/contacts'
-      preLoaderRoute: typeof AppSalesContactsRouteRouteImport
-      parentRoute: typeof AppSalesRouteRoute
-    }
-    '/_app/_sales/companies': {
-      id: '/_app/_sales/companies'
-      path: '/companies'
-      fullPath: '/companies'
-      preLoaderRoute: typeof AppSalesCompaniesRouteRouteImport
-      parentRoute: typeof AppSalesRouteRoute
     }
     '/_app/objects/$objectType/': {
       id: '/_app/objects/$objectType/'
@@ -830,41 +590,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/developer/design-system/'
       preLoaderRoute: typeof AppDeveloperDesignSystemIndexRouteImport
       parentRoute: typeof AppDeveloperDesignSystemRouteRoute
-    }
-    '/_app/_sales/notes/': {
-      id: '/_app/_sales/notes/'
-      path: '/'
-      fullPath: '/notes/'
-      preLoaderRoute: typeof AppSalesNotesIndexRouteImport
-      parentRoute: typeof AppSalesNotesRouteRoute
-    }
-    '/_app/_sales/leads/': {
-      id: '/_app/_sales/leads/'
-      path: '/'
-      fullPath: '/leads/'
-      preLoaderRoute: typeof AppSalesLeadsIndexRouteImport
-      parentRoute: typeof AppSalesLeadsRouteRoute
-    }
-    '/_app/_sales/deals/': {
-      id: '/_app/_sales/deals/'
-      path: '/'
-      fullPath: '/deals/'
-      preLoaderRoute: typeof AppSalesDealsIndexRouteImport
-      parentRoute: typeof AppSalesDealsRouteRoute
-    }
-    '/_app/_sales/contacts/': {
-      id: '/_app/_sales/contacts/'
-      path: '/'
-      fullPath: '/contacts/'
-      preLoaderRoute: typeof AppSalesContactsIndexRouteImport
-      parentRoute: typeof AppSalesContactsRouteRoute
-    }
-    '/_app/_sales/companies/': {
-      id: '/_app/_sales/companies/'
-      path: '/'
-      fullPath: '/companies/'
-      preLoaderRoute: typeof AppSalesCompaniesIndexRouteImport
-      parentRoute: typeof AppSalesCompaniesRouteRoute
     }
     '/_app/settings/(access)/users': {
       id: '/_app/settings/(access)/users'
@@ -922,41 +647,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDeveloperDesignSystemFoundationsRouteImport
       parentRoute: typeof AppDeveloperDesignSystemRouteRoute
     }
-    '/_app/_sales/notes/$recordId': {
-      id: '/_app/_sales/notes/$recordId'
-      path: '/$recordId'
-      fullPath: '/notes/$recordId'
-      preLoaderRoute: typeof AppSalesNotesRecordIdRouteImport
-      parentRoute: typeof AppSalesNotesRouteRoute
-    }
-    '/_app/_sales/leads/$recordId': {
-      id: '/_app/_sales/leads/$recordId'
-      path: '/$recordId'
-      fullPath: '/leads/$recordId'
-      preLoaderRoute: typeof AppSalesLeadsRecordIdRouteImport
-      parentRoute: typeof AppSalesLeadsRouteRoute
-    }
-    '/_app/_sales/deals/$recordId': {
-      id: '/_app/_sales/deals/$recordId'
-      path: '/$recordId'
-      fullPath: '/deals/$recordId'
-      preLoaderRoute: typeof AppSalesDealsRecordIdRouteImport
-      parentRoute: typeof AppSalesDealsRouteRoute
-    }
-    '/_app/_sales/contacts/$recordId': {
-      id: '/_app/_sales/contacts/$recordId'
-      path: '/$recordId'
-      fullPath: '/contacts/$recordId'
-      preLoaderRoute: typeof AppSalesContactsRecordIdRouteImport
-      parentRoute: typeof AppSalesContactsRouteRoute
-    }
-    '/_app/_sales/companies/$recordId': {
-      id: '/_app/_sales/companies/$recordId'
-      path: '/$recordId'
-      fullPath: '/companies/$recordId'
-      preLoaderRoute: typeof AppSalesCompaniesRecordIdRouteImport
-      parentRoute: typeof AppSalesCompaniesRouteRoute
-    }
     '/api/v1/assets/$assetId/content': {
       id: '/api/v1/assets/$assetId/content'
       path: '/api/v1/assets/$assetId/content'
@@ -980,98 +670,6 @@ declare module '@tanstack/react-router' {
     }
   }
 }
-
-interface AppSalesCompaniesRouteRouteChildren {
-  AppSalesCompaniesRecordIdRoute: typeof AppSalesCompaniesRecordIdRoute
-  AppSalesCompaniesIndexRoute: typeof AppSalesCompaniesIndexRoute
-}
-
-const AppSalesCompaniesRouteRouteChildren: AppSalesCompaniesRouteRouteChildren =
-  {
-    AppSalesCompaniesRecordIdRoute: AppSalesCompaniesRecordIdRoute,
-    AppSalesCompaniesIndexRoute: AppSalesCompaniesIndexRoute,
-  }
-
-const AppSalesCompaniesRouteRouteWithChildren =
-  AppSalesCompaniesRouteRoute._addFileChildren(
-    AppSalesCompaniesRouteRouteChildren,
-  )
-
-interface AppSalesContactsRouteRouteChildren {
-  AppSalesContactsRecordIdRoute: typeof AppSalesContactsRecordIdRoute
-  AppSalesContactsIndexRoute: typeof AppSalesContactsIndexRoute
-}
-
-const AppSalesContactsRouteRouteChildren: AppSalesContactsRouteRouteChildren = {
-  AppSalesContactsRecordIdRoute: AppSalesContactsRecordIdRoute,
-  AppSalesContactsIndexRoute: AppSalesContactsIndexRoute,
-}
-
-const AppSalesContactsRouteRouteWithChildren =
-  AppSalesContactsRouteRoute._addFileChildren(
-    AppSalesContactsRouteRouteChildren,
-  )
-
-interface AppSalesDealsRouteRouteChildren {
-  AppSalesDealsRecordIdRoute: typeof AppSalesDealsRecordIdRoute
-  AppSalesDealsIndexRoute: typeof AppSalesDealsIndexRoute
-}
-
-const AppSalesDealsRouteRouteChildren: AppSalesDealsRouteRouteChildren = {
-  AppSalesDealsRecordIdRoute: AppSalesDealsRecordIdRoute,
-  AppSalesDealsIndexRoute: AppSalesDealsIndexRoute,
-}
-
-const AppSalesDealsRouteRouteWithChildren =
-  AppSalesDealsRouteRoute._addFileChildren(AppSalesDealsRouteRouteChildren)
-
-interface AppSalesLeadsRouteRouteChildren {
-  AppSalesLeadsRecordIdRoute: typeof AppSalesLeadsRecordIdRoute
-  AppSalesLeadsIndexRoute: typeof AppSalesLeadsIndexRoute
-}
-
-const AppSalesLeadsRouteRouteChildren: AppSalesLeadsRouteRouteChildren = {
-  AppSalesLeadsRecordIdRoute: AppSalesLeadsRecordIdRoute,
-  AppSalesLeadsIndexRoute: AppSalesLeadsIndexRoute,
-}
-
-const AppSalesLeadsRouteRouteWithChildren =
-  AppSalesLeadsRouteRoute._addFileChildren(AppSalesLeadsRouteRouteChildren)
-
-interface AppSalesNotesRouteRouteChildren {
-  AppSalesNotesRecordIdRoute: typeof AppSalesNotesRecordIdRoute
-  AppSalesNotesIndexRoute: typeof AppSalesNotesIndexRoute
-}
-
-const AppSalesNotesRouteRouteChildren: AppSalesNotesRouteRouteChildren = {
-  AppSalesNotesRecordIdRoute: AppSalesNotesRecordIdRoute,
-  AppSalesNotesIndexRoute: AppSalesNotesIndexRoute,
-}
-
-const AppSalesNotesRouteRouteWithChildren =
-  AppSalesNotesRouteRoute._addFileChildren(AppSalesNotesRouteRouteChildren)
-
-interface AppSalesRouteRouteChildren {
-  AppSalesCompaniesRouteRoute: typeof AppSalesCompaniesRouteRouteWithChildren
-  AppSalesContactsRouteRoute: typeof AppSalesContactsRouteRouteWithChildren
-  AppSalesDealsRouteRoute: typeof AppSalesDealsRouteRouteWithChildren
-  AppSalesLeadsRouteRoute: typeof AppSalesLeadsRouteRouteWithChildren
-  AppSalesNotesRouteRoute: typeof AppSalesNotesRouteRouteWithChildren
-  AppSalesLineItemsRoute: typeof AppSalesLineItemsRoute
-}
-
-const AppSalesRouteRouteChildren: AppSalesRouteRouteChildren = {
-  AppSalesCompaniesRouteRoute: AppSalesCompaniesRouteRouteWithChildren,
-  AppSalesContactsRouteRoute: AppSalesContactsRouteRouteWithChildren,
-  AppSalesDealsRouteRoute: AppSalesDealsRouteRouteWithChildren,
-  AppSalesLeadsRouteRoute: AppSalesLeadsRouteRouteWithChildren,
-  AppSalesNotesRouteRoute: AppSalesNotesRouteRouteWithChildren,
-  AppSalesLineItemsRoute: AppSalesLineItemsRoute,
-}
-
-const AppSalesRouteRouteWithChildren = AppSalesRouteRoute._addFileChildren(
-  AppSalesRouteRouteChildren,
-)
 
 interface AppDeveloperDesignSystemRouteRouteChildren {
   AppDeveloperDesignSystemFoundationsRoute: typeof AppDeveloperDesignSystemFoundationsRoute
@@ -1147,7 +745,6 @@ const AppSettingsRouteRouteWithChildren =
   AppSettingsRouteRoute._addFileChildren(AppSettingsRouteRouteChildren)
 
 interface AppRouteRouteChildren {
-  AppSalesRouteRoute: typeof AppSalesRouteRouteWithChildren
   AppDeveloperRouteRoute: typeof AppDeveloperRouteRouteWithChildren
   AppSettingsRouteRoute: typeof AppSettingsRouteRouteWithChildren
   AppIndexRoute: typeof AppIndexRoute
@@ -1156,7 +753,6 @@ interface AppRouteRouteChildren {
 }
 
 const AppRouteRouteChildren: AppRouteRouteChildren = {
-  AppSalesRouteRoute: AppSalesRouteRouteWithChildren,
   AppDeveloperRouteRoute: AppDeveloperRouteRouteWithChildren,
   AppSettingsRouteRoute: AppSettingsRouteRouteWithChildren,
   AppIndexRoute: AppIndexRoute,

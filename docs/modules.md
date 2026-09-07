@@ -181,7 +181,16 @@ Custom Queries use POST custom methods so structured requests fit in a body; the
 share query caching, and carry MCP read-only annotations. Standard list/get retain GET. Relationship
 mutation bodies contain `{ "target": "company_..." }`; path parameters identify the source.
 Relationship lists return complete records with an `objectType` discriminator and normal pagination.
-They do not require a second client hydration request.
+Concrete-target lists read records through the same repository query compiler as standalone lists;
+they do not fetch records, discard their fields, and hydrate them again. Mixed-target lists page
+visible edges and load the corresponding records in batches by concrete type.
+
+Standalone listing requires the object's `list` permission. Its rows and totals are filtered by
+`get` grants, the same visibility used for individual reads and relationship targets. A contextual
+relationship list requires read access to its source and filters targets by their `get` grants;
+it does not grant access to an otherwise unavailable standalone collection. Inverse relationship
+names are validated against other relationships, properties, and operations on every implementing
+object when the model is defined.
 
 Test pure rules directly. Test SQL, locking, transactions, and authorization with the real PostgreSQL
 harness. Supply test services for provider effects. The [sales integration test](../apps/company-os/src/modules/sales/server/sales-operations-database.test.ts)
@@ -226,8 +235,10 @@ look up another registry or declare mutation invalidation dependencies.
 | `collection.views`            | Defines the available saved views                                   |
 | `collection.toolbarComponent` | Adds controls alongside the standard collection controls            |
 | `collection.pageComponent`    | Replaces the entire collection page                                 |
+| `record.properties`           | Prioritizes detail fields; all fields remain visible                |
+| `record.relationships`        | Prioritizes named relationship tabs; others remain searchable       |
 | `record.additionalTabs`       | Appends named tabs in declaration order; collisions fail            |
-| `record.overviewComponent`    | Replaces the default properties overview                            |
+| `record.overviewComponent`    | Replaces the related-record overview                                |
 | `record.pageComponent`        | Replaces the entire record page                                     |
 | `fieldEditors`                | Replaces editors for named properties inside the standard form      |
 
@@ -366,3 +377,5 @@ automatic reference visibility, replay, and browser updates. An event never exec
 inside the business transaction.
 
 Opt objects into [global search](search.md) with `search: { fields: ["name", "email"] }`. Indexed fields live beside the properties they describe; run `db:migrate` after changing them to rebuild the derived index.
+
+The [record workspace guide](record-workspaces.md) explains model-derived defaults, page navigation, focused edits, and optional presentation configuration.

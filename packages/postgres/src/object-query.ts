@@ -145,6 +145,7 @@ export function cursorFingerprint<TObject extends ObjectType>(
         filter:
           request.filter === undefined ? null : cursorFilter(request.filter),
         objectType: object.id,
+        relatedTo: request.relatedTo,
         sort: sort.map(({ direction, field, nulls }) => [
           field,
           direction,
@@ -399,7 +400,12 @@ export function makeObjectQueryCompiler<TObject extends ObjectType>(
   const resolveSort = (
     request: RepositoryListRequest<TObject>
   ): ReadonlyArray<ResolvedSort> => {
-    const requested: Array<ObjectSort<TObject>> = [...(request.sort ?? [])]
+    const requested: Array<ObjectSort<TObject>> = request.sort?.length
+      ? [...request.sort]
+      : [
+          { direction: "desc", field: "createdAt" },
+          { direction: "desc", field: "id" },
+        ]
     const duplicate = requested.find(
       (candidate, index) =>
         requested.findIndex(({ field }) => field === candidate.field) !== index

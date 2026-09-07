@@ -60,8 +60,7 @@ history visibility and the bounded authentication-renewal window of streaming co
 
 Collections offer [Table, Kanban, Calendar, and Gantt layouts](collections.md), shareable filters and views, direct title search, sorting, virtualized tables with incremental loading, inline
 editing, selection, and atomic batch deletion. The generated table uses the batch endpoint; it never
-substitutes parallel single-record deletes. Command/Ctrl-K searches indexed records across objects, navigates collections, and opens creation forms. [Search architecture](search.md) covers the shared query and transactional index. Default detail
-pages expose both relationship directions; concrete reference fields navigate directly to their
+substitutes parallel single-record deletes. Command/Ctrl-K searches indexed records across objects, navigates collections, and opens creation forms. [Search architecture](search.md) covers the shared query and transactional index. Default [record workspaces](record-workspaces.md) expose both relationship directions; concrete reference fields navigate directly to their
 record. Pickers can create related records without losing the outer form's draft. Forms use one
 schema decoder and one API-error boundary, preserve edits on conflict, and confirm draft dismissal.
 

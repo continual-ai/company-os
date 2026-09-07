@@ -8,7 +8,6 @@ export const enrollmentUi = {
     views: [
       defineCollectionView("all", "All enrollments", {
         columns: ["name", "contact", "campaign", "status", "nextTouchAt"],
-        sorting: [{ id: "name", desc: false }],
       }),
       defineCollectionView("active", "Active", {
         columns: ["name", "contact", "campaign", "status", "nextTouchAt"],

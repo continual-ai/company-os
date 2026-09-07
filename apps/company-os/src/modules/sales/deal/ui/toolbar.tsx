@@ -24,7 +24,9 @@ export function DealToolbar() {
       <Button
         variant="outline"
         nativeButton={false}
-        render={<Link to="/line-items" />}
+        render={
+          <Link to="/objects/$objectType" params={{ objectType: "lineItem" }} />
+        }
       >
         Line items
       </Button>

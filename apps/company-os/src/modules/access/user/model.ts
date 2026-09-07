@@ -11,8 +11,7 @@ export const User = defineObject({
   name: "User",
   parent: Root,
   pluralName: "Users",
-  description:
-    "The local projection of a person resolved by the deployment identity provider.",
+  description: "Someone who can sign in and use this application.",
   actions: {
     create: false,
     delete: false,

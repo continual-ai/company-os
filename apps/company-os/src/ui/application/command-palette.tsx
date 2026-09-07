@@ -32,6 +32,7 @@ import { ObjectRecordIdentity } from "@/ui/model/object-record-identity"
 import { objectHref } from "@/ui/model/object-routing"
 import type { ObjectTableRecord } from "@/ui/model/object-table/object-table-config"
 
+import { RecentRecords } from "./recent-records"
 import { useCapabilities } from "./use-capabilities"
 
 const destinations = modelNavigation.flatMap((module) =>
@@ -126,6 +127,7 @@ function PaletteContent({ close }: { readonly close: () => void }) {
         className="text-sm"
       />
       <CommandList className="max-h-[min(28rem,60dvh)]" aria-busy={searching}>
+        {trimmed.length === 0 && <RecentRecords onOpen={go} />}
         {hits.length > 0 && (
           <CommandGroup heading="Records">
             {hits.map((hit) => (

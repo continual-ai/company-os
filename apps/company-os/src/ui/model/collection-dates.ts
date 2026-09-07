@@ -73,14 +73,23 @@ export function dateFieldValue(object: ObjectType, field: string, day: string) {
     : day
 }
 
-/** Moves a range as one mutation, preserving its duration and timestamp time-of-day. */
+/** Moves a range together, preserving duration and time-of-day; null clears its mapped dates. */
 export function scheduleChanges(
   object: ObjectType,
   layout: ScheduleLayout,
   record: ClientRecord,
-  day: string,
+  day: string | null,
   options: { resize?: boolean | undefined; anchor?: string | undefined } = {}
 ) {
+  if (day === null) {
+    const fields = [
+      layout.start,
+      ...(layout.end === undefined ? [] : [layout.end]),
+    ]
+    if (fields.some((field) => !object.properties[field]?.nullable))
+      throw new Error("Required dates cannot be cleared.")
+    return Object.fromEntries(fields.map((field) => [field, null]))
+  }
   const start = calendarDay(record[layout.start])
   const destination =
     !options.resize && start !== undefined && options.anchor !== undefined

@@ -127,7 +127,7 @@ describe("model contract", () => {
           id: "contactPrimaryCompany",
           forward: expect.objectContaining({
             cardinality: "zeroOrOne",
-            description: "The contact's primary company.",
+            description: "The company this person mainly works with.",
             from: { kind: "object", typeId: "contact" },
             key: "primaryCompany",
             label: "Primary company",
@@ -145,7 +145,8 @@ describe("model contract", () => {
           id: "noteSubjects",
           forward: expect.objectContaining({
             cardinality: "many",
-            description: "The business records this note concerns.",
+            description:
+              "Link the people, companies, or work this note is about.",
             from: { kind: "object", typeId: "note" },
             key: "subjects",
             label: "Subjects",
@@ -271,7 +272,7 @@ describe("model contract", () => {
           typeof Model.objects.company
         >["links"]
       >
-    >().toEqualTypeOf<"contacts">()
+    >().toEqualTypeOf<"contacts" | "primaryContacts" | "deals" | "notes">()
     expectTypeOf<
       RecordIdOf<typeof Model, (typeof Model.interfaces)["party"]>
     >().toEqualTypeOf<RecordId<"company"> | RecordId<"contact">>()

@@ -58,8 +58,8 @@ export function objectFormLinks(
   object: ModelObject,
   mode: ObjectFormMode
 ): ReadonlyArray<ModelLinkTraversal> {
-  return modelObjectLinkTraversals(Model, object).filter((traversal) =>
-    mode === "create" ? traversal.initializable : traversal.writable
+  return modelObjectLinkTraversals(Model, object).filter(
+    (traversal) => mode === "create" || traversal.writable
   )
 }
 
@@ -260,7 +260,8 @@ function scalarValue(
 export function decodeObjectForm(
   object: ModelObject,
   values: ObjectFormValues,
-  mode: ObjectFormMode
+  mode: ObjectFormMode,
+  fields?: ReadonlyArray<string>
 ): ObjectFormInput {
   const input: Record<string, FormValue> = {}
   if (mode === "create" && object.parent.kind !== "root") {
@@ -278,6 +279,8 @@ export function decodeObjectForm(
   }
 
   for (const { id, property, schema } of objectFormProperties(object, mode)) {
+    if (mode === "edit" && fields !== undefined && !fields.includes(id))
+      continue
     if (!isSupportedFormSchema(schema)) {
       throw new FormValidationError([
         {
@@ -315,7 +318,7 @@ export function decodeObjectForm(
         traversal.cardinality === "many" ? targets : targets[0]!
     }
     if (Object.keys(links).length > 0) input.links = links
-  } else {
+  } else if (fields === undefined) {
     const links: Record<string, LinkDeltaInput> = {}
     const linkValues = values.links
     for (const { traversal } of objectFormLinks(object, mode)) {
@@ -494,11 +497,24 @@ export function objectFormDefaultValues(
   {
     const links: Record<string, FormValue> = {}
     for (const { traversal } of objectFormLinks(object, mode)) {
+      const initialLinks = initialValues?.links
+      const initial =
+        typeof initialLinks === "object" &&
+        initialLinks !== null &&
+        !Array.isArray(initialLinks)
+          ? Reflect.get(initialLinks, traversal.key)
+          : undefined
       links[traversal.key] =
         mode === "create"
           ? traversal.cardinality === "many"
-            ? []
-            : ""
+            ? Array.isArray(initial)
+              ? initial.filter(
+                  (value): value is string => typeof value === "string"
+                )
+              : []
+            : typeof initial === "string"
+              ? initial
+              : ""
           : { add: [], remove: [] }
     }
     if (Object.keys(links).length > 0) values.links = links

@@ -11,8 +11,7 @@ export const Ticket = defineObject({
   collection: "tickets",
   name: "Ticket",
   pluralName: "Tickets",
-  description:
-    "A customer problem with a responsible owner, response deadline, and durable resolution.",
+  description: "A customer request or problem to investigate and resolve.",
   parent: Root,
   implements: [{ interface: NoteSubject }],
   properties: {

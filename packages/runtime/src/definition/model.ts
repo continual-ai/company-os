@@ -1,4 +1,5 @@
 import { type Action, actionKey, isStandardActionId } from "./action"
+import { definitionId } from "./identity"
 import type { InterfaceType } from "./interface"
 import type { LinkTraversal, LinkType } from "./link"
 import type { ModuleDefinition } from "./module"
@@ -14,6 +15,7 @@ import {
   type CustomQuery,
   type StandardQueries,
 } from "./query"
+import { modelRelationships } from "./relationship"
 import type { RootType } from "./root"
 import type {
   AnySchema,
@@ -313,17 +315,6 @@ type ModelLinkSide<
   ? LinkSideForObject<TObject, TLink>
   : never
 
-type InitialLinkSide<TSide> = TSide extends {
-  readonly link: infer TLink extends LinkType
-  readonly side: infer TTraversal extends LinkTraversal
-}
-  ? TTraversal["cardinality"] extends "many"
-    ? TLink["writeFrom"] extends TTraversal["key"]
-      ? TSide
-      : never
-    : TSide
-  : never
-
 type InitialLinkValue<
   TModel extends ModelCatalog,
   TSide extends LinkTraversal,
@@ -337,8 +328,9 @@ type RequiredInitialLinks<
   TObject extends ObjectType,
 > = {
   readonly [
-    TSide in InitialLinkSide<
-      ModelLinkSide<TModel, TObject>
+    TSide in ModelLinkSide<
+      TModel,
+      TObject
     > as TSide["side"]["cardinality"] extends "one"
       ? TSide["side"]["key"]
       : never
@@ -350,8 +342,9 @@ type OptionalInitialLinks<
   TObject extends ObjectType,
 > = {
   readonly [
-    TSide in InitialLinkSide<
-      ModelLinkSide<TModel, TObject>
+    TSide in ModelLinkSide<
+      TModel,
+      TObject
     > as TSide["side"]["cardinality"] extends "one"
       ? never
       : TSide["side"]["key"]
@@ -427,7 +420,6 @@ export type LinkDirection = "forward" | "reverse"
 export interface ModelLinkTraversal {
   readonly direction: LinkDirection
   /** Whether standard create may establish this traversal atomically. */
-  readonly initializable: boolean
   readonly link: LinkType
   readonly source: ObjectType
   readonly traversal: LinkType[LinkDirection]
@@ -775,6 +767,44 @@ export function defineModel<
     definition.modules.map((module) => [module.id, module])
   )
 
+  const catalog = {
+    objects,
+    links,
+    interfaces,
+    root: definition.root,
+    actions,
+    actor: definition.actor,
+    kind: "model" as const,
+    modules,
+    name: definition.name,
+    queries,
+  }
+  const relationships = modelRelationships(catalog)
+  for (const object of moduleObjects) {
+    const names = new Set([
+      "parent",
+      ...Object.keys(object.properties),
+      ...generatedQueryMethodIds,
+      ...Object.keys(object.actions),
+      ...Object.keys(object.queries),
+    ])
+    for (const relationship of relationships) {
+      const sides =
+        relationship.storage.kind === "link"
+          ? [relationship.forward, relationship.reverse]
+          : [relationship.reverse]
+      for (const side of sides) {
+        if (!modelTypeAccepts(catalog, object.id, side.from.typeId)) continue
+        definitionId(side.key)
+        if (names.has(side.key))
+          throw new Error(
+            `Relationship '${object.id}.${side.key}' conflicts with another relationship, property, or method.`
+          )
+        names.add(side.key)
+      }
+    }
+  }
+
   // SAFETY: duplicate identifiers were rejected before building the registries.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   return {
@@ -841,9 +871,6 @@ export function modelObjectLinkTraversals(
       return [
         {
           direction,
-          initializable:
-            traversal.cardinality !== "many" ||
-            link.writeFrom === traversal.key,
           link,
           source: object,
           target: link[opposite],

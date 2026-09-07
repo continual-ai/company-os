@@ -39,6 +39,18 @@
         "DATABASE_URL"
       ],
       "persistent": true
+    },
+    "db:seed": {
+      "cache": false,
+      "passThroughEnv": [
+        "DATABASE_URL",
+        "DATABASE_SCHEMA",
+        "DATABASE_MAX_CONNECTIONS",
+        "APP_SECRET",
+        "AUTH_*",
+        "NODE_ENV",
+        "CONFIRM_DEVELOPMENT_DATABASE"
+      ]
     }
   }
 }

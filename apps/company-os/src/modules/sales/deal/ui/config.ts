@@ -8,10 +8,9 @@ import { dealViews } from "./views"
 
 export const dealUi = {
   navigation: {
-    path: "/deals",
     order: 3,
     icon: HandshakeIcon,
-    description: "Advance active opportunities toward a clear outcome.",
+    description: "Sales opportunities and next steps.",
   },
   collection: { views: dealViews, toolbarComponent: DealToolbar },
 } satisfies ObjectUi<typeof Model.objects.deal>

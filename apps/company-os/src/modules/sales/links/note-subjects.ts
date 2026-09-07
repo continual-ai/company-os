@@ -14,7 +14,7 @@ export const NoteSubjects = defineLink({
     key: "subjects",
     cardinality: "many",
     label: "Subjects",
-    description: "The business records this note concerns.",
+    description: "Link the people, companies, or work this note is about.",
   },
   reverse: {
     from: NoteSubject,

@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { Model } from "company-os/model"
 import { renderToStaticMarkup } from "react-dom/server"
 import { describe, expect, it } from "vitest"
@@ -11,6 +12,8 @@ import {
   ObjectActions,
   ModelUiProvider,
 } from "./module-ui"
+import { ObjectRecordFeed } from "./object-record-feed"
+import { RecordRelationshipPreviews } from "./record-relationship-previews"
 
 const extension = defineModuleUi(SalesModule, {
   lead: {
@@ -37,6 +40,58 @@ describe("module UI composition", () => {
     expect(render(true, "row")).toContain("Convert buyer")
     expect(render(true, "record")).toContain("Convert buyer")
     expect(render(false, "record")).toBe("")
+  })
+
+  it("uses one object summary in feeds and relationship previews without owning data loading", () => {
+    const custom = defineModuleUi(SalesModule, {
+      lead: {
+        record: {
+          summaryComponent: ({ record, variant, href, actions }) => (
+            <article data-variant={variant}>
+              <a href={href}>{record.name}</a>
+              {actions}
+            </article>
+          ),
+        },
+      },
+    })
+    const record = {
+      id: "lead-example",
+      etag: "1",
+      name: "Custom lead summary",
+    }
+    const html = renderToStaticMarkup(
+      <QueryClientProvider client={new QueryClient()}>
+        <ModelUiProvider value={composeModelUi(custom)}>
+          <ObjectRecordFeed
+            items={[{ object: Model.objects.lead, record }]}
+            label="Leads"
+            loading={false}
+            renderActions={() => <button>Edit lead</button>}
+          />
+          <RecordRelationshipPreviews
+            previews={[
+              {
+                key: "leads",
+                label: "Leads",
+                total: 12,
+                pending: false,
+                error: false,
+                retry: () => undefined,
+                items: [{ object: Model.objects.lead, record }],
+              },
+            ]}
+            onSelect={() => undefined}
+          />
+        </ModelUiProvider>
+      </QueryClientProvider>
+    )
+    expect(html.match(/Custom lead summary/g)).toHaveLength(2)
+    expect(html).toContain('data-variant="feed"')
+    expect(html).toContain('data-variant="preview"')
+    expect(html).toContain('href="/objects/lead/lead-example"')
+    expect(html).toContain("Edit lead")
+    expect(html).toContain(">12</span>")
   })
 
   it("replaces complete pages with route context and no default-page data loading", () => {
@@ -95,6 +150,31 @@ describe("module UI composition", () => {
           record: {
             additionalTabs: [
               { id: "contacts", label: "Contacts", component: () => null },
+            ],
+          },
+        },
+      })
+    ).toThrow("Duplicate record tab")
+  })
+  it("validates overview fields and relationships without a second model", () => {
+    expect(() =>
+      defineModuleUi(SalesModule, {
+        company: {
+          record: { properties: ["domain"], relationships: ["contacts"] },
+        },
+      })
+    ).not.toThrow()
+    expect(() =>
+      defineModuleUi(SalesModule, {
+        company: { record: { relationships: ["missing"] } },
+      })
+    ).toThrow("Unknown overview relationship")
+    expect(() =>
+      defineModuleUi(SalesModule, {
+        company: {
+          record: {
+            additionalTabs: [
+              { id: "related", label: "Related", component: () => null },
             ],
           },
         },

@@ -129,6 +129,17 @@ export function objectListInputSchema(object: ObjectType) {
   }).annotate({ identifier: `${pascalCase(object.id)}ListInput` })
 }
 
+/** Link queries reuse the target object's list contract. */
+export function linkListInputSchema(
+  model: ModelCatalog,
+  traversal: ModelLinkTraversal
+) {
+  const target = modelObjects(model).find(
+    (object) => object.id === traversal.target.from.typeId
+  )
+  return target ? objectListInputSchema(target) : undefined
+}
+
 export function objectRecordOutputSchema(object: ObjectType) {
   const cached = recordSchemas.get(object)
   if (cached !== undefined) return cached

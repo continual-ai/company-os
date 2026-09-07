@@ -24,11 +24,13 @@ import { useDeferredValue, useMemo, useState, type ReactNode } from "react"
 import {
   DeveloperBrowser,
   DeveloperBrowserEmpty,
-  DeveloperBrowserNavGroup,
-  DeveloperBrowserNavItem,
   DeveloperBrowserOutline,
   DeveloperBrowserSearch,
 } from "@/ui/developer/developer-browser"
+import {
+  DeveloperNavigationGroup,
+  DeveloperNavigationItem,
+} from "@/ui/developer/developer-layout"
 
 type ModelDefinition = typeof Model
 type ModelObject = ObjectType
@@ -166,7 +168,7 @@ function PropertyTable({
   }
 
   return (
-    <div className="divide-y border">
+    <div className="divide-y overflow-hidden rounded-lg border">
       {properties.map(([propertyId, property]) => {
         const role = displayRole(definition, propertyId)
         const details = propertyDetails(property, objects)
@@ -286,7 +288,7 @@ function RelationshipList({
             key={`${relationship.id}:${current.key}`}
             type="button"
             disabled={target === undefined}
-            className="border p-4 text-left transition-colors outline-none hover:bg-muted/30 focus-visible:ring-1 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-60"
+            className="rounded-lg border p-4 text-left transition-colors outline-none hover:bg-muted/30 focus-visible:ring-1 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-60"
             onClick={() => {
               if (target !== undefined) onSelect(itemKey(target))
             }}
@@ -325,7 +327,7 @@ function ActionList({ actions }: { actions: ReadonlyArray<ModelAction> }) {
   }
 
   return (
-    <div className="divide-y border">
+    <div className="divide-y overflow-hidden rounded-lg border">
       {actions.map((action) => (
         <div
           key={action.id}
@@ -395,7 +397,7 @@ function ObjectDetail({
             {object.id}
           </code>
         </div>
-        <dl className="mt-5 grid gap-px border bg-border sm:grid-cols-4">
+        <dl className="mt-5 grid gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-4">
           <DefinitionFact label="Collection" value={object.collection} code />
           <DefinitionFact
             label="Parent"
@@ -478,7 +480,7 @@ function ObjectDetail({
                   <button
                     key={implementation.interfaceId}
                     type="button"
-                    className="border p-4 text-left transition-colors outline-none hover:bg-muted/30 focus-visible:ring-1 focus-visible:ring-ring/50"
+                    className="rounded-lg border p-4 text-left transition-colors outline-none hover:bg-muted/30 focus-visible:ring-1 focus-visible:ring-ring/50"
                     onClick={() => {
                       if (modelInterface !== undefined) {
                         onSelect(itemKey(modelInterface))
@@ -559,7 +561,7 @@ function InterfaceDetail({
             {modelInterface.id}
           </code>
         </div>
-        <dl className="mt-5 grid gap-px border bg-border sm:grid-cols-3">
+        <dl className="mt-5 grid gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-3">
           <DefinitionFact label="Kind" value="interface" />
           <DefinitionFact
             label="Shared properties"
@@ -619,7 +621,7 @@ function InterfaceDetail({
                 <button
                   key={object.id}
                   type="button"
-                  className="border p-4 text-left transition-colors outline-none hover:bg-muted/30 focus-visible:ring-1 focus-visible:ring-ring/50"
+                  className="rounded-lg border p-4 text-left transition-colors outline-none hover:bg-muted/30 focus-visible:ring-1 focus-visible:ring-ring/50"
                   onClick={() => onSelect(itemKey(object))}
                 >
                   <div className="flex items-center justify-between gap-3">
@@ -813,7 +815,7 @@ export function ModelExplorer({
               </div>
             ) : (
               visibleGroups.map(({ items, module }) => (
-                <DeveloperBrowserNavGroup
+                <DeveloperNavigationGroup
                   key={module.id}
                   title={module.name}
                   count={items.length}
@@ -832,7 +834,7 @@ export function ModelExplorer({
                           ).length
                         : 0
                     return (
-                      <DeveloperBrowserNavItem
+                      <DeveloperNavigationItem
                         key={key}
                         active={
                           resolvedItem !== undefined &&
@@ -853,10 +855,10 @@ export function ModelExplorer({
                         onClick={() => selectItem(key)}
                       >
                         {item.name}
-                      </DeveloperBrowserNavItem>
+                      </DeveloperNavigationItem>
                     )
                   })}
-                </DeveloperBrowserNavGroup>
+                </DeveloperNavigationGroup>
               ))
             )}
           </nav>

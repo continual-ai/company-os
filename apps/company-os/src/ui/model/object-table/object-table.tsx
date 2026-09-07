@@ -17,7 +17,6 @@ import {
   Table,
   TableBody,
   TableCell,
-  TableFooter,
   TableHead,
   TableHeader,
   TableRow,
@@ -51,6 +50,7 @@ import {
 } from "react"
 import type { ReactNode } from "react"
 
+import { CollectionPagination } from "@/ui/model/collection-pagination"
 import { ObjectIcon } from "@/ui/model/object-record-identity"
 
 import { ObjectTableCell } from "./object-table-cell"
@@ -81,7 +81,6 @@ import {
   useObjectTableRows,
   tableHeaderHeight,
   tableRowHeight,
-  tableFooterHeight,
 } from "./object-table-virtualization"
 
 export interface ObjectTableProps {
@@ -194,7 +193,7 @@ function ObjectTableViewportState({
           <EmptyContent>
             <Button type="button" onClick={() => void onCreate()}>
               <PlusIcon />
-              New {object.name}
+              New {object.name.toLowerCase()}
             </Button>
           </EmptyContent>
         )}
@@ -479,14 +478,7 @@ export function ObjectTable({
   }, [lastVisibleIndex, visibleRows.length, pagination])
   const renderedTableWidth = table.getTotalSize() + addColumnWidth
   const renderedTableSurfaceHeight =
-    tableHeaderHeight +
-    tableRowHeight * visibleRows.length +
-    (hasNoVisibleRows ? 0 : tableFooterHeight)
-  const recordCountLabel = pagination
-    ? `${visibleRows.length} of ${pagination.totalSize}`
-    : visibleRows.length === records.length
-      ? `${records.length} ${records.length === 1 ? object.name.toLowerCase() : object.pluralName.toLowerCase()}`
-      : `${visibleRows.length} of ${records.length} ${object.pluralName.toLowerCase()}`
+    tableHeaderHeight + tableRowHeight * visibleRows.length
 
   return (
     <section
@@ -514,10 +506,7 @@ export function ObjectTable({
           className="table-fixed border-separate border-spacing-0"
           role="grid"
           aria-colcount={visibleColumns.length + 1}
-          aria-rowcount={
-            (pagination?.totalSize ?? visibleRows.length) +
-            (hasNoVisibleRows ? 1 : 2)
-          }
+          aria-rowcount={(pagination?.totalSize ?? visibleRows.length) + 1}
           style={{ minWidth: "100%", width: renderedTableWidth }}
           onContainerScroll={(event) =>
             setIsHorizontallyScrolled(event.currentTarget.scrollLeft !== 0)
@@ -830,51 +819,6 @@ export function ObjectTable({
               </TableRow>
             )}
           </TableBody>
-          {hasNoVisibleRows ? null : (
-            <TableFooter className="sticky bottom-0 z-20 bg-background font-normal">
-              <TableRow className="h-8 hover:bg-transparent">
-                {visibleColumns.map((column) => (
-                  <TableCell
-                    key={column.id}
-                    className={cn(
-                      "h-8 border-y border-r bg-background p-0 text-muted-foreground",
-                      column.getIsPinned() && "z-10"
-                    )}
-                    style={pinnedColumnStyle(column)}
-                  >
-                    {column.id === object.display.title ? (
-                      <div className="flex h-full items-center justify-end px-2 tabular-nums">
-                        {recordCountLabel}
-                      </div>
-                    ) : null}
-                  </TableCell>
-                ))}
-                <TableCell
-                  className="h-8 border-y border-r bg-background p-0"
-                  style={{ width: addColumnWidth }}
-                >
-                  {pagination === undefined ? null : (
-                    <div className="flex h-full items-center justify-end px-1">
-                      {pagination.hasNextPage ? (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="xs"
-                          disabled={pagination.loading}
-                          onClick={pagination.onNextPage}
-                        >
-                          {pagination.loading ? (
-                            <LoaderCircleIcon className="animate-spin" />
-                          ) : null}
-                          {pagination.error ? "Retry loading" : "Load more"}
-                        </Button>
-                      ) : null}
-                    </div>
-                  )}
-                </TableCell>
-              </TableRow>
-            </TableFooter>
-          )}
         </Table>
 
         {hasNoVisibleRows ? (
@@ -901,6 +845,9 @@ export function ObjectTable({
           />
         ) : null}
       </div>
+      {pagination && (
+        <CollectionPagination loaded={records.length} {...pagination} />
+      )}
     </section>
   )
 }

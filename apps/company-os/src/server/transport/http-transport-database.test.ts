@@ -454,10 +454,20 @@ describe("application HTTP server", () => {
         totalSize: 1,
       })
 
+      yield* database
+        .update(objects)
+        .set({ createdAt: "2001-01-01T00:00:00.000123Z" })
+        .where(eq(objects.id, contact.id))
+      yield* database
+        .update(objects)
+        .set({ createdAt: "2001-01-01T00:00:00.000456Z" })
+        .where(eq(objects.id, secondContact.id))
       const firstContactPage = yield* useTestFetch(
         model.company.contacts.list({ id: created.id, pageSize: 1 })
       )
-      expect(firstContactPage.items).toHaveLength(1)
+      expect(firstContactPage.items.map(({ id }) => id)).toEqual([
+        secondContact.id,
+      ])
       expect(firstContactPage.nextPageToken).not.toBeNull()
       expect(firstContactPage.totalSize).toBe(2)
       const nextContactPageToken =
@@ -479,7 +489,7 @@ describe("application HTTP server", () => {
         })
         .pipe(Effect.flip)
       expect(mismatchedLinkCursor).toMatchObject({
-        message: "The page token does not match this list request.",
+        _tag: "InvalidLinkListRequest",
       })
       const secondContactPage = yield* useTestFetch(
         model.company.contacts.list({
@@ -488,9 +498,31 @@ describe("application HTTP server", () => {
           pageToken: nextContactPageToken,
         })
       )
-      expect(secondContactPage.items).toHaveLength(1)
+      expect(secondContactPage.items.map(({ id }) => id)).toEqual([contact.id])
       expect(secondContactPage.nextPageToken).toBeNull()
       expect(secondContactPage.totalSize).toBe(2)
+      yield* database
+        .update(objects)
+        .set({ createdAt: "2001-01-01T00:00:00.000123Z" })
+        .where(eq(objects.id, secondContact.id))
+      const tiedFirst = yield* useTestFetch(
+        model.company.contacts.list({ id: created.id, pageSize: 1 })
+      )
+      const tiedIds = [contact.id, secondContact.id].sort((left, right) =>
+        left < right ? 1 : left > right ? -1 : 0
+      )
+      expect(tiedFirst.items.map(({ id }) => id)).toEqual(tiedIds.slice(0, 1))
+      const tiedToken =
+        tiedFirst.nextPageToken ??
+        (yield* Effect.die("Expected tied timestamp page"))
+      const tiedSecond = yield* useTestFetch(
+        model.company.contacts.list({
+          id: created.id,
+          pageSize: 1,
+          pageToken: tiedToken,
+        })
+      )
+      expect(tiedSecond.items.map(({ id }) => id)).toEqual(tiedIds.slice(1))
       expect(
         yield* makeLinkRepository(Storage, database, testPageTokens).list(
           {

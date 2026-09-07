@@ -101,7 +101,14 @@ export type ObjectRepositoryUpdate<TObject extends ObjectType> =
 
 /** Canonical query values accepted by a repository list. */
 export type RepositoryListRequest<TObject extends ObjectType> =
-  CanonicalListRequest<TObject>
+  CanonicalListRequest<TObject> & {
+    /** Internal edge constraint, established by the governed Link service. */
+    readonly relatedTo?: {
+      readonly linkId: string
+      readonly direction: "forward" | "reverse"
+      readonly sourceId: string
+    }
+  }
 
 /** Canonical query filter accepted by a repository list. */
 export type RepositoryFilter<TObject extends ObjectType> =

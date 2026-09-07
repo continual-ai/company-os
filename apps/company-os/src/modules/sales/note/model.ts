@@ -8,7 +8,7 @@ export const Note = defineObject({
   name: "Note",
   parent: Root,
   pluralName: "Notes",
-  description: "A durable note attached to one or more business records.",
+  description: "Notes on conversations, decisions, or next steps.",
   properties: {
     content: schema.string({
       label: "Content",

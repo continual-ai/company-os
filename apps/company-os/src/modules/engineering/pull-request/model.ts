@@ -10,7 +10,7 @@ export const PullRequest = defineObject({
   name: "Pull request",
   pluralName: "Pull requests",
   description:
-    "A proposed code change and its observed review and check state. The source provider remains authoritative for merge execution.",
+    "Track a code change, its reviews, and checks. Merge it in your code hosting service.",
   parent: Root,
   implements: [{ interface: NoteSubject }],
   properties: {

@@ -1,5 +1,6 @@
 import {
-  modelObjectLinkTraversals,
+  modelRelationships,
+  modelTypeAccepts,
   type ModuleDefinition,
   type ObjectRecord,
 } from "@company/runtime"
@@ -20,12 +21,21 @@ import type {
   ObjectCollectionView,
   ObjectCollectionViewState,
 } from "./object-collection-view"
-import { referenceCollections } from "./object-reference-metadata"
 
 type ActionId<O extends ModelObject> = keyof O["actions"] & string
 export interface RecordUiProps<O extends ModelObject> {
   readonly record: ObjectRecord<O>
+  readonly author?: string | undefined
   readonly can: (action: ActionId<O>) => boolean
+}
+
+/** One object's reusable presentation in collection feeds and related-record previews. */
+export interface RecordSummaryProps<O extends ModelObject> {
+  readonly record: ObjectRecord<O>
+  readonly author?: string | undefined
+  readonly href: string
+  readonly variant: "feed" | "preview"
+  readonly actions?: ReactNode
 }
 
 /** The effective filters/sort are present even when selected through a saved view. */
@@ -95,8 +105,15 @@ export interface ObjectUi<O extends ModelObject> {
     | undefined
   readonly record?:
     | {
+        /** Overrides the record-page heading and breadcrumb; other identities use model display. */
+        readonly title?: (props: RecordUiProps<O>) => string
+        readonly summaryComponent?: ComponentType<RecordSummaryProps<O>>
+        /** Ordered detail fields; remaining fields follow in model order. */
+        readonly properties?: ReadonlyArray<keyof O["properties"] & string>
+        /** Prioritized relationship tabs; remaining relationships stay searchable. */
+        readonly relationships?: ReadonlyArray<string>
         readonly pageComponent?: ComponentType<RecordPageUiProps<O>>
-        /** Replaces the properties overview; other tabs remain available. */
+        /** Replaces the main overview; details and other tabs remain available. */
         readonly overviewComponent?: ComponentType<RecordUiProps<O>>
         readonly additionalTabs?: ReadonlyArray<{
           readonly id: string
@@ -116,6 +133,7 @@ type ModuleUi<M extends ModuleDefinition> = {
 }
 
 interface DynamicRecordProps {
+  readonly author?: string | undefined
   readonly record: ClientRecord
   readonly can: (action: string) => boolean
 }
@@ -136,6 +154,14 @@ export interface ResolvedObjectUi {
     >
   >
   readonly record?: {
+    readonly title?: (props: DynamicRecordProps) => string
+    readonly summaryComponent?: ComponentType<
+      Omit<RecordSummaryProps<ModelObject>, "record"> & {
+        readonly record: ClientRecord
+      }
+    >
+    readonly properties?: ReadonlyArray<string>
+    readonly relationships?: ReadonlyArray<string>
     readonly pageComponent?: ComponentType<RecordPageUiProps>
     readonly overviewComponent?: ComponentType<DynamicRecordProps>
     readonly additionalTabs?: ReadonlyArray<{
@@ -188,11 +214,23 @@ export function defineModuleUi<M extends ModuleDefinition>(
       throw new Error(`Object '${id}' is not installed in the model.`)
     const tabs = new Set<string>([
       "overview",
-      ...referenceCollections(installedObject).map(({ key }) => key),
-      ...modelObjectLinkTraversals(Model, installedObject).map(
-        ({ traversal }) => traversal.key
+      "related",
+      ...modelRelationships(Model).flatMap((relationship) =>
+        [relationship.forward, relationship.reverse]
+          .filter((side) =>
+            modelTypeAccepts(Model, installedObject.id, side.from.typeId)
+          )
+          .map((side) => side.key)
       ),
     ])
+    for (const field of config.record?.properties ?? []) {
+      if (!Object.hasOwn(object.properties, field))
+        throw new Error(`Unknown overview property '${id}.${field}'.`)
+    }
+    for (const key of config.record?.relationships ?? []) {
+      if (key === "overview" || key === "related" || !tabs.has(key))
+        throw new Error(`Unknown overview relationship '${id}.${key}'.`)
+    }
     for (const tab of config.record?.additionalTabs ?? []) {
       if (!/^[a-z][a-zA-Z0-9-]*$/.test(tab.id))
         throw new Error(`Invalid record tab ID '${id}.${tab.id}'.`)

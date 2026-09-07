@@ -1,4 +1,3 @@
-import { modelObjectLinkTraversals } from "@company/runtime"
 import { Button } from "@company/ui/components/button"
 import {
   Select,
@@ -8,25 +7,34 @@ import {
   SelectValue,
 } from "@company/ui/components/select"
 import { functionalUpdate, type OnChangeFn } from "@tanstack/react-table"
-import { Model } from "company-os/model"
 import {
-  LinkIcon,
   PencilIcon,
   PlusIcon,
   RotateCcwIcon,
-  ChevronRightIcon,
+  UnlinkIcon,
+  LayersIcon,
 } from "lucide-react"
-import { lazy, Suspense, useMemo, useState, type ComponentType } from "react"
+import {
+  lazy,
+  Suspense,
+  useMemo,
+  useState,
+  type ComponentType,
+  type ReactNode,
+} from "react"
 
 import { calendarDay, collectionDateWindow } from "./collection-dates"
 import { CollectionLayoutControl } from "./collection-layout-control"
+import { CollectionPagination } from "./collection-pagination"
 import { CollectionSearch } from "./collection-search"
+import { ConfirmActionButton } from "./confirm-action-button"
 import {
   ObjectActions,
   type ResolvedObjectUi,
   type CollectionToolbarProps,
 } from "./module-ui"
 import {
+  clientFor,
   parentName,
   modelObjectProperty,
   tableRecord,
@@ -38,18 +46,21 @@ import {
   emptyObjectCollectionViewState,
   objectCollectionStateSearch,
   resolveObjectCollectionView,
-  type ObjectCollectionFilter,
   type ObjectCollectionSearch,
   type ObjectCollectionView,
   type ObjectCollectionViewState,
 } from "./object-collection-view"
+import type { ObjectCreateOptions } from "./object-create-context"
 import { useObjectCreate } from "./object-create-context"
 import type { ObjectFormInput } from "./object-form"
 import { ObjectRecordDialog } from "./object-record-dialog"
-import { ObjectRelationshipsDialog } from "./object-relationships-dialog"
+import { ObjectRecordFeed } from "./object-record-feed"
 import { ObjectTable } from "./object-table/object-table"
 import { readFilterValue } from "./object-table/object-table-config"
-import { useObjectCollection } from "./use-object-collection"
+import {
+  useObjectCollection,
+  type ObjectCollectionList,
+} from "./use-object-collection"
 
 const CollectionVisual = lazy(() =>
   import("./collection-visual").then(({ CollectionVisual: component }) => ({
@@ -57,11 +68,19 @@ const CollectionVisual = lazy(() =>
   }))
 )
 
-const noFixedFilters: ReadonlyArray<ObjectCollectionFilter> = []
+interface ObjectCollectionSource {
+  readonly list: ObjectCollectionList
+  readonly create?: ObjectCreateOptions | undefined
+  readonly renderAdd?:
+    | ((records: ReadonlyArray<ClientRecord>) => ReactNode)
+    | undefined
+  readonly unlink?: ((record: ClientRecord) => Promise<void>) | undefined
+  readonly deleteRecords?:
+    | ((ids: ReadonlyArray<string>) => Promise<void>)
+    | undefined
+}
 interface ObjectCollectionProps {
-  readonly fixedFilters?: ReadonlyArray<ObjectCollectionFilter> | undefined
-  readonly createInitialValues?: ObjectFormInput | undefined
-  readonly createReferenceLabels?: ReadonlyMap<string, string> | undefined
+  readonly source?: ObjectCollectionSource | undefined
   readonly object: ModelObject
   readonly onSearchChange?:
     | ((search: ObjectCollectionSearch) => void)
@@ -75,9 +94,7 @@ interface ObjectCollectionProps {
 
 export function ObjectCollection({
   object,
-  fixedFilters = noFixedFilters,
-  createInitialValues,
-  createReferenceLabels,
+  source: suppliedSource,
   onSearchChange,
   actions,
   toolbarComponent: Toolbar,
@@ -101,7 +118,7 @@ export function ObjectCollection({
     onSearchChange === undefined ? localSearch : (search ?? {})
   const resolved = resolveObjectCollectionView(availableViews, activeSearch)
   const viewState = resolved.state
-  const filters = [...fixedFilters, ...viewState.filters]
+  const filters = viewState.filters
   const layout = viewState.layout ?? { type: "table" as const }
   const anchor =
     calendarDay(viewState.date) ?? new Date().toISOString().slice(0, 10)
@@ -110,13 +127,18 @@ export function ObjectCollection({
     object,
     filters,
     viewState.sorting,
-    undefined,
+    suppliedSource?.list,
     { window }
   )
   const openObjectCreate = useObjectCreate()
   const [editing, setEditing] = useState<ClientRecord>()
-  const [relating, setRelating] = useState<ClientRecord>()
-  const hasRelationships = modelObjectLinkTraversals(Model, object).length > 0
+  const [mutationError, setMutationError] = useState<string>()
+  const source: ObjectCollectionSource = suppliedSource ?? {
+    list: clientFor(object).list,
+    create: {},
+    deleteRecords: collection.deleteRecords,
+  }
+
   const propertyIds = [
     ...(object.parent.kind === "root" ? [] : ["parent"]),
     ...Object.keys(object.properties),
@@ -145,69 +167,91 @@ export function ObjectCollection({
     if (onSearchChange === undefined) setLocalSearch({ view: viewId })
     else onSearchChange({ view: viewId })
   }
-  const create = collection.canCreate
-    ? (values: ObjectFormInput = {}) =>
-        openObjectCreate(object, {
-          initialValues: { ...createInitialValues, ...values },
-          referenceLabels: createReferenceLabels,
-        })
-    : undefined
-  const renderActions = (source: ClientRecord) => (
+  const create =
+    collection.canCreate && source.create
+      ? (values: ObjectFormInput = {}) =>
+          openObjectCreate(object, {
+            ...source.create,
+            initialValues: { ...source.create?.initialValues, ...values },
+          })
+      : undefined
+  const renderActions = (record: ClientRecord) => (
     <>
-      {collection.canUpdate(source.id) ? (
+      {collection.canUpdate(record.id) ? (
         <Button
           type="button"
           variant="ghost"
           size="icon-xs"
           aria-label={`Edit ${object.name.toLowerCase()}`}
-          onClick={() => setEditing(source)}
+          onClick={() => setEditing(record)}
         >
           <PencilIcon />
         </Button>
       ) : null}
-      {hasRelationships && collection.can("get", source.id) ? (
+      {source.unlink && (
         <Button
-          type="button"
           variant="ghost"
           size="icon-xs"
-          aria-label={`Manage ${object.name.toLowerCase()} relationships`}
-          onClick={() => setRelating(source)}
+          aria-label={`Unlink ${object.name.toLowerCase()}`}
+          onClick={() => {
+            setMutationError(undefined)
+            void source.unlink!(record).catch((cause: unknown) =>
+              setMutationError(
+                cause instanceof Error
+                  ? cause.message
+                  : "Could not unlink the record."
+              )
+            )
+          }}
         >
-          <LinkIcon />
+          <UnlinkIcon />
         </Button>
+      )}
+      {source.deleteRecords !== undefined && collection.canDelete(record.id) ? (
+        <ConfirmActionButton
+          actionLabel="Delete"
+          title={`Delete ${object.name.toLowerCase()}?`}
+          description="This permanently deletes the record and its links."
+          onConfirm={() => source.deleteRecords!([record.id])}
+        />
       ) : null}
       <ObjectActions
         actions={actions}
-        record={source}
-        can={(action) => collection.can(action, source.id)}
+        record={record}
+        can={(action) => collection.can(action, record.id)}
         placement="row"
       />
     </>
   )
-  const viewSelector = (
-    <Select
-      value={resolved.view.id}
-      onValueChange={(viewId) => {
-        if (viewId === null) return
-        selectView(viewId)
-      }}
-    >
-      <SelectTrigger
-        aria-label={`${object.pluralName} view`}
-        size="sm"
-        className="h-7 w-auto min-w-32 border-0 bg-transparent px-1 shadow-none"
+  const viewSelector =
+    availableViews.length > 1 ? (
+      <Select
+        value={resolved.view.id}
+        onValueChange={(viewId) => {
+          if (viewId === null) return
+          selectView(viewId)
+        }}
       >
-        <SelectValue>{resolved.view.label}</SelectValue>
-      </SelectTrigger>
-      <SelectContent align="start">
-        {availableViews.map((view) => (
-          <SelectItem key={view.id} value={view.id}>
-            {view.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  )
+        <SelectTrigger
+          aria-label={`${object.pluralName} view`}
+          className="h-8 w-auto max-w-[min(20rem,60vw)] min-w-32 border-border/60 bg-muted/60 px-3 font-medium hover:bg-muted"
+        >
+          <LayersIcon className="size-3.5 shrink-0 text-muted-foreground" />
+          <SelectValue>{resolved.view.label}</SelectValue>
+        </SelectTrigger>
+        <SelectContent
+          align="start"
+          alignItemWithTrigger={false}
+          className="min-w-48 p-1"
+        >
+          {availableViews.map((view) => (
+            <SelectItem key={view.id} value={view.id}>
+              {view.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    ) : null
   const layoutControls = (
     <>
       {activeSearch.state !== undefined && (
@@ -246,18 +290,21 @@ export function ObjectCollection({
     </>
   )
 
-  return (
+  const content = (
     <>
-      {collection.error === undefined ? null : (
+      {collection.error === undefined && mutationError === undefined ? null : (
         <div
           role="alert"
           className="flex items-center justify-between border-b border-destructive/30 bg-destructive/5 px-5 py-2 text-xs text-destructive"
         >
-          <span>{collection.error}</span>
+          <span>{collection.error ?? mutationError}</span>
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => void collection.load()}
+            onClick={() => {
+              setMutationError(undefined)
+              void collection.load()
+            }}
           >
             Retry
           </Button>
@@ -300,11 +347,14 @@ export function ObjectCollection({
           canUpdateRecord={collection.canUpdate}
           onCreateRecord={create === undefined ? undefined : () => create()}
           onDeleteRecords={
+            source.deleteRecords !== undefined &&
             collection.records.some(({ id }) => collection.canDelete(id))
-              ? collection.deleteRecords
+              ? source.deleteRecords
               : undefined
           }
           canDeleteRecord={collection.canDelete}
+          enableRowSelection={source.deleteRecords !== undefined}
+          toolbarActions={source.renderAdd?.(collection.records)}
           pagination={{
             hasNextPage: collection.hasNextPage,
             error: collection.error,
@@ -312,25 +362,35 @@ export function ObjectCollection({
             onNextPage: collection.nextPage,
             totalSize: collection.totalSize,
           }}
-          toolbarActions={layoutControls}
-          tableTitle={viewSelector}
+
+          tableTitle={
+            <div className="flex flex-wrap items-center gap-2">
+              {viewSelector}
+              {layoutControls}
+            </div>
+          }
           renderRecordActions={(record) => {
-            const source = collection.records.find(({ id }) => id === record.id)
-            return source === undefined ? null : renderActions(source)
+            const original = collection.records.find(
+              ({ id }) => id === record.id
+            )
+            return original === undefined ? null : renderActions(original)
           }}
         />
       ) : (
         <>
           <header className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-2">
-            {viewSelector}
             <div className="flex flex-wrap items-center gap-2">
+              {viewSelector}
               {layoutControls}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
               {create && (
-                <Button size="sm" onClick={() => create()}>
+                <Button onClick={() => create()}>
                   <PlusIcon />
                   New {object.name.toLowerCase()}
                 </Button>
               )}
+              {source.renderAdd?.(collection.records)}
             </div>
           </header>
           <div className="border-b px-4 py-2">
@@ -388,54 +448,53 @@ export function ObjectCollection({
               ))}
             </div>
           )}
-          <Suspense
-            fallback={
-              <div className="grid min-h-64 place-items-center text-sm text-muted-foreground">
-                Loading view…
-              </div>
-            }
-          >
-            <CollectionVisual
-              presentation={{
-                object,
-                recordHref,
-                references: collection.references,
-                columns: Object.keys(columnVisibility).filter(
-                  (id) => columnVisibility[id]
-                ),
-                canMove: (record) => collection.canUpdate(record.id),
-                canEdit: (record) => collection.canUpdate(record.id),
-                onEdit: setEditing,
-                renderActions,
-              }}
-              records={collection.records}
-              layout={layout}
-              anchor={anchor}
-              onDateChange={(date) => updateState({ ...viewState, date })}
-              onUpdate={collection.update}
-              onCreate={create}
+          {layout.type === "feed" ? (
+            <ObjectRecordFeed
+              items={collection.records.map((record) => ({ object, record }))}
+              label={object.pluralName}
               loading={collection.loading}
+              recordHref={recordHref}
+              renderActions={renderActions}
             />
-          </Suspense>
-          <footer className="flex flex-wrap items-center justify-between gap-3 border-t px-4 py-3 text-xs text-muted-foreground">
-            <span>
-              {collection.records.length} shown · {collection.totalSize}{" "}
-              matching records
-              {layout.type === "kanban" ? "" : " in this window or unscheduled"}
-              {collection.hasNextPage ? " · Counts reflect loaded records" : ""}
-            </span>
-            {collection.hasNextPage && (
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={collection.loading}
-                onClick={collection.nextPage}
-              >
-                {collection.loading ? "Loading…" : "Load more"}
-                <ChevronRightIcon />
-              </Button>
-            )}
-          </footer>
+          ) : (
+            <Suspense
+              fallback={
+                <div className="grid min-h-64 place-items-center text-sm text-muted-foreground">
+                  Loading view…
+                </div>
+              }
+            >
+              <CollectionVisual
+                presentation={{
+                  object,
+                  recordHref,
+                  references: collection.references,
+                  columns: Object.keys(columnVisibility).filter(
+                    (id) => columnVisibility[id]
+                  ),
+                  canMove: (record) => collection.canUpdate(record.id),
+                  canEdit: (record) => collection.canUpdate(record.id),
+                  onEdit: setEditing,
+                  renderActions,
+                }}
+                records={collection.records}
+                layout={layout}
+                anchor={anchor}
+                onDateChange={(date) => updateState({ ...viewState, date })}
+                onUpdate={collection.update}
+                onCreate={create}
+                loading={collection.loading}
+              />
+            </Suspense>
+          )}
+          <CollectionPagination
+            loaded={collection.records.length}
+            totalSize={collection.totalSize}
+            hasNextPage={collection.hasNextPage}
+            loading={collection.loading}
+            error={collection.error}
+            onNextPage={collection.nextPage}
+          />
         </>
       )}
 
@@ -451,16 +510,7 @@ export function ObjectCollection({
           referenceLabels={collection.referenceLabels}
         />
       )}
-      {relating === undefined ? null : (
-        <ObjectRelationshipsDialog
-          key={`${relating.id}-relationships`}
-          canUpdate={collection.canUpdate(relating.id)}
-          object={object}
-          open
-          record={relating}
-          onOpenChange={(open) => !open && setRelating(undefined)}
-        />
-      )}
     </>
   )
+  return content
 }

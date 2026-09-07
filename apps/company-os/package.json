@@ -17,6 +17,7 @@
     "db:generate": "tsx tools/generate-db-schema.ts && drizzle-kit generate --config drizzle.config.ts",
     "db:migrate": "tsx tools/db-migrate.ts",
     "db:reset": "tsx tools/db-reset.ts",
+    "db:seed": "tsx tools/db-seed.ts",
     "deploy": "tsx tools/db-migrate.ts --if-configured && continual deploy",
     "dev": "vite dev --port 3002 --host 0.0.0.0",
     "lint": "oxlint .",

@@ -1,63 +1,105 @@
-import { Separator } from "@company/ui/components/separator"
+import { Button } from "@company/ui/components/button"
+import { PencilIcon } from "lucide-react"
 
 import {
   parentName,
+  modelObjectProperty,
   tableRecord,
   type ClientRecord,
   type ModelObject,
   type ObjectRecordPresentation,
 } from "./object-client"
+import { objectFormProperties, isSupportedFormSchema } from "./object-form"
 import { objectPropertyValue } from "./object-property-value"
-import { RecordIdentifier } from "./record-identifier"
+import { objectTablePropertySchema } from "./object-table/object-table-cell-types"
 
 export function ObjectPropertiesCard({
   object,
   record,
   references,
+  fields,
+  onEdit,
 }: {
+  readonly fields?: ReadonlyArray<string> | undefined
+  readonly onEdit?: ((field: string) => void) | undefined
   readonly object: ModelObject
   readonly record: ClientRecord
   readonly references: ReadonlyMap<string, ObjectRecordPresentation>
 }) {
   const projected = tableRecord(object, record)
-  const properties = [
+  const editable = new Set(
+    objectFormProperties(object, "edit")
+      .filter(({ schema }) => isSupportedFormSchema(schema))
+      .map(({ id }) => id)
+  )
+  const available = [
     ...(object.parent.kind === "root"
       ? []
       : [["parent", { label: parentName(object) }] as const]),
     ...Object.entries(object.properties),
   ]
+  const properties =
+    fields === undefined
+      ? available
+      : fields.flatMap((field) => available.filter(([id]) => id === field))
 
   return (
-    <section className="overflow-hidden border bg-background">
-      <div className="px-4 py-3">
-        <h2 className="text-sm font-medium">Properties</h2>
-      </div>
-      <Separator />
+    <section className="min-w-0">
       <dl>
-        {properties.map(([propertyId, property]) => (
-          <div
-            key={propertyId}
-            className="grid gap-1 border-b px-4 py-3 sm:grid-cols-[10rem_minmax(0,1fr)] sm:gap-4"
-          >
-            <dt className="text-xs text-muted-foreground">
-              {property.label ?? propertyId}
-            </dt>
-            <dd className="min-w-0 text-sm wrap-break-word whitespace-pre-wrap">
-              {objectPropertyValue(
-                object,
-                propertyId,
-                projected[propertyId],
-                references
-              )}
-            </dd>
-          </div>
-        ))}
-        <div className="grid gap-1 px-4 py-3 sm:grid-cols-[10rem_minmax(0,1fr)] sm:gap-4">
-          <dt className="text-xs text-muted-foreground">Record ID</dt>
-          <dd className="min-w-0 text-sm">
-            <RecordIdentifier value={record.id} />
-          </dd>
-        </div>
+        {properties.map(([propertyId, property]) => {
+          const definition = modelObjectProperty(object, propertyId)
+          const schema = definition
+            ? objectTablePropertySchema(definition)
+            : undefined
+          const directEdit =
+            onEdit &&
+            editable.has(propertyId) &&
+            schema &&
+            (["boolean", "decimal", "enum", "number"].includes(schema.kind) ||
+              (schema.kind === "string" && schema.format === undefined))
+          const value = objectPropertyValue(
+            object,
+            propertyId,
+            projected[propertyId],
+            references
+          )
+          return (
+            <div
+              key={propertyId}
+              data-record-field={propertyId}
+              className="group relative grid min-h-8 grid-cols-[7.5rem_minmax(0,1fr)] items-center gap-x-2 rounded-md px-2 py-1.5 hover:bg-muted/40"
+            >
+              <dt className="text-xs text-muted-foreground">
+                {property.label ?? propertyId}
+              </dt>
+              <dd className="min-w-0 pr-3 text-xs wrap-break-word whitespace-pre-wrap [&_a]:max-w-full [&_a]:truncate">
+                {directEdit ? (
+                  <button
+                    type="button"
+                    className="w-full cursor-pointer rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    aria-label={`Edit ${property.label ?? propertyId}`}
+                    onClick={() => onEdit(propertyId)}
+                  >
+                    {value}
+                  </button>
+                ) : (
+                  value
+                )}
+              </dd>
+              {onEdit && editable.has(propertyId) && !directEdit ? (
+                <Button
+                  size="icon-xs"
+                  variant="ghost"
+                  className="absolute top-1 right-0 bg-background opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100"
+                  aria-label={`Edit ${property.label ?? propertyId}`}
+                  onClick={() => onEdit(propertyId)}
+                >
+                  <PencilIcon />
+                </Button>
+              ) : null}
+            </div>
+          )
+        })}
       </dl>
     </section>
   )

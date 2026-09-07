@@ -7,10 +7,9 @@ import { contactViews } from "./views"
 
 export const contactUi = {
   navigation: {
-    path: "/contacts",
     order: 2,
     icon: ContactRoundIcon,
-    description: "Coordinate the people involved in each relationship.",
+    description: "People at your customers, prospects, and partners.",
   },
   collection: { views: contactViews },
 } satisfies ObjectUi<typeof Model.objects.contact>

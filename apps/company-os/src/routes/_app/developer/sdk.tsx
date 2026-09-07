@@ -1,7 +1,7 @@
+import { CodeBlock } from "@company/ui/components/code-block"
 import { Link, createFileRoute } from "@tanstack/react-router"
 
 import { pageOptions } from "@/route-metadata"
-import { DeveloperCodeBlock } from "@/ui/developer/developer-browser"
 
 const queryExample = `import { useQuery } from "@tanstack/react-query"
 import { data } from "@/app-client"
@@ -68,7 +68,11 @@ function SdkPage() {
             that same query, keep cached data during revalidation, and receive
             committed changes from the authorized event feed.
           </p>
-          <DeveloperCodeBlock label="A collection query" code={queryExample} />
+          <CodeBlock
+            language="tsx"
+            label="A collection query"
+            code={queryExample}
+          />
         </article>
         <article className="min-w-0 space-y-4">
           <h2 className="text-lg font-medium">Mutate safely</h2>
@@ -77,13 +81,14 @@ function SdkPage() {
             agent’s changes. Forms keep unsaved drafts locally. Authorization,
             validation, and business rules run on the server for every caller.
           </p>
-          <DeveloperCodeBlock
+          <CodeBlock
+            language="tsx"
             label="An update mutation"
             code={mutationExample}
           />
         </article>
       </section>
-      <section className="border p-5 sm:p-6">
+      <section className="rounded-lg border p-5 sm:p-6">
         <h2 className="text-lg font-medium">Where to put new functionality</h2>
         <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-[minmax(0,1fr)_2fr]">
           <dt className="font-mono break-words">

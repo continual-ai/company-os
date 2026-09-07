@@ -9,8 +9,7 @@ export const AnonymousActor = defineObject({
   name: "Anonymous actor",
   parent: Root,
   pluralName: "Anonymous actors",
-  description:
-    "The system-managed audit actor used when a request has no authenticated identity.",
+  description: "Identifies activity from visitors who are not signed in.",
   actions: { create: false, delete: false, update: false },
   implements: [{ interface: Actor }],
   properties: {

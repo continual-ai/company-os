@@ -25,19 +25,16 @@ function ProfileSettings() {
   return (
     <SettingsPage
       title="Profile"
-      description="The local User projection resolved from your authenticated identity."
+      description="Your profile information for this workspace."
     >
       <SettingsSection
         title="Personal information"
-        description="Identity-provider data is projected locally for display, attribution, and authorization."
+        description="Managed by your sign-in provider."
       >
         <SettingsRow title="Name" description="Shown throughout this app.">
           <span className="text-sm text-foreground">{user.name}</span>
         </SettingsRow>
-        <SettingsRow
-          title="Email"
-          description="Provided by the configured identity boundary."
-        >
+        <SettingsRow title="Email" description="Your sign-in email address.">
           <span className="text-sm text-foreground">{user.email}</span>
         </SettingsRow>
       </SettingsSection>

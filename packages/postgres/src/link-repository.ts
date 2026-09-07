@@ -11,11 +11,10 @@ import {
 } from "@company/runtime/effect/link-repository"
 import {
   and,
-  asc,
+  desc,
   count,
   eq,
   getTableColumns,
-  gt,
   inArray,
   or,
   sql,
@@ -36,17 +35,23 @@ import type { PostgresStorage } from "./schema"
 interface LinkCursor {
   readonly fingerprint: string
   readonly id: string
-  readonly version: 1
+  readonly createdAt: string
+  readonly version: 2
 }
 
 const linkCursorSchema = Schema.Struct({
   fingerprint: Schema.String,
   id: Schema.String.check(Schema.isNonEmpty()),
-  version: Schema.Literal(1),
+  createdAt: Schema.String.check(Schema.isNonEmpty()),
+  version: Schema.Literal(2),
 })
 
 const linkRowsSchema = Schema.Array(
-  Schema.Struct({ id: Schema.String, objectType: Schema.String })
+  Schema.Struct({
+    id: Schema.String,
+    objectType: Schema.String,
+    createdAt: Schema.String,
+  })
 )
 
 export type PostgresLinkRepositoryError =
@@ -76,10 +81,16 @@ function cursorFingerprint(request: {
 function encodeCursor(
   pageTokens: PageTokenCodec,
   fingerprint: string,
-  id: string
+  id: string,
+  createdAt: string
 ): PageToken {
   return pageTokens.encode(
-    JSON.stringify({ fingerprint, id, version: 1 } satisfies LinkCursor)
+    JSON.stringify({
+      fingerprint,
+      id,
+      createdAt,
+      version: 2,
+    } satisfies LinkCursor)
   )
 }
 
@@ -88,7 +99,7 @@ function decodeCursor(
   pageTokens: PageTokenCodec,
   token: PageToken,
   fingerprint: string
-): Effect.Effect<string, InvalidLinkListRequest> {
+): Effect.Effect<LinkCursor, InvalidLinkListRequest> {
   return Effect.try({
     try: () => JSON.parse(pageTokens.decode(token)),
     catch: () =>
@@ -107,7 +118,7 @@ function decodeCursor(
     ),
     Effect.flatMap((cursor) =>
       cursor.fingerprint === fingerprint
-        ? Effect.succeed(cursor.id)
+        ? Effect.succeed(cursor)
         : Effect.fail(
             new InvalidLinkListRequest({
               linkId,
@@ -288,6 +299,7 @@ export function makeLinkRepository<
           .select({
             id: targetColumn,
             objectType: storage.core.objects.objectType,
+            createdAt: sql<string>`${storage.core.objects.createdAt}::text`,
           })
           .from(table)
           .innerJoin(
@@ -297,10 +309,12 @@ export function makeLinkRepository<
           .where(
             and(
               matching,
-              after === undefined ? undefined : gt(targetColumn, after)
+              after === undefined
+                ? undefined
+                : sql`(${storage.core.objects.createdAt}, ${targetColumn}) < (${after.createdAt}::timestamptz, ${after.id})`
             )
           )
-          .orderBy(asc(targetColumn))
+          .orderBy(desc(storage.core.objects.createdAt), desc(targetColumn))
           .limit(request.pageSize + 1)
         const hasMore = rows.length > request.pageSize
         const pageRows = yield* Schema.decodeUnknownEffect(linkRowsSchema)(
@@ -333,7 +347,7 @@ export function makeLinkRepository<
           })),
           nextPageToken:
             hasMore && last !== undefined
-              ? encodeCursor(pageTokens, fingerprint, last.id)
+              ? encodeCursor(pageTokens, fingerprint, last.id, last.createdAt)
               : null,
           totalSize,
         }

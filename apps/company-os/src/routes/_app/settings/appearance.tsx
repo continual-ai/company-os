@@ -47,7 +47,7 @@ function AppearanceSettings() {
   return (
     <SettingsPage
       title="Appearance"
-      description="Choose a local presentation for this interface."
+      description="Choose how this app appears in this browser."
     >
       <SettingsSection title="Interface">
         <SettingsRow
@@ -55,7 +55,7 @@ function AppearanceSettings() {
           description="Use a light or dark interface, or follow the operating system."
         >
           <div
-            className="flex rounded-sm border border-border/60 p-0.5"
+            className="flex rounded-lg border border-border/60 p-0.5"
             aria-label="Theme"
           >
             {themes.map((option) => (

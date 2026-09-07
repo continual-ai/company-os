@@ -149,3 +149,12 @@ export const searchIndexState = pgTable("search_index_state", {
   id: integer("id").primaryKey(),
   definition: text("definition").notNull(),
 })
+
+/** Development scenario receipts; separate from business records and production bootstrap. */
+export const seedRuns = pgTable("seed_runs", {
+  name: text("name").primaryKey(),
+  parameters: text("parameters").notNull(),
+  completedAt: timestamp("completed_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+})

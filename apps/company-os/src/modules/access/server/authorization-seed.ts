@@ -67,7 +67,7 @@ export const seedAuthorization = Effect.fn("@company/seedAuthorization")(
       aliases: [],
       metadata: {},
       createdBy: actorId,
-      description: "Every caller, including callers without credentials.",
+      description: "Everyone, including visitors who are not signed in.",
       id: ALL_CALLERS_PRINCIPAL_SET_ID,
       kind: "allCallers",
       name: "All callers",
@@ -79,8 +79,7 @@ export const seedAuthorization = Effect.fn("@company/seedAuthorization")(
       aliases: [],
       metadata: {},
       createdBy: actorId,
-      description:
-        "Every caller with credentials accepted by the configured authentication boundary.",
+      description: "All authenticated users and service accounts.",
       id: ALL_AUTHENTICATED_CALLERS_PRINCIPAL_SET_ID,
       kind: "allAuthenticatedCallers",
       name: "All authenticated callers",

@@ -8,7 +8,6 @@ export const outreachUi = {
     views: [
       defineCollectionView("all", "All outreach", {
         columns: ["subject", "contact", "campaign", "status", "scheduledAt"],
-        sorting: [{ id: "subject", desc: false }],
       }),
       defineCollectionView("review", "Needs review", {
         columns: ["subject", "contact", "campaign", "status", "scheduledAt"],

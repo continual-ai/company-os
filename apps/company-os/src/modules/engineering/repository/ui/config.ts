@@ -8,7 +8,6 @@ export const repositoryUi = {
     views: [
       defineCollectionView("all", "All repositories", {
         columns: ["name", "project", "url", "defaultBranch"],
-        sorting: [{ id: "name", desc: false }],
       }),
     ],
   },

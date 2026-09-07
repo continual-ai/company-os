@@ -47,7 +47,7 @@ export function makeEventWriter(database: typeof Database.Service) {
     readonly type: string
     readonly version?: number
     readonly subjects: ReadonlyArray<EventSubject>
-    readonly data?: unknown
+    readonly data: unknown
     readonly actorId?: string
   }) {
     const invocation = yield* Effect.serviceOption(CurrentInvocation)
@@ -64,7 +64,7 @@ export function makeEventWriter(database: typeof Database.Service) {
       type: input.type,
       subjects: input.subjects,
       version: input.version ?? 1,
-      data: input.data ?? {},
+      data: input.data,
     })
     yield* stageEvent({
       id: `ev_${randomUUID()}`,

@@ -8,7 +8,7 @@ export const LineItem = defineObject({
   name: "Line item",
   parent: Deal,
   pluralName: "Line items",
-  description: "A priced item owned by a deal.",
+  description: "A product or service included in a deal.",
   properties: {
     name: schema.string({
       label: "Name",

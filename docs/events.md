@@ -68,8 +68,8 @@ Append outside `Database.transaction` fails; it never silently creates an indepe
 
 The server derives actor identity from the invocation. Consumers cannot submit an actor or create
 journal records over HTTP. Events carry stable IDs, transaction IDs, versions, subjects, actor,
-occurrence time, and recording time. Standard create/update events use version 2 and contain the full canonical record, including its
-ordered etag. Version 2 deletions contain `{ id, etag }`, where the tombstone advances the last record
+occurrence time, and recording time. Standard create/update events use version 1 and contain the full canonical record, including its
+ordered etag. Deletions contain `{ id, etag }`, where the tombstone advances the last record
 revision. Version 1 invalidation facts remain readable. Standard snapshots have the visibility of
 reading that object: reference IDs do not confer access to referenced records. Custom business facts
 continue to require read access to every derived subject.
@@ -134,8 +134,7 @@ retention/erasure requirements must explicitly apply its policy to both business
 journal. Historical payloads retain their original shape. The browser validates snapshots against
 the current Object schema before applying them; incompatible snapshots trigger normal query
 revalidation without entering the cache. Custom consumers must handle their own supported versions.
-Migrations that change current record values must advance their etags so older snapshots cannot
-overwrite those changes. Changing current definitions does not rewrite history.
+Changing current definitions does not rewrite stored facts; incompatible snapshots trigger a current read.
 
 ## Boundaries
 

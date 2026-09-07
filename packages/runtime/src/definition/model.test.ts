@@ -796,6 +796,45 @@ describe("model definitions", () => {
   })
 })
 
+describe("relationship names", () => {
+  const model = (key: string) =>
+    defineTestModel({
+      actor: TestActor,
+      interfaces: [TestActor],
+      root: Root,
+      name: "Inverse names",
+      links: [],
+      objects: [
+        Contact,
+        defineObject({
+          id: "message",
+          collection: "messages",
+          name: "Message",
+          pluralName: "Messages",
+          display: { title: "recipient" },
+          parent: Root,
+          properties: {
+            recipient: schema.reference(Contact, {
+              inverse: { key, label: "Messages" },
+            }),
+          },
+        }),
+      ],
+    })
+  it("rejects inverse keys that collide with properties or methods", () => {
+    expect(() => model("name")).toThrow(
+      "conflicts with another relationship, property, or method"
+    )
+    expect(() => model("get")).toThrow(
+      "conflicts with another relationship, property, or method"
+    )
+    expect(() => model("invalid.key")).toThrow(
+      "must be an immutable lower-camel identifier"
+    )
+    expect(() => model("receivedMessages")).not.toThrow()
+  })
+})
+
 describe("root definitions", () => {
   it("supports marker interfaces without property or display boilerplate", () => {
     const AuthorizationScope = defineInterface({

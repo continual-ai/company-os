@@ -1,0 +1,68 @@
+diff --git a/dist/unstable/sql/SqlClient.d.ts b/dist/unstable/sql/SqlClient.d.ts
+index 41732f135634c4b0238b37c5b61e593fdd2a85ce..7a0e6a5c44026bbfb5873e49ce6738c00cc7435f 100644
+--- a/dist/unstable/sql/SqlClient.d.ts
++++ b/dist/unstable/sql/SqlClient.d.ts
+@@ -110,6 +110,7 @@ export declare const makeWithTransaction: <I, S>(options: {
+     readonly acquireConnection: Effect.Effect<readonly [Scope.Closeable | undefined, S], SqlError>;
+     readonly begin: (conn: NoInfer<S>) => Effect.Effect<void, SqlError>;
+     readonly savepoint: (conn: NoInfer<S>, id: number) => Effect.Effect<void, SqlError>;
++    readonly releaseSavepoint?: ((conn: NoInfer<S>, id: number) => Effect.Effect<void, SqlError>) | undefined;
+     readonly commit: (conn: NoInfer<S>) => Effect.Effect<void, SqlError>;
+     readonly rollback: (conn: NoInfer<S>) => Effect.Effect<void, SqlError>;
+     readonly rollbackSavepoint: (conn: NoInfer<S>, id: number) => Effect.Effect<void, SqlError>;
+diff --git a/dist/unstable/sql/SqlClient.js b/dist/unstable/sql/SqlClient.js
+index 7b3c49a0329bcd1734ceb741e8c87fb14c57f212..0b2b73c523b4cd1bc70717f91408736a136c1bbf 100644
+--- a/dist/unstable/sql/SqlClient.js
++++ b/dist/unstable/sql/SqlClient.js
+@@ -60,6 +60,9 @@ export const make = /*#__PURE__*/Effect.fnUntraced(function* (options) {
+     acquireConnection: Effect.flatMap(Scope.make(), scope => Effect.map(Scope.provide(transactionAcquirer, scope), conn => [scope, conn])),
+     begin: conn => conn.executeUnprepared(beginTransaction, [], undefined),
+     savepoint: (conn, id) => conn.executeUnprepared(savepoint(`effect_sql_${id}`), [], undefined),
++    releaseSavepoint: options.compiler.dialect === "pg"
++      ? (conn, id) => conn.executeUnprepared(`RELEASE SAVEPOINT effect_sql_${id}`, [], undefined)
++      : undefined,
+     commit: conn => conn.executeUnprepared(commit, [], undefined),
+     rollback: conn => conn.executeUnprepared(rollback, [], undefined),
+     rollbackSavepoint: (conn, id) => conn.executeUnprepared(rollbackSavepoint(`effect_sql_${id}`), [], undefined)
+@@ -125,6 +128,9 @@ export const makeWithTransaction = options => {
+         span.event("db.transaction.rollback", clock.currentTimeNanosUnsafe());
+         effect = Effect.orDie(id > 0 ? options.rollbackSavepoint(conn, id) : options.rollback(conn));
+       }
++      if (id > 0 && options.releaseSavepoint) {
++        effect = Effect.andThen(effect, Effect.orDie(options.releaseSavepoint(conn, id)));
++      }
+       const withScope = scope !== undefined ? Effect.ensuring(effect, Scope.close(scope, exit)) : effect;
+       return Effect.flatMap(withScope, () => exit);
+     })));
+diff --git a/src/unstable/sql/SqlClient.ts b/src/unstable/sql/SqlClient.ts
+index b2bd662315f2c60d927641e0dd57f5354367477f..f3b853793f9f80e05f4f520510fc12f1ad20042b 100644
+--- a/src/unstable/sql/SqlClient.ts
++++ b/src/unstable/sql/SqlClient.ts
+@@ -162,6 +162,9 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions)
+     ),
+     begin: (conn) => conn.executeUnprepared(beginTransaction, [], undefined),
+     savepoint: (conn, id) => conn.executeUnprepared(savepoint(`effect_sql_${id}`), [], undefined),
++    releaseSavepoint: options.compiler.dialect === "pg"
++      ? (conn, id) => conn.executeUnprepared(`RELEASE SAVEPOINT effect_sql_${id}`, [], undefined)
++      : undefined,
+     commit: (conn) => conn.executeUnprepared(commit, [], undefined),
+     rollback: (conn) => conn.executeUnprepared(rollback, [], undefined),
+     rollbackSavepoint: (conn, id) => conn.executeUnprepared(rollbackSavepoint(`effect_sql_${id}`), [], undefined)
+@@ -226,6 +229,7 @@ export const makeWithTransaction = <I, S>(options: {
+   readonly acquireConnection: Effect.Effect<readonly [Scope.Closeable | undefined, S], SqlError>
+   readonly begin: (conn: NoInfer<S>) => Effect.Effect<void, SqlError>
+   readonly savepoint: (conn: NoInfer<S>, id: number) => Effect.Effect<void, SqlError>
++  readonly releaseSavepoint?: ((conn: NoInfer<S>, id: number) => Effect.Effect<void, SqlError>) | undefined
+   readonly commit: (conn: NoInfer<S>) => Effect.Effect<void, SqlError>
+   readonly rollback: (conn: NoInfer<S>) => Effect.Effect<void, SqlError>
+   readonly rollbackSavepoint: (conn: NoInfer<S>, id: number) => Effect.Effect<void, SqlError>
+@@ -285,6 +289,9 @@ export const makeWithTransaction = <I, S>(options: {
+                           : options.rollback(conn)
+                       )
+                     }
++                    if (id > 0 && options.releaseSavepoint) {
++                      effect = Effect.andThen(effect, Effect.orDie(options.releaseSavepoint(conn, id)))
++                    }
+                     const withScope = scope !== undefined ? Effect.ensuring(effect, Scope.close(scope, exit)) : effect
+                     return Effect.flatMap(withScope, () => exit)
+                   })

@@ -9,10 +9,9 @@ import { leadViews } from "./views"
 
 export const leadUi = {
   navigation: {
-    path: "/leads",
     order: 0,
     icon: UserRoundSearchIcon,
-    description: "Qualify new interest and convert it into customer records.",
+    description: "Potential customers to qualify and follow up with.",
   },
   collection: { views: leadViews },
   record: {

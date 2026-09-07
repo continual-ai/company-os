@@ -6,9 +6,11 @@ executable contracts in code, tests, manifests, or the Developer Center.
 
 - [Architecture](architecture.md) — package responsibilities, dependency direction, and authority
 - [Building a module](modules.md) — define records, add custom actions and UI, and read/write data
+- [Record workspaces](record-workspaces.md) — default navigation, forms, relationships, and optional UI composition
 - [Client data](data.md) — model queries, route preloading, mutations, and live cache updates
 - [Durable events](events.md) — transactional facts, authorized replay, and browser updates
 - [Modeling](modeling.md) — the business-model vocabulary and relationship choices
+- [Development scenarios](runbooks/demo-data.md) — connected demo data, asset fixtures, and pagination datasets
 - [Database workflow](runbooks/database.md) — migrations, local resets, and production deployment
 - [Deployment and identity](runbooks/deployment.md) — the current build target, authentication, and optional hosting integration
 

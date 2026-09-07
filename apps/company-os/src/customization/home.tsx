@@ -6,13 +6,16 @@ import { ArrowRightIcon } from "lucide-react"
 import { applicationCapabilities } from "@/capabilities"
 import { applicationConfig } from "@/customization/config"
 import { useCapabilities } from "@/ui/application/use-capabilities"
+import { useRecentRecords } from "@/ui/application/use-recent-records"
 import {
   modelNavigation,
   modelNavigationChecks,
 } from "@/ui/model/model-navigation"
+import { ObjectRecordSummary } from "@/ui/model/object-record-summary"
 
 /** Source-owned workspace entry; destinations come from the installed modules. */
 export function Home() {
+  const recent = useRecentRecords()
   const capabilities = useCapabilities(modelNavigationChecks)
   const modules = modelNavigation
     .map((module) => ({
@@ -38,6 +41,35 @@ export function Home() {
           </p>
         </header>
 
+        <section aria-labelledby="recent-records">
+          <h2 id="recent-records" className="mb-3 text-sm font-semibold">
+            Recently opened
+          </h2>
+          {recent.length > 0 ? (
+            <ul className="divide-y rounded-lg border">
+              {recent.map(({ object, record }) => (
+                <li
+                  key={record.id}
+                  className="flex items-center gap-4 px-4 py-3"
+                >
+                  <ObjectRecordSummary
+                    object={object}
+                    record={record}
+                    variant="preview"
+                  />
+                  <span className="shrink-0 text-xs text-muted-foreground">
+                    {object.name}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Records you open appear here for this session.
+            </p>
+          )}
+        </section>
+
         {capabilities.error !== undefined ? (
           <div
             role="alert"
@@ -53,7 +85,7 @@ export function Home() {
             <output className="sr-only">Loading workspace…</output>
             <div
               aria-hidden="true"
-              className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
+              className="grid gap-1 sm:grid-cols-2 lg:grid-cols-3"
             >
               {[0, 1, 2].map((index) => (
                 <Skeleton key={index} className="h-28 rounded-lg" />
@@ -76,16 +108,16 @@ export function Home() {
               >
                 {module.name}
               </h2>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-1 sm:grid-cols-2 lg:grid-cols-3">
                 {module.items.map((item) => (
                   <Link
                     key={item.object.id}
                     to={item.to}
-                    className="group flex gap-3 rounded-lg border bg-card p-4 transition-colors hover:bg-muted/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                    className="group flex items-center gap-3 rounded-md px-3 py-2.5 transition-colors hover:bg-muted/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                   >
                     <item.icon
                       aria-hidden="true"
-                      className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+                      className="size-4 shrink-0 text-muted-foreground"
                     />
                     <div className="min-w-0 flex-1">
                       <h3 className="flex items-center justify-between gap-2 text-sm font-medium">
@@ -95,11 +127,6 @@ export function Home() {
                           className="size-3.5 text-muted-foreground transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none"
                         />
                       </h3>
-                      {item.description && (
-                        <p className="mt-1.5 text-sm leading-5 text-muted-foreground">
-                          {item.description}
-                        </p>
-                      )}
                     </div>
                   </Link>
                 ))}

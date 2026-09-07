@@ -8,7 +8,6 @@ export const replyUi = {
     views: [
       defineCollectionView("all", "All replies", {
         columns: ["subject", "ticket", "direction", "status", "sentAt"],
-        sorting: [{ id: "subject", desc: false }],
       }),
     ],
   },

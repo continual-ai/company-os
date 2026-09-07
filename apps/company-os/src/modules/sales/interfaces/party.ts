@@ -5,8 +5,7 @@ export const Party = defineInterface({
   id: "party",
   name: "Party",
   pluralName: "Parties",
-  description:
-    "A polymorphic business participant implemented by companies and contacts.",
+  description: "A company or contact involved in your business.",
   properties: {
     image: schema.image({ label: "Image", nullable: true }),
     name: schema.string({ label: "Name" }),

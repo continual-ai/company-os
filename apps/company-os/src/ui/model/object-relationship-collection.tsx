@@ -1,267 +1,206 @@
-import type { ListRequest, ModelLinkTraversal } from "@company/runtime"
 import { Button } from "@company/ui/components/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@company/ui/components/dialog"
-import { PencilIcon, PlusIcon, UnlinkIcon } from "lucide-react"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query"
+import { Model } from "company-os/model"
+import { UnlinkIcon } from "lucide-react"
+import { useState, type ReactNode } from "react"
 
+import { modelCollectionQuery } from "@/model-collection-query"
+import { useCapabilities } from "@/ui/application/use-capabilities"
+
+import { CollectionPagination } from "./collection-pagination"
 import { useObjectUi } from "./module-ui"
-import {
-  linkClientFor,
-  parentName,
-  tableRecord,
-  type ClientRecord,
-  type DynamicLinkClient,
-  type ModelObject,
-} from "./object-client"
-import type {
-  ObjectCollectionFilter,
-  ObjectCollectionSort,
-} from "./object-collection-view"
-import { ObjectRecordDialog } from "./object-record-dialog"
-import { ObjectRelationshipForm } from "./object-relationship-form"
+import { type ClientRecord, type ModelObject } from "./object-client"
+import { ObjectCollection } from "./object-collection"
+import { ObjectRecordFeed } from "./object-record-feed"
+import { ObjectReferenceSelect } from "./object-reference-select"
 import { objectHref } from "./object-routing"
-import { ObjectTable } from "./object-table/object-table"
-import { useObjectCollection } from "./use-object-collection"
+import { RecordRelatedCreateMenu } from "./record-related-create-menu"
+import type { RecordRelationship } from "./record-relationships"
 
-const noFilters: ReadonlyArray<ObjectCollectionFilter> = []
-const noSorting: ReadonlyArray<ObjectCollectionSort> = []
-const unavailable = () => false
-
-function AddRelationshipDialog({
-  link,
-  object,
-  recordId,
-  traversal,
+/** A relationship supplies context and actions; collection rendering stays object-owned. */
+export function ObjectRelationshipCollection({
+  relationship,
 }: {
-  readonly link: NonNullable<DynamicLinkClient["link"]>
-  readonly object: ModelObject
-  readonly recordId: string
-  readonly traversal: ModelLinkTraversal
+  readonly relationship: RecordRelationship
 }) {
-  const [open, setOpen] = useState(false)
+  const total = useQuery(relationship.list({ pageSize: 3 }))
+  const capabilities = useCapabilities([
+    ...relationship.checks,
+    ...relationship.creates.flatMap((entry) => entry.checks),
+  ])
+  const [pending, setPending] = useState(false)
+  const [error, setError] = useState<string>()
+  const mutate = async (operation: () => Promise<void>) => {
+    setError(undefined)
+    setPending(true)
+    try {
+      await operation()
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "Could not update the relationship."
+      )
+    } finally {
+      setPending(false)
+    }
+  }
+  const hasRoom =
+    total.data !== undefined &&
+    (relationship.cardinality === "many" || total.data.totalSize === 0)
+  const canConnect = !pending && relationship.checks.some(capabilities.can)
+  const creates = hasRoom
+    ? relationship.creates.filter((entry) =>
+        entry.checks.every(capabilities.can)
+      )
+    : []
+  const renderAdd = (records: ReadonlyArray<ClientRecord>) =>
+    hasRoom && canConnect && relationship.connect ? (
+      <ObjectReferenceSelect
+        allowCreate={false}
+        id={`${relationship.key}-add`}
+        name="relationship"
+        appearance="action"
+        placeholder={`Add ${relationship.target?.name.toLowerCase() ?? "record"}`}
+        typeId={relationship.targetType}
+        value=""
+        required
+        includeHiddenInput={false}
+        selectedValues={records.map((record) => record.id)}
+        onBlur={() => undefined}
+        onValueChange={(id, option) => {
+          const typeId =
+            option?.presentation?.object.id ?? relationship.target?.id
+          if (typeId) void mutate(() => relationship.connect!(id, typeId))
+        }}
+      />
+    ) : null
+  const unlink =
+    canConnect && relationship.disconnect
+      ? (record: ClientRecord) => mutate(() => relationship.disconnect!(record))
+      : undefined
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button type="button" size="sm" />}>
-        <PlusIcon />
-        Add {object.name}
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Add {object.name.toLowerCase()}</DialogTitle>
-          <DialogDescription>
-            Select an existing {object.name.toLowerCase()} to connect.
-          </DialogDescription>
-        </DialogHeader>
-        <ObjectRelationshipForm
-          link={link}
-          recordId={recordId}
-          traversal={traversal}
-          onLinked={() => setOpen(false)}
+    <div className="flex h-full min-h-0 flex-col">
+      {error && (
+        <p role="alert" className="border-b px-4 py-2 text-xs text-destructive">
+          {error}
+        </p>
+      )}
+      {relationship.target ? (
+        <RelatedObjectCollection
+          object={relationship.target}
+          relationship={relationship}
+          create={creates[0]?.options}
+          renderAdd={renderAdd}
+          unlink={unlink}
         />
-      </DialogContent>
-    </Dialog>
+      ) : (
+        <RelatedRecordFeed
+          relationship={relationship}
+          creates={creates}
+          renderAdd={renderAdd}
+          unlink={unlink}
+        />
+      )}
+    </div>
   )
 }
 
-export function ObjectRelationshipCollection({
-  canUpdate,
+function RelatedObjectCollection({
   object,
-  onTotalSizeChange,
-  record,
-  targetObject,
-  traversal,
+  relationship,
+  create,
+  renderAdd,
+  unlink,
 }: {
-  readonly canUpdate: boolean
   readonly object: ModelObject
-  readonly onTotalSizeChange?:
-    | ((traversalKey: string, totalSize: number) => void)
-    | undefined
-  readonly record: ClientRecord
-  readonly targetObject: ModelObject
-  readonly traversal: ModelLinkTraversal
+  readonly relationship: RecordRelationship
+  readonly create: RecordRelationship["creates"][number]["options"] | undefined
+  readonly renderAdd: (records: ReadonlyArray<ClientRecord>) => ReactNode
+  readonly unlink: ((record: ClientRecord) => Promise<void>) | undefined
 }) {
-  const ui = useObjectUi(targetObject)
-  const defaultVisibility = ui?.collection?.views?.[0]?.state.visibility
-  const visiblePropertyIds = useMemo(
-    () =>
-      defaultVisibility === undefined ||
-      Object.keys(defaultVisibility).length === 0
-        ? undefined
-        : Object.keys(defaultVisibility).filter(
-            (key) => defaultVisibility[key]
-          ),
-    [defaultVisibility]
-  )
-  const relationshipClient = useMemo(
-    () => linkClientFor(object, traversal),
-    [object, traversal]
-  )
-  const listRecords = useCallback(
-    (request: ListRequest) =>
-      relationshipClient.list({
-        id: record.id,
-        ...(request.pageSize === undefined
-          ? {}
-          : { pageSize: request.pageSize }),
-        ...(request.pageToken === undefined
-          ? {}
-          : { pageToken: request.pageToken }),
-      }),
-    [record.id, relationshipClient]
-  )
-  const collection = useObjectCollection(
-    targetObject,
-    noFilters,
-    noSorting,
-    listRecords
-  )
-  const [editing, setEditing] = useState<ClientRecord>()
-  const [mutationError, setMutationError] = useState<string>()
-  const link = canUpdate ? relationshipClient.link : undefined
-  const unlink = canUpdate ? relationshipClient.unlink : undefined
-  const recordsById = useMemo(
-    () => new Map(collection.records.map((item) => [item.id, item])),
-    [collection.records]
-  )
-  const tableRecords = useMemo(
-    () => collection.records.map((item) => tableRecord(targetObject, item)),
-    [collection.records, targetObject]
-  )
-
-  useEffect(() => {
-    if (collection.loading || collection.error !== undefined) return
-    onTotalSizeChange?.(traversal.traversal.key, collection.totalSize)
-  }, [
-    collection.error,
-    collection.loading,
-    collection.totalSize,
-    onTotalSizeChange,
-    traversal.traversal.key,
-  ])
-
-  const canAdd =
-    link !== undefined &&
-    !collection.loading &&
-    (traversal.traversal.cardinality === "many" ||
-      collection.records.length === 0)
-
+  const ui = useObjectUi(object)
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      {collection.error === undefined && mutationError === undefined ? null : (
+    <ObjectCollection
+      object={object}
+      views={ui?.collection?.views}
+      actions={ui?.actions}
+      toolbarComponent={ui?.collection?.toolbarComponent}
+      recordHref={(id) => objectHref(object, id)}
+      source={{ list: relationship.list, create, renderAdd, unlink }}
+    />
+  )
+}
+
+/** Mixed endpoints use the same cursor chain and summaries, without inventing shared table columns. */
+function RelatedRecordFeed({
+  relationship,
+  creates,
+  renderAdd,
+  unlink,
+}: {
+  readonly relationship: RecordRelationship
+  readonly creates: RecordRelationship["creates"]
+  readonly renderAdd: (records: ReadonlyArray<ClientRecord>) => ReactNode
+  readonly unlink: ((record: ClientRecord) => Promise<void>) | undefined
+}) {
+  const page = useInfiniteQuery(
+    modelCollectionQuery(relationship.list, { pageSize: 50 })
+  )
+  const records = page.data?.pages.flatMap((result) => result.items) ?? []
+  const items = records.flatMap((record) => {
+    const object = Object.values(Model.objects).find(
+      (candidate) => candidate.id === record.objectType
+    )
+    return object ? [{ object, record }] : []
+  })
+  return (
+    <>
+      <div className="flex min-h-10 flex-wrap items-center justify-end gap-2 border-b px-4 py-1">
+        <RecordRelatedCreateMenu
+          relationships={[{ ...relationship, creates }]}
+          totals={new Map([[relationship.key, page.data?.pages[0]?.totalSize]])}
+        />
+        {renderAdd(records)}
+      </div>
+      {page.isError && (
         <div
           role="alert"
-          className="flex items-center justify-between border-b border-destructive/30 bg-destructive/5 px-5 py-2 text-xs text-destructive"
+          className="flex items-center justify-between px-4 py-2 text-xs"
         >
-          <span>{collection.error ?? mutationError}</span>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setMutationError(undefined)
-              void collection.load()
-            }}
-          >
+          Could not load related records.
+          <Button size="sm" variant="ghost" onClick={() => void page.refetch()}>
             Retry
           </Button>
         </div>
       )}
-      <ObjectTable
-        resetKey={collection.requestKey}
-        object={targetObject}
-        visiblePropertyIds={visiblePropertyIds}
-        parentLabel={parentName(targetObject)}
-        records={tableRecords}
-        canFilterProperty={unavailable}
-        canSortProperty={unavailable}
-        canUpdateRecord={collection.canUpdate}
-        enableRowSelection={false}
-        onCellCommit={collection.updateCell}
-        pagination={{
-          hasNextPage: collection.hasNextPage,
-          error: collection.error,
-          loading: collection.loading,
-          onNextPage: collection.nextPage,
-          totalSize: collection.totalSize,
-        }}
-        recordHref={(recordId) => objectHref(targetObject, recordId)}
-        resolveRecord={(recordId) => collection.references.get(recordId)}
-        tableTitle={
-          <span className="truncate text-muted-foreground">
-            {traversal.traversal.description ?? traversal.traversal.label}
-          </span>
+      <ObjectRecordFeed
+        items={items}
+        label={relationship.label}
+        loading={page.isPending}
+        renderActions={(record) =>
+          unlink ? (
+            <Button
+              size="icon-xs"
+              variant="ghost"
+              aria-label="Unlink record"
+              onClick={() => void unlink(record)}
+            >
+              <UnlinkIcon />
+            </Button>
+          ) : null
         }
-        toolbarActions={
-          canAdd && link !== undefined ? (
-            <AddRelationshipDialog
-              link={link}
-              object={targetObject}
-              recordId={record.id}
-              traversal={traversal}
-            />
-          ) : undefined
-        }
-        renderRecordActions={(tableItem) => {
-          const source = recordsById.get(tableItem.id)
-          return (
-            <>
-              {source !== undefined && collection.canUpdate(source.id) ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-xs"
-                  aria-label={`Edit ${targetObject.name.toLowerCase()}`}
-                  onClick={() => setEditing(source)}
-                >
-                  <PencilIcon />
-                </Button>
-              ) : null}
-              {unlink === undefined ? null : (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-xs"
-                  aria-label={`Unlink ${targetObject.name.toLowerCase()}`}
-                  disabled={collection.loading}
-                  onClick={() => {
-                    setMutationError(undefined)
-                    void unlink({ id: record.id, target: tableItem.id }).catch(
-                      (cause: unknown) =>
-                        setMutationError(
-                          cause instanceof Error
-                            ? cause.message
-                            : `${traversal.traversal.label} could not be unlinked.`
-                        )
-                    )
-                  }}
-                >
-                  <UnlinkIcon />
-                </Button>
-              )}
-            </>
-          )
+      />
+      <CollectionPagination
+        loaded={records.length}
+        totalSize={page.data?.pages[0]?.totalSize ?? 0}
+        hasNextPage={page.hasNextPage}
+        loading={page.isFetching}
+        onNextPage={() => {
+          if (!page.isFetching)
+            void page.fetchNextPage({ cancelRefetch: false })
         }}
       />
-
-      {editing === undefined ? null : (
-        <ObjectRecordDialog
-          key={editing.id}
-          mode="edit"
-          object={targetObject}
-          open
-          record={editing}
-          referenceLabels={collection.referenceLabels}
-          onOpenChange={(open) => !open && setEditing(undefined)}
-          onSave={(changes) => collection.update(editing, changes)}
-        />
-      )}
-    </div>
+    </>
   )
 }

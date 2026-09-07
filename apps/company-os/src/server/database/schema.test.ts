@@ -16,6 +16,7 @@ describe("PostgreSQL schema", () => {
         "id",
         "parentId",
         "emailPermission",
+        "marketingStatus",
         "photo",
         "name",
         "jobTitle",
@@ -85,6 +86,7 @@ describe("PostgreSQL schema", () => {
       DatabaseSchema.eventJournalState,
       DatabaseSchema.recordSearch,
       DatabaseSchema.searchIndexState,
+      DatabaseSchema.seedRuns,
     ]
     // The authoring projection is exhaustive; convenience aliases are intentionally optional.
     for (const table of kitTables) expect(expectedKitTables).toContain(table)

@@ -85,8 +85,8 @@ interface DynamicRecordIdsInput {
   readonly ids: ReadonlyArray<string>
 }
 
-export interface DynamicLinkListInput extends DynamicRecordInput {
-  readonly pageSize?: number
+interface DynamicLinkListInput
+  extends DynamicRecordInput, Omit<ListRequest, "pageToken"> {
   readonly pageToken?: string
 }
 

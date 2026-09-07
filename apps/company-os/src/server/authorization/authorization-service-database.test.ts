@@ -2,7 +2,7 @@ import { Etag, RecordId, Timestamp } from "@company/runtime"
 import { CurrentInvocation } from "@company/runtime/effect/object-service"
 import { Model } from "company-os/model"
 import { eq } from "drizzle-orm"
-import { Effect } from "effect"
+import { Effect, Layer } from "effect"
 import { describe, expect } from "vitest"
 
 import { RoleAssignmentRepository } from "@/modules/access/role-assignment/server/role-assignment-repository"
@@ -239,7 +239,9 @@ describe("Authorization", () => {
           Model.objects.company,
           companyRepository
         ).pipe(
-          Effect.provide(Links.layer),
+          Effect.provide(
+            Links.layer.pipe(Layer.provide(ObjectRepositories.layer))
+          ),
           Effect.provideService(Authorization, authorization),
           Effect.provideService(RecordIdentifierResolver, identifiers)
         )
@@ -279,6 +281,34 @@ describe("Authorization", () => {
             { permission: "company.get", target: groupCompanyId },
           ])
         )
+        // List admission and row readability are separate: list-only never exposes records.
+        yield* database
+          .update(roles)
+          .set({ permissions: ["company.list"] })
+          .where(eq(roles.id, readerRoleId))
+        expect((yield* asUser(companyService.list())).items).toEqual([])
+        expect(
+          yield* asUser(
+            companyService.get({ id: allowedCompanyId }).pipe(Effect.flip)
+          )
+        ).toMatchObject({ _tag: "AuthorizationTargetNotFound" })
+        yield* database
+          .update(roles)
+          .set({ permissions: ["company.get"] })
+          .where(eq(roles.id, readerRoleId))
+        expect(
+          (yield* asUser(companyService.get({ id: allowedCompanyId }))).id
+        ).toBe(allowedCompanyId)
+        expect(
+          yield* asUser(companyService.list().pipe(Effect.flip))
+        ).toMatchObject({
+          _tag: "PermissionDenied",
+          permission: "company.list",
+        })
+        yield* database
+          .update(roles)
+          .set({ permissions: ["company.get", "company.list"] })
+          .where(eq(roles.id, readerRoleId))
         const delegatedCapabilities = yield* authorization
           .checkCapabilities([
             { permission: "company.get", target: allowedCompanyId },
@@ -363,7 +393,9 @@ describe("Authorization", () => {
             Effect.provideService(ObjectRepositories, objectRepositories)
           )
         const roleAssignmentService = yield* RoleAssignmentService.make.pipe(
-          Effect.provide(Links.layer),
+          Effect.provide(
+            Links.layer.pipe(Layer.provide(ObjectRepositories.layer))
+          ),
           Effect.provideService(
             AuthorizationRepository,
             authorizationRepository
@@ -422,7 +454,10 @@ describe("Authorization", () => {
           .where(eq(objects.id, SYSTEM_ROLE_ASSIGNMENT_ID))
         const systemAfterGrantRemoval = yield* companyService
           .list()
-          .pipe(Effect.provideService(CurrentInvocation, systemInvocation))
+          .pipe(
+            Effect.flip,
+            Effect.provideService(CurrentInvocation, systemInvocation)
+          )
 
         return {
           afterRevocation,
@@ -492,7 +527,10 @@ describe("Authorization", () => {
         expect.arrayContaining([allowedCompanyId, groupCompanyId])
       )
       expect(result.systemList.items).toHaveLength(2)
-      expect(result.systemAfterGrantRemoval.items).toEqual([])
+      expect(result.systemAfterGrantRemoval).toMatchObject({
+        _tag: "PermissionDenied",
+        permission: "company.list",
+      })
       expect(result.wrongScope).toBeInstanceOf(RoleScopeMismatch)
       expect(result.protectedSystemAssignment).toBeInstanceOf(PermissionDenied)
       expect(result.lastAdministrator).toBeInstanceOf(LastAdministrator)

@@ -9,7 +9,7 @@ export const GroupMembership = defineObject({
   name: "Group membership",
   parent: Group,
   pluralName: "Group memberships",
-  description: "One identity's membership in a group.",
+  description: "Add a user or service account to a group.",
   actions: { update: false },
   properties: {
     member: schema.reference(Identity, { label: "Member" }),

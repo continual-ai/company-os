@@ -1,8 +1,8 @@
-import { Badge } from "@company/ui/components/badge"
 import type { ReactNode } from "react"
 
 import { AssetPreviews } from "@/modules/assets/asset/ui/asset-preview"
 
+import { ObjectChoiceBadge } from "./object-choice-badge"
 import {
   modelObjectProperty,
   type ModelObject,
@@ -43,6 +43,7 @@ export function objectPropertyValue(
     ) : (
       <ObjectRecordIdentity
         {...reference}
+        className="max-w-full"
         href={objectHref(reference.object, value)}
       />
     )
@@ -81,7 +82,13 @@ export function objectPropertyValue(
       schema.values.map((option) => ({ label: option, value: option }))
     const label =
       choices.find((choice) => choice.value === value)?.label ?? value
-    return <Badge variant="secondary">{label}</Badge>
+    return (
+      <ObjectChoiceBadge
+        choice={
+          choices.find((choice) => choice.value === value) ?? { label, value }
+        }
+      />
+    )
   }
   if (
     schema.kind === "string" &&

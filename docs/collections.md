@@ -3,7 +3,7 @@
 A view is a source-owned presentation of an Object, not another business Object. Shared views live
 in the object's `ui/config.ts` (or its adjacent `views.ts`) and are composed through `defineModuleUi`.
 Users can switch layouts, choose field mappings, change filters, and pick a date window. These
-adjustments live in the URL; **Reset view** restores the checked-in definition. There is no saved-view
+adjustments live in the standalone collection URL (or local state in an embedded collection); **Reset view** restores the checked-in definition. There is no saved-view
 table, personal/team sharing model, or background write when someone changes their screen.
 
 ## Define a shared view
@@ -55,7 +55,11 @@ be dragged; output-only fields also disable contextual creation.
 
 ## Data and authority
 
-All layouts use the same model list queries, QueryClient, and model mutations. The Router preloads
+All layouts use the same model list queries, QueryClient, and model mutations.
+`ObjectCollection` accepts a source with a scoped list and optional create, connect, unlink, or
+delete controls. A relationship binds that source from the model; layouts do not inspect Link
+storage, reference fields, or ownership. Concrete targets reuse their registered collection views.
+Mixed targets use the same record summaries and cursor chain without inventing shared columns. The Router preloads
 the same request. Calendar and Gantt add a server-side date-window predicate, including ranges that
 start earlier but overlap the window and undated records. Existing view and relationship filters
 still apply. These are presentation filters, **not authorization boundaries**; the server enforces

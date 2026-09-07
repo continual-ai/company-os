@@ -20,6 +20,7 @@ it("validates new facts strictly and replays them inside a stable envelope", () 
 
   for (const invalid of [
     { ...fact, type: "lead.unknown" },
+    { ...fact, type: "contact.updated", data: {} },
     { ...fact, version: 2 },
     { ...fact, subjects: [] },
     { ...fact, data: { company: "co_engine" } },
@@ -56,7 +57,7 @@ it("preserves historical payloads after model or event definitions change", () =
     occurredAt: "2026-01-01T00:00:00.000Z",
     recordedAt: "2026-01-01T00:00:00.000Z",
     type: "contact.updated",
-    version: 2,
+    version: 1,
     subjects: [{ id: "contact_old", objectType: "contact" }],
     data: { id: "contact_old", etag: "2", retiredField: "Original value" },
   }

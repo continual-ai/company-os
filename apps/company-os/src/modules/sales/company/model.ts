@@ -11,7 +11,7 @@ export const Company = defineObject({
   name: "Company",
   parent: Root,
   pluralName: "Companies",
-  description: "An organization that is a customer, prospect, or partner.",
+  description: "A customer, prospect, or partner organization.",
   implements: [
     { interface: AuthorizationScope },
     { interface: NoteSubject },
@@ -61,9 +61,9 @@ export const Company = defineObject({
       label: "Lifecycle stage",
       default: "prospect",
       options: [
-        { value: "prospect", label: "Prospect" },
-        { value: "customer", label: "Customer" },
-        { value: "inactive", label: "Inactive" },
+        { value: "prospect", label: "Prospect", color: "blue" },
+        { value: "customer", label: "Customer", color: "green" },
+        { value: "inactive", label: "Inactive", color: "gray" },
       ],
     }),
   },

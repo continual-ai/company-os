@@ -41,7 +41,9 @@ export function SettingsSection({
           </p>
         ) : null}
       </div>
-      <div className="rounded-sm border border-border/60 px-4">{children}</div>
+      <div className="rounded-lg border border-border/60 bg-card px-4">
+        {children}
+      </div>
     </section>
   )
 }

@@ -1,3 +1,6 @@
+import { Badge } from "@company/ui/components/badge"
+import { Button } from "@company/ui/components/button"
+import { Input } from "@company/ui/components/input"
 import { createFileRoute } from "@tanstack/react-router"
 
 import { pageOptions } from "@/route-metadata"
@@ -59,6 +62,63 @@ function FoundationsPage() {
           system to a particular page or business object.
         </p>
       </header>
+
+      <section className="mt-14 border-t pt-6">
+        <h2 className="text-lg font-medium">Shape and surfaces</h2>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+          Crisp adjoining panels, gently rounded controls, and quiet borders.
+          Elevation belongs to floating menus and dialogs. Keep ordinary cards
+          flat and use spacing to group content before adding another box.
+        </p>
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {[
+            {
+              label: "Small details",
+              token: "rounded-sm",
+              usage: "Badges and checkboxes",
+            },
+            {
+              label: "Controls",
+              token: "rounded-md",
+              usage: "Buttons, inputs, navigation",
+            },
+            {
+              label: "Surfaces",
+              token: "rounded-lg",
+              usage: "Cards, menus, hovercards",
+            },
+            {
+              label: "Dialogs",
+              token: "rounded-xl",
+              usage: "Forms and command search",
+            },
+          ].map(({ label, token, usage }) => (
+            <div key={token} className={`${token} border bg-card p-4`}>
+              <h3 className="text-sm font-medium">{label}</h3>
+              <code className="mt-3 block text-xs text-muted-foreground">
+                {token}
+              </code>
+              <p className="mt-1 text-xs text-muted-foreground">{usage}</p>
+            </div>
+          ))}
+        </div>
+        <div className="mt-6 flex flex-wrap items-center gap-3">
+          <Button>Primary action</Button>
+          <Button variant="outline">Secondary action</Button>
+          <Button variant="secondary">View settings</Button>
+          <Input
+            aria-label="Example field"
+            placeholder="Enter a value…"
+            className="w-48"
+          />
+          <Badge variant="secondary">Status</Badge>
+        </div>
+        <p className="mt-4 max-w-2xl text-xs leading-5 text-muted-foreground">
+          The default radius scale is 4 / 6 / 8 / 12px. Customize --radius once
+          in the theme; retain square edges for table grids and attached panels.
+          Control size changes density, not corner shape.
+        </p>
+      </section>
 
       <section className="mt-14 border-t pt-6">
         <h2 className="text-lg font-medium">Color</h2>

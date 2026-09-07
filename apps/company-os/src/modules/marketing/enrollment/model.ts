@@ -10,8 +10,7 @@ export const Enrollment = defineObject({
   collection: "enrollments",
   name: "Enrollment",
   pluralName: "Enrollments",
-  description:
-    "A contact participating in a campaign, with explicit progression and the next planned touch.",
+  description: "Track a contact's progress and next follow-up in a campaign.",
   parent: Root,
   implements: [{ interface: NoteSubject }],
   properties: {

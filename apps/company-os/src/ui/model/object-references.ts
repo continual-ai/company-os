@@ -28,6 +28,16 @@ export function useObjectReferences(
   object: ModelObject,
   records: ReadonlyArray<ClientRecord>
 ) {
+  return useRecordReferences(records.map((record) => ({ object, record })))
+}
+
+/** Resolves a heterogeneous collection together, including audit actors. */
+export function useRecordReferences(
+  items: ReadonlyArray<{
+    readonly object: ModelObject
+    readonly record: ClientRecord
+  }>
+) {
   const references = new Map<string, Set<string>>()
   const add = (type: string, value: unknown) => {
     if (typeof value !== "string" || value === ROOT_ID) return
@@ -35,7 +45,8 @@ export function useObjectReferences(
     ids.add(value)
     references.set(type, ids)
   }
-  for (const record of records) {
+  for (const { object, record } of items) {
+    add(Model.actor.id, record.createdBy)
     if (object.parent.kind !== "root") add(object.parent.typeId, record.parent)
     for (const [key, property] of Object.entries(object.properties)) {
       const field = objectTablePropertySchema(property)

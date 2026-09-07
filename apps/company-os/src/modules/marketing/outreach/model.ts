@@ -12,7 +12,7 @@ export const Outreach = defineObject({
   name: "Outreach",
   pluralName: "Outreach",
   description:
-    "An individual outbound message and its delivery outcome. Sending requires an integration; queued records are not delivery receipts.",
+    "Track a message and its delivery status. Saving does not send it.",
   parent: Root,
   implements: [{ interface: NoteSubject }],
   properties: {

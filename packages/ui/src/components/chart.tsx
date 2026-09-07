@@ -80,7 +80,7 @@ function ChartTooltipContent({
     <div
       data-slot="chart-tooltip"
       className={cn(
-        "grid min-w-32 gap-2 rounded-none border bg-popover px-3 py-2 text-xs text-popover-foreground shadow-md",
+        "grid min-w-32 gap-2 rounded-lg border bg-popover px-3 py-2 text-xs text-popover-foreground shadow-md",
         className
       )}
     >

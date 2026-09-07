@@ -57,7 +57,7 @@ export function CollectionCard({
     <article
       ref={ref}
       className={cn(
-        "group/card min-w-0 rounded-lg border bg-card text-card-foreground shadow-xs transition-shadow hover:shadow-md",
+        "group/card min-w-0 rounded-lg border bg-card text-card-foreground transition-colors hover:border-foreground/20",
         isDragging && "opacity-40",
         compact ? "p-1.5" : "p-3"
       )}
@@ -68,7 +68,7 @@ export function CollectionCard({
             ref={handleRef}
             type="button"
             aria-label={`Move ${label}`}
-            className="shrink-0 cursor-grab touch-none rounded p-0.5 text-muted-foreground hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring active:cursor-grabbing"
+            className="shrink-0 cursor-grab touch-none rounded-sm p-0.5 text-muted-foreground hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring active:cursor-grabbing"
           >
             <GripVerticalIcon className="size-3.5" />
           </button>

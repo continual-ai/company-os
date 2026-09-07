@@ -15,7 +15,6 @@ export const contentUi = {
           "owner",
           "scheduledAt",
         ],
-        sorting: [{ id: "title", desc: false }],
       }),
       defineCollectionView("review", "Needs review", {
         columns: [

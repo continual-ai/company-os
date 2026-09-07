@@ -101,60 +101,62 @@ export function FileField({
         void upload(Array.from(event.dataTransfer.files))
       }}
     >
-      <div className="flex flex-wrap gap-3">
-        {value.map((reference, index) => (
-          <div
-            key={`${reference.assetId}-${index}`}
-            className="flex items-start gap-2 rounded-md border p-2"
-          >
-            <a
-              href={assetContentUrl(reference.assetId)}
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center gap-2 text-sm"
+      {value.length > 0 && (
+        <div className="flex flex-wrap gap-3">
+          {value.map((reference, index) => (
+            <div
+              key={`${reference.assetId}-${index}`}
+              className="flex items-start gap-2 rounded-md border p-2"
             >
-              {image ? (
-                <img
-                  src={assetContentUrl(reference.assetId)}
-                  alt={reference.alt ?? ""}
-                  width={80}
-                  height={80}
-                  className="size-20 rounded object-cover"
-                />
-              ) : (
-                <FileIcon className="size-4" />
-              )}
-              {!image && (names.get(reference.assetId) ?? "Download file")}
-            </a>
-            {image && (
-              <Input
-                aria-label="Alternative text"
-                placeholder="Describe the image"
-                value={reference.alt ?? ""}
-                onChange={(event) =>
-                  onChange(
-                    value.map((item, i) =>
-                      i === index
-                        ? { ...item, alt: event.currentTarget.value }
-                        : item
+              <a
+                href={assetContentUrl(reference.assetId)}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-2 text-sm"
+              >
+                {image ? (
+                  <img
+                    src={assetContentUrl(reference.assetId)}
+                    alt={reference.alt ?? ""}
+                    width={80}
+                    height={80}
+                    className="size-20 rounded-sm object-cover"
+                  />
+                ) : (
+                  <FileIcon className="size-4" />
+                )}
+                {!image && (names.get(reference.assetId) ?? "Download file")}
+              </a>
+              {image && (
+                <Input
+                  aria-label="Alternative text"
+                  placeholder="Describe the image"
+                  value={reference.alt ?? ""}
+                  onChange={(event) =>
+                    onChange(
+                      value.map((item, i) =>
+                        i === index
+                          ? { ...item, alt: event.currentTarget.value }
+                          : item
+                      )
                     )
-                  )
-                }
-              />
-            )}
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-xs"
-              aria-label="Remove attachment"
-              disabled={pending}
-              onClick={() => onChange(value.filter((_, i) => i !== index))}
-            >
-              <XIcon />
-            </Button>
-          </div>
-        ))}
-      </div>
+                  }
+                />
+              )}
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-xs"
+                aria-label="Remove attachment"
+                disabled={pending}
+                onClick={() => onChange(value.filter((_, i) => i !== index))}
+              >
+                <XIcon />
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
       <label
         htmlFor={id}
         className="flex cursor-pointer items-center gap-2 rounded-md border border-dashed p-3 text-sm text-muted-foreground"

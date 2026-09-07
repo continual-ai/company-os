@@ -5,18 +5,22 @@ import {
   type ModelLinkTraversal,
   modelObjectLinkTraversals,
 } from "./definition/model"
-import type { ObjectRef, ObjectType } from "./definition/object"
+import type { ObjectRef, ObjectType, ObjectRecord } from "./definition/object"
 import {
   normalizePageSize,
   type Page,
-  type PageToken,
+  type ListRequest,
 } from "./definition/request"
 import type { RecordIdentifier } from "./definition/schema"
 import type {
   LinkCardinalityConflict,
   LinkRepository,
-  LinkList,
 } from "./effect-link-repository"
+import { resolveListRequest } from "./effect-object-input"
+import type {
+  RepositoryListRequest,
+  RepositoryListVisibility,
+} from "./effect-object-repository"
 
 export class LinkMutationNotAllowed extends Data.TaggedError(
   "LinkMutationNotAllowed"
@@ -42,10 +46,9 @@ export class RequiredLinkUnlink extends Data.TaggedError("RequiredLinkUnlink")<{
   readonly traversal: string
 }> {}
 
-export interface LinkListInput {
+/** Object-target Links support the same query as collections; interface targets support pagination only. */
+export interface LinkListInput extends ListRequest {
   readonly id: RecordIdentifier
-  readonly pageSize?: number
-  readonly pageToken?: PageToken
 }
 
 export interface LinkMutationInput {
@@ -132,7 +135,11 @@ export interface LinkService<
   readonly list: (
     traversal: ModelLinkTraversal,
     input: LinkListInput
-  ) => Effect.Effect<Page<ObjectRef>, TError, TRequirements>
+  ) => Effect.Effect<
+    Page<ObjectRecord<ObjectType> & ObjectRef>,
+    TError,
+    TRequirements
+  >
   readonly unlink: (
     traversal: ModelLinkTraversal,
     input: LinkMutationInput
@@ -200,9 +207,7 @@ function makeLinkWriteMethods<
 
   const initialize = Effect.fn("@company/runtime/LinkWriter.initialize")(
     function* (object, sourceId, initial) {
-      const traversals = modelObjectLinkTraversals(model, object).filter(
-        ({ initializable }) => initializable
-      )
+      const traversals = modelObjectLinkTraversals(model, object)
       const known = new Set(traversals.map(({ traversal }) => traversal.key))
       const unknown = Object.keys(initial).find((key) => !known.has(key))
       if (unknown !== undefined) {
@@ -383,6 +388,8 @@ export function makeLinkService<
   TAuthorizationError,
   TResolveRequirements,
   TAuthorizationRequirements,
+  TReadError,
+  TReadRequirements,
 >(
   model: ModelCatalog,
   repository: LinkRepository<TRepositoryError, TRepositoryRequirements>,
@@ -391,9 +398,19 @@ export function makeLinkService<
     TAuthorizationError,
     TResolveRequirements,
     TAuthorizationRequirements
+  >,
+  listRecords: (
+    object: ObjectType,
+    request: RepositoryListRequest<ObjectType>,
+    visibility: RepositoryListVisibility
+  ) => Effect.Effect<
+    Page<ObjectRecord<ObjectType>>,
+    TReadError,
+    TReadRequirements
   >
 ): LinkService<
   | TRepositoryError
+  | TReadError
   | TResolveError
   | TAuthorizationError
   | LinkCardinalityConflict
@@ -401,7 +418,10 @@ export function makeLinkService<
   | LinkMutationNotAllowed
   | RequiredLinkMissing
   | RequiredLinkUnlink,
-  TRepositoryRequirements | TResolveRequirements | TAuthorizationRequirements
+  | TRepositoryRequirements
+  | TResolveRequirements
+  | TAuthorizationRequirements
+  | TReadRequirements
 > {
   const writer = makeLinkWriteMethods(
     model,
@@ -429,24 +449,94 @@ export function makeLinkService<
           sourceId,
           traversal,
         })
-        const request: LinkList =
-          input.pageToken === undefined
-            ? {
-                direction: traversal.direction,
-                linkId: traversal.link.id,
-                pageSize,
-                sourceId,
-              }
-            : {
-                direction: traversal.direction,
-                linkId: traversal.link.id,
-                pageSize,
-                pageToken: input.pageToken,
-                sourceId,
-              }
-        return yield* repository.list(request, {
-          targets: yield* options.visibility(traversal),
+        const target = Object.values(model.objects).find(
+          (object) => object.id === traversal.target.from.typeId
+        )
+        if (!target && (input.filter !== undefined || input.sort !== undefined))
+          return yield* Effect.fail(
+            new InvalidLinkRequest({
+              message:
+                "Filtering and sorting require a concrete target object.",
+              path: [input.filter === undefined ? "sort" : "filter"],
+            })
+          )
+        const query = target
+          ? yield* resolveListRequest(target, input, (typeId, aliases) =>
+              Effect.forEach(aliases, (alias) => options.resolve(typeId, alias))
+            )
+          : input.pageToken === undefined
+            ? {}
+            : { pageToken: input.pageToken }
+        const visibility = yield* options.visibility(traversal)
+        const relatedTo = {
+          direction: traversal.direction,
+          linkId: traversal.link.id,
+          sourceId,
+        }
+        const scopes = (objectType: string): RepositoryListVisibility => ({
+          visibleWithin:
+            visibility.find((item) => item.objectType === objectType)
+              ?.visibleWithin ?? [],
         })
+        if (target) {
+          const page = yield* listRecords(
+            target,
+            { ...query, pageSize, relatedTo },
+            scopes(target.id)
+          )
+          return {
+            ...page,
+            items: page.items.map((record) => ({
+              ...record,
+              objectType: target.id,
+            })),
+          }
+        }
+        const page = yield* repository.list(
+          {
+            ...relatedTo,
+            pageSize,
+            ...(input.pageToken === undefined
+              ? {}
+              : { pageToken: input.pageToken }),
+          },
+          { targets: visibility }
+        )
+        const batches = yield* Effect.forEach(
+          [...new Set(page.items.map((item) => item.objectType))],
+          (typeId) =>
+            Effect.gen(function* () {
+              const object = model.objects[typeId]
+              if (!object)
+                return yield* Effect.die(`Unknown related object '${typeId}'.`)
+              const ids = page.items
+                .filter((item) => item.objectType === typeId)
+                .map((item) => item.id)
+              const records = yield* listRecords(
+                object,
+                {
+                  pageSize: ids.length,
+                  filter: { field: "id", operator: "in", value: ids },
+                },
+                scopes(typeId)
+              )
+              return records.items.map((record) => ({
+                ...record,
+                objectType: typeId,
+              }))
+            }),
+          { concurrency: "unbounded" }
+        )
+        const records = new Map(
+          batches.flat().map((record) => [record.id, record])
+        )
+        return {
+          ...page,
+          items: page.items.flatMap(({ id }) => {
+            const record = records.get(id)
+            return record ? [record] : []
+          }),
+        }
       }
     ),
   }

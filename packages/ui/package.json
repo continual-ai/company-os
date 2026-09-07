@@ -19,6 +19,7 @@
     "./components/chart": "./src/components/chart.tsx",
     "./components/chat": "./src/components/chat.tsx",
     "./components/checkbox": "./src/components/checkbox.tsx",
+    "./components/code-block": "./src/components/code-block.tsx",
     "./components/command": "./src/components/command.tsx",
     "./components/dialog": "./src/components/dialog.tsx",
     "./components/date-time-picker": "./src/components/date-time-picker.tsx",
@@ -51,7 +52,9 @@
     "./globals.css": "./src/styles/globals.css",
     "./hooks/use-mobile": "./src/hooks/use-mobile.ts",
     "./lib/phone-number": "./src/lib/phone-number.ts",
-    "./lib/utils": "./src/lib/utils.ts"
+    "./lib/utils": "./src/lib/utils.ts",
+    "./components/markdown": "./src/components/markdown.tsx",
+    "./components/markdown-editor": "./src/components/markdown-editor.tsx"
   },
   "scripts": {
     "lint": "oxlint .",
@@ -60,6 +63,10 @@
   "dependencies": {
     "@base-ui/react": "catalog:",
     "@fontsource-variable/geist": "catalog:",
+    "@shikijs/core": "catalog:",
+    "@shikijs/engine-javascript": "catalog:",
+    "@shikijs/langs": "catalog:",
+    "@shikijs/themes": "catalog:",
     "class-variance-authority": "catalog:",
     "clsx": "catalog:",
     "cmdk": "catalog:",
@@ -68,8 +75,10 @@
     "react": "catalog:",
     "react-day-picker": "catalog:",
     "react-dom": "catalog:",
+    "react-markdown": "catalog:",
     "react-phone-number-input": "catalog:",
     "recharts": "catalog:",
+    "remark-gfm": "catalog:",
     "tailwind-merge": "catalog:",
     "tw-animate-css": "catalog:"
   },

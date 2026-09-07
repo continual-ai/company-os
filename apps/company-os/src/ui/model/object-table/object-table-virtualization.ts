@@ -3,7 +3,6 @@ import { useRef } from "react"
 
 export const tableHeaderHeight = 33
 export const tableRowHeight = 32
-export const tableFooterHeight = 32
 
 /** Materialize Virtual's mutable instance into values that the compiled table can safely consume. */
 export function useObjectTableRows(
@@ -28,7 +27,6 @@ export function useObjectTableRows(
     initialRect: { width: 0, height: 640 },
     scrollMargin: tableHeaderHeight,
     scrollPaddingStart: tableHeaderHeight,
-    scrollPaddingEnd: tableFooterHeight,
     // Focused cells and unsaved editors survive scrolling out of the viewport.
     rangeExtractor: (range) =>
       [...new Set([...defaultRangeExtractor(range), ...retainedRows])].sort(

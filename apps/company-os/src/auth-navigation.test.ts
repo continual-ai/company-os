@@ -4,8 +4,8 @@ import { safeReturnTo } from "./auth-navigation"
 
 describe("authentication navigation", () => {
   it("preserves same-origin paths, queries, and fragments", () => {
-    expect(safeReturnTo("/companies?page=2#active")).toBe(
-      "/companies?page=2#active"
+    expect(safeReturnTo("/objects/company?page=2#active")).toBe(
+      "/objects/company?page=2#active"
     )
   })
 

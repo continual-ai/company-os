@@ -112,6 +112,9 @@ itDatabase(
         .convert({ id: lead.id })
         .pipe(Effect.provideService(CommittedChanges, changes))
       expect(changes).toEqual(new Set(["company", "contact", "lead"]))
+      expect((yield* services.lead.get({ id: lead.id })).company).toBe(
+        converted.company
+      )
       changes.clear()
       expect(
         yield* services.lead
@@ -122,6 +125,85 @@ itDatabase(
       expect(
         (yield* services.contact.get({ id: converted.contact })).name
       ).toBe("Ada")
+
+      const linkedLead = yield* services.lead.create({
+        name: "Existing company contact",
+        company: first.id,
+      })
+      const companyCount = (yield* services.company.list({})).totalSize
+      const linkedConversion = yield* services.lead.convert({
+        id: linkedLead.id,
+      })
+      expect(linkedConversion.company).toBe(first.id)
+      expect((yield* services.company.list({})).totalSize).toBe(companyCount)
+      expect(yield* services.lead.convert({ id: linkedLead.id })).toEqual(
+        linkedConversion
+      )
+      const affiliation = modelObjectLinkTraversals(
+        Model,
+        Model.objects.contact
+      ).find(({ traversal }) => traversal.key === "primaryCompany")!
+      expect(
+        (yield* links.list(affiliation, { id: linkedConversion.contact })).items
+      ).toMatchObject([
+        { id: first.id, objectType: "company", name: first.name },
+      ])
+
+      const conversionRole = yield* roles.create({
+        name: "Lead conversion",
+        scopeType: "root",
+        permissions: ["lead.get", "lead.convert", "contact.create"],
+      })
+      yield* services.roleAssignment.create({
+        parent: ROOT_ID,
+        principal: reader.id,
+        role: conversionRole.id,
+      })
+      const restrictedLead = yield* services.lead.create({
+        name: "Restricted company contact",
+        company: second.id,
+      })
+      expect(
+        yield* services.lead
+          .convert({ id: restrictedLead.id })
+          .pipe(
+            Effect.provideService(CurrentInvocation, readerInvocation),
+            Effect.flip
+          )
+      ).toMatchObject({
+        _tag: "AuthorizationTargetNotFound",
+        objectType: "company",
+      })
+      expect(
+        (yield* services.lead.get({ id: restrictedLead.id })).convertedAt
+      ).toBeNull()
+      expect(
+        (yield* services.contact.list({
+          filter: {
+            field: "name",
+            operator: "eq",
+            value: "Restricted company contact",
+          },
+        })).totalSize
+      ).toBe(0)
+
+      const unassignedLead = yield* services.lead.create({
+        name: "Unassigned contact",
+      })
+      expect(
+        yield* services.lead
+          .convert({ id: unassignedLead.id })
+          .pipe(Effect.flip)
+      ).toMatchObject({ _tag: "LeadCompanyRequired" })
+      expect(
+        (yield* services.contact.list({
+          filter: {
+            field: "name",
+            operator: "eq",
+            value: "Unassigned contact",
+          },
+        })).totalSize
+      ).toBe(0)
 
       const rolledBackLead = yield* services.lead.create({
         name: "Rollback contact",
@@ -208,7 +290,9 @@ itDatabase(
       ).toBe(2)
       expect(
         (yield* links.list(primary, { id: converted.contact })).items
-      ).toEqual([{ id: first.id, objectType: "company" }])
+      ).toMatchObject([
+        { id: first.id, objectType: "company", name: first.name },
+      ])
       yield* links.unlink(contacts, { id: first.id, target: converted.contact })
       expect(
         (yield* links.list(primary, { id: converted.contact })).items

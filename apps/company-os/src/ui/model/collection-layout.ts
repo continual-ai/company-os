@@ -3,6 +3,7 @@ import { Schema } from "effect"
 
 export const CollectionLayoutSchema = Schema.Union([
   Schema.Struct({ type: Schema.Literal("table") }),
+  Schema.Struct({ type: Schema.Literal("feed") }),
   Schema.Struct({ type: Schema.Literal("kanban"), groupBy: Schema.String }),
   Schema.Struct({
     type: Schema.Literal("calendar"),
@@ -39,7 +40,7 @@ export function collectionLayoutError(
   layout: CollectionLayout
 ): string | undefined {
   const { groups, dates } = collectionLayoutFields(object)
-  if (layout.type === "table") return undefined
+  if (layout.type === "table" || layout.type === "feed") return undefined
   if (layout.type === "kanban")
     return groups.some(([id]) => id === layout.groupBy)
       ? undefined
@@ -59,7 +60,7 @@ export function defaultCollectionLayout(
   type: CollectionLayout["type"]
 ): CollectionLayout | undefined {
   const { groups, dates } = collectionLayoutFields(object)
-  if (type === "table") return { type }
+  if (type === "table" || type === "feed") return { type }
   if (type === "kanban") {
     const group =
       groups.find(([id]) => id === object.display.status) ?? groups[0]

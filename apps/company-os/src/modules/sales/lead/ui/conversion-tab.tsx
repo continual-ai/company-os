@@ -21,8 +21,11 @@ export function LeadConversion({
               nativeButton={false}
               render={
                 <Link
-                  to="/companies/$recordId"
-                  params={{ recordId: record.convertedCompany }}
+                  to="/objects/$objectType/$recordId"
+                  params={{
+                    objectType: "company",
+                    recordId: record.convertedCompany,
+                  }}
                 />
               }
             >
@@ -33,8 +36,11 @@ export function LeadConversion({
               nativeButton={false}
               render={
                 <Link
-                  to="/contacts/$recordId"
-                  params={{ recordId: record.convertedContact }}
+                  to="/objects/$objectType/$recordId"
+                  params={{
+                    objectType: "contact",
+                    recordId: record.convertedContact,
+                  }}
                 />
               }
             >
@@ -48,8 +54,12 @@ export function LeadConversion({
             Ready to become a customer relationship?
           </h2>
           <p className="text-sm text-muted-foreground">
-            Conversion creates a company from {record.companyName} and a contact
-            from {record.name}. The lead stays available as the original source.
+            {record.company
+              ? `Conversion creates a contact for ${record.name} at the linked company.`
+              : record.companyName
+                ? `Conversion creates ${record.companyName} and a contact for ${record.name}.`
+                : "Select a company or enter a company name before converting this lead."}{" "}
+            The lead stays available as the original source.
           </p>
         </>
       )}

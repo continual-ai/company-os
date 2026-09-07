@@ -11,7 +11,7 @@ export const Repository = defineObject({
   name: "Repository",
   pluralName: "Repositories",
   description:
-    "A source repository connected to engineering work. Credentials belong to the integration, never this record.",
+    "A codebase connected to your projects, issues, and pull requests.",
   parent: Root,
   implements: [{ interface: NoteSubject }],
   properties: {

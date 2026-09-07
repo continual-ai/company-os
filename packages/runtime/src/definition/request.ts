@@ -198,11 +198,14 @@ export interface ObjectSort<TObject extends ObjectType = ObjectType> {
     | "systemManaged"
     | "updatedAt"
     | "updatedBy"
-    | SortablePropertyKeys<TObject>
+    | (string extends keyof TObject["properties"]
+        ? string
+        : SortablePropertyKeys<TObject>)
   /** Defaults to `last`, independently of direction. */
   readonly nulls?: NullPlacement
 }
 
+/** Lists default to newest creation first, then descending ID. An explicit sort takes precedence. */
 export interface ListRequest<TObject extends ObjectType = ObjectType> {
   readonly filter?: ObjectFilter<TObject>
   readonly pageSize?: number
