@@ -1,26 +1,26 @@
 import { defineNotesModule } from "@company/notes/model"
-import { NoteSubject } from "@company/notes/note-subject"
+import { NoteSubject } from "@company/notes/model"
 import { noteSeed } from "@company/notes/seeds"
-import {
-  makeLinkRepository,
-  makeObjectRepository,
-  makePostgresSchema,
-} from "@company/postgres"
 import {
   defineInterface,
   defineModel,
   defineModule,
   defineRoot,
   RecordId,
-} from "@company/runtime"
+} from "@company/runtime/model"
+import { Database } from "@company/runtime/server/database/database"
+import { makeEncryptedPageTokenCodec } from "@company/runtime/server/page-tokens"
+import {
+  makeLinkRepository,
+  makeObjectRepository,
+  makePostgresSchema,
+} from "@company/runtime/server/postgres"
 import { Effect } from "effect"
 import * as Migrator from "effect/unstable/sql/Migrator"
 import * as SqlClient from "effect/unstable/sql/SqlClient"
 import { expect, it } from "vitest"
 
-import { Database } from "#/server/database/database.ts"
 import { TestDatabase } from "#/server/database/test-database.ts"
-import { makeEncryptedPageTokenCodec } from "#/server/page-tokens.ts"
 
 it("migrates and persists a Notes-only model without the demo domains", async () => {
   const Actor = defineInterface({

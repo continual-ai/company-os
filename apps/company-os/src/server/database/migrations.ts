@@ -1,20 +1,14 @@
-import { readFile } from "node:fs/promises"
-
+import {
+  applySchemaMigrations,
+  verifySchemaMigrations,
+  schemaHash,
+} from "@company/runtime/server/migrations"
 import { PgClient } from "@effect/sql-pg"
 import { Effect } from "effect"
-import * as Migrator from "effect/unstable/sql/Migrator"
-import * as SqlClient from "effect/unstable/sql/SqlClient"
 
-import { Database } from "#/server/database/database.ts"
+import { migrations } from "#/server/database/migrations/index.ts"
 import { databaseSchemaConfig } from "#/server/database/postgres.ts"
-
-const sqlMigration = (file: URL) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient
-    const source = yield* Effect.tryPromise(() => readFile(file, "utf8"))
-    // The driver executes the complete checked-in file, including function bodies.
-    yield* sql.unsafe(source)
-  })
+import { schemaSql } from "#/server/database/schema.ts"
 
 /**
  * Creates the deployment's business schema when it does not exist yet. The
@@ -30,22 +24,8 @@ export const ensureDatabaseSchema = Effect.fn("@company/ensureDatabaseSchema")(
   }
 )
 
-/**
- * Installs the template baseline and any migrations added by its owner. Migration
- * bookkeeping lives in the deployment schema under an application-specific
- * table so other company applications can migrate the shared schema without
- * colliding.
- */
-export const applyMigrations = Effect.fn("@company/applyMigrations")(
-  function* () {
-    const database = yield* Database
-    yield* Migrator.make({})({
-      table: "company_os_migrations",
-      loader: Migrator.fromRecord({
-        "1_initial": sqlMigration(
-          new URL("./migrations/0001_initial.sql", import.meta.url)
-        ),
-      }),
-    }).pipe(Effect.provideService(SqlClient.SqlClient, database.sql))
-  }
-)
+/** App-owned immutable migration sequence. */
+export const applyMigrations = () =>
+  applySchemaMigrations(migrations, schemaHash(schemaSql))
+export const verifyDatabaseModel = () =>
+  verifySchemaMigrations(migrations, schemaHash(schemaSql))

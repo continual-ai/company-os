@@ -1,5 +1,5 @@
-import { buttonVariants } from "@company/ui/components/button"
-import { cn } from "@company/ui/lib/utils"
+import { buttonVariants } from "@company/runtime/ui/button"
+import { cn } from "@company/runtime/ui/lib/utils"
 import { createFileRoute } from "@tanstack/react-router"
 import { modelMetadata } from "company-os/metadata"
 import { ArrowRight, Building2, FolderKanban, Users } from "lucide-react"

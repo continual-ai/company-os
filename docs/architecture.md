@@ -13,19 +13,20 @@ not the app's display name.
 
 ## Boundaries
 
-| Source                             | Responsibility                                                                                        |
-| ---------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `apps/company-os/src/modules`      | Editable business modules: Access, Sales, Marketing, Support, Engineering, Assets, and your additions |
-| `apps/company-os/src/app.model.ts` | Explicit composition of the one closed model; public as `company-os/model`                            |
-| `apps/company-os/src/server`       | Application assembly, identity, authorization, transactions, migrations, and transports               |
-| `apps/company-os/src/ui/model`     | Default tables, forms, detail pages, and relationship navigation                                      |
-| `packages/runtime`                 | Portable definitions and reusable Effect execution/HTTP/MCP machinery                                 |
-| `packages/postgres`                | Server-only PostgreSQL projection and repository implementation                                       |
-| `modules/notes`                    | Reusable Notes model, Markdown UI, and deterministic seed content                                     |
-| `packages/ui`                      | Design tokens, base components, and reusable model UI contracts                                       |
-| `templates/*`                      | Executable starters for optional interfaces over the central app                                      |
+| Source                                         | Responsibility                                                                       |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `apps/company-os/src/app.{model,server,ui}.ts` | Explicit composition of definitions, implementations, and presentation               |
+| `apps/company-os/src/server`                   | Host providers, migration sequence, deployment configuration, and transport assembly |
+| `apps/company-os/src/ui/application`           | Application shell and product entrypoints                                            |
+| `packages/runtime/src/model`                   | Portable definitions and shared Access/Assets contracts                              |
+| `packages/runtime/src/server`                  | Effect services, authorization, transactions, SQL, events, and protocol machinery    |
+| `packages/runtime/src/contract`                | Shared Effect Schema decoders and HTTP contracts                                     |
+| `packages/runtime/src/client`                  | Browser/SSR-safe semantic query clients                                              |
+| `packages/runtime/src/ui`                      | Tokens, primitives, forms, model pages, and relationship navigation                  |
+| `modules/*`                                    | Domain definitions, custom operations, specialized UI, seeds, and isolated tests     |
+| `templates/*`                                  | Executable starters for optional interfaces over the central app                     |
 
-The model export composes browser-safe app and module-package definitions using portable `@company/runtime` APIs. A recursive import
+The model export composes browser-safe app and module-package definitions using portable `@company/runtime/model` APIs. A recursive import
 check rejects Effect, UI, server code, and provider imports anywhere in that export's dependency
 graph. The `company-os/metadata` export is equally browser-safe. Optional apps import those public
 exports and call governed APIs; they cannot import private server modules. There is one migration
@@ -39,15 +40,15 @@ For this disposable template, update composition and regenerate the initial base
 
 Start with the [module authoring guide](modules.md). Standard object behavior is derived; custom
 operation implementations are needed only for additional behavior or invariants. Generic routes give installed
-objects a usable interface. Specialized workflows compose or replace those components. Each module can expose `model.ts`,
-`server.ts`, and `ui.ts`. Their independent application roots keep the model browser-safe while
+objects a usable interface. Specialized workflows compose or replace those components. Each module can expose `model/index.ts`,
+`server/index.ts`, and `ui/index.ts`. Their independent application roots keep the model browser-safe while
 binding custom operations and UI once. UI contributions control navigation, saved views, actions,
 record tabs/overview, property editors, and page replacements. Standard routes consume those
 contributions; they contain no per-object presentation switches.
 
-Larger modules give each object its `model.ts`, custom operations under `server/`, and presentation under `ui/`.
-A small reusable module can use a model factory accepting the app root, as Notes does.
-`ui/config.ts` registers components; module-level entrypoints compose them. Page and form assembly
+Larger modules keep object definitions under `model/`, custom operations under `server/`, and presentation under `ui/`.
+Surface entrypoints expose deliberate named exports. UI configuration registers components; module
+entrypoints compose them. Page and form assembly
 resolve UI configuration and pass explicit props to standard components. Additive extensions
 (`additionalTabs`, toolbar controls, Action placements) and replacements (pages, overview, field
 editors) have distinct names. A custom workflow can own an ordinary React page and TanStack route;
@@ -69,6 +70,11 @@ transaction boundary. HTTP custom methods use literal colon suffixes, such as
 sort arrays are JSON-encoded query parameters by the generated codec. There is no separate search
 operation. Lists and hydration return ordinary resources, without BASIC/FULL views or permission envelopes.
 
+`Operations.run` supplies current identity, action transactions, error normalization, and committed
+write metadata at HTTP and MCP ingress. Custom operations still enforce their own business rules
+and atomicity when called directly. Provider binding uses only explicit layer outputs; invocation
+and savepoint state come from the current call.
+
 Effect v4 services use `Context.Service(..., { make })`, named `Effect.fn` operations, and static
 `.layer` implementations. Acquire dependencies in `make`, compose layers at the application
 boundary, and use typed failures for expected business outcomes. Portable model definitions do not
@@ -78,7 +84,7 @@ physical storage and standard repositories from the portable model; custom opera
 Custom operations default to named Effect functions. Services represent dependencies and cohesive
 capabilities; repositories encapsulate persistence when useful. There is no mandatory service/repository
 pair per object. SQL may live beside an operation, but authorization must constrain rows before an
-aggregate and business writes must preserve model invariants. See [the operation guide](modules.md#add-a-query-or-action).
+aggregate and business writes must preserve model invariants. See [the operation guide](modules.md#custom-server-behavior).
 
 ## Reads and changes
 

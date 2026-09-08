@@ -1,4 +1,4 @@
-import { cn } from "@company/ui/lib/utils"
+import { cn } from "@company/runtime/ui/lib/utils"
 
 import { appConfig } from "#/customization/config.ts"
 

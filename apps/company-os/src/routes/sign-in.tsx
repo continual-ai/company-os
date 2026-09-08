@@ -1,11 +1,11 @@
-import { Button } from "@company/ui/components/button"
+import { Button } from "@company/runtime/ui/button"
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@company/ui/components/card"
+} from "@company/runtime/ui/card"
 import { createFileRoute } from "@tanstack/react-router"
 import { ArrowLeftIcon } from "lucide-react"
 
@@ -14,8 +14,8 @@ import { pageOptions } from "#/route-metadata.ts"
 
 const page = {
   breadcrumb: "Sign in",
-  description: `Open ${appConfig.identity.name} through Continual to sign in.`,
-  title: "Sign in with Continual",
+  description: `Sign in through your organization to open ${appConfig.identity.name}.`,
+  title: "Sign in",
 }
 
 export const Route = createFileRoute("/sign-in")({
@@ -28,10 +28,10 @@ function SignIn() {
     <main className="flex min-h-svh items-center justify-center bg-muted/30 p-6">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>Open this App through Continual</CardTitle>
+          <CardTitle>Sign in to {appConfig.identity.name}</CardTitle>
           <CardDescription>
-            Continual authenticates you before forwarding requests to this App.
-            This address did not include a Continual App identity.
+            Open your organization’s sign-in link, then return to this app.
+            Contact your administrator if you need the link.
           </CardDescription>
         </CardHeader>
         <CardContent>

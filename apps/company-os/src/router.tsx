@@ -1,7 +1,10 @@
+import {
+  createModelDataClient,
+  modelData,
+} from "@company/runtime/client/data-client"
 import { createRouter as createTanStackRouter } from "@tanstack/react-router"
 import { setupRouterSsrQueryIntegration } from "@tanstack/react-router-ssr-query"
 
-import { createModelDataClient, modelData } from "#/data-client.ts"
 import { routeTree } from "#/routeTree.gen.ts"
 
 export function getRouter() {

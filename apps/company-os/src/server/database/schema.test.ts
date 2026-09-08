@@ -1,8 +1,12 @@
-import { tableColumns, tableName, type TableRow } from "@company/postgres"
-import type { RecordId } from "@company/runtime"
+import type { RecordId } from "@company/runtime/model"
+import {
+  tableColumns,
+  tableName,
+  type TableRow,
+} from "@company/runtime/server/postgres"
 import { describe, expect, expectTypeOf, it } from "vitest"
 
-import { Storage, schemaSql } from "#/server/database/schema.ts"
+import { Storage, schemaSql } from "#/examples/schema.server.ts"
 
 describe("PostgreSQL schema", () => {
   it("projects model fields, relationships, and infrastructure constraints", () => {

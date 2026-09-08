@@ -1,16 +1,16 @@
+import { modelData } from "@company/runtime/client/data-client"
+import { runClientEffect } from "@company/runtime/client/model-query-client"
+import { ModelUiProvider } from "@company/runtime/ui/model/runtime-context"
 import { Outlet, createFileRoute, redirect } from "@tanstack/react-router"
 import { useEffect, useState } from "react"
 
 import { listEvents } from "#/app-client.ts"
-import { modelUi } from "#/app.ui.ts"
+import { presentation } from "#/app-presentation.ts"
 import { getCurrentUser } from "#/current-user.functions.ts"
-import { modelData } from "#/data-client.ts"
-import { runClientEffect } from "#/model-query-client.ts"
 import { AppShell } from "#/ui/application/app-shell.tsx"
 import { allowedCapabilitiesQuery } from "#/ui/application/load-capabilities.ts"
 import { useModelEvents } from "#/ui/application/use-model-events.ts"
 import { modelNavigationChecks } from "#/ui/model/model-navigation.ts"
-import { ModelUiProvider } from "#/ui/model/module-ui.tsx"
 
 export const Route = createFileRoute("/_app")({
   beforeLoad: async ({ location }) => {
@@ -56,7 +56,7 @@ function CompanyAppLayout() {
       : undefined
   )
   return (
-    <ModelUiProvider value={modelUi}>
+    <ModelUiProvider value={presentation}>
       <AppShell key={authenticatedUser.id} user={authenticatedUser}>
         <Outlet />
       </AppShell>

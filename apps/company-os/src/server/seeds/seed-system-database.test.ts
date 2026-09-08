@@ -1,31 +1,4 @@
-import { assignments, insertValues } from "@company/postgres"
-import {
-  tableProjection,
-  type TableRow,
-  projection,
-  type SelectionRow,
-  inValues,
-} from "@company/postgres"
-import { Etag } from "@company/runtime"
-import { Effect } from "effect"
-import { describe, expect } from "vitest"
-
-import { Database } from "#/server/database/database.ts"
-import { itDatabase } from "#/server/database/it-database.ts"
-import {
-  actors,
-  anonymousActors,
-  objects,
-  principalSets,
-  recordAliases,
-  roleAssignments,
-  roles,
-} from "#/server/database/schema.ts"
-import {
-  authenticatedInvocation,
-  ReservedSystemActor,
-} from "#/server/invocation-context.ts"
-import { seedSystem } from "#/server/seeds/seed-system.ts"
+import { Etag } from "@company/runtime/model"
 import {
   ALL_AUTHENTICATED_CALLERS_PRINCIPAL_SET_ID,
   ALL_CALLERS_PRINCIPAL_SET_ID,
@@ -34,7 +7,34 @@ import {
   ROOT_ID,
   SYSTEM_SERVICE_ACCOUNT_ID,
   SYSTEM_ROLE_ASSIGNMENT_ID,
-} from "#/system-records.ts"
+} from "@company/runtime/model/system-records"
+import { Database } from "@company/runtime/server/database/database"
+import {
+  authenticatedInvocation,
+  ReservedSystemActor,
+} from "@company/runtime/server/invocation-context"
+import { assignments, insertValues } from "@company/runtime/server/postgres"
+import {
+  tableProjection,
+  type TableRow,
+  projection,
+  type SelectionRow,
+  inValues,
+} from "@company/runtime/server/postgres"
+import { Effect } from "effect"
+import { describe, expect } from "vitest"
+
+import {
+  actors,
+  anonymousActors,
+  objects,
+  principalSets,
+  recordAliases,
+  roleAssignments,
+  roles,
+} from "#/examples/schema.server.ts"
+import { itDatabase } from "#/server/database/it-database.ts"
+import { seedSystem } from "#/server/seeds/seed-system.ts"
 
 describe("Company OS seeds", () => {
   itDatabase(

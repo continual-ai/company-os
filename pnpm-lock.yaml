@@ -376,33 +376,30 @@ importers:
 
   apps/company-os:
     dependencies:
+      '@company/engineering':
+        specifier: workspace:*
+        version: link:../../modules/engineering
+      '@company/marketing':
+        specifier: workspace:*
+        version: link:../../modules/marketing
       '@company/notes':
         specifier: workspace:*
         version: link:../../modules/notes
-      '@company/postgres':
-        specifier: workspace:*
-        version: link:../../packages/postgres
       '@company/runtime':
         specifier: workspace:*
         version: link:../../packages/runtime
-      '@company/ui':
+      '@company/sales':
         specifier: workspace:*
-        version: link:../../packages/ui
+        version: link:../../modules/sales
       '@continual/sdk':
         specifier: 'catalog:'
         version: 0.1.5
-      '@dnd-kit/react':
-        specifier: ^0.5.0
-        version: 0.5.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@effect/platform-node':
         specifier: 'catalog:'
         version: 4.0.0-beta.107(effect@4.0.0-beta.107(patch_hash=92cb2a27b506b1a3d2829269a208c41c387f1a6dfdddcfb2b8c147980f33e91d))(ioredis@5.11.1)
       '@effect/sql-pg':
         specifier: 'catalog:'
         version: 4.0.0-beta.107(effect@4.0.0-beta.107(patch_hash=92cb2a27b506b1a3d2829269a208c41c387f1a6dfdddcfb2b8c147980f33e91d))
-      '@tanstack/react-form':
-        specifier: 'catalog:'
-        version: 1.33.5(@tanstack/react-start@1.168.26(crossws@0.4.12(srvx@0.11.22))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite@8.0.16(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0)))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@tanstack/react-query':
         specifier: 5.102.8
         version: 5.102.8(react@19.2.6)
@@ -415,21 +412,12 @@ importers:
       '@tanstack/react-start':
         specifier: 'catalog:'
         version: 1.168.26(crossws@0.4.12(srvx@0.11.22))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite@8.0.16(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0))
-      '@tanstack/react-table':
-        specifier: 'catalog:'
-        version: 9.1.2(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
-      '@tanstack/react-virtual':
-        specifier: ^3.14.10
-        version: 3.14.10(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       effect:
         specifier: 'catalog:'
         version: 4.0.0-beta.107(patch_hash=92cb2a27b506b1a3d2829269a208c41c387f1a6dfdddcfb2b8c147980f33e91d)
-      file-type:
-        specifier: 22.0.2
-        version: 22.0.2
-      image-size:
-        specifier: ^2.0.2
-        version: 2.0.2
+      jose:
+        specifier: 6.2.12
+        version: 6.2.12
       lucide-react:
         specifier: 'catalog:'
         version: 1.30.0(react@19.2.6)
@@ -483,14 +471,67 @@ importers:
         specifier: 'catalog:'
         version: 4.4.3
 
+  modules/engineering:
+    dependencies:
+      '@company/notes':
+        specifier: workspace:*
+        version: link:../notes
+      '@company/runtime':
+        specifier: workspace:*
+        version: link:../../packages/runtime
+      lucide-react:
+        specifier: 'catalog:'
+        version: 1.30.0(react@19.2.6)
+      react:
+        specifier: 'catalog:'
+        version: 19.2.6
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.13.3
+      '@types/react':
+        specifier: 'catalog:'
+        version: 19.2.15
+      effect:
+        specifier: 'catalog:'
+        version: 4.0.0-beta.107(patch_hash=92cb2a27b506b1a3d2829269a208c41c387f1a6dfdddcfb2b8c147980f33e91d)
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.11(@types/node@24.13.3)(vite@8.0.16(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0))
+
+  modules/marketing:
+    dependencies:
+      '@company/notes':
+        specifier: workspace:*
+        version: link:../notes
+      '@company/runtime':
+        specifier: workspace:*
+        version: link:../../packages/runtime
+      '@company/sales':
+        specifier: workspace:*
+        version: link:../sales
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.13.3
+      effect:
+        specifier: 'catalog:'
+        version: 4.0.0-beta.107(patch_hash=92cb2a27b506b1a3d2829269a208c41c387f1a6dfdddcfb2b8c147980f33e91d)
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.11(@types/node@24.13.3)(vite@8.0.16(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0))
+
   modules/notes:
     dependencies:
       '@company/runtime':
         specifier: workspace:*
         version: link:../../packages/runtime
-      '@company/ui':
-        specifier: workspace:*
-        version: link:../../packages/ui
       '@tanstack/react-router':
         specifier: 'catalog:'
         version: 1.170.16(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
@@ -508,27 +549,36 @@ importers:
         specifier: 'catalog:'
         version: 7.0.2
 
-  packages/postgres:
+  modules/sales:
     dependencies:
+      '@company/notes':
+        specifier: workspace:*
+        version: link:../notes
       '@company/runtime':
         specifier: workspace:*
-        version: link:../runtime
-      '@effect/sql-pg':
+        version: link:../../packages/runtime
+      '@tanstack/react-query':
+        specifier: 5.102.8
+        version: 5.102.8(react@19.2.6)
+      '@tanstack/react-router':
         specifier: 'catalog:'
-        version: 4.0.0-beta.107(effect@4.0.0-beta.107(patch_hash=92cb2a27b506b1a3d2829269a208c41c387f1a6dfdddcfb2b8c147980f33e91d))
+        version: 1.170.16(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       effect:
         specifier: 'catalog:'
         version: 4.0.0-beta.107(patch_hash=92cb2a27b506b1a3d2829269a208c41c387f1a6dfdddcfb2b8c147980f33e91d)
-      pg:
+      lucide-react:
         specifier: 'catalog:'
-        version: 8.23.0
+        version: 1.30.0(react@19.2.6)
+      react:
+        specifier: 'catalog:'
+        version: 19.2.6
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
         version: 24.13.3
-      '@types/pg':
+      '@types/react':
         specifier: 'catalog:'
-        version: 8.23.1
+        version: 19.2.15
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
@@ -538,34 +588,21 @@ importers:
 
   packages/runtime:
     dependencies:
-      '@modelcontextprotocol/server':
-        specifier: 'catalog:'
-        version: 2.0.0
-      effect:
-        specifier: 'catalog:'
-        version: 4.0.0-beta.107(patch_hash=92cb2a27b506b1a3d2829269a208c41c387f1a6dfdddcfb2b8c147980f33e91d)
-      typeid-js:
-        specifier: 'catalog:'
-        version: 1.2.0
-    devDependencies:
-      typescript:
-        specifier: 'catalog:'
-        version: 7.0.2
-      vitest:
-        specifier: 'catalog:'
-        version: 4.1.11(@types/node@24.13.3)(vite@8.0.16(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0))
-
-  packages/ui:
-    dependencies:
       '@base-ui/react':
         specifier: 'catalog:'
         version: 1.7.0(@date-fns/tz@1.5.0)(@types/react@19.2.15)(date-fns@4.4.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
-      '@company/runtime':
-        specifier: workspace:*
-        version: link:../runtime
+      '@dnd-kit/react':
+        specifier: ^0.5.0
+        version: 0.5.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+      '@effect/sql-pg':
+        specifier: 'catalog:'
+        version: 4.0.0-beta.107(effect@4.0.0-beta.107(patch_hash=92cb2a27b506b1a3d2829269a208c41c387f1a6dfdddcfb2b8c147980f33e91d))
       '@fontsource-variable/geist':
         specifier: 'catalog:'
         version: 5.3.0
+      '@modelcontextprotocol/server':
+        specifier: 'catalog:'
+        version: 2.0.0
       '@shikijs/core':
         specifier: 'catalog:'
         version: 4.4.3
@@ -578,9 +615,21 @@ importers:
       '@shikijs/themes':
         specifier: 'catalog:'
         version: 4.4.3
+      '@tanstack/react-form':
+        specifier: 'catalog:'
+        version: 1.33.5(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+      '@tanstack/react-query':
+        specifier: 5.102.8
+        version: 5.102.8(react@19.2.6)
       '@tanstack/react-router':
         specifier: 'catalog:'
         version: 1.170.16(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+      '@tanstack/react-table':
+        specifier: 'catalog:'
+        version: 9.1.2(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+      '@tanstack/react-virtual':
+        specifier: ^3.14.10
+        version: 3.14.10(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       class-variance-authority:
         specifier: 'catalog:'
         version: 0.7.1
@@ -596,9 +645,18 @@ importers:
       effect:
         specifier: 'catalog:'
         version: 4.0.0-beta.107(patch_hash=92cb2a27b506b1a3d2829269a208c41c387f1a6dfdddcfb2b8c147980f33e91d)
+      file-type:
+        specifier: 22.0.2
+        version: 22.0.2
+      image-size:
+        specifier: ^2.0.2
+        version: 2.0.2
       lucide-react:
         specifier: 'catalog:'
         version: 1.30.0(react@19.2.6)
+      pg:
+        specifier: 'catalog:'
+        version: 8.23.0
       react:
         specifier: 'catalog:'
         version: 19.2.6
@@ -626,10 +684,16 @@ importers:
       tw-animate-css:
         specifier: 'catalog:'
         version: 1.4.0
+      typeid-js:
+        specifier: 'catalog:'
+        version: 1.2.0
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
         version: 24.13.3
+      '@types/pg':
+        specifier: 'catalog:'
+        version: 8.23.1
       '@types/react':
         specifier: 'catalog:'
         version: 19.2.15
@@ -645,12 +709,15 @@ importers:
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.11(@types/node@24.13.3)(vite@8.0.16(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0))
 
   templates/base:
     dependencies:
-      '@company/ui':
+      '@company/runtime':
         specifier: workspace:*
-        version: link:../../packages/ui
+        version: link:../../packages/runtime
       '@continual/sdk':
         specifier: 'catalog:'
         version: 0.1.5
@@ -691,9 +758,9 @@ importers:
 
   templates/client-portal:
     dependencies:
-      '@company/ui':
+      '@company/runtime':
         specifier: workspace:*
-        version: link:../../packages/ui
+        version: link:../../packages/runtime
       '@continual/sdk':
         specifier: 'catalog:'
         version: 0.1.5
@@ -734,9 +801,9 @@ importers:
 
   templates/marketing-site:
     dependencies:
-      '@company/ui':
+      '@company/runtime':
         specifier: workspace:*
-        version: link:../../packages/ui
+        version: link:../../packages/runtime
       '@continual/sdk':
         specifier: 'catalog:'
         version: 0.1.5
@@ -4468,6 +4535,9 @@ packages:
     resolution: {integrity: sha512-AC/7JofJvZGrrneWNaEnJeOLUx+JlGt7tNa0wZiRPT4MY1wmfKjt2+6O2p2uz2+skll8OZZmJMNqeke7kKbNgQ==}
     hasBin: true
 
+  jose@6.2.12:
+    resolution: {integrity: sha512-9NiFmJEex0sy2Dk58j2UGBSHgUs2ypF9eZSu4L6vjOX3Dp96Sw1F3uL+H+D1sx02jZZdzUT0HgvCy59CuvXcWw==}
+
   jose@6.2.8:
     resolution: {integrity: sha512-Bsdjwm3Qsd/P0jR+BHDe3LytDfY7WBq2HmCCLIwuVRHMuEC9ae7/R474GIUdF1NgCyZjzVo/A9DOiOBtXq8ZoQ==}
 
@@ -5386,11 +5456,6 @@ packages:
 
   semver@6.3.1:
     resolution: {integrity: sha512-BR7VvDCVHO+q2xBEWskxS6DJE1qRnb7DxzUrogb71CWoSficBxYsiAGd+Kl0mmq/MprG9yArRkyrQxTO6XjMzA==}
-    hasBin: true
-
-  semver@7.8.1:
-    resolution: {integrity: sha512-rkVq3IXh+4FDGch+KwzX3aV9W3kO54GyEgpvBzSyctDA6Xtd7RJQV1xmXbeQp5v7+VzLOfVqiutSE6GICgPFvg==}
-    engines: {node: '>=10'}
     hasBin: true
 
   semver@7.8.5:
@@ -7735,13 +7800,11 @@ snapshots:
 
   '@tanstack/query-core@5.102.8': {}
 
-  '@tanstack/react-form@1.33.5(@tanstack/react-start@1.168.26(crossws@0.4.12(srvx@0.11.22))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite@8.0.16(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0)))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)':
+  '@tanstack/react-form@1.33.5(react-dom@19.2.6(react@19.2.6))(react@19.2.6)':
     dependencies:
       '@tanstack/form-core': 1.33.5
       '@tanstack/react-store': 0.11.1(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       react: 19.2.6
-    optionalDependencies:
-      '@tanstack/react-start': 1.168.26(crossws@0.4.12(srvx@0.11.22))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite@8.0.16(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0))
     transitivePeerDependencies:
       - react-dom
 
@@ -8384,7 +8447,7 @@ snapshots:
       json-schema-typed: 7.0.3
       onetime: 5.1.2
       pkg-up: 3.1.0
-      semver: 7.8.1
+      semver: 7.8.5
 
   consola@3.4.2: {}
 
@@ -9066,6 +9129,8 @@ snapshots:
   isexe@3.1.5: {}
 
   jiti@2.7.0: {}
+
+  jose@6.2.12: {}
 
   jose@6.2.8: {}
 
@@ -10345,8 +10410,6 @@ snapshots:
   scheduler@0.27.0: {}
 
   semver@6.3.1: {}
-
-  semver@7.8.1: {}
 
   semver@7.8.5: {}
 

@@ -1,26 +1,46 @@
-import type { TableRow } from "@company/postgres"
-import { insertValues, assignments } from "@company/postgres"
-import { Etag, RecordId, Timestamp } from "@company/runtime"
-import { CurrentInvocation } from "@company/runtime/effect/object-service"
-import { Effect, Layer } from "effect"
-import { describe, expect } from "vitest"
-
-import { Model } from "#/app.model.ts"
-import { RoleAssignmentRepository } from "#/modules/access/role-assignment/server/role-assignment-repository.ts"
+import { Etag, RecordId, Timestamp } from "@company/runtime/model"
+import {
+  ALL_CALLERS_PRINCIPAL_SET_ID,
+  ADMINISTRATOR_ROLE_ID,
+  ROOT_ID,
+  SYSTEM_SERVICE_ACCOUNT_ID,
+  SYSTEM_ROLE_ASSIGNMENT_ID,
+} from "@company/runtime/model/system-records"
+import { RoleAssignmentRepository } from "@company/runtime/server/access/role-assignment-repository"
 import {
   LastAdministrator,
   RoleAssignmentService,
   RoleScopeMismatch,
-} from "#/modules/access/role-assignment/server/role-assignment-service.ts"
-import { AuthorizationRepository } from "#/server/authorization/authorization-repository.ts"
+} from "@company/runtime/server/access/role-assignment-service"
+import { AuthorizationRepository } from "@company/runtime/server/authorization/authorization-repository"
 import {
   Authorization,
   AuthorizationTargetNotFound,
   PermissionDenied,
-} from "#/server/authorization/authorization-service.ts"
-import { anonymousCaller, authenticatedCaller } from "#/server/caller.ts"
-import { Database } from "#/server/database/database.ts"
-import { itDatabase } from "#/server/database/it-database.ts"
+} from "@company/runtime/server/authorization/authorization-service"
+import {
+  anonymousCaller,
+  authenticatedCaller,
+} from "@company/runtime/server/caller"
+import { Database } from "@company/runtime/server/database/database"
+import { CurrentInvocation } from "@company/runtime/server/invocation"
+import {
+  anonymousInvocation,
+  authenticatedInvocation,
+  currentActorId,
+  systemInvocation,
+} from "@company/runtime/server/invocation-context"
+import { Links } from "@company/runtime/server/model/link-service"
+import { ObjectRepositories } from "@company/runtime/server/model/object-repositories"
+import { makeObjectService } from "@company/runtime/server/model/object-service"
+import { RecordIdentifierResolver } from "@company/runtime/server/model/record-identifier-resolver"
+import { PageTokens } from "@company/runtime/server/page-tokens"
+import type { TableRow } from "@company/runtime/server/postgres"
+import { insertValues, assignments } from "@company/runtime/server/postgres"
+import { Effect, Layer } from "effect"
+import { describe, expect } from "vitest"
+
+import { Model } from "#/examples/model.ts"
 import {
   authorizationScopes,
   companies,
@@ -33,26 +53,9 @@ import {
   roleAssignments,
   roles,
   users,
-} from "#/server/database/schema.ts"
-import {
-  anonymousInvocation,
-  authenticatedInvocation,
-  currentActorId,
-  systemInvocation,
-} from "#/server/invocation-context.ts"
-import { Links } from "#/server/model/link-service.ts"
-import { ObjectRepositories } from "#/server/model/object-repositories.ts"
-import { makeObjectService } from "#/server/model/object-service.ts"
-import { RecordIdentifierResolver } from "#/server/model/record-identifier-resolver.ts"
-import { PageTokens } from "#/server/page-tokens.ts"
+} from "#/examples/schema.server.ts"
+import { itDatabase } from "#/server/database/it-database.ts"
 import { seedSystem } from "#/server/seeds/seed-system.ts"
-import {
-  ALL_CALLERS_PRINCIPAL_SET_ID,
-  ADMINISTRATOR_ROLE_ID,
-  ROOT_ID,
-  SYSTEM_SERVICE_ACCOUNT_ID,
-  SYSTEM_ROLE_ASSIGNMENT_ID,
-} from "#/system-records.ts"
 
 const now = Timestamp("2026-08-23T00:00:00.000Z")
 const UserId = RecordId("user")
@@ -97,7 +100,9 @@ describe("Authorization", () => {
         const database = yield* Database
         const sql = database.sql
         yield* seedSystem()
-        const objectRepositories = yield* ObjectRepositories.make
+        const objectRepositories = yield* ObjectRepositories.make.pipe(
+          Effect.provide(RecordIdentifierResolver.layer)
+        )
 
         yield* sql`insert into ${objects} ${insertValues(sql, objects, [
           objectRow({
@@ -244,7 +249,7 @@ describe("Authorization", () => {
         yield* sql`delete
           from ${objects}
           where ${objects.columns.id} = ${publicAdmissionAssignmentId}`
-        const companyRepository = objectRepositories.company
+        const companyRepository = objectRepositories.get(Model.objects.company)
         const identifiers = yield* RecordIdentifierResolver.make
         const companyService = yield* makeObjectService(
           Model.objects.company,

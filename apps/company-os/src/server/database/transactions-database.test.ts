@@ -1,11 +1,14 @@
-import { insertValues } from "@company/postgres"
-import { tableProjection, type TableRow } from "@company/postgres"
+import { Database } from "@company/runtime/server/database/database"
+import { seedRuns } from "@company/runtime/server/database/schema"
+import { insertValues } from "@company/runtime/server/postgres"
+import {
+  tableProjection,
+  type TableRow,
+} from "@company/runtime/server/postgres"
 import { Effect } from "effect"
 import { expect } from "vitest"
 
-import { Database } from "#/server/database/database.ts"
 import { itDatabase } from "#/server/database/it-database.ts"
-import { seedRuns } from "#/server/database/schema.ts"
 
 itDatabase(
   "releases nested savepoints while preserving rollback and sibling isolation",

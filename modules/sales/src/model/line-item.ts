@@ -1,0 +1,32 @@
+import { defineObject, schema } from "@company/runtime/model"
+
+import { Deal } from "#/model/deal.ts"
+
+export const LineItem = defineObject({
+  id: "lineItem",
+  collection: "lineItems",
+  name: "Line item",
+  parent: Deal,
+  pluralName: "Line items",
+  description: "A product or service included in a deal.",
+  properties: {
+    name: schema.string({
+      label: "Name",
+      minLength: 1,
+      maxLength: 200,
+    }),
+    quantity: schema.number({
+      label: "Quantity",
+      default: 1,
+      integer: true,
+      minimum: 1,
+    }),
+    unitPrice: schema.money({ label: "Unit price", nullable: true }),
+  },
+  search: { fields: ["name"] },
+  display: {
+    icon: "lineItem",
+    title: "name",
+    subtitle: "quantity",
+  },
+})

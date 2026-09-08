@@ -1,15 +1,19 @@
+import { ModelCollectionPage } from "@company/runtime/ui/model/model-pages"
+import { validateObjectCollectionSearch } from "@company/runtime/ui/model/object-collection-view"
+import {
+  preloadCollection,
+  routeObject,
+} from "@company/runtime/ui/model/object-routing"
 import { createFileRoute } from "@tanstack/react-router"
 
+import { presentation } from "#/app-presentation.ts"
 import { documentHead } from "#/route-metadata.ts"
-import { ModelCollectionPage } from "#/ui/model/model-pages.tsx"
-import { validateObjectCollectionSearch } from "#/ui/model/object-collection-view.ts"
-import { preloadCollection, routeObject } from "#/ui/model/object-routing.ts"
 export const Route = createFileRoute("/_app/objects/$objectType/")({
   validateSearch: validateObjectCollectionSearch,
   loaderDeps: ({ search }) => search,
   loader: async ({ params, deps, context }) => {
-    const object = routeObject(params.objectType)
-    await preloadCollection(context.queryClient, object, deps)
+    const object = routeObject(presentation, params.objectType)
+    await preloadCollection(presentation, context.queryClient, object, deps)
     return {
       page: {
         breadcrumb: object.pluralName,
@@ -23,7 +27,7 @@ export const Route = createFileRoute("/_app/objects/$objectType/")({
   component: CollectionPage,
 })
 function CollectionPage() {
-  const object = routeObject(Route.useParams().objectType)
+  const object = routeObject(presentation, Route.useParams().objectType)
   const navigate = Route.useNavigate()
   return (
     <ModelCollectionPage

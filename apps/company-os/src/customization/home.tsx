@@ -1,17 +1,17 @@
-import { Button } from "@company/ui/components/button"
-import { Skeleton } from "@company/ui/components/skeleton"
+import { applicationCapabilities } from "@company/runtime/client/capabilities"
+import { Button } from "@company/runtime/ui/button"
+import { ObjectRecordSummary } from "@company/runtime/ui/model/object-record-summary"
+import { useRecentRecords } from "@company/runtime/ui/model/recent-records"
+import { useCapabilities } from "@company/runtime/ui/model/use-capabilities"
+import { Skeleton } from "@company/runtime/ui/skeleton"
 import { Link } from "@tanstack/react-router"
 import { ArrowRightIcon } from "lucide-react"
 
-import { applicationCapabilities } from "#/capabilities.ts"
 import { appConfig } from "#/customization/config.ts"
-import { useCapabilities } from "#/ui/application/use-capabilities.ts"
-import { useRecentRecords } from "#/ui/application/use-recent-records.tsx"
 import {
   modelNavigation,
   modelNavigationChecks,
 } from "#/ui/model/model-navigation.ts"
-import { ObjectRecordSummary } from "#/ui/model/object-record-summary.tsx"
 
 /** Source-owned workspace entry; destinations come from the installed modules. */
 export function Home() {
@@ -94,9 +94,15 @@ export function Home() {
           </section>
         ) : modules.length === 0 ? (
           <div className="rounded-lg border p-5">
-            <h2 className="text-sm font-medium">No workspace access yet</h2>
+            <h2 className="text-sm font-medium">
+              {modelNavigation.length === 0
+                ? "Your workspace is ready"
+                : "No workspace access yet"}
+            </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Ask an administrator to assign a role for the work you need to do.
+              {modelNavigation.length === 0
+                ? "Collections will appear here when they’re added."
+                : "Ask an administrator to assign a role for the work you need to do."}
             </p>
           </div>
         ) : (

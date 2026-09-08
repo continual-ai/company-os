@@ -1,23 +1,15 @@
-# Company modules
+# App-owned modules
 
-Each folder owns its business definitions, private server behavior, and specialized presentation.
-`src/app.model.ts` composes the browser-safe definitions; the server assembly binds custom Effect
-operations. Standard services, storage projections, API contracts, and default UI derive from that
-model. These modules are source-owned starting points that a company can freely modify.
+Support is an app-specific domain. It uses the same `model/`, `ui/`, and `seeds/` structure as the
+source-owned packages in the repository's `modules/` directory. Access and Assets implementation
+live in `@company/runtime`; the remaining Assets files here test the composed application.
 
-Start with `<domain>/<object>/model.ts`. Custom operations live in that object's `server/` directory;
-React components live in `ui/`, with registrations in `ui/config.ts`. Module-level `model.ts`,
-`server.ts`, and `ui.ts` compose contributions. Links and interfaces have one definition each in
-module-level `links/` and `interfaces/` directories. Standard objects need only their model file.
+The application composes portable definitions in `src/app.model.ts`, custom operations and layers
+in `src/app.server.ts`, and presentation in `src/app.ui.ts`. Cross-domain demo scenarios live
+in `src/examples/`; fixture implementations and assets stay in their owning modules.
 
-Follow [Building a module](../../../../docs/modules.md) for the authoring path and
-[Architecture](../../../../docs/architecture.md) for data, policy, and ownership boundaries.
-Engineering connects projects, repositories, issues, and pull requests. Marketing owns campaigns,
-content, enrollments, and outreach. Support owns tickets and replies, linked to engineering issues.
-These are editable records, not installed automation runtimes.
+The optional Support–Engineering bridge owns the cross-domain link, escalation receipt, custom
+action, and React workflow page. Support itself does not import Engineering.
 
-Sales demonstrates a transactional lead conversion, scoped SQL report, and multiple affiliations; Assets demonstrates a complete module
-with portable actions, server implementation, and a reusable UI control.
-
-The `notes` folder binds the reusable [Notes package](../../../../modules/notes/README.md) to
-this app root and UI assembly. Sales and Engineering consume its note-subject interface directly.
+Follow [Building a module](../../../../docs/modules.md) for package authoring and independent tests,
+and [Architecture](../../../../docs/architecture.md) for policy and ownership boundaries.

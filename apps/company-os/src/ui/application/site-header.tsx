@@ -5,9 +5,10 @@ import {
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
-} from "@company/ui/components/breadcrumb"
-import { Button } from "@company/ui/components/button"
-import { SidebarTrigger } from "@company/ui/components/sidebar"
+} from "@company/runtime/ui/breadcrumb"
+import { Button } from "@company/runtime/ui/button"
+import { usePageChrome } from "@company/runtime/ui/model/page-chrome"
+import { SidebarTrigger } from "@company/runtime/ui/sidebar"
 import {
   Link,
   useMatches,
@@ -18,7 +19,6 @@ import { ArrowLeftIcon } from "lucide-react"
 import { Fragment } from "react"
 
 import { pageMetadataForMatch } from "#/route-metadata.ts"
-import { usePageChrome } from "#/ui/application/page-chrome.tsx"
 
 export function SiteHeader() {
   const pageChrome = usePageChrome()

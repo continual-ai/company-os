@@ -1,3 +1,4 @@
+import { useCapabilities } from "@company/runtime/ui/model/use-capabilities"
 import { Link, useMatchRoute } from "@tanstack/react-router"
 import {
   BotIcon,
@@ -13,7 +14,6 @@ import {
   SecondarySidebarItem,
   SecondarySidebarSection,
 } from "#/ui/application/secondary-sidebar.tsx"
-import { useCapabilities } from "#/ui/application/use-capabilities.ts"
 
 const settingsSections = [
   {

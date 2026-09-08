@@ -1,24 +1,29 @@
-import { describe, expect, it } from "vitest"
-
-import { Model } from "#/app.model.ts"
 import {
   allowedCapabilityKeys,
   capabilityKey,
   type CapabilityCheck,
-} from "#/capabilities.ts"
-import { ROOT_ID } from "#/system-records.ts"
+} from "@company/runtime/client/capabilities"
+import { ROOT_ID } from "@company/runtime/model/system-records"
 import {
   objectCapabilityCheck,
   objectCapabilityChecks,
-} from "#/ui/model/object-capabilities.ts"
+} from "@company/runtime/ui/model/object-capabilities"
+import { describe, expect, it } from "vitest"
+
+import { Model } from "#/examples/model.ts"
+import { presentation } from "#/examples/presentation.ts"
 
 describe("object capabilities", () => {
   it("derives collection and record checks from model actions", () => {
-    expect(objectCapabilityCheck(Model.objects.company, "create")).toEqual({
+    expect(
+      objectCapabilityCheck(presentation, Model.objects.company, "create")
+    ).toEqual({
       permission: "company.create",
       target: ROOT_ID,
     })
-    expect(objectCapabilityChecks(Model.objects.lead, ["lead_1"])).toEqual(
+    expect(
+      objectCapabilityChecks(presentation, Model.objects.lead, ["lead_1"])
+    ).toEqual(
       expect.arrayContaining([
         { permission: "lead.create", target: ROOT_ID },
         { permission: "lead.update", target: "lead_1" },

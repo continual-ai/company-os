@@ -10,11 +10,10 @@
     "#/*": "./src/*"
   },
   "exports": {
-    "./model": "./src/model.ts",
-    "./note-subject": "./src/note-subject.ts",
-    "./ui": "./src/ui.ts",
-    "./seeds": "./src/seeds.ts",
-    "./styles.css": "./src/styles.css"
+    "./model": "./src/model/index.ts",
+    "./ui": "./src/ui/index.ts",
+    "./seeds": "./src/seeds/index.ts",
+    "./styles.css": "./src/ui/styles.css"
   },
   "scripts": {
     "lint": "oxlint .",
@@ -22,7 +21,6 @@
   },
   "dependencies": {
     "@company/runtime": "workspace:*",
-    "@company/ui": "workspace:*",
     "@tanstack/react-router": "catalog:",
     "lucide-react": "catalog:",
     "react": "catalog:"

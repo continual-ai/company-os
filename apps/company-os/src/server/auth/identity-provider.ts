@@ -1,4 +1,10 @@
-import { Config, Context, Data, Effect, Layer } from "effect"
+import {
+  IdentityProvider,
+  InvalidIdentityAssertion,
+  type AuthenticatedSubject,
+  type VerifiedIdentityInvocation,
+} from "@company/runtime/server/auth/identity-provider"
+import { Config, Effect, Layer } from "effect"
 import { z } from "zod"
 
 import type { IdentityId } from "#/app.model.ts"
@@ -11,28 +17,6 @@ const ContinualActorSchema = z.object({
   email: z.string().email().nullable(),
   name: z.string().min(1),
 })
-
-type IdentityKind = "serviceAccount" | "user"
-
-/** Provider-neutral identity after credentials have been verified. */
-export interface AuthenticatedSubject {
-  readonly email: string | undefined
-  readonly issuer: string
-  readonly kind: IdentityKind
-  readonly name: string | undefined
-  /** Optional canonical App ID. Continual supplies its existing `us_…` ID. */
-  readonly preferredIdentityId?: IdentityId | undefined
-  readonly subject: string
-}
-
-export interface VerifiedIdentityInvocation {
-  readonly actor: AuthenticatedSubject
-  readonly authorizationSubject: AuthenticatedSubject
-}
-
-class InvalidIdentityAssertion extends Data.TaggedError(
-  "InvalidIdentityAssertion"
-)<{ readonly reason: string }> {}
 
 function runtimeCredential(
   headers: Headers,
@@ -98,7 +82,7 @@ function localDevelopmentIdentity(): VerifiedIdentityInvocation | null {
   return { actor: subject, authorizationSubject: subject }
 }
 
-const make = Effect.gen(function* () {
+export const makeContinualIdentityProvider = Effect.gen(function* () {
   const config = {
     executionToken: yield* Config.string("CONTINUAL_EXECUTION_TOKEN").pipe(
       Config.withDefault("")
@@ -153,10 +137,8 @@ const make = Effect.gen(function* () {
   return { identify }
 })
 
-/** Replaceable credential-verification boundary; Continual is the default. */
-export class IdentityProvider extends Context.Service<IdentityProvider>()(
-  "@company/IdentityProvider",
-  { make }
-) {
-  static readonly layer = Layer.effect(this, this.make)
-}
+/** Default host adapter, replaceable at application composition. */
+export const continualIdentityProviderLayer = Layer.effect(
+  IdentityProvider,
+  makeContinualIdentityProvider
+)

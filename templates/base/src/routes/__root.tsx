@@ -1,4 +1,4 @@
-import { buttonVariants } from "@company/ui/components/button"
+import { buttonVariants } from "@company/runtime/ui/button"
 import { initDesignMode, initTelemetry } from "@continual/sdk/app-preview"
 import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router"
 import { modelMetadata } from "company-os/metadata"

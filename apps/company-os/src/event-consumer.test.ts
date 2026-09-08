@@ -1,7 +1,7 @@
+import type { EventPage } from "@company/runtime/client/events"
 import { describe, expect, it } from "vitest"
 
 import { createEventConsumer } from "#/event-consumer.ts"
-import type { EventPage } from "#/events.ts"
 
 const page: EventPage = {
   items: [],

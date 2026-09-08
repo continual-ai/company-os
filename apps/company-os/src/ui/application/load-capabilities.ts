@@ -1,11 +1,15 @@
-import { checkCapabilities } from "#/app-client.ts"
 import {
   allowedCapabilityKeys,
   capabilityKey,
   MAX_CAPABILITY_CHECKS,
   type CapabilityCheck,
-} from "#/capabilities.ts"
-import { modelQuery, runClientEffect } from "#/model-query-client.ts"
+} from "@company/runtime/client/capabilities"
+import {
+  modelQuery,
+  runClientEffect,
+} from "@company/runtime/client/model-query-client"
+
+import { checkCapabilities } from "#/app-client.ts"
 
 function chunks<T>(values: ReadonlyArray<T>, size: number): ReadonlyArray<T[]> {
   const result: T[][] = []

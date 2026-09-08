@@ -91,3 +91,23 @@ pnpm --dir apps/company-os exec continual deploy --dry-run
 
 The fork remains authoritative for its source, business policy, and records. Continual release
 records and deployment orchestration belong to the hosting platform.
+
+## Standalone JWT identity
+
+Set `IDENTITY_PROVIDER=jwt` to use the source-owned adapter in
+`src/server/auth/jwt-identity-provider.ts`. Configure `AUTH_JWT_ISSUER`, `AUTH_JWT_AUDIENCE`, and an
+HTTPS `AUTH_JWT_JWKS_URL`. It verifies RS256/ES256 Bearer tokens, signature, issuer, audience, subject,
+issued-at and expiry. Signed name/email claims help provision a local user; token roles never grant
+business permissions. User provisioning requires an email claim.
+
+An organization login gateway can authenticate browser requests and forward its verified session
+as `Authorization: Bearer <token>` on requests to this app. The adapter also supports authenticated
+API/MCP callers. The app does not implement that gateway's login redirect or session-cookie flow.
+Remove untrusted incoming authorization headers before the gateway injects its own token. Configure
+`VITE_APP_URL` to the public origin and keep the configured issuer/audience specific to this app.
+
+Set `AUTH_BOOTSTRAP_ISSUER` to the exact JWT issuer and `AUTH_BOOTSTRAP_SUBJECT` to the initial
+administrator's subject before first sign-in. Other identities receive no role unless you explicitly
+configure `AUTH_DEFAULT_ROLE=operator` or assign their roles locally. Exercise a real authenticated
+read and write after deployment; a successful build or health probe does not prove the external
+identity integration works.

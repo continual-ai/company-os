@@ -33,6 +33,7 @@
       "passThroughEnv": [
         "APP_SECRET",
         "AUTH_*",
+        "IDENTITY_PROVIDER",
         "CONTINUAL_*",
         "DATABASE_MAX_CONNECTIONS",
         "DATABASE_SCHEMA",
@@ -48,6 +49,7 @@
         "DATABASE_MAX_CONNECTIONS",
         "APP_SECRET",
         "AUTH_*",
+        "IDENTITY_PROVIDER",
         "NODE_ENV",
         "CONFIRM_DEVELOPMENT_DATABASE"
       ]

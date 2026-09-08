@@ -1,8 +1,8 @@
-import { defineObject, schema } from "@company/runtime"
+import { defineObject, schema } from "@company/runtime/model"
+import { compileAssetReferences } from "@company/runtime/server/assets/references"
 import { expect, it } from "vitest"
 
-import { Model } from "#/app.model.ts"
-import { compileAssetReferences } from "#/modules/assets/asset/references.ts"
+import { Model } from "#/examples/model.ts"
 
 it("discovers nested file usages and selects only the matching union branch", () => {
   const object = defineObject({

@@ -21,7 +21,7 @@ export const visualDriftRule = defineRule({
       heroPadding:
         'Avoid hero-scale vertical padding ("{{className}}") in application surfaces. Use the compact spacing scale; hero layouts belong to templates/marketing-site.',
       arbitraryColor:
-        'Replace the arbitrary color literal "{{className}}" with a design token utility from @company/ui globals.css.',
+        'Replace the arbitrary color literal "{{className}}" with a design token utility from @company/runtime/ui globals.css.',
     },
   },
   createOnce(context) {

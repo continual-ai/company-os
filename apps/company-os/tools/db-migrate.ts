@@ -1,15 +1,15 @@
+import { Database } from "@company/runtime/server/database/database"
+import { ensureSearchIndex } from "@company/runtime/server/database/search-index"
+import { ModelContext } from "@company/runtime/server/model-context"
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 import { Config, Effect, Option, Redacted } from "effect"
 import { Client } from "pg"
 
-import { Database } from "#/server/database/database.ts"
 import {
   applyMigrations,
   ensureDatabaseSchema,
 } from "#/server/database/migrations.ts"
 import * as Postgres from "#/server/database/postgres.ts"
-import { ensureSearchIndex } from "#/server/database/search-index.ts"
-import { loadLocalEnvironment } from "#/server/local-environment.ts"
 import { seedSystem } from "#/server/seeds/seed-system.ts"
 
 // Deployment sequencing lives in this application's own scripts, not in any
@@ -21,7 +21,6 @@ const skipWhenUnconfigured = process.argv.includes("--if-configured")
 // Direct development and administration commands may use the committed local
 // defaults. Artifact-only deployment builds must remain unconfigured when the
 // host did not inject a database and no local override exists.
-loadLocalEnvironment({ includeExample: !skipWhenUnconfigured })
 
 const localDatabaseHosts = new Set(["127.0.0.1", "[::1]", "localhost"])
 
@@ -88,6 +87,7 @@ const migrate = Effect.gen(function* () {
   yield* seedSystem()
   yield* ensureSearchIndex(
     yield* Database,
+    yield* ModelContext,
     process.argv.includes("--rebuild-search")
   )
   yield* Effect.log("Database migrated and required records ensured.")

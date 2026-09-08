@@ -1,6 +1,6 @@
-import { Badge } from "@company/ui/components/badge"
-import { Button } from "@company/ui/components/button"
-import { Input } from "@company/ui/components/input"
+import { Badge } from "@company/runtime/ui/badge"
+import { Button } from "@company/runtime/ui/button"
+import { Input } from "@company/runtime/ui/input"
 import { createFileRoute } from "@tanstack/react-router"
 
 import { pageOptions } from "#/route-metadata.ts"

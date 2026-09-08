@@ -1,7 +1,4 @@
-import { describe, expect, it } from "vitest"
-
-import { Model } from "#/app.model.ts"
-import { FormValidationError } from "#/ui/forms/form-errors.ts"
+import { FormValidationError } from "@company/runtime/ui/forms/form-errors"
 import {
   dateTimeLocalValue,
   decodeObjectForm,
@@ -9,11 +6,16 @@ import {
   objectFormDefaultValues,
   objectFormLinks,
   objectFormProperties,
-} from "#/ui/model/object-form.ts"
+} from "@company/runtime/ui/model/object-form"
+import { describe, expect, it } from "vitest"
+
+import { Model } from "#/examples/model.ts"
+import { presentation } from "#/examples/presentation.ts"
 
 describe("object forms", () => {
   it("preserves initial relationship targets through create decoding", () => {
     const values = objectFormDefaultValues(
+      presentation,
       Model.objects.note,
       "create",
       undefined,
@@ -25,10 +27,11 @@ describe("object forms", () => {
     )
     expect(values.links).toEqual({ subjects: ["lead-one"] })
     expect(
-      decodeObjectForm(Model.objects.note, values, "create")
+      decodeObjectForm(presentation, Model.objects.note, values, "create")
     ).toMatchObject({ content: "Follow up", links: { subjects: ["lead-one"] } })
     expect(
       objectFormDefaultValues(
+        presentation,
         Model.objects.note,
         "edit",
         undefined,
@@ -40,6 +43,7 @@ describe("object forms", () => {
   it("keeps focused updates separate from other fields and relationship drafts", () => {
     expect(
       decodeObjectForm(
+        presentation,
         Model.objects.company,
         {
           name: "",
@@ -51,12 +55,18 @@ describe("object forms", () => {
       )
     ).toEqual({ website: "https://example.com" })
     expect(() =>
-      decodeObjectForm(Model.objects.company, { name: "" }, "edit", ["name"])
+      decodeObjectForm(
+        presentation,
+        Model.objects.company,
+        { name: "" },
+        "edit",
+        ["name"]
+      )
     ).toThrow("Name is required")
   })
   it("derives controlled defaults from the model", () => {
     expect(
-      objectFormDefaultValues(Model.objects.company, "create")
+      objectFormDefaultValues(presentation, Model.objects.company, "create")
     ).toMatchObject({
       domain: "",
       lifecycleStage: "prospect",
@@ -65,12 +75,12 @@ describe("object forms", () => {
       name: "",
     })
 
-    expect(objectFormDefaultValues(Model.objects.lead, "create")).toMatchObject(
-      {
-        source: "unknown",
-        status: "new",
-      }
-    )
+    expect(
+      objectFormDefaultValues(presentation, Model.objects.lead, "create")
+    ).toMatchObject({
+      source: "unknown",
+      status: "new",
+    })
   })
 
   it("keeps non-null fields required when the server supplies a default", () => {
@@ -108,7 +118,9 @@ describe("object forms", () => {
       stage: "qualified",
     }
 
-    expect(decodeObjectForm(Model.objects.deal, form, "create")).toEqual({
+    expect(
+      decodeObjectForm(presentation, Model.objects.deal, form, "create")
+    ).toEqual({
       amount: { amount: "12500.00", currency: "EUR" },
       expectedCloseDate: "2026-09-30",
       owner: null,
@@ -123,7 +135,9 @@ describe("object forms", () => {
   it("omits root parents and server-owned defaults", () => {
     const form = { domain: "northstar.example", name: "Northstar" }
 
-    expect(decodeObjectForm(Model.objects.company, form, "create")).toEqual({
+    expect(
+      decodeObjectForm(presentation, Model.objects.company, form, "create")
+    ).toEqual({
       domain: "northstar.example",
       industry: null,
       logo: null,
@@ -138,7 +152,9 @@ describe("object forms", () => {
       links: { subjects: ["company_northstar", "contact_ada"] },
     }
 
-    expect(decodeObjectForm(Model.objects.note, form, "create")).toEqual({
+    expect(
+      decodeObjectForm(presentation, Model.objects.note, form, "create")
+    ).toEqual({
       content: "Introductory call",
       links: { subjects: ["company_northstar", "contact_ada"] },
     })
@@ -146,15 +162,16 @@ describe("object forms", () => {
 
   it("derives writable edit relationships and decodes Link deltas", () => {
     expect(
-      objectFormLinks(Model.objects.company, "edit").map(
+      objectFormLinks(presentation, Model.objects.company, "edit").map(
         ({ traversal }) => traversal.key
       )
     ).toEqual(["contacts"])
     expect(
-      objectFormDefaultValues(Model.objects.company, "edit").links
+      objectFormDefaultValues(presentation, Model.objects.company, "edit").links
     ).toEqual({ contacts: { add: [], remove: [] } })
     expect(
       decodeObjectForm(
+        presentation,
         Model.objects.company,
         {
           lifecycleStage: "prospect",
@@ -185,7 +202,9 @@ describe("object forms", () => {
   })
 
   it("derives writable note subjects from the model", () => {
-    expect(objectFormDefaultValues(Model.objects.note, "create")).toEqual({
+    expect(
+      objectFormDefaultValues(presentation, Model.objects.note, "create")
+    ).toEqual({
       content: "",
       links: { subjects: [] },
     })
@@ -195,7 +214,7 @@ describe("object forms", () => {
     const form = { domain: "test", name: "Invalid" }
 
     try {
-      decodeObjectForm(Model.objects.company, form, "create")
+      decodeObjectForm(presentation, Model.objects.company, form, "create")
       throw new Error("Expected validation to fail.")
     } catch (cause) {
       expect(cause).toBeInstanceOf(FormValidationError)

@@ -1,22 +1,22 @@
+import type { AuthenticatedUser } from "@company/runtime/client/authentication"
+import { ObjectCreateProvider } from "@company/runtime/ui/model/object-create-provider"
+import { PageChromeProvider } from "@company/runtime/ui/model/page-chrome"
+import { RecentRecordsProvider } from "@company/runtime/ui/model/recent-records"
 import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
   useSidebar,
-} from "@company/ui/components/sidebar"
-import { TooltipProvider } from "@company/ui/components/tooltip"
+} from "@company/runtime/ui/sidebar"
+import { TooltipProvider } from "@company/runtime/ui/tooltip"
 import { useLocation, useMatchRoute } from "@tanstack/react-router"
 import { useEffect } from "react"
 
-import type { AuthenticatedUser } from "#/authentication.ts"
 import { AppSidebar } from "#/ui/application/app-sidebar.tsx"
 import { AuthenticatedUserProvider } from "#/ui/application/authenticated-user.tsx"
 import { CommandPalette } from "#/ui/application/command-palette.tsx"
-import { PageChromeProvider } from "#/ui/application/page-chrome.tsx"
 import { SiteHeader } from "#/ui/application/site-header.tsx"
-import { RecentRecordsProvider } from "#/ui/application/use-recent-records.tsx"
 import { DeveloperSidebar } from "#/ui/developer/developer-sidebar.tsx"
-import { ObjectCreateProvider } from "#/ui/model/object-create-provider.tsx"
 import { SettingsSidebar } from "#/ui/settings/settings-sidebar.tsx"
 
 const sidebarStyle: React.CSSProperties & Record<"--header-height", string> = {

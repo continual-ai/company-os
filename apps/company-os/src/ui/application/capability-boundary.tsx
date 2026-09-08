@@ -1,10 +1,9 @@
-import { Button } from "@company/ui/components/button"
+import type { CapabilityPermission } from "@company/runtime/client/capabilities"
+import { Button } from "@company/runtime/ui/button"
+import { useCapabilities } from "@company/runtime/ui/model/use-capabilities"
 import { Link } from "@tanstack/react-router"
 import { LockKeyholeIcon } from "lucide-react"
 import { useMemo, type ReactNode } from "react"
-
-import type { CapabilityPermission } from "#/capabilities.ts"
-import { useCapabilities } from "#/ui/application/use-capabilities.ts"
 
 export function CapabilityBoundary({
   children,

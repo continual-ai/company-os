@@ -1,4 +1,4 @@
-import { Markdown } from "@company/ui/components/markdown"
+import { Markdown } from "@company/runtime/ui/markdown"
 import { renderToStaticMarkup } from "react-dom/server"
 import { expect, it } from "vitest"
 

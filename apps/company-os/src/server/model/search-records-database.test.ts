@@ -1,24 +1,25 @@
-import { assignments } from "@company/postgres"
-import { EmailAddress } from "@company/runtime"
-import { CurrentInvocation } from "@company/runtime/effect/object-service"
+import { EmailAddress } from "@company/runtime/model"
+import { Records } from "@company/runtime/server"
+import { UserService } from "@company/runtime/server/access/user-service"
+import { Database } from "@company/runtime/server/database/database"
+import { recordSearch } from "@company/runtime/server/database/schema"
+import { ensureSearchIndex } from "@company/runtime/server/database/search-index"
+import { makeEventWriter } from "@company/runtime/server/events/event-writer"
+import { CurrentInvocation } from "@company/runtime/server/invocation"
+import { systemInvocation } from "@company/runtime/server/invocation-context"
+import { ModelContext } from "@company/runtime/server/model-context"
+import { PageTokens } from "@company/runtime/server/page-tokens"
+import { assignments } from "@company/runtime/server/postgres"
+import { createRecordSearch } from "@company/runtime/server/record-search"
 import { Effect, Layer } from "effect"
 import { expect } from "vitest"
 
-import { Model } from "#/app.model.ts"
-import { UserService } from "#/modules/access/user/server/user-service.ts"
-import { makeApplicationLayer } from "#/server/application-layer.ts"
-import { Database } from "#/server/database/database.ts"
+import { makeApplicationLayer } from "#/examples/application.server.ts"
+import { Model } from "#/examples/model.ts"
+import { companies } from "#/examples/schema.server.ts"
+import { ModelImplementation } from "#/examples/services.server.ts"
 import { itDatabase } from "#/server/database/it-database.ts"
-import { makeObjectRepository } from "#/server/database/object-repository.ts"
-import { companies, recordSearch } from "#/server/database/schema.ts"
-import { ensureSearchIndex } from "#/server/database/search-index.ts"
-import { makeEventWriter } from "#/server/events/event-writer.ts"
-import { systemInvocation } from "#/server/invocation-context.ts"
-import { ModelImplementation } from "#/server/model/model-implementation.ts"
-import { makeObjectWriter } from "#/server/model/object-service.ts"
-import { RecordIdentifierResolver } from "#/server/model/record-identifier-resolver.ts"
-import { searchRecords } from "#/server/model/search-records.ts"
-import { PageTokens } from "#/server/page-tokens.ts"
+const searchRecords = createRecordSearch(Model)
 import { seedSystem } from "#/server/seeds/seed-system.ts"
 
 function application<A, E, R>(program: Effect.Effect<A, E, R>) {
@@ -27,14 +28,10 @@ function application<A, E, R>(program: Effect.Effect<A, E, R>) {
     yield* seedSystem().pipe(Effect.provide(PageTokens.layerTest))
     return yield* program.pipe(
       Effect.provide(
-        Layer.mergeAll(
-          makeApplicationLayer({
-            database: Layer.succeed(Database, database),
-            pageTokens: PageTokens.layerTest,
-          }),
-          PageTokens.layerTest,
-          RecordIdentifierResolver.layer
-        )
+        makeApplicationLayer({
+          database: Layer.succeed(Database, database),
+          pageTokens: PageTokens.layerTest,
+        })
       ),
       Effect.provideService(CurrentInvocation, systemInvocation)
     )
@@ -96,7 +93,7 @@ itDatabase(
               // Custom Fragment declares its affected records through the same transactional fact boundary.
               yield* sql`update ${companies} set ${assignments(sql, companies, { name: "Renamed foundation" })}
           where ${companies.columns.id} = ${company.id}`
-              const events = makeEventWriter(database)
+              const events = makeEventWriter(database, yield* ModelContext)
               yield* events.record({
                 type: "company.updated",
                 version: 1,
@@ -126,7 +123,7 @@ itDatabase(
         yield* sql`delete
           from ${recordSearch}`
         expect((yield* searchRecords({ query: "quas" })).hits).toEqual([])
-        yield* ensureSearchIndex(database, true)
+        yield* ensureSearchIndex(database, yield* ModelContext, true)
         expect(
           (yield* searchRecords({ query: "quas" })).hits.map((hit) => hit.id)
         ).toEqual(expect.arrayContaining([contact.id, issue.id]))
@@ -153,10 +150,7 @@ itDatabase(
           name: "Search reader",
           email: EmailAddress("search-reader@example.test"),
         })
-        const roles = yield* makeObjectWriter(
-          Model.objects.role,
-          yield* makeObjectRepository(Model.objects.role)
-        )
+        const roles = (yield* Records).writer(Model.objects.role)
         const role = yield* roles.create({
           name: "Read one company",
           scopeType: "company",

@@ -1,16 +1,19 @@
-import { tableProjection, type TableRow } from "@company/postgres"
+import { ADMINISTRATOR_ROLE_ID } from "@company/runtime/model/system-records"
+import { Authentication } from "@company/runtime/server/auth/authentication"
+import { IdentityProvider } from "@company/runtime/server/auth/identity-provider"
+import { Database } from "@company/runtime/server/database/database"
+import { PageTokens } from "@company/runtime/server/page-tokens"
+import {
+  tableProjection,
+  type TableRow,
+} from "@company/runtime/server/postgres"
 import { ConfigProvider, Effect, Layer } from "effect"
 import { expect } from "vitest"
 
-import { makeApplicationLayer } from "#/server/application-layer.ts"
-import { Authentication } from "#/server/auth/authentication.ts"
-import { IdentityProvider } from "#/server/auth/identity-provider.ts"
-import { Database } from "#/server/database/database.ts"
+import { makeApplicationLayer } from "#/examples/application.server.ts"
+import { roleAssignments } from "#/examples/schema.server.ts"
 import { itDatabase } from "#/server/database/it-database.ts"
-import { roleAssignments } from "#/server/database/schema.ts"
-import { PageTokens } from "#/server/page-tokens.ts"
 import { seedSystem } from "#/server/seeds/seed-system.ts"
-import { ADMINISTRATOR_ROLE_ID } from "#/system-records.ts"
 
 itDatabase(
   "shares verification within a request and reserves bootstrap for the configured subject",

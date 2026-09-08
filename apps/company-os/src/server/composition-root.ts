@@ -1,4 +1,4 @@
-import { describeModel } from "@company/runtime"
+import { describeModel } from "@company/runtime/model"
 import { OpenApi } from "effect/unstable/httpapi"
 
 import { Model } from "#/app.model.ts"

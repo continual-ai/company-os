@@ -1,12 +1,13 @@
+import { modelData } from "@company/runtime/client/data-client"
+import { InvalidEventCursor } from "@company/runtime/client/events"
+import { applyEventPage } from "@company/runtime/client/model-cache"
+import { runClientEffect } from "@company/runtime/client/model-query-client"
 import { Effect, Stream } from "effect"
 import { useEffect } from "react"
 
 import { listEvents, subscribeEvents } from "#/app-client.ts"
-import { modelData } from "#/data-client.ts"
+import { Model } from "#/app.model.ts"
 import { createEventConsumer } from "#/event-consumer.ts"
-import { InvalidEventCursor } from "#/events.ts"
-import { applyEventPage } from "#/model-cache.ts"
-import { runClientEffect } from "#/model-query-client.ts"
 
 /** A single resumable feed per authenticated shell. Hidden tabs catch up on return. */
 export function useModelEvents(identity: string, initialCursor?: string) {
@@ -20,7 +21,7 @@ export function useModelEvents(identity: string, initialCursor?: string) {
       read: (cursor, signal) =>
         runClientEffect(listEvents({ cursor, pageSize: 200 }), signal),
       isInvalidCursor: (error) => error instanceof InvalidEventCursor,
-      apply: (page) => applyEventPage(modelData().queryClient, page),
+      apply: (page) => applyEventPage(modelData().queryClient, page, Model),
     })
     const connect = async () => {
       if (

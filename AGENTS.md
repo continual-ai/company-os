@@ -62,16 +62,17 @@ Direction, and Vision distinct. The canonical skills live in `.agents/skills`; `
 - `@company/*`, `apps/*`, and `templates/*` are vendored, source-owned parts of the standalone
   Company OS. The project is instantiated by cloning or forking the repository. Templates are
   executable starters for optional apps; copied apps must never import template source.
-- `@company/runtime` is the portable definition and execution foundation. It must not import the
-  company model, UI, storage adapter, or applications.
-- `company-os/model` is the project's single browser-safe semantic model source. It may depend on the
-  portable `@company/runtime` surface, but not on UI, handlers, persistence, providers, or Effect.
-- `@company/postgres` is the reusable server-only PostgreSQL adapter. It implements runtime
-  repository contracts and may depend on `@company/runtime`, but it does not own model definitions,
-  migrations, credentials, custom persistence queries, or application Effect service identities.
-- `@company/ui` owns design tokens, base components, and reusable model UI under `model/*`.
-  It may consume portable `@company/runtime` definitions, but not domain modules, server execution,
-  persistence, or applications. Base components do not import the model UI layer.
+- `@company/runtime` owns the shared foundation. It must not import domain modules or applications.
+  Its `/model` surface is portable and has no Effect, server, client, or UI dependencies. Its
+  `/server` surface owns execution, authorization, transactions, events, and PostgreSQL persistence.
+  `/client` is browser/SSR-safe schema and semantic-client machinery. `/ui` owns design tokens,
+  primitives, forms, and model presentation; it cannot import server code. Base components do not
+  depend on model UI. There is no mixed root export.
+- `company-os/model` is the project's single browser-safe semantic model. It exports the installed Model and composes portable
+  module definitions; it cannot import UI, handlers, persistence, providers, or Effect.
+- Applications own installed-module selection, migration sequencing, credentials, provider layers,
+  and deployment. Domain modules consume shared runtime services directly; the app must not
+  implement forwarding adapters or callbacks for each domain.
 - Other apps may consume only `company-os/model` and `company-os/metadata` from the central app.
   They must not import its private implementations. The recursive model import check enforces
   browser safety even though domain definitions and implementations are colocated.
@@ -82,9 +83,9 @@ Direction, and Vision distinct. The canonical skills live in `.agents/skills`; `
   platform contract; environment injection alone does not justify another package.
 
 Use explicit imports inside packages. Do not add internal barrel files, `export *` declarations, or
-re-export chains. A package may expose one deliberate top-level facade with explicit named
+re-export chains. A package may expose deliberate public facades with explicit named
 re-exports when registered in the Company OS Oxlint rule. Public component directories may use
-package export patterns such as `./components/*`; domain modules expose deliberate entrypoints.
+package export patterns such as `./ui/*`; domain modules expose deliberate entrypoints.
 
 Import another workspace through its declared package name and public exports, never through a
 relative filesystem path or a TypeScript `paths` shortcut. All private source imports, including
@@ -92,7 +93,7 @@ siblings, use `#/` with an explicit `.ts` or `.tsx` extension, mapped through th
 `package.json` imports to its source root. Asset imports retain their actual file extensions.
 Do not use relative source imports, `@/`, or named private shortcuts such as `#root`.
 Relative paths in configuration mappings and asset URLs are unaffected.
-Keep real scoped package imports such as `@company/ui/components/button` for public package APIs. Oxlint
+Keep real scoped package imports such as `@company/runtime/ui/button` for public package APIs. Oxlint
 and `turbo boundaries` enforce these conventions.
 
 ## Adding and deploying apps
@@ -125,7 +126,7 @@ platform's runtime identity headers from the incoming request; no app mints iden
   implementation as static `.layer`. Name alternatives descriptively, such as `.layerTest` or
   `.layerMemory`; do not use the v3 `.Default` or an ambiguous `Live` suffix. Capabilities supplied
   by an outer boundary may remain layerless.
-- Use source-owned shadcn components and Tailwind CSS v4 tokens from `@company/ui`.
+- Use source-owned shadcn components and Tailwind CSS v4 tokens from `@company/runtime/ui`.
 - Use TanStack Form through each application's source-owned form hook and field components. Keep
   Effect Schema as the authoritative decoder and map canonical API violations into form errors at
   one application boundary.
@@ -135,28 +136,25 @@ platform's runtime identity headers from the incoming request; no app mints iden
 
 ## Domain modules
 
-Keep app-specific domain definitions, custom server behavior, and specialized UI under
-`src/modules/<domain>`. Reusable modules live in source-owned pnpm packages under `modules/<name>`,
-with explicit, separate model, UI, seed, and server exports only when needed. They never import an
-app; accept app-specific definitions or capabilities explicitly. Small packages may keep an object
-and its owned Links together in one model factory rather than copying the larger module layout.
-Each object lives in `<object>/model.ts`, with custom operations in `<object>/server/` and presentation
-in `<object>/ui/`. Names use singular kebab-case. `ui/config.ts` registers typed extensions; named
-`.tsx` files implement components. Module-level `model.ts`, `server.ts`, and `ui.ts` only compose
-contributions. Put Links in `links/` and interfaces in `interfaces/`; a relationship has one owner.
-Use a module-level `server/` directory only for capabilities shared across objects.
-Compose portable definitions explicitly in `src/app.model.ts`; standard services and default routes
-are derived. Custom Queries and Actions bind named Effect functions in the module's `server.ts`; compose
-server contributions in `src/app.server.ts`. Module-owned `ui.ts` contributions supply
-standard page extensions through `src/app.ui.ts`. Do not add object-specific branches to shared
-routes, navigation, or page components.
-Page/form assembly resolves UI registrations and passes explicit props to renderers. Use named
-additions/replacements for light customization; use ordinary module-owned React pages for distinct
-workflows. Do not add object branches to shared components or automatic plugin merging.
-Use [the module guide](docs/modules.md) and executable neighboring modules for the authoring path.
-The composed model generates one storage schema. Keep migration execution and its ledger central;
-standard module tables need no independent schema declarations or migration runner. Customized apps
-own subsequent migrations. Do not add a dynamic runtime plugin system or a second schema.
+Keep reusable business domains in `modules/<domain>` packages; app-specific domains may live in
+`src/modules/<domain>`. Put portable definitions in `model/`, custom execution in `server/`,
+presentation in `ui/`, and fixture builders and assets in `seeds/`. Public surfaces use
+`<surface>/index.ts` and map to matching package exports (`/model`, `/server`, `/ui`, `/seeds`).
+Omit unused surfaces. A small surface may implement everything directly in its entrypoint; larger
+ones import defining files directly and expose only deliberate named exports. Keep tests beside the
+behavior they exercise. Links and interfaces have one owner within `model/`. Use public model
+entrypoints for cross-domain references; never import seeds from browser or model code.
+
+Compose the complete model in `src/app.model.ts`, custom implementations in `src/app.server.ts`, and
+presentation in `src/app.ui.ts`. `defineModuleServer` binds named Effect functions using shared runtime
+services; standard CRUD is derived. `defineModuleUi` checks local configuration and `composeModelUi`
+checks the complete model. Module components use `useObjectClient(Object)` through the runtime UI
+provider. No object-specific branches belong in shared routes or renderers.
+
+Use named additions/replacements for small UI extensions and ordinary module-owned React pages for
+distinct workflows. Keep migration sequencing central and testing independent of the app. Use
+[the module guide](docs/modules.md) and executable neighboring modules for authoring. Do not add
+code generation, dynamic plugin discovery, automatic merging, or a second schema.
 
 ## Server operations
 
@@ -222,3 +220,12 @@ declare exact cardinality unless services, storage, deletion behavior, and tests
 Run `pnpm check` for formatting, lint, package boundaries, dead code, and TypeScript. It verifies
 without rewriting. Run `pnpm format` when formatting is needed. Run `pnpm build` after changing
 routing, bundling, or application dependencies.
+
+## Static composition and examples
+
+Keep installed module lists explicit in `app.model.ts`, server contributions in `app.server.ts`,
+and presentation in `app.ui.ts`. The default is the minimal Access and Assets foundation; no business
+module is required. Add business modules in source rather than with environment profiles. Declare
+required module IDs with `requires`. Put fixture code/assets in the owning module; only small
+cross-module scenarios and test compositions belong in `src/examples`. A changed model needs an
+explicit migration or a fresh disposable baseline; never implicitly drop another deployment's tables.

@@ -69,7 +69,7 @@ operations execute:
 - HTTP, OpenAPI, clients, and MCP project the same bound implementation.
 
 Keep Effect, repositories, handlers, database clients, secrets, provider SDKs, and React components
-out of `company-os/model`. Use portable `@company/runtime` definitions where they support the shared
+out of `company-os/model`. Use portable `@company/runtime/model` definitions where they support the shared
 contract.
 
 ## Work on the model

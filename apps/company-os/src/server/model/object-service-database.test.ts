@@ -1,29 +1,28 @@
-import { makeLinkRepository } from "@company/postgres"
 import {
   EmailAddress,
   RecordId,
   modelObjectLinkTraversals,
-} from "@company/runtime"
-import { CurrentInvocation } from "@company/runtime/effect/object-service"
+} from "@company/runtime/model"
+import { ROOT_ID } from "@company/runtime/model/system-records"
+import { Records } from "@company/runtime/server"
+import { UserService } from "@company/runtime/server/access/user-service"
+import { Database } from "@company/runtime/server/database/database"
+import { makeObjectRepository } from "@company/runtime/server/database/object-repository"
+import { CurrentInvocation } from "@company/runtime/server/invocation"
+import { systemInvocation } from "@company/runtime/server/invocation-context"
+import { Links } from "@company/runtime/server/model/link-service"
+import { makeObjectService } from "@company/runtime/server/model/object-service"
+import { PageTokens } from "@company/runtime/server/page-tokens"
+import { makeLinkRepository } from "@company/runtime/server/postgres"
 import { Effect, Layer } from "effect"
 import { expect } from "vitest"
 
-import { Model } from "#/app.model.ts"
-import { UserService } from "#/modules/access/user/server/user-service.ts"
-import { makeApplicationLayer } from "#/server/application-layer.ts"
-import { Database } from "#/server/database/database.ts"
+import { makeApplicationLayer } from "#/examples/application.server.ts"
+import { Model } from "#/examples/model.ts"
+import { Storage } from "#/examples/schema.server.ts"
+import { ModelImplementation } from "#/examples/services.server.ts"
 import { itDatabase } from "#/server/database/it-database.ts"
-import { makeObjectRepository } from "#/server/database/object-repository.ts"
-import { Storage } from "#/server/database/schema.ts"
-import { systemInvocation } from "#/server/invocation-context.ts"
-import { Links } from "#/server/model/link-service.ts"
-import { ModelImplementation } from "#/server/model/model-implementation.ts"
-import { makeObjectWriter } from "#/server/model/object-service.ts"
-import { makeObjectService } from "#/server/model/object-service.ts"
-import { RecordIdentifierResolver } from "#/server/model/record-identifier-resolver.ts"
-import { PageTokens } from "#/server/page-tokens.ts"
 import { seedSystem } from "#/server/seeds/seed-system.ts"
-import { ROOT_ID } from "#/system-records.ts"
 
 itDatabase(
   "coordinates Link updates even when ordinary creation is disabled",
@@ -66,10 +65,7 @@ itDatabase(
         name: "Contact creator",
         email: EmailAddress("creator@example.test"),
       })
-      const roleWriter = yield* makeObjectWriter(
-        Model.objects.role,
-        yield* makeObjectRepository(Model.objects.role)
-      )
+      const roleWriter = (yield* Records).writer(Model.objects.role)
       const role = yield* roleWriter.create({
         name: "Create contacts",
         scopeType: "root",
@@ -201,14 +197,10 @@ itDatabase(
     }).pipe(
       Effect.provideService(CurrentInvocation, systemInvocation),
       Effect.provide(
-        Layer.mergeAll(
-          RecordIdentifierResolver.layer,
-          PageTokens.layerTest,
-          makeApplicationLayer({
-            database: Layer.succeed(Database, database),
-            pageTokens: PageTokens.layerTest,
-          })
-        )
+        makeApplicationLayer({
+          database: Layer.succeed(Database, database),
+          pageTokens: PageTokens.layerTest,
+        })
       )
     )
   })

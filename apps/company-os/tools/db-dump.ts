@@ -4,9 +4,7 @@ import { Config, Effect, Redacted } from "effect"
 
 import { databaseSchemaConfig } from "#/server/database/postgres.ts"
 import { dumpSchema } from "#/server/database/schema-dump.ts"
-import { loadLocalEnvironment } from "#/server/local-environment.ts"
 
-loadLocalEnvironment()
 const { url, schema } = await Effect.runPromise(
   Config.all({
     url: Config.redacted("DATABASE_URL"),

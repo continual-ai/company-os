@@ -1,179 +1,38 @@
-import { randomUUID } from "node:crypto"
-
-import { pgTypes } from "@company/postgres"
+import { Database } from "@company/runtime/server/database/database"
+import { ModelContext } from "@company/runtime/server/model-context"
+import { pgTypes } from "@company/runtime/server/postgres"
+import { TestDatabase as PostgresTestDatabase } from "@company/runtime/testing"
 import { PgClient } from "@effect/sql-pg"
-import { Config, Data, Effect, Layer, Redacted } from "effect"
-import { Client } from "pg"
+import { Effect, Layer, Redacted } from "effect"
 
-import { Database } from "#/server/database/database.ts"
-import { applyMigrations } from "#/server/database/migrations.ts"
+import { Model } from "#/examples/model.ts"
+import { applyMigrations } from "#/examples/schema.server.ts"
 
-const defaultAdminUrl = "postgresql://localhost:5432/postgres"
-
-export interface TestDatabaseTemplate {
-  readonly adminUrl: string
-  readonly databaseName: string
-}
-
-declare module "vitest" {
-  export interface ProvidedContext {
-    readonly testDatabaseTemplate: TestDatabaseTemplate
-  }
-}
-
-class TestDatabaseError extends Data.TaggedError("TestDatabaseError")<{
-  readonly cause: unknown
-  readonly message: string
-}> {}
-
-function databaseCreationError(cause: unknown): TestDatabaseError {
-  return new TestDatabaseError({
-    cause,
-    message:
-      "Could not create an isolated PostgreSQL test database. Ensure DATABASE_URL includes any required username and password, reaches PostgreSQL, and uses a role with CREATEDB.",
-  })
-}
-
-function databaseName(kind: "database" | "template"): string {
-  const id = randomUUID().replaceAll("-", "").slice(0, 20)
-  return `company_os_test_${kind}_${id}`
-}
-
-function databaseUrl(adminUrl: string, name: string): string {
-  const url = new URL(adminUrl)
-  url.pathname = `/${name}`
-  return url.toString()
-}
-
-function quotedIdentifier(identifier: string): string {
-  if (
-    !/^company_os_test_(?:database|template)_[a-f0-9]{20}$/.test(identifier)
-  ) {
-    throw new Error(`Invalid generated test database name '${identifier}'.`)
-  }
-  return `"${identifier}"`
-}
-
-function quotedTemplateIdentifier(identifier: string): string {
-  return identifier === "template0"
-    ? `"template0"`
-    : quotedIdentifier(identifier)
-}
-
-async function withAdminClient<A>(
-  adminUrl: string,
-  use: (client: Client) => Promise<A>
-): Promise<A> {
-  // This client is test-harness control-plane access only; application queries use Database.
-  const client = new Client({
-    connectionString: adminUrl,
-    connectionTimeoutMillis: 5_000,
-  })
-  try {
-    await client.connect()
-    return await use(client)
-  } finally {
-    await client.end().catch(() => undefined)
-  }
-}
-
-async function createDatabase(
-  adminUrl: string,
-  name: string,
-  template: string
-): Promise<void> {
-  await withAdminClient(adminUrl, async (client) => {
-    await client.query(
-      `create database ${quotedIdentifier(name)} template ${quotedTemplateIdentifier(template)}`
-    )
-  })
-}
-
-async function dropDatabase(adminUrl: string, name: string): Promise<void> {
-  await withAdminClient(adminUrl, async (client) => {
-    await client.query(
-      "select pg_terminate_backend(pid) from pg_stat_activity where datname = $1 and pid <> pg_backend_pid()",
-      [name]
-    )
-    await client.query(`drop database if exists ${quotedIdentifier(name)}`)
-  })
-}
-
-function postgresDatabaseLayer(url: string) {
-  return Database.layer.pipe(
-    Layer.provide(
-      PgClient.layer({
-        types: pgTypes,
-        applicationName: "company-os-test",
-        connectTimeout: "5 seconds",
-        maxConnections: 10,
-        url: Redacted.make(url),
-      })
-    )
-  )
-}
-
-async function migrateDatabase(url: string): Promise<void> {
+async function migrate(url: string) {
   await Effect.runPromise(
     Effect.scoped(
-      applyMigrations().pipe(Effect.provide(postgresDatabaseLayer(url)))
+      applyMigrations().pipe(
+        Effect.provide(
+          Database.layer.pipe(
+            Layer.provideMerge(ModelContext.layer(Model)),
+            Layer.provide(
+              PgClient.layer({ url: Redacted.make(url), types: pgTypes })
+            )
+          )
+        )
+      )
     )
   )
 }
 
-async function createTemplate(schema?: string): Promise<TestDatabaseTemplate> {
-  const adminUrl = await Effect.runPromise(
-    Config.string("DATABASE_URL").pipe(Config.withDefault(defaultAdminUrl))
-  )
-  const name = databaseName("template")
-  try {
-    await createDatabase(adminUrl, name, "template0")
-  } catch (cause) {
-    throw databaseCreationError(cause)
-  }
-  try {
-    const url = databaseUrl(adminUrl, name)
-    if (schema === undefined) await migrateDatabase(url)
-    else await withAdminClient(url, (client) => client.query(schema))
-  } catch (error) {
-    await dropDatabase(adminUrl, name)
-    throw error
-  }
-  return { adminUrl, databaseName: name }
-}
-
-function layer(template: TestDatabaseTemplate) {
-  return Layer.unwrap(
-    Effect.acquireRelease(
-      Effect.tryPromise({
-        try: async () => {
-          const name = databaseName("database")
-          await createDatabase(template.adminUrl, name, template.databaseName)
-          return {
-            name,
-            url: databaseUrl(template.adminUrl, name),
-          }
-        },
-        catch: databaseCreationError,
-      }),
-      ({ name }) =>
-        Effect.tryPromise({
-          try: () => dropDatabase(template.adminUrl, name),
-          catch: (cause) =>
-            new TestDatabaseError({
-              cause,
-              message: `Could not remove isolated PostgreSQL test database '${name}'.`,
-            }),
-        }).pipe(Effect.orDie)
-    ).pipe(Effect.map(({ url }) => postgresDatabaseLayer(url)))
-  )
-}
-
+/** Application tests use real migrations and the application's transaction hooks. */
 export const TestDatabase = {
-  createTemplate,
-  url: (template: TestDatabaseTemplate) =>
-    databaseUrl(template.adminUrl, template.databaseName),
-  drop: (template: TestDatabaseTemplate) =>
-    dropDatabase(template.adminUrl, template.databaseName),
-  layer,
-} as const
+  ...PostgresTestDatabase,
+  createTemplate: (schema?: string) =>
+    PostgresTestDatabase.createTemplate(schema ?? migrate),
+  layer: (template: Parameters<typeof PostgresTestDatabase.layer>[0]) =>
+    Database.layer.pipe(
+      Layer.provideMerge(ModelContext.layer(Model)),
+      Layer.provide(PostgresTestDatabase.layer(template))
+    ),
+}

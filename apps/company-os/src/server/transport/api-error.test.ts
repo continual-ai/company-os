@@ -1,13 +1,13 @@
-import type { ApiError, FailedPreconditionError } from "@company/runtime"
+import type { ApiError, FailedPreconditionError } from "@company/runtime/model"
 import {
   executableModelOperation,
   type ExecutableModelOperation,
-} from "@company/runtime/effect/model-implementation"
+} from "@company/runtime/model/operations"
+import { withApiErrors } from "@company/runtime/server/api-error"
 import { Effect, Logger, Schema } from "effect"
 import { describe, expect, it } from "vitest"
 
-import { Model } from "#/app.model.ts"
-import { withApiErrors } from "#/server/transport/api-error.ts"
+import { Model } from "#/examples/model.ts"
 
 type TestFailure =
   | Error

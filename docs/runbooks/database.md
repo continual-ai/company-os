@@ -1,8 +1,8 @@
 # Database workflow
 
-The central Company OS app uses `@company/postgres` with the Effect PostgreSQL driver. The portable
+The central Company OS app uses `@company/runtime/server/postgres` with the Effect PostgreSQL driver. The portable
 model is the source of truth for objects, properties, interfaces, ownership, Links, and uniqueness.
-The app instantiates that projection, owns explicit SQL migrations, and binds the generated storage
+The app instantiates that projection, owns the migration sequence, and binds the derived storage
 to its repositories and services.
 
 Run the commands below from the repository root. Database-writing tasks explicitly target the
@@ -30,7 +30,7 @@ PostgreSQL URL
 ```
 
 `Database` is an Effect service for sharing the Effect SQL client and transaction boundary; it
-is not a second repository abstraction. The reusable `@company/postgres` functions receive that
+is not a second repository abstraction. The reusable `@company/runtime/server/postgres` functions receive that
 database value explicitly and implement the portable repository contracts. Production and
 tests use the same binding. They differ only in where the PostgreSQL URL and lifecycle come from.
 
@@ -91,26 +91,39 @@ configuration:
 pnpm turbo run test --force
 ```
 
-## Change persisted shape
+## Committed migrations and persisted shape
 
-1. Edit the source contract under `apps/company-os/src/modules`, or the app-owned infrastructure
-   declarations in `src/server/database/schema.ts`.
-2. Run `pnpm turbo run db:generate --filter=company-os` and review `apps/company-os/schema.sql`.
-3. Write the corresponding numbered SQL migration under `src/server/database/migrations` and
-   register it in the explicit loader in `migrations.ts`. Use the generated diff to guide the SQL;
-   generation never writes migration files. Keep already-applied migrations unchanged.
-4. Run `pnpm check` and `pnpm turbo run test --force`. The database suite replays migrations into an
-   empty database and compares its schema dump with a separate database built from `schema.sql`.
-5. Apply the reviewed migration with `pnpm turbo run db:migrate --filter=company-os`.
+The app owns the ordered migration array in `src/server/database/migrations/index.ts`. Its first
+migration contains committed SQL, including journal initialization. Running migrations never
+projects the current model into DDL. The ledger records each migration's SQL checksum and resulting
+schema hash. Startup refuses pending migrations, edited history, and a model differing from the
+latest migration's schema hash, including changes within the same module set.
 
-`schema.sql` is the desired current schema, including all domain and infrastructure tables, indexes,
-constraints, functions, triggers, and stored descriptions. `db:check` and `model:check` detect a stale
-artifact without contacting a database. Required initial journal state belongs in the initial
-migration; system records are ensured separately by `db:migrate`.
+For disposable template data, after editing the three source composition roots:
 
-Effect SQL's Migrator executes whole numbered SQL files transactionally, including PL/pgSQL bodies,
-and records completed IDs in `company_os_migrations`. It does not verify historical file contents or
-generate schema diffs. There is no custom SQL splitter, snapshot chain, or schema-diff engine.
+```sh
+pnpm --filter company-os db:generate --baseline
+pnpm format
+```
+
+Review the generated baseline and `schema.sql`, then use a fresh database. `--baseline` is explicit
+because it rewrites migration 1; it must not be used once you retain application data.
+
+## Changes in a customized app with durable data
+
+1. Edit the model, then run `pnpm --filter company-os db:generate` to update only `schema.sql`.
+2. Add a numbered migration with `id`, `name`, `sql`, and the SHA-256 `schemaHash` of the new
+   `schema.sql`. Write the SQL needed to preserve existing records. Register it in
+   `src/server/database/migrations/index.ts`; keep all applied files unchanged.
+3. Run `pnpm check`, add a migration test that preserves representative records, and run
+   `pnpm turbo run test --force` against PostgreSQL.
+4. Apply it with `pnpm --filter company-os db:migrate` before starting the new app version.
+
+The runtime uses Effect SQL Migrator for locking and transactions and checks immutable history
+around it. Whole SQL strings preserve PL/pgSQL bodies without a custom splitter. `db:check` checks
+the committed current schema and final migration hash without contacting a database. Schema dump
+comparison and numbered-migration tests exercise the actual PostgreSQL result; hashes are not a
+replacement for testing your migration SQL. Manual out-of-band DDL is not automatically reconciled.
 
 ## Inspect the installed schema
 

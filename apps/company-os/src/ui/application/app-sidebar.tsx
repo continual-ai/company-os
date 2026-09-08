@@ -1,3 +1,4 @@
+import { applicationCapabilities } from "@company/runtime/client/capabilities"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -6,7 +7,9 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@company/ui/components/dropdown-menu"
+} from "@company/runtime/ui/dropdown-menu"
+import { ModuleNavigation } from "@company/runtime/ui/model/module-navigation"
+import { useCapabilities } from "@company/runtime/ui/model/use-capabilities"
 import {
   Sidebar,
   SidebarContent,
@@ -18,11 +21,10 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
-} from "@company/ui/components/sidebar"
+} from "@company/runtime/ui/sidebar"
 import { Link, useMatchRoute } from "@tanstack/react-router"
 import { BracesIcon, ChevronsUpDownIcon, SettingsIcon } from "lucide-react"
 
-import { applicationCapabilities } from "#/capabilities.ts"
 import { BrandMark } from "#/customization/brand.tsx"
 import { appConfig } from "#/customization/config.ts"
 import { operateNavigation } from "#/customization/navigation.ts"
@@ -31,8 +33,6 @@ import {
   useAuthenticatedUser,
 } from "#/ui/application/authenticated-user.tsx"
 import { CommandPaletteButton } from "#/ui/application/command-palette.tsx"
-import { useCapabilities } from "#/ui/application/use-capabilities.ts"
-import { ModuleNavigation } from "#/ui/model/module-navigation.tsx"
 
 const navigationChecks = [applicationCapabilities.develop]
 

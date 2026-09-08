@@ -1,4 +1,4 @@
-import { Button } from "@company/ui/components/button"
+import { Button } from "@company/runtime/ui/button"
 import { createFileRoute } from "@tanstack/react-router"
 import { modelMetadata } from "company-os/metadata"
 

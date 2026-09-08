@@ -1,16 +1,25 @@
-import { createFileRoute } from "@tanstack/react-router"
-
-import { documentHead } from "#/route-metadata.ts"
-import { ModelRecordPage } from "#/ui/model/model-pages.tsx"
+import { ModelRecordPage } from "@company/runtime/ui/model/model-pages"
 import {
   objectRecordTabSearch,
   validateObjectRecordSearch,
-} from "#/ui/model/object-record-view.ts"
-import { preloadObject, routeObject } from "#/ui/model/object-routing.ts"
+} from "@company/runtime/ui/model/object-record-view"
+import {
+  preloadObject,
+  routeObject,
+} from "@company/runtime/ui/model/object-routing"
+import { createFileRoute } from "@tanstack/react-router"
+
+import { presentation } from "#/app-presentation.ts"
+import { documentHead } from "#/route-metadata.ts"
 export const Route = createFileRoute("/_app/objects/$objectType/$recordId")({
   loader: async ({ params, context }) => {
-    const object = routeObject(params.objectType)
-    await preloadObject(context.queryClient, object, params.recordId)
+    const object = routeObject(presentation, params.objectType)
+    await preloadObject(
+      presentation,
+      context.queryClient,
+      object,
+      params.recordId
+    )
     return {
       page: {
         breadcrumb: object.name,
@@ -31,7 +40,7 @@ function RecordPage() {
   return (
     <ModelRecordPage
       key={`${objectType}:${recordId}`}
-      object={routeObject(objectType)}
+      object={routeObject(presentation, objectType)}
       recordId={recordId}
       tab={search.tab}
       onTabChange={(tab) =>

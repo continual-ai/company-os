@@ -5,17 +5,17 @@
   "tsx": true,
   "tailwind": {
     "config": "",
-    "css": "../../packages/ui/src/styles/globals.css",
+    "css": "../../packages/runtime/src/ui/styles/globals.css",
     "baseColor": "neutral",
     "cssVariables": true
   },
   "iconLibrary": "lucide",
   "aliases": {
     "components": "#/ui",
-    "hooks": "@company/ui/hooks",
-    "lib": "@company/ui/lib",
-    "utils": "@company/ui/lib/utils",
-    "ui": "@company/ui/components"
+    "hooks": "@company/runtime/ui/hooks",
+    "lib": "@company/runtime/ui/lib",
+    "utils": "@company/runtime/ui/lib/utils",
+    "ui": "@company/runtime/ui"
   },
   "rtl": false,
   "menuColor": "default",

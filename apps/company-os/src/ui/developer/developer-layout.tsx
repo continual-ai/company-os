@@ -1,5 +1,5 @@
-import { Button } from "@company/ui/components/button"
-import { cn } from "@company/ui/lib/utils"
+import { Button } from "@company/runtime/ui/button"
+import { cn } from "@company/runtime/ui/lib/utils"
 import { useLocation } from "@tanstack/react-router"
 import { ListIcon } from "lucide-react"
 import { useId, useState, type ReactElement, type ReactNode } from "react"

@@ -1,4 +1,4 @@
-import { Button } from "@company/ui/components/button"
+import { Button } from "@company/runtime/ui/button"
 import {
   Command,
   CommandDialog,
@@ -6,8 +6,13 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from "@company/ui/components/command"
-import { SidebarMenuButton } from "@company/ui/components/sidebar"
+} from "@company/runtime/ui/command"
+import { useObjectCreate } from "@company/runtime/ui/model/object-create-context"
+import { ObjectRecordIdentity } from "@company/runtime/ui/model/object-record-identity"
+import { objectHref } from "@company/runtime/ui/model/object-routing"
+import type { ObjectTableRecord } from "@company/runtime/ui/model/object-table/object-table-config"
+import { useCapabilities } from "@company/runtime/ui/model/use-capabilities"
+import { SidebarMenuButton } from "@company/runtime/ui/sidebar"
 import { useQuery } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
 import { HomeIcon, PlusIcon, SearchIcon, CodeIcon } from "lucide-react"
@@ -20,19 +25,14 @@ import {
 } from "react"
 
 import { data } from "#/app-client.ts"
-import { Model } from "#/app.model.ts"
+import { presentation } from "#/app-presentation.ts"
 import { capabilityPermission } from "#/capabilities.ts"
 import type { RecordSummary } from "#/records.ts"
 import { RecentRecords } from "#/ui/application/recent-records.tsx"
-import { useCapabilities } from "#/ui/application/use-capabilities.ts"
 import {
   modelNavigation,
   modelNavigationChecks,
 } from "#/ui/model/model-navigation.ts"
-import { useObjectCreate } from "#/ui/model/object-create-context.ts"
-import { ObjectRecordIdentity } from "#/ui/model/object-record-identity.tsx"
-import { objectHref } from "#/ui/model/object-routing.ts"
-import type { ObjectTableRecord } from "#/ui/model/object-table/object-table-config.ts"
 
 const destinations = modelNavigation.flatMap((module) =>
   module.items.map((item) => ({ ...item, module: module.name }))
@@ -55,7 +55,7 @@ const utilityCommands = [
 ]
 
 function SearchRecordIdentity({ hit }: { readonly hit: RecordSummary }) {
-  const object = Model.objects[hit.objectType]
+  const object = presentation.model.objects[hit.objectType]!
   const record: ObjectTableRecord = {
     id: hit.id,
     [object.display.title]: hit.title,
@@ -134,7 +134,13 @@ function PaletteContent({ close }: { readonly close: () => void }) {
                 key={hit.id}
                 value={hit.id}
                 onSelect={() =>
-                  go(objectHref(Model.objects[hit.objectType], hit.id))
+                  go(
+                    objectHref(
+                      presentation,
+                      presentation.model.objects[hit.objectType]!,
+                      hit.id
+                    )
+                  )
                 }
                 className="gap-3 px-3 py-2.5"
               >
@@ -147,7 +153,7 @@ function PaletteContent({ close }: { readonly close: () => void }) {
                   )}
                 </div>
                 <span className="shrink-0 text-xs text-muted-foreground">
-                  {Model.objects[hit.objectType].name}
+                  {presentation.model.objects[hit.objectType]!.name}
                 </span>
               </CommandItem>
             ))}
@@ -220,7 +226,9 @@ function PaletteContent({ close }: { readonly close: () => void }) {
                   close()
                   create(item.object, {
                     onCreated: (record) =>
-                      void navigate({ to: objectHref(item.object, record.id) }),
+                      void navigate({
+                        to: objectHref(presentation, item.object, record.id),
+                      }),
                   })
                 }}
                 className="px-3"

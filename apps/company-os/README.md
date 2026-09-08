@@ -43,14 +43,14 @@ no hosted platform.
 
 ## Follow a feature through the code
 
-Start with [Engineering Issue](src/modules/engineering/issue/model.ts), a standard object with an assignee,
+Start with [Engineering Issue](../../modules/engineering/src/model/issue.ts), a standard object with an assignee,
 status, and attachments. It needs no custom server or route. Its
-[UI contribution](src/modules/engineering/ui.ts) replaces the description editor with a multiline
+[UI contribution](../../modules/engineering/src/ui/index.ts) replaces the description editor with a multiline
 field while retaining the standard form and validation.
 
-Then read [Sales Lead](src/modules/sales/lead/model.ts), its
-[conversion operation](src/modules/sales/lead/server/convert.ts), and its
-[UI contribution](src/modules/sales/ui.ts). Conversion is a custom multi-object transaction exposed
+Then read [Sales Lead](../../modules/sales/src/model/lead.ts), its
+[conversion operation](../../modules/sales/src/server/convert-lead.ts), and its
+[UI contribution](../../modules/sales/src/ui/index.ts). Conversion is a custom multi-object transaction exposed
 through the same contract to every caller.
 
 Module registration has three independent roots:
@@ -82,8 +82,8 @@ model, even though all three module entrypoints live together. See
 | [`src/server/database`](src/server/database) | App-owned storage schema, transactions, and migrations          |
 | [`tools`](tools)                             | Database commands and checks for model/storage boundaries       |
 
-Reusable primitives stay in `@company/ui`, portable definitions in `@company/runtime`, and the
-PostgreSQL repository implementation in `@company/postgres`. Other apps may consume public
+Reusable primitives stay in `@company/runtime/ui`, portable definitions in `@company/runtime/model`, and the
+PostgreSQL repository implementation in `@company/runtime/server/postgres`. Other apps may consume public
 `company-os/model` and `company-os/metadata` exports; private services stay private.
 
 ## Read and write paths
@@ -110,7 +110,8 @@ pnpm dev
 ```
 
 The generator derives the current `schema.sql` from the model; ordinary object additions require no manual
-table registration. Numbered handwritten migrations are separate, immutable application history.
+table registration. The template commits its minimal initial SQL. Customized apps with durable data preserve
+the baseline and keep subsequent handwritten migrations as immutable application history.
 Database tests compare their replayed schema with the declarations. Run `pnpm check`,
 relevant tests, and `pnpm build` after routing or bundling changes. Read the
 [database workflow](../../docs/runbooks/database.md) before resetting data or releasing a migration.
@@ -121,3 +122,10 @@ The application owns a transactional event journal and an authorized cursor feed
 record events automatically; custom Actions can append typed facts. Open browsers consume that
 feed and refresh affected queries. Read [Durable events](../../docs/events.md) for the authoring
 path, transaction guarantees, and the current polling and retention behavior.
+
+## Composition
+
+The default `app.model.ts` installs only Access and Assets. Add domains in that file, their custom
+server bindings in `app.server.ts`, and UI in `app.ui.ts`. All are ordinary source-owned TypeScript.
+See the [engineering/support walkthrough](../../docs/dogfooding.md) and
+[database workflow](../../docs/runbooks/database.md). Full test fixtures live under `src/examples`.

@@ -1,14 +1,14 @@
+import { Database } from "@company/runtime/server/database/database"
 import {
   assignments,
   defineTable,
   insertValues,
   tableProjection,
   type TableRow,
-} from "@company/postgres"
+} from "@company/runtime/server/postgres"
 import { Effect } from "effect"
 import { expect } from "vitest"
 
-import { Database } from "#/server/database/database.ts"
 import { itDatabase } from "#/server/database/it-database.ts"
 
 itDatabase(

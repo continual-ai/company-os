@@ -8,15 +8,11 @@ import {
   type RecordAlias,
   type RecordId,
   type RecordIdOf,
-} from "@company/runtime"
+} from "@company/runtime/model"
 import { describe, expect, expectTypeOf, it } from "vitest"
 
-import {
-  Model,
-  type ActorId,
-  type IdentityId,
-  type PrincipalId,
-} from "#/app.model.ts"
+import { type ActorId, type IdentityId, type PrincipalId } from "#/app.model.ts"
+import { Model } from "#/examples/model.ts"
 import { modelMetadata } from "#/model-metadata.ts"
 
 const ContactPrimaryCompany = Model.links.contactPrimaryCompany
@@ -85,12 +81,13 @@ describe("model contract", () => {
     >().toEqualTypeOf<number>()
     expect(description.modules.map((module) => module.id)).toEqual([
       "access",
-      "sales",
-      "notes",
-      "marketing",
-      "support",
-      "engineering",
       "assets",
+      "notes",
+      "sales",
+      "marketing",
+      "engineering",
+      "support",
+      "supportEngineering",
     ])
     expect(
       description.modules.flatMap((module) => module.objectIds).sort()
@@ -100,8 +97,8 @@ describe("model contract", () => {
       "authorizationScope",
       "identity",
       "principal",
-      "party",
       "noteSubject",
+      "party",
     ])
     expect(description.interfaces).toContainEqual(
       expect.objectContaining({
@@ -120,12 +117,12 @@ describe("model contract", () => {
         .map((query) => query.id)
     ).toEqual(["get", "list", "batchGet"])
     expect(description.links.map((link) => link.id)).toEqual([
+      "noteSubjects",
       "contactCompanies",
       "contactPrimaryCompany",
       "dealCompanies",
-      "noteSubjects",
-      "ticketIssues",
       "issuePullRequests",
+      "ticketIssues",
     ])
     expect(description.links).toEqual(
       expect.arrayContaining([

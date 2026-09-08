@@ -1,0 +1,30 @@
+{
+  "name": "@company/marketing",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "imports": {
+    "#/*": "./src/*"
+  },
+  "exports": {
+    "./model": "./src/model/index.ts",
+    "./ui": "./src/ui/index.ts",
+    "./seeds": "./src/seeds/index.ts"
+  },
+  "scripts": {
+    "lint": "oxlint .",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@company/notes": "workspace:*",
+    "@company/runtime": "workspace:*",
+    "@company/sales": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "effect": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

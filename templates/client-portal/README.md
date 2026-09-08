@@ -30,7 +30,7 @@ The development server prints its local URL. Its exact package identity and port
 - `src/routes` owns portal URLs and page composition.
 - `src/styles` owns portal-specific styling over the shared theme.
 - `company-os/model` supplies browser-safe business vocabulary.
-- `@company/ui` supplies shared visual primitives.
+- `@company/runtime/ui` supplies shared visual primitives.
 
 ## Boundaries
 

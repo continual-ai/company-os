@@ -5,33 +5,14 @@ import { Config, Effect, Redacted } from "effect"
 
 import { developmentSeedTarget } from "#/server/database/db-seed-target.ts"
 import { databaseLayer } from "#/server/database/postgres.ts"
-import { loadLocalEnvironment } from "#/server/local-environment.ts"
-import { demoScenario } from "#/server/seeds/demo-scenario.ts"
-import { performanceScenario } from "#/server/seeds/performance-scenario.ts"
-import { runSeedScenario } from "#/server/seeds/run-seed-scenario.ts"
 import { seedSystem } from "#/server/seeds/seed-system.ts"
 
-const { values } = parseArgs({
-  options: {
-    scenario: { type: "string", default: "demo" },
-    size: { type: "string" },
-    help: { type: "boolean" },
-  },
-})
+const { values } = parseArgs({ options: { help: { type: "boolean" } } })
 if (values.help) {
   console.log(
-    "pnpm db:seed --scenario demo|performance [--size 1000]\nRun db:migrate first. Scenarios run once per database and preserve later edits. Remote targets require CONFIRM_DEVELOPMENT_DATABASE=host/database."
+    "pnpm db:seed\nRun db:migrate first. Creates required system records. Add an explicit business scenario in tools/db-seed.ts when installing business modules."
   )
 } else {
-  if (values.scenario !== "demo" && values.scenario !== "performance")
-    throw new Error("Choose scenario demo or performance.")
-  if (values.scenario === "demo" && values.size !== undefined)
-    throw new Error("--size applies only to the performance scenario.")
-  const scenario =
-    values.scenario === "demo"
-      ? demoScenario
-      : performanceScenario(Number(values.size ?? 1000))
-  loadLocalEnvironment()
   Effect.gen(function* () {
     const url = yield* Config.redacted("DATABASE_URL")
     const confirmation = yield* Config.string(
@@ -43,9 +24,8 @@ if (values.help) {
     const target = yield* Effect.try(() =>
       developmentSeedTarget(Redacted.value(url), confirmation, environment)
     )
-    yield* Effect.log(`Seeding '${scenario.name}' into ${target}.`)
+    yield* Effect.log(`Seeding system records into ${target}.`)
     yield* seedSystem()
-    const result = yield* runSeedScenario(scenario)
-    yield* Effect.log(`${scenario.name}: ${result}.`)
+    yield* Effect.log("System records ready.")
   }).pipe(Effect.provide(databaseLayer), NodeRuntime.runMain)
 }

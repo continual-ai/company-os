@@ -1,18 +1,15 @@
-import { defineNotesModule } from "@company/notes/model"
-import { defineModel, describeModel } from "@company/runtime"
+import { EngineeringModule } from "@company/engineering/model"
+import { NotesModule } from "@company/notes/model"
+import { defineModel, describeModel } from "@company/runtime/model"
+import { Actor, AccessModule, Root } from "@company/runtime/model/access"
 import { expect, it } from "vitest"
-
-import { Root } from "#/model-root.ts"
-import { Actor } from "#/modules/access/interfaces/actor.ts"
-import { AccessModule } from "#/modules/access/model.ts"
-import { EngineeringModule } from "#/modules/engineering/model.ts"
 
 it("composes Notes with Engineering without installing Sales", () => {
   const model = defineModel({
     name: "Engineering",
     root: Root,
     actor: Actor,
-    modules: [AccessModule, defineNotesModule(Root), EngineeringModule],
+    modules: [AccessModule, NotesModule, EngineeringModule],
   })
   const description = describeModel(model)
   expect(description.objects.map(({ id }) => id)).toEqual(

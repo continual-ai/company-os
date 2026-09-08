@@ -1,6 +1,6 @@
+import { applicationCapabilities } from "@company/runtime/client/capabilities"
 import { Outlet, createFileRoute } from "@tanstack/react-router"
 
-import { applicationCapabilities } from "#/capabilities.ts"
 import { pageOptions } from "#/route-metadata.ts"
 import { CapabilityBoundary } from "#/ui/application/capability-boundary.tsx"
 import { allowedCapabilitiesQuery } from "#/ui/application/load-capabilities.ts"

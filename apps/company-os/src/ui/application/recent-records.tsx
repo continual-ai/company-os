@@ -1,9 +1,10 @@
-import { CommandGroup, CommandItem } from "@company/ui/components/command"
+import { CommandGroup, CommandItem } from "@company/runtime/ui/command"
+import { tableRecord } from "@company/runtime/ui/model/object-client"
+import { ObjectRecordIdentity } from "@company/runtime/ui/model/object-record-identity"
+import { objectHref } from "@company/runtime/ui/model/object-routing"
+import { useRecentRecords } from "@company/runtime/ui/model/recent-records"
 
-import { useRecentRecords } from "#/ui/application/use-recent-records.tsx"
-import { tableRecord } from "#/ui/model/object-client.ts"
-import { ObjectRecordIdentity } from "#/ui/model/object-record-identity.tsx"
-import { objectHref } from "#/ui/model/object-routing.ts"
+import { presentation } from "#/app-presentation.ts"
 
 /** Session suggestions reflect explicit navigation and current read access. */
 export function RecentRecords({
@@ -19,7 +20,7 @@ export function RecentRecords({
         <CommandItem
           key={record.id}
           value={`recent:${record.id}`}
-          onSelect={() => onOpen(objectHref(object, record.id))}
+          onSelect={() => onOpen(objectHref(presentation, object, record.id))}
           className="gap-3 px-3 py-2.5"
         >
           <ObjectRecordIdentity

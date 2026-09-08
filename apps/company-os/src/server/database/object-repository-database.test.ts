@@ -1,12 +1,19 @@
-import { assignments } from "@company/postgres"
-import { tableProjection, type TableRow } from "@company/postgres"
 import {
   DomainName,
   EmailAddress,
   PageToken,
   RecordAlias,
   RecordId,
-} from "@company/runtime"
+} from "@company/runtime/model"
+import {
+  ROOT_ID,
+  SYSTEM_SERVICE_ACCOUNT_ID,
+} from "@company/runtime/model/system-records"
+import { Database } from "@company/runtime/server/database/database"
+import { makeObjectRepository } from "@company/runtime/server/database/object-repository"
+import { CurrentInvocation } from "@company/runtime/server/invocation"
+import { systemInvocation } from "@company/runtime/server/invocation-context"
+import { RecordIdentifierResolver } from "@company/runtime/server/model/record-identifier-resolver"
 import {
   InvalidListRequest,
   RecordAliasConflict,
@@ -14,28 +21,28 @@ import {
   ObjectNotFound,
   ObjectParentTypeMismatch,
   ObjectWriteConflict,
-} from "@company/runtime/effect/object-repository"
-import * as ObjectService from "@company/runtime/effect/object-service"
+} from "@company/runtime/server/object-repository"
+import * as ObjectService from "@company/runtime/server/object-service"
+import { PageTokens } from "@company/runtime/server/page-tokens"
+import { assignments } from "@company/runtime/server/postgres"
+import {
+  tableProjection,
+  type TableRow,
+} from "@company/runtime/server/postgres"
 import { Effect } from "effect"
 import { describe, expect, expectTypeOf } from "vitest"
 
-import { Model } from "#/app.model.ts"
-import { Database } from "#/server/database/database.ts"
-import { itDatabase } from "#/server/database/it-database.ts"
-import { applyMigrations } from "#/server/database/migrations.ts"
-import { makeObjectRepository } from "#/server/database/object-repository.ts"
-import { Storage } from "#/server/database/schema.ts"
+import { Model } from "#/examples/model.ts"
+import { applyMigrations } from "#/examples/schema.server.ts"
+import { Storage } from "#/examples/schema.server.ts"
 import {
   lineItems,
   recordAliases,
   objects,
   parties,
-} from "#/server/database/schema.ts"
-import { systemInvocation } from "#/server/invocation-context.ts"
-import { RecordIdentifierResolver } from "#/server/model/record-identifier-resolver.ts"
-import { PageTokens } from "#/server/page-tokens.ts"
+} from "#/examples/schema.server.ts"
+import { itDatabase } from "#/server/database/it-database.ts"
 import { seedSystem } from "#/server/seeds/seed-system.ts"
-import { ROOT_ID, SYSTEM_SERVICE_ACCOUNT_ID } from "#/system-records.ts"
 
 const CompanyId = RecordId("company")
 
@@ -407,7 +414,7 @@ describe("Effect SQL object repository", () => {
           oversizedPage,
         }
       }).pipe(
-        Effect.provideService(ObjectService.CurrentInvocation, context),
+        Effect.provideService(CurrentInvocation, context),
         Effect.provide(PageTokens.layerTest)
       )
 

@@ -1,119 +1,53 @@
 # @company/runtime
 
-Portable definitions and reusable machinery for describing, implementing, and projecting a Company
-OS model. It supplies application-neutral contracts; it does not know the company's model,
-database, policies, UI, or deployment.
-
-Model authors import definition builders from this package and publish the composed contract through
-`company-os/model`. Feature code consumes that contract. Server
-applications opt into Effect-based schema, execution, HTTP, and MCP projections through explicit
-`@company/runtime/effect/*` subpaths so browser-safe consumers do not acquire server dependencies.
-
-## Define a model
-
-```ts
-import {
-  defineInterface,
-  defineModel,
-  defineModule,
-  defineObject,
-  defineRoot,
-  schema,
-} from "@company/runtime"
-
-const Identity = defineInterface({
-  id: "identity",
-  name: "Identity",
-  pluralName: "Identities",
-})
-
-const Root = defineRoot({ id: "root", name: "Root" })
-
-const User = defineObject({
-  id: "user",
-  collection: "users",
-  name: "User",
-  pluralName: "Users",
-  parent: Root,
-  properties: {
-    name: schema.string({ label: "Name" }),
-  },
-  display: { title: "name" },
-  implements: [{ interface: Identity }],
-})
-
-const Lead = defineObject({
-  id: "lead",
-  collection: "leads",
-  name: "Lead",
-  pluralName: "Leads",
-  parent: Root,
-  properties: {
-    name: schema.string({ label: "Name" }),
-  },
-  display: { title: "name" },
-})
-
-export const Model = defineModel({
-  actor: Identity,
-  modules: [
-    defineModule({
-      id: "example",
-      name: "Example",
-      interfaces: [Identity],
-      links: [],
-      objects: [User, Lead],
-    }),
-  ],
-  name: "Example",
-  root: Root,
-})
-```
-
-The root is the singleton top of the ownership hierarchy. Objects are durable records beneath it.
-Interfaces describe polymorphic roles, Links describe bidirectional relationships, Queries read
-state, and Actions perform governed operations. `modelRelationships` exposes the named directions
-of Links, inline references, and ownership parents in one derived catalog. See
-[Modeling company operations](../../docs/modeling.md) for the complete conceptual guide.
-
-## Bind and project the contract
-
-The central application binds the closed model once to governed standard operations and named custom
-Query and Action implementations. The same binding drives HTTP handlers, OpenAPI, typed clients, MCP tools, and model
-descriptions. A transport partitions and reconstructs the semantic request mechanically; it does
-not authorize callers, implement business rules, or call repositories directly.
-
-`Repository` is the portable persistence contract consumed by object services. An adapter owns the
-atomicity and hierarchy guarantees of its storage system. `@company/postgres` supplies the shared
-PostgreSQL implementation, while the application owns migrations, credentials, policies, and final
-service composition.
-
-The exact public subpaths and dependencies are declared in [`package.json`](package.json). Exact
-operation types and invariants are defined by source, TSDoc, and tests rather than duplicated here.
+The shared foundation for model-driven business applications: definitions, governed execution,
+PostgreSQL persistence, clients, and presentation. Domain modules depend on this package; it never
+imports a domain module or application. The application selects modules and supplies deployment
+configuration and providers.
 
 ## Boundaries
 
-This package owns:
+| Import surface                     | Responsibility                                                             |
+| ---------------------------------- | -------------------------------------------------------------------------- |
+| `@company/runtime/model`           | Portable objects, relationships, actions, queries, and model composition   |
+| `@company/runtime/server`          | Effect services for records, authorization, transactions, and events       |
+| `@company/runtime/server/postgres` | SQL projection and persistence primitives                                  |
+| `@company/runtime/contract/*`      | Effect Schema decoders and transport contracts shared by server and client |
+| `@company/runtime/client/*`        | Browser/SSR-safe semantic clients and query caching                        |
+| `@company/runtime/ui/*`            | shadcn primitives, tokens, forms, collections, record pages, and module UI |
+| `@company/runtime/testing`         | Isolated PostgreSQL databases for module and integration tests             |
 
-- application-neutral model and schema definitions with type inference;
-- reusable repository and governed object-service contracts;
-- mechanical descriptions and projections of a bound model; and
-- execution or transport behavior proven common across application slices.
+There is no mixed root export. The model cannot import Effect, client, server, or UI code.
+Client and UI code cannot import server code; server code cannot import UI. Package exports,
+Oxlint, the recursive model import check, and the application bundler enforce these boundaries.
+Private source imports use `#/` with the actual extension. Public imports use declared subpaths.
 
-It does not own:
+## Composition
 
-- company-specific nouns, policy, handlers, persistence choices, providers, or UI;
-- application migrations, credentials, or runtime configuration;
-- independent business implementations for each transport; or
-- a hosted-platform requirement.
+The app composes one model, server contributions, and UI contributions at separate entrypoints.
+`foundationLayer(model, infrastructure)` provides the common execution services. Custom module
+operations use those services directly; an app does not implement a bespoke adapter per domain.
+`defineModuleServer` retains typed operation dependencies. `makeServicesLayer` binds operations to
+explicit provider-layer outputs, leaving invocation and transaction state local to each call. Standard CRUD comes from the model.
 
-Read the [architecture guide](../../docs/architecture.md) for the repository-wide dependency and
-authority model.
+`ModelUiProvider` supplies the composed model, semantic client, presentation registrations, and
+host capabilities. Module components use `useObjectClient(Object)` for typed query/mutation options.
+They share the application's QueryClient and server-driven invalidation. Base components can be
+used without a model provider.
 
-## Develop
+The PostgreSQL projection derives tables and constraints from the same model. Custom SQL uses
+`ModelContext.table(Object)` and `Database.sql`. `Records.writer(Object)` retains validation and
+change recording; `Database.transaction` commits business writes, search updates, and events
+atomically. Applications own the deployed migration sequence and credentials.
 
-From the repository root:
+Access and Assets are standard foundation modules, with separate portable definitions, server
+implementations, and UI. Identity verification is a host-supplied `IdentityProvider` layer; the
+runtime does not require Continual or another hosting platform.
+
+See [module authoring](../../docs/modules.md) for a concrete module and isolated database tests.
+The exact public surface is declared in [package.json](package.json).
 
 ```sh
-pnpm turbo run test typecheck --filter=@company/runtime
+pnpm --filter @company/runtime test
+pnpm --filter @company/runtime typecheck
 ```

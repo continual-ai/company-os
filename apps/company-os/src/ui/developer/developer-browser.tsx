@@ -1,4 +1,4 @@
-import { Input } from "@company/ui/components/input"
+import { Input } from "@company/runtime/ui/input"
 import { SearchIcon } from "lucide-react"
 import type { ReactNode } from "react"
 

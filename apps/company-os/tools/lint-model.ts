@@ -1,4 +1,4 @@
-import { describeModel, lintModelDescription } from "@company/runtime"
+import { describeModel, lintModelDescription } from "@company/runtime/model"
 
 import { Model } from "#/app.model.ts"
 

@@ -1,10 +1,9 @@
+import { createPermissionCatalog } from "@company/runtime/server/authorization/permission-catalog"
 import { describe, expect, it } from "vitest"
 
-import {
-  definedPermissions,
-  objectPermission,
-  permissionDefinition,
-} from "#/server/authorization/permission-catalog.ts"
+import { Model } from "#/examples/model.ts"
+const { definedPermissions, objectPermission, permissionDefinition } =
+  createPermissionCatalog(Model)
 
 describe("authorization permission catalog", () => {
   it("defines model operations and application capabilities exactly once", () => {

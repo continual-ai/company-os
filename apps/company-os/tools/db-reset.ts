@@ -5,10 +5,7 @@ import { Config, Effect, Redacted } from "effect"
 import { localDatabaseTarget } from "#/server/database/db-reset-target.ts"
 import { applyMigrations } from "#/server/database/migrations.ts"
 import * as Postgres from "#/server/database/postgres.ts"
-import { loadLocalEnvironment } from "#/server/local-environment.ts"
 import { seedSystem } from "#/server/seeds/seed-system.ts"
-
-loadLocalEnvironment()
 
 Effect.gen(function* () {
   const databaseUrl = yield* Config.redacted("DATABASE_URL")

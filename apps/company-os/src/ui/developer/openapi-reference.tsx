@@ -1,7 +1,7 @@
-import { Badge } from "@company/ui/components/badge"
-import { Button } from "@company/ui/components/button"
-import { CodeBlock } from "@company/ui/components/code-block"
-import { cn } from "@company/ui/lib/utils"
+import { Badge } from "@company/runtime/ui/badge"
+import { Button } from "@company/runtime/ui/button"
+import { CodeBlock } from "@company/runtime/ui/code-block"
+import { cn } from "@company/runtime/ui/lib/utils"
 import { CodeXmlIcon, ExternalLinkIcon, FileJsonIcon } from "lucide-react"
 import { useDeferredValue, useEffect, useMemo, useState } from "react"
 

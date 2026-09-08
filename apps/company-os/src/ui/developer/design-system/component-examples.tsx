@@ -3,12 +3,8 @@ import {
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from "@company/ui/components/accordion"
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from "@company/ui/components/alert"
+} from "@company/runtime/ui/accordion"
+import { Alert, AlertDescription, AlertTitle } from "@company/runtime/ui/alert"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,7 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@company/ui/components/alert-dialog"
+} from "@company/runtime/ui/alert-dialog"
 import {
   Attachment,
   AttachmentAction,
@@ -28,15 +24,15 @@ import {
   AttachmentDescription,
   AttachmentMedia,
   AttachmentTitle,
-} from "@company/ui/components/attachment"
+} from "@company/runtime/ui/attachment"
 import {
   Avatar,
   AvatarBadge,
   AvatarFallback,
   AvatarGroup,
   AvatarGroupCount,
-} from "@company/ui/components/avatar"
-import { Badge } from "@company/ui/components/badge"
+} from "@company/runtime/ui/avatar"
+import { Badge } from "@company/runtime/ui/badge"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -44,9 +40,9 @@ import {
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
-} from "@company/ui/components/breadcrumb"
-import { Bubble, BubbleContent } from "@company/ui/components/bubble"
-import { Button } from "@company/ui/components/button"
+} from "@company/runtime/ui/breadcrumb"
+import { Bubble, BubbleContent } from "@company/runtime/ui/bubble"
+import { Button } from "@company/runtime/ui/button"
 import {
   Card,
   CardAction,
@@ -55,7 +51,7 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@company/ui/components/card"
+} from "@company/runtime/ui/card"
 import {
   ChartContainer,
   ChartLegend,
@@ -63,9 +59,9 @@ import {
   ChartTooltip,
   ChartTooltipContent,
   type ChartConfig,
-} from "@company/ui/components/chart"
-import { ChatShell, type ChatMessage } from "@company/ui/components/chat"
-import { Checkbox } from "@company/ui/components/checkbox"
+} from "@company/runtime/ui/chart"
+import { ChatShell, type ChatMessage } from "@company/runtime/ui/chat"
+import { Checkbox } from "@company/runtime/ui/checkbox"
 import {
   Command,
   CommandEmpty,
@@ -74,8 +70,8 @@ import {
   CommandItem,
   CommandList,
   CommandShortcut,
-} from "@company/ui/components/command"
-import { DateTimePicker } from "@company/ui/components/date-time-picker"
+} from "@company/runtime/ui/command"
+import { DateTimePicker } from "@company/runtime/ui/date-time-picker"
 import {
   Dialog,
   DialogContent,
@@ -84,7 +80,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@company/ui/components/dialog"
+} from "@company/runtime/ui/dialog"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -93,7 +89,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@company/ui/components/dropdown-menu"
+} from "@company/runtime/ui/dropdown-menu"
 import {
   Empty,
   EmptyContent,
@@ -101,33 +97,29 @@ import {
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
-} from "@company/ui/components/empty"
+} from "@company/runtime/ui/empty"
 import {
   Field,
   FieldDescription,
   FieldError,
   FieldLabel,
-} from "@company/ui/components/field"
-import { Input } from "@company/ui/components/input"
+} from "@company/runtime/ui/field"
+import { Input } from "@company/runtime/ui/input"
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupButton,
   InputGroupInput,
   InputGroupText,
-} from "@company/ui/components/input-group"
-import { Label } from "@company/ui/components/label"
-import {
-  Marker,
-  MarkerContent,
-  MarkerIcon,
-} from "@company/ui/components/marker"
+} from "@company/runtime/ui/input-group"
+import { Label } from "@company/runtime/ui/label"
+import { Marker, MarkerContent, MarkerIcon } from "@company/runtime/ui/marker"
 import {
   Message,
   MessageAvatar,
   MessageContent,
   MessageHeader,
-} from "@company/ui/components/message"
+} from "@company/runtime/ui/message"
 import {
   MessageScroller,
   MessageScrollerButton,
@@ -135,8 +127,8 @@ import {
   MessageScrollerItem,
   MessageScrollerProvider,
   MessageScrollerViewport,
-} from "@company/ui/components/message-scroller"
-import { PhoneInput } from "@company/ui/components/phone-input"
+} from "@company/runtime/ui/message-scroller"
+import { PhoneInput } from "@company/runtime/ui/phone-input"
 import {
   Popover,
   PopoverContent,
@@ -144,13 +136,13 @@ import {
   PopoverHeader,
   PopoverTitle,
   PopoverTrigger,
-} from "@company/ui/components/popover"
+} from "@company/runtime/ui/popover"
 import {
   Progress,
   ProgressLabel,
   ProgressValue,
-} from "@company/ui/components/progress"
-import { RadioGroup, RadioGroupItem } from "@company/ui/components/radio-group"
+} from "@company/runtime/ui/progress"
+import { RadioGroup, RadioGroupItem } from "@company/runtime/ui/radio-group"
 import {
   Select,
   SelectContent,
@@ -159,8 +151,8 @@ import {
   SelectLabel,
   SelectTrigger,
   SelectValue,
-} from "@company/ui/components/select"
-import { Separator } from "@company/ui/components/separator"
+} from "@company/runtime/ui/select"
+import { Separator } from "@company/runtime/ui/separator"
 import {
   Sheet,
   SheetContent,
@@ -169,7 +161,7 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-} from "@company/ui/components/sheet"
+} from "@company/runtime/ui/sheet"
 import {
   Sidebar,
   SidebarContent,
@@ -181,10 +173,10 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
-} from "@company/ui/components/sidebar"
-import { Skeleton } from "@company/ui/components/skeleton"
-import { Spinner } from "@company/ui/components/spinner"
-import { Switch } from "@company/ui/components/switch"
+} from "@company/runtime/ui/sidebar"
+import { Skeleton } from "@company/runtime/ui/skeleton"
+import { Spinner } from "@company/runtime/ui/spinner"
+import { Switch } from "@company/runtime/ui/switch"
 import {
   Table,
   TableBody,
@@ -192,20 +184,20 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@company/ui/components/table"
+} from "@company/runtime/ui/table"
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
-} from "@company/ui/components/tabs"
-import { Textarea } from "@company/ui/components/textarea"
-import { toast, Toaster } from "@company/ui/components/toast"
+} from "@company/runtime/ui/tabs"
+import { Textarea } from "@company/runtime/ui/textarea"
+import { toast, Toaster } from "@company/runtime/ui/toast"
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@company/ui/components/tooltip"
+} from "@company/runtime/ui/tooltip"
 import {
   ArchiveIcon,
   Building2Icon,
@@ -274,7 +266,7 @@ const transcriptPreviewLines = [
 const exampleDetails = {
   accordion: {
     code: snippet(
-      'import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@company/ui/components/accordion"',
+      'import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@company/runtime/ui/accordion"',
       "",
       '<Accordion defaultValue={["governance"]}>',
       '  <AccordionItem value="governance">',
@@ -288,7 +280,7 @@ const exampleDetails = {
   },
   alert: {
     code: snippet(
-      'import { Alert, AlertDescription, AlertTitle } from "@company/ui/components/alert"',
+      'import { Alert, AlertDescription, AlertTitle } from "@company/runtime/ui/alert"',
       "",
       "<Alert>",
       "  <CheckCircle2Icon />",
@@ -301,7 +293,7 @@ const exampleDetails = {
   },
   "alert-dialog": {
     code: snippet(
-      'import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@company/ui/components/alert-dialog"',
+      'import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@company/runtime/ui/alert-dialog"',
       "",
       "<AlertDialog>",
       '  <AlertDialogTrigger render={<Button variant="destructive" />}>Archive company</AlertDialogTrigger>',
@@ -322,7 +314,7 @@ const exampleDetails = {
   },
   attachment: {
     code: snippet(
-      'import { Attachment, AttachmentContent, AttachmentMedia, AttachmentTitle } from "@company/ui/components/attachment"',
+      'import { Attachment, AttachmentContent, AttachmentMedia, AttachmentTitle } from "@company/runtime/ui/attachment"',
       "",
       '<Attachment state="done" size="sm">',
       "  <AttachmentMedia><FileTextIcon /></AttachmentMedia>",
@@ -336,7 +328,7 @@ const exampleDetails = {
   },
   avatar: {
     code: snippet(
-      'import { Avatar, AvatarBadge, AvatarFallback } from "@company/ui/components/avatar"',
+      'import { Avatar, AvatarBadge, AvatarFallback } from "@company/runtime/ui/avatar"',
       "",
       '<Avatar size="lg">',
       "  <AvatarFallback>TZ</AvatarFallback>",
@@ -348,7 +340,7 @@ const exampleDetails = {
   },
   badge: {
     code: snippet(
-      'import { Badge } from "@company/ui/components/badge"',
+      'import { Badge } from "@company/runtime/ui/badge"',
       "",
       '<Badge variant="secondary">Qualified</Badge>'
     ),
@@ -357,7 +349,7 @@ const exampleDetails = {
   },
   breadcrumb: {
     code: snippet(
-      'import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@company/ui/components/breadcrumb"',
+      'import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@company/runtime/ui/breadcrumb"',
       "",
       "<Breadcrumb>",
       "  <BreadcrumbList>",
@@ -372,7 +364,7 @@ const exampleDetails = {
   },
   bubble: {
     code: snippet(
-      'import { Bubble, BubbleContent } from "@company/ui/components/bubble"',
+      'import { Bubble, BubbleContent } from "@company/runtime/ui/bubble"',
       "",
       '<Bubble variant="secondary">',
       "  <BubbleContent>Northwind is waiting on a qualification review.</BubbleContent>",
@@ -386,7 +378,7 @@ const exampleDetails = {
   },
   button: {
     code: snippet(
-      'import { Button } from "@company/ui/components/button"',
+      'import { Button } from "@company/runtime/ui/button"',
       "",
       "<Button>Save company</Button>",
       '<Button variant="outline">Cancel</Button>',
@@ -397,7 +389,7 @@ const exampleDetails = {
   },
   card: {
     code: snippet(
-      'import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@company/ui/components/card"',
+      'import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@company/runtime/ui/card"',
       "",
       "<Card>",
       "  <CardHeader>",
@@ -414,7 +406,7 @@ const exampleDetails = {
   },
   chart: {
     code: snippet(
-      'import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@company/ui/components/chart"',
+      'import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@company/runtime/ui/chart"',
       'import { Bar, BarChart, XAxis } from "recharts"',
       "",
       'const config = { qualified: { label: "Qualified" }, closed: { label: "Closed" } }',
@@ -433,7 +425,7 @@ const exampleDetails = {
   },
   chat: {
     code: snippet(
-      'import { ChatShell } from "@company/ui/components/chat"',
+      'import { ChatShell } from "@company/runtime/ui/chat"',
       "",
       "<ChatShell",
       "  messages={messages}",
@@ -447,8 +439,8 @@ const exampleDetails = {
   },
   checkbox: {
     code: snippet(
-      'import { Checkbox } from "@company/ui/components/checkbox"',
-      'import { Label } from "@company/ui/components/label"',
+      'import { Checkbox } from "@company/runtime/ui/checkbox"',
+      'import { Label } from "@company/runtime/ui/label"',
       "",
       '<div className="flex items-center gap-2">',
       '  <Checkbox id="approval" defaultChecked />',
@@ -460,7 +452,7 @@ const exampleDetails = {
   },
   "date-time-picker": {
     code: snippet(
-      'import { DateTimePicker } from "@company/ui/components/date-time-picker"',
+      'import { DateTimePicker } from "@company/runtime/ui/date-time-picker"',
       "",
       'const [occurredAt, setOccurredAt] = useState("2026-08-27T09:15")',
       "",
@@ -476,7 +468,7 @@ const exampleDetails = {
   },
   command: {
     code: snippet(
-      'import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from "@company/ui/components/command"',
+      'import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from "@company/runtime/ui/command"',
       "",
       "<Command>",
       '  <CommandInput placeholder="Search company objects..." />',
@@ -493,7 +485,7 @@ const exampleDetails = {
   },
   dialog: {
     code: snippet(
-      'import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@company/ui/components/dialog"',
+      'import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@company/runtime/ui/dialog"',
       "",
       "<Dialog>",
       "  <DialogTrigger render={<Button />}>Add contact</DialogTrigger>",
@@ -512,7 +504,7 @@ const exampleDetails = {
   },
   "dropdown-menu": {
     code: snippet(
-      'import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@company/ui/components/dropdown-menu"',
+      'import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@company/runtime/ui/dropdown-menu"',
       "",
       "<DropdownMenu>",
       '  <DropdownMenuTrigger render={<Button variant="outline" size="icon" />}><MoreHorizontalIcon /></DropdownMenuTrigger>',
@@ -527,7 +519,7 @@ const exampleDetails = {
   },
   empty: {
     code: snippet(
-      'import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@company/ui/components/empty"',
+      'import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@company/runtime/ui/empty"',
       "",
       "<Empty>",
       '  <EmptyMedia variant="icon"><Building2Icon /></EmptyMedia>',
@@ -543,8 +535,8 @@ const exampleDetails = {
   },
   field: {
     code: snippet(
-      'import { Field, FieldDescription, FieldLabel } from "@company/ui/components/field"',
-      'import { Input } from "@company/ui/components/input"',
+      'import { Field, FieldDescription, FieldLabel } from "@company/runtime/ui/field"',
+      'import { Input } from "@company/runtime/ui/input"',
       "",
       "<Field>",
       '  <FieldLabel htmlFor="domain">Company domain</FieldLabel>',
@@ -557,7 +549,7 @@ const exampleDetails = {
   },
   input: {
     code: snippet(
-      'import { Input } from "@company/ui/components/input"',
+      'import { Input } from "@company/runtime/ui/input"',
       "",
       '<Input aria-label="Company name" placeholder="Example" />'
     ),
@@ -566,7 +558,7 @@ const exampleDetails = {
   },
   "input-group": {
     code: snippet(
-      'import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from "@company/ui/components/input-group"',
+      'import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from "@company/runtime/ui/input-group"',
       "",
       "<InputGroup>",
       "  <InputGroupAddon><InputGroupText>https://</InputGroupText></InputGroupAddon>",
@@ -578,7 +570,7 @@ const exampleDetails = {
   },
   label: {
     code: snippet(
-      'import { Label } from "@company/ui/components/label"',
+      'import { Label } from "@company/runtime/ui/label"',
       "",
       '<Label htmlFor="company-name">Company name</Label>'
     ),
@@ -587,7 +579,7 @@ const exampleDetails = {
   },
   marker: {
     code: snippet(
-      'import { Marker, MarkerContent, MarkerIcon } from "@company/ui/components/marker"',
+      'import { Marker, MarkerContent, MarkerIcon } from "@company/runtime/ui/marker"',
       "",
       '<Marker variant="separator">',
       "  <MarkerContent>Today</MarkerContent>",
@@ -602,7 +594,7 @@ const exampleDetails = {
   },
   message: {
     code: snippet(
-      'import { Message, MessageAvatar, MessageContent, MessageHeader } from "@company/ui/components/message"',
+      'import { Message, MessageAvatar, MessageContent, MessageHeader } from "@company/runtime/ui/message"',
       "",
       "<Message>",
       "  <MessageAvatar>AI</MessageAvatar>",
@@ -617,7 +609,7 @@ const exampleDetails = {
   },
   "message-scroller": {
     code: snippet(
-      'import { MessageScroller, MessageScrollerButton, MessageScrollerContent, MessageScrollerItem, MessageScrollerProvider, MessageScrollerViewport } from "@company/ui/components/message-scroller"',
+      'import { MessageScroller, MessageScrollerButton, MessageScrollerContent, MessageScrollerItem, MessageScrollerProvider, MessageScrollerViewport } from "@company/runtime/ui/message-scroller"',
       "",
       "<MessageScrollerProvider>",
       "  <MessageScroller>",
@@ -643,7 +635,7 @@ const exampleDetails = {
   },
   popover: {
     code: snippet(
-      'import { Popover, PopoverContent, PopoverDescription, PopoverHeader, PopoverTitle, PopoverTrigger } from "@company/ui/components/popover"',
+      'import { Popover, PopoverContent, PopoverDescription, PopoverHeader, PopoverTitle, PopoverTrigger } from "@company/runtime/ui/popover"',
       "",
       "<Popover>",
       '  <PopoverTrigger render={<Button variant="outline" />}>Assignment</PopoverTrigger>',
@@ -660,7 +652,7 @@ const exampleDetails = {
   },
   "phone-input": {
     code: snippet(
-      'import { PhoneInput } from "@company/ui/components/phone-input"',
+      'import { PhoneInput } from "@company/runtime/ui/phone-input"',
       "",
       'const [phone, setPhone] = useState("+14155550123")',
       "",
@@ -676,7 +668,7 @@ const exampleDetails = {
   },
   progress: {
     code: snippet(
-      'import { Progress, ProgressLabel, ProgressValue } from "@company/ui/components/progress"',
+      'import { Progress, ProgressLabel, ProgressValue } from "@company/runtime/ui/progress"',
       "",
       "<Progress value={68}>",
       "  <ProgressLabel>Importing records</ProgressLabel>",
@@ -688,8 +680,8 @@ const exampleDetails = {
   },
   "radio-group": {
     code: snippet(
-      'import { RadioGroup, RadioGroupItem } from "@company/ui/components/radio-group"',
-      'import { Label } from "@company/ui/components/label"',
+      'import { RadioGroup, RadioGroupItem } from "@company/runtime/ui/radio-group"',
+      'import { Label } from "@company/runtime/ui/label"',
       "",
       '<RadioGroup defaultValue="review">',
       '  <div className="flex items-center gap-2">',
@@ -707,7 +699,7 @@ const exampleDetails = {
   },
   select: {
     code: snippet(
-      'import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@company/ui/components/select"',
+      'import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@company/runtime/ui/select"',
       "",
       '<Select defaultValue="qualified">',
       "  <SelectTrigger><SelectValue /></SelectTrigger>",
@@ -723,7 +715,7 @@ const exampleDetails = {
   },
   separator: {
     code: snippet(
-      'import { Separator } from "@company/ui/components/separator"',
+      'import { Separator } from "@company/runtime/ui/separator"',
       "",
       '<div className="flex items-center gap-4">',
       "  <span>Pipeline</span>",
@@ -736,7 +728,7 @@ const exampleDetails = {
   },
   sheet: {
     code: snippet(
-      'import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from "@company/ui/components/sheet"',
+      'import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from "@company/runtime/ui/sheet"',
       "",
       "<Sheet>",
       '  <SheetTrigger render={<Button variant="outline" />}>Edit details</SheetTrigger>',
@@ -754,7 +746,7 @@ const exampleDetails = {
   },
   sidebar: {
     code: snippet(
-      'import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider } from "@company/ui/components/sidebar"',
+      'import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider } from "@company/runtime/ui/sidebar"',
       "",
       "<SidebarProvider>",
       '  <Sidebar collapsible="none">',
@@ -771,7 +763,7 @@ const exampleDetails = {
   },
   skeleton: {
     code: snippet(
-      'import { Skeleton } from "@company/ui/components/skeleton"',
+      'import { Skeleton } from "@company/runtime/ui/skeleton"',
       "",
       '<div className="space-y-2">',
       '  <Skeleton className="h-4 w-40" />',
@@ -784,7 +776,7 @@ const exampleDetails = {
   },
   spinner: {
     code: snippet(
-      'import { Spinner } from "@company/ui/components/spinner"',
+      'import { Spinner } from "@company/runtime/ui/spinner"',
       "",
       "<Spinner />"
     ),
@@ -793,8 +785,8 @@ const exampleDetails = {
   },
   switch: {
     code: snippet(
-      'import { Switch } from "@company/ui/components/switch"',
-      'import { Label } from "@company/ui/components/label"',
+      'import { Switch } from "@company/runtime/ui/switch"',
+      'import { Label } from "@company/runtime/ui/label"',
       "",
       '<div className="flex items-center justify-between gap-4">',
       '  <Label htmlFor="notifications">Operating notifications</Label>',
@@ -806,7 +798,7 @@ const exampleDetails = {
   },
   table: {
     code: snippet(
-      'import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@company/ui/components/table"',
+      'import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@company/runtime/ui/table"',
       "",
       "<Table>",
       "  <TableHeader><TableRow><TableHead>Company</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>",
@@ -818,7 +810,7 @@ const exampleDetails = {
   },
   tabs: {
     code: snippet(
-      'import { Tabs, TabsContent, TabsList, TabsTrigger } from "@company/ui/components/tabs"',
+      'import { Tabs, TabsContent, TabsList, TabsTrigger } from "@company/runtime/ui/tabs"',
       "",
       '<Tabs defaultValue="overview">',
       "  <TabsList>",
@@ -834,7 +826,7 @@ const exampleDetails = {
   },
   textarea: {
     code: snippet(
-      'import { Textarea } from "@company/ui/components/textarea"',
+      'import { Textarea } from "@company/runtime/ui/textarea"',
       "",
       '<Textarea aria-label="Operating note" placeholder="Add context for the next review..." />'
     ),
@@ -843,7 +835,7 @@ const exampleDetails = {
   },
   toast: {
     code: snippet(
-      'import { toast, Toaster } from "@company/ui/components/toast"',
+      'import { toast, Toaster } from "@company/runtime/ui/toast"',
       "",
       "<Toaster />",
       "",
@@ -856,7 +848,7 @@ const exampleDetails = {
   },
   tooltip: {
     code: snippet(
-      'import { Tooltip, TooltipContent, TooltipTrigger } from "@company/ui/components/tooltip"',
+      'import { Tooltip, TooltipContent, TooltipTrigger } from "@company/runtime/ui/tooltip"',
       "",
       "<Tooltip>",
       '  <TooltipTrigger render={<Button variant="outline" size="icon" />}><SettingsIcon /></TooltipTrigger>',

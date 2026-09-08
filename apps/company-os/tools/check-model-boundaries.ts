@@ -7,6 +7,7 @@ import { parseSync } from "oxc-parser"
 
 const app = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const modulePackages = resolve(app, "../../modules")
+const runtimeModel = resolve(app, "../../packages/runtime/src/model")
 const visited = new Set<string>()
 
 function visit(filename: string): void {
@@ -26,7 +27,11 @@ function visit(filename: string): void {
   ]) {
     if (moduleRequest === null) continue
     const specifier = moduleRequest.value
-    if (specifier === "@company/runtime") continue
+    if (
+      filename.startsWith(runtimeModel) &&
+      (specifier === "effect" || specifier === "typeid-js")
+    )
+      continue
     const base = specifier.startsWith(".")
       ? resolve(dirname(filename), specifier)
       : undefined
@@ -40,7 +45,8 @@ function visit(filename: string): void {
       !resolved ||
       !(
         resolved.startsWith(`${app}/src/`) ||
-        resolved.startsWith(`${modulePackages}/`)
+        resolved.startsWith(`${modulePackages}/`) ||
+        resolved.startsWith(`${runtimeModel}/`)
       ) ||
       resolved.includes("/server/") ||
       /\/(?:server|ui)\.ts$/.test(resolved) ||

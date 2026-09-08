@@ -1,7 +1,7 @@
 import { ConfigProvider, Effect } from "effect"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import { IdentityProvider } from "#/server/auth/identity-provider.ts"
+import { makeContinualIdentityProvider } from "#/server/auth/identity-provider.ts"
 
 afterEach(() => {
   vi.unstubAllEnvs()
@@ -19,7 +19,7 @@ describe("IdentityProvider", () => {
     )
     vi.stubGlobal("fetch", fetch)
     const provider = Effect.runSync(
-      IdentityProvider.make.pipe(
+      makeContinualIdentityProvider.pipe(
         Effect.provide(
           ConfigProvider.layer(
             ConfigProvider.fromEnvRecord({
@@ -61,7 +61,7 @@ describe("IdentityProvider", () => {
     const fetch = vi.fn()
     vi.stubGlobal("fetch", fetch)
     const provider = Effect.runSync(
-      IdentityProvider.make.pipe(
+      makeContinualIdentityProvider.pipe(
         Effect.provide(
           ConfigProvider.layer(
             ConfigProvider.fromEnvRecord({
@@ -92,7 +92,7 @@ describe("IdentityProvider", () => {
       )
     vi.stubGlobal("fetch", fetch)
     const provider = Effect.runSync(
-      IdentityProvider.make.pipe(
+      makeContinualIdentityProvider.pipe(
         Effect.provide(
           ConfigProvider.layer(
             ConfigProvider.fromEnvRecord({
@@ -120,7 +120,7 @@ describe("IdentityProvider", () => {
   it("uses a stable local identity in the development server", async () => {
     vi.stubEnv("MODE", "development")
     const provider = Effect.runSync(
-      IdentityProvider.make.pipe(
+      makeContinualIdentityProvider.pipe(
         Effect.provide(
           ConfigProvider.layer(
             ConfigProvider.fromEnvRecord({
@@ -153,7 +153,7 @@ describe("IdentityProvider", () => {
   it("treats requests without a provider credential as anonymous outside development", async () => {
     vi.stubEnv("MODE", "test")
     const provider = Effect.runSync(
-      IdentityProvider.make.pipe(
+      makeContinualIdentityProvider.pipe(
         Effect.provide(
           ConfigProvider.layer(
             ConfigProvider.fromEnvRecord({

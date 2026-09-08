@@ -1,15 +1,37 @@
-import { assignments } from "@company/postgres"
-import { projection, type SelectionRow } from "@company/postgres"
-import { makeLinkRepository } from "@company/postgres"
-import { isStandardActionId, RecordAlias } from "@company/runtime"
+import { createModelDataClient } from "@company/runtime/client/data-client"
+import {
+  eventPageSchema,
+  InvalidEventCursor,
+} from "@company/runtime/client/events"
 import {
   createModelClient,
+  type ModelHttpClient,
+} from "@company/runtime/client/http-client"
+import {
+  modelQuery,
+  runClientEffect,
+} from "@company/runtime/client/model-query-client"
+import { customMethodParams } from "@company/runtime/contract/http-custom-method"
+import {
   httpEndpointId,
   linkHttpEndpointId,
-  type ModelHttpClient,
-} from "@company/runtime/effect/http-client"
-import { customMethodParams } from "@company/runtime/effect/http-custom-method"
-import { executableModelOperations } from "@company/runtime/effect/model-implementation"
+} from "@company/runtime/contract/http-endpoint"
+import { isStandardActionId, RecordAlias } from "@company/runtime/model"
+import { executableModelOperations } from "@company/runtime/model/operations"
+import {
+  ADMINISTRATOR_ROLE_ID,
+  ROOT_ID,
+} from "@company/runtime/model/system-records"
+import { makeApplicationKeys } from "@company/runtime/server/application-keys"
+import { Database } from "@company/runtime/server/database/database"
+import { identityBindings } from "@company/runtime/server/database/schema"
+import {
+  makeEncryptedPageTokenCodec,
+  PageTokens,
+} from "@company/runtime/server/page-tokens"
+import { assignments } from "@company/runtime/server/postgres"
+import { projection, type SelectionRow } from "@company/runtime/server/postgres"
+import { makeLinkRepository } from "@company/runtime/server/postgres"
 import {
   ConfigProvider,
   Effect,
@@ -22,33 +44,22 @@ import { FetchHttpClient } from "effect/unstable/http"
 import { HttpApiClient, OpenApi } from "effect/unstable/httpapi"
 import { describe, expect, vi } from "vitest"
 
-import { Model } from "#/app.model.ts"
-import { createModelDataClient } from "#/data-client.ts"
 import { createEventConsumer } from "#/event-consumer.ts"
-import { eventPageSchema, InvalidEventCursor } from "#/events.ts"
-import { applicationHttpApi } from "#/http-api.ts"
-import type { capabilityGroup } from "#/http-api.ts"
-import { modelQuery, runClientEffect } from "#/model-query-client.ts"
-import { makeApplicationKeys } from "#/server/application-keys.ts"
-import { makeApplicationLayer } from "#/server/application-layer.ts"
-import { Database } from "#/server/database/database.ts"
-import { itDatabase } from "#/server/database/it-database.ts"
+import { makeApplicationLayer } from "#/examples/application.server.ts"
+import { applicationHttpApi } from "#/examples/http-api.ts"
+import type { capabilityGroup } from "#/examples/http-api.ts"
+import { Model } from "#/examples/model.ts"
 import {
-  identityBindings,
   notes,
   objects,
   roleAssignments,
   Storage,
   users,
-} from "#/server/database/schema.ts"
-import {
-  makeEncryptedPageTokenCodec,
-  PageTokens,
-} from "#/server/page-tokens.ts"
+} from "#/examples/schema.server.ts"
+import { itDatabase } from "#/server/database/it-database.ts"
 import { seedSystem } from "#/server/seeds/seed-system.ts"
 import { HttpTransport } from "#/server/transport/http-transport.ts"
 import { McpTransport } from "#/server/transport/mcp-transport.ts"
-import { ADMINISTRATOR_ROLE_ID, ROOT_ID } from "#/system-records.ts"
 
 type ApplicationHttpClient = ModelHttpClient<typeof Model> &
   HttpApiClient.Client<typeof capabilityGroup>
@@ -283,6 +294,65 @@ describe("application HTTP server", () => {
       const model = createModelClient(Model, nativeClient)
       const useTestFetch = <A, E>(effect: Effect.Effect<A, E>) =>
         effect.pipe(Effect.provideService(FetchHttpClient.Fetch, fetchApi))
+
+      const ticket = yield* useTestFetch(
+        model.ticket.create({ subject: "HTTP to MCP escalation" })
+      )
+      const escalation = yield* useTestFetch(
+        model.escalation.createIssue({ ticket: ticket.id })
+      )
+      const repeated = yield* Effect.promise(() =>
+        runtime.runPromise(
+          mcp.handle(
+            new Request("http://localhost/api/mcp", {
+              method: "POST",
+              headers: {
+                ...runtimeHeaders,
+                accept: "application/json, text/event-stream",
+                "content-type": "application/json",
+                host: "localhost",
+              },
+              body: JSON.stringify({
+                id: 3,
+                jsonrpc: "2.0",
+                method: "tools/call",
+                params: {
+                  name: "escalation.createIssue",
+                  arguments: { ticket: ticket.id },
+                },
+              }),
+            })
+          )
+        )
+      )
+      expect(repeated.status).toBe(200)
+      const repeatedBody = yield* Effect.promise(() => repeated.text())
+      const repeatedJson = repeatedBody
+        .split("\n")
+        .find((line) => line.startsWith("data:"))
+        ?.slice(5)
+        .trim()
+      const repeatedPayload = Schema.decodeUnknownSync(
+        Schema.Struct({
+          result: Schema.Struct({
+            isError: Schema.optional(Schema.Boolean),
+            content: Schema.Array(
+              Schema.Struct({
+                type: Schema.String,
+                text: Schema.optional(Schema.String),
+              })
+            ),
+          }),
+        })
+      )(JSON.parse(repeatedJson ?? repeatedBody))
+      expect(repeatedPayload.result.isError).not.toBe(true)
+      expect(
+        repeatedPayload.result.content.some((item) =>
+          item.text?.includes(escalation.issue)
+        )
+      ).toBe(true)
+      expect((yield* useTestFetch(model.escalation.list({}))).totalSize).toBe(1)
+      expect((yield* useTestFetch(model.issue.list({}))).totalSize).toBe(1)
 
       const streamed = yield* useTestFetch(
         nativeClient.events

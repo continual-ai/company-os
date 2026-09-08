@@ -7,8 +7,8 @@ import {
 import { renderToStaticMarkup } from "react-dom/server"
 import { expect, it } from "vitest"
 
-import { Model } from "#/app.model.ts"
-import { ModelExplorer } from "#/ui/model/model-explorer.tsx"
+import { Model } from "#/examples/model.ts"
+import { ModelExplorer } from "#/ui/developer/model-explorer.tsx"
 
 it("shows reference inverses and inherited interface relationships on concrete objects", () => {
   const router = createRouter({

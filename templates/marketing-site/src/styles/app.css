@@ -1,4 +1,4 @@
-@import "@company/ui/globals.css";
+@import "@company/runtime/styles.css";
 @import "./marketing-site.css";
 
 @source "../**/*.{ts,tsx}";

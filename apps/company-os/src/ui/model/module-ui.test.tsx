@@ -1,21 +1,22 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { renderToStaticMarkup } from "react-dom/server"
-import { describe, expect, it } from "vitest"
-
-import { Model } from "#/app.model.ts"
-import { SalesModule } from "#/modules/sales/model.ts"
 import {
   ModelCollectionPage,
   ModelRecordPage,
-} from "#/ui/model/model-pages.tsx"
+} from "@company/runtime/ui/model/model-pages"
 import {
   composeModelUi,
   defineModuleUi,
   ObjectActions,
-  ModelUiProvider,
-} from "#/ui/model/module-ui.tsx"
-import { ObjectRecordFeed } from "#/ui/model/object-record-feed.tsx"
-import { RecordRelationshipPreviews } from "#/ui/model/record-relationship-previews.tsx"
+} from "@company/runtime/ui/model/module-ui"
+import { ObjectRecordFeed } from "@company/runtime/ui/model/object-record-feed"
+import { RecordRelationshipPreviews } from "@company/runtime/ui/model/record-relationship-previews"
+import { ModelUiProvider } from "@company/runtime/ui/model/runtime-context"
+import { SalesModule } from "@company/sales/model"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { renderToStaticMarkup } from "react-dom/server"
+import { describe, expect, it } from "vitest"
+
+import { Model } from "#/examples/model.ts"
+import { presentation } from "#/examples/presentation.ts"
 
 const extension = defineModuleUi(SalesModule, {
   lead: {
@@ -33,7 +34,7 @@ describe("module UI composition", () => {
     const render = (allowed: boolean, placement: "row" | "record") =>
       renderToStaticMarkup(
         <ObjectActions
-          actions={composeModelUi(extension).lead?.actions}
+          actions={composeModelUi(Model, extension).lead?.actions}
           record={{ id: "lead-1", etag: "1", name: "Convert buyer" }}
           can={() => allowed}
           placement={placement}
@@ -64,7 +65,9 @@ describe("module UI composition", () => {
     }
     const html = renderToStaticMarkup(
       <QueryClientProvider client={new QueryClient()}>
-        <ModelUiProvider value={composeModelUi(custom)}>
+        <ModelUiProvider
+          value={{ ...presentation, ui: composeModelUi(Model, custom) }}
+        >
           <ObjectRecordFeed
             items={[{ object: Model.objects.lead, record }]}
             label="Leads"
@@ -116,7 +119,9 @@ describe("module UI composition", () => {
       },
     })
     const html = renderToStaticMarkup(
-      <ModelUiProvider value={composeModelUi(replacement)}>
+      <ModelUiProvider
+        value={{ ...presentation, ui: composeModelUi(Model, replacement) }}
+      >
         <ModelCollectionPage
           object={Model.objects.lead}
           search={{ view: "qualified" }}
@@ -134,53 +139,70 @@ describe("module UI composition", () => {
   })
 
   it("rejects conflicting registrations and built-in tab collisions", () => {
-    expect(() => composeModelUi(extension, extension)).toThrow("Duplicate UI")
+    expect(() => composeModelUi(Model, extension, extension)).toThrow(
+      "Duplicate UI"
+    )
     expect(() =>
-      defineModuleUi(SalesModule, {
-        lead: {
-          record: {
-            additionalTabs: [
-              { id: "overview", label: "Overview", component: () => null },
-            ],
+      composeModelUi(
+        Model,
+        defineModuleUi(SalesModule, {
+          lead: {
+            record: {
+              additionalTabs: [
+                { id: "overview", label: "Overview", component: () => null },
+              ],
+            },
           },
-        },
-      })
+        })
+      )
     ).toThrow("Duplicate record tab")
     expect(() =>
-      defineModuleUi(SalesModule, {
-        company: {
-          record: {
-            additionalTabs: [
-              { id: "contacts", label: "Contacts", component: () => null },
-            ],
+      composeModelUi(
+        Model,
+        defineModuleUi(SalesModule, {
+          company: {
+            record: {
+              additionalTabs: [
+                { id: "contacts", label: "Contacts", component: () => null },
+              ],
+            },
           },
-        },
-      })
+        })
+      )
     ).toThrow("Duplicate record tab")
   })
-  it("validates overview fields and relationships without a second model", () => {
+  it("validates overview relationships against the composed model", () => {
     expect(() =>
-      defineModuleUi(SalesModule, {
-        company: {
-          record: { properties: ["domain"], relationships: ["contacts"] },
-        },
-      })
+      composeModelUi(
+        Model,
+        defineModuleUi(SalesModule, {
+          company: {
+            record: { properties: ["domain"], relationships: ["contacts"] },
+          },
+        })
+      )
     ).not.toThrow()
     expect(() =>
-      defineModuleUi(SalesModule, {
-        company: { record: { relationships: ["missing"] } },
-      })
+      composeModelUi(
+        Model,
+        defineModuleUi(SalesModule, {
+          company: { record: { relationships: ["missing"] } },
+        })
+      )
     ).toThrow("Unknown overview relationship")
     expect(() =>
-      defineModuleUi(SalesModule, {
-        company: {
-          record: {
-            additionalTabs: [
-              { id: "related", label: "Related", component: () => null },
-            ],
+      composeModelUi(
+        Model,
+        defineModuleUi(SalesModule, {
+          company: {
+            record: {
+              additionalTabs: [
+                { id: "related", label: "Related", component: () => null },
+              ],
+            },
           },
-        },
-      })
+        })
+      )
     ).toThrow("Duplicate record tab")
   })
   it("rejects misspelled action registrations at both boundaries", () => {

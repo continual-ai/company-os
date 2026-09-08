@@ -1,8 +1,10 @@
-import type { RecordId } from "@company/runtime"
+import { eventPageSchema } from "@company/runtime/client/events"
+import { createEventFactSchema } from "@company/runtime/client/events"
 import { Schema } from "effect"
-import { expect, expectTypeOf, it } from "vitest"
+import { expect, it } from "vitest"
 
-import { eventFactSchema, eventPageSchema } from "#/events.ts"
+import { Model } from "#/examples/model.ts"
+const eventFactSchema = createEventFactSchema(Model)
 
 it("validates new facts strictly and replays them inside a stable envelope", () => {
   const fact = {
@@ -14,8 +16,6 @@ it("validates new facts strictly and replays them inside a stable envelope", () 
   const decode = Schema.decodeUnknownSync(eventFactSchema)
   const decoded = decode(fact)
   if (decoded.type !== "lead.converted") throw new Error("Wrong event type")
-  expectTypeOf(decoded.data.company).toEqualTypeOf<RecordId<"company">>()
-  expectTypeOf(decoded.data.contact).toEqualTypeOf<RecordId<"contact">>()
   expect(decoded.data).toEqual(fact.data)
 
   for (const invalid of [

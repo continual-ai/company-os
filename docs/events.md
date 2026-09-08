@@ -27,7 +27,7 @@ longer. Do not execute network effects or additional business writes after alloc
 
 ## Add a business fact
 
-Declare its portable contract beside the owning Object in `modules/<domain>/<object>/model.ts`:
+Declare its portable contract beside the owning Object in `modules/<domain>/src/model/<object>.ts`:
 
 ```ts
 export const LeadConverted = defineEvent({
@@ -148,7 +148,7 @@ Browser updates apply snapshots to existing cache appearances and refetch affect
 reports. They do not replicate an entire database or infer server authorization locally. The journal
 is also suitable for integration consumers with their own durable checkpoints and idempotency keys.
 
-The portable event definition belongs to `@company/runtime`; composition, authorization, persistence,
+The portable event definition belongs to `@company/runtime/model`; composition, authorization, persistence,
 and migrations belong to the application. `EventJournal.layer` is an Effect v4 service using the
 application Database. Replacing it must preserve atomic persistence; a remote publish call cannot
 substitute for the journal. Continual integration is optional future consumption, not a dependency.

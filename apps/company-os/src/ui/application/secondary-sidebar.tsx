@@ -8,7 +8,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@company/ui/components/sidebar"
+} from "@company/runtime/ui/sidebar"
 import { Link } from "@tanstack/react-router"
 import { ArrowLeftIcon, type LucideIcon } from "lucide-react"
 import type { ReactElement, ReactNode } from "react"

@@ -1,10 +1,28 @@
+import { createCapabilities } from "@company/runtime/client/capabilities"
+import { InvalidEventCursor } from "@company/runtime/client/events"
+import { HttpValidationMiddleware } from "@company/runtime/contract/http-api"
+import type { ExecutableModelOperation } from "@company/runtime/model/operations"
+import {
+  internalApiError,
+  unauthenticatedApiError,
+  withApiErrors,
+} from "@company/runtime/server/api-error"
+import { Authentication } from "@company/runtime/server/auth/authentication"
+import { Authorization } from "@company/runtime/server/authorization/authorization-service"
+import { Database } from "@company/runtime/server/database/database"
+import { EventJournal } from "@company/runtime/server/events/event-journal"
+import { EventNotifications } from "@company/runtime/server/events/event-notifications"
+import { streamEvents } from "@company/runtime/server/events/event-stream"
 import {
   createModelHttpHandlers,
-  HttpValidationMiddleware,
   type ModelHttpOperation,
   type ModelHttpRequest,
-} from "@company/runtime/effect/http"
-import { CurrentInvocation } from "@company/runtime/effect/object-service"
+} from "@company/runtime/server/http"
+import { CurrentInvocation } from "@company/runtime/server/invocation"
+import { Operations } from "@company/runtime/server/invoke"
+import { ModelContext } from "@company/runtime/server/model-context"
+import { ModelImplementation } from "@company/runtime/server/model/implementation"
+import { createRecordSearch } from "@company/runtime/server/record-search"
 import { Context, Data, Effect, Layer, Stream } from "effect"
 import {
   HttpEffect,
@@ -15,23 +33,7 @@ import {
 } from "effect/unstable/http"
 import { HttpApiBuilder } from "effect/unstable/httpapi"
 
-import { capabilityPermission } from "#/capabilities.ts"
-import { InvalidEventCursor } from "#/events.ts"
-import { applicationHttpApi } from "#/http-api.ts"
-import { Authentication } from "#/server/auth/authentication.ts"
-import { Authorization } from "#/server/authorization/authorization-service.ts"
-import { CommittedChanges } from "#/server/database/committed-changes.ts"
-import { Database } from "#/server/database/database.ts"
-import { EventJournal } from "#/server/events/event-journal.ts"
-import { EventNotifications } from "#/server/events/event-notifications.ts"
-import { streamEvents } from "#/server/events/event-stream.ts"
-import { ModelImplementation } from "#/server/model/model-implementation.ts"
-import { searchRecords } from "#/server/model/search-records.ts"
-import {
-  internalApiError,
-  unauthenticatedApiError,
-  withApiErrors,
-} from "#/server/transport/api-error.ts"
+import { createApplicationHttpApi } from "#/http-api.ts"
 
 class HttpTransportFailure extends Data.TaggedError("HttpTransportFailure")<{
   readonly cause: unknown
@@ -42,6 +44,12 @@ function requestHeaders(request: ModelHttpRequest): Headers {
 }
 
 const make = Effect.gen(function* () {
+  const modelContext = yield* ModelContext
+  const { model: Model } = modelContext
+  const searchRecords = createRecordSearch(Model)
+  const { capabilityPermission } = createCapabilities(Model)
+  const { api: applicationHttpApi } = createApplicationHttpApi(Model)
+  const operations = yield* Operations
   const database = yield* Database
   const authentication = yield* Authentication
   const authorization = yield* Authorization
@@ -51,22 +59,18 @@ const make = Effect.gen(function* () {
 
   const invoke = (
     request: ModelHttpRequest,
-    descriptor: Parameters<typeof withApiErrors>[1],
+    descriptor: ExecutableModelOperation,
     operation: ModelHttpOperation
   ) =>
     authentication.invocation(requestHeaders(request)).pipe(
       Effect.flatMap((invocation) =>
         Effect.gen(function* () {
-          const changes = new Set<string>()
-          const run = operation.pipe(
-            Effect.provideService(CurrentInvocation, invocation)
+          const { value: result, changes } = yield* operations.run(
+            invocation,
+            descriptor,
+            operation
           )
-          const result = yield* (
-            descriptor?.definition.kind === "action"
-              ? database.transaction(() => run)
-              : run
-          ).pipe(Effect.provideService(CommittedChanges, changes))
-          if (changes.size > 0) {
+          if (changes.length > 0) {
             // SAFETY: HttpApiBuilder supplies its current HttpServerRequest here.
             const incoming =
               // oxlint-disable-next-line typescript/no-unsafe-type-assertion
@@ -78,7 +82,7 @@ const make = Effect.gen(function* () {
                   HttpServerResponse.setHeader(
                     response,
                     "x-model-changes",
-                    [...changes].sort().join(",")
+                    changes.join(",")
                   )
                 )
             )
@@ -201,6 +205,7 @@ const make = Effect.gen(function* () {
             searchRecords(request.payload).pipe(
               Effect.provideService(CurrentInvocation, invocation),
               Effect.provideService(Database, database),
+              Effect.provideService(ModelContext, modelContext),
               Effect.provideService(Authorization, authorization),
               Effect.catch((error) =>
                 Effect.logError("Record search failed", error).pipe(

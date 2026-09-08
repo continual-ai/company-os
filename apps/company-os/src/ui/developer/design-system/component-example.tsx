@@ -1,4 +1,4 @@
-import { CodeBlock } from "@company/ui/components/code-block"
+import { CodeBlock } from "@company/runtime/ui/code-block"
 import { CodeXmlIcon } from "lucide-react"
 
 export function ComponentExample({

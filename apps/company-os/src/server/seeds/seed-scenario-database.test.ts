@@ -1,32 +1,28 @@
+import { Database } from "@company/runtime/server/database/database"
+import {
+  assetBlobs,
+  eventJournal,
+  seedRuns,
+} from "@company/runtime/server/database/schema"
+import { CurrentInvocation } from "@company/runtime/server/invocation"
+import { systemInvocation } from "@company/runtime/server/invocation-context"
+import { PageTokens } from "@company/runtime/server/page-tokens"
 import {
   tableProjection,
   type TableRow,
   projection,
   type SelectionRow,
-} from "@company/postgres"
-import { CurrentInvocation } from "@company/runtime/effect/object-service"
+} from "@company/runtime/server/postgres"
 import { Effect, Layer } from "effect"
 import { expect } from "vitest"
 
-import { makeApplicationServicesLayer } from "#/server/application-services.ts"
-import { Database } from "#/server/database/database.ts"
+import { demoScenario } from "#/examples/demo.server.ts"
+import { performanceScenario } from "#/examples/performance.server.ts"
+import { companies, leads } from "#/examples/schema.server.ts"
+import { makeApplicationServicesLayer } from "#/examples/services.server.ts"
+import { ModelImplementation } from "#/examples/services.server.ts"
+import { runSeedScenario } from "#/examples/services.server.ts"
 import { itDatabase } from "#/server/database/it-database.ts"
-import {
-  assetBlobs,
-  companies,
-  leads,
-  eventJournal,
-  seedRuns,
-} from "#/server/database/schema.ts"
-import { systemInvocation } from "#/server/invocation-context.ts"
-import { ModelImplementation } from "#/server/model/model-implementation.ts"
-import { PageTokens } from "#/server/page-tokens.ts"
-import { demoScenario } from "#/server/seeds/demo-scenario.ts"
-import { performanceScenario } from "#/server/seeds/performance-scenario.ts"
-import {
-  runSeedScenario,
-  type SeedScenario,
-} from "#/server/seeds/run-seed-scenario.ts"
 import { seedSystem } from "#/server/seeds/seed-system.ts"
 
 itDatabase(
@@ -104,7 +100,16 @@ itDatabase(
       yield* sql<SelectionRow<typeof selection>>`select ${projection(selection)}
           from ${eventJournal}`
     ).toHaveLength(afterEdit.length)
-    const broken: SeedScenario = {
+    const broken: {
+      name: string
+      parameters: Record<string, string | number>
+      run: Effect.Effect<
+        void,
+        unknown,
+        | Layer.Success<ReturnType<typeof makeApplicationServicesLayer>>
+        | CurrentInvocation
+      >
+    } = {
       name: "broken",
       parameters: {},
       run: Effect.gen(function* () {

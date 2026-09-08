@@ -1,4 +1,4 @@
-import { CodeBlock } from "@company/ui/components/code-block"
+import { CodeBlock } from "@company/runtime/ui/code-block"
 import { Link, createFileRoute } from "@tanstack/react-router"
 
 import { pageOptions } from "#/route-metadata.ts"

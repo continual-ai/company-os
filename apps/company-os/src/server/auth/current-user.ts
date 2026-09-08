@@ -1,7 +1,7 @@
+import { Authentication } from "@company/runtime/server/auth/authentication"
 import { Effect } from "effect"
 
 import { applicationRuntime } from "#/server/application-runtime.ts"
-import { Authentication } from "#/server/auth/authentication.ts"
 
 /** Resolves the browser User represented by the current verified request. */
 export function readCurrentUser(headers: Headers) {

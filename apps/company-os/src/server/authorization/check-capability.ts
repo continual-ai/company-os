@@ -1,9 +1,9 @@
+import type { CapabilityCheck } from "@company/runtime/client/capabilities"
+import { Authentication } from "@company/runtime/server/auth/authentication"
+import { Authorization } from "@company/runtime/server/authorization/authorization-service"
 import { Effect } from "effect"
 
-import type { CapabilityCheck } from "#/capabilities.ts"
 import { applicationRuntime } from "#/server/application-runtime.ts"
-import { Authentication } from "#/server/auth/authentication.ts"
-import { Authorization } from "#/server/authorization/authorization-service.ts"
 
 /** Resolves one interface capability without weakening operation-level enforcement. */
 export function checkCapability(headers: Headers, check: CapabilityCheck) {

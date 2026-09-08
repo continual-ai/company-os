@@ -1,4 +1,4 @@
-import { Button } from "@company/ui/components/button"
+import { Button } from "@company/runtime/ui/button"
 import { Link, createFileRoute } from "@tanstack/react-router"
 
 import { pageOptions } from "#/route-metadata.ts"

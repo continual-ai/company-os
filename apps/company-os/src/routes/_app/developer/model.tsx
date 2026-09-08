@@ -3,7 +3,7 @@ import { Schema } from "effect"
 
 import { Model } from "#/app.model.ts"
 import { pageOptions } from "#/route-metadata.ts"
-import { ModelExplorer } from "#/ui/model/model-explorer.tsx"
+import { ModelExplorer } from "#/ui/developer/model-explorer.tsx"
 
 const page = {
   breadcrumb: "Domain model",

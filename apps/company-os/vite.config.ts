@@ -12,14 +12,20 @@ export default defineConfig({
         files: ["**/server/**", "**/server.ts", "**/*.server.*"],
       },
       server: {
-        files: ["**/*.client.*", "**/client/**"],
+        files: ["**/*.client.*"],
       },
     },
   },
   vite: ({ command, mode, isPreview }) => {
     const localDevelopment =
       command === "serve" && mode === "development" && !isPreview
-    if (localDevelopment) loadLocalEnvironment()
+    loadLocalEnvironment({ includeExample: localDevelopment })
+    if (localDevelopment) {
+      if (!process.env.AUTH_BOOTSTRAP_SUBJECT) {
+        process.env.AUTH_BOOTSTRAP_ISSUER = "local-development"
+        process.env.AUTH_BOOTSTRAP_SUBJECT = "default"
+      }
+    }
 
     return {
       server: {

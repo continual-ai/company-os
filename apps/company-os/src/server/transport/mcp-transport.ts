@@ -1,20 +1,19 @@
-import { RecordId } from "@company/runtime"
+import { RecordId } from "@company/runtime/model"
+import {
+  internalApiError,
+  unauthenticatedApiError,
+} from "@company/runtime/server/api-error"
+import { Authentication } from "@company/runtime/server/auth/authentication"
+import { Operations } from "@company/runtime/server/invoke"
 import {
   createModelMcpHandler,
   validateModelMcpRequest,
-} from "@company/runtime/effect/mcp"
-import { CurrentInvocation } from "@company/runtime/effect/object-service"
+} from "@company/runtime/server/mcp"
+import { ModelImplementation } from "@company/runtime/server/model/implementation"
 import { Context, Data, Effect, Layer, Option, Schema } from "effect"
 
 import { appMetadata } from "#/app-metadata.ts"
 import { appUrl } from "#/client-environment.ts"
-import { Authentication } from "#/server/auth/authentication.ts"
-import { ModelImplementation } from "#/server/model/model-implementation.ts"
-import {
-  internalApiError,
-  unauthenticatedApiError,
-  withApiErrors,
-} from "#/server/transport/api-error.ts"
 
 class McpTransportFailure extends Data.TaggedError("McpTransportFailure")<{
   readonly cause: unknown
@@ -39,6 +38,8 @@ const invocationContextSchema = Schema.Struct({
 })
 
 const make = Effect.gen(function* () {
+  const operations = yield* Operations
+  const runPromise = Effect.runPromiseWith(yield* Effect.context())
   const authentication = yield* Authentication
   const implementation = yield* ModelImplementation
   const requestPolicy = { allowedHostnames: allowedMcpHostnames() }
@@ -60,13 +61,11 @@ const make = Effect.gen(function* () {
           name: appMetadata.name,
           version: appMetadata.version,
           run: (descriptor, operation) =>
-            Effect.runPromise(
-              operation.pipe(
-                Effect.provideService(CurrentInvocation, invocation),
-                (effect) => withApiErrors(effect, descriptor),
+            runPromise(
+              operations.run(invocation, descriptor, operation).pipe(
                 Effect.match({
                   onFailure: (error) => ({ error, success: false as const }),
-                  onSuccess: (value) => ({ success: true as const, value }),
+                  onSuccess: ({ value }) => ({ success: true as const, value }),
                 })
               )
             ),

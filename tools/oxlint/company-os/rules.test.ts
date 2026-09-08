@@ -28,7 +28,7 @@ const repositoryRoot = resolve(
 )
 
 describe("Company OS Oxlint rules", () => {
-  it("reports every invalid fixture", () => {
+  it("enforces module layouts and boundaries while allowing public entrypoints", () => {
     const result = spawnSync(
       resolve(repositoryRoot, "node_modules/.bin/oxlint"),
       [
@@ -66,6 +66,27 @@ describe("Company OS Oxlint rules", () => {
       )
     ).toHaveLength(9)
     const expected = [
+      {
+        code: "company-os(package-boundaries)",
+        fixture: "modules/sales/src/model.ts",
+      },
+      {
+        code: "company-os(no-internal-reexports)",
+        fixture: "modules/sales/src/model/internal.ts",
+      },
+      {
+        code: "company-os(package-boundaries)",
+        fixture: "modules/sales/src/model/invalid.ts",
+      },
+      {
+        code: "company-os(package-boundaries)",
+        fixture: "modules/sales/src/ui/invalid.tsx",
+      },
+      {
+        code: "company-os(package-boundaries)",
+        fixture: "modules/sales/src/server/invalid.ts",
+      },
+
       {
         code: "company-os(package-boundaries)",
         fixture: "apps/company-os/src/import-conventions.ts",

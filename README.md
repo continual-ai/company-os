@@ -50,38 +50,30 @@ The development server is trusted local tooling; its automatic identity is disab
 
 ## Try a real operation
 
-1. Open **Sales → Leads** and create a lead with a company name and contact details.
-2. Open the lead and choose **Convert**. One authorized transaction creates a company and contact,
-   connects them, and records the conversion. Repeating conversion returns the existing result.
-3. Open the **Conversion** tab to continue in the new company or contact record.
-4. Open **Engineering → Issues**. Create an issue, assign an owner, and attach a file. The default
-   field handles upload, validation, and protected file delivery.
-5. Open **Developer Center** to inspect the model, generated HTTP API, client examples, and MCP tools.
-6. Try **Pipeline** on Deals, **Board** on Issues, and **Calendar** or **Timeline** on Campaigns.
-   Layout settings select model fields; temporary changes stay in the URL. [Define collection views](docs/collections.md).
-7. Press **Command/Ctrl-K** to search records across modules, jump to a collection, or create a record.
-   [Search fields are declared on each object](docs/search.md).
+The default application contains Access and Assets and no business modules. Start your own domain
+in `src/modules`, or follow the [engineering and support walkthrough](docs/dogfooding.md) to install
+reusable Engineering, Sales and Notes modules plus the app-owned Support–Engineering workflow.
 
-The OpenAPI document is at [`/api/openapi`](http://localhost:3002/api/openapi).
+That workflow turns an open support ticket into an engineering issue, links the records, and stores
+a durable escalation receipt in one authorized transaction. Concurrent retries return the same
+issue. Its custom React page and generated HTTP/MCP action call the same implementation.
 
-Sales, Marketing, Support, and Engineering are editable starting models. Connect campaigns to
-contacts, support tickets to engineering issues, and issues to pull requests. These records hold
-shared operational state; sending, publishing, merging, and agent execution require explicit
-integrations. No business data is fabricated during setup.
+The OpenAPI document is at [`/api/openapi`](http://localhost:3002/api/openapi). Developer Center
+provides model exploration, API documentation, and source-owned component examples.
 
 ## One module, three entrypoints
 
 ```text
-apps/company-os/src/modules/sales/
-  model.ts                       Objects, interfaces, and links
-  server.ts                      Custom operation bindings
-  ui.ts                          Object UI composition
-  lead/model.ts                  Lead definition and operation contracts
-  lead/server/convert.ts         Transactional lead conversion
-  lead/ui/config.ts              Lead UI registration
-  lead/ui/conversion-tab.tsx      Ordinary React component
-  deal/server/pipeline-summary.ts Authorized aggregate SQL
-  links/contact-companies.ts     One bidirectional relationship
+modules/sales/src/
+  model/index.ts                 Portable definitions
+  model/lead.ts                  Lead and operation contracts
+  model/links/contact-companies.ts One bidirectional relationship
+  server/index.ts                Custom operation bindings
+  server/convert-lead.ts          Transactional lead conversion
+  server/pipeline-summary.ts      Authorized aggregate SQL
+  ui/index.ts                    Presentation registration
+  ui/lead/conversion-tab.tsx      Ordinary React component
+  seeds/index.ts                 Explicit fixture builders
 ```
 
 Only the model entrypoint is required. A standard object gets persistence, governed CRUD, APIs, and
@@ -91,9 +83,8 @@ composition roots each register a module once; further changes stay inside the m
 The included Marketing module follows this same pattern (simplified here):
 
 ```ts
-import { defineObject, schema } from "@company/runtime"
-import { User } from "#/modules/access/user/model.ts"
-import { Root } from "#/model-root.ts"
+import { defineObject, schema } from "@company/runtime/model"
+import { Root, User } from "@company/runtime/model/access"
 
 export const Campaign = defineObject({
   id: "campaign",
@@ -110,8 +101,8 @@ export const Campaign = defineObject({
 })
 ```
 
-Put the object in `modules/marketing/campaign/model.ts`, include it in the Marketing module’s
-`model.ts`, and install that module in `src/app.model.ts`. Regenerate `schema.sql`, write and review the corresponding SQL migration, then assign
+Put the object in `modules/marketing/src/model/campaign.ts`, include it in the Marketing module’s
+`model/index.ts`, and install that module in `src/app.model.ts`. Regenerate `schema.sql`, write and review the corresponding SQL migration, then assign
 the intended permissions.
 Its default page is `/objects/campaign`. See [Building a module](docs/modules.md) for the complete
 path, custom actions, React extensions, and client data access.
@@ -156,14 +147,12 @@ automation controllers are not included. [Architecture](docs/architecture.md) ex
 | ------------------------------------------------ | ---------------------------------------------------------------- |
 | [Company OS app](apps/company-os/README.md)      | The central UI, API, business policy, and server assembly        |
 | [Modules](apps/company-os/src/modules/README.md) | Editable Sales, Marketing, Support, and Engineering domains      |
-| [Runtime](packages/runtime/README.md)            | Portable model definitions and reusable execution/API machinery  |
-| [Postgres](packages/postgres/README.md)          | Model-to-storage projection and repository implementations       |
+| [Runtime](packages/runtime/README.md)            | Shared model, execution, persistence, clients, and UI foundation |
 | [Notes](modules/notes/README.md)                 | Reusable module package with model, Markdown UI, and seeds       |
-| [UI](packages/ui/README.md)                      | Design tokens, base components, and model UI                     |
 | [Documentation](docs/README.md)                  | Module authoring, modeling, architecture, and operational guides |
 
 Start with the app and a concrete module; read the reusable packages when you need to change a
-shared mechanism. Business code stays in the app. Optional interfaces consume its public
+shared mechanism. Business code lives in domain modules; the app composes them. Optional interfaces consume its public
 `company-os/model` contract and governed API.
 
 ## Make it yours

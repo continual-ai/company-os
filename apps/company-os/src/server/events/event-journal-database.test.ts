@@ -1,30 +1,34 @@
-import { assignments } from "@company/postgres"
-import { tableProjection, type TableRow } from "@company/postgres"
-import { EmailAddress, modelObjectLinkTraversals } from "@company/runtime"
-import { CurrentInvocation } from "@company/runtime/effect/object-service"
+import { InvalidEventCursor } from "@company/runtime/client/events"
+import { EmailAddress, modelObjectLinkTraversals } from "@company/runtime/model"
+import { ROOT_ID } from "@company/runtime/model/system-records"
+import { Records } from "@company/runtime/server"
+import { UserService } from "@company/runtime/server/access/user-service"
+import { CommittedChanges } from "@company/runtime/server/database/committed-changes"
+import { Database } from "@company/runtime/server/database/database"
+import {
+  eventJournal,
+  eventJournalState,
+} from "@company/runtime/server/database/schema"
+import { EventJournal } from "@company/runtime/server/events/event-journal"
+import { flushEvents } from "@company/runtime/server/events/flush-events"
+import { CurrentInvocation } from "@company/runtime/server/invocation"
+import { systemInvocation } from "@company/runtime/server/invocation-context"
+import { Links } from "@company/runtime/server/model/link-service"
+import { PageTokens } from "@company/runtime/server/page-tokens"
+import { assignments } from "@company/runtime/server/postgres"
+import {
+  tableProjection,
+  type TableRow,
+} from "@company/runtime/server/postgres"
+import { LeadConverted } from "@company/sales/model"
 import { Deferred, Effect, Fiber, Layer } from "effect"
 import { expect } from "vitest"
 
-import { Model } from "#/app.model.ts"
-import { InvalidEventCursor } from "#/events.ts"
-import { UserService } from "#/modules/access/user/server/user-service.ts"
-import { LeadConverted } from "#/modules/sales/lead/model.ts"
-import { makeApplicationLayer } from "#/server/application-layer.ts"
-import { CommittedChanges } from "#/server/database/committed-changes.ts"
-import { Database } from "#/server/database/database.ts"
+import { makeApplicationLayer } from "#/examples/application.server.ts"
+import { Model } from "#/examples/model.ts"
+import { ModelImplementation } from "#/examples/services.server.ts"
 import { itDatabase } from "#/server/database/it-database.ts"
-import { makeObjectRepository } from "#/server/database/object-repository.ts"
-import { eventJournal, eventJournalState } from "#/server/database/schema.ts"
-import { EventJournal } from "#/server/events/event-journal.ts"
-import { flushEvents } from "#/server/events/flush-events.ts"
-import { systemInvocation } from "#/server/invocation-context.ts"
-import { Links } from "#/server/model/link-service.ts"
-import { ModelImplementation } from "#/server/model/model-implementation.ts"
-import { makeObjectWriter } from "#/server/model/object-service.ts"
-import { RecordIdentifierResolver } from "#/server/model/record-identifier-resolver.ts"
-import { PageTokens } from "#/server/page-tokens.ts"
 import { seedSystem } from "#/server/seeds/seed-system.ts"
-import { ROOT_ID } from "#/system-records.ts"
 
 function application<A, E, R>(program: Effect.Effect<A, E, R>) {
   return Effect.gen(function* () {
@@ -32,14 +36,10 @@ function application<A, E, R>(program: Effect.Effect<A, E, R>) {
     yield* seedSystem().pipe(Effect.provide(PageTokens.layerTest))
     return yield* program.pipe(
       Effect.provide(
-        Layer.mergeAll(
-          makeApplicationLayer({
-            database: Layer.succeed(Database, database),
-            pageTokens: PageTokens.layerTest,
-          }),
-          RecordIdentifierResolver.layer,
-          PageTokens.layerTest
-        )
+        makeApplicationLayer({
+          database: Layer.succeed(Database, database),
+          pageTokens: PageTokens.layerTest,
+        })
       ),
       Effect.provideService(CurrentInvocation, systemInvocation)
     )
@@ -234,10 +234,7 @@ itDatabase(
           email: EmailAddress("events@example.test"),
         })
         const reader = { actorId: user.id, authorizationActorId: user.id }
-        const roles = yield* makeObjectWriter(
-          Model.objects.role,
-          yield* makeObjectRepository(Model.objects.role)
-        )
+        const roles = (yield* Records).writer(Model.objects.role)
         const role = yield* roles.create({
           name: "Company history",
           scopeType: "company",

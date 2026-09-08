@@ -1,6 +1,5 @@
+import type { AuthenticatedUser } from "@company/runtime/client/authentication"
 import { createContext, useContext } from "react"
-
-import type { AuthenticatedUser } from "#/authentication.ts"
 
 const AuthenticatedUserContext = createContext<AuthenticatedUser | null>(null)
 

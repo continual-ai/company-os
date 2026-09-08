@@ -1,8 +1,14 @@
 import {
   createModelClient,
   type ModelHttpClient,
-} from "@company/runtime/effect/http-client"
-import { customMethodParams } from "@company/runtime/effect/http-custom-method"
+} from "@company/runtime/client/http-client"
+import {
+  ClientChanges,
+  createModelQueries,
+  modelQuery,
+  runClientEffect,
+} from "@company/runtime/client/model-query-client"
+import { customMethodParams } from "@company/runtime/contract/http-custom-method"
 import { Effect } from "effect"
 import {
   FetchHttpClient,
@@ -15,12 +21,6 @@ import { Model } from "#/app.model.ts"
 import { applicationHttpApi } from "#/http-api.ts"
 import type { capabilityGroup, eventGroup, recordGroup } from "#/http-api.ts"
 import { modelFetch, modelOrigin } from "#/model-fetch.ts"
-import {
-  ClientChanges,
-  createModelQueries,
-  modelQuery,
-  runClientEffect,
-} from "#/model-query-client.ts"
 import { searchableObjects, type RecordSearchInput } from "#/records.ts"
 
 type ApplicationTransportClient = ModelHttpClient<typeof Model> &

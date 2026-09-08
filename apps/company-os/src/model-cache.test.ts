@@ -1,12 +1,16 @@
-import { describe, expect, it } from "vitest"
-
-import { createModelDataClient, resetModelCache } from "#/data-client.ts"
+import {
+  createModelDataClient,
+  resetModelCache,
+} from "@company/runtime/client/data-client"
 import {
   applyEventPage,
   applyModelChanges,
   applyMutationResult,
-} from "#/model-cache.ts"
-import { modelQuery } from "#/model-query-client.ts"
+} from "@company/runtime/client/model-cache"
+import { modelQuery } from "@company/runtime/client/model-query-client"
+import { describe, expect, it } from "vitest"
+
+import { Model } from "#/examples/model.ts"
 
 const record = (etag: string) => ({
   id: "company_test",
@@ -167,31 +171,39 @@ it("revalidates incompatible historical snapshots without poisoning current reco
         data: { ...contact, etag: "99", name: "Receipt" },
       },
     ]) {
-      await applyEventPage(cache, { ...page, items: [event] })
+      await applyEventPage(cache, { ...page, items: [event] }, Model)
       expect(cache.getQueryData(get.queryKey)).toEqual(contact)
       expect(cache.getQueryState(get.queryKey)?.isInvalidated).toBe(true)
     }
-    await applyEventPage(cache, {
-      ...page,
-      items: [
-        {
-          ...envelope,
-          type: "contact.updated",
-          data: { ...contact, etag: "2", name: "Updated name" },
-        },
-      ],
-    })
+    await applyEventPage(
+      cache,
+      {
+        ...page,
+        items: [
+          {
+            ...envelope,
+            type: "contact.updated",
+            data: { ...contact, etag: "2", name: "Updated name" },
+          },
+        ],
+      },
+      Model
+    )
     expect(cache.getQueryData(get.queryKey)?.name).toBe("Updated name")
-    await applyEventPage(cache, {
-      ...page,
-      items: [
-        {
-          ...envelope,
-          type: "contact.deleted",
-          data: { id: contact.id, etag: "3" },
-        },
-      ],
-    })
+    await applyEventPage(
+      cache,
+      {
+        ...page,
+        items: [
+          {
+            ...envelope,
+            type: "contact.deleted",
+            data: { id: contact.id, etag: "3" },
+          },
+        ],
+      },
+      Model
+    )
     expect(cache.getQueryData(get.queryKey)).toBeUndefined()
   } finally {
     dispose()

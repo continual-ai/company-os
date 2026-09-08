@@ -1,9 +1,11 @@
-import { pgTypes } from "@company/postgres"
+import { Database } from "@company/runtime/server/database/database"
+import { EventNotifications } from "@company/runtime/server/events/event-notifications"
+import { ModelContext } from "@company/runtime/server/model-context"
+import { pgTypes } from "@company/runtime/server/postgres"
 import { PgClient } from "@effect/sql-pg"
 import { Config, Layer, Redacted } from "effect"
 
-import { Database } from "#/server/database/database.ts"
-import { EventNotifications } from "#/server/events/event-notifications.ts"
+import { Model } from "#/app.model.ts"
 
 const SCHEMA_NAME_PATTERN = /^[a-z_][a-z0-9_]*$/
 
@@ -67,7 +69,10 @@ const clientLayer = PgClient.layerConfig({
 })
 
 /** The application-typed Effect SQL database backed by the configured PostgreSQL client. */
-export const databaseLayer = Database.layer.pipe(Layer.provide(clientLayer))
+export const databaseLayer = Database.layer.pipe(
+  Layer.provideMerge(ModelContext.layer(Model)),
+  Layer.provide(clientLayer)
+)
 
 /** Raw PostgreSQL and typed Effect SQL services used together by database administration commands. */
 export const databaseAndClientLayer = Layer.merge(clientLayer, databaseLayer)

@@ -1,20 +1,20 @@
 import {
-  collectionLayoutError,
-  defaultCollectionLayout,
-} from "@company/ui/model/collection-layout"
-import { expect, it } from "vitest"
-
-import { Model } from "#/app.model.ts"
-import {
   addDays,
   calendarDay,
   collectionDateWindow,
   daysBetween,
   scheduleChanges,
   shiftMonth,
-} from "#/ui/model/collection-dates.ts"
-import { objectListRequest } from "#/ui/model/object-collection-query.ts"
-import { validateObjectCollectionSearch } from "#/ui/model/object-collection-view.ts"
+} from "@company/runtime/ui/model/collection-dates"
+import {
+  collectionLayoutError,
+  defaultCollectionLayout,
+} from "@company/runtime/ui/model/collection-layout"
+import { objectListRequest } from "@company/runtime/ui/model/object-collection-query"
+import { validateObjectCollectionSearch } from "@company/runtime/ui/model/object-collection-view"
+import { expect, it } from "vitest"
+
+import { Model } from "#/examples/model.ts"
 
 it("keeps calendar dates stable through leap years, month boundaries, and DST", () => {
   expect(addDays("2024-02-28", 1)).toBe("2024-02-29")

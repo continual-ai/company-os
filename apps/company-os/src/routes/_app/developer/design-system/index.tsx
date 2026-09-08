@@ -28,8 +28,9 @@ function DesignSystemOverview() {
           <p className="text-xs font-medium text-muted-foreground">Current</p>
           <h2 className="mt-8 text-lg font-medium">Components</h2>
           <p className="mt-2 max-w-md text-sm leading-6 text-muted-foreground">
-            Source-owned shadcn mechanics, curated and styled in @company/ui for
-            consistent interaction, accessibility, and visual language.
+            Source-owned shadcn mechanics, curated and styled in
+            @company/runtime/ui for consistent interaction, accessibility, and
+            visual language.
           </p>
         </article>
         <article className="bg-background p-6">
@@ -37,8 +38,8 @@ function DesignSystemOverview() {
           <h2 className="mt-8 text-lg font-medium">Product patterns</h2>
           <p className="mt-2 max-w-md text-sm leading-6 text-muted-foreground">
             Higher-level compositions begin with the app that needs them. A
-            pattern moves into @company/ui only when its semantics hold across
-            concrete consumers.
+            pattern moves into @company/runtime/ui only when its semantics hold
+            across concrete consumers.
           </p>
         </article>
       </section>

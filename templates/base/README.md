@@ -14,6 +14,6 @@ start it with `pnpm turbo run dev --filter=<app-name>`. Replace its placeholder 
 workflow. Authentication and backend data access are not preconfigured.
 
 Business definitions and rules stay in the central app. This optional interface may import
-`company-os/model`, `company-os/metadata`, and shared `@company/ui` primitives; it calls the governed
+`company-os/model`, `company-os/metadata`, and shared `@company/runtime/ui` primitives; it calls the governed
 API for business operations. Read [architecture](../../docs/architecture.md) and
 [deployment](../../docs/runbooks/deployment.md) before connecting or publishing it.

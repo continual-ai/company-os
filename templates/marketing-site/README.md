@@ -41,7 +41,7 @@ company project.
 
 ## Boundaries
 
-- Reuse shared components and tokens from `@company/ui`.
+- Reuse shared components and tokens from `@company/runtime/ui`.
 - Access governed backend capabilities through public typed interfaces when a concrete use case
   requires them.
 - Do not import private backend implementation or make the marketing site a second business system.

@@ -6,23 +6,22 @@ no dependency on Sales, Engineering, an application client, or a database connec
 
 ## Compose
 
-Add `@company/notes: workspace:*` to the app's dependencies. Bind ownership to the app root:
+Add `@company/notes: workspace:*` to the app's dependencies and include the foundation-bound module:
 
 ```ts
-import { defineNotesModule } from "@company/notes/model"
-
-const NotesModule = defineNotesModule(Root)
+import { NotesModule } from "@company/notes/model"
 // Include NotesModule in defineModel({ modules: [...] }).
 ```
 
+`defineNotesModule(root)` remains available for a standalone model with its own root and presentation.
+
 Objects opt into attachment by implementing the exported `NoteSubject` interface from
-`@company/notes/note-subject`. The module owns both directions of that association. Standard CRUD,
+`@company/notes/model`. The module owns both directions of that association. Standard CRUD,
 relationship operations, permissions, and storage derive from the composed model.
 
-At the app UI composition boundary, register `notesUi` from `@company/notes/ui` against the module's
-model with `defineModuleUi(Model.modules.notes, notesUi)`. Import `@company/notes/styles.css` after the design system stylesheet so Tailwind scans
+At the app UI composition boundary, include `NotesUi` from `@company/notes/ui` in `composeModelUi`. Import `@company/notes/styles.css` after the design system stylesheet so Tailwind scans
 the package's components. The app supplies records, author labels, navigation targets, form state,
-and actions through `@company/ui/model/*` contracts.
+and actions through `@company/runtime/ui/model/*` contracts.
 
 `noteSeed(index, subject)` from `@company/notes/seeds` returns deterministic Markdown content.
 The caller owns record IDs, audit actors, persistence, and links, allowing the same content to serve

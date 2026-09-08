@@ -1,6 +1,6 @@
+import { applicationCapabilities } from "@company/runtime/client/capabilities"
 import { createFileRoute } from "@tanstack/react-router"
 
-import { applicationCapabilities } from "#/capabilities.ts"
 import { checkCapability } from "#/server/authorization/check-capability.ts"
 import { application } from "#/server/composition-root.ts"
 
