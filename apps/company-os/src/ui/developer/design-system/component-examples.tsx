@@ -222,7 +222,7 @@ import {
 import { useState } from "react"
 import { Bar, BarChart, CartesianGrid, XAxis } from "recharts"
 
-import type { ComponentSlug } from "@/ui/developer/design-system/component-metadata"
+import type { ComponentSlug } from "#/ui/developer/design-system/component-metadata.ts"
 
 type ComponentExample = {
   code: string

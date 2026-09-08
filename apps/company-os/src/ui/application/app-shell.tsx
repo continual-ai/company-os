@@ -8,17 +8,16 @@ import { TooltipProvider } from "@company/ui/components/tooltip"
 import { useLocation, useMatchRoute } from "@tanstack/react-router"
 import { useEffect } from "react"
 
-import type { AuthenticatedUser } from "@/authentication"
-import { AppSidebar } from "@/ui/application/app-sidebar"
-import { AuthenticatedUserProvider } from "@/ui/application/authenticated-user"
-import { CommandPalette } from "@/ui/application/command-palette"
-import { PageChromeProvider } from "@/ui/application/page-chrome"
-import { SiteHeader } from "@/ui/application/site-header"
-import { DeveloperSidebar } from "@/ui/developer/developer-sidebar"
-import { ObjectCreateProvider } from "@/ui/model/object-create-provider"
-import { SettingsSidebar } from "@/ui/settings/settings-sidebar"
-
-import { RecentRecordsProvider } from "./use-recent-records"
+import type { AuthenticatedUser } from "#/authentication.ts"
+import { AppSidebar } from "#/ui/application/app-sidebar.tsx"
+import { AuthenticatedUserProvider } from "#/ui/application/authenticated-user.tsx"
+import { CommandPalette } from "#/ui/application/command-palette.tsx"
+import { PageChromeProvider } from "#/ui/application/page-chrome.tsx"
+import { SiteHeader } from "#/ui/application/site-header.tsx"
+import { RecentRecordsProvider } from "#/ui/application/use-recent-records.tsx"
+import { DeveloperSidebar } from "#/ui/developer/developer-sidebar.tsx"
+import { ObjectCreateProvider } from "#/ui/model/object-create-provider.tsx"
+import { SettingsSidebar } from "#/ui/settings/settings-sidebar.tsx"
 
 const sidebarStyle: React.CSSProperties & Record<"--header-height", string> = {
   "--header-height": "3rem",

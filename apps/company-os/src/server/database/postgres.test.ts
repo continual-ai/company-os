@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest"
 
-import { assertDatabaseSchemaName, withSearchPath } from "./postgres"
+import {
+  assertDatabaseSchemaName,
+  withSearchPath,
+} from "#/server/database/postgres.ts"
 
 describe("assertDatabaseSchemaName", () => {
   it("accepts conservative identifiers", () => {

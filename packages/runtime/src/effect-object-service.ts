@@ -13,15 +13,15 @@ import {
   type ObjectUpdateInput,
   type ObjectUpdateValues,
   type ObjectWriterUpdateInput,
-} from "./definition/object"
+} from "#/definition/object.ts"
 import {
   MAX_BATCH_DELETE_SIZE,
   MAX_BATCH_GET_SIZE,
   type Batch,
   type ListRequest,
   type Page,
-} from "./definition/request"
-import { RecordId } from "./definition/schema"
+} from "#/definition/request.ts"
+import { RecordId } from "#/definition/schema.ts"
 import {
   type DecodedCreateInput,
   type DecodedInput,
@@ -32,13 +32,13 @@ import {
   resolveIdentifiers,
   resolveListRequest,
   resolveUpdateIdentifiers,
-} from "./effect-object-input"
-import type { Repository } from "./effect-object-repository"
+} from "#/effect-object-input.ts"
+import type { Repository } from "#/effect-object-repository.ts"
 import {
   toEffectObjectCreateSchema,
   toEffectObjectUpdateSchema,
   toEffectObjectWriterUpdateSchema,
-} from "./effect-schema"
+} from "#/effect-schema.ts"
 
 export class ImmutablePropertyError extends Data.TaggedError(
   "ImmutablePropertyError"

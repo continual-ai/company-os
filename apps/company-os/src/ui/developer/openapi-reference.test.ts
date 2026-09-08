@@ -7,7 +7,7 @@ import {
   operationKey,
   operationsFromDocument,
   type OpenApiDocument,
-} from "./openapi-reference-model"
+} from "#/ui/developer/openapi-reference-model.ts"
 
 const document: OpenApiDocument = {
   info: { title: "Example API", version: "1.0.0" },

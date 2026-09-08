@@ -2,8 +2,8 @@
 // checked dynamic dispatch seam because model operation IDs are runtime data.
 import type { Effect } from "effect"
 
-import { type Action, isStandardActionId } from "./definition/action"
-import type { ErrorType } from "./definition/error"
+import { type Action, isStandardActionId } from "#/definition/action.ts"
+import type { ErrorType } from "#/definition/error.ts"
 import {
   type ModelCatalog,
   type ModelObjectCreateInput,
@@ -11,14 +11,14 @@ import {
   type ModelLinkTraversal,
   modelObjectLinkTraversals,
   modelObjects,
-} from "./definition/model"
-import type { ObjectType } from "./definition/object"
-import { type Query, type CustomQuery } from "./definition/query"
+} from "#/definition/model.ts"
+import type { ObjectType } from "#/definition/object.ts"
+import { type Query, type CustomQuery } from "#/definition/query.ts"
 import {
   type InferInputSchema,
   type InferSchema,
   schema,
-} from "./definition/schema"
+} from "#/definition/schema.ts"
 import {
   AbortedError,
   AlreadyExistsError,
@@ -28,10 +28,10 @@ import {
   PermissionDeniedError,
   UnauthenticatedError,
   ValidationError,
-} from "./definition/standard-error"
-import type { LinkService } from "./effect-link-service"
-import type { LinkListInput, LinkMutationInput } from "./effect-link-service"
-import type { CurrentInvocation, Service } from "./effect-object-service"
+} from "#/definition/standard-error.ts"
+import type { LinkService } from "#/effect-link-service.ts"
+import type { LinkListInput, LinkMutationInput } from "#/effect-link-service.ts"
+import type { CurrentInvocation, Service } from "#/effect-object-service.ts"
 
 type CustomOperations<TObject extends ObjectType> = TObject["actions"] &
   TObject["queries"]

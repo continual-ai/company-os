@@ -4,21 +4,21 @@ import type {
   ObjectCreateValues,
   ObjectType,
   ObjectUpdateValues,
-} from "./definition/object"
+} from "#/definition/object.ts"
 import type {
   CanonicalListRequest,
   CanonicalObjectFilter,
   ListRequest,
   ObjectFilter,
-} from "./definition/request"
+} from "#/definition/request.ts"
 import {
   isRecordAlias,
   RecordId,
   type AnySchema,
   type RecordAlias,
   type RecordIdentifier,
-} from "./definition/schema"
-import { toEffectInputSchema } from "./effect-schema"
+} from "#/definition/schema.ts"
+import { toEffectInputSchema } from "#/effect-schema.ts"
 
 export type RecordAliasResolver<TError, TRequirements> = (
   expectedType: string,

@@ -5,6 +5,10 @@ const ALLOWED_SOURCE_SUFFIXES = new Set([
   "config",
   "d",
   "functions",
+  "model",
+  "ui",
+  "server",
+  "client",
   "gen",
   "test",
 ])

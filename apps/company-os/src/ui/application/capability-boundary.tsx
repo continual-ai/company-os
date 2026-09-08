@@ -3,9 +3,8 @@ import { Link } from "@tanstack/react-router"
 import { LockKeyholeIcon } from "lucide-react"
 import { useMemo, type ReactNode } from "react"
 
-import type { CapabilityPermission } from "@/capabilities"
-
-import { useCapabilities } from "./use-capabilities"
+import type { CapabilityPermission } from "#/capabilities.ts"
+import { useCapabilities } from "#/ui/application/use-capabilities.ts"
 
 export function CapabilityBoundary({
   children,

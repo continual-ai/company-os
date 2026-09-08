@@ -1,12 +1,12 @@
 import { Effect, Stream } from "effect"
 import { useEffect } from "react"
 
-import { listEvents, subscribeEvents } from "@/app-client"
-import { modelData } from "@/data-client"
-import { createEventConsumer } from "@/event-consumer"
-import { InvalidEventCursor } from "@/events"
-import { applyEventPage } from "@/model-cache"
-import { runClientEffect } from "@/model-query-client"
+import { listEvents, subscribeEvents } from "#/app-client.ts"
+import { modelData } from "#/data-client.ts"
+import { createEventConsumer } from "#/event-consumer.ts"
+import { InvalidEventCursor } from "#/events.ts"
+import { applyEventPage } from "#/model-cache.ts"
+import { runClientEffect } from "#/model-query-client.ts"
 
 /** A single resumable feed per authenticated shell. Hidden tabs catch up on return. */
 export function useModelEvents(identity: string, initialCursor?: string) {

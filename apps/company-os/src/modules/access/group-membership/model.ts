@@ -1,7 +1,7 @@
 import { defineObject, schema } from "@company/runtime"
 
-import { Group } from "#modules/access/group/model"
-import { Identity } from "#modules/access/interfaces/identity"
+import { Group } from "#/modules/access/group/model.ts"
+import { Identity } from "#/modules/access/interfaces/identity.ts"
 
 export const GroupMembership = defineObject({
   id: "groupMembership",

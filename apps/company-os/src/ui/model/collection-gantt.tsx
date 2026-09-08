@@ -1,5 +1,6 @@
 import { Button } from "@company/ui/components/button"
 import { cn } from "@company/ui/lib/utils"
+import type { ScheduleLayout } from "@company/ui/model/collection-layout"
 import { useDraggable } from "@dnd-kit/react"
 import { Link } from "@tanstack/react-router"
 import {
@@ -13,7 +14,7 @@ import {
   CollectionDropZone,
   type CollectionDragData,
   type CollectionPresentation,
-} from "./collection-card"
+} from "#/ui/model/collection-card.tsx"
 import {
   addDays,
   calendarDay,
@@ -21,11 +22,10 @@ import {
   dateLabel,
   daysBetween,
   type CollectionDateWindow,
-} from "./collection-dates"
-import type { ScheduleLayout } from "./collection-layout"
-import { recordLabel, type ClientRecord } from "./object-client"
-import type { ObjectFormInput } from "./object-form"
-import { objectHref } from "./object-routing"
+} from "#/ui/model/collection-dates.ts"
+import { recordLabel, type ClientRecord } from "#/ui/model/object-client.ts"
+import type { ObjectFormInput } from "#/ui/model/object-form.ts"
+import { objectHref } from "#/ui/model/object-routing.ts"
 
 const dayWidth = 36
 export function CollectionGantt({

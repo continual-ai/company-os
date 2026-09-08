@@ -1,9 +1,8 @@
-import type { Model } from "company-os/model"
+import type { ObjectUi } from "@company/ui/model/object-ui"
 import { ContactRoundIcon } from "lucide-react"
 
-import type { ObjectUi } from "@/ui/model/module-ui"
-
-import { contactViews } from "./views"
+import type { Model } from "#/app.model.ts"
+import { contactViews } from "#/modules/sales/contact/ui/views.ts"
 
 export const contactUi = {
   navigation: {

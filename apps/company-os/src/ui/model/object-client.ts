@@ -9,14 +9,16 @@ import {
   type PropertyDefinition,
 } from "@company/runtime"
 import type { UseMutationOptions } from "@tanstack/react-query"
-import { Model } from "company-os/model"
 
-import { data } from "@/app-client"
-import { modelData } from "@/data-client"
-import { executeMutation, type ModelQueryOptions } from "@/model-query-client"
-
-import { objectTableValueText } from "./object-table/object-table-config"
-import type { ObjectTableRecord } from "./object-table/object-table-config"
+import { data } from "#/app-client.ts"
+import { Model } from "#/app.model.ts"
+import { modelData } from "#/data-client.ts"
+import {
+  executeMutation,
+  type ModelQueryOptions,
+} from "#/model-query-client.ts"
+import { objectTableValueText } from "#/ui/model/object-table/object-table-config.ts"
+import type { ObjectTableRecord } from "#/ui/model/object-table/object-table-config.ts"
 
 export type ModelObject = (typeof Model.objects)[keyof typeof Model.objects]
 

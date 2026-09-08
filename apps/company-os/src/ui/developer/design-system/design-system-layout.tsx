@@ -1,11 +1,11 @@
 import { Link, Outlet, useMatchRoute } from "@tanstack/react-router"
 
-import { componentGroups } from "@/ui/developer/design-system/component-metadata"
+import { componentGroups } from "#/ui/developer/design-system/component-metadata.ts"
 import {
   DeveloperLayout,
   DeveloperNavigationGroup,
   DeveloperNavigationItem,
-} from "@/ui/developer/developer-layout"
+} from "#/ui/developer/developer-layout.tsx"
 
 export function DesignSystemLayout() {
   return (

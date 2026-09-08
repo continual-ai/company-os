@@ -1,6 +1,6 @@
 import { Brand } from "effect"
 
-import { definitionId } from "./identity"
+import { definitionId } from "#/definition/identity.ts"
 
 export type LiteralValue = boolean | null | number | string
 

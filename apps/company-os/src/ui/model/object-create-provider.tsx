@@ -1,11 +1,15 @@
 import { useCallback, useRef, useState, type ReactNode } from "react"
 
-import { clientFor, type ClientRecord, type ModelObject } from "./object-client"
+import {
+  clientFor,
+  type ClientRecord,
+  type ModelObject,
+} from "#/ui/model/object-client.ts"
 import {
   ObjectCreateContext,
   type ObjectCreateOptions,
-} from "./object-create-context"
-import { ObjectRecordDialog } from "./object-record-dialog"
+} from "#/ui/model/object-create-context.ts"
+import { ObjectRecordDialog } from "#/ui/model/object-record-dialog.tsx"
 
 interface ObjectCreateRequest extends ObjectCreateOptions {
   readonly id: number

@@ -31,7 +31,7 @@ import { Cause, Effect, Option, Schema } from "effect"
 import { isSqlError, type SqlError } from "effect/unstable/sql/SqlError"
 import type { Fragment } from "effect/unstable/sql/Statement"
 
-import { type PostgresDatabase } from "./database"
+import { type PostgresDatabase } from "#/database.ts"
 import {
   cursorCondition,
   cursorFingerprint,
@@ -41,21 +41,21 @@ import {
   makeObjectQueryCompiler,
   orderExpression,
   recordValue,
-} from "./object-query"
+} from "#/object-query.ts"
 import {
   objectUniqueConstraintName,
   physicalPropertyKey,
   type PostgresStorage,
-} from "./schema"
-import { insertValues, assignments } from "./statement"
+} from "#/schema.ts"
+import { insertValues, assignments } from "#/statement.ts"
 import {
   sqlValue,
   projection,
   type SelectionRow,
   inValues,
   conflictColumns,
-} from "./statement"
-import { tableName, tableColumns, type Table, type Column } from "./table"
+} from "#/statement.ts"
+import { tableName, tableColumns, type Table, type Column } from "#/table.ts"
 
 type StoragePropertyValues<TObject extends ObjectType> = Partial<
   Readonly<

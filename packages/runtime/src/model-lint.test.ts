@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest"
 
-import { defineInterface } from "./definition/interface"
-import { defineModel } from "./definition/model"
-import { defineModule } from "./definition/module"
-import { defineObject } from "./definition/object"
-import { defineRoot } from "./definition/root"
-import { schema } from "./definition/schema"
-import { describeModel } from "./description"
-import { lintModelDescription } from "./model-lint"
+import { defineInterface } from "#/definition/interface.ts"
+import { defineModel } from "#/definition/model.ts"
+import { defineModule } from "#/definition/module.ts"
+import { defineObject } from "#/definition/object.ts"
+import { defineRoot } from "#/definition/root.ts"
+import { schema } from "#/definition/schema.ts"
+import { describeModel } from "#/description.ts"
+import { lintModelDescription } from "#/model-lint.ts"
 
 const Actor = defineInterface({
   id: "actor",

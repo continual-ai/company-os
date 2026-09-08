@@ -10,7 +10,6 @@ import {
 } from "@company/runtime/effect/http-client"
 import { customMethodParams } from "@company/runtime/effect/http-custom-method"
 import { executableModelOperations } from "@company/runtime/effect/model-implementation"
-import { Model } from "company-os/model"
 import {
   ConfigProvider,
   Effect,
@@ -23,16 +22,17 @@ import { FetchHttpClient } from "effect/unstable/http"
 import { HttpApiClient, OpenApi } from "effect/unstable/httpapi"
 import { describe, expect, vi } from "vitest"
 
-import { createModelDataClient } from "@/data-client"
-import { createEventConsumer } from "@/event-consumer"
-import { eventPageSchema, InvalidEventCursor } from "@/events"
-import { applicationHttpApi } from "@/http-api"
-import type { capabilityGroup } from "@/http-api"
-import { modelQuery, runClientEffect } from "@/model-query-client"
-import { makeApplicationKeys } from "@/server/application-keys"
-import { makeApplicationLayer } from "@/server/application-layer"
-import { Database } from "@/server/database/database"
-import { itDatabase } from "@/server/database/it-database"
+import { Model } from "#/app.model.ts"
+import { createModelDataClient } from "#/data-client.ts"
+import { createEventConsumer } from "#/event-consumer.ts"
+import { eventPageSchema, InvalidEventCursor } from "#/events.ts"
+import { applicationHttpApi } from "#/http-api.ts"
+import type { capabilityGroup } from "#/http-api.ts"
+import { modelQuery, runClientEffect } from "#/model-query-client.ts"
+import { makeApplicationKeys } from "#/server/application-keys.ts"
+import { makeApplicationLayer } from "#/server/application-layer.ts"
+import { Database } from "#/server/database/database.ts"
+import { itDatabase } from "#/server/database/it-database.ts"
 import {
   identityBindings,
   notes,
@@ -40,13 +40,15 @@ import {
   roleAssignments,
   Storage,
   users,
-} from "@/server/database/schema"
-import { makeEncryptedPageTokenCodec, PageTokens } from "@/server/page-tokens"
-import { seedSystem } from "@/server/seeds/seed-system"
-import { ADMINISTRATOR_ROLE_ID, ROOT_ID } from "@/system-records"
-
-import { HttpTransport } from "./http-transport"
-import { McpTransport } from "./mcp-transport"
+} from "#/server/database/schema.ts"
+import {
+  makeEncryptedPageTokenCodec,
+  PageTokens,
+} from "#/server/page-tokens.ts"
+import { seedSystem } from "#/server/seeds/seed-system.ts"
+import { HttpTransport } from "#/server/transport/http-transport.ts"
+import { McpTransport } from "#/server/transport/mcp-transport.ts"
+import { ADMINISTRATOR_ROLE_ID, ROOT_ID } from "#/system-records.ts"
 
 type ApplicationHttpClient = ModelHttpClient<typeof Model> &
   HttpApiClient.Client<typeof capabilityGroup>

@@ -1,11 +1,11 @@
+import { type ObjectCollectionView } from "@company/ui/model/collection-view"
 import { describe, expect, it } from "vitest"
 
 import {
   objectCollectionStateSearch,
   resolveObjectCollectionView,
   validateObjectCollectionSearch,
-  type ObjectCollectionView,
-} from "./object-collection-view"
+} from "#/ui/model/object-collection-view.ts"
 
 const views: ReadonlyArray<ObjectCollectionView> = [
   {

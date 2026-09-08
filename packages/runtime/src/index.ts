@@ -1,4 +1,4 @@
-export { defineEvent } from "./definition/event"
+export { defineEvent } from "#/definition/event.ts"
 
 export type {
   Action,
@@ -9,28 +9,28 @@ export type {
   ActionOutput,
   ActionScope,
   StandardActionId,
-} from "./definition/action"
-export { isStandardActionId } from "./definition/action"
+} from "#/definition/action.ts"
+export { isStandardActionId } from "#/definition/action.ts"
 export {
   defineError,
   errorReason,
   errorStatuses,
   isApiError,
   isErrorReason,
-} from "./definition/error"
-export type { ApiError, ErrorType, ErrorStatus } from "./definition/error"
+} from "#/definition/error.ts"
+export type { ApiError, ErrorType, ErrorStatus } from "#/definition/error.ts"
 export type {
   InferProperties,
   InferProperty,
   Properties,
   PropertyDefinition,
-} from "./definition/property"
-export { defineInterface } from "./definition/interface"
+} from "#/definition/property.ts"
+export { defineInterface } from "#/definition/interface.ts"
 export type {
   InterfaceDisplay,
   InterfaceImplementation,
   InterfaceType,
-} from "./definition/interface"
+} from "#/definition/interface.ts"
 export {
   defineModel,
   modelObjectLinkTraversals,
@@ -38,7 +38,7 @@ export {
   modelObjects,
   modelQueries,
   modelTypeAccepts,
-} from "./definition/model"
+} from "#/definition/model.ts"
 export type {
   Model,
   ModelCatalog,
@@ -50,17 +50,17 @@ export type {
   ModelObjectCreateInput,
   ModelObjectUpdateInput,
   RecordIdOf,
-} from "./definition/model"
-export { defineModule } from "./definition/module"
-export type { ModuleDefinition } from "./definition/module"
-export { defineLink, linkCardinalities } from "./definition/link"
+} from "#/definition/model.ts"
+export { defineModule } from "#/definition/module.ts"
+export type { ModuleDefinition } from "#/definition/module.ts"
+export { defineLink, linkCardinalities } from "#/definition/link.ts"
 export type {
   LinkType,
   LinkCardinality,
   LinkEndpoint,
   LinkTraversal,
-} from "./definition/link"
-export { defineObject, Etag } from "./definition/object"
+} from "#/definition/link.ts"
+export { defineObject, Etag } from "#/definition/object.ts"
 export type {
   BaseRecord,
   RecordAliasDelta,
@@ -77,10 +77,14 @@ export type {
   ObjectRecord,
   ObjectUpdateInput,
   ObjectWriterUpdateInput,
-} from "./definition/object"
-export { defineRoot } from "./definition/root"
-export type { RootType } from "./definition/root"
-export { queryKey, standardQueries, standardQueryIds } from "./definition/query"
+} from "#/definition/object.ts"
+export { defineRoot } from "#/definition/root.ts"
+export type { RootType } from "#/definition/root.ts"
+export {
+  queryKey,
+  standardQueries,
+  standardQueryIds,
+} from "#/definition/query.ts"
 export type {
   Query,
   CustomQuery,
@@ -90,7 +94,7 @@ export type {
   QueryScope,
   StandardQueries,
   StandardQueryId,
-} from "./definition/query"
+} from "#/definition/query.ts"
 export {
   DEFAULT_PAGE_SIZE,
   filterOperators,
@@ -101,7 +105,7 @@ export {
   nullPlacements,
   PageToken,
   sortDirections,
-} from "./definition/request"
+} from "#/definition/request.ts"
 export type {
   Batch,
   FilterOperator,
@@ -112,7 +116,7 @@ export type {
   Page,
   PageTokenCodec,
   SortDirection,
-} from "./definition/request"
+} from "#/definition/request.ts"
 export {
   CalendarDate,
   CurrencyCode,
@@ -127,7 +131,7 @@ export {
   schema,
   Timestamp,
   WebUrl,
-} from "./definition/schema"
+} from "#/definition/schema.ts"
 export type {
   AnySchema,
   Choice,
@@ -150,7 +154,7 @@ export type {
   SchemaAnnotations,
   SchemaProperties,
   StringSchemaOptions,
-} from "./definition/schema"
+} from "#/definition/schema.ts"
 export {
   AbortedError,
   AlreadyExistsError,
@@ -163,12 +167,12 @@ export {
   UnauthenticatedError,
   ValidationError,
   violationSchema,
-} from "./definition/standard-error"
-export type { Violation } from "./definition/standard-error"
-export { describeModel, MODEL_DESCRIPTION_VERSION } from "./description"
-export type { ModelDescription, ModuleDescription } from "./description"
-export { lintModelDescription } from "./model-lint"
-export type { ModelDiagnostic } from "./model-lint"
+} from "#/definition/standard-error.ts"
+export type { Violation } from "#/definition/standard-error.ts"
+export { describeModel, MODEL_DESCRIPTION_VERSION } from "#/description.ts"
+export type { ModelDescription, ModuleDescription } from "#/description.ts"
+export { lintModelDescription } from "#/model-lint.ts"
+export type { ModelDiagnostic } from "#/model-lint.ts"
 
-export { modelRelationships } from "./definition/relationship"
-export type { ModelRelationship } from "./definition/relationship"
+export { modelRelationships } from "#/definition/relationship.ts"
+export type { ModelRelationship } from "#/definition/relationship.ts"

@@ -1,9 +1,9 @@
 import { Button } from "@company/ui/components/button"
 
-import { ObjectRecordSummary } from "./object-record-summary"
-import { useRecordReferences } from "./object-references"
-import { objectHref } from "./object-routing"
-import type { useRecordRelationshipPreviews } from "./use-record-relationship-previews"
+import { ObjectRecordSummary } from "#/ui/model/object-record-summary.tsx"
+import { useRecordReferences } from "#/ui/model/object-references.ts"
+import { objectHref } from "#/ui/model/object-routing.ts"
+import type { useRecordRelationshipPreviews } from "#/ui/model/use-record-relationship-previews.ts"
 
 export function RelationshipCount({
   count,

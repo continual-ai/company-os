@@ -18,8 +18,8 @@ import {
 import { Schema } from "effect"
 import type { Constructor, Fragment } from "effect/unstable/sql/Statement"
 
-import { inValues } from "./statement"
-import { type Column } from "./table"
+import { inValues } from "#/statement.ts"
+import { type Column } from "#/table.ts"
 
 export type QueryValue = boolean | null | number | string
 

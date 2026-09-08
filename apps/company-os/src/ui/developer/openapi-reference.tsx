@@ -6,16 +6,15 @@ import { CodeXmlIcon, ExternalLinkIcon, FileJsonIcon } from "lucide-react"
 import { useDeferredValue, useEffect, useMemo, useState } from "react"
 
 import {
-  DeveloperNavigationGroup,
-  DeveloperNavigationItem,
-} from "@/ui/developer/developer-layout"
-
-import {
   DeveloperBrowser,
   DeveloperBrowserEmpty,
   DeveloperBrowserOutline,
   DeveloperBrowserSearch,
-} from "./developer-browser"
+} from "#/ui/developer/developer-browser.tsx"
+import {
+  DeveloperNavigationGroup,
+  DeveloperNavigationItem,
+} from "#/ui/developer/developer-layout.tsx"
 import {
   curlExample,
   filterOperations,
@@ -30,7 +29,7 @@ import {
   type OpenApiDocument,
   type OpenApiOperation,
   type OpenApiSchema,
-} from "./openapi-reference-model"
+} from "#/ui/developer/openapi-reference-model.ts"
 
 const noPreferredTags: ReadonlyArray<string> = []
 

@@ -4,6 +4,26 @@ A module is ordinary source you own. Begin with a real operation: its records, d
 human decisions, failure behavior, and evidence of success. Standard screens provide the starting
 point; domain components express the workflow.
 
+## Package or app-local module
+
+Keep app-specific capabilities under `apps/company-os/src/modules`. Use an ordinary pnpm package
+under `modules/` when the capability can be consumed without importing the application. The
+[Notes package](../modules/notes/README.md) is the executable example: one package owns its model,
+Markdown presentation, relationship interface, and deterministic seed content. No plugin loader is
+needed. Package exports keep model, UI, and server dependencies separate.
+
+A reusable model can accept an app-specific root or other definition explicitly. Consumers implement
+its exported interfaces to opt into relationships; Notes does not import Sales or Engineering.
+The app composes the result once, supplies runtime capabilities, and installs UI contributions.
+Use `@company/ui/model/*` for shared presentation contracts and `@company/ui/components/*` for
+base controls. A module package must not import the app's complete model or client.
+
+The composed model supplies standard PostgreSQL tables, indexes, and constraints. Run `db:generate`
+and review the resulting application schema. There is one application migration runner and ledger;
+a module using standard persistence does not need another migration directory. For a custom SQL
+object, the owning module can supply the SQL, but application migrations sequence it with the
+composed schema. Notes has no custom SQL or server operations.
+
 ## Three independent entrypoints
 
 ```text
@@ -45,16 +65,25 @@ Module-level `model.ts`, `server.ts`, and `ui.ts` compose contributions and stay
 capabilities can live in the module's `server/` directory when multiple objects need them. Avoid
 empty directories, mandatory service/repository pairs, internal barrels, and runtime file discovery.
 
+`src/app.model.ts` calls `defineModel` with ordinary imports and module factories. TypeScript retains
+concrete object types without generated entrypoints, export-name strings, or a separate plugin schema.
+`company-os/model` exposes that composed model to consumers. The same recursive browser-safety check
+covers the configuration and every imported definition.
+
+This is model configuration, not a universal module installer. A module with custom UI or server
+behavior also needs an explicit registration at that boundary (and a CSS import if it supplies styles).
+Keeping these imports separate prevents server dependencies from entering the portable model.
+
 Installation is explicit and happens once per entrypoint:
 
-| Contribution           | Application composition root    |
-| ---------------------- | ------------------------------- |
-| Model                  | `src/model.ts`                  |
-| Custom server behavior | `src/server/module-services.ts` |
-| Custom UI              | `src/app-ui.ts`                 |
+| Contribution           | Application composition root |
+| ---------------------- | ---------------------------- |
+| Model                  | `src/app.model.ts`           |
+| Custom server behavior | `src/app.server.ts`          |
+| Custom UI              | `src/app.ui.ts`              |
 
 Once installed, changes within a module do not require editing the application layer, implementation
-registry, sidebar, or standard routes. The model check verifies conventional definition locations.
+registry, sidebar, or standard routes. The model check validates the composed semantic contract.
 The model's recursive import check rejects UI/server dependencies; TanStack rejects server directories
 and module-level `server.ts` entrypoints in the browser graph. React components may render on the
 server. Browser-only code is a separate boundary, not a synonym for UI.
@@ -66,8 +95,8 @@ Define it with `defineObject` and `schema` from `@company/runtime`, then include
 
 ```ts
 import { defineObject, schema } from "@company/runtime"
-import { User } from "#modules/access/user/model"
-import { Root } from "#root"
+import { User } from "#/modules/access/user/model.ts"
+import { Root } from "#/model-root.ts"
 
 export const Campaign = defineObject({
   id: "campaign",
@@ -91,7 +120,7 @@ Put that definition in `modules/marketing/campaign/model.ts`. Compose it in
 
 ```ts
 import { defineModule } from "@company/runtime"
-import { Campaign } from "./campaign/model"
+import { Campaign } from "#/modules/marketing/campaign/model.ts"
 
 export const MarketingModule = defineModule({
   id: "marketing",
@@ -102,7 +131,7 @@ export const MarketingModule = defineModule({
 })
 ```
 
-Include the module in `src/model.ts`, then run `pnpm --filter company-os db:generate`, review the
+Include the module in `src/app.model.ts`, then run `pnpm --filter company-os db:generate`, review the
 migration, and run `pnpm dev`. Migrations remain application-owned. Define intended roles and scopes;
 installing an object does not grant everyone permission to use it.
 
@@ -207,9 +236,9 @@ An object's `ui/config.ts` uses `satisfies` to check properties, Action IDs, and
 
 ```ts
 import type { Model } from "company-os/model"
-import type { ObjectUi } from "@/ui/model/module-ui"
-import { ConvertLeadAction } from "./convert-button"
-import { LeadConversion } from "./conversion-tab"
+import type { ObjectUi } from "@company/ui/model/object-ui"
+import { ConvertLeadAction } from "#/modules/sales/lead/ui/convert-button.tsx"
+import { LeadConversion } from "#/modules/sales/lead/ui/conversion-tab.tsx"
 
 export const leadUi = {
   actions: {
@@ -277,7 +306,7 @@ There is no feature-specific fetching hook or second relational query language.
 
 ```tsx
 import { useQuery, useMutation } from "@tanstack/react-query"
-import { data } from "@/app-client"
+import { data } from "#/app-client.ts"
 
 const backlog = data.issue.list({
   filter: { field: "status", operator: "eq", value: "backlog" },
@@ -364,7 +393,7 @@ or rollback. Standard-only additions rely on generated contracts, model checks, 
 real interface. Run `pnpm check` and relevant tests; run `pnpm build` for routing, bundling, or dependency
 changes. Exercise empty state, errors, relationship navigation, and file handling.
 
-Copy the module's source and explicit dependencies to reuse it. Its model, behavior, and UI are fully
+Copy the module's source and explicit dependencies, or consume its declared package exports, to reuse it. Its model, behavior, and UI are fully
 editable. Removing persisted domains requires migration and policy review. Optional deployable apps
 still use `pnpm app:create` and consume the central app's public model and governed API.
 

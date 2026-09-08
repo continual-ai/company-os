@@ -1,5 +1,5 @@
-import { defineError, isErrorReason } from "./error"
-import { schema, type InferSchema } from "./schema"
+import { defineError, isErrorReason } from "#/definition/error.ts"
+import { schema, type InferSchema } from "#/definition/schema.ts"
 
 const emptyDetails = schema.object({})
 

@@ -1,4 +1,4 @@
-import type { AnySchema, InferSchema } from "./schema"
+import type { AnySchema, InferSchema } from "#/definition/schema.ts"
 
 /** Canonical transport-independent statuses from google.rpc.Code. */
 export const errorStatuses = [

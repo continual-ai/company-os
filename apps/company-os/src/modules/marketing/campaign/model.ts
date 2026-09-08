@@ -1,8 +1,8 @@
+import { NoteSubject } from "@company/notes/note-subject"
 import { defineObject, schema } from "@company/runtime"
 
-import { User } from "#modules/access/user/model"
-import { NoteSubject } from "#modules/sales/interfaces/note-subject"
-import { Root } from "#root"
+import { Root } from "#/model-root.ts"
+import { User } from "#/modules/access/user/model.ts"
 
 export const Campaign = defineObject({
   id: "campaign",

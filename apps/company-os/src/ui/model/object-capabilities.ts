@@ -2,10 +2,9 @@ import {
   actionPermission,
   capabilityKey,
   type CapabilityCheck,
-} from "@/capabilities"
-import { ROOT_ID } from "@/system-records"
-
-import type { ModelObject } from "./object-client"
+} from "#/capabilities.ts"
+import { ROOT_ID } from "#/system-records.ts"
+import type { ModelObject } from "#/ui/model/object-client.ts"
 
 export function objectCapabilityCheck(
   object: ModelObject,

@@ -3,9 +3,9 @@ import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router"
 import { modelMetadata } from "company-os/metadata"
 import { useEffect } from "react"
 
-import { appMetadata } from "@/app-metadata"
+import { appMetadata } from "#/app-metadata.ts"
 
-import appCss from "@/styles/app.css?url"
+import appCss from "#/styles/app.css?url"
 
 export const Route = createRootRoute({
   head: () => ({

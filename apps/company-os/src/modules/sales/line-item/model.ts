@@ -1,6 +1,6 @@
 import { defineObject, schema } from "@company/runtime"
 
-import { Deal } from "#modules/sales/deal/model"
+import { Deal } from "#/modules/sales/deal/model.ts"
 
 export const LineItem = defineObject({
   id: "lineItem",

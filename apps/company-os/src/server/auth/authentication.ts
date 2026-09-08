@@ -1,29 +1,28 @@
 import { EmailAddress, RecordId } from "@company/runtime"
 import { CurrentInvocation } from "@company/runtime/effect/object-service"
-import type { IdentityId } from "company-os/model"
 import { Config, Context, Data, Effect, Layer } from "effect"
 
-import type { AuthenticatedUser } from "@/authentication"
-import { RoleAssignmentService } from "@/modules/access/role-assignment/server/role-assignment-service"
-import { ServiceAccountService } from "@/modules/access/service-account/server/service-account-service"
-import { UserService } from "@/modules/access/user/server/user-service"
-import { anonymousCaller, identityCaller } from "@/server/caller"
-import { Database } from "@/server/database/database"
-import {
-  anonymousInvocation,
-  authenticatedInvocation,
-  systemInvocation,
-} from "@/server/invocation-context"
-
+import type { IdentityId } from "#/app.model.ts"
+import type { AuthenticatedUser } from "#/authentication.ts"
+import { RoleAssignmentService } from "#/modules/access/role-assignment/server/role-assignment-service.ts"
+import { ServiceAccountService } from "#/modules/access/service-account/server/service-account-service.ts"
+import { UserService } from "#/modules/access/user/server/user-service.ts"
 import {
   IdentityBindingRepository,
   type BoundIdentity,
-} from "./identity-binding-repository"
+} from "#/server/auth/identity-binding-repository.ts"
 import {
   IdentityProvider,
   type AuthenticatedSubject,
   type VerifiedIdentityInvocation,
-} from "./identity-provider"
+} from "#/server/auth/identity-provider.ts"
+import { anonymousCaller, identityCaller } from "#/server/caller.ts"
+import { Database } from "#/server/database/database.ts"
+import {
+  anonymousInvocation,
+  authenticatedInvocation,
+  systemInvocation,
+} from "#/server/invocation-context.ts"
 
 class IdentityInactive extends Data.TaggedError("IdentityInactive")<{
   readonly identityId: IdentityId

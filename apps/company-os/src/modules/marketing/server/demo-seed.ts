@@ -1,7 +1,7 @@
 import { Effect } from "effect"
 
-import type { DemoCustomer } from "@/modules/sales/server/demo-seed"
-import { ModelImplementation } from "@/server/model/model-implementation"
+import type { DemoCustomer } from "#/modules/sales/server/demo-seed.ts"
+import { ModelImplementation } from "#/server/model/model-implementation.ts"
 
 export const seedMarketingDemo = Effect.fn("@company/seedMarketingDemo")(
   function* ({ owner, contacts }: DemoCustomer) {

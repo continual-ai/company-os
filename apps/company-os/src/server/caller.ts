@@ -1,6 +1,5 @@
-import type { ActorId, IdentityId } from "company-os/model"
-
-import { ANONYMOUS_ACTOR_ID } from "@/system-records"
+import type { ActorId, IdentityId } from "#/app.model.ts"
+import { ANONYMOUS_ACTOR_ID } from "#/system-records.ts"
 
 /** Authentication state presented to authorization before an actor is required. */
 export type Caller =

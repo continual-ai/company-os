@@ -2,7 +2,10 @@ import type { ApiError, ValidationError } from "@company/runtime"
 import { Schema } from "effect"
 import { describe, expect, it } from "vitest"
 
-import { FormValidationError, formErrorFromCause } from "./form-errors"
+import {
+  FormValidationError,
+  formErrorFromCause,
+} from "#/ui/forms/form-errors.ts"
 
 describe("form errors", () => {
   it("shows concurrency conflicts at form level rather than an invisible etag field", () => {

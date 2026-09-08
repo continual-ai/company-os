@@ -1,20 +1,19 @@
 import type { ReactNode } from "react"
 
-import { AssetPreviews } from "@/modules/assets/asset/ui/asset-preview"
-
-import { ObjectChoiceBadge } from "./object-choice-badge"
+import { AssetPreviews } from "#/modules/assets/asset/ui/asset-preview.tsx"
+import { ObjectChoiceBadge } from "#/ui/model/object-choice-badge.tsx"
 import {
   modelObjectProperty,
   type ModelObject,
   type ObjectRecordPresentation,
-} from "./object-client"
-import { ObjectRecordIdentity } from "./object-record-identity"
-import { objectHref } from "./object-routing"
-import { objectTablePropertySchema } from "./object-table/object-table-cell-types"
+} from "#/ui/model/object-client.ts"
+import { ObjectRecordIdentity } from "#/ui/model/object-record-identity.tsx"
+import { objectHref } from "#/ui/model/object-routing.ts"
+import { objectTablePropertySchema } from "#/ui/model/object-table/object-table-cell-types.ts"
 import {
   objectTableValueText,
   type ObjectTableValue,
-} from "./object-table/object-table-config"
+} from "#/ui/model/object-table/object-table-config.ts"
 
 export function objectPropertyValue(
   object: ModelObject,

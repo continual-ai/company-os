@@ -1,9 +1,12 @@
 import { existsSync } from "node:fs"
 import { loadEnvFile } from "node:process"
 
-const projectEnvironmentFile = new URL("../../../.env.local", import.meta.url)
-const applicationEnvironmentFile = new URL("../.env.local", import.meta.url)
-const exampleFile = new URL("../.env.example", import.meta.url)
+const projectEnvironmentFile = new URL(
+  "../../../../.env.local",
+  import.meta.url
+)
+const applicationEnvironmentFile = new URL("../../.env.local", import.meta.url)
+const exampleFile = new URL("../../.env.example", import.meta.url)
 
 /**
  * Preserves injected environment, then loads App-local, repository-local,

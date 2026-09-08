@@ -1,8 +1,8 @@
 import { Button } from "@company/ui/components/button"
+import type { RecordUiProps } from "@company/ui/model/object-ui"
 import { Link } from "@tanstack/react-router"
-import type { Model } from "company-os/model"
 
-import type { RecordUiProps } from "@/ui/model/module-ui"
+import type { Model } from "#/app.model.ts"
 
 export function LeadConversion({
   record,

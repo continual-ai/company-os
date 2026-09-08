@@ -2,7 +2,7 @@ import { tableColumns, tableName, type TableRow } from "@company/postgres"
 import type { RecordId } from "@company/runtime"
 import { describe, expect, expectTypeOf, it } from "vitest"
 
-import { Storage, schemaSql } from "./schema"
+import { Storage, schemaSql } from "#/server/database/schema.ts"
 
 describe("PostgreSQL schema", () => {
   it("projects model fields, relationships, and infrastructure constraints", () => {

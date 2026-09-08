@@ -6,6 +6,11 @@ import {
   PopoverTrigger,
 } from "@company/ui/components/popover"
 import {
+  collectionLayoutFields,
+  defaultCollectionLayout,
+  type CollectionLayout,
+} from "@company/ui/model/collection-layout"
+import {
   CalendarDaysIcon,
   ListIcon,
   ChartGanttIcon,
@@ -13,12 +18,6 @@ import {
   Table2Icon,
   Settings2Icon,
 } from "lucide-react"
-
-import {
-  collectionLayoutFields,
-  defaultCollectionLayout,
-  type CollectionLayout,
-} from "./collection-layout"
 
 const layouts = [
   { type: "feed", label: "Feed", icon: ListIcon },

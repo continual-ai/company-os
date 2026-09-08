@@ -1,18 +1,18 @@
 import { EmailAddress, type ListRequest } from "@company/runtime"
 import { CurrentInvocation } from "@company/runtime/effect/object-service"
-import { Model } from "company-os/model"
 import { Effect, Layer } from "effect"
 import { expect } from "vitest"
 
-import { contactViews } from "@/modules/sales/contact/ui/views"
-import { makeApplicationLayer } from "@/server/application-layer"
-import { Database } from "@/server/database/database"
-import { itDatabase } from "@/server/database/it-database"
-import { systemInvocation } from "@/server/invocation-context"
-import { ModelImplementation } from "@/server/model/model-implementation"
-import { PageTokens } from "@/server/page-tokens"
-import { seedSystem } from "@/server/seeds/seed-system"
-import { objectListRequest } from "@/ui/model/object-collection-query"
+import { Model } from "#/app.model.ts"
+import { contactViews } from "#/modules/sales/contact/ui/views.ts"
+import { makeApplicationLayer } from "#/server/application-layer.ts"
+import { Database } from "#/server/database/database.ts"
+import { itDatabase } from "#/server/database/it-database.ts"
+import { systemInvocation } from "#/server/invocation-context.ts"
+import { ModelImplementation } from "#/server/model/model-implementation.ts"
+import { PageTokens } from "#/server/page-tokens.ts"
+import { seedSystem } from "#/server/seeds/seed-system.ts"
+import { objectListRequest } from "#/ui/model/object-collection-query.ts"
 
 itDatabase(
   "defaults contacts out of marketing and keeps audience selection separate from consent",

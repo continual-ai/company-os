@@ -11,11 +11,11 @@
   },
   "iconLibrary": "lucide",
   "aliases": {
-    "components": "@company/ui/components",
-    "utils": "@company/ui/lib/utils",
-    "hooks": "@company/ui/hooks",
-    "lib": "@company/ui/lib",
-    "ui": "@company/ui/components"
+    "components": "#/components",
+    "utils": "#/lib/utils.ts",
+    "hooks": "#/hooks",
+    "lib": "#/lib",
+    "ui": "#/components"
   },
   "rtl": false,
   "menuColor": "default",

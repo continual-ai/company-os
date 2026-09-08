@@ -12,9 +12,9 @@ import {
   type ClientRecord,
   type ModelObject,
   type ObjectRecordPresentation,
-} from "./object-client"
-import { objectPropertyValue } from "./object-property-value"
-import { objectHref } from "./object-routing"
+} from "#/ui/model/object-client.ts"
+import { objectPropertyValue } from "#/ui/model/object-property-value.tsx"
+import { objectHref } from "#/ui/model/object-routing.ts"
 
 export type CollectionDragData = {
   record?: ClientRecord

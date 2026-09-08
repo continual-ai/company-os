@@ -1,6 +1,7 @@
-import { cn } from "@company/ui/lib/utils"
 import ReactMarkdown, { type Components } from "react-markdown"
 import remarkGfm from "remark-gfm"
+
+import { cn } from "#/lib/utils.ts"
 
 const components: Components = {
   a: ({ href, children: label }) => (

@@ -11,7 +11,7 @@ import { createModelClient } from "@company/runtime/effect/http-client"
 import { Effect } from "effect"
 import { expect, expectTypeOf, it } from "vitest"
 
-import { createModelQueries } from "./model-query-client"
+import { createModelQueries } from "#/model-query-client.ts"
 
 it("preserves required relationship capabilities when projecting the client", () => {
   const Actor = defineInterface({

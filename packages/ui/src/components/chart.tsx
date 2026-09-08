@@ -1,8 +1,9 @@
 "use client"
 
-import { cn } from "@company/ui/lib/utils"
 import * as React from "react"
 import { Legend, ResponsiveContainer, Tooltip } from "recharts"
+
+import { cn } from "#/lib/utils.ts"
 
 /**
  * Maps a series key to its label and color. Colors default to the theme's

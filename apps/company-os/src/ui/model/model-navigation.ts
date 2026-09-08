@@ -1,10 +1,8 @@
-import { Model } from "company-os/model"
-
-import { modelUi } from "@/app-ui"
-import { capabilityPermission } from "@/capabilities"
-
-import { objectIcon } from "./object-icon"
-import { objectHref } from "./object-routing"
+import { Model } from "#/app.model.ts"
+import { modelUi } from "#/app.ui.ts"
+import { capabilityPermission } from "#/capabilities.ts"
+import { objectIcon } from "#/ui/model/object-icon.ts"
+import { objectHref } from "#/ui/model/object-routing.ts"
 
 /** Sidebar and home share the same module-owned destinations. */
 export const modelNavigation = Object.values(Model.modules).map((module) => ({

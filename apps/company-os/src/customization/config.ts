@@ -1,4 +1,4 @@
-import { modelMetadata } from "company-os/metadata"
+import { modelMetadata } from "#/model-metadata.ts"
 
 type BrandAsset = Readonly<{
   alt: string

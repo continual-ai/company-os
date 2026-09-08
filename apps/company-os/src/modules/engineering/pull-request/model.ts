@@ -1,8 +1,8 @@
+import { NoteSubject } from "@company/notes/note-subject"
 import { defineObject, schema } from "@company/runtime"
 
-import { Repository } from "#modules/engineering/repository/model"
-import { NoteSubject } from "#modules/sales/interfaces/note-subject"
-import { Root } from "#root"
+import { Root } from "#/model-root.ts"
+import { Repository } from "#/modules/engineering/repository/model.ts"
 
 export const PullRequest = defineObject({
   id: "pullRequest",

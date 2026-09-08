@@ -1,13 +1,13 @@
-import type { ApiError, ErrorType } from "./error"
-import { bindOperationContract } from "./operation-contract"
-import type { Properties, PropertyDefinition } from "./property"
-import { MAX_RECORD_ALIAS_LENGTH, schema } from "./schema"
+import type { ApiError, ErrorType } from "#/definition/error.ts"
+import { bindOperationContract } from "#/definition/operation-contract.ts"
+import type { Properties, PropertyDefinition } from "#/definition/property.ts"
+import { MAX_RECORD_ALIAS_LENGTH, schema } from "#/definition/schema.ts"
 import type {
   InferInputSchema,
   InferSchema,
   SchemaProperties,
   StructSchema,
-} from "./schema"
+} from "#/definition/schema.ts"
 
 const standardActionIds = ["create", "update", "delete", "batchDelete"] as const
 

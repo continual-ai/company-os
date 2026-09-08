@@ -1,4 +1,8 @@
 import type { ImageRef, Money, PropertyDefinition } from "@company/runtime"
+import type {
+  ObjectTableFilterOperator,
+  ObjectTableFilterValue,
+} from "@company/ui/model/collection-view"
 import {
   columnFilteringFeature,
   columnPinningFeature,
@@ -16,9 +20,8 @@ import {
   type ReactTable,
 } from "@tanstack/react-table"
 
-import type { ObjectRecordPresentation } from "@/ui/model/object-client"
-
-import { objectTableCellBehavior } from "./object-table-cell-types"
+import type { ObjectRecordPresentation } from "#/ui/model/object-client.ts"
+import { objectTableCellBehavior } from "#/ui/model/object-table/object-table-cell-types.ts"
 
 export type ObjectTableValue =
   | boolean
@@ -95,28 +98,6 @@ export function objectTableSortText(
   if (value === false) return "0"
 
   return objectTableValueText(value).trim().toLowerCase()
-}
-
-export type ObjectTableFilterOperator =
-  | "after"
-  | "atLeast"
-  | "atMost"
-  | "before"
-  | "contains"
-  | "doesNotContain"
-  | "empty"
-  | "equals"
-  | "greaterThan"
-  | "lessThan"
-  | "notEmpty"
-  | "notEquals"
-  | "onOrAfter"
-  | "onOrBefore"
-  | "startsWith"
-
-export interface ObjectTableFilterValue {
-  operator: ObjectTableFilterOperator
-  values: ReadonlyArray<string>
 }
 
 export interface ObjectTableColumnMeta {

@@ -14,16 +14,16 @@ import {
 import { Option, Schema } from "effect"
 import type { Effect } from "effect"
 
-import type { ApiError } from "./definition/error"
-import type { ModelCatalog } from "./definition/model"
-import type { ObjectType } from "./definition/object"
-import type { Query, CustomQuery } from "./definition/query"
-import type { LinkService } from "./effect-link-service"
+import type { ApiError } from "#/definition/error.ts"
+import type { ModelCatalog } from "#/definition/model.ts"
+import type { ObjectType } from "#/definition/object.ts"
+import type { Query, CustomQuery } from "#/definition/query.ts"
+import type { LinkService } from "#/effect-link-service.ts"
 import {
   executableModelOperations,
   executeModelOperation,
   type ExecutableModelOperation,
-} from "./effect-model-implementation"
+} from "#/effect-model-implementation.ts"
 import {
   linkPageOutputSchema,
   linkListInputSchema,
@@ -34,13 +34,13 @@ import {
   objectPageOutputSchema,
   objectRecordOutputSchema,
   pageSizeSchema,
-} from "./effect-model-schemas"
-import type { CurrentInvocation } from "./effect-object-service"
+} from "#/effect-model-schemas.ts"
+import type { CurrentInvocation } from "#/effect-object-service.ts"
 import {
   toEffectInputSchema,
   toEffectRecordIdentifierSchema,
   toEffectSchema,
-} from "./effect-schema"
+} from "#/effect-schema.ts"
 
 export type ModelMcpOperation = Effect.Effect<
   unknown,

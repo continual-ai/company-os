@@ -10,13 +10,12 @@ import {
   SelectValue,
 } from "@company/ui/components/select"
 import { Textarea } from "@company/ui/components/textarea"
+import type { FormValue, FormValueObject } from "@company/ui/model/form-value"
 
-import { FileField } from "@/modules/assets/asset/ui/file-field"
-import { useTypedAppFormContext } from "@/ui/forms/app-form"
-import type { FormValue, FormValueObject } from "@/ui/forms/form-value"
-
-import type { ResolvedObjectUi } from "./module-ui"
-import type { ModelObject, ClientRecord } from "./object-client"
+import { FileField } from "#/modules/assets/asset/ui/file-field.tsx"
+import { useTypedAppFormContext } from "#/ui/forms/app-form.ts"
+import type { ResolvedObjectUi } from "#/ui/model/module-ui.tsx"
+import type { ModelObject, ClientRecord } from "#/ui/model/object-client.ts"
 import {
   isSupportedFormSchema,
   objectFormFieldRequired,
@@ -24,8 +23,8 @@ import {
   type ObjectFormMode,
   type ObjectFormValues,
   type ObjectFormProperty,
-} from "./object-form"
-import { ObjectReferenceSelect } from "./object-reference-select"
+} from "#/ui/model/object-form.ts"
+import { ObjectReferenceSelect } from "#/ui/model/object-reference-select.tsx"
 
 const emptyObjectFormValues: ObjectFormValues = {}
 const objectFormContextOptions = { defaultValues: emptyObjectFormValues }

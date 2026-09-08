@@ -19,20 +19,20 @@ import {
 import { FieldError } from "@company/ui/components/field"
 import { useCallback, useMemo, useRef, useState } from "react"
 
-import { useAppForm } from "@/ui/forms/app-form"
+import { useAppForm } from "#/ui/forms/app-form.ts"
 import {
   focusFirstFormError,
   formErrorFromCause,
   formErrorMessages,
-} from "@/ui/forms/form-errors"
-
-import { useObjectUi } from "./module-ui"
+} from "#/ui/forms/form-errors.ts"
+import { useObjectUi } from "#/ui/model/module-ui.tsx"
 import {
   modelObjectProperty,
   recordLabel,
   type ClientRecord,
   type ModelObject,
-} from "./object-client"
+} from "#/ui/model/object-client.ts"
+import { ObjectFormFields } from "#/ui/model/object-form-fields.tsx"
 import {
   decodeObjectForm,
   isSupportedFormSchema,
@@ -40,8 +40,7 @@ import {
   objectFormProperties,
   type ObjectFormInput,
   type ObjectFormMode,
-} from "./object-form"
-import { ObjectFormFields } from "./object-form-fields"
+} from "#/ui/model/object-form.ts"
 
 function ObjectRecordEditor({
   mode,

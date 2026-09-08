@@ -3,18 +3,17 @@ import {
   makeObjectRepository as makePostgresObjectRepository,
   makeObjectSeedRepository as makePostgresObjectSeedRepository,
 } from "@company/postgres"
-import type { Model } from "company-os/model"
 import { Effect } from "effect"
 
-import { compileAssetReferences } from "@/modules/assets/asset/references"
-import { replaceAssetReferences } from "@/modules/assets/asset/server/asset-references"
-import { makeEventWriter } from "@/server/events/event-writer"
-import { PageTokens } from "@/server/page-tokens"
-
-import { Database } from "./database"
-import { deletionChanges } from "./deletion-changes"
-import { Storage } from "./schema"
-import { updateSearchIndex } from "./search-index"
+import type { Model } from "#/app.model.ts"
+import { compileAssetReferences } from "#/modules/assets/asset/references.ts"
+import { replaceAssetReferences } from "#/modules/assets/asset/server/asset-references.ts"
+import { Database } from "#/server/database/database.ts"
+import { deletionChanges } from "#/server/database/deletion-changes.ts"
+import { Storage } from "#/server/database/schema.ts"
+import { updateSearchIndex } from "#/server/database/search-index.ts"
+import { makeEventWriter } from "#/server/events/event-writer.ts"
+import { PageTokens } from "#/server/page-tokens.ts"
 
 type ModelObjectType = (typeof Model.objects)[keyof typeof Model.objects]
 

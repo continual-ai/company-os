@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   objectRecordTabSearch,
   validateObjectRecordSearch,
-} from "./object-record-view"
+} from "#/ui/model/object-record-view.ts"
 
 describe("object record view", () => {
   it("decodes a relationship tab from URL search", () => {

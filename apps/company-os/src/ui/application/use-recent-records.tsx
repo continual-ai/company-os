@@ -1,5 +1,4 @@
 import { useQueries } from "@tanstack/react-query"
-import { Model } from "company-os/model"
 import {
   createContext,
   useContext,
@@ -8,7 +7,8 @@ import {
   type ReactNode,
 } from "react"
 
-import { clientFor } from "@/ui/model/object-client"
+import { Model } from "#/app.model.ts"
+import { clientFor } from "#/ui/model/object-client.ts"
 
 type Visit = { readonly objectType: string; readonly id: string }
 const RecentContext = createContext<

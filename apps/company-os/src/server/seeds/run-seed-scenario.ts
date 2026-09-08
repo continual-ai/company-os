@@ -6,10 +6,10 @@ import { Effect, Layer } from "effect"
 import {
   makeApplicationServicesLayer,
   type ApplicationServicesInfrastructure,
-} from "@/server/application-services"
-import { Database } from "@/server/database/database"
-import { seedRuns } from "@/server/database/schema"
-import { systemInvocation } from "@/server/invocation-context"
+} from "#/server/application-services.ts"
+import { Database } from "#/server/database/database.ts"
+import { seedRuns } from "#/server/database/schema.ts"
+import { systemInvocation } from "#/server/invocation-context.ts"
 
 type SeedEnvironment =
   | Layer.Success<ReturnType<typeof makeApplicationServicesLayer>>

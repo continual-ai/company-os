@@ -2,19 +2,25 @@ import type { TableRow } from "@company/postgres"
 import { insertValues, assignments } from "@company/postgres"
 import { Etag, RecordId, Timestamp } from "@company/runtime"
 import { CurrentInvocation } from "@company/runtime/effect/object-service"
-import { Model } from "company-os/model"
 import { Effect, Layer } from "effect"
 import { describe, expect } from "vitest"
 
-import { RoleAssignmentRepository } from "@/modules/access/role-assignment/server/role-assignment-repository"
+import { Model } from "#/app.model.ts"
+import { RoleAssignmentRepository } from "#/modules/access/role-assignment/server/role-assignment-repository.ts"
 import {
   LastAdministrator,
   RoleAssignmentService,
   RoleScopeMismatch,
-} from "@/modules/access/role-assignment/server/role-assignment-service"
-import { anonymousCaller, authenticatedCaller } from "@/server/caller"
-import { Database } from "@/server/database/database"
-import { itDatabase } from "@/server/database/it-database"
+} from "#/modules/access/role-assignment/server/role-assignment-service.ts"
+import { AuthorizationRepository } from "#/server/authorization/authorization-repository.ts"
+import {
+  Authorization,
+  AuthorizationTargetNotFound,
+  PermissionDenied,
+} from "#/server/authorization/authorization-service.ts"
+import { anonymousCaller, authenticatedCaller } from "#/server/caller.ts"
+import { Database } from "#/server/database/database.ts"
+import { itDatabase } from "#/server/database/it-database.ts"
 import {
   authorizationScopes,
   companies,
@@ -27,33 +33,26 @@ import {
   roleAssignments,
   roles,
   users,
-} from "@/server/database/schema"
+} from "#/server/database/schema.ts"
 import {
   anonymousInvocation,
   authenticatedInvocation,
   currentActorId,
   systemInvocation,
-} from "@/server/invocation-context"
-import { Links } from "@/server/model/link-service"
-import { ObjectRepositories } from "@/server/model/object-repositories"
-import { makeObjectService } from "@/server/model/object-service"
-import { RecordIdentifierResolver } from "@/server/model/record-identifier-resolver"
-import { PageTokens } from "@/server/page-tokens"
-import { seedSystem } from "@/server/seeds/seed-system"
+} from "#/server/invocation-context.ts"
+import { Links } from "#/server/model/link-service.ts"
+import { ObjectRepositories } from "#/server/model/object-repositories.ts"
+import { makeObjectService } from "#/server/model/object-service.ts"
+import { RecordIdentifierResolver } from "#/server/model/record-identifier-resolver.ts"
+import { PageTokens } from "#/server/page-tokens.ts"
+import { seedSystem } from "#/server/seeds/seed-system.ts"
 import {
   ALL_CALLERS_PRINCIPAL_SET_ID,
   ADMINISTRATOR_ROLE_ID,
   ROOT_ID,
   SYSTEM_SERVICE_ACCOUNT_ID,
   SYSTEM_ROLE_ASSIGNMENT_ID,
-} from "@/system-records"
-
-import { AuthorizationRepository } from "./authorization-repository"
-import {
-  Authorization,
-  AuthorizationTargetNotFound,
-  PermissionDenied,
-} from "./authorization-service"
+} from "#/system-records.ts"
 
 const now = Timestamp("2026-08-23T00:00:00.000Z")
 const UserId = RecordId("user")

@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router"
 
-import { documentHead } from "@/route-metadata"
-import { ModelCollectionPage } from "@/ui/model/model-pages"
-import { validateObjectCollectionSearch } from "@/ui/model/object-collection-view"
-import { preloadCollection, routeObject } from "@/ui/model/object-routing"
+import { documentHead } from "#/route-metadata.ts"
+import { ModelCollectionPage } from "#/ui/model/model-pages.tsx"
+import { validateObjectCollectionSearch } from "#/ui/model/object-collection-view.ts"
+import { preloadCollection, routeObject } from "#/ui/model/object-routing.ts"
 export const Route = createFileRoute("/_app/objects/$objectType/")({
   validateSearch: validateObjectCollectionSearch,
   loaderDeps: ({ search }) => search,

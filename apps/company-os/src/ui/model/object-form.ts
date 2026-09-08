@@ -9,22 +9,21 @@ import {
   toEffectModelObjectCreateSchema,
   toEffectModelObjectUpdateSchema,
 } from "@company/runtime/effect"
-import { Model, modelMetadata } from "company-os/model"
+import type { FormValue, FormValueObject } from "@company/ui/model/form-value"
 
+import { Model, modelMetadata } from "#/app.model.ts"
 import {
   decodeFormSchema,
   FormValidationError,
   type FormSchemaInput,
-} from "@/ui/forms/form-errors"
-import type { FormValue, FormValueObject } from "@/ui/forms/form-value"
-
+} from "#/ui/forms/form-errors.ts"
 import {
   modelObjectProperty,
   type ClientRecord,
   type ClientValue,
   type ModelObject,
-} from "./object-client"
-import { objectTablePropertySchema } from "./object-table/object-table-cell-types"
+} from "#/ui/model/object-client.ts"
+import { objectTablePropertySchema } from "#/ui/model/object-table/object-table-cell-types.ts"
 
 export type ObjectFormMode = "create" | "edit"
 export interface ObjectFormValues {

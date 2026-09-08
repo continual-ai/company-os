@@ -1,10 +1,10 @@
+import { NoteSubject } from "@company/notes/note-subject"
 import { defineObject, schema } from "@company/runtime"
 
-import { AuthorizationScope } from "#modules/access/interfaces/authorization-scope"
-import { User } from "#modules/access/user/model"
-import { Project } from "#modules/engineering/project/model"
-import { NoteSubject } from "#modules/sales/interfaces/note-subject"
-import { Root } from "#root"
+import { Root } from "#/model-root.ts"
+import { AuthorizationScope } from "#/modules/access/interfaces/authorization-scope.ts"
+import { User } from "#/modules/access/user/model.ts"
+import { Project } from "#/modules/engineering/project/model.ts"
 
 export const Issue = defineObject({
   id: "issue",

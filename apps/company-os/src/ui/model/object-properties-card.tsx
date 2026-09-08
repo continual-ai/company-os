@@ -8,10 +8,13 @@ import {
   type ClientRecord,
   type ModelObject,
   type ObjectRecordPresentation,
-} from "./object-client"
-import { objectFormProperties, isSupportedFormSchema } from "./object-form"
-import { objectPropertyValue } from "./object-property-value"
-import { objectTablePropertySchema } from "./object-table/object-table-cell-types"
+} from "#/ui/model/object-client.ts"
+import {
+  objectFormProperties,
+  isSupportedFormSchema,
+} from "#/ui/model/object-form.ts"
+import { objectPropertyValue } from "#/ui/model/object-property-value.tsx"
+import { objectTablePropertySchema } from "#/ui/model/object-table/object-table-cell-types.ts"
 
 export function ObjectPropertiesCard({
   object,

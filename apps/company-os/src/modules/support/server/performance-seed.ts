@@ -1,7 +1,7 @@
 import type { RecordId } from "@company/runtime"
 import { Effect } from "effect"
 
-import { ModelImplementation } from "@/server/model/model-implementation"
+import { ModelImplementation } from "#/server/model/model-implementation.ts"
 
 export const seedSupportPerformance = Effect.fn(
   "@company/seedSupportPerformance"

@@ -1,25 +1,25 @@
 export {
   makeLinkRepository,
   type PostgresLinkRepositoryError,
-} from "./link-repository"
+} from "#/link-repository.ts"
 export {
   makeObjectRepository,
   makeObjectSeedRepository,
   type PostgresRepositoryError,
-} from "./object-repository"
+} from "#/object-repository.ts"
 export {
   resolveRecordAliases,
   type PostgresRecordAliasResolutionError,
-} from "./record-aliases"
-export { type PostgresDatabase } from "./database"
-export { pgTypes } from "./pg-types"
+} from "#/record-aliases.ts"
+export { type PostgresDatabase } from "#/database.ts"
+export { pgTypes } from "#/pg-types.ts"
 export {
   defineTable,
   tableColumns,
   tableName,
   type Table,
   type Column,
-} from "./table"
+} from "#/table.ts"
 export {
   assignments,
   insertValues,
@@ -30,6 +30,6 @@ export {
   conflictColumns,
   type SelectionRow,
   type TableRow,
-} from "./statement"
+} from "#/statement.ts"
 
-export { makePostgresSchema, type PostgresStorage } from "./schema"
+export { makePostgresSchema, type PostgresStorage } from "#/schema.ts"

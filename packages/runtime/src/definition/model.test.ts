@@ -1,17 +1,17 @@
 import { describe, expect, expectTypeOf, it } from "vitest"
 
-import { defineError } from "./error"
-import { defineInterface, type InterfaceType } from "./interface"
-import { defineLink, type LinkType } from "./link"
+import { defineError } from "#/definition/error.ts"
+import { defineInterface, type InterfaceType } from "#/definition/interface.ts"
+import { defineLink, type LinkType } from "#/definition/link.ts"
 import {
   defineModel,
   modelObjectLinkTraversals,
   modelTypeAccepts,
-} from "./model"
-import { defineModule } from "./module"
-import { defineObject, type ObjectType } from "./object"
-import { defineRoot, type RootType } from "./root"
-import { schema } from "./schema"
+} from "#/definition/model.ts"
+import { defineModule } from "#/definition/module.ts"
+import { defineObject, type ObjectType } from "#/definition/object.ts"
+import { defineRoot, type RootType } from "#/definition/root.ts"
+import { schema } from "#/definition/schema.ts"
 
 const TestActor = defineInterface({
   id: "testActor",

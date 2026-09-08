@@ -1,11 +1,10 @@
 import { CurrentInvocation } from "@company/runtime/effect/object-service"
 import { Effect } from "effect"
 
-import { applicationRuntime } from "@/server/application-runtime"
-import { Authentication } from "@/server/auth/authentication"
-
-import { AssetPrecondition } from "./asset-error"
-import { AssetService } from "./asset-service"
+import { AssetPrecondition } from "#/modules/assets/asset/server/asset-error.ts"
+import { AssetService } from "#/modules/assets/asset/server/asset-service.ts"
+import { applicationRuntime } from "#/server/application-runtime.ts"
+import { Authentication } from "#/server/auth/authentication.ts"
 
 async function readUpload(request: Request): Promise<Uint8Array> {
   if (!request.body) throw new Error("Missing upload body.")

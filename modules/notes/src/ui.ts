@@ -1,13 +1,12 @@
-import type { Model } from "company-os/model"
+import type { ObjectUi } from "@company/ui/model/object-ui"
 import { NotebookPenIcon } from "lucide-react"
 
-import type { ObjectUi } from "@/ui/model/module-ui"
+import type { NoteObject } from "#/model.ts"
+import { NoteEditor } from "#/note-editor.tsx"
+import { NoteOverview, NoteSummary } from "#/note-summary.tsx"
+import { noteViews } from "#/views.ts"
 
-import { NoteEditor } from "./note-editor"
-import { NoteOverview, NoteSummary } from "./note-summary"
-import { noteViews } from "./views"
-
-export const noteUi = {
+const noteUi = {
   navigation: {
     order: 4,
     icon: NotebookPenIcon,
@@ -20,4 +19,6 @@ export const noteUi = {
     title: () => "Note",
   },
   collection: { views: noteViews },
-} satisfies ObjectUi<typeof Model.objects.note>
+} satisfies ObjectUi<NoteObject>
+
+export const notesUi = { note: noteUi }

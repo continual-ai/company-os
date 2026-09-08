@@ -1,22 +1,24 @@
 import type { ModelLinkTraversal } from "@company/runtime"
 import { Button } from "@company/ui/components/button"
+import type {
+  FormLinkDeltaValue,
+  FormValue,
+} from "@company/ui/model/form-value"
 import { useInfiniteQuery } from "@tanstack/react-query"
 import { useMemo, useState } from "react"
 
-import { modelCollectionQuery } from "@/model-collection-query"
-import type { FormLinkDeltaValue, FormValue } from "@/ui/forms/form-value"
-
+import { modelCollectionQuery } from "#/model-collection-query.ts"
 import {
   describeReferences,
   linkClientFor,
   type ClientRecord,
   type ModelObject,
-} from "./object-client"
-import { ObjectRecordPill } from "./object-record-identity"
+} from "#/ui/model/object-client.ts"
+import { ObjectRecordPill } from "#/ui/model/object-record-identity.tsx"
 import {
   ObjectReferenceSelect,
   type ReferenceOption,
-} from "./object-reference-select"
+} from "#/ui/model/object-reference-select.tsx"
 
 interface LinkDelta {
   readonly add: ReadonlyArray<string>

@@ -8,9 +8,11 @@ import {
 } from "@company/ui/components/sidebar"
 import { Link, useLocation } from "@tanstack/react-router"
 
-import { useCapabilities } from "@/ui/application/use-capabilities"
-
-import { modelNavigation, modelNavigationChecks } from "./model-navigation"
+import { useCapabilities } from "#/ui/application/use-capabilities.ts"
+import {
+  modelNavigation,
+  modelNavigationChecks,
+} from "#/ui/model/model-navigation.ts"
 
 export function ModuleNavigation() {
   const capabilities = useCapabilities(modelNavigationChecks)

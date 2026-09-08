@@ -9,9 +9,8 @@ import {
 import { Effect } from "effect"
 import { SqlError, UnknownError } from "effect/unstable/sql/SqlError"
 
-import { eventJournal, eventJournalState } from "@/server/database/schema"
-
-import type { PendingEvent } from "./event-buffer"
+import { eventJournal, eventJournalState } from "#/server/database/schema.ts"
+import type { PendingEvent } from "#/server/events/event-buffer.ts"
 
 /** Last work before COMMIT: no business locks or external effects may follow position allocation. */
 export const flushEvents = (

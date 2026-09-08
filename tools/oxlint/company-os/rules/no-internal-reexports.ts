@@ -3,7 +3,7 @@ import { defineRule } from "@oxlint/plugins"
 function isPublicPackageEntrypoint(filename: string): boolean {
   const normalizedFilename = filename.replaceAll("\\", "/")
   return (
-    normalizedFilename.endsWith("/apps/company-os/src/model.ts") ||
+    normalizedFilename.endsWith("/apps/company-os/src/app.model.ts") ||
     /(?:^|\/)packages\/[^/]+\/src\/index\.[cm]?[jt]sx?$/.test(
       normalizedFilename
     )

@@ -1,6 +1,6 @@
-import type { ActionDefinition } from "./action"
-import { definitionId } from "./identity"
-import { schema } from "./schema"
+import type { ActionDefinition } from "#/definition/action.ts"
+import { definitionId } from "#/definition/identity.ts"
+import { schema } from "#/definition/schema.ts"
 
 /** Shared schema binding for custom Queries and Actions; execution semantics stay with the caller. */
 export function bindOperationContract(

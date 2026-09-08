@@ -1,14 +1,14 @@
 import { projection, type SelectionRow, inValues } from "@company/postgres"
-import type { IdentityId, PrincipalId } from "company-os/model"
 import { Context, Effect, Layer } from "effect"
 
-import { Database } from "@/server/database/database"
+import type { IdentityId, PrincipalId } from "#/app.model.ts"
+import { Database } from "#/server/database/database.ts"
 import {
   groupMemberships,
   objects,
   roleAssignments,
   roles,
-} from "@/server/database/schema"
+} from "#/server/database/schema.ts"
 
 const make = Effect.gen(function* () {
   const database = yield* Database

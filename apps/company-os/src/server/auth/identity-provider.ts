@@ -1,6 +1,7 @@
-import type { IdentityId } from "company-os/model"
 import { Config, Context, Data, Effect, Layer } from "effect"
 import { z } from "zod"
+
+import type { IdentityId } from "#/app.model.ts"
 
 const APP_RUNTIME_ASSERTION_HEADER = "x-continual-app-runtime-assertion"
 const APP_RUNTIME_ORIGIN_HEADER = "x-continual-app-runtime-origin"

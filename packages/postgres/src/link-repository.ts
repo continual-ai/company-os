@@ -13,11 +13,16 @@ import {
 import { Effect, Schema } from "effect"
 import type { SqlError } from "effect/unstable/sql/SqlError"
 
-import { type PostgresDatabase } from "./database"
-import type { PostgresStorage } from "./schema"
-import { insertValues } from "./statement"
-import { projection, type SelectionRow, inValues, sqlValue } from "./statement"
-import { tableColumns, type Column, type Table } from "./table"
+import { type PostgresDatabase } from "#/database.ts"
+import type { PostgresStorage } from "#/schema.ts"
+import { insertValues } from "#/statement.ts"
+import {
+  projection,
+  type SelectionRow,
+  inValues,
+  sqlValue,
+} from "#/statement.ts"
+import { tableColumns, type Column, type Table } from "#/table.ts"
 
 interface LinkCursor {
   readonly fingerprint: string

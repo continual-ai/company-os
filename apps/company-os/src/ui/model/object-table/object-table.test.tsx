@@ -1,8 +1,8 @@
-import { Model } from "company-os/model"
 import { renderToStaticMarkup } from "react-dom/server"
 import { expect, it } from "vitest"
 
-import { ObjectTable } from "./object-table"
+import { Model } from "#/app.model.ts"
+import { ObjectTable } from "#/ui/model/object-table/object-table.tsx"
 
 it("renders a read-only identity column when the model uses its record ID as title", () => {
   const html = renderToStaticMarkup(

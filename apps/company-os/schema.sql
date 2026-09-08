@@ -421,6 +421,8 @@ comment on column "line_items"."parent_id" is 'Ownership parent implementing dea
 
 create index "line_items_parent_id_idx" on "line_items"(parent_id);
 
+-- Domain objects: Notes
+
 create table "notes" (
   "id" text not null,
   "parent_id" text not null,

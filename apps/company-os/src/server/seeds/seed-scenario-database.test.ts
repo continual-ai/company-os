@@ -8,24 +8,26 @@ import { CurrentInvocation } from "@company/runtime/effect/object-service"
 import { Effect, Layer } from "effect"
 import { expect } from "vitest"
 
-import { makeApplicationServicesLayer } from "@/server/application-services"
-import { Database } from "@/server/database/database"
-import { itDatabase } from "@/server/database/it-database"
+import { makeApplicationServicesLayer } from "#/server/application-services.ts"
+import { Database } from "#/server/database/database.ts"
+import { itDatabase } from "#/server/database/it-database.ts"
 import {
   assetBlobs,
   companies,
   leads,
   eventJournal,
   seedRuns,
-} from "@/server/database/schema"
-import { systemInvocation } from "@/server/invocation-context"
-import { ModelImplementation } from "@/server/model/model-implementation"
-import { PageTokens } from "@/server/page-tokens"
-
-import { demoScenario } from "./demo-scenario"
-import { performanceScenario } from "./performance-scenario"
-import { runSeedScenario, type SeedScenario } from "./run-seed-scenario"
-import { seedSystem } from "./seed-system"
+} from "#/server/database/schema.ts"
+import { systemInvocation } from "#/server/invocation-context.ts"
+import { ModelImplementation } from "#/server/model/model-implementation.ts"
+import { PageTokens } from "#/server/page-tokens.ts"
+import { demoScenario } from "#/server/seeds/demo-scenario.ts"
+import { performanceScenario } from "#/server/seeds/performance-scenario.ts"
+import {
+  runSeedScenario,
+  type SeedScenario,
+} from "#/server/seeds/run-seed-scenario.ts"
+import { seedSystem } from "#/server/seeds/seed-system.ts"
 
 itDatabase(
   "seeds connected records and real assets once, preserves edits, and rolls back failures",

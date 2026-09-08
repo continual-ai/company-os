@@ -5,6 +5,9 @@
   "description": "Portable semantic definitions, projections, and execution for Company OS.",
   "type": "module",
   "sideEffects": false,
+  "imports": {
+    "#/*": "./src/*"
+  },
   "exports": {
     ".": "./src/index.ts",
     "./effect": "./src/effect-schema.ts",

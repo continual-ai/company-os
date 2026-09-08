@@ -1,7 +1,8 @@
 import { schema } from "@company/runtime"
 import { toEffectSchema } from "@company/runtime/effect"
-import { Model } from "company-os/model"
 import { Schema } from "effect"
+
+import { Model } from "#/app.model.ts"
 
 export const searchableObjects = Object.values(Model.objects).filter(
   (object) => object.search !== undefined

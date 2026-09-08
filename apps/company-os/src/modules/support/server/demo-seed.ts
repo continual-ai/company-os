@@ -1,10 +1,10 @@
 import type { RecordId } from "@company/runtime"
-import { Model } from "company-os/model"
 import { Effect } from "effect"
 
-import type { DemoCustomer } from "@/modules/sales/server/demo-seed"
-import { ModelImplementation } from "@/server/model/model-implementation"
-import { linkSeedRecords } from "@/server/seeds/link-seed-records"
+import { Model } from "#/app.model.ts"
+import type { DemoCustomer } from "#/modules/sales/server/demo-seed.ts"
+import { ModelImplementation } from "#/server/model/model-implementation.ts"
+import { linkSeedRecords } from "#/server/seeds/link-seed-records.ts"
 
 export const seedSupportDemo = Effect.fn("@company/seedSupportDemo")(function* (
   customer: DemoCustomer,

@@ -1,4 +1,8 @@
-import type { AnySchema, InferSchema, SchemaDefinition } from "./schema"
+import type {
+  AnySchema,
+  InferSchema,
+  SchemaDefinition,
+} from "#/definition/schema.ts"
 
 type HasTrue<TValue, TKey extends PropertyKey> =
   TValue extends Record<TKey, true> ? true : false

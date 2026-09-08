@@ -2,7 +2,7 @@
 
 import { defineConfig } from "@continual/tanstack-start/vite"
 
-import { loadLocalEnvironment } from "./tools/local-environment"
+import { loadLocalEnvironment } from "#/server/local-environment.ts"
 
 export default defineConfig({
   tanstackStart: {

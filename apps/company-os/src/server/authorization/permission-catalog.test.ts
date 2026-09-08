@@ -4,7 +4,7 @@ import {
   definedPermissions,
   objectPermission,
   permissionDefinition,
-} from "./permission-catalog"
+} from "#/server/authorization/permission-catalog.ts"
 
 describe("authorization permission catalog", () => {
   it("defines model operations and application capabilities exactly once", () => {

@@ -2,12 +2,11 @@ import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 import { PgClient } from "@effect/sql-pg"
 import { Config, Effect, Redacted } from "effect"
 
-import { applyMigrations } from "@/server/database/migrations"
-import * as Postgres from "@/server/database/postgres"
-import { seedSystem } from "@/server/seeds/seed-system"
-
-import { localDatabaseTarget } from "./db-reset-target"
-import { loadLocalEnvironment } from "./local-environment"
+import { localDatabaseTarget } from "#/server/database/db-reset-target.ts"
+import { applyMigrations } from "#/server/database/migrations.ts"
+import * as Postgres from "#/server/database/postgres.ts"
+import { loadLocalEnvironment } from "#/server/local-environment.ts"
+import { seedSystem } from "#/server/seeds/seed-system.ts"
 
 loadLocalEnvironment()
 

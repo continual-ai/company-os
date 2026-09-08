@@ -1,3 +1,4 @@
+import { NoteSubject } from "@company/notes/note-subject"
 import {
   defineEvent,
   defineObject,
@@ -5,10 +6,9 @@ import {
   standardErrors,
 } from "@company/runtime"
 
-import { Company } from "#modules/sales/company/model"
-import { Contact } from "#modules/sales/contact/model"
-import { NoteSubject } from "#modules/sales/interfaces/note-subject"
-import { Root } from "#root"
+import { Root } from "#/model-root.ts"
+import { Company } from "#/modules/sales/company/model.ts"
+import { Contact } from "#/modules/sales/contact/model.ts"
 
 const CompanyReference = { id: "company" } as const
 const ContactReference = { id: "contact" } as const

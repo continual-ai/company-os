@@ -2,7 +2,7 @@ import { Button } from "@company/ui/components/button"
 import { createFileRoute } from "@tanstack/react-router"
 import { modelMetadata } from "company-os/metadata"
 
-import { appMetadata } from "@/app-metadata"
+import { appMetadata } from "#/app-metadata.ts"
 
 const projects = [
   { name: "Northwind rollout", status: "In progress" },

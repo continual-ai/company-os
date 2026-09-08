@@ -1,7 +1,7 @@
 import { type ImageRef } from "@company/runtime"
 
-import { assetContentUrl } from "./upload"
-import { useAssetNames } from "./use-asset-names"
+import { assetContentUrl } from "#/modules/assets/asset/ui/upload.ts"
+import { useAssetNames } from "#/modules/assets/asset/ui/use-asset-names.ts"
 
 /** Batched metadata hydration and protected content delivery for a field's attachments. */
 export function AssetPreviews({

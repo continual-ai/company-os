@@ -1,8 +1,8 @@
 import { PageToken } from "@company/runtime"
-import { Model } from "company-os/model"
 import { describe, expect, it } from "vitest"
 
-import { objectListRequest } from "./object-collection-query"
+import { Model } from "#/app.model.ts"
+import { objectListRequest } from "#/ui/model/object-collection-query.ts"
 
 describe("object collection queries", () => {
   it("projects table filters and sorting into the portable list contract", () => {

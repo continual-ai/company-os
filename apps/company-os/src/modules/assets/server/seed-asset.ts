@@ -4,10 +4,10 @@ import { basename } from "node:path"
 import { fileURLToPath } from "node:url"
 
 import type { ActionInput } from "@company/runtime"
-import type { Model } from "company-os/model"
 import { Effect } from "effect"
 
-import { AssetService } from "@/modules/assets/asset/server/asset-service"
+import type { Model } from "#/app.model.ts"
+import { AssetService } from "#/modules/assets/asset/server/asset-service.ts"
 
 type UploadInput = ActionInput<typeof Model.objects.asset.actions.beginUpload>
 

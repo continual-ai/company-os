@@ -6,14 +6,14 @@ import {
   Etag,
   type RecordAliasUpdate,
   type ObjectRecord,
-} from "./definition/object"
+} from "#/definition/object.ts"
 import {
   MAX_BATCH_DELETE_SIZE,
   MAX_BATCH_GET_SIZE,
   normalizePageSize,
   PageToken,
-} from "./definition/request"
-import { defineRoot } from "./definition/root"
+} from "#/definition/request.ts"
+import { defineRoot } from "#/definition/root.ts"
 import {
   EmailAddress,
   RecordAlias,
@@ -21,14 +21,14 @@ import {
   RecordId,
   schema,
   Timestamp,
-} from "./definition/schema"
+} from "#/definition/schema.ts"
 import {
   RecordAliasConflict,
   ObjectNotFound,
   ObjectWriteConflict,
   type Repository,
-} from "./effect-object-repository"
-import * as ObjectService from "./effect-object-service"
+} from "#/effect-object-repository.ts"
+import * as ObjectService from "#/effect-object-service.ts"
 
 const Root = defineRoot({ id: "root", name: "Root" })
 const RootId = RecordId("root")

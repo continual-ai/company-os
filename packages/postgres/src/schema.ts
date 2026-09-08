@@ -16,7 +16,7 @@ import {
   quoteLiteral as literal,
   type Table,
   type ColumnDefinition,
-} from "./table"
+} from "#/table.ts"
 
 type TraversalId<
   M extends ModelCatalog,

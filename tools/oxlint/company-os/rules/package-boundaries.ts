@@ -1,5 +1,5 @@
 import { readFileSync, readdirSync } from "node:fs"
-import { join } from "node:path"
+import { extname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
 import { defineRule } from "@oxlint/plugins"
@@ -14,7 +14,7 @@ interface WorkspacePackage {
 }
 
 function packagesIn(
-  parent: "apps" | "packages" | "templates",
+  parent: "apps" | "packages" | "templates" | "modules",
   kind: WorkspacePackage["kind"]
 ): ReadonlyArray<WorkspacePackage> {
   const directory = join(REPOSITORY_ROOT, parent)
@@ -29,7 +29,13 @@ function packagesIn(
           manifest !== null &&
           "name" in manifest &&
           typeof manifest.name === "string"
-          ? [{ directory: entry.name, kind, name: manifest.name }]
+          ? [
+              {
+                directory: `${parent}/${entry.name}`,
+                kind,
+                name: manifest.name,
+              },
+            ]
           : []
       } catch {
         return []
@@ -39,6 +45,7 @@ function packagesIn(
 
 const WORKSPACE_PACKAGES = [
   ...packagesIn("packages", "company"),
+  ...packagesIn("modules", "company"),
   ...packagesIn("apps", "application"),
   ...packagesIn("templates", "application"),
 ]
@@ -56,7 +63,7 @@ const COMPANY_PACKAGE_NAMES = new Map(
 function packageNameForFile(filename: string): string | null {
   const normalizedFilename = filename.replaceAll("\\", "/")
   const libraryMatch = normalizedFilename.match(
-    /(?:^|\/)packages\/([^/]+)(?:\/|$)/
+    /(?:^|\/)((?:packages|modules)\/[^/]+)(?:\/|$)/
   )
   if (libraryMatch)
     return COMPANY_PACKAGE_NAMES.get(libraryMatch[1] ?? "") ?? null
@@ -104,9 +111,10 @@ function forbiddenReason(
   if (
     packageName === "@company/ui" &&
     specifier.startsWith("@company/") &&
-    !isPackage(specifier, "@company/ui")
+    !isPackage(specifier, "@company/ui") &&
+    specifier !== "@company/runtime"
   ) {
-    return "@company/ui owns presentation primitives and cannot depend on business definitions, execution, or applications."
+    return "@company/ui may use portable runtime definitions but cannot depend on domain modules, server execution, or applications."
   }
 
   if (
@@ -140,6 +148,27 @@ function forbiddenReason(
   return null
 }
 
+function privateImportReason(specifier: string): string | null {
+  if (
+    specifier.startsWith("@/") ||
+    (specifier.startsWith("#") && !specifier.startsWith("#/"))
+  )
+    return "Use #/ for private source imports; named private aliases and @/ are not allowed."
+  if (specifier.startsWith("."))
+    return "Use #/ with an explicit file extension for all private source imports, including siblings."
+  if (specifier.startsWith("#/")) {
+    const path = specifier.slice(2)
+    if (
+      path
+        .split("/")
+        .some((part) => part === "." || part === ".." || part === "") ||
+      !extname(path)
+    )
+      return "Use a direct #/ source path with an explicit file extension."
+  }
+  return null
+}
+
 /** Enforce source-level Company OS package ownership and browser/server boundaries. */
 export const packageBoundariesRule = defineRule({
   meta: {
@@ -156,8 +185,11 @@ export const packageBoundariesRule = defineRule({
   createOnce(context) {
     function checkSpecifier(node: ESTree.Node, specifier: string): void {
       const packageName = packageNameForFile(context.filename)
-      if (!packageName) return
-      const reason = forbiddenReason(context.filename, packageName, specifier)
+      const reason =
+        privateImportReason(specifier) ??
+        (packageName
+          ? forbiddenReason(context.filename, packageName, specifier)
+          : null)
       if (!reason) return
 
       context.report({

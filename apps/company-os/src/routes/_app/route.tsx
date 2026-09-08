@@ -1,16 +1,16 @@
 import { Outlet, createFileRoute, redirect } from "@tanstack/react-router"
 import { useEffect, useState } from "react"
 
-import { listEvents } from "@/app-client"
-import { modelUi } from "@/app-ui"
-import { getCurrentUser } from "@/current-user.functions"
-import { modelData } from "@/data-client"
-import { runClientEffect } from "@/model-query-client"
-import { AppShell } from "@/ui/application/app-shell"
-import { allowedCapabilitiesQuery } from "@/ui/application/load-capabilities"
-import { useModelEvents } from "@/ui/application/use-model-events"
-import { modelNavigationChecks } from "@/ui/model/model-navigation"
-import { ModelUiProvider } from "@/ui/model/module-ui"
+import { listEvents } from "#/app-client.ts"
+import { modelUi } from "#/app.ui.ts"
+import { getCurrentUser } from "#/current-user.functions.ts"
+import { modelData } from "#/data-client.ts"
+import { runClientEffect } from "#/model-query-client.ts"
+import { AppShell } from "#/ui/application/app-shell.tsx"
+import { allowedCapabilitiesQuery } from "#/ui/application/load-capabilities.ts"
+import { useModelEvents } from "#/ui/application/use-model-events.ts"
+import { modelNavigationChecks } from "#/ui/model/model-navigation.ts"
+import { ModelUiProvider } from "#/ui/model/module-ui.tsx"
 
 export const Route = createFileRoute("/_app")({
   beforeLoad: async ({ location }) => {

@@ -1,17 +1,16 @@
 import { Layer } from "effect"
 
-import { BlobStorage } from "@/modules/assets/server/blob-storage"
-
-import { AuthorizationRepository } from "./authorization/authorization-repository"
-import { Authorization } from "./authorization/authorization-service"
-import type { Database } from "./database/database"
-import { EventJournal } from "./events/event-journal"
-import { Links } from "./model/link-service"
-import { ModelImplementation } from "./model/model-implementation"
-import { ObjectRepositories } from "./model/object-repositories"
-import { RecordIdentifierResolver } from "./model/record-identifier-resolver"
-import { ModuleServices, moduleServiceLayer } from "./module-services"
-import { PageTokens } from "./page-tokens"
+import { ModuleServices, moduleServiceLayer } from "#/app.server.ts"
+import { BlobStorage } from "#/modules/assets/server/blob-storage.ts"
+import { AuthorizationRepository } from "#/server/authorization/authorization-repository.ts"
+import { Authorization } from "#/server/authorization/authorization-service.ts"
+import type { Database } from "#/server/database/database.ts"
+import { EventJournal } from "#/server/events/event-journal.ts"
+import { Links } from "#/server/model/link-service.ts"
+import { ModelImplementation } from "#/server/model/model-implementation.ts"
+import { ObjectRepositories } from "#/server/model/object-repositories.ts"
+import { RecordIdentifierResolver } from "#/server/model/record-identifier-resolver.ts"
+import { PageTokens } from "#/server/page-tokens.ts"
 
 export interface ApplicationServicesInfrastructure {
   readonly blobStorage?: Layer.Layer<BlobStorage, unknown>

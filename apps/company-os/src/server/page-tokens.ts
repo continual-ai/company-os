@@ -3,7 +3,7 @@ import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto"
 import { PageToken, type PageTokenCodec } from "@company/runtime"
 import { Context, Effect, Layer } from "effect"
 
-import { ApplicationKeys } from "./application-keys"
+import { ApplicationKeys } from "#/server/application-keys.ts"
 
 const VERSION = 1
 const NONCE_BYTES = 12

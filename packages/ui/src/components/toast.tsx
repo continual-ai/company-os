@@ -4,7 +4,6 @@ import {
   Toast as ToastPrimitive,
   type ToastManagerAddOptions,
 } from "@base-ui/react/toast"
-import { cn } from "@company/ui/lib/utils"
 import {
   CircleCheckIcon,
   InfoIcon,
@@ -14,6 +13,8 @@ import {
   XIcon,
 } from "lucide-react"
 import * as React from "react"
+
+import { cn } from "#/lib/utils.ts"
 
 /**
  * Global manager backing the `toast` helpers. It must be connected to exactly

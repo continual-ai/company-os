@@ -1,7 +1,7 @@
 import { getRequest } from "@tanstack/react-start/server"
 import { ConfigProvider, type Effect, Layer, ManagedRuntime } from "effect"
 
-import { application } from "./composition-root"
+import { application } from "#/server/composition-root.ts"
 
 /** Builds the server runtime from the same scalar configuration source on every host. */
 function makeApplicationRuntime(configProvider = ConfigProvider.fromEnv()) {

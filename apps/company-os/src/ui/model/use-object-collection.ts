@@ -1,23 +1,26 @@
 import { type ListRequest, type Page } from "@company/runtime"
-import { hashKey, useInfiniteQuery } from "@tanstack/react-query"
-import { useMemo } from "react"
-
-import { isNewerOrEqualRecord } from "@/model-cache"
-import { modelCollectionQuery } from "@/model-collection-query"
-import type { ModelQueryOptions } from "@/model-query-client"
-import { useCapabilities } from "@/ui/application/use-capabilities"
-
-import type { CollectionDateWindow } from "./collection-dates"
-import { objectCapabilityCheck } from "./object-capabilities"
-import { clientFor, type ClientRecord, type ModelObject } from "./object-client"
-import { objectListRequest } from "./object-collection-query"
 import type {
   ObjectCollectionFilter,
   ObjectCollectionSort,
-} from "./object-collection-view"
-import type { ObjectFormInput } from "./object-form"
-import { useObjectReferences } from "./object-references"
-import type { ObjectTableValue } from "./object-table/object-table-config"
+} from "@company/ui/model/collection-view"
+import { hashKey, useInfiniteQuery } from "@tanstack/react-query"
+import { useMemo } from "react"
+
+import { isNewerOrEqualRecord } from "#/model-cache.ts"
+import { modelCollectionQuery } from "#/model-collection-query.ts"
+import type { ModelQueryOptions } from "#/model-query-client.ts"
+import { useCapabilities } from "#/ui/application/use-capabilities.ts"
+import type { CollectionDateWindow } from "#/ui/model/collection-dates.ts"
+import { objectCapabilityCheck } from "#/ui/model/object-capabilities.ts"
+import {
+  clientFor,
+  type ClientRecord,
+  type ModelObject,
+} from "#/ui/model/object-client.ts"
+import { objectListRequest } from "#/ui/model/object-collection-query.ts"
+import type { ObjectFormInput } from "#/ui/model/object-form.ts"
+import { useObjectReferences } from "#/ui/model/object-references.ts"
+import type { ObjectTableValue } from "#/ui/model/object-table/object-table-config.ts"
 
 export type ObjectCollectionList = (
   request: ListRequest

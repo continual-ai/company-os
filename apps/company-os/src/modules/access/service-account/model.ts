@@ -1,9 +1,9 @@
 import { defineObject, schema } from "@company/runtime"
 
-import { Actor } from "#modules/access/interfaces/actor"
-import { Identity } from "#modules/access/interfaces/identity"
-import { Principal } from "#modules/access/interfaces/principal"
-import { Root } from "#root"
+import { Root } from "#/model-root.ts"
+import { Actor } from "#/modules/access/interfaces/actor.ts"
+import { Identity } from "#/modules/access/interfaces/identity.ts"
+import { Principal } from "#/modules/access/interfaces/principal.ts"
 
 export const ServiceAccount = defineObject({
   id: "serviceAccount",

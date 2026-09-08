@@ -7,11 +7,10 @@ import {
 } from "@company/ui/components/dropdown-menu"
 import { ChevronDownIcon, PlusIcon } from "lucide-react"
 
-import { useCapabilities } from "@/ui/application/use-capabilities"
-
-import { useObjectCreate } from "./object-create-context"
-import { ObjectIcon } from "./object-record-identity"
-import type { RecordRelationship } from "./record-relationships"
+import { useCapabilities } from "#/ui/application/use-capabilities.ts"
+import { useObjectCreate } from "#/ui/model/object-create-context.ts"
+import { ObjectIcon } from "#/ui/model/object-record-identity.tsx"
+import type { RecordRelationship } from "#/ui/model/record-relationships.ts"
 
 /** Creation defaults and authority come from the same relationship projection as its collection. */
 export function RecordRelatedCreateMenu({

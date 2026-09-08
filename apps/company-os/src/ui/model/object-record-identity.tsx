@@ -10,18 +10,17 @@ import { cn } from "@company/ui/lib/utils"
 import { Link } from "@tanstack/react-router"
 import { XIcon } from "lucide-react"
 
-import { assetContentUrl } from "@/modules/assets/asset/ui/upload"
-
-import type { ObjectRecordPresentation } from "./object-client"
-import { objectIcon } from "./object-icon"
-import { objectTablePropertySchema } from "./object-table/object-table-cell-types"
+import { assetContentUrl } from "#/modules/assets/asset/ui/upload.ts"
+import type { ObjectRecordPresentation } from "#/ui/model/object-client.ts"
+import { objectIcon } from "#/ui/model/object-icon.ts"
+import { objectTablePropertySchema } from "#/ui/model/object-table/object-table-cell-types.ts"
 import {
   objectTableImageValue,
   objectTableValueText,
   type ObjectTableImageResolver,
   type ObjectTableRecord,
   type ObjectTableValue,
-} from "./object-table/object-table-config"
+} from "#/ui/model/object-table/object-table-config.ts"
 
 interface ObjectRecordIdentityProps extends ObjectRecordPresentation {
   readonly expanded?: boolean | undefined

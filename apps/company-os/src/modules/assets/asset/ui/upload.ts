@@ -1,8 +1,8 @@
 import { RecordId } from "@company/runtime"
 
-import { data } from "@/app-client"
-import { modelData } from "@/data-client"
-import { executeMutation } from "@/model-query-client"
+import { data } from "#/app-client.ts"
+import { modelData } from "#/data-client.ts"
+import { executeMutation } from "#/model-query-client.ts"
 
 /** Stable authorized delivery path; never persist a signed or provider-specific URL. */
 export function assetContentUrl(assetId: string) {

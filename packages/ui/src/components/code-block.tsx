@@ -1,9 +1,12 @@
-import { cn } from "@company/ui/lib/utils"
 import { CheckIcon, CopyIcon } from "lucide-react"
 import { Fragment, useEffect, useState } from "react"
 
-import { Button } from "./button"
-import type { CodeLanguage, highlightCode } from "./code-block-highlight"
+import { Button } from "#/components/button.tsx"
+import type {
+  CodeLanguage,
+  highlightCode,
+} from "#/components/code-block-highlight.ts"
+import { cn } from "#/lib/utils.ts"
 
 /** Read-only snippets. Plain text is rendered during SSR and while the highlighter loads. */
 export function CodeBlock({
@@ -29,7 +32,7 @@ export function CodeBlock({
   useEffect(() => {
     if (language === "text") return undefined
     let active = true
-    void import("./code-block-highlight")
+    void import("#/components/code-block-highlight.ts")
       .then(({ highlightCode }) => highlightCode(code, language))
       .then(
         (tokens) => {

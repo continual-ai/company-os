@@ -1,7 +1,7 @@
 # Company modules
 
 Each folder owns its business definitions, private server behavior, and specialized presentation.
-`src/model.ts` composes the browser-safe definitions; the server assembly binds custom Effect
+`src/app.model.ts` composes the browser-safe definitions; the server assembly binds custom Effect
 operations. Standard services, storage projections, API contracts, and default UI derive from that
 model. These modules are source-owned starting points that a company can freely modify.
 
@@ -18,3 +18,6 @@ These are editable records, not installed automation runtimes.
 
 Sales demonstrates a transactional lead conversion, scoped SQL report, and multiple affiliations; Assets demonstrates a complete module
 with portable actions, server implementation, and a reusable UI control.
+
+The `notes` folder binds the reusable [Notes package](../../../../modules/notes/README.md) to
+this app root and UI assembly. Sales and Engineering consume its note-subject interface directly.

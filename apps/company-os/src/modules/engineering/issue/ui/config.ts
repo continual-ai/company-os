@@ -1,10 +1,9 @@
-import type { Model } from "company-os/model"
+import { defineCollectionView } from "@company/ui/model/collection-view"
+import type { ObjectUi } from "@company/ui/model/object-ui"
 import { CircleDotIcon } from "lucide-react"
 
-import type { ObjectUi } from "@/ui/model/module-ui"
-import { defineCollectionView } from "@/ui/model/object-collection-view"
-
-import { IssueDescription } from "./description-field"
+import type { Model } from "#/app.model.ts"
+import { IssueDescription } from "#/modules/engineering/issue/ui/description-field.tsx"
 
 export const issueUi = {
   navigation: {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { developmentSeedTarget } from "./db-seed-target"
+import { developmentSeedTarget } from "#/server/database/db-seed-target.ts"
 
 describe("development seed target", () => {
   it("allows local development and explicitly acknowledged remote branches", () => {

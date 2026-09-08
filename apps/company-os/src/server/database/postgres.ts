@@ -2,9 +2,8 @@ import { pgTypes } from "@company/postgres"
 import { PgClient } from "@effect/sql-pg"
 import { Config, Layer, Redacted } from "effect"
 
-import { EventNotifications } from "@/server/events/event-notifications"
-
-import { Database } from "./database"
+import { Database } from "#/server/database/database.ts"
+import { EventNotifications } from "#/server/events/event-notifications.ts"
 
 const SCHEMA_NAME_PATTERN = /^[a-z_][a-z0-9_]*$/
 

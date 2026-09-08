@@ -1,17 +1,18 @@
 "use client"
 
+import { Command as CommandPrimitive } from "cmdk"
+import { SearchIcon, CheckIcon } from "lucide-react"
+import * as React from "react"
+
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@company/ui/components/dialog"
-import { InputGroup, InputGroupAddon } from "@company/ui/components/input-group"
-import { cn } from "@company/ui/lib/utils"
-import { Command as CommandPrimitive } from "cmdk"
-import { SearchIcon, CheckIcon } from "lucide-react"
-import * as React from "react"
+} from "#/components/dialog.tsx"
+import { InputGroup, InputGroupAddon } from "#/components/input-group.tsx"
+import { cn } from "#/lib/utils.ts"
 
 function Command({
   className,

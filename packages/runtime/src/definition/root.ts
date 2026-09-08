@@ -1,11 +1,11 @@
-import { definitionId } from "./identity"
+import { definitionId } from "#/definition/identity.ts"
 import {
   type InterfaceImplementation,
   type InterfaceImplementationConstraints,
   type InterfaceImplementationInputs,
   type InterfaceImplementationMap,
   bindInterfaceImplementations,
-} from "./interface"
+} from "#/definition/interface.ts"
 
 export interface RootType<
   TId extends string = string,

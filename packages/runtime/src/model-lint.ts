@@ -1,5 +1,5 @@
-import type { AnySchema } from "./definition/schema"
-import type { ModelDescription } from "./description"
+import type { AnySchema } from "#/definition/schema.ts"
+import type { ModelDescription } from "#/description.ts"
 
 export interface ModelDiagnostic {
   readonly message: string

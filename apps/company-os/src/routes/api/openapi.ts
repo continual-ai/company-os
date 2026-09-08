@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router"
 
-import { applicationCapabilities } from "@/capabilities"
-import { checkCapability } from "@/server/authorization/check-capability"
-import { application } from "@/server/composition-root"
+import { applicationCapabilities } from "#/capabilities.ts"
+import { checkCapability } from "#/server/authorization/check-capability.ts"
+import { application } from "#/server/composition-root.ts"
 
 export const Route = createFileRoute("/api/openapi")({
   server: {

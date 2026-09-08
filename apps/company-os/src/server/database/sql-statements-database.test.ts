@@ -8,8 +8,8 @@ import {
 import { Effect } from "effect"
 import { expect } from "vitest"
 
-import { Database } from "./database"
-import { itDatabase } from "./it-database"
+import { Database } from "#/server/database/database.ts"
+import { itDatabase } from "#/server/database/it-database.ts"
 
 itDatabase(
   "preserves SQL expressions, JSON arrays, defaults, and model names at the driver boundary",

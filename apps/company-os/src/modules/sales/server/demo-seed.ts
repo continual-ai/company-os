@@ -1,3 +1,4 @@
+import { noteSeed } from "@company/notes/seeds"
 import {
   CurrencyCode,
   Decimal,
@@ -6,14 +7,14 @@ import {
   EmailAddress,
   Timestamp,
 } from "@company/runtime"
-import { Model } from "company-os/model"
 import { Effect } from "effect"
 
-import { UserService } from "@/modules/access/user/server/user-service"
-import { importSeedAsset } from "@/modules/assets/server/seed-asset"
-import { ModelImplementation } from "@/server/model/model-implementation"
-import { linkSeedRecords } from "@/server/seeds/link-seed-records"
-import { ROOT_ID } from "@/system-records"
+import { Model } from "#/app.model.ts"
+import { UserService } from "#/modules/access/user/server/user-service.ts"
+import { importSeedAsset } from "#/modules/assets/server/seed-asset.ts"
+import { ModelImplementation } from "#/server/model/model-implementation.ts"
+import { linkSeedRecords } from "#/server/seeds/link-seed-records.ts"
+import { ROOT_ID } from "#/system-records.ts"
 
 export const seedSalesDemo = Effect.fn("@company/seedSalesDemo")(function* () {
   const { services } = yield* ModelImplementation
@@ -163,12 +164,9 @@ export const seedSalesDemo = Effect.fn("@company/seedSalesDemo")(function* () {
       ]!,
     })
   for (let index = 0; index < 8; index++) {
-    const note = yield* services.note.create({
-      content:
-        index === 0
-          ? "## Pilot review\n\nMaya confirmed the team needs **one place to track customer requests**.\n\n- [x] Map the support workflow\n- [ ] Validate escalation with engineering\n\n> Success means no requests getting lost between teams."
-          : `### Customer follow-up ${index}\n\nReviewed the rollout with ${contacts[index % contacts.length]!.name}. Next step: ${index % 2 === 0 ? "schedule a walkthrough with the support team" : "confirm the pilot acceptance criteria"}.`,
-    })
+    const note = yield* services.note.create(
+      noteSeed(index, contacts[index % contacts.length]!.name)
+    )
     yield* linkSeedRecords(
       Model.objects.note,
       "subjects",

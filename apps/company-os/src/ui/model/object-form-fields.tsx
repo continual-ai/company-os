@@ -1,24 +1,24 @@
-import { useTypedAppFormContext } from "@/ui/forms/app-form"
-import type { FormValue } from "@/ui/forms/form-value"
+import type { FormValue } from "@company/ui/model/form-value"
 
-import type { ResolvedObjectUi } from "./module-ui"
+import { useTypedAppFormContext } from "#/ui/forms/app-form.ts"
+import type { ResolvedObjectUi } from "#/ui/model/module-ui.tsx"
 import {
   parentName,
   type ClientRecord,
   type ModelObject,
-} from "./object-client"
+} from "#/ui/model/object-client.ts"
+import { ObjectFormPropertyField } from "#/ui/model/object-form-property-field.tsx"
+import { ObjectFormSection } from "#/ui/model/object-form-section.tsx"
 import {
   objectFormLinks,
   objectFormProperties,
   stringValue,
   type ObjectFormMode,
   type ObjectFormValues,
-} from "./object-form"
-import { ObjectFormPropertyField } from "./object-form-property-field"
-import { ObjectFormSection } from "./object-form-section"
-import { ObjectLinkEditField } from "./object-link-edit-field"
-import { ObjectReferenceMultiSelect } from "./object-reference-multi-select"
-import { ObjectReferenceSelect } from "./object-reference-select"
+} from "#/ui/model/object-form.ts"
+import { ObjectLinkEditField } from "#/ui/model/object-link-edit-field.tsx"
+import { ObjectReferenceMultiSelect } from "#/ui/model/object-reference-multi-select.tsx"
+import { ObjectReferenceSelect } from "#/ui/model/object-reference-select.tsx"
 
 const emptyObjectFormValues: ObjectFormValues = {}
 const objectFormContextOptions = { defaultValues: emptyObjectFormValues }

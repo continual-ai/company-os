@@ -1,9 +1,9 @@
+import type { RecordUiProps } from "@company/ui/model/object-ui"
 import { useMutation } from "@tanstack/react-query"
-import type { Model } from "company-os/model"
 
-import { data } from "@/app-client"
-import { ConfirmActionButton } from "@/ui/model/confirm-action-button"
-import type { RecordUiProps } from "@/ui/model/module-ui"
+import { data } from "#/app-client.ts"
+import type { Model } from "#/app.model.ts"
+import { ConfirmActionButton } from "#/ui/model/confirm-action-button.tsx"
 
 export function ConvertLeadAction({
   record,

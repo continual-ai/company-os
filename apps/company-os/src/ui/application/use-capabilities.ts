@@ -1,8 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 
-import { capabilityKey, type CapabilityCheck } from "@/capabilities"
-
-import { allowedCapabilitiesQuery } from "./load-capabilities"
+import { capabilityKey, type CapabilityCheck } from "#/capabilities.ts"
+import { allowedCapabilitiesQuery } from "#/ui/application/load-capabilities.ts"
 
 /** Fail-closed advisory checks share the same observable cache as business queries. */
 export function useCapabilities(checks: ReadonlyArray<CapabilityCheck>) {

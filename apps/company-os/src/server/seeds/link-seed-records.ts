@@ -3,10 +3,10 @@ import {
   type ObjectType,
   type RecordId,
 } from "@company/runtime"
-import { Model } from "company-os/model"
 import { Effect } from "effect"
 
-import { Links } from "@/server/model/link-service"
+import { Model } from "#/app.model.ts"
+import { Links } from "#/server/model/link-service.ts"
 
 /** Connects fixtures through the same relationship catalog and mutations as the application. */
 export const linkSeedRecords = Effect.fn("@company/linkSeedRecords")(function* (

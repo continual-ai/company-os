@@ -1,7 +1,7 @@
 import { createContext, useContext } from "react"
 
-import type { ClientRecord, ModelObject } from "./object-client"
-import type { ObjectFormInput } from "./object-form"
+import type { ClientRecord, ModelObject } from "#/ui/model/object-client.ts"
+import type { ObjectFormInput } from "#/ui/model/object-form.ts"
 
 export interface ObjectCreateOptions {
   readonly initialValues?: ObjectFormInput | undefined

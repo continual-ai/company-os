@@ -1,13 +1,13 @@
 import { modelObjects } from "@company/runtime"
 import type { ObjectAccessRequest } from "@company/runtime/effect/object-service"
-import { Model } from "company-os/model"
 
+import { Model } from "#/app.model.ts"
 import {
   capabilityPermission,
   capabilityPermissions,
   isCapabilityPermission,
   type CapabilityPermission,
-} from "@/capabilities"
+} from "#/capabilities.ts"
 
 function permissionOperation(operation: string): string {
   switch (operation) {

@@ -1,14 +1,17 @@
 import { Button } from "@company/ui/components/button"
+import type { CollectionLayout } from "@company/ui/model/collection-layout"
 import { PlusIcon } from "lucide-react"
 
 import {
   CollectionCard,
   CollectionDropZone,
   type CollectionPresentation,
-} from "./collection-card"
-import type { CollectionLayout } from "./collection-layout"
-import { modelObjectProperty, type ClientRecord } from "./object-client"
-import type { ObjectFormInput } from "./object-form"
+} from "#/ui/model/collection-card.tsx"
+import {
+  modelObjectProperty,
+  type ClientRecord,
+} from "#/ui/model/object-client.ts"
+import type { ObjectFormInput } from "#/ui/model/object-form.ts"
 
 export function CollectionKanban({
   presentation,

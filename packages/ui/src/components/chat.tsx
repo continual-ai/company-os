@@ -1,5 +1,8 @@
 "use client"
 
+import { FileTextIcon, PaperclipIcon, SendIcon, XIcon } from "lucide-react"
+import * as React from "react"
+
 import {
   Attachment,
   AttachmentAction,
@@ -10,28 +13,17 @@ import {
   AttachmentMedia,
   AttachmentTitle,
   type AttachmentState,
-} from "@company/ui/components/attachment"
-import { Bubble, BubbleContent } from "@company/ui/components/bubble"
-import { Button } from "@company/ui/components/button"
-import { Card } from "@company/ui/components/card"
+} from "#/components/attachment.tsx"
+import { Bubble, BubbleContent } from "#/components/bubble.tsx"
+import { Button } from "#/components/button.tsx"
+import { Card } from "#/components/card.tsx"
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupButton,
   InputGroupTextarea,
-} from "@company/ui/components/input-group"
-import {
-  Marker,
-  MarkerContent,
-  MarkerIcon,
-} from "@company/ui/components/marker"
-import {
-  Message,
-  MessageAvatar,
-  MessageContent,
-  MessageFooter,
-  MessageHeader,
-} from "@company/ui/components/message"
+} from "#/components/input-group.tsx"
+import { Marker, MarkerContent, MarkerIcon } from "#/components/marker.tsx"
 import {
   MessageScroller,
   MessageScrollerButton,
@@ -39,11 +31,16 @@ import {
   MessageScrollerItem,
   MessageScrollerProvider,
   MessageScrollerViewport,
-} from "@company/ui/components/message-scroller"
-import { Spinner } from "@company/ui/components/spinner"
-import { cn } from "@company/ui/lib/utils"
-import { FileTextIcon, PaperclipIcon, SendIcon, XIcon } from "lucide-react"
-import * as React from "react"
+} from "#/components/message-scroller.tsx"
+import {
+  Message,
+  MessageAvatar,
+  MessageContent,
+  MessageFooter,
+  MessageHeader,
+} from "#/components/message.tsx"
+import { Spinner } from "#/components/spinner.tsx"
+import { cn } from "#/lib/utils.ts"
 
 interface ChatAttachment {
   id: string

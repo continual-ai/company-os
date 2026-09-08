@@ -1,8 +1,8 @@
 import { toEffectSchema, toEffectObjectSchema } from "@company/runtime/effect"
-import { Model } from "company-os/model"
 import { Schema, Tuple } from "effect"
 
-import { LeadConverted } from "@/modules/sales/lead/model"
+import { Model } from "#/app.model.ts"
+import { LeadConverted } from "#/modules/sales/lead/model.ts"
 
 const subject = Schema.Struct({ id: Schema.String, objectType: Schema.String })
 const envelope = {

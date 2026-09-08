@@ -3,11 +3,11 @@ import {
   executableModelOperation,
   type ExecutableModelOperation,
 } from "@company/runtime/effect/model-implementation"
-import { Model } from "company-os/model"
 import { Effect, Logger, Schema } from "effect"
 import { describe, expect, it } from "vitest"
 
-import { withApiErrors } from "./api-error"
+import { Model } from "#/app.model.ts"
+import { withApiErrors } from "#/server/transport/api-error.ts"
 
 type TestFailure =
   | Error

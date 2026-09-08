@@ -1,6 +1,5 @@
 import { Textarea } from "@company/ui/components/textarea"
-
-import type { FieldEditorProps } from "@/ui/model/module-ui"
+import type { FieldEditorProps } from "@company/ui/model/object-ui"
 
 export function IssueDescription({
   id,

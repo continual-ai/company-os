@@ -1,5 +1,6 @@
-import { cn } from "@company/ui/lib/utils"
 import * as React from "react"
+
+import { cn } from "#/lib/utils.ts"
 
 function Card({
   className,

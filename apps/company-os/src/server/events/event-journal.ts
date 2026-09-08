@@ -11,17 +11,16 @@ import { PageToken } from "@company/runtime"
 import { CurrentInvocation } from "@company/runtime/effect/object-service"
 import { Context, Effect, Layer, Schema } from "effect"
 
-import { eventPageSchema, InvalidEventCursor } from "@/events"
-import { Authorization } from "@/server/authorization/authorization-service"
-import { Database } from "@/server/database/database"
+import { eventPageSchema, InvalidEventCursor } from "#/events.ts"
+import { Authorization } from "#/server/authorization/authorization-service.ts"
+import { Database } from "#/server/database/database.ts"
 import {
   eventJournal,
   eventJournalState,
   objects,
-} from "@/server/database/schema"
-import { PageTokens } from "@/server/page-tokens"
-
-import { makeEventWriter } from "./event-writer"
+} from "#/server/database/schema.ts"
+import { makeEventWriter } from "#/server/events/event-writer.ts"
+import { PageTokens } from "#/server/page-tokens.ts"
 
 const cursorSchema = Schema.Struct({
   kind: Schema.Literal("events.v1"),

@@ -1,43 +1,13 @@
+import { CollectionLayoutSchema } from "@company/ui/model/collection-layout"
+import type {
+  ObjectCollectionSearch,
+  ObjectCollectionView,
+  ObjectCollectionViewState,
+} from "@company/ui/model/collection-view"
+import type { ObjectTableFilterOperator } from "@company/ui/model/collection-view"
 import { Schema } from "effect"
 
-import { calendarDay } from "./collection-dates"
-import {
-  CollectionLayoutSchema,
-  type CollectionLayout,
-} from "./collection-layout"
-import type {
-  ObjectTableFilterOperator,
-  ObjectTableFilterValue,
-} from "./object-table/object-table-config"
-
-export interface ObjectCollectionFilter {
-  readonly id: string
-  readonly value: ObjectTableFilterValue
-}
-
-export interface ObjectCollectionSort {
-  readonly desc: boolean
-  readonly id: string
-}
-
-export interface ObjectCollectionViewState {
-  readonly layout?: CollectionLayout
-  readonly date?: string
-  readonly filters: ReadonlyArray<ObjectCollectionFilter>
-  readonly sorting: ReadonlyArray<ObjectCollectionSort>
-  readonly visibility: Readonly<Record<string, boolean>>
-}
-
-export interface ObjectCollectionView {
-  readonly id: string
-  readonly label: string
-  readonly state: ObjectCollectionViewState
-}
-
-export interface ObjectCollectionSearch {
-  readonly state?: ObjectCollectionViewState | undefined
-  readonly view?: string | undefined
-}
+import { calendarDay } from "#/ui/model/collection-dates.ts"
 
 interface ResolvedObjectCollectionView {
   readonly state: ObjectCollectionViewState
@@ -117,29 +87,4 @@ export function objectCollectionStateSearch(
   state: ObjectCollectionViewState
 ): ObjectCollectionSearch {
   return state === view.state ? { view: view.id } : { state, view: view.id }
-}
-
-/** Defines a saved view with empty filters and sorting unless specified. */
-export function defineCollectionView(
-  id: string,
-  label: string,
-  options: {
-    readonly layout?: CollectionLayout
-    readonly columns: ReadonlyArray<string>
-    readonly filters?: ObjectCollectionView["state"]["filters"]
-    readonly sorting?: ObjectCollectionView["state"]["sorting"]
-  }
-): ObjectCollectionView {
-  return {
-    id,
-    label,
-    state: {
-      ...(options.layout === undefined ? {} : { layout: options.layout }),
-      filters: options.filters ?? [],
-      sorting: options.sorting ?? [],
-      visibility: Object.fromEntries(
-        options.columns.map((column) => [column, true])
-      ),
-    },
-  }
 }

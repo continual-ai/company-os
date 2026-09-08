@@ -1,9 +1,10 @@
 import { mergeProps } from "@base-ui/react/merge-props"
 import { useRender } from "@base-ui/react/use-render"
-import { Button } from "@company/ui/components/button"
-import { cn } from "@company/ui/lib/utils"
 import { cva, type VariantProps } from "class-variance-authority"
 import * as React from "react"
+
+import { Button } from "#/components/button.tsx"
+import { cn } from "#/lib/utils.ts"
 
 type AttachmentState = "idle" | "uploading" | "processing" | "error" | "done"
 

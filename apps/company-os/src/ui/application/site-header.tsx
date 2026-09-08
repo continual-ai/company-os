@@ -17,8 +17,8 @@ import {
 import { ArrowLeftIcon } from "lucide-react"
 import { Fragment } from "react"
 
-import { pageMetadataForMatch } from "@/route-metadata"
-import { usePageChrome } from "@/ui/application/page-chrome"
+import { pageMetadataForMatch } from "#/route-metadata.ts"
+import { usePageChrome } from "#/ui/application/page-chrome.tsx"
 
 export function SiteHeader() {
   const pageChrome = usePageChrome()

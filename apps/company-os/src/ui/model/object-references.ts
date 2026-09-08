@@ -1,9 +1,8 @@
 import { MAX_PAGE_SIZE } from "@company/runtime"
 import { useQueries } from "@tanstack/react-query"
-import { Model } from "company-os/model"
 
-import { ROOT_ID } from "@/system-records"
-
+import { Model } from "#/app.model.ts"
+import { ROOT_ID } from "#/system-records.ts"
 import {
   clientFor,
   recordLabel,
@@ -12,8 +11,8 @@ import {
   type ObjectRecordPresentation,
   type ClientRecord,
   type ModelObject,
-} from "./object-client"
-import { objectTablePropertySchema } from "./object-table/object-table-cell-types"
+} from "#/ui/model/object-client.ts"
+import { objectTablePropertySchema } from "#/ui/model/object-table/object-table-cell-types.ts"
 
 function chunks<T>(values: ReadonlyArray<T>, size: number): ReadonlyArray<T[]> {
   const result: T[][] = []

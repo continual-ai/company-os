@@ -1,16 +1,17 @@
-import { useRecordVisit } from "@/ui/application/use-recent-records"
-
 import {
-  useObjectUi,
   type CollectionUiProps,
   type RecordPageUiProps,
-} from "./module-ui"
-import { ObjectCollection } from "./object-collection"
-import { ObjectRecordPage } from "./object-record-page"
-import { objectHref } from "./object-routing"
+} from "@company/ui/model/object-ui"
+
+import { useRecordVisit } from "#/ui/application/use-recent-records.tsx"
+import { useObjectUi } from "#/ui/model/module-ui.tsx"
+import type { ModelObject } from "#/ui/model/object-client.ts"
+import { ObjectCollection } from "#/ui/model/object-collection.tsx"
+import { ObjectRecordPage } from "#/ui/model/object-record-page.tsx"
+import { objectHref } from "#/ui/model/object-routing.ts"
 
 /** A module can replace the page while retaining the standard URL and route state. */
-export function ModelCollectionPage(props: CollectionUiProps) {
+export function ModelCollectionPage(props: CollectionUiProps<ModelObject>) {
   const ui = useObjectUi(props.object)
   const Component = ui?.collection?.pageComponent
   return Component ? (
@@ -25,7 +26,7 @@ export function ModelCollectionPage(props: CollectionUiProps) {
     />
   )
 }
-export function ModelRecordPage(props: RecordPageUiProps) {
+export function ModelRecordPage(props: RecordPageUiProps<ModelObject>) {
   useRecordVisit(props.object.id, props.recordId)
   const ui = useObjectUi(props.object)
   const Component = ui?.record?.pageComponent

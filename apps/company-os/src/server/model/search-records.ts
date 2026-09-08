@@ -5,11 +5,11 @@ import {
   recordSearchResult,
   searchableObjects,
   type RecordSearchInput,
-} from "@/records"
-import { Authorization } from "@/server/authorization/authorization-service"
-import { Database } from "@/server/database/database"
-import { objects, recordSearch } from "@/server/database/schema"
-import { searchVector } from "@/server/database/search-index"
+} from "#/records.ts"
+import { Authorization } from "#/server/authorization/authorization-service.ts"
+import { Database } from "#/server/database/database.ts"
+import { objects, recordSearch } from "#/server/database/schema.ts"
+import { searchVector } from "#/server/database/search-index.ts"
 
 /** One search index, with current row visibility applied before ranking and limits. */
 export const searchRecords = Effect.fn("@company/records.search")(function* (

@@ -10,8 +10,8 @@ import { Etag } from "@company/runtime"
 import { Effect } from "effect"
 import { describe, expect } from "vitest"
 
-import { Database } from "@/server/database/database"
-import { itDatabase } from "@/server/database/it-database"
+import { Database } from "#/server/database/database.ts"
+import { itDatabase } from "#/server/database/it-database.ts"
 import {
   actors,
   anonymousActors,
@@ -20,11 +20,12 @@ import {
   recordAliases,
   roleAssignments,
   roles,
-} from "@/server/database/schema"
+} from "#/server/database/schema.ts"
 import {
   authenticatedInvocation,
   ReservedSystemActor,
-} from "@/server/invocation-context"
+} from "#/server/invocation-context.ts"
+import { seedSystem } from "#/server/seeds/seed-system.ts"
 import {
   ALL_AUTHENTICATED_CALLERS_PRINCIPAL_SET_ID,
   ALL_CALLERS_PRINCIPAL_SET_ID,
@@ -33,9 +34,7 @@ import {
   ROOT_ID,
   SYSTEM_SERVICE_ACCOUNT_ID,
   SYSTEM_ROLE_ASSIGNMENT_ID,
-} from "@/system-records"
-
-import { seedSystem } from "./seed-system"
+} from "#/system-records.ts"
 
 describe("Company OS seeds", () => {
   itDatabase(

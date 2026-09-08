@@ -1,19 +1,21 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { Model } from "company-os/model"
 import { renderToStaticMarkup } from "react-dom/server"
 import { describe, expect, it } from "vitest"
 
-import { SalesModule } from "@/modules/sales/model"
-
-import { ModelCollectionPage, ModelRecordPage } from "./model-pages"
+import { Model } from "#/app.model.ts"
+import { SalesModule } from "#/modules/sales/model.ts"
+import {
+  ModelCollectionPage,
+  ModelRecordPage,
+} from "#/ui/model/model-pages.tsx"
 import {
   composeModelUi,
   defineModuleUi,
   ObjectActions,
   ModelUiProvider,
-} from "./module-ui"
-import { ObjectRecordFeed } from "./object-record-feed"
-import { RecordRelationshipPreviews } from "./record-relationship-previews"
+} from "#/ui/model/module-ui.tsx"
+import { ObjectRecordFeed } from "#/ui/model/object-record-feed.tsx"
+import { RecordRelationshipPreviews } from "#/ui/model/record-relationship-previews.tsx"
 
 const extension = defineModuleUi(SalesModule, {
   lead: {

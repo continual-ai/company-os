@@ -5,8 +5,10 @@ export const modelFetch = createIsomorphicFn()
   .client((input: RequestInfo | URL, init?: RequestInit) => fetch(input, init))
   .server(async (input: RequestInfo | URL, init?: RequestInit) => {
     const { getRequest } = await import("@tanstack/react-start/server")
-    const { applicationRuntime } = await import("./server/application-runtime")
-    const { HttpTransport } = await import("./server/transport/http-transport")
+    const { applicationRuntime } =
+      await import("#/server/application-runtime.ts")
+    const { HttpTransport } =
+      await import("#/server/transport/http-transport.ts")
     const { Effect } = await import("effect")
     const incoming = getRequest()
     const outgoing = new Request(

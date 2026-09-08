@@ -58,7 +58,22 @@ describe("Company OS Oxlint rules", () => {
         })
       )
     )
+    expect(
+      parsed.diagnostics.filter(
+        ({ code, filename }) =>
+          code === "company-os(package-boundaries)" &&
+          filename.endsWith("/import-conventions.ts")
+      )
+    ).toHaveLength(9)
     const expected = [
+      {
+        code: "company-os(package-boundaries)",
+        fixture: "apps/company-os/src/import-conventions.ts",
+      },
+      {
+        code: "company-os(no-internal-reexports)",
+        fixture: "apps/company-os/src/import-conventions.ts",
+      },
       {
         code: "company-os(filename-case)",
         fixture: "packages/runtime/src/bad.Name.ts",

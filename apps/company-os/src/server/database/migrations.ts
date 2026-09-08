@@ -5,8 +5,8 @@ import { Effect } from "effect"
 import * as Migrator from "effect/unstable/sql/Migrator"
 import * as SqlClient from "effect/unstable/sql/SqlClient"
 
-import { Database } from "./database"
-import { databaseSchemaConfig } from "./postgres"
+import { Database } from "#/server/database/database.ts"
+import { databaseSchemaConfig } from "#/server/database/postgres.ts"
 
 const sqlMigration = (file: URL) =>
   Effect.gen(function* () {

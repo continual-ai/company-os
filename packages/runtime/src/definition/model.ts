@@ -1,29 +1,33 @@
-import { type Action, actionKey, isStandardActionId } from "./action"
-import { definitionId } from "./identity"
-import type { InterfaceType } from "./interface"
-import type { LinkTraversal, LinkType } from "./link"
-import type { ModuleDefinition } from "./module"
+import {
+  type Action,
+  actionKey,
+  isStandardActionId,
+} from "#/definition/action.ts"
+import { definitionId } from "#/definition/identity.ts"
+import type { InterfaceType } from "#/definition/interface.ts"
+import type { LinkTraversal, LinkType } from "#/definition/link.ts"
+import type { ModuleDefinition } from "#/definition/module.ts"
 import type {
   ObjectCreateInput,
   ObjectRef,
   ObjectType,
   ObjectUpdateInput,
-} from "./object"
+} from "#/definition/object.ts"
 import {
   standardQueries,
   type Query,
   type CustomQuery,
   type StandardQueries,
-} from "./query"
-import { modelRelationships } from "./relationship"
-import type { RootType } from "./root"
+} from "#/definition/query.ts"
+import { modelRelationships } from "#/definition/relationship.ts"
+import type { RootType } from "#/definition/root.ts"
 import type {
   AnySchema,
   RecordAlias,
   RecordId,
   RecordIdSchema,
   RecordIdentifier,
-} from "./schema"
+} from "#/definition/schema.ts"
 
 type InterfaceImplementerId<
   TObjects extends ReadonlyArray<ObjectType>,

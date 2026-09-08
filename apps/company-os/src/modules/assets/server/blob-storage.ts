@@ -6,8 +6,8 @@ import {
 } from "@company/postgres"
 import { Context, Effect, Layer } from "effect"
 
-import { Database } from "@/server/database/database"
-import { assetBlobs } from "@/server/database/schema"
+import { Database } from "#/server/database/database.ts"
+import { assetBlobs } from "#/server/database/schema.ts"
 
 /** Bounded private blobs. PostgreSQL keeps the default portable across current deployments. */
 export class BlobStorage extends Context.Service<BlobStorage>()(

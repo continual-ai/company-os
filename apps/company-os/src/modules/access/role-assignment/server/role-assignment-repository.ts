@@ -1,9 +1,9 @@
 import { projection, type SelectionRow } from "@company/postgres"
 import { Context, Effect, Layer } from "effect"
 
-import { Database } from "@/server/database/database"
-import { objects, roleAssignments } from "@/server/database/schema"
-import { ObjectRepositories } from "@/server/model/object-repositories"
+import { Database } from "#/server/database/database.ts"
+import { objects, roleAssignments } from "#/server/database/schema.ts"
+import { ObjectRepositories } from "#/server/model/object-repositories.ts"
 
 const make = Effect.gen(function* () {
   const database = yield* Database

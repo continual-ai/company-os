@@ -5,6 +5,9 @@
   "description": "PostgreSQL storage for a Company OS semantic model.",
   "type": "module",
   "sideEffects": false,
+  "imports": {
+    "#/*": "./src/*"
+  },
   "exports": {
     ".": "./src/index.ts"
   },

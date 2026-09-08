@@ -2,10 +2,11 @@
 
 import { mergeProps } from "@base-ui/react/merge-props"
 import { useRender } from "@base-ui/react/use-render"
-import { Button } from "@company/ui/components/button"
-import { cn } from "@company/ui/lib/utils"
 import { ArrowDownIcon } from "lucide-react"
 import * as React from "react"
+
+import { Button } from "#/components/button.tsx"
+import { cn } from "#/lib/utils.ts"
 
 // Scroll anchoring engine ported from the @shadcn/react message-scroller
 // primitive. A hidden spacer after the last item lets a new anchor item pin

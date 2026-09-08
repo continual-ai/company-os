@@ -4,16 +4,16 @@ import {
   type ObjectRecord,
 } from "@company/runtime"
 import type { ObjectInsert } from "@company/runtime/effect/object-repository"
-import { Model } from "company-os/model"
 import { Context, Effect, Layer } from "effect"
 
-import { currentActorId } from "@/server/invocation-context"
-import { ObjectRepositories } from "@/server/model/object-repositories"
+import { Model } from "#/app.model.ts"
+import { currentActorId } from "#/server/invocation-context.ts"
+import { ObjectRepositories } from "#/server/model/object-repositories.ts"
 import {
   makeObjectService,
   makeObjectWriter,
-} from "@/server/model/object-service"
-import { ROOT_ID } from "@/system-records"
+} from "#/server/model/object-service.ts"
+import { ROOT_ID } from "#/system-records.ts"
 
 type UserRecord = ObjectRecord<(typeof Model.objects)["user"]>
 type UserCreateInput = ObjectCreateInput<(typeof Model.objects)["user"]>

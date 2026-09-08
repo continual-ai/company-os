@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query"
 
-import { data } from "@/app-client"
+import { data } from "#/app-client.ts"
 
 const summaryQuery = data.deal.pipelineSummary({})
 

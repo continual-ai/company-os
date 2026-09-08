@@ -1,10 +1,10 @@
+import { NoteSubject } from "@company/notes/note-subject"
 import { defineObject, schema } from "@company/runtime"
 
-import { User } from "#modules/access/user/model"
-import { Campaign } from "#modules/marketing/campaign/model"
-import { Contact } from "#modules/sales/contact/model"
-import { NoteSubject } from "#modules/sales/interfaces/note-subject"
-import { Root } from "#root"
+import { Root } from "#/model-root.ts"
+import { User } from "#/modules/access/user/model.ts"
+import { Campaign } from "#/modules/marketing/campaign/model.ts"
+import { Contact } from "#/modules/sales/contact/model.ts"
 
 export const Outreach = defineObject({
   id: "outreach",

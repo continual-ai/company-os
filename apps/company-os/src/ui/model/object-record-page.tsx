@@ -8,33 +8,32 @@ import {
 import { PencilIcon, PanelLeftIcon } from "lucide-react"
 import { useMemo, useRef, useState } from "react"
 
-import { usePageChromeOverride } from "@/ui/application/page-chrome"
-
-import { ObjectActions, type ResolvedObjectUi } from "./module-ui"
+import { usePageChromeOverride } from "#/ui/application/page-chrome.tsx"
+import { ObjectActions, type ResolvedObjectUi } from "#/ui/model/module-ui.tsx"
 import {
   tableRecord,
   recordLabel,
   modelObjectProperty,
   type ModelObject,
-} from "./object-client"
-import { objectFormProperties } from "./object-form"
-import { ObjectPropertiesCard } from "./object-properties-card"
-import { objectPropertyValue } from "./object-property-value"
-import { ObjectRecordDialog } from "./object-record-dialog"
-import { ObjectRecordIdentity } from "./object-record-identity"
-import { ObjectRelationshipCollection } from "./object-relationship-collection"
-import { objectHref } from "./object-routing"
-import { objectTablePropertySchema } from "./object-table/object-table-cell-types"
-import { RecordIdentifier } from "./record-identifier"
-import { RecordRelatedCreateMenu } from "./record-related-create-menu"
-import { RecordRelationshipPicker } from "./record-relationship-picker"
+} from "#/ui/model/object-client.ts"
+import { objectFormProperties } from "#/ui/model/object-form.ts"
+import { ObjectPropertiesCard } from "#/ui/model/object-properties-card.tsx"
+import { objectPropertyValue } from "#/ui/model/object-property-value.tsx"
+import { ObjectRecordDialog } from "#/ui/model/object-record-dialog.tsx"
+import { ObjectRecordIdentity } from "#/ui/model/object-record-identity.tsx"
+import { ObjectRelationshipCollection } from "#/ui/model/object-relationship-collection.tsx"
+import { objectHref } from "#/ui/model/object-routing.ts"
+import { objectTablePropertySchema } from "#/ui/model/object-table/object-table-cell-types.ts"
+import { RecordIdentifier } from "#/ui/model/record-identifier.tsx"
+import { RecordRelatedCreateMenu } from "#/ui/model/record-related-create-menu.tsx"
+import { RecordRelationshipPicker } from "#/ui/model/record-relationship-picker.tsx"
 import {
   RecordRelationshipPreviews,
   RelationshipCount,
-} from "./record-relationship-previews"
-import { recordRelationships } from "./record-relationships"
-import { useObjectRecord } from "./use-object-record"
-import { useRecordRelationshipPreviews } from "./use-record-relationship-previews"
+} from "#/ui/model/record-relationship-previews.tsx"
+import { recordRelationships } from "#/ui/model/record-relationships.ts"
+import { useObjectRecord } from "#/ui/model/use-object-record.ts"
+import { useRecordRelationshipPreviews } from "#/ui/model/use-record-relationship-previews.ts"
 
 type RecordUi = NonNullable<ResolvedObjectUi["record"]>
 

@@ -1,12 +1,16 @@
 import { Predicate, Schema, SchemaIssue, SchemaTransformation } from "effect"
 
-import type { ApiError, ErrorType } from "./definition/error"
+import type { ApiError, ErrorType } from "#/definition/error.ts"
 import {
   type ModelCatalog,
   modelObjectLinkTraversals,
-} from "./definition/model"
-import { Etag, type ObjectRecord, type ObjectType } from "./definition/object"
-import type { PropertyDefinition } from "./definition/property"
+} from "#/definition/model.ts"
+import {
+  Etag,
+  type ObjectRecord,
+  type ObjectType,
+} from "#/definition/object.ts"
+import type { PropertyDefinition } from "#/definition/property.ts"
 import type {
   AnySchema,
   DecimalSchema,
@@ -15,7 +19,7 @@ import type {
   RecordIdentifier,
   SchemaDefinition,
   StringSchema,
-} from "./definition/schema"
+} from "#/definition/schema.ts"
 import {
   CalendarDate,
   CurrencyCode,
@@ -27,8 +31,8 @@ import {
   RecordId,
   Timestamp,
   WebUrl,
-} from "./definition/schema"
-import type { ValidationError, Violation } from "./definition/standard-error"
+} from "#/definition/schema.ts"
+import type { ValidationError, Violation } from "#/definition/standard-error.ts"
 
 const formatSchemaIssues = SchemaIssue.makeFormatterStandardSchemaV1()
 

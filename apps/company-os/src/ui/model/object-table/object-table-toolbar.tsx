@@ -42,11 +42,11 @@ import type { ReactNode } from "react"
 import {
   objectTableColumnMeta,
   objectTablePropertyColumns,
-} from "./object-table-columns"
-import { type ObjectTableInstance } from "./object-table-config"
-import { ObjectTableFilters } from "./object-table-filter"
-import { ObjectTableProperty } from "./object-table-property"
-import { ObjectTableSearch } from "./object-table-search"
+} from "#/ui/model/object-table/object-table-columns.ts"
+import { type ObjectTableInstance } from "#/ui/model/object-table/object-table-config.ts"
+import { ObjectTableFilters } from "#/ui/model/object-table/object-table-filter.tsx"
+import { ObjectTableProperty } from "#/ui/model/object-table/object-table-property.tsx"
+import { ObjectTableSearch } from "#/ui/model/object-table/object-table-search.tsx"
 
 interface ObjectTableToolbarProps {
   object: ObjectType

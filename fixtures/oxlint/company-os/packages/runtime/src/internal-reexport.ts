@@ -1,1 +1,1 @@
-export { validValue } from "./valid-module"
+export { validValue } from "#/valid-module.ts"

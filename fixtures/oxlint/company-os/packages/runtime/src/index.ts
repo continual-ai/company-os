@@ -1,1 +1,1 @@
-export * from "./valid-module"
+export * from "#/valid-module.ts"

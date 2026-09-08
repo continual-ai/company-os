@@ -1,19 +1,20 @@
 "use client"
 
-import { Button } from "@company/ui/components/button"
-import { Calendar } from "@company/ui/components/calendar"
-import { Input } from "@company/ui/components/input"
-import { Label } from "@company/ui/components/label"
+import { format } from "date-fns"
+import { CalendarIcon, XIcon } from "lucide-react"
+
+import { Button } from "#/components/button.tsx"
+import { Calendar } from "#/components/calendar.tsx"
+import { Input } from "#/components/input.tsx"
+import { Label } from "#/components/label.tsx"
 import {
   Popover,
   PopoverContent,
   PopoverHeader,
   PopoverTitle,
   PopoverTrigger,
-} from "@company/ui/components/popover"
-import { cn } from "@company/ui/lib/utils"
-import { format } from "date-fns"
-import { CalendarIcon, XIcon } from "lucide-react"
+} from "#/components/popover.tsx"
+import { cn } from "#/lib/utils.ts"
 
 export interface DateTimePickerProps {
   readonly "aria-describedby"?: string | undefined

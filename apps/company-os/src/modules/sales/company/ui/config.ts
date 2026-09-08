@@ -1,9 +1,8 @@
-import type { Model } from "company-os/model"
+import type { ObjectUi } from "@company/ui/model/object-ui"
 import { Building2Icon } from "lucide-react"
 
-import type { ObjectUi } from "@/ui/model/module-ui"
-
-import { companyViews } from "./views"
+import type { Model } from "#/app.model.ts"
+import { companyViews } from "#/modules/sales/company/ui/views.ts"
 
 export const companyUi = {
   navigation: {

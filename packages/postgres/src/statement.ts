@@ -1,6 +1,6 @@
 import * as Statement from "effect/unstable/sql/Statement"
 
-import { tableColumns, type Column, type Table } from "./table"
+import { tableColumns, type Column, type Table } from "#/table.ts"
 
 type Input<A> = A extends string ? string : A
 

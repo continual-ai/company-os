@@ -1,7 +1,7 @@
 import { defineObject, schema } from "@company/runtime"
 
-import { Actor } from "#modules/access/interfaces/actor"
-import { Root } from "#root"
+import { Root } from "#/model-root.ts"
+import { Actor } from "#/modules/access/interfaces/actor.ts"
 
 export const AnonymousActor = defineObject({
   id: "anonymousActor",

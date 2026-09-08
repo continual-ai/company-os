@@ -1,15 +1,15 @@
 import { toEffectObjectSchema } from "@company/runtime/effect"
 import type { QueryClient } from "@tanstack/react-query"
-import { Model } from "company-os/model"
 import { Schema } from "effect"
 
+import { Model } from "#/app.model.ts"
 import {
   cacheGeneration,
   changedModelQueries,
   resetModelCache,
   invalidateModelQueries,
-} from "./data-client"
-import type { EventPage } from "./events"
+} from "#/data-client.ts"
+import type { EventPage } from "#/events.ts"
 
 const currentRecords = new Map<string, (value: unknown) => boolean>(
   Object.values(Model.objects).map((object) => [

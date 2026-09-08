@@ -1,10 +1,10 @@
 import { defineModule } from "@company/runtime"
 
-import { Issue } from "./issue/model"
-import { IssuePullRequests } from "./links/issue-pull-requests"
-import { Project } from "./project/model"
-import { PullRequest } from "./pull-request/model"
-import { Repository } from "./repository/model"
+import { Issue } from "#/modules/engineering/issue/model.ts"
+import { IssuePullRequests } from "#/modules/engineering/links/issue-pull-requests.ts"
+import { Project } from "#/modules/engineering/project/model.ts"
+import { PullRequest } from "#/modules/engineering/pull-request/model.ts"
+import { Repository } from "#/modules/engineering/repository/model.ts"
 export const EngineeringModule = defineModule({
   id: "engineering",
   name: "Engineering",

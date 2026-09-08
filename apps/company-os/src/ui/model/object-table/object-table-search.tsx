@@ -1,9 +1,8 @@
-import { CollectionSearch } from "@/ui/model/collection-search"
-
+import { CollectionSearch } from "#/ui/model/collection-search.tsx"
 import {
   readFilterValue,
   type ObjectTableInstance,
-} from "./object-table-config"
+} from "#/ui/model/object-table/object-table-config.ts"
 
 export function ObjectTableSearch({
   table,

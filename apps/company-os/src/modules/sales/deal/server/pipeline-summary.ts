@@ -1,11 +1,11 @@
 import { inValues } from "@company/postgres"
 import { toEffectSchema } from "@company/runtime/effect"
-import { Model } from "company-os/model"
 import { Effect, Schema } from "effect"
 
-import { Authorization } from "@/server/authorization/authorization-service"
-import { Database } from "@/server/database/database"
-import { deals, objects } from "@/server/database/schema"
+import { Model } from "#/app.model.ts"
+import { Authorization } from "#/server/authorization/authorization-service.ts"
+import { Database } from "#/server/database/database.ts"
+import { deals, objects } from "#/server/database/schema.ts"
 
 const Output = toEffectSchema(Model.objects.deal.queries.pipelineSummary.output)
 

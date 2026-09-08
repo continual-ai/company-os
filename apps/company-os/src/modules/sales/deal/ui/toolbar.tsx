@@ -7,7 +7,7 @@ import {
 } from "@company/ui/components/popover"
 import { Link } from "@tanstack/react-router"
 
-import { PipelineSummary } from "./pipeline-summary"
+import { PipelineSummary } from "#/modules/sales/deal/ui/pipeline-summary.tsx"
 
 export function DealToolbar() {
   return (

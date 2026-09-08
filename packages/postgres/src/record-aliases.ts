@@ -9,9 +9,9 @@ import { RecordAliasNotFound } from "@company/runtime/effect/object-repository"
 import { Effect } from "effect"
 import type { SqlError } from "effect/unstable/sql/SqlError"
 
-import { type PostgresDatabase } from "./database"
-import type { PostgresStorage } from "./schema"
-import { projection, type SelectionRow, inValues } from "./statement"
+import { type PostgresDatabase } from "#/database.ts"
+import type { PostgresStorage } from "#/schema.ts"
+import { projection, type SelectionRow, inValues } from "#/statement.ts"
 
 export type PostgresRecordAliasResolutionError = RecordAliasNotFound | SqlError
 

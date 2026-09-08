@@ -50,19 +50,18 @@ import {
 } from "react"
 import type { ReactNode } from "react"
 
-import { CollectionPagination } from "@/ui/model/collection-pagination"
-import { ObjectIcon } from "@/ui/model/object-record-identity"
-
-import { ObjectTableCell } from "./object-table-cell"
+import { CollectionPagination } from "#/ui/model/collection-pagination.tsx"
+import { ObjectIcon } from "#/ui/model/object-record-identity.tsx"
 import {
   objectTableCellSelectionClassName,
   objectTablePinnedCellClassName,
-} from "./object-table-cell-styles"
+} from "#/ui/model/object-table/object-table-cell-styles.ts"
 import {
   isObjectTableCellEditable,
   objectTableCellShouldExpand,
-} from "./object-table-cell-types"
-import type { ObjectTableColumn } from "./object-table-columns"
+} from "#/ui/model/object-table/object-table-cell-types.ts"
+import { ObjectTableCell } from "#/ui/model/object-table/object-table-cell.tsx"
+import type { ObjectTableColumn } from "#/ui/model/object-table/object-table-columns.ts"
 import {
   objectTableFeatures,
   objectTableValueText,
@@ -70,18 +69,18 @@ import {
   type ObjectTableRecordResolver,
   type ObjectTableRecord,
   type ObjectTableValue,
-} from "./object-table-config"
-import { useObjectTableNavigation } from "./object-table-navigation"
-import { ObjectTableProperty } from "./object-table-property"
+} from "#/ui/model/object-table/object-table-config.ts"
+import { useObjectTableNavigation } from "#/ui/model/object-table/object-table-navigation.ts"
+import { ObjectTableProperty } from "#/ui/model/object-table/object-table-property.tsx"
 import {
   ObjectTableColumnMenu,
   ObjectTableToolbar,
-} from "./object-table-toolbar"
+} from "#/ui/model/object-table/object-table-toolbar.tsx"
 import {
   useObjectTableRows,
   tableHeaderHeight,
   tableRowHeight,
-} from "./object-table-virtualization"
+} from "#/ui/model/object-table/object-table-virtualization.ts"
 
 export interface ObjectTableProps {
   canDeleteRecord?: ((recordId: string) => boolean) | undefined

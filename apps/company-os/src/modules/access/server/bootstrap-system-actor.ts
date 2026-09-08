@@ -5,18 +5,18 @@ import {
   type SelectionRow,
   inValues,
 } from "@company/postgres"
-import type { Model } from "company-os/model"
 import { Data, Effect } from "effect"
 
-import { Database } from "@/server/database/database"
+import type { Model } from "#/app.model.ts"
+import { Database } from "#/server/database/database.ts"
 import {
   actors,
   authorizationScopes,
   identities,
   objects,
   roots,
-} from "@/server/database/schema"
-import { ROOT_ID, SYSTEM_SERVICE_ACCOUNT_ID } from "@/system-records"
+} from "#/server/database/schema.ts"
+import { ROOT_ID, SYSTEM_SERVICE_ACCOUNT_ID } from "#/system-records.ts"
 
 class SystemActorBootstrapConflict extends Data.TaggedError(
   "SystemActorBootstrapConflict"

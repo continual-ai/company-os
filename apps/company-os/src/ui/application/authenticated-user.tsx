@@ -1,6 +1,6 @@
 import { createContext, useContext } from "react"
 
-import type { AuthenticatedUser } from "@/authentication"
+import type { AuthenticatedUser } from "#/authentication.ts"
 
 const AuthenticatedUserContext = createContext<AuthenticatedUser | null>(null)
 

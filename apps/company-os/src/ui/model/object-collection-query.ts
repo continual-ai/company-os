@@ -3,18 +3,19 @@ import {
   type ListRequest,
   type PropertyDefinition,
 } from "@company/runtime"
-
-import { type CollectionDateWindow } from "./collection-dates"
-import { modelObjectProperty, type ModelObject } from "./object-client"
 import type {
   ObjectCollectionFilter,
   ObjectCollectionSort,
-} from "./object-collection-view"
-import { objectTablePropertySchema } from "./object-table/object-table-cell-types"
+} from "@company/ui/model/collection-view"
+import { type ObjectTableFilterValue } from "@company/ui/model/collection-view"
+
+import { type CollectionDateWindow } from "#/ui/model/collection-dates.ts"
 import {
-  readFilterValue,
-  type ObjectTableFilterValue,
-} from "./object-table/object-table-config"
+  modelObjectProperty,
+  type ModelObject,
+} from "#/ui/model/object-client.ts"
+import { objectTablePropertySchema } from "#/ui/model/object-table/object-table-cell-types.ts"
+import { readFilterValue } from "#/ui/model/object-table/object-table-config.ts"
 
 type RuntimeFilter =
   | {

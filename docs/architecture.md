@@ -1,8 +1,8 @@
 # Architecture
 
 Company OS is one source-owned modular application. A domain lives in
-`apps/company-os/src/modules/<domain>`: its portable definitions, private server behavior, and
-specialized interface live together. PostgreSQL is the authority for business records. People,
+`apps/company-os/src/modules/<domain>` or a source-owned package under `modules/<domain>`:
+its portable definitions, server behavior, and specialized interface live together. PostgreSQL is the authority for business records. People,
 integrations, and agents use the same governed operations through HTTP, the typed client, or MCP.
 
 Use **app** for an application and its configuration, **model** for the shared domain
@@ -13,18 +13,19 @@ not the app's display name.
 
 ## Boundaries
 
-| Source                         | Responsibility                                                                                        |
-| ------------------------------ | ----------------------------------------------------------------------------------------------------- |
-| `apps/company-os/src/modules`  | Editable business modules: Access, Sales, Marketing, Support, Engineering, Assets, and your additions |
-| `apps/company-os/src/model.ts` | Explicit composition of the one closed model; public as `company-os/model`                            |
-| `apps/company-os/src/server`   | Application assembly, identity, authorization, transactions, migrations, and transports               |
-| `apps/company-os/src/ui/model` | Default tables, forms, detail pages, and relationship navigation                                      |
-| `packages/runtime`             | Portable definitions and reusable Effect execution/HTTP/MCP machinery                                 |
-| `packages/postgres`            | Server-only PostgreSQL projection and repository implementation                                       |
-| `packages/ui`                  | Source-owned presentation primitives and design tokens                                                |
-| `templates/*`                  | Executable starters for optional interfaces over the central app                                      |
+| Source                             | Responsibility                                                                                        |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `apps/company-os/src/modules`      | Editable business modules: Access, Sales, Marketing, Support, Engineering, Assets, and your additions |
+| `apps/company-os/src/app.model.ts` | Explicit composition of the one closed model; public as `company-os/model`                            |
+| `apps/company-os/src/server`       | Application assembly, identity, authorization, transactions, migrations, and transports               |
+| `apps/company-os/src/ui/model`     | Default tables, forms, detail pages, and relationship navigation                                      |
+| `packages/runtime`                 | Portable definitions and reusable Effect execution/HTTP/MCP machinery                                 |
+| `packages/postgres`                | Server-only PostgreSQL projection and repository implementation                                       |
+| `modules/notes`                    | Reusable Notes model, Markdown UI, and deterministic seed content                                     |
+| `packages/ui`                      | Design tokens, base components, and reusable model UI contracts                                       |
+| `templates/*`                      | Executable starters for optional interfaces over the central app                                      |
 
-The model export may depend only on portable `@company/runtime` definitions. A recursive import
+The model export composes browser-safe app and module-package definitions using portable `@company/runtime` APIs. A recursive import
 check rejects Effect, UI, server code, and provider imports anywhere in that export's dependency
 graph. The `company-os/metadata` export is equally browser-safe. Optional apps import those public
 exports and call governed APIs; they cannot import private server modules. There is one migration
@@ -33,7 +34,8 @@ ledger and business authority, regardless of how many interfaces a company deplo
 Modules are copied and edited as ordinary source. Installing one means composing its model and,
 when it has custom behavior, binding its operation functions at the application assembly. No dynamic
 discovery, runtime unloading, service locator, or second plugin container is involved. Removing a
-module that already owns data requires an explicit migration and policy review.
+module in a customized app with durable data requires an explicit migration and policy review.
+For this disposable template, update composition and regenerate the initial baseline.
 
 Start with the [module authoring guide](modules.md). Standard object behavior is derived; custom
 operation implementations are needed only for additional behavior or invariants. Generic routes give installed
@@ -43,7 +45,8 @@ binding custom operations and UI once. UI contributions control navigation, save
 record tabs/overview, property editors, and page replacements. Standard routes consume those
 contributions; they contain no per-object presentation switches.
 
-Each object owns its `model.ts`, custom operations under `server/`, and presentation under `ui/`.
+Larger modules give each object its `model.ts`, custom operations under `server/`, and presentation under `ui/`.
+A small reusable module can use a model factory accepting the app root, as Notes does.
 `ui/config.ts` registers components; module-level entrypoints compose them. Page and form assembly
 resolve UI configuration and pass explicit props to standard components. Additive extensions
 (`additionalTabs`, toolbar controls, Action placements) and replacements (pages, overview, field
@@ -148,3 +151,14 @@ delete a potentially shared asset. Old placeholder asset IDs from earlier forks 
 `makeApplicationLayer` accepts a replacement BlobStorage layer; any remote implementation must also
 address retention and deletion of external bytes rather than assuming PostgreSQL foreign keys
 will remove them.
+
+## Private imports
+
+Each source package maps `#/*` to `./src/*` in `package.json`. Use `#/path/filename.ts`
+(or `.tsx`) for all private imports, including files in the same folder. Cross-package imports
+use declared package exports without source extensions. The development tooling
+package has its source at the package root and maps `#/*` to `./*`.
+
+Private imports name concrete files, so TypeScript, Node-based scripts, and app builds use the
+same mapping without `tsconfig.paths`. Node 24.14+ on the 24.x line or Node 25.4+ is required.
+The existing package-boundaries Oxlint rule enforces the import convention.

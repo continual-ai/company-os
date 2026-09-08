@@ -2,10 +2,10 @@ import { PageToken, type ListRequest } from "@company/runtime"
 import { InfiniteQueryObserver } from "@tanstack/react-query"
 import { expect, it } from "vitest"
 
-import { createModelDataClient, resetModelCache } from "./data-client"
-import { applyModelChanges } from "./model-cache"
-import { modelCollectionQuery } from "./model-collection-query"
-import { modelQuery } from "./model-query-client"
+import { createModelDataClient, resetModelCache } from "#/data-client.ts"
+import { applyModelChanges } from "#/model-cache.ts"
+import { modelCollectionQuery } from "#/model-collection-query.ts"
+import { modelQuery } from "#/model-query-client.ts"
 
 it("reuses the loader, retains pages on failure, and rebuilds cursors on refresh", async () => {
   const { queryClient: cache, dispose } = createModelDataClient()

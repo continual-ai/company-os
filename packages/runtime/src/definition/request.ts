@@ -1,8 +1,11 @@
 import { Brand } from "effect"
 
-import type { ObjectRecord, ObjectType } from "./object"
-import type { InferProperty, PropertyDefinition } from "./property"
-import type { InferInputSchema, RecordIdentifier } from "./schema"
+import type { ObjectRecord, ObjectType } from "#/definition/object.ts"
+import type {
+  InferProperty,
+  PropertyDefinition,
+} from "#/definition/property.ts"
+import type { InferInputSchema, RecordIdentifier } from "#/definition/schema.ts"
 
 export const DEFAULT_PAGE_SIZE = 50 as const
 export const MAX_PAGE_SIZE = 100 as const

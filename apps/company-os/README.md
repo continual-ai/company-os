@@ -55,11 +55,11 @@ through the same contract to every caller.
 
 Module registration has three independent roots:
 
-| Root                                                             | Contribution                                                       |
-| ---------------------------------------------------------------- | ------------------------------------------------------------------ |
-| [`src/model.ts`](src/model.ts)                                   | Portable module definitions; exported as `company-os/model`        |
-| [`src/server/module-services.ts`](src/server/module-services.ts) | Custom Effect services and their layers                            |
-| [`src/app-ui.ts`](src/app-ui.ts)                                 | Module navigation, views, actions, tabs, editors, and custom pages |
+| Root                                     | Contribution                                                       |
+| ---------------------------------------- | ------------------------------------------------------------------ |
+| [`src/app.model.ts`](src/app.model.ts)   | Portable module definitions; exported as `company-os/model`        |
+| [`src/app.server.ts`](src/app.server.ts) | Custom Effect services and their layers                            |
+| [`src/app.ui.ts`](src/app.ui.ts)         | Module navigation, views, actions, tabs, editors, and custom pages |
 
 Standard objects only need the model registration. The default services and generic routes derive
 from it. A recursive import check keeps React, Effect, storage, and provider code out of the public

@@ -4,7 +4,7 @@ import {
   objectTableNavigationInitialState,
   reduceObjectTableNavigationState,
   type ObjectTableCellAddress,
-} from "./object-table-navigation"
+} from "#/ui/model/object-table/object-table-navigation.ts"
 
 const firstCell: ObjectTableCellAddress = {
   columnId: "name",

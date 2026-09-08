@@ -5,13 +5,12 @@ import {
   sqlValue,
 } from "@company/postgres"
 import { modelTypeAccepts, type ObjectType } from "@company/runtime"
-import { Model } from "company-os/model"
 import { Effect } from "effect"
 
-import { makeEventWriter } from "@/server/events/event-writer"
-
-import type { Database } from "./database"
-import { Storage } from "./schema"
+import { Model } from "#/app.model.ts"
+import type { Database } from "#/server/database/database.ts"
+import { Storage } from "#/server/database/schema.ts"
+import { makeEventWriter } from "#/server/events/event-writer.ts"
 
 const cascades = (cardinality: string) => cardinality !== "one"
 

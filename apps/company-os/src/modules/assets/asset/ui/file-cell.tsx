@@ -7,11 +7,10 @@ import {
 } from "@company/ui/components/popover"
 import { PaperclipIcon } from "lucide-react"
 
-import { ObjectTableCellSurface } from "@/ui/model/object-table/object-table-cell-surface"
-import { objectTablePropertySchema } from "@/ui/model/object-table/object-table-cell-types"
-import type { ObjectTableValue } from "@/ui/model/object-table/object-table-config"
-
-import { AssetPreviews } from "./asset-preview"
+import { AssetPreviews } from "#/modules/assets/asset/ui/asset-preview.tsx"
+import { ObjectTableCellSurface } from "#/ui/model/object-table/object-table-cell-surface.tsx"
+import { objectTablePropertySchema } from "#/ui/model/object-table/object-table-cell-types.ts"
+import type { ObjectTableValue } from "#/ui/model/object-table/object-table-config.ts"
 
 /** File metadata loads when the user opens the cell, never once per table row. */
 export function FileCell({

@@ -1,7 +1,7 @@
 import { expect, expectTypeOf, it } from "vitest"
 
-import { Etag } from "./object"
-import { PageToken } from "./request"
+import { Etag } from "#/definition/object.ts"
+import { PageToken } from "#/definition/request.ts"
 import {
   CalendarDate,
   CurrencyCode,
@@ -15,7 +15,7 @@ import {
   RecordId,
   Timestamp,
   WebUrl,
-} from "./schema"
+} from "#/definition/schema.ts"
 
 it("constructs nominally distinct standard values through validated brands", () => {
   const AccountId = RecordId("account")

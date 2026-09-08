@@ -1,8 +1,7 @@
-import { Model } from "company-os/model"
 import { describe, expect, it } from "vitest"
 
-import { FormValidationError } from "@/ui/forms/form-errors"
-
+import { Model } from "#/app.model.ts"
+import { FormValidationError } from "#/ui/forms/form-errors.ts"
 import {
   dateTimeLocalValue,
   decodeObjectForm,
@@ -10,7 +9,7 @@ import {
   objectFormDefaultValues,
   objectFormLinks,
   objectFormProperties,
-} from "./object-form"
+} from "#/ui/model/object-form.ts"
 
 describe("object forms", () => {
   it("preserves initial relationship targets through create decoding", () => {

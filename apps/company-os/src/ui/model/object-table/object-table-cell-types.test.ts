@@ -9,7 +9,7 @@ import {
   objectTableLinkHref,
   objectTableUrlDisplayValue,
   parseObjectTableCellInput,
-} from "./object-table-cell-types"
+} from "#/ui/model/object-table/object-table-cell-types.ts"
 
 describe("objectTableLinkHref", () => {
   it("builds links only for URL values", () => {

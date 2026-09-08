@@ -8,11 +8,13 @@ import {
 import { PlusIcon } from "lucide-react"
 import { useMemo } from "react"
 
-import { useCapabilities } from "@/ui/application/use-capabilities"
-
-import { objectCapabilityCheck } from "./object-capabilities"
-import { recordObjectTypes, type ModelObject } from "./object-client"
-import { ObjectIcon } from "./object-record-identity"
+import { useCapabilities } from "#/ui/application/use-capabilities.ts"
+import { objectCapabilityCheck } from "#/ui/model/object-capabilities.ts"
+import {
+  recordObjectTypes,
+  type ModelObject,
+} from "#/ui/model/object-client.ts"
+import { ObjectIcon } from "#/ui/model/object-record-identity.tsx"
 
 export function creatableReferenceObjects(
   typeId: string

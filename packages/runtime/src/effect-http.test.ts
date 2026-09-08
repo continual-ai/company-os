@@ -1,14 +1,14 @@
 import { OpenApi } from "effect/unstable/httpapi"
 import { afterAll, describe, expect, it } from "vitest"
 
-import { defineError } from "./definition/error"
-import { defineInterface } from "./definition/interface"
-import { defineModel } from "./definition/model"
-import { defineModule } from "./definition/module"
-import { defineObject } from "./definition/object"
-import { defineRoot } from "./definition/root"
-import { schema } from "./definition/schema"
-import { createApiReference, createModelHttpApi } from "./effect-http"
+import { defineError } from "#/definition/error.ts"
+import { defineInterface } from "#/definition/interface.ts"
+import { defineModel } from "#/definition/model.ts"
+import { defineModule } from "#/definition/module.ts"
+import { defineObject } from "#/definition/object.ts"
+import { defineRoot } from "#/definition/root.ts"
+import { schema } from "#/definition/schema.ts"
+import { createApiReference, createModelHttpApi } from "#/effect-http.ts"
 
 const ArchiveFailed = defineError({
   name: "Archive failed",

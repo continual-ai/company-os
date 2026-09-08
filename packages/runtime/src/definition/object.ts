@@ -6,30 +6,30 @@ import {
   type NormalizedActions,
   bindActions,
   standardActions,
-} from "./action"
-import { definitionId } from "./identity"
+} from "#/definition/action.ts"
+import { definitionId } from "#/definition/identity.ts"
 import {
   type InterfaceImplementation,
   type InterfaceImplementationConstraints,
   type InterfaceImplementationInputs,
   type InterfaceImplementationMap,
   bindInterfaceImplementations,
-} from "./interface"
-import type { InterfaceType } from "./interface"
+} from "#/definition/interface.ts"
+import type { InterfaceType } from "#/definition/interface.ts"
 import {
   type InferProperties,
   type InferProperty,
   type NormalizeProperties,
   type Properties,
   normalizeProperties,
-} from "./property"
+} from "#/definition/property.ts"
 import {
   bindQueries,
   type BoundQueries,
   type CustomQuery,
   type QueryDefinitions,
-} from "./query"
-import type { RootType } from "./root"
+} from "#/definition/query.ts"
+import type { RootType } from "#/definition/root.ts"
 import type {
   AnySchema,
   EnumSchema,
@@ -39,8 +39,8 @@ import type {
   RecordId,
   RecordIdentifier,
   Timestamp,
-} from "./schema"
-import { assertReferencePropertyName } from "./schema"
+} from "#/definition/schema.ts"
+import { assertReferencePropertyName } from "#/definition/schema.ts"
 
 declare const parentRecordType: unique symbol
 declare const actorRecordType: unique symbol

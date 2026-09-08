@@ -1,11 +1,12 @@
+import { noteSeed } from "@company/notes/seeds"
 import { DomainName, RecordId, EmailAddress } from "@company/runtime"
-import { Model } from "company-os/model"
 import { Effect } from "effect"
 
-import { importSeedAsset } from "@/modules/assets/server/seed-asset"
-import { ModelImplementation } from "@/server/model/model-implementation"
-import { linkSeedRecords } from "@/server/seeds/link-seed-records"
-import { ROOT_ID } from "@/system-records"
+import { Model } from "#/app.model.ts"
+import { importSeedAsset } from "#/modules/assets/server/seed-asset.ts"
+import { ModelImplementation } from "#/server/model/model-implementation.ts"
+import { linkSeedRecords } from "#/server/seeds/link-seed-records.ts"
+import { ROOT_ID } from "#/system-records.ts"
 
 export const seedSalesPerformance = Effect.fn("@company/seedSalesPerformance")(
   function* (size: number) {
@@ -95,9 +96,7 @@ export const seedSalesPerformance = Effect.fn("@company/seedSalesPerformance")(
         ]!,
         source: (["inbound", "referral", "outbound"] as const)[index % 3]!,
       })
-      const note = yield* services.note.create({
-        content: `### Review ${serial}\n\nDiscussed the onboarding plan with **${contact.name}**.\n\n${index % 5 === 0 ? "- [x] Confirm data mapping\n- [ ] Review exceptions\n\n" : ""}${"Keep customer context available when moving between records. ".repeat(index % 9 === 0 ? 30 : 2)}`,
-      })
+      const note = yield* services.note.create(noteSeed(index, contact.name))
       yield* linkSeedRecords(
         Model.objects.note,
         "subjects",

@@ -69,8 +69,9 @@ Direction, and Vision distinct. The canonical skills live in `.agents/skills`; `
 - `@company/postgres` is the reusable server-only PostgreSQL adapter. It implements runtime
   repository contracts and may depend on `@company/runtime`, but it does not own model definitions,
   migrations, credentials, custom persistence queries, or application Effect service identities.
-- `@company/ui` owns shared presentation primitives and does not depend on the model, runtime,
-  persistence, or applications.
+- `@company/ui` owns design tokens, base components, and reusable model UI under `model/*`.
+  It may consume portable `@company/runtime` definitions, but not domain modules, server execution,
+  persistence, or applications. Base components do not import the model UI layer.
 - Other apps may consume only `company-os/model` and `company-os/metadata` from the central app.
   They must not import its private implementations. The recursive model import check enforces
   browser safety even though domain definitions and implementations are colocated.
@@ -80,14 +81,18 @@ Direction, and Vision distinct. The canonical skills live in `.agents/skills`; `
 - Hosted Continual integration must remain optional. Add a source-owned adapter only for a concrete
   platform contract; environment injection alone does not justify another package.
 
-Use explicit imports inside packages. Do not add internal barrel files, wildcard exports, or
+Use explicit imports inside packages. Do not add internal barrel files, `export *` declarations, or
 re-export chains. A package may expose one deliberate top-level facade with explicit named
-re-exports when registered in the Company OS Oxlint rule.
+re-exports when registered in the Company OS Oxlint rule. Public component directories may use
+package export patterns such as `./components/*`; domain modules expose deliberate entrypoints.
 
 Import another workspace through its declared package name and public exports, never through a
-relative filesystem path or a TypeScript `paths` shortcut. Use `@/*` for app-local imports that
-would otherwise traverse a parent directory and simple relative imports within a package.
-Package-local generator aliases such as `@company/ui/*` may resolve back into the same package. Oxlint
+relative filesystem path or a TypeScript `paths` shortcut. All private source imports, including
+siblings, use `#/` with an explicit `.ts` or `.tsx` extension, mapped through that package's
+`package.json` imports to its source root. Asset imports retain their actual file extensions.
+Do not use relative source imports, `@/`, or named private shortcuts such as `#root`.
+Relative paths in configuration mappings and asset URLs are unaffected.
+Keep real scoped package imports such as `@company/ui/components/button` for public package APIs. Oxlint
 and `turbo boundaries` enforce these conventions.
 
 ## Adding and deploying apps
@@ -130,22 +135,28 @@ platform's runtime identity headers from the incoming request; no app mints iden
 
 ## Domain modules
 
-Keep domain definitions, custom server behavior, and specialized UI under `src/modules/<domain>`.
+Keep app-specific domain definitions, custom server behavior, and specialized UI under
+`src/modules/<domain>`. Reusable modules live in source-owned pnpm packages under `modules/<name>`,
+with explicit, separate model, UI, seed, and server exports only when needed. They never import an
+app; accept app-specific definitions or capabilities explicitly. Small packages may keep an object
+and its owned Links together in one model factory rather than copying the larger module layout.
 Each object lives in `<object>/model.ts`, with custom operations in `<object>/server/` and presentation
 in `<object>/ui/`. Names use singular kebab-case. `ui/config.ts` registers typed extensions; named
 `.tsx` files implement components. Module-level `model.ts`, `server.ts`, and `ui.ts` only compose
 contributions. Put Links in `links/` and interfaces in `interfaces/`; a relationship has one owner.
 Use a module-level `server/` directory only for capabilities shared across objects.
-Compose portable definitions explicitly in `src/model.ts`; standard services and default routes
+Compose portable definitions explicitly in `src/app.model.ts`; standard services and default routes
 are derived. Custom Queries and Actions bind named Effect functions in the module's `server.ts`; compose
-server contributions in `src/server/module-services.ts`. Module-owned `ui.ts` contributions supply
-standard page extensions through `src/app-ui.ts`. Do not add object-specific branches to shared
+server contributions in `src/app.server.ts`. Module-owned `ui.ts` contributions supply
+standard page extensions through `src/app.ui.ts`. Do not add object-specific branches to shared
 routes, navigation, or page components.
 Page/form assembly resolves UI registrations and passes explicit props to renderers. Use named
 additions/replacements for light customization; use ordinary module-owned React pages for distinct
 workflows. Do not add object branches to shared components or automatic plugin merging.
 Use [the module guide](docs/modules.md) and executable neighboring modules for the authoring path.
-Keep migration ownership central. Do not add a dynamic runtime plugin system or a second schema.
+The composed model generates one storage schema. Keep migration execution and its ledger central;
+standard module tables need no independent schema declarations or migration runner. Customized apps
+own subsequent migrations. Do not add a dynamic runtime plugin system or a second schema.
 
 ## Server operations
 

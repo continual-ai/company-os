@@ -1,8 +1,8 @@
 import { QueryObserver } from "@tanstack/react-query"
 import { describe, expect, it } from "vitest"
 
-import { createModelDataClient } from "./data-client"
-import { modelQuery } from "./model-query-client"
+import { createModelDataClient } from "#/data-client.ts"
+import { modelQuery } from "#/model-query-client.ts"
 
 describe("model query cache", () => {
   it("deduplicates preload and component reads and invalidates actual changed types", async () => {

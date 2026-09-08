@@ -4,23 +4,27 @@ import {
   type ModelCatalog,
   type ModelLinkTraversal,
   modelObjectLinkTraversals,
-} from "./definition/model"
-import type { ObjectRef, ObjectType, ObjectRecord } from "./definition/object"
+} from "#/definition/model.ts"
+import type {
+  ObjectRef,
+  ObjectType,
+  ObjectRecord,
+} from "#/definition/object.ts"
 import {
   normalizePageSize,
   type Page,
   type ListRequest,
-} from "./definition/request"
-import type { RecordIdentifier } from "./definition/schema"
+} from "#/definition/request.ts"
+import type { RecordIdentifier } from "#/definition/schema.ts"
 import type {
   LinkCardinalityConflict,
   LinkRepository,
-} from "./effect-link-repository"
-import { resolveListRequest } from "./effect-object-input"
+} from "#/effect-link-repository.ts"
+import { resolveListRequest } from "#/effect-object-input.ts"
 import type {
   RepositoryListRequest,
   RepositoryListVisibility,
-} from "./effect-object-repository"
+} from "#/effect-object-repository.ts"
 
 export class LinkMutationNotAllowed extends Data.TaggedError(
   "LinkMutationNotAllowed"

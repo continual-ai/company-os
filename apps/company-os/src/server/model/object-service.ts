@@ -9,16 +9,15 @@ import type { ModelObjectService } from "@company/runtime/effect/model-implement
 import type { Repository } from "@company/runtime/effect/object-repository"
 import * as ObjectService from "@company/runtime/effect/object-service"
 import type { CurrentInvocation } from "@company/runtime/effect/object-service"
-import type { Model } from "company-os/model"
 import { Effect } from "effect"
 
-import { compileAssetReferences } from "@/modules/assets/asset/references"
-import { Authorization } from "@/server/authorization/authorization-service"
-import { Database } from "@/server/database/database"
-import { ROOT_ID } from "@/system-records"
-
-import { Links } from "./link-service"
-import { RecordIdentifierResolver } from "./record-identifier-resolver"
+import type { Model } from "#/app.model.ts"
+import { compileAssetReferences } from "#/modules/assets/asset/references.ts"
+import { Authorization } from "#/server/authorization/authorization-service.ts"
+import { Database } from "#/server/database/database.ts"
+import { Links } from "#/server/model/link-service.ts"
+import { RecordIdentifierResolver } from "#/server/model/record-identifier-resolver.ts"
+import { ROOT_ID } from "#/system-records.ts"
 
 type ModelObject = (typeof Model.objects)[keyof typeof Model.objects]
 /** Validated server-internal writes for custom Actions and trusted adapters. */

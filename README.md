@@ -29,7 +29,7 @@ the project and provides an optional hosting integration. Company OS is **source
 
 ## Quick start
 
-Install Node.js 24+, pnpm 11, and PostgreSQL 18+. PostgreSQL must be running and your local role must
+Install Node.js 24.14+ (or 25.4+), pnpm 11, and PostgreSQL 18+. PostgreSQL must be running and your local role must
 be able to create a database.
 
 ```sh
@@ -92,8 +92,8 @@ The included Marketing module follows this same pattern (simplified here):
 
 ```ts
 import { defineObject, schema } from "@company/runtime"
-import { User } from "#modules/access/user/model"
-import { Root } from "#root"
+import { User } from "#/modules/access/user/model.ts"
+import { Root } from "#/model-root.ts"
 
 export const Campaign = defineObject({
   id: "campaign",
@@ -111,7 +111,7 @@ export const Campaign = defineObject({
 ```
 
 Put the object in `modules/marketing/campaign/model.ts`, include it in the Marketing module’s
-`model.ts`, and install that module in `src/model.ts`. Regenerate `schema.sql`, write and review the corresponding SQL migration, then assign
+`model.ts`, and install that module in `src/app.model.ts`. Regenerate `schema.sql`, write and review the corresponding SQL migration, then assign
 the intended permissions.
 Its default page is `/objects/campaign`. See [Building a module](docs/modules.md) for the complete
 path, custom actions, React extensions, and client data access.
@@ -158,7 +158,8 @@ automation controllers are not included. [Architecture](docs/architecture.md) ex
 | [Modules](apps/company-os/src/modules/README.md) | Editable Sales, Marketing, Support, and Engineering domains      |
 | [Runtime](packages/runtime/README.md)            | Portable model definitions and reusable execution/API machinery  |
 | [Postgres](packages/postgres/README.md)          | Model-to-storage projection and repository implementations       |
-| [UI](packages/ui/README.md)                      | Shared presentation primitives and design tokens                 |
+| [Notes](modules/notes/README.md)                 | Reusable module package with model, Markdown UI, and seeds       |
+| [UI](packages/ui/README.md)                      | Design tokens, base components, and model UI                     |
 | [Documentation](docs/README.md)                  | Module authoring, modeling, architecture, and operational guides |
 
 Start with the app and a concrete module; read the reusable packages when you need to change a

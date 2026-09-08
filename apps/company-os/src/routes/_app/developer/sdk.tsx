@@ -1,10 +1,10 @@
 import { CodeBlock } from "@company/ui/components/code-block"
 import { Link, createFileRoute } from "@tanstack/react-router"
 
-import { pageOptions } from "@/route-metadata"
+import { pageOptions } from "#/route-metadata.ts"
 
 const queryExample = `import { useQuery } from "@tanstack/react-query"
-import { data } from "@/app-client"
+import { data } from "#/app-client.ts"
 
 const companies = data.company.list({ pageSize: 50 })
 
@@ -21,7 +21,7 @@ export function CompanyNames() {
 }`
 
 const mutationExample = `import { useMutation } from "@tanstack/react-query"
-import { data } from "@/app-client"
+import { data } from "#/app-client.ts"
 
 // Inside a React component:
 const update = useMutation(data.company.update())

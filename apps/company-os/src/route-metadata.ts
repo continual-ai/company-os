@@ -1,5 +1,5 @@
-import { appUrl } from "@/client-environment"
-import { appConfig } from "@/customization/config"
+import { appUrl } from "#/client-environment.ts"
+import { appConfig } from "#/customization/config.ts"
 
 export type PageMetadata = {
   breadcrumb: string

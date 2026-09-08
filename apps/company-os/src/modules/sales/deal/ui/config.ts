@@ -1,10 +1,9 @@
-import type { Model } from "company-os/model"
+import type { ObjectUi } from "@company/ui/model/object-ui"
 import { HandshakeIcon } from "lucide-react"
 
-import type { ObjectUi } from "@/ui/model/module-ui"
-
-import { DealToolbar } from "./toolbar"
-import { dealViews } from "./views"
+import type { Model } from "#/app.model.ts"
+import { DealToolbar } from "#/modules/sales/deal/ui/toolbar.tsx"
+import { dealViews } from "#/modules/sales/deal/ui/views.ts"
 
 export const dealUi = {
   navigation: {

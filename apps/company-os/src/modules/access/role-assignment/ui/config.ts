@@ -1,6 +1,6 @@
-import type { Model } from "company-os/model"
+import type { ObjectUi } from "@company/ui/model/object-ui"
 
-import type { ObjectUi } from "@/ui/model/module-ui"
+import type { Model } from "#/app.model.ts"
 
 export const roleAssignmentUi = {
   navigation: { hidden: true },

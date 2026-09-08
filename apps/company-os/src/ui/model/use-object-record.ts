@@ -1,15 +1,14 @@
 import { useQuery } from "@tanstack/react-query"
 import { useMemo } from "react"
 
-import { useCapabilities } from "@/ui/application/use-capabilities"
-
+import { useCapabilities } from "#/ui/application/use-capabilities.ts"
 import {
   objectCapabilityCheck,
   objectCapabilityChecks,
-} from "./object-capabilities"
-import { clientFor, type ModelObject } from "./object-client"
-import type { ObjectFormInput } from "./object-form"
-import { useObjectReferences } from "./object-references"
+} from "#/ui/model/object-capabilities.ts"
+import { clientFor, type ModelObject } from "#/ui/model/object-client.ts"
+import type { ObjectFormInput } from "#/ui/model/object-form.ts"
+import { useObjectReferences } from "#/ui/model/object-references.ts"
 
 export function useObjectRecord(object: ModelObject, recordId: string) {
   const client = useMemo(() => clientFor(object), [object])

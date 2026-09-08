@@ -1,11 +1,11 @@
 import { formatPhoneNumberForDisplay } from "@company/ui/lib/phone-number"
 import { useEffect, useRef, useState } from "react"
 
-import type { ObjectTableCellType } from "./object-table-cell-types"
+import type { ObjectTableCellType } from "#/ui/model/object-table/object-table-cell-types.ts"
 import {
   objectTableValueText,
   type ObjectTableValue,
-} from "./object-table-config"
+} from "#/ui/model/object-table/object-table-config.ts"
 
 export type ObjectTableCellCommit = (
   value: ObjectTableValue

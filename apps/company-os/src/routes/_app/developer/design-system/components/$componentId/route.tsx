@@ -1,9 +1,9 @@
 import { Link, createFileRoute } from "@tanstack/react-router"
 
-import { documentHead } from "@/route-metadata"
-import type { PageMetadata } from "@/route-metadata"
-import { getComponent } from "@/ui/developer/design-system/component-metadata"
-import { ComponentPage } from "@/ui/developer/design-system/component-page"
+import { documentHead } from "#/route-metadata.ts"
+import type { PageMetadata } from "#/route-metadata.ts"
+import { getComponent } from "#/ui/developer/design-system/component-metadata.ts"
+import { ComponentPage } from "#/ui/developer/design-system/component-page.tsx"
 
 const missingComponentPage = componentPage(undefined)
 

@@ -1,6 +1,6 @@
 import { defineObject, schema } from "@company/runtime"
 
-import { Root } from "#root"
+import { Root } from "#/model-root.ts"
 
 export const Role = defineObject({
   id: "role",

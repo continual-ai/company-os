@@ -5,27 +5,27 @@ import {
   modelObjectLinkTraversals,
 } from "@company/runtime"
 import { CurrentInvocation } from "@company/runtime/effect/object-service"
-import { Model } from "company-os/model"
 import { Effect, Exit, Layer } from "effect"
 import { expect } from "vitest"
 
-import { UserService } from "@/modules/access/user/server/user-service"
-import { makeApplicationLayer } from "@/server/application-layer"
-import { CommittedChanges } from "@/server/database/committed-changes"
-import { Database } from "@/server/database/database"
-import { itDatabase } from "@/server/database/it-database"
-import { makeObjectRepository } from "@/server/database/object-repository"
+import { Model } from "#/app.model.ts"
+import { UserService } from "#/modules/access/user/server/user-service.ts"
+import { makeApplicationLayer } from "#/server/application-layer.ts"
+import { CommittedChanges } from "#/server/database/committed-changes.ts"
+import { Database } from "#/server/database/database.ts"
+import { itDatabase } from "#/server/database/it-database.ts"
+import { makeObjectRepository } from "#/server/database/object-repository.ts"
 import {
   anonymousInvocation,
   systemInvocation,
-} from "@/server/invocation-context"
-import { Links } from "@/server/model/link-service"
-import { ModelImplementation } from "@/server/model/model-implementation"
-import { makeObjectWriter } from "@/server/model/object-service"
-import { RecordIdentifierResolver } from "@/server/model/record-identifier-resolver"
-import { PageTokens } from "@/server/page-tokens"
-import { seedSystem } from "@/server/seeds/seed-system"
-import { ROOT_ID } from "@/system-records"
+} from "#/server/invocation-context.ts"
+import { Links } from "#/server/model/link-service.ts"
+import { ModelImplementation } from "#/server/model/model-implementation.ts"
+import { makeObjectWriter } from "#/server/model/object-service.ts"
+import { RecordIdentifierResolver } from "#/server/model/record-identifier-resolver.ts"
+import { PageTokens } from "#/server/page-tokens.ts"
+import { seedSystem } from "#/server/seeds/seed-system.ts"
+import { ROOT_ID } from "#/system-records.ts"
 
 itDatabase(
   "keeps custom queries scoped, conversions atomic, and primary affiliation a selection",

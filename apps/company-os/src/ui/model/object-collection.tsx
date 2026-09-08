@@ -6,6 +6,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@company/ui/components/select"
+import {
+  type ObjectCollectionSearch,
+  type ObjectCollectionView,
+  type ObjectCollectionViewState,
+} from "@company/ui/model/collection-view"
+import { type CollectionToolbarProps } from "@company/ui/model/object-ui"
 import { functionalUpdate, type OnChangeFn } from "@tanstack/react-table"
 import {
   PencilIcon,
@@ -23,16 +29,15 @@ import {
   type ReactNode,
 } from "react"
 
-import { calendarDay, collectionDateWindow } from "./collection-dates"
-import { CollectionLayoutControl } from "./collection-layout-control"
-import { CollectionPagination } from "./collection-pagination"
-import { CollectionSearch } from "./collection-search"
-import { ConfirmActionButton } from "./confirm-action-button"
 import {
-  ObjectActions,
-  type ResolvedObjectUi,
-  type CollectionToolbarProps,
-} from "./module-ui"
+  calendarDay,
+  collectionDateWindow,
+} from "#/ui/model/collection-dates.ts"
+import { CollectionLayoutControl } from "#/ui/model/collection-layout-control.tsx"
+import { CollectionPagination } from "#/ui/model/collection-pagination.tsx"
+import { CollectionSearch } from "#/ui/model/collection-search.tsx"
+import { ConfirmActionButton } from "#/ui/model/confirm-action-button.tsx"
+import { ObjectActions, type ResolvedObjectUi } from "#/ui/model/module-ui.tsx"
 import {
   clientFor,
   parentName,
@@ -40,32 +45,34 @@ import {
   tableRecord,
   type ClientRecord,
   type ModelObject,
-} from "./object-client"
-import { canFilterProperty, canSortProperty } from "./object-collection-query"
+} from "#/ui/model/object-client.ts"
+import {
+  canFilterProperty,
+  canSortProperty,
+} from "#/ui/model/object-collection-query.ts"
 import {
   emptyObjectCollectionViewState,
   objectCollectionStateSearch,
   resolveObjectCollectionView,
-  type ObjectCollectionSearch,
-  type ObjectCollectionView,
-  type ObjectCollectionViewState,
-} from "./object-collection-view"
-import type { ObjectCreateOptions } from "./object-create-context"
-import { useObjectCreate } from "./object-create-context"
-import type { ObjectFormInput } from "./object-form"
-import { ObjectRecordDialog } from "./object-record-dialog"
-import { ObjectRecordFeed } from "./object-record-feed"
-import { ObjectTable } from "./object-table/object-table"
-import { readFilterValue } from "./object-table/object-table-config"
+} from "#/ui/model/object-collection-view.ts"
+import type { ObjectCreateOptions } from "#/ui/model/object-create-context.ts"
+import { useObjectCreate } from "#/ui/model/object-create-context.ts"
+import type { ObjectFormInput } from "#/ui/model/object-form.ts"
+import { ObjectRecordDialog } from "#/ui/model/object-record-dialog.tsx"
+import { ObjectRecordFeed } from "#/ui/model/object-record-feed.tsx"
+import { readFilterValue } from "#/ui/model/object-table/object-table-config.ts"
+import { ObjectTable } from "#/ui/model/object-table/object-table.tsx"
 import {
   useObjectCollection,
   type ObjectCollectionList,
-} from "./use-object-collection"
+} from "#/ui/model/use-object-collection.ts"
 
 const CollectionVisual = lazy(() =>
-  import("./collection-visual").then(({ CollectionVisual: component }) => ({
-    default: component,
-  }))
+  import("#/ui/model/collection-visual.tsx").then(
+    ({ CollectionVisual: component }) => ({
+      default: component,
+    })
+  )
 )
 
 interface ObjectCollectionSource {

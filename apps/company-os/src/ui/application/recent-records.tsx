@@ -1,10 +1,9 @@
 import { CommandGroup, CommandItem } from "@company/ui/components/command"
 
-import { tableRecord } from "@/ui/model/object-client"
-import { ObjectRecordIdentity } from "@/ui/model/object-record-identity"
-import { objectHref } from "@/ui/model/object-routing"
-
-import { useRecentRecords } from "./use-recent-records"
+import { useRecentRecords } from "#/ui/application/use-recent-records.tsx"
+import { tableRecord } from "#/ui/model/object-client.ts"
+import { ObjectRecordIdentity } from "#/ui/model/object-record-identity.tsx"
+import { objectHref } from "#/ui/model/object-routing.ts"
 
 /** Session suggestions reflect explicit navigation and current read access. */
 export function RecentRecords({

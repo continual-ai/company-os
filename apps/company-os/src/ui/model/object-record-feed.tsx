@@ -1,8 +1,8 @@
 import type { ReactNode } from "react"
 
-import type { ClientRecord, ModelObject } from "./object-client"
-import { ObjectRecordSummary } from "./object-record-summary"
-import { useRecordReferences } from "./object-references"
+import type { ClientRecord, ModelObject } from "#/ui/model/object-client.ts"
+import { ObjectRecordSummary } from "#/ui/model/object-record-summary.tsx"
+import { useRecordReferences } from "#/ui/model/object-references.ts"
 
 /** Collection owners supply loaded records and actions; summaries remain reusable presentation. */
 export function ObjectRecordFeed({

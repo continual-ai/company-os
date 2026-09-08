@@ -3,14 +3,14 @@ import { Layer } from "effect"
 import {
   makeApplicationServicesLayer,
   type ApplicationServicesInfrastructure,
-} from "./application-services"
-import { Authentication } from "./auth/authentication"
-import { IdentityBindingRepository } from "./auth/identity-binding-repository"
-import { IdentityProvider } from "./auth/identity-provider"
-import { EventNotifications } from "./events/event-notifications"
-import { Readiness } from "./readiness"
-import { HttpTransport } from "./transport/http-transport"
-import { McpTransport } from "./transport/mcp-transport"
+} from "#/server/application-services.ts"
+import { Authentication } from "#/server/auth/authentication.ts"
+import { IdentityBindingRepository } from "#/server/auth/identity-binding-repository.ts"
+import { IdentityProvider } from "#/server/auth/identity-provider.ts"
+import { EventNotifications } from "#/server/events/event-notifications.ts"
+import { Readiness } from "#/server/readiness.ts"
+import { HttpTransport } from "#/server/transport/http-transport.ts"
+import { McpTransport } from "#/server/transport/mcp-transport.ts"
 
 export interface ApplicationInfrastructure extends ApplicationServicesInfrastructure {
   readonly eventNotifications?: Layer.Layer<EventNotifications, unknown>

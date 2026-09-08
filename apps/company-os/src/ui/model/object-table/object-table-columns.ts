@@ -1,8 +1,8 @@
-import { objectTableCellType } from "./object-table-cell-types"
+import { objectTableCellType } from "#/ui/model/object-table/object-table-cell-types.ts"
 import type {
   ObjectTableColumnMeta,
   ObjectTableInstance,
-} from "./object-table-config"
+} from "#/ui/model/object-table/object-table-config.ts"
 
 export type ObjectTableColumn = ReturnType<
   ObjectTableInstance["getAllLeafColumns"]

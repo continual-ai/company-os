@@ -1,21 +1,23 @@
 import { Button } from "@company/ui/components/button"
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query"
-import { Model } from "company-os/model"
 import { UnlinkIcon } from "lucide-react"
 import { useState, type ReactNode } from "react"
 
-import { modelCollectionQuery } from "@/model-collection-query"
-import { useCapabilities } from "@/ui/application/use-capabilities"
-
-import { CollectionPagination } from "./collection-pagination"
-import { useObjectUi } from "./module-ui"
-import { type ClientRecord, type ModelObject } from "./object-client"
-import { ObjectCollection } from "./object-collection"
-import { ObjectRecordFeed } from "./object-record-feed"
-import { ObjectReferenceSelect } from "./object-reference-select"
-import { objectHref } from "./object-routing"
-import { RecordRelatedCreateMenu } from "./record-related-create-menu"
-import type { RecordRelationship } from "./record-relationships"
+import { Model } from "#/app.model.ts"
+import { modelCollectionQuery } from "#/model-collection-query.ts"
+import { useCapabilities } from "#/ui/application/use-capabilities.ts"
+import { CollectionPagination } from "#/ui/model/collection-pagination.tsx"
+import { useObjectUi } from "#/ui/model/module-ui.tsx"
+import {
+  type ClientRecord,
+  type ModelObject,
+} from "#/ui/model/object-client.ts"
+import { ObjectCollection } from "#/ui/model/object-collection.tsx"
+import { ObjectRecordFeed } from "#/ui/model/object-record-feed.tsx"
+import { ObjectReferenceSelect } from "#/ui/model/object-reference-select.tsx"
+import { objectHref } from "#/ui/model/object-routing.ts"
+import { RecordRelatedCreateMenu } from "#/ui/model/record-related-create-menu.tsx"
+import type { RecordRelationship } from "#/ui/model/record-relationships.ts"
 
 /** A relationship supplies context and actions; collection rendering stays object-owned. */
 export function ObjectRelationshipCollection({

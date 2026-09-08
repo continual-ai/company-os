@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { makeApplicationKeys } from "./application-keys"
+import { makeApplicationKeys } from "#/server/application-keys.ts"
 
 describe("application keys", () => {
   it("derives stable, purpose-separated keys", () => {

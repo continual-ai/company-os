@@ -2,16 +2,15 @@ import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 import { Config, Effect, Option, Redacted } from "effect"
 import { Client } from "pg"
 
-import { Database } from "@/server/database/database"
+import { Database } from "#/server/database/database.ts"
 import {
   applyMigrations,
   ensureDatabaseSchema,
-} from "@/server/database/migrations"
-import * as Postgres from "@/server/database/postgres"
-import { ensureSearchIndex } from "@/server/database/search-index"
-import { seedSystem } from "@/server/seeds/seed-system"
-
-import { loadLocalEnvironment } from "./local-environment"
+} from "#/server/database/migrations.ts"
+import * as Postgres from "#/server/database/postgres.ts"
+import { ensureSearchIndex } from "#/server/database/search-index.ts"
+import { loadLocalEnvironment } from "#/server/local-environment.ts"
+import { seedSystem } from "#/server/seeds/seed-system.ts"
 
 // Deployment sequencing lives in this application's own scripts, not in any
 // platform: the deploy task invokes this tool with --if-configured so the

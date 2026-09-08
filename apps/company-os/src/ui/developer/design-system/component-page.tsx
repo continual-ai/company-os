@@ -1,7 +1,7 @@
-import { ComponentExample } from "@/ui/developer/design-system/component-example"
-import { getComponentExample } from "@/ui/developer/design-system/component-examples"
-import type { ComponentSlug } from "@/ui/developer/design-system/component-metadata"
-import { getComponent } from "@/ui/developer/design-system/component-metadata"
+import { ComponentExample } from "#/ui/developer/design-system/component-example.tsx"
+import { getComponentExample } from "#/ui/developer/design-system/component-examples.tsx"
+import type { ComponentSlug } from "#/ui/developer/design-system/component-metadata.ts"
+import { getComponent } from "#/ui/developer/design-system/component-metadata.ts"
 
 export function ComponentPage({ slug }: { slug: ComponentSlug }) {
   const component = getComponent(slug)

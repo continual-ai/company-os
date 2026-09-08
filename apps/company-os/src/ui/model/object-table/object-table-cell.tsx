@@ -29,23 +29,22 @@ import { cn } from "@company/ui/lib/utils"
 import { ImageIcon } from "lucide-react"
 import { type ComponentType, useEffect, useRef, useState } from "react"
 
-import { FileCell } from "@/modules/assets/asset/ui/file-cell"
-import { assetContentUrl } from "@/modules/assets/asset/ui/upload"
-import { ObjectChoiceBadge } from "@/ui/model/object-choice-badge"
-import { ObjectRecordIdentity } from "@/ui/model/object-record-identity"
-import { objectHref } from "@/ui/model/object-routing"
-
+import { FileCell } from "#/modules/assets/asset/ui/file-cell.tsx"
+import { assetContentUrl } from "#/modules/assets/asset/ui/upload.ts"
+import { ObjectChoiceBadge } from "#/ui/model/object-choice-badge.tsx"
+import { ObjectRecordIdentity } from "#/ui/model/object-record-identity.tsx"
+import { objectHref } from "#/ui/model/object-routing.ts"
 import {
   formatObjectTableCellText,
   objectTableCellInputValue,
   useObjectTableCellCommit,
   type ObjectTableCellCommit,
   type ObjectTableCellEditingChange,
-} from "./object-table-cell-state"
+} from "#/ui/model/object-table/object-table-cell-state.ts"
 import {
   ObjectTableCellSurface,
   ObjectTableCellValidationMessage,
-} from "./object-table-cell-surface"
+} from "#/ui/model/object-table/object-table-cell-surface.tsx"
 import {
   objectTableCellType,
   objectTableInputType,
@@ -54,14 +53,14 @@ import {
   objectTableUrlDisplayValue,
   parseObjectTableCellInput,
   type ObjectTableCellType,
-} from "./object-table-cell-types"
+} from "#/ui/model/object-table/object-table-cell-types.ts"
 import {
   objectTableImageValue,
   type ObjectTableImageResolver,
   type ObjectTableRecordResolver,
   type ObjectTableRecord,
   type ObjectTableValue,
-} from "./object-table-config"
+} from "#/ui/model/object-table/object-table-config.ts"
 
 interface ObjectTableCellProps {
   active: boolean

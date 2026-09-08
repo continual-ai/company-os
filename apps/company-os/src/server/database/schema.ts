@@ -1,8 +1,8 @@
 import { makePostgresSchema, defineTable } from "@company/postgres"
 import type { ImageRef } from "@company/runtime"
-import { Model } from "company-os/model"
 
-import type { EventSubject } from "@/server/events/event-buffer"
+import { Model } from "#/app.model.ts"
+import type { EventSubject } from "#/server/events/event-buffer.ts"
 export const Storage = makePostgresSchema(Model)
 export const objects = Storage.core.objects
 export const recordAliases = Storage.core.recordAliases

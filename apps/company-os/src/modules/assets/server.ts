@@ -1,9 +1,8 @@
 import { Effect } from "effect"
 
-import { defineModuleServer } from "@/server/model/module-server"
-
-import { AssetService } from "./asset/server/asset-service"
-import { AssetsModule } from "./model"
+import { AssetService } from "#/modules/assets/asset/server/asset-service.ts"
+import { AssetsModule } from "#/modules/assets/model.ts"
+import { defineModuleServer } from "#/server/model/module-server.ts"
 
 export const AssetsServer = defineModuleServer(
   AssetsModule,

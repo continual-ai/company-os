@@ -5,7 +5,6 @@ import {
   customMethodParameter,
   customMethodPath,
 } from "@company/runtime/effect/http-custom-method"
-import { Model } from "company-os/model"
 import { Schema } from "effect"
 import {
   HttpApiEndpoint,
@@ -14,12 +13,15 @@ import {
   OpenApi,
 } from "effect/unstable/httpapi"
 
-import { appMetadata } from "@/app-metadata"
-import { isCapabilityPermission, MAX_CAPABILITY_CHECKS } from "@/capabilities"
-
-import { eventPageSchema, InvalidEventCursor } from "./events"
-import { documentIdentity } from "./openapi-identity"
-import { recordSearchInput, recordSearchResult } from "./records"
+import { appMetadata } from "#/app-metadata.ts"
+import { Model } from "#/app.model.ts"
+import {
+  isCapabilityPermission,
+  MAX_CAPABILITY_CHECKS,
+} from "#/capabilities.ts"
+import { eventPageSchema, InvalidEventCursor } from "#/events.ts"
+import { documentIdentity } from "#/openapi-identity.ts"
+import { recordSearchInput, recordSearchResult } from "#/records.ts"
 
 const permissionSchema = Schema.String.check(
   Schema.makeFilter(isCapabilityPermission, {

@@ -1,30 +1,33 @@
 import { Button } from "@company/ui/components/button"
+import {
+  collectionLayoutError,
+  type CollectionLayout,
+} from "@company/ui/model/collection-layout"
 import { DragDropProvider } from "@dnd-kit/react"
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react"
 import { useRef, useState } from "react"
 
-import { CollectionCalendar } from "./collection-calendar"
+import { CollectionCalendar } from "#/ui/model/collection-calendar.tsx"
 import {
   CollectionCard,
   CollectionDropZone,
   type CollectionDragData,
   type CollectionPresentation,
-} from "./collection-card"
+} from "#/ui/model/collection-card.tsx"
 import {
   calendarDay,
   collectionDateWindow,
   dateLabel,
   scheduleChanges,
   shiftMonth,
-} from "./collection-dates"
-import { CollectionGantt } from "./collection-gantt"
-import { CollectionKanban } from "./collection-kanban"
+} from "#/ui/model/collection-dates.ts"
+import { CollectionGantt } from "#/ui/model/collection-gantt.tsx"
+import { CollectionKanban } from "#/ui/model/collection-kanban.tsx"
 import {
-  collectionLayoutError,
-  type CollectionLayout,
-} from "./collection-layout"
-import { modelObjectProperty, type ClientRecord } from "./object-client"
-import type { ObjectFormInput } from "./object-form"
+  modelObjectProperty,
+  type ClientRecord,
+} from "#/ui/model/object-client.ts"
+import type { ObjectFormInput } from "#/ui/model/object-form.ts"
 
 export function CollectionVisual({
   presentation,

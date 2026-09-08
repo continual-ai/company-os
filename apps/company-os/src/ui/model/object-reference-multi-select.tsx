@@ -1,10 +1,10 @@
 import { useState } from "react"
 
-import { ObjectRecordPill } from "./object-record-identity"
+import { ObjectRecordPill } from "#/ui/model/object-record-identity.tsx"
 import {
   ObjectReferenceSelect,
   type ReferenceOption,
-} from "./object-reference-select"
+} from "#/ui/model/object-reference-select.tsx"
 
 export function ObjectReferenceMultiSelect({
   ariaDescribedBy,

@@ -3,8 +3,8 @@ import { CheckIcon, CircleAlertIcon, LoaderCircleIcon } from "lucide-react"
 import { useLayoutEffect, useRef, useState } from "react"
 import type { ReactNode } from "react"
 
-import type { ObjectTableCellSaveStatus } from "./object-table-cell-state"
-import { objectTableCellSelectionClassName } from "./object-table-cell-styles"
+import type { ObjectTableCellSaveStatus } from "#/ui/model/object-table/object-table-cell-state.ts"
+import { objectTableCellSelectionClassName } from "#/ui/model/object-table/object-table-cell-styles.ts"
 
 function ObjectTableCellSaveStatus({
   status,

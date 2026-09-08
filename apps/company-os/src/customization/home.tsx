@@ -3,15 +3,15 @@ import { Skeleton } from "@company/ui/components/skeleton"
 import { Link } from "@tanstack/react-router"
 import { ArrowRightIcon } from "lucide-react"
 
-import { applicationCapabilities } from "@/capabilities"
-import { appConfig } from "@/customization/config"
-import { useCapabilities } from "@/ui/application/use-capabilities"
-import { useRecentRecords } from "@/ui/application/use-recent-records"
+import { applicationCapabilities } from "#/capabilities.ts"
+import { appConfig } from "#/customization/config.ts"
+import { useCapabilities } from "#/ui/application/use-capabilities.ts"
+import { useRecentRecords } from "#/ui/application/use-recent-records.tsx"
 import {
   modelNavigation,
   modelNavigationChecks,
-} from "@/ui/model/model-navigation"
-import { ObjectRecordSummary } from "@/ui/model/object-record-summary"
+} from "#/ui/model/model-navigation.ts"
+import { ObjectRecordSummary } from "#/ui/model/object-record-summary.tsx"
 
 /** Source-owned workspace entry; destinations come from the installed modules. */
 export function Home() {

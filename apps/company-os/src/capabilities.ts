@@ -4,7 +4,8 @@ import {
   type ObjectType,
   modelObjects,
 } from "@company/runtime"
-import { Model } from "company-os/model"
+
+import { Model } from "#/app.model.ts"
 
 /** Maximum number of authorization decisions accepted by one public request. */
 export const MAX_CAPABILITY_CHECKS = 200

@@ -1,7 +1,7 @@
 import { defineObject, schema } from "@company/runtime"
 
-import { Principal } from "#modules/access/interfaces/principal"
-import { Root } from "#root"
+import { Root } from "#/model-root.ts"
+import { Principal } from "#/modules/access/interfaces/principal.ts"
 
 export const PrincipalSet = defineObject({
   id: "principalSet",

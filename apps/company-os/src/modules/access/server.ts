@@ -1,12 +1,11 @@
 import { Effect, Layer } from "effect"
 
-import { defineModuleServer } from "@/server/model/module-server"
-
-import { AccessModule } from "./model"
-import { RoleAssignmentRepository } from "./role-assignment/server/role-assignment-repository"
-import { RoleAssignmentService } from "./role-assignment/server/role-assignment-service"
-import { ServiceAccountService } from "./service-account/server/service-account-service"
-import { UserService } from "./user/server/user-service"
+import { AccessModule } from "#/modules/access/model.ts"
+import { RoleAssignmentRepository } from "#/modules/access/role-assignment/server/role-assignment-repository.ts"
+import { RoleAssignmentService } from "#/modules/access/role-assignment/server/role-assignment-service.ts"
+import { ServiceAccountService } from "#/modules/access/service-account/server/service-account-service.ts"
+import { UserService } from "#/modules/access/user/server/user-service.ts"
+import { defineModuleServer } from "#/server/model/module-server.ts"
 
 export const AccessServer = defineModuleServer(
   AccessModule,

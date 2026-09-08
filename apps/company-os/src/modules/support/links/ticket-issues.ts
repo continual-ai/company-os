@@ -1,7 +1,7 @@
 import { defineLink } from "@company/runtime"
 
-import { Issue } from "#modules/engineering/issue/model"
-import { Ticket } from "#modules/support/ticket/model"
+import { Issue } from "#/modules/engineering/issue/model.ts"
+import { Ticket } from "#/modules/support/ticket/model.ts"
 export const TicketIssues = defineLink({
   id: "ticketIssues",
   name: "Engineering issues",

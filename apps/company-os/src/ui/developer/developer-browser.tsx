@@ -2,7 +2,7 @@ import { Input } from "@company/ui/components/input"
 import { SearchIcon } from "lucide-react"
 import type { ReactNode } from "react"
 
-import { DeveloperLayout } from "./developer-layout"
+import { DeveloperLayout } from "#/ui/developer/developer-layout.tsx"
 
 export interface DeveloperBrowserStat {
   readonly label: string

@@ -1,4 +1,4 @@
-import { defineCollectionView } from "@/ui/model/object-collection-view"
+import { defineCollectionView } from "@company/ui/model/collection-view"
 
 export const dealViews = [
   defineCollectionView("all", "All deals", {

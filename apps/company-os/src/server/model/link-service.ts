@@ -14,18 +14,17 @@ import {
 } from "@company/runtime/effect/link-service"
 import type { Repository } from "@company/runtime/effect/object-repository"
 import { ObjectNotFound } from "@company/runtime/effect/object-repository"
-import { Model } from "company-os/model"
 import { Context, Effect, Layer } from "effect"
 
-import type { AssetPrecondition } from "@/modules/assets/asset/server/asset-error"
-import { Authorization } from "@/server/authorization/authorization-service"
-import { Database } from "@/server/database/database"
-import { Storage } from "@/server/database/schema"
-import { makeEventWriter } from "@/server/events/event-writer"
-import { PageTokens } from "@/server/page-tokens"
-
-import { ObjectRepositories } from "./object-repositories"
-import { RecordIdentifierResolver } from "./record-identifier-resolver"
+import { Model } from "#/app.model.ts"
+import type { AssetPrecondition } from "#/modules/assets/asset/server/asset-error.ts"
+import { Authorization } from "#/server/authorization/authorization-service.ts"
+import { Database } from "#/server/database/database.ts"
+import { Storage } from "#/server/database/schema.ts"
+import { makeEventWriter } from "#/server/events/event-writer.ts"
+import { ObjectRepositories } from "#/server/model/object-repositories.ts"
+import { RecordIdentifierResolver } from "#/server/model/record-identifier-resolver.ts"
+import { PageTokens } from "#/server/page-tokens.ts"
 
 function trackedLinkRepository(
   database: typeof Database.Service,

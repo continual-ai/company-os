@@ -1,6 +1,6 @@
 import { Button } from "@company/ui/components/button"
 
-import { useFormContext } from "./form-context"
+import { useFormContext } from "#/ui/forms/form-context.ts"
 
 export function FormSubmitButton({
   children,

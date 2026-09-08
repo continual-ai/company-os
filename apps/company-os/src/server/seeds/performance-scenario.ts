@@ -1,9 +1,8 @@
 import { Effect } from "effect"
 
-import { seedSalesPerformance } from "@/modules/sales/server/performance-seed"
-import { seedSupportPerformance } from "@/modules/support/server/performance-seed"
-
-import type { SeedScenario } from "./run-seed-scenario"
+import { seedSalesPerformance } from "#/modules/sales/server/performance-seed.ts"
+import { seedSupportPerformance } from "#/modules/support/server/performance-seed.ts"
+import type { SeedScenario } from "#/server/seeds/run-seed-scenario.ts"
 
 export function performanceScenario(size: number): SeedScenario {
   if (!Number.isInteger(size) || size < 1 || size > 10000)

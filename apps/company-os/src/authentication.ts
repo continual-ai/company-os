@@ -1,4 +1,4 @@
-import type { IdentityId } from "company-os/model"
+import type { IdentityId } from "#/app.model.ts"
 
 /** Browser-safe projection of the authenticated App user. */
 export interface AuthenticatedUser {

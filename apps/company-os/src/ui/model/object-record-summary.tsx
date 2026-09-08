@@ -1,13 +1,13 @@
 import type { ReactNode } from "react"
 
-import { useObjectUi } from "./module-ui"
+import { useObjectUi } from "#/ui/model/module-ui.tsx"
 import {
   tableRecord,
   type ClientRecord,
   type ModelObject,
-} from "./object-client"
-import { ObjectRecordIdentity } from "./object-record-identity"
-import { objectHref } from "./object-routing"
+} from "#/ui/model/object-client.ts"
+import { ObjectRecordIdentity } from "#/ui/model/object-record-identity.tsx"
+import { objectHref } from "#/ui/model/object-routing.ts"
 
 /** Dispatches an object-owned summary without giving it query or mutation ownership. */
 export function ObjectRecordSummary({

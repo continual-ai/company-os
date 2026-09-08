@@ -1,8 +1,8 @@
 import { Context, Effect, Layer } from "effect"
 
-import { AccessServer } from "@/modules/access/server"
-import { AssetsServer } from "@/modules/assets/server"
-import { SalesServer } from "@/modules/sales/server"
+import { AccessServer } from "#/modules/access/server.ts"
+import { AssetsServer } from "#/modules/assets/server.ts"
+import { SalesServer } from "#/modules/sales/server.ts"
 
 const modules = [AccessServer, AssetsServer, SalesServer] as const
 

@@ -10,7 +10,6 @@ import {
 import { SidebarMenuButton } from "@company/ui/components/sidebar"
 import { useQuery } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
-import { Model } from "company-os/model"
 import { HomeIcon, PlusIcon, SearchIcon, CodeIcon } from "lucide-react"
 import {
   createContext,
@@ -20,20 +19,20 @@ import {
   type ReactNode,
 } from "react"
 
-import { data } from "@/app-client"
-import { capabilityPermission } from "@/capabilities"
-import type { RecordSummary } from "@/records"
+import { data } from "#/app-client.ts"
+import { Model } from "#/app.model.ts"
+import { capabilityPermission } from "#/capabilities.ts"
+import type { RecordSummary } from "#/records.ts"
+import { RecentRecords } from "#/ui/application/recent-records.tsx"
+import { useCapabilities } from "#/ui/application/use-capabilities.ts"
 import {
   modelNavigation,
   modelNavigationChecks,
-} from "@/ui/model/model-navigation"
-import { useObjectCreate } from "@/ui/model/object-create-context"
-import { ObjectRecordIdentity } from "@/ui/model/object-record-identity"
-import { objectHref } from "@/ui/model/object-routing"
-import type { ObjectTableRecord } from "@/ui/model/object-table/object-table-config"
-
-import { RecentRecords } from "./recent-records"
-import { useCapabilities } from "./use-capabilities"
+} from "#/ui/model/model-navigation.ts"
+import { useObjectCreate } from "#/ui/model/object-create-context.ts"
+import { ObjectRecordIdentity } from "#/ui/model/object-record-identity.tsx"
+import { objectHref } from "#/ui/model/object-routing.ts"
+import type { ObjectTableRecord } from "#/ui/model/object-table/object-table-config.ts"
 
 const destinations = modelNavigation.flatMap((module) =>
   module.items.map((item) => ({ ...item, module: module.name }))

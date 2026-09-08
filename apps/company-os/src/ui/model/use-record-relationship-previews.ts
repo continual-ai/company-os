@@ -1,7 +1,7 @@
 import { useQueries } from "@tanstack/react-query"
-import { Model } from "company-os/model"
 
-import type { RecordRelationship } from "./record-relationships"
+import { Model } from "#/app.model.ts"
+import type { RecordRelationship } from "#/ui/model/record-relationships.ts"
 
 /** Preview rows and counts share each relationship's authorized, invalidated query. */
 export function useRecordRelationshipPreviews(

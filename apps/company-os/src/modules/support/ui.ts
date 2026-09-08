@@ -1,8 +1,7 @@
-import { defineModuleUi } from "@/ui/model/module-ui"
-
-import { SupportModule } from "./model"
-import { replyUi } from "./reply/ui/config"
-import { ticketUi } from "./ticket/ui/config"
+import { SupportModule } from "#/modules/support/model.ts"
+import { replyUi } from "#/modules/support/reply/ui/config.ts"
+import { ticketUi } from "#/modules/support/ticket/ui/config.ts"
+import { defineModuleUi } from "#/ui/model/module-ui.tsx"
 export const SupportUi = defineModuleUi(SupportModule, {
   ticket: ticketUi,
   reply: replyUi,

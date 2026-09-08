@@ -1,7 +1,7 @@
-import type { Model } from "company-os/model"
+import { defineCollectionView } from "@company/ui/model/collection-view"
+import type { ObjectUi } from "@company/ui/model/object-ui"
 
-import type { ObjectUi } from "@/ui/model/module-ui"
-import { defineCollectionView } from "@/ui/model/object-collection-view"
+import type { Model } from "#/app.model.ts"
 
 export const outreachUi = {
   collection: {

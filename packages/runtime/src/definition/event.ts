@@ -1,5 +1,5 @@
-import type { ObjectType } from "./object"
-import type { AnySchema } from "./schema"
+import type { ObjectType } from "#/definition/object.ts"
+import type { AnySchema } from "#/definition/schema.ts"
 
 /** A versioned business fact. Publishing it never invokes consumers inside the write transaction. */
 export function defineEvent<

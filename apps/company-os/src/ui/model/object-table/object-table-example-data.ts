@@ -1,4 +1,4 @@
-import type { ObjectTableRecord } from "./object-table-config"
+import type { ObjectTableRecord } from "#/ui/model/object-table/object-table-config.ts"
 
 export const exampleCompanyRecords: ObjectTableRecord[] = [
   {

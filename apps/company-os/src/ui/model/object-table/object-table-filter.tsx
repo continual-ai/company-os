@@ -22,6 +22,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@company/ui/components/popover"
+import { type ObjectTableFilterValue } from "@company/ui/model/collection-view"
 import {
   CheckIcon,
   ChevronLeftIcon,
@@ -31,12 +32,12 @@ import {
 } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
 
-import { objectTablePropertySchema } from "./object-table-cell-types"
+import { objectTablePropertySchema } from "#/ui/model/object-table/object-table-cell-types.ts"
 import {
   objectTableColumnMeta,
   objectTablePropertyColumns,
   type ObjectTableColumn,
-} from "./object-table-columns"
+} from "#/ui/model/object-table/object-table-columns.ts"
 import {
   defaultFilterOperator,
   filterInputType,
@@ -44,10 +45,9 @@ import {
   filterOperatorsForProperty,
   hasFilterInput,
   readFilterValue,
-  type ObjectTableFilterValue,
   type ObjectTableInstance,
-} from "./object-table-config"
-import { ObjectTableProperty } from "./object-table-property"
+} from "#/ui/model/object-table/object-table-config.ts"
+import { ObjectTableProperty } from "#/ui/model/object-table/object-table-property.tsx"
 
 interface FilterOption {
   label: string

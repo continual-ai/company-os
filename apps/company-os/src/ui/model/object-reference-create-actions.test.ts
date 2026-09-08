@@ -1,7 +1,7 @@
-import { Model } from "company-os/model"
 import { describe, expect, it } from "vitest"
 
-import { creatableReferenceObjects } from "./object-reference-create-actions"
+import { Model } from "#/app.model.ts"
+import { creatableReferenceObjects } from "#/ui/model/object-reference-create-actions.tsx"
 
 describe("creatableReferenceObjects", () => {
   it("uses the closed model as the creation registry", () => {

@@ -3,12 +3,12 @@ import * as Migrator from "effect/unstable/sql/Migrator"
 import * as SqlClient from "effect/unstable/sql/SqlClient"
 import { expect, inject, it } from "vitest"
 
-import { Database } from "./database"
-import { itDatabase } from "./it-database"
-import { applyMigrations } from "./migrations"
-import { schemaSql } from "./schema"
-import { dumpSchema } from "./schema-dump"
-import { TestDatabase } from "./test-database"
+import { Database } from "#/server/database/database.ts"
+import { itDatabase } from "#/server/database/it-database.ts"
+import { applyMigrations } from "#/server/database/migrations.ts"
+import { dumpSchema } from "#/server/database/schema-dump.ts"
+import { schemaSql } from "#/server/database/schema.ts"
+import { TestDatabase } from "#/server/database/test-database.ts"
 
 it("replayed migrations match the declared schema, including indexes, functions, and comments", async () => {
   const declared = await TestDatabase.createTemplate(schemaSql)

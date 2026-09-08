@@ -4,8 +4,8 @@ import { createFileRoute } from "@tanstack/react-router"
 import { modelMetadata } from "company-os/metadata"
 import { ArrowRight, Building2, FolderKanban, Users } from "lucide-react"
 
-import { SiteShell } from "@/components/site-shell"
-import { clientPortalUrl, appUrl } from "@/lib/app-urls"
+import { SiteShell } from "#/components/site-shell.tsx"
+import { clientPortalUrl, appUrl } from "#/lib/app-urls.ts"
 
 const capabilities = [
   {

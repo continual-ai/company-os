@@ -1,7 +1,7 @@
 import type { ListRequest, Page, PageToken } from "@company/runtime"
 import { infiniteQueryOptions } from "@tanstack/react-query"
 
-import type { ModelQueryOptions } from "./model-query-client"
+import type { ModelQueryOptions } from "#/model-query-client.ts"
 
 /** Collections share one cursor chain; refreshes rebuild it in order using current server cursors. */
 export function modelCollectionQuery<A>(

@@ -1,12 +1,12 @@
 import type { ObjectCreateInput, ObjectRecord } from "@company/runtime"
-import { Model } from "company-os/model"
 import { Context, Effect, Layer } from "effect"
 
-import { ObjectRepositories } from "@/server/model/object-repositories"
+import { Model } from "#/app.model.ts"
+import { ObjectRepositories } from "#/server/model/object-repositories.ts"
 import {
   makeObjectService,
   makeObjectWriter,
-} from "@/server/model/object-service"
+} from "#/server/model/object-service.ts"
 
 type ServiceAccountRecord = ObjectRecord<
   (typeof Model.objects)["serviceAccount"]

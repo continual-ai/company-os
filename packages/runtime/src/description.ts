@@ -1,6 +1,6 @@
-import type { Action } from "./definition/action"
-import type { InterfaceType } from "./definition/interface"
-import type { LinkType } from "./definition/link"
+import type { Action } from "#/definition/action.ts"
+import type { InterfaceType } from "#/definition/interface.ts"
+import type { LinkType } from "#/definition/link.ts"
 import {
   type ModelCatalog,
   type ModelObject,
@@ -10,14 +10,14 @@ import {
   modelModules,
   modelObjects,
   modelQueries,
-} from "./definition/model"
-import type { ObjectType } from "./definition/object"
-import type { Query, CustomQuery } from "./definition/query"
+} from "#/definition/model.ts"
+import type { ObjectType } from "#/definition/object.ts"
+import type { Query, CustomQuery } from "#/definition/query.ts"
 import {
   modelRelationships,
   type ModelRelationship,
-} from "./definition/relationship"
-import type { RootType } from "./definition/root"
+} from "#/definition/relationship.ts"
+import type { RootType } from "#/definition/root.ts"
 
 export const MODEL_DESCRIPTION_VERSION = "0.30" as const
 

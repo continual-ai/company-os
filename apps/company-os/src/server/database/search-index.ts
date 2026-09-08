@@ -12,9 +12,13 @@ import { SqlError, UnknownError } from "effect/unstable/sql/SqlError"
 import type { Constructor } from "effect/unstable/sql/Statement"
 import type { Fragment } from "effect/unstable/sql/Statement"
 
-import { searchableObjects } from "@/records"
-
-import { objects, recordSearch, searchIndexState, Storage } from "./schema"
+import { searchableObjects } from "#/records.ts"
+import {
+  objects,
+  recordSearch,
+  searchIndexState,
+  Storage,
+} from "#/server/database/schema.ts"
 
 /** Shared tokenization makes email domains, URLs, hyphens, and names searchable as word prefixes. */
 export function searchVector(sql: Constructor, text: Fragment) {

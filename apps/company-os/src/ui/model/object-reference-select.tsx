@@ -14,12 +14,11 @@ import {
 } from "@company/ui/components/popover"
 import { cn } from "@company/ui/lib/utils"
 import { useQueries } from "@tanstack/react-query"
-import { Model } from "company-os/model"
 import { CheckIcon, ChevronDownIcon, XIcon } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 
-import { ROOT_ID } from "@/system-records"
-
+import { Model } from "#/app.model.ts"
+import { ROOT_ID } from "#/system-records.ts"
 import {
   clientFor,
   modelObjectProperty,
@@ -28,11 +27,11 @@ import {
   tableRecord,
   type ModelObject,
   type ObjectRecordPresentation,
-} from "./object-client"
-import { canSortProperty } from "./object-collection-query"
-import { useObjectCreate } from "./object-create-context"
-import { ObjectRecordOption } from "./object-record-identity"
-import { ObjectReferenceCreateActions } from "./object-reference-create-actions"
+} from "#/ui/model/object-client.ts"
+import { canSortProperty } from "#/ui/model/object-collection-query.ts"
+import { useObjectCreate } from "#/ui/model/object-create-context.ts"
+import { ObjectRecordOption } from "#/ui/model/object-record-identity.tsx"
+import { ObjectReferenceCreateActions } from "#/ui/model/object-reference-create-actions.tsx"
 
 export interface ReferenceOption {
   readonly id: string

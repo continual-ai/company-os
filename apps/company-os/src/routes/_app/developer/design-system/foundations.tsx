@@ -3,7 +3,7 @@ import { Button } from "@company/ui/components/button"
 import { Input } from "@company/ui/components/input"
 import { createFileRoute } from "@tanstack/react-router"
 
-import { pageOptions } from "@/route-metadata"
+import { pageOptions } from "#/route-metadata.ts"
 
 const page = {
   breadcrumb: "Foundations",

@@ -1,8 +1,7 @@
 import { Effect, Stream } from "effect"
 
-import type { EventPage } from "@/events"
-
-import { EventNotifications } from "./event-notifications"
+import type { EventPage } from "#/events.ts"
+import { EventNotifications } from "#/server/events/event-notifications.ts"
 
 /** Subscribe before reading; drain pages in order and recheck access even when idle. */
 export function streamEvents<E>(

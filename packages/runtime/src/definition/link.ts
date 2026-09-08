@@ -1,6 +1,6 @@
-import { definitionId } from "./identity"
-import type { InterfaceType } from "./interface"
-import type { ObjectType } from "./object"
+import { definitionId } from "#/definition/identity.ts"
+import type { InterfaceType } from "#/definition/interface.ts"
+import type { ObjectType } from "#/definition/object.ts"
 
 type LinkTarget = InterfaceType | ObjectType
 

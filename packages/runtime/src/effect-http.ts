@@ -13,31 +13,31 @@ import {
   OpenApi,
 } from "effect/unstable/httpapi"
 
-import { isStandardActionId, type Action } from "./definition/action"
-import type { ErrorStatus, ErrorType } from "./definition/error"
+import { isStandardActionId, type Action } from "#/definition/action.ts"
+import type { ErrorStatus, ErrorType } from "#/definition/error.ts"
 import {
   type ModelCatalog,
   type ModelLinkTraversal,
   modelObjectLinkTraversals,
   modelObjects,
-} from "./definition/model"
-import { Etag, type ObjectType } from "./definition/object"
+} from "#/definition/model.ts"
+import { Etag, type ObjectType } from "#/definition/object.ts"
 import {
   standardQueries,
   type CustomQuery,
   type Query,
-} from "./definition/query"
-import { MAX_BATCH_DELETE_SIZE, PageToken } from "./definition/request"
-import { schema } from "./definition/schema"
-import { ValidationError } from "./definition/standard-error"
-import { httpEndpointId, linkHttpEndpointId } from "./effect-http-client"
+} from "#/definition/query.ts"
+import { MAX_BATCH_DELETE_SIZE, PageToken } from "#/definition/request.ts"
+import { schema } from "#/definition/schema.ts"
+import { ValidationError } from "#/definition/standard-error.ts"
+import { httpEndpointId, linkHttpEndpointId } from "#/effect-http-client.ts"
 import {
   customMethodApi,
   customMethodParameter,
   customMethodPath,
   customMethodServerApi,
-} from "./effect-http-custom-method"
-import type { LinkService } from "./effect-link-service"
+} from "#/effect-http-custom-method.ts"
+import type { LinkService } from "#/effect-link-service.ts"
 import {
   executableModelOperation,
   executableModelOperations,
@@ -45,7 +45,7 @@ import {
   type ExecutableModelOperation,
   modelOperation,
   modelOperationErrors,
-} from "./effect-model-implementation"
+} from "#/effect-model-implementation.ts"
 import {
   linkPageOutputSchema,
   linkListInputSchema,
@@ -55,8 +55,8 @@ import {
   objectPageOutputSchema,
   objectRecordOutputSchema,
   pageSizeSchema,
-} from "./effect-model-schemas"
-import type { CurrentInvocation } from "./effect-object-service"
+} from "#/effect-model-schemas.ts"
+import type { CurrentInvocation } from "#/effect-object-service.ts"
 import {
   toEffectErrorSchema,
   toEffectInputSchema,
@@ -65,7 +65,7 @@ import {
   toEffectRecordIdentifierSchema,
   toEffectSchema,
   schemaErrorToApiError,
-} from "./effect-schema"
+} from "#/effect-schema.ts"
 
 export interface HttpApiOptions {
   readonly basePath?: `/${string}`

@@ -6,16 +6,15 @@ import {
 import { CurrentInvocation } from "@company/runtime/effect/object-service"
 import { Context, Data, Effect, Layer, Option, Schema } from "effect"
 
-import { appMetadata } from "@/app-metadata"
-import { appUrl } from "@/client-environment"
-import { Authentication } from "@/server/auth/authentication"
-import { ModelImplementation } from "@/server/model/model-implementation"
-
+import { appMetadata } from "#/app-metadata.ts"
+import { appUrl } from "#/client-environment.ts"
+import { Authentication } from "#/server/auth/authentication.ts"
+import { ModelImplementation } from "#/server/model/model-implementation.ts"
 import {
   internalApiError,
   unauthenticatedApiError,
   withApiErrors,
-} from "./api-error"
+} from "#/server/transport/api-error.ts"
 
 class McpTransportFailure extends Data.TaggedError("McpTransportFailure")<{
   readonly cause: unknown

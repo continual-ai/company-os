@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest"
 
-import { createModelDataClient, resetModelCache } from "./data-client"
+import { createModelDataClient, resetModelCache } from "#/data-client.ts"
 import {
   applyEventPage,
   applyModelChanges,
   applyMutationResult,
-} from "./model-cache"
-import { modelQuery } from "./model-query-client"
+} from "#/model-cache.ts"
+import { modelQuery } from "#/model-query-client.ts"
 
 const record = (etag: string) => ({
   id: "company_test",

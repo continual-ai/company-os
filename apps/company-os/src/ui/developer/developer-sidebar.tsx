@@ -12,7 +12,7 @@ import {
   SecondarySidebar,
   SecondarySidebarItem,
   SecondarySidebarSection,
-} from "@/ui/application/secondary-sidebar"
+} from "#/ui/application/secondary-sidebar.tsx"
 
 const developerNavigation = [
   { label: "Overview", to: "/developer", icon: BracesIcon },

@@ -9,7 +9,7 @@ table, personal/team sharing model, or background write when someone changes the
 ## Define a shared view
 
 ```ts
-import { defineCollectionView } from "@/ui/model/object-collection-view"
+import { defineCollectionView } from "#/ui/model/object-collection-view.ts"
 
 const pipeline = defineCollectionView("pipeline", "Pipeline", {
   layout: { type: "kanban", groupBy: "stage" },

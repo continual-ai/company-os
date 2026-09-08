@@ -1,7 +1,7 @@
 import { Effect } from "effect"
 import { expect, it } from "vitest"
 
-import { inspectUpload } from "./inspect-upload"
+import { inspectUpload } from "#/modules/assets/asset/server/inspect-upload.ts"
 
 it("detects documents from bytes and rejects a falsely declared image", async () => {
   const pdf = new TextEncoder().encode(

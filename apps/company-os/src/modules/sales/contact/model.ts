@@ -1,8 +1,8 @@
+import { NoteSubject } from "@company/notes/note-subject"
 import { defineObject, schema } from "@company/runtime"
 
-import { NoteSubject } from "#modules/sales/interfaces/note-subject"
-import { Party } from "#modules/sales/interfaces/party"
-import { Root } from "#root"
+import { Root } from "#/model-root.ts"
+import { Party } from "#/modules/sales/interfaces/party.ts"
 
 export const Contact = defineObject({
   id: "contact",

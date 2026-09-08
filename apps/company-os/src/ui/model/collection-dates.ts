@@ -1,7 +1,10 @@
 import type { ObjectType } from "@company/runtime"
+import type {
+  CollectionLayout,
+  ScheduleLayout,
+} from "@company/ui/model/collection-layout"
 
-import type { CollectionLayout, ScheduleLayout } from "./collection-layout"
-import type { ClientRecord } from "./object-client"
+import type { ClientRecord } from "#/ui/model/object-client.ts"
 
 const dayMs = 86_400_000
 /** Date-only fields never pass through local timezone conversion. Timestamp layouts use UTC. */

@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   matchesObjectTableFilter,
   objectTableSortText,
-} from "./object-table-config"
+} from "#/ui/model/object-table/object-table-config.ts"
 
 describe("objectTableSortText", () => {
   it("maps booleans to their numeric sorting values", () => {

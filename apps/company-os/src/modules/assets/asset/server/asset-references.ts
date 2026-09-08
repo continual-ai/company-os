@@ -7,11 +7,10 @@ import {
 } from "@company/postgres"
 import { Effect } from "effect"
 
-import type { AssetReference } from "@/modules/assets/asset/references"
-import type { Database } from "@/server/database/database"
-import { assetReferences, assets } from "@/server/database/schema"
-
-import { AssetPrecondition } from "./asset-error"
+import type { AssetReference } from "#/modules/assets/asset/references.ts"
+import { AssetPrecondition } from "#/modules/assets/asset/server/asset-error.ts"
+import type { Database } from "#/server/database/database.ts"
+import { assetReferences, assets } from "#/server/database/schema.ts"
 
 /** Transactional reference index: field values remain authoritative; foreign keys protect deletion. */
 export function replaceAssetReferences(

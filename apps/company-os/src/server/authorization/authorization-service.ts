@@ -1,24 +1,26 @@
 import { modelTypeAccepts } from "@company/runtime"
 import { type ObjectAccessRequest } from "@company/runtime/effect/object-service"
-import { Model, type PrincipalId } from "company-os/model"
 import { Context, Data, Effect, Layer } from "effect"
 
+import { Model, type PrincipalId } from "#/app.model.ts"
 import {
   capabilityPermission,
   type CapabilityCheck,
   type CapabilityPermission,
-} from "@/capabilities"
-import { callerForActor, type Caller } from "@/server/caller"
-import { currentAuthorizationActorId } from "@/server/invocation-context"
+} from "#/capabilities.ts"
+import { AuthorizationRepository } from "#/server/authorization/authorization-repository.ts"
+import {
+  objectPermission,
+  permissionDefinition,
+} from "#/server/authorization/permission-catalog.ts"
+import { callerForActor, type Caller } from "#/server/caller.ts"
+import { currentAuthorizationActorId } from "#/server/invocation-context.ts"
 import {
   ALL_AUTHENTICATED_CALLERS_PRINCIPAL_SET_ID,
   ALL_CALLERS_PRINCIPAL_SET_ID,
   ROOT_ID,
   SYSTEM_SERVICE_ACCOUNT_ID,
-} from "@/system-records"
-
-import { AuthorizationRepository } from "./authorization-repository"
-import { objectPermission, permissionDefinition } from "./permission-catalog"
+} from "#/system-records.ts"
 
 export class AuthorizationTargetNotFound extends Data.TaggedError(
   "AuthorizationTargetNotFound"

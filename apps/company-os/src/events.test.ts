@@ -2,7 +2,7 @@ import type { RecordId } from "@company/runtime"
 import { Schema } from "effect"
 import { expect, expectTypeOf, it } from "vitest"
 
-import { eventFactSchema, eventPageSchema } from "./events"
+import { eventFactSchema, eventPageSchema } from "#/events.ts"
 
 it("validates new facts strictly and replays them inside a stable envelope", () => {
   const fact = {

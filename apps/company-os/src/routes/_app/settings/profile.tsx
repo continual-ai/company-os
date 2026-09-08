@@ -1,12 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router"
 
-import { pageOptions } from "@/route-metadata"
-import { useAuthenticatedUser } from "@/ui/application/authenticated-user"
+import { pageOptions } from "#/route-metadata.ts"
+import { useAuthenticatedUser } from "#/ui/application/authenticated-user.tsx"
 import {
   SettingsPage,
   SettingsRow,
   SettingsSection,
-} from "@/ui/settings/settings-page"
+} from "#/ui/settings/settings-page.tsx"
 
 const page = {
   breadcrumb: "Profile",

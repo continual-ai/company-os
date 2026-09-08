@@ -7,11 +7,11 @@ import {
   type RecordIdentifier,
 } from "@company/runtime"
 import { RecordAliasNotFound } from "@company/runtime/effect/object-repository"
-import { Model } from "company-os/model"
 import { Context, Effect, Layer } from "effect"
 
-import { Database } from "@/server/database/database"
-import { Storage } from "@/server/database/schema"
+import { Model } from "#/app.model.ts"
+import { Database } from "#/server/database/database.ts"
+import { Storage } from "#/server/database/schema.ts"
 
 const make = Effect.gen(function* () {
   const database = yield* Database

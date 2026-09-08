@@ -1,9 +1,8 @@
 import { defineLink } from "@company/runtime"
 
-import { Company } from "#modules/sales/company/model"
-import { Contact } from "#modules/sales/contact/model"
-
-import { ContactCompanies } from "./contact-companies"
+import { Company } from "#/modules/sales/company/model.ts"
+import { Contact } from "#/modules/sales/contact/model.ts"
+import { ContactCompanies } from "#/modules/sales/links/contact-companies.ts"
 
 export const ContactPrimaryCompany = defineLink({
   id: "contactPrimaryCompany",

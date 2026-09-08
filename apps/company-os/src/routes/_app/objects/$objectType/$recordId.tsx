@@ -1,12 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router"
 
-import { documentHead } from "@/route-metadata"
-import { ModelRecordPage } from "@/ui/model/model-pages"
+import { documentHead } from "#/route-metadata.ts"
+import { ModelRecordPage } from "#/ui/model/model-pages.tsx"
 import {
   objectRecordTabSearch,
   validateObjectRecordSearch,
-} from "@/ui/model/object-record-view"
-import { preloadObject, routeObject } from "@/ui/model/object-routing"
+} from "#/ui/model/object-record-view.ts"
+import { preloadObject, routeObject } from "#/ui/model/object-routing.ts"
 export const Route = createFileRoute("/_app/objects/$objectType/$recordId")({
   loader: async ({ params, context }) => {
     const object = routeObject(params.objectType)

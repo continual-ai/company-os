@@ -2,11 +2,10 @@ import type { PostgresDatabase } from "@company/postgres"
 import { PgClient } from "@effect/sql-pg"
 import { Context, Effect, Layer } from "effect"
 
-import { PendingEvents } from "@/server/events/event-buffer"
-import { flushEvents } from "@/server/events/flush-events"
-
-import { CommittedChanges } from "./committed-changes"
-import { updateSearchIndex } from "./search-index"
+import { CommittedChanges } from "#/server/database/committed-changes.ts"
+import { updateSearchIndex } from "#/server/database/search-index.ts"
+import { PendingEvents } from "#/server/events/event-buffer.ts"
+import { flushEvents } from "#/server/events/flush-events.ts"
 
 const make = Effect.gen(function* () {
   const sql = yield* PgClient.PgClient

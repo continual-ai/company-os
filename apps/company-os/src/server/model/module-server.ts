@@ -4,11 +4,11 @@ import type {
   ObjectImplementation,
 } from "@company/runtime/effect/model-implementation"
 import { CurrentInvocation } from "@company/runtime/effect/object-service"
-import { Model } from "company-os/model"
 import { Context, Effect, Layer } from "effect"
 
-import { CommittedChanges } from "@/server/database/committed-changes"
-import { PendingEvents } from "@/server/events/event-buffer"
+import { Model } from "#/app.model.ts"
+import { CommittedChanges } from "#/server/database/committed-changes.ts"
+import { PendingEvents } from "#/server/events/event-buffer.ts"
 
 type Bound<O extends ObjectType> = O["id"] extends keyof typeof Model.objects
   ? (typeof Model.objects)[O["id"]]

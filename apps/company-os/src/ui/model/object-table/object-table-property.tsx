@@ -17,7 +17,7 @@ import {
 } from "lucide-react"
 import type { ComponentProps, ReactNode } from "react"
 
-import { objectTablePropertySchema } from "./object-table-cell-types"
+import { objectTablePropertySchema } from "#/ui/model/object-table/object-table-cell-types.ts"
 
 function ObjectTablePropertyIcon({
   property,

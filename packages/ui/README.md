@@ -1,6 +1,6 @@
 # @company/ui
 
-Shared design tokens and presentation primitives for Company OS applications. The package keeps
+The shared design system: tokens, base components, and reusable model UI for Company OS applications. The package keeps
 applications visually coherent while leaving each app responsible for its pages, workflows, and
 product decisions.
 
@@ -19,6 +19,21 @@ app-specific styles:
 
 @source "../**/*.{ts,tsx}";
 ```
+
+## Model UI
+
+`@company/ui/model/*` provides typed object UI extensions, collection views and layouts, field
+editor contracts, and record attribution. Domain modules use these alongside the base components:
+
+```ts
+import type { ObjectUi } from "@company/ui/model/object-ui"
+import { defineCollectionView } from "@company/ui/model/collection-view"
+```
+
+These exports consume portable runtime definitions and explicit props. The app supplies its composed
+model, data client, authorization, and routing. Base components never import the model UI layer.
+The app still owns standard page assembly and data-fetching components; moving those here requires
+removing their app dependencies first.
 
 ## Visual conventions
 
@@ -66,15 +81,18 @@ Run the source-owned shadcn generator from the repository root:
 pnpm --filter @company/ui exec shadcn add <component>
 ```
 
-Add an explicit package export for every public component or utility. Keep opinionated product
+The `./components/*`, `./hooks/*`, and `./lib/*` package export patterns let shadcn install shared
+components and their dependencies into this package from an app. Model UI contracts have explicit
+exports. Private imports use `#/` with the source file extension, including siblings.
+Keep opinionated product
 patterns in the app that owns them until concrete use proves a stable cross-application primitive.
 
 ## Boundaries
 
 - Put durable visual tokens and shared presentation mechanics here.
 - Keep page composition, business workflows, and one-app components with the owning app.
-- Keep business objects, API definitions, data fetching, persistence, and server behavior out of
-  this package.
+- Model UI may depend on portable `@company/runtime` definitions. Keep concrete domain definitions,
+  application clients, persistence, and server execution out of this package.
 
 Read the [architecture guide](../../docs/architecture.md) for the complete application and package
 ownership model.
@@ -90,4 +108,4 @@ pnpm turbo run typecheck --filter=@company/ui
 Markdown source editing and reading share the same CommonMark/GFM renderer. The editor is
 controlled; consumers retain ownership of drafts and submission. It supports selection formatting,
 keyboard shortcuts, and a preview. Raw HTML is disabled, and external images render as explicit
-links instead of loading automatically. Domain-specific attribution and actions belong to the app.
+links instead of loading automatically. Record attribution is shared through `model/record-attribution`; the app supplies author labels and actions.

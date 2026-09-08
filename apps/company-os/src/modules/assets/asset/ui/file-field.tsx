@@ -4,11 +4,13 @@ import { Input } from "@company/ui/components/input"
 import { FileIcon, UploadIcon, XIcon } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 
-import { ROOT_ID } from "@/system-records"
-import { formErrorFromCause } from "@/ui/forms/form-errors"
-
-import { assetContentUrl, uploadAsset } from "./upload"
-import { useAssetNames } from "./use-asset-names"
+import {
+  assetContentUrl,
+  uploadAsset,
+} from "#/modules/assets/asset/ui/upload.ts"
+import { useAssetNames } from "#/modules/assets/asset/ui/use-asset-names.ts"
+import { ROOT_ID } from "#/system-records.ts"
+import { formErrorFromCause } from "#/ui/forms/form-errors.ts"
 
 export function FileField({
   id,

@@ -1,5 +1,5 @@
-import type { LinkTraversal } from "./link"
-import { modelObjects, type ModelCatalog } from "./model"
+import type { LinkTraversal } from "#/definition/link.ts"
+import { modelObjects, type ModelCatalog } from "#/definition/model.ts"
 
 /** One semantic relationship, projected from its single authoritative storage definition. */
 export interface ModelRelationship {

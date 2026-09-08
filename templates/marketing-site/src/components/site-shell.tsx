@@ -3,7 +3,7 @@ import { cn } from "@company/ui/lib/utils"
 import { Link } from "@tanstack/react-router"
 import { modelMetadata } from "company-os/metadata"
 
-import { clientPortalUrl, appUrl } from "@/lib/app-urls"
+import { clientPortalUrl, appUrl } from "#/lib/app-urls.ts"
 
 export function SiteShell({ children }: { children: React.ReactNode }) {
   return (

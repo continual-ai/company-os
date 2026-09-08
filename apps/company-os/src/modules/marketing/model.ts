@@ -1,9 +1,9 @@
 import { defineModule } from "@company/runtime"
 
-import { Campaign } from "./campaign/model"
-import { Content } from "./content/model"
-import { Enrollment } from "./enrollment/model"
-import { Outreach } from "./outreach/model"
+import { Campaign } from "#/modules/marketing/campaign/model.ts"
+import { Content } from "#/modules/marketing/content/model.ts"
+import { Enrollment } from "#/modules/marketing/enrollment/model.ts"
+import { Outreach } from "#/modules/marketing/outreach/model.ts"
 
 export const MarketingModule = defineModule({
   id: "marketing",

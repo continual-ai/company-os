@@ -3,12 +3,11 @@ import {
   modelRelationships,
   modelTypeAccepts,
 } from "@company/runtime"
-import { Model } from "company-os/model"
 
-import { modelUi } from "@/app-ui"
-import type { CapabilityCheck } from "@/capabilities"
-
-import { objectCapabilityCheck } from "./object-capabilities"
+import { Model } from "#/app.model.ts"
+import { modelUi } from "#/app.ui.ts"
+import type { CapabilityCheck } from "#/capabilities.ts"
+import { objectCapabilityCheck } from "#/ui/model/object-capabilities.ts"
 import {
   clientFor,
   linkClientFor,
@@ -16,10 +15,10 @@ import {
   recordObjectTypes,
   type ClientRecord,
   type ModelObject,
-} from "./object-client"
-import type { ObjectCreateOptions } from "./object-create-context"
-import { objectFormProperties } from "./object-form"
-import type { ObjectCollectionList } from "./use-object-collection"
+} from "#/ui/model/object-client.ts"
+import type { ObjectCreateOptions } from "#/ui/model/object-create-context.ts"
+import { objectFormProperties } from "#/ui/model/object-form.ts"
+import type { ObjectCollectionList } from "#/ui/model/use-object-collection.ts"
 
 interface RelatedCreate {
   readonly target: ModelObject

@@ -5,9 +5,9 @@ import {
   isStandardActionId,
   type Action,
   type StandardActionId,
-} from "./definition/action"
-import type { ApiError } from "./definition/error"
-import type { LinkTraversal, LinkType } from "./definition/link"
+} from "#/definition/action.ts"
+import type { ApiError } from "#/definition/error.ts"
+import type { LinkTraversal, LinkType } from "#/definition/link.ts"
 import {
   type ModelCatalog,
   type ModelEndpointObjectTypeId,
@@ -17,7 +17,7 @@ import {
   type ModelObject,
   modelObjectLinkTraversals,
   modelObjects,
-} from "./definition/model"
+} from "#/definition/model.ts"
 import type {
   ObjectBatchDeleteInput,
   ObjectBatchGetInput,
@@ -26,16 +26,16 @@ import type {
   ObjectRecord,
   ObjectType,
   ObjectUpdateInput,
-} from "./definition/object"
-import type { CustomQuery } from "./definition/query"
-import type { Batch, ListRequest, Page } from "./definition/request"
+} from "#/definition/object.ts"
+import type { CustomQuery } from "#/definition/query.ts"
+import type { Batch, ListRequest, Page } from "#/definition/request.ts"
 import type {
   InferInputSchema,
   InferSchema,
   RecordIdentifier,
-} from "./definition/schema"
-import { customMethodParams } from "./effect-http-custom-method"
-import type { LinkListInput, LinkMutationInput } from "./effect-link-service"
+} from "#/definition/schema.ts"
+import { customMethodParams } from "#/effect-http-custom-method.ts"
+import type { LinkListInput, LinkMutationInput } from "#/effect-link-service.ts"
 
 function pascalCase(value: string): string {
   return value

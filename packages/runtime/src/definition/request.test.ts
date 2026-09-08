@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest"
 
-import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, normalizePageSize } from "./request"
+import {
+  DEFAULT_PAGE_SIZE,
+  MAX_PAGE_SIZE,
+  normalizePageSize,
+} from "#/definition/request.ts"
 
 describe("page-size normalization", () => {
   it("uses the default for omitted and zero values", () => {

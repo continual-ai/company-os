@@ -9,8 +9,8 @@ import {
 import { createFileRoute } from "@tanstack/react-router"
 import { ArrowLeftIcon } from "lucide-react"
 
-import { appConfig } from "@/customization/config"
-import { pageOptions } from "@/route-metadata"
+import { appConfig } from "#/customization/config.ts"
+import { pageOptions } from "#/route-metadata.ts"
 
 const page = {
   breadcrumb: "Sign in",

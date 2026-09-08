@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router"
-import { Model } from "company-os/model"
 import { Schema } from "effect"
 
-import { pageOptions } from "@/route-metadata"
-import { OpenApiReference } from "@/ui/developer/openapi-reference"
+import { Model } from "#/app.model.ts"
+import { pageOptions } from "#/route-metadata.ts"
+import { OpenApiReference } from "#/ui/developer/openapi-reference.tsx"
 
 const page = {
   breadcrumb: "API reference",

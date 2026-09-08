@@ -8,21 +8,21 @@ import {
 import { Effect } from "effect"
 import { describe, expect, it } from "vitest"
 
-import { defineInterface } from "./definition/interface"
-import { defineModel } from "./definition/model"
-import { defineModule } from "./definition/module"
-import { defineObject } from "./definition/object"
-import { PageToken } from "./definition/request"
-import { defineRoot } from "./definition/root"
-import { schema } from "./definition/schema"
-import { NotFoundError } from "./definition/standard-error"
+import { defineInterface } from "#/definition/interface.ts"
+import { defineModel } from "#/definition/model.ts"
+import { defineModule } from "#/definition/module.ts"
+import { defineObject } from "#/definition/object.ts"
+import { PageToken } from "#/definition/request.ts"
+import { defineRoot } from "#/definition/root.ts"
+import { schema } from "#/definition/schema.ts"
+import { NotFoundError } from "#/definition/standard-error.ts"
 import {
   createModelMcpServer,
   type ModelMcpBinding,
   validateModelMcpRequest,
-} from "./effect-mcp"
-import { type ModelServiceMap } from "./effect-model-implementation"
-import { CurrentInvocation } from "./effect-object-service"
+} from "#/effect-mcp.ts"
+import { type ModelServiceMap } from "#/effect-model-implementation.ts"
+import { CurrentInvocation } from "#/effect-object-service.ts"
 
 const Actor = defineInterface({
   id: "actor",

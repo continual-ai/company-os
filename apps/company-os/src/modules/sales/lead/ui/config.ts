@@ -1,11 +1,10 @@
-import type { Model } from "company-os/model"
+import type { ObjectUi } from "@company/ui/model/object-ui"
 import { UserRoundSearchIcon } from "lucide-react"
 
-import type { ObjectUi } from "@/ui/model/module-ui"
-
-import { LeadConversion } from "./conversion-tab"
-import { ConvertLeadAction } from "./convert-button"
-import { leadViews } from "./views"
+import type { Model } from "#/app.model.ts"
+import { LeadConversion } from "#/modules/sales/lead/ui/conversion-tab.tsx"
+import { ConvertLeadAction } from "#/modules/sales/lead/ui/convert-button.tsx"
+import { leadViews } from "#/modules/sales/lead/ui/views.ts"
 
 export const leadUi = {
   navigation: {

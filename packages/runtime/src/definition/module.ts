@@ -1,6 +1,6 @@
-import type { InterfaceType } from "./interface"
-import type { LinkType } from "./link"
-import type { ObjectType } from "./object"
+import type { InterfaceType } from "#/definition/interface.ts"
+import type { LinkType } from "#/definition/link.ts"
+import type { ObjectType } from "#/definition/object.ts"
 
 /** A portable, cohesive group of model definitions. */
 export interface ModuleDefinition<

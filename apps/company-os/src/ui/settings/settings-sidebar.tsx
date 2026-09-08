@@ -12,8 +12,8 @@ import {
   SecondarySidebar,
   SecondarySidebarItem,
   SecondarySidebarSection,
-} from "@/ui/application/secondary-sidebar"
-import { useCapabilities } from "@/ui/application/use-capabilities"
+} from "#/ui/application/secondary-sidebar.tsx"
+import { useCapabilities } from "#/ui/application/use-capabilities.ts"
 
 const settingsSections = [
   {

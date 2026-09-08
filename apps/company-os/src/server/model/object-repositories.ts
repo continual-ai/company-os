@@ -1,10 +1,10 @@
 import type { PostgresRepositoryError } from "@company/postgres"
 import type { Repository } from "@company/runtime/effect/object-repository"
-import { Model } from "company-os/model"
 import { Context, Effect, Layer } from "effect"
 
-import type { AssetPrecondition } from "@/modules/assets/asset/server/asset-error"
-import { makeObjectRepository } from "@/server/database/object-repository"
+import { Model } from "#/app.model.ts"
+import type { AssetPrecondition } from "#/modules/assets/asset/server/asset-error.ts"
+import { makeObjectRepository } from "#/server/database/object-repository.ts"
 
 type ObjectRepositoryMap = {
   readonly [TObjectId in keyof typeof Model.objects]: Repository<

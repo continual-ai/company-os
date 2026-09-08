@@ -4,16 +4,16 @@ import {
   type BoundActionSet,
   type Action,
   isStandardActionId,
-} from "./action"
+} from "#/definition/action.ts"
 import type {
   ObjectBatchGetInput,
   ObjectGetInput,
   ObjectRecord,
   ObjectType,
-} from "./object"
-import { bindOperationContract } from "./operation-contract"
-import type { Batch, ListRequest, Page } from "./request"
-import type { InferInputSchema, InferSchema } from "./schema"
+} from "#/definition/object.ts"
+import { bindOperationContract } from "#/definition/operation-contract.ts"
+import type { Batch, ListRequest, Page } from "#/definition/request.ts"
+import type { InferInputSchema, InferSchema } from "#/definition/schema.ts"
 
 export const standardQueryIds = ["get", "list", "batchGet"] as const
 

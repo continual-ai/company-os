@@ -1,8 +1,8 @@
 import { Data, type Effect } from "effect"
 
-import type { LinkDirection } from "./definition/model"
-import type { ObjectRef } from "./definition/object"
-import type { Page, PageToken } from "./definition/request"
+import type { LinkDirection } from "#/definition/model.ts"
+import type { ObjectRef } from "#/definition/object.ts"
+import type { Page, PageToken } from "#/definition/request.ts"
 
 export class LinkCardinalityConflict extends Data.TaggedError(
   "LinkCardinalityConflict"

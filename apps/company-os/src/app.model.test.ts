@@ -11,8 +11,13 @@ import {
 } from "@company/runtime"
 import { describe, expect, expectTypeOf, it } from "vitest"
 
-import { Model, type ActorId, type IdentityId, type PrincipalId } from "./model"
-import { modelMetadata } from "./model-metadata"
+import {
+  Model,
+  type ActorId,
+  type IdentityId,
+  type PrincipalId,
+} from "#/app.model.ts"
+import { modelMetadata } from "#/model-metadata.ts"
 
 const ContactPrimaryCompany = Model.links.contactPrimaryCompany
 
@@ -81,6 +86,7 @@ describe("model contract", () => {
     expect(description.modules.map((module) => module.id)).toEqual([
       "access",
       "sales",
+      "notes",
       "marketing",
       "support",
       "engineering",

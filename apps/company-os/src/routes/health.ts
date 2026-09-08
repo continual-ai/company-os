@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { Effect } from "effect"
 
-import { applicationRuntime } from "@/server/application-runtime"
-import { Readiness } from "@/server/readiness"
+import { applicationRuntime } from "#/server/application-runtime.ts"
+import { Readiness } from "#/server/readiness.ts"
 
 async function health(): Promise<Response> {
   return applicationRuntime.runPromise(

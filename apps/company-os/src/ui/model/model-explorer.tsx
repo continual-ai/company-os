@@ -10,7 +10,6 @@ import type {
 } from "@company/runtime"
 import { Badge } from "@company/ui/components/badge"
 import { Button } from "@company/ui/components/button"
-import type { Model } from "company-os/model"
 import {
   BoxesIcon,
   BracesIcon,
@@ -21,16 +20,17 @@ import {
 } from "lucide-react"
 import { useDeferredValue, useMemo, useState, type ReactNode } from "react"
 
+import type { Model } from "#/app.model.ts"
 import {
   DeveloperBrowser,
   DeveloperBrowserEmpty,
   DeveloperBrowserOutline,
   DeveloperBrowserSearch,
-} from "@/ui/developer/developer-browser"
+} from "#/ui/developer/developer-browser.tsx"
 import {
   DeveloperNavigationGroup,
   DeveloperNavigationItem,
-} from "@/ui/developer/developer-layout"
+} from "#/ui/developer/developer-layout.tsx"
 
 type ModelDefinition = typeof Model
 type ModelObject = ObjectType

@@ -15,8 +15,8 @@ import {
 } from "@tanstack/react-query"
 import { Cause, Context, Effect, Exit } from "effect"
 
-import { cacheGeneration } from "./data-client"
-import { applyMutationResult } from "./model-cache"
+import { cacheGeneration } from "#/data-client.ts"
+import { applyMutationResult } from "#/model-cache.ts"
 
 /** HTTP change headers belong to the invocation, including imperative mutations. */
 export const ClientChanges = Context.Reference<Set<string> | undefined>(

@@ -1,11 +1,12 @@
 "use client"
 
-import { Input } from "@company/ui/components/input"
-import { InputGroup } from "@company/ui/components/input-group"
-import { cn } from "@company/ui/lib/utils"
 import { GlobeIcon } from "lucide-react"
 import { forwardRef, type ComponentProps, type FocusEventHandler } from "react"
 import PhoneNumberInput, { type Country } from "react-phone-number-input"
+
+import { InputGroup } from "#/components/input-group.tsx"
+import { Input } from "#/components/input.tsx"
+import { cn } from "#/lib/utils.ts"
 
 function countryFlag(country: Country): string {
   return String.fromCodePoint(

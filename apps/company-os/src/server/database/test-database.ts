@@ -5,8 +5,8 @@ import { PgClient } from "@effect/sql-pg"
 import { Config, Data, Effect, Layer, Redacted } from "effect"
 import { Client } from "pg"
 
-import { Database } from "./database"
-import { applyMigrations } from "./migrations"
+import { Database } from "#/server/database/database.ts"
+import { applyMigrations } from "#/server/database/migrations.ts"
 
 const defaultAdminUrl = "postgresql://localhost:5432/postgres"
 

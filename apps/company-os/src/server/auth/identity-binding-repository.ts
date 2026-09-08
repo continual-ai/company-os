@@ -3,8 +3,8 @@ import { projection, type SelectionRow } from "@company/postgres"
 import { RecordId, type RecordId as RecordIdType } from "@company/runtime"
 import { Context, Effect, Layer } from "effect"
 
-import { Database } from "@/server/database/database"
-import { identityBindings, objects } from "@/server/database/schema"
+import { Database } from "#/server/database/database.ts"
+import { identityBindings, objects } from "#/server/database/schema.ts"
 
 export type BoundIdentity =
   | { readonly id: RecordId<"serviceAccount">; readonly kind: "serviceAccount" }

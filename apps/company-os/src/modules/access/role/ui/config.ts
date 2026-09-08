@@ -1,8 +1,7 @@
-import type { Model } from "company-os/model"
+import type { ObjectUi } from "@company/ui/model/object-ui"
 
-import type { ObjectUi } from "@/ui/model/module-ui"
-
-import { RoleToolbar } from "./toolbar"
+import type { Model } from "#/app.model.ts"
+import { RoleToolbar } from "#/modules/access/role/ui/toolbar.tsx"
 export const roleUi = {
   navigation: { hidden: true },
   collection: { toolbarComponent: RoleToolbar },

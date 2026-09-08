@@ -13,7 +13,7 @@ import { Link } from "@tanstack/react-router"
 import { ArrowLeftIcon, type LucideIcon } from "lucide-react"
 import type { ReactElement, ReactNode } from "react"
 
-import { CommandPaletteButton } from "./command-palette"
+import { CommandPaletteButton } from "#/ui/application/command-palette.tsx"
 
 export function SecondarySidebar({ children }: { children: ReactNode }) {
   return (

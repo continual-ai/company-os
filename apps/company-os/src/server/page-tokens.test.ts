@@ -1,8 +1,8 @@
 import { PageToken } from "@company/runtime"
 import { describe, expect, it } from "vitest"
 
-import { makeApplicationKeys } from "./application-keys"
-import { makeEncryptedPageTokenCodec } from "./page-tokens"
+import { makeApplicationKeys } from "#/server/application-keys.ts"
+import { makeEncryptedPageTokenCodec } from "#/server/page-tokens.ts"
 
 const firstKeys = makeApplicationKeys(
   "first-test-application-secret-with-at-least-32-bytes"

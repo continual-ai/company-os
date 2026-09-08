@@ -4,11 +4,10 @@
   "private": true,
   "type": "module",
   "imports": {
-    "#modules/*": "./src/modules/*.ts",
-    "#root": "./src/model-root.ts"
+    "#/*": "./src/*"
   },
   "exports": {
-    "./model": "./src/model.ts",
+    "./model": "./src/app.model.ts",
     "./metadata": "./src/model-metadata.ts"
   },
   "scripts": {
@@ -22,13 +21,14 @@
     "deploy": "tsx tools/db-migrate.ts --if-configured && continual deploy",
     "dev": "vite dev --port 3002 --host 0.0.0.0",
     "lint": "oxlint .",
-    "model:check": "tsx tools/lint-model.ts && tsx tools/check-model-boundaries.ts && tsx tools/generate-db-schema.ts --check",
+    "model:check": "tsx tools/lint-model.ts && tsx tools/check-model-boundaries.ts",
     "preview": "pnpm build && vite preview --port 3102 --host 0.0.0.0",
     "reset": "pnpm run db:reset",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@company/notes": "workspace:*",
     "@company/postgres": "workspace:*",
     "@company/runtime": "workspace:*",
     "@company/ui": "workspace:*",

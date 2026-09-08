@@ -1,9 +1,9 @@
 import { definePlugin } from "@oxlint/plugins"
 
-import { filenameCaseRule } from "./rules/filename-case.ts"
-import { noInternalReexportsRule } from "./rules/no-internal-reexports.ts"
-import { packageBoundariesRule } from "./rules/package-boundaries.ts"
-import { visualDriftRule } from "./rules/visual-drift.ts"
+import { filenameCaseRule } from "#/oxlint/company-os/rules/filename-case.ts"
+import { noInternalReexportsRule } from "#/oxlint/company-os/rules/no-internal-reexports.ts"
+import { packageBoundariesRule } from "#/oxlint/company-os/rules/package-boundaries.ts"
+import { visualDriftRule } from "#/oxlint/company-os/rules/visual-drift.ts"
 
 /** Source-owned Oxlint rules for Company OS repository conventions. */
 const companyOsPlugin = definePlugin({

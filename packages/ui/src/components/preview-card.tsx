@@ -1,7 +1,8 @@
 "use client"
 
 import { PreviewCard as PreviewCardPrimitive } from "@base-ui/react/preview-card"
-import { cn } from "@company/ui/lib/utils"
+
+import { cn } from "#/lib/utils.ts"
 
 function PreviewCard({ ...props }: PreviewCardPrimitive.Root.Props) {
   return <PreviewCardPrimitive.Root data-slot="preview-card" {...props} />

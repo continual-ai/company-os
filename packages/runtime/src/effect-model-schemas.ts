@@ -5,8 +5,8 @@ import {
   modelTypeAccepts,
   type ModelCatalog,
   type ModelLinkTraversal,
-} from "./definition/model"
-import type { ObjectType } from "./definition/object"
+} from "#/definition/model.ts"
+import type { ObjectType } from "#/definition/object.ts"
 import {
   DEFAULT_PAGE_SIZE,
   filterOperators,
@@ -15,12 +15,12 @@ import {
   nullPlacements,
   PageToken,
   sortDirections,
-} from "./definition/request"
+} from "#/definition/request.ts"
 import {
   toEffectObjectSchema,
   toEffectObjectFields,
   toEffectRecordIdentifierSchema,
-} from "./effect-schema"
+} from "#/effect-schema.ts"
 
 function pascalCase(value: string): string {
   return value

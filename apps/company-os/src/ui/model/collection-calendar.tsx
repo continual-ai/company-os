@@ -6,6 +6,7 @@ import {
   DialogTitle,
 } from "@company/ui/components/dialog"
 import { cn } from "@company/ui/lib/utils"
+import type { ScheduleLayout } from "@company/ui/model/collection-layout"
 import { PlusIcon } from "lucide-react"
 import { useState } from "react"
 
@@ -13,17 +14,16 @@ import {
   CollectionCard,
   CollectionDropZone,
   type CollectionPresentation,
-} from "./collection-card"
+} from "#/ui/model/collection-card.tsx"
 import {
   addDays,
   calendarDay,
   dateFieldValue,
   dateLabel,
   type CollectionDateWindow,
-} from "./collection-dates"
-import type { ScheduleLayout } from "./collection-layout"
-import type { ClientRecord } from "./object-client"
-import type { ObjectFormInput } from "./object-form"
+} from "#/ui/model/collection-dates.ts"
+import type { ClientRecord } from "#/ui/model/object-client.ts"
+import type { ObjectFormInput } from "#/ui/model/object-form.ts"
 
 export function CollectionCalendar({
   presentation,

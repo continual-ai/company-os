@@ -1,7 +1,7 @@
 import { ConfigProvider, Effect } from "effect"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import { IdentityProvider } from "./identity-provider"
+import { IdentityProvider } from "#/server/auth/identity-provider.ts"
 
 afterEach(() => {
   vi.unstubAllEnvs()

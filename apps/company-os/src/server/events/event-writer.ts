@@ -10,15 +10,14 @@ import type {
 } from "@company/runtime"
 import { toEffectSchema } from "@company/runtime/effect"
 import { CurrentInvocation } from "@company/runtime/effect/object-service"
-import { Model } from "company-os/model"
 import { DateTime, Effect, Option, Schema } from "effect"
 
-import { eventFactSchema } from "@/events"
-import type { Database } from "@/server/database/database"
-import { objects } from "@/server/database/schema"
-
-import { stageEvent, type EventSubject } from "./event-buffer"
-import { eventReferences } from "./event-references"
+import { Model } from "#/app.model.ts"
+import { eventFactSchema } from "#/events.ts"
+import type { Database } from "#/server/database/database.ts"
+import { objects } from "#/server/database/schema.ts"
+import { stageEvent, type EventSubject } from "#/server/events/event-buffer.ts"
+import { eventReferences } from "#/server/events/event-references.ts"
 
 /** Shared by standard writers and EventJournal; uses the caller's existing Fragment transaction. */
 export function makeEventWriter(database: typeof Database.Service) {

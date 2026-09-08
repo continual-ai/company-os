@@ -1,11 +1,10 @@
 import { describeModel } from "@company/runtime"
-import { Model } from "company-os/model"
 import { OpenApi } from "effect/unstable/httpapi"
 
-import { applicationHttpApi } from "@/http-api"
-
-import { makeApplicationLayer } from "./application-layer"
-import * as Postgres from "./database/postgres"
+import { Model } from "#/app.model.ts"
+import { applicationHttpApi } from "#/http-api.ts"
+import { makeApplicationLayer } from "#/server/application-layer.ts"
+import * as Postgres from "#/server/database/postgres.ts"
 
 const applicationLayer = makeApplicationLayer({
   database: Postgres.databaseLayer,

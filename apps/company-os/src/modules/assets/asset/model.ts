@@ -1,6 +1,6 @@
 import { defineObject, schema, standardErrors } from "@company/runtime"
 
-import { AuthorizationScope } from "#modules/access/interfaces/authorization-scope"
+import { AuthorizationScope } from "#/modules/access/interfaces/authorization-scope.ts"
 
 /** Durable file identity. Storage keys and bytes stay in the server adapter. */
 export const Asset = defineObject({

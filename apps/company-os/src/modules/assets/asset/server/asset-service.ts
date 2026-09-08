@@ -5,23 +5,22 @@ import {
   type ObjectCreateInput,
   type ObjectGetInput,
 } from "@company/runtime"
-import { Model } from "company-os/model"
 import { Context, Effect, Layer } from "effect"
 
-import { BlobStorage } from "@/modules/assets/server/blob-storage"
-import { Authorization } from "@/server/authorization/authorization-service"
-import { Database } from "@/server/database/database"
-import { assets } from "@/server/database/schema"
-import { currentActorId } from "@/server/invocation-context"
-import { ObjectRepositories } from "@/server/model/object-repositories"
+import { Model } from "#/app.model.ts"
+import { AssetPrecondition } from "#/modules/assets/asset/server/asset-error.ts"
+import { inspectUpload } from "#/modules/assets/asset/server/inspect-upload.ts"
+import { BlobStorage } from "#/modules/assets/server/blob-storage.ts"
+import { Authorization } from "#/server/authorization/authorization-service.ts"
+import { Database } from "#/server/database/database.ts"
+import { assets } from "#/server/database/schema.ts"
+import { currentActorId } from "#/server/invocation-context.ts"
+import { ObjectRepositories } from "#/server/model/object-repositories.ts"
 import {
   makeObjectService,
   makeObjectWriter,
-} from "@/server/model/object-service"
-import { RecordIdentifierResolver } from "@/server/model/record-identifier-resolver"
-
-import { AssetPrecondition } from "./asset-error"
-import { inspectUpload } from "./inspect-upload"
+} from "#/server/model/object-service.ts"
+import { RecordIdentifierResolver } from "#/server/model/record-identifier-resolver.ts"
 
 const make = Effect.gen(function* () {
   const database = yield* Database

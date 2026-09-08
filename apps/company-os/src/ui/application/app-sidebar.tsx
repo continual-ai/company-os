@@ -22,18 +22,17 @@ import {
 import { Link, useMatchRoute } from "@tanstack/react-router"
 import { BracesIcon, ChevronsUpDownIcon, SettingsIcon } from "lucide-react"
 
-import { applicationCapabilities } from "@/capabilities"
-import { BrandMark } from "@/customization/brand"
-import { appConfig } from "@/customization/config"
-import { operateNavigation } from "@/customization/navigation"
+import { applicationCapabilities } from "#/capabilities.ts"
+import { BrandMark } from "#/customization/brand.tsx"
+import { appConfig } from "#/customization/config.ts"
+import { operateNavigation } from "#/customization/navigation.ts"
 import {
   getUserInitials,
   useAuthenticatedUser,
-} from "@/ui/application/authenticated-user"
-import { useCapabilities } from "@/ui/application/use-capabilities"
-import { ModuleNavigation } from "@/ui/model/module-navigation"
-
-import { CommandPaletteButton } from "./command-palette"
+} from "#/ui/application/authenticated-user.tsx"
+import { CommandPaletteButton } from "#/ui/application/command-palette.tsx"
+import { useCapabilities } from "#/ui/application/use-capabilities.ts"
+import { ModuleNavigation } from "#/ui/model/module-navigation.tsx"
 
 const navigationChecks = [applicationCapabilities.develop]
 

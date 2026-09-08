@@ -16,22 +16,26 @@ import {
   ObjectWriteConflict,
 } from "@company/runtime/effect/object-repository"
 import * as ObjectService from "@company/runtime/effect/object-service"
-import { Model } from "company-os/model"
 import { Effect } from "effect"
 import { describe, expect, expectTypeOf } from "vitest"
 
-import { systemInvocation } from "@/server/invocation-context"
-import { RecordIdentifierResolver } from "@/server/model/record-identifier-resolver"
-import { PageTokens } from "@/server/page-tokens"
-import { seedSystem } from "@/server/seeds/seed-system"
-import { ROOT_ID, SYSTEM_SERVICE_ACCOUNT_ID } from "@/system-records"
-
-import { Database } from "./database"
-import { itDatabase } from "./it-database"
-import { applyMigrations } from "./migrations"
-import { makeObjectRepository } from "./object-repository"
-import { Storage } from "./schema"
-import { lineItems, recordAliases, objects, parties } from "./schema"
+import { Model } from "#/app.model.ts"
+import { Database } from "#/server/database/database.ts"
+import { itDatabase } from "#/server/database/it-database.ts"
+import { applyMigrations } from "#/server/database/migrations.ts"
+import { makeObjectRepository } from "#/server/database/object-repository.ts"
+import { Storage } from "#/server/database/schema.ts"
+import {
+  lineItems,
+  recordAliases,
+  objects,
+  parties,
+} from "#/server/database/schema.ts"
+import { systemInvocation } from "#/server/invocation-context.ts"
+import { RecordIdentifierResolver } from "#/server/model/record-identifier-resolver.ts"
+import { PageTokens } from "#/server/page-tokens.ts"
+import { seedSystem } from "#/server/seeds/seed-system.ts"
+import { ROOT_ID, SYSTEM_SERVICE_ACCOUNT_ID } from "#/system-records.ts"
 
 const CompanyId = RecordId("company")
 

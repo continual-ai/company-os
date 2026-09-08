@@ -1,5 +1,3 @@
-import { Button, buttonVariants } from "@company/ui/components/button"
-import { cn } from "@company/ui/lib/utils"
 import { format } from "date-fns"
 import {
   ChevronLeftIcon,
@@ -12,6 +10,9 @@ import {
   getDefaultClassNames,
   type DayButton,
 } from "react-day-picker"
+
+import { Button, buttonVariants } from "#/components/button.tsx"
+import { cn } from "#/lib/utils.ts"
 
 type DayPickerComponents = NonNullable<
   React.ComponentProps<typeof DayPicker>["components"]

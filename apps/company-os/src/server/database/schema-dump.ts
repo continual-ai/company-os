@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process"
 import { promisify } from "node:util"
 
-import { assertDatabaseSchemaName } from "./postgres"
+import { assertDatabaseSchemaName } from "#/server/database/postgres.ts"
 
 const run = promisify(execFile)
 

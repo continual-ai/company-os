@@ -1,11 +1,10 @@
 import { Effect } from "effect"
 
-import { seedEngineeringDemo } from "@/modules/engineering/server/demo-seed"
-import { seedMarketingDemo } from "@/modules/marketing/server/demo-seed"
-import { seedSalesDemo } from "@/modules/sales/server/demo-seed"
-import { seedSupportDemo } from "@/modules/support/server/demo-seed"
-
-import type { SeedScenario } from "./run-seed-scenario"
+import { seedEngineeringDemo } from "#/modules/engineering/server/demo-seed.ts"
+import { seedMarketingDemo } from "#/modules/marketing/server/demo-seed.ts"
+import { seedSalesDemo } from "#/modules/sales/server/demo-seed.ts"
+import { seedSupportDemo } from "#/modules/support/server/demo-seed.ts"
+import type { SeedScenario } from "#/server/seeds/run-seed-scenario.ts"
 
 export const demoScenario = {
   name: "demo",

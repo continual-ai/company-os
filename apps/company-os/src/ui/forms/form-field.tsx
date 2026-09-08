@@ -4,18 +4,14 @@ import {
   FieldError,
   FieldLabel,
 } from "@company/ui/components/field"
+import type { FormControlAccessibility } from "@company/ui/model/field-editor"
+import type { FormValue } from "@company/ui/model/form-value"
 
-import { useFieldContext } from "./form-context"
-import { formErrorMessages, type FormErrorValue } from "./form-errors"
-import type { FormValue } from "./form-value"
-
-export interface FormControlAccessibility {
-  readonly ariaDescribedBy?: string | undefined
-  readonly invalid: boolean
-  readonly onBlur: () => void
-  readonly onValueChange: (value: FormValue) => void
-  readonly value: FormValue
-}
+import { useFieldContext } from "#/ui/forms/form-context.ts"
+import {
+  formErrorMessages,
+  type FormErrorValue,
+} from "#/ui/forms/form-errors.ts"
 
 /** Uniform field presentation over the current TanStack Form field. */
 export function FormField({

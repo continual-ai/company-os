@@ -1,4 +1,3 @@
-import { cn } from "@company/ui/lib/utils"
 import {
   BoldIcon,
   CodeIcon,
@@ -8,9 +7,10 @@ import {
 } from "lucide-react"
 import { useEffect, useRef, useState, type ComponentProps } from "react"
 
-import { Button } from "./button"
-import { Markdown } from "./markdown"
-import { Textarea } from "./textarea"
+import { Button } from "#/components/button.tsx"
+import { Markdown } from "#/components/markdown.tsx"
+import { Textarea } from "#/components/textarea.tsx"
+import { cn } from "#/lib/utils.ts"
 
 /** Controlled Markdown source with selection-aware formatting and a read-only preview. */
 export function MarkdownEditor({

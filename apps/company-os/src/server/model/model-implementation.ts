@@ -4,15 +4,14 @@ import {
   type ModelServiceMap,
 } from "@company/runtime/effect/model-implementation"
 import type { Repository } from "@company/runtime/effect/object-repository"
-import { Model } from "company-os/model"
 import { Context, Effect, Layer } from "effect"
 
-import type { AssetPrecondition } from "@/modules/assets/asset/server/asset-error"
-import { ModuleServices } from "@/server/module-services"
-
-import { Links } from "./link-service"
-import { ObjectRepositories } from "./object-repositories"
-import { makeObjectService } from "./object-service"
+import { Model } from "#/app.model.ts"
+import { ModuleServices } from "#/app.server.ts"
+import type { AssetPrecondition } from "#/modules/assets/asset/server/asset-error.ts"
+import { Links } from "#/server/model/link-service.ts"
+import { ObjectRepositories } from "#/server/model/object-repositories.ts"
+import { makeObjectService } from "#/server/model/object-service.ts"
 
 const make = Effect.gen(function* () {
   const repositories = yield* ObjectRepositories

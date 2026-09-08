@@ -9,13 +9,13 @@ import type {
   ObjectParentRecordTypeId,
   ObjectType,
   ObjectUpdateValues,
-} from "./definition/object"
+} from "#/definition/object.ts"
 import type {
   CanonicalListRequest,
   CanonicalObjectFilter,
   Page,
-} from "./definition/request"
-import type { RecordId } from "./definition/schema"
+} from "#/definition/request.ts"
+import type { RecordId } from "#/definition/schema.ts"
 
 export class ObjectNotFound extends Data.TaggedError("ObjectNotFound")<{
   readonly objectType: string

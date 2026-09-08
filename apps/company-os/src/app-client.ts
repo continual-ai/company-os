@@ -3,7 +3,6 @@ import {
   type ModelHttpClient,
 } from "@company/runtime/effect/http-client"
 import { customMethodParams } from "@company/runtime/effect/http-custom-method"
-import { Model } from "company-os/model"
 import { Effect } from "effect"
 import {
   FetchHttpClient,
@@ -12,16 +11,17 @@ import {
 } from "effect/unstable/http"
 import { HttpApiClient } from "effect/unstable/httpapi"
 
-import { applicationHttpApi } from "./http-api"
-import type { capabilityGroup, eventGroup, recordGroup } from "./http-api"
-import { modelFetch, modelOrigin } from "./model-fetch"
+import { Model } from "#/app.model.ts"
+import { applicationHttpApi } from "#/http-api.ts"
+import type { capabilityGroup, eventGroup, recordGroup } from "#/http-api.ts"
+import { modelFetch, modelOrigin } from "#/model-fetch.ts"
 import {
   ClientChanges,
   createModelQueries,
   modelQuery,
   runClientEffect,
-} from "./model-query-client"
-import { searchableObjects, type RecordSearchInput } from "./records"
+} from "#/model-query-client.ts"
+import { searchableObjects, type RecordSearchInput } from "#/records.ts"
 
 type ApplicationTransportClient = ModelHttpClient<typeof Model> &
   HttpApiClient.Client<typeof capabilityGroup> &

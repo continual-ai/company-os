@@ -1,13 +1,11 @@
-import { defineModuleUi } from "@/ui/model/module-ui"
-
-import { activityUi } from "./activity/ui/config"
-import { companyUi } from "./company/ui/config"
-import { contactUi } from "./contact/ui/config"
-import { dealUi } from "./deal/ui/config"
-import { leadUi } from "./lead/ui/config"
-import { lineItemUi } from "./line-item/ui/config"
-import { SalesModule } from "./model"
-import { noteUi } from "./note/ui/config"
+import { activityUi } from "#/modules/sales/activity/ui/config.ts"
+import { companyUi } from "#/modules/sales/company/ui/config.ts"
+import { contactUi } from "#/modules/sales/contact/ui/config.ts"
+import { dealUi } from "#/modules/sales/deal/ui/config.ts"
+import { leadUi } from "#/modules/sales/lead/ui/config.ts"
+import { lineItemUi } from "#/modules/sales/line-item/ui/config.ts"
+import { SalesModule } from "#/modules/sales/model.ts"
+import { defineModuleUi } from "#/ui/model/module-ui.tsx"
 
 export const SalesUi = defineModuleUi(SalesModule, {
   activity: activityUi,
@@ -15,6 +13,5 @@ export const SalesUi = defineModuleUi(SalesModule, {
   company: companyUi,
   contact: contactUi,
   deal: dealUi,
-  note: noteUi,
   lineItem: lineItemUi,
 })

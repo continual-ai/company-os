@@ -3,19 +3,18 @@ import { CurrentInvocation } from "@company/runtime/effect/object-service"
 import { Effect, Layer } from "effect"
 import { expect } from "vitest"
 
-import { makeApplicationLayer } from "@/server/application-layer"
-import { Database } from "@/server/database/database"
-import { itDatabase } from "@/server/database/it-database"
+import { AssetService } from "#/modules/assets/asset/server/asset-service.ts"
+import { makeApplicationLayer } from "#/server/application-layer.ts"
+import { Database } from "#/server/database/database.ts"
+import { itDatabase } from "#/server/database/it-database.ts"
 import {
   anonymousInvocation,
   systemInvocation,
-} from "@/server/invocation-context"
-import { ModelImplementation } from "@/server/model/model-implementation"
-import { PageTokens } from "@/server/page-tokens"
-import { seedSystem } from "@/server/seeds/seed-system"
-import { ROOT_ID } from "@/system-records"
-
-import { AssetService } from "./asset-service"
+} from "#/server/invocation-context.ts"
+import { ModelImplementation } from "#/server/model/model-implementation.ts"
+import { PageTokens } from "#/server/page-tokens.ts"
+import { seedSystem } from "#/server/seeds/seed-system.ts"
+import { ROOT_ID } from "#/system-records.ts"
 
 itDatabase(
   "verifies uploads, protects content, and keeps references consistent through deletion",

@@ -1,18 +1,17 @@
 import type { ObjectCreateInput } from "@company/runtime"
-import { Model } from "company-os/model"
 import { Context, Data, Effect, Layer } from "effect"
 
-import { isCapabilityPermission } from "@/capabilities"
-import { Database } from "@/server/database/database"
-import { ObjectRepositories } from "@/server/model/object-repositories"
-import { makeObjectService } from "@/server/model/object-service"
+import { Model } from "#/app.model.ts"
+import { isCapabilityPermission } from "#/capabilities.ts"
+import { RoleAssignmentRepository } from "#/modules/access/role-assignment/server/role-assignment-repository.ts"
+import { Database } from "#/server/database/database.ts"
+import { ObjectRepositories } from "#/server/model/object-repositories.ts"
+import { makeObjectService } from "#/server/model/object-service.ts"
 import {
   ADMINISTRATOR_ROLE_ID,
   OPERATOR_ROLE_ID,
   ROOT_ID,
-} from "@/system-records"
-
-import { RoleAssignmentRepository } from "./role-assignment-repository"
+} from "#/system-records.ts"
 
 export class RoleScopeMismatch extends Data.TaggedError("RoleScopeMismatch")<{
   readonly actualScopeType: string

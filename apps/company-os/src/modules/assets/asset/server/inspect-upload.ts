@@ -2,7 +2,7 @@ import { Effect } from "effect"
 import { fileTypeFromBuffer } from "file-type"
 import { imageSize } from "image-size"
 
-import { AssetPrecondition } from "./asset-error"
+import { AssetPrecondition } from "#/modules/assets/asset/server/asset-error.ts"
 
 const inlineImages = new Set([
   "image/png",

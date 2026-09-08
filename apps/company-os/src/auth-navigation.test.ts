@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { safeReturnTo } from "./auth-navigation"
+import { safeReturnTo } from "#/auth-navigation.ts"
 
 describe("authentication navigation", () => {
   it("preserves same-origin paths, queries, and fragments", () => {

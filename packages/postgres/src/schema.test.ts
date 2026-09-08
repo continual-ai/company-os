@@ -10,12 +10,12 @@ import {
 } from "@company/runtime"
 import { describe, expect, expectTypeOf, it } from "vitest"
 
-import { makePostgresSchema } from "./schema"
-import type { TableRow } from "./statement"
+import { makePostgresSchema } from "#/schema.ts"
+import type { TableRow } from "#/statement.ts"
 import {
   tableColumns as getTableColumns,
   tableName as getTableName,
-} from "./table"
+} from "#/table.ts"
 
 const Identity = defineInterface({
   id: "identity",

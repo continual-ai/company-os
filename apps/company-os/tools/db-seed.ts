@@ -3,14 +3,13 @@ import { parseArgs } from "node:util"
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 import { Config, Effect, Redacted } from "effect"
 
-import { databaseLayer } from "@/server/database/postgres"
-import { demoScenario } from "@/server/seeds/demo-scenario"
-import { performanceScenario } from "@/server/seeds/performance-scenario"
-import { runSeedScenario } from "@/server/seeds/run-seed-scenario"
-import { seedSystem } from "@/server/seeds/seed-system"
-
-import { developmentSeedTarget } from "./db-seed-target"
-import { loadLocalEnvironment } from "./local-environment"
+import { developmentSeedTarget } from "#/server/database/db-seed-target.ts"
+import { databaseLayer } from "#/server/database/postgres.ts"
+import { loadLocalEnvironment } from "#/server/local-environment.ts"
+import { demoScenario } from "#/server/seeds/demo-scenario.ts"
+import { performanceScenario } from "#/server/seeds/performance-scenario.ts"
+import { runSeedScenario } from "#/server/seeds/run-seed-scenario.ts"
+import { seedSystem } from "#/server/seeds/seed-system.ts"
 
 const { values } = parseArgs({
   options: {

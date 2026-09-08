@@ -3,9 +3,9 @@ import { tableProjection, type TableRow } from "@company/postgres"
 import { Effect } from "effect"
 import { expect } from "vitest"
 
-import { Database } from "./database"
-import { itDatabase } from "./it-database"
-import { seedRuns } from "./schema"
+import { Database } from "#/server/database/database.ts"
+import { itDatabase } from "#/server/database/it-database.ts"
+import { seedRuns } from "#/server/database/schema.ts"
 
 itDatabase(
   "releases nested savepoints while preserving rollback and sibling isolation",

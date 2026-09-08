@@ -1,8 +1,8 @@
 import { defineObject, schema } from "@company/runtime"
 
-import { AuthorizationScope } from "#modules/access/interfaces/authorization-scope"
-import { Principal } from "#modules/access/interfaces/principal"
-import { Role } from "#modules/access/role/model"
+import { AuthorizationScope } from "#/modules/access/interfaces/authorization-scope.ts"
+import { Principal } from "#/modules/access/interfaces/principal.ts"
+import { Role } from "#/modules/access/role/model.ts"
 
 export const RoleAssignment = defineObject({
   id: "roleAssignment",

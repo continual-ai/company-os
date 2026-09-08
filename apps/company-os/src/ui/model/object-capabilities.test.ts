@@ -1,17 +1,16 @@
-import { Model } from "company-os/model"
 import { describe, expect, it } from "vitest"
 
+import { Model } from "#/app.model.ts"
 import {
   allowedCapabilityKeys,
   capabilityKey,
   type CapabilityCheck,
-} from "@/capabilities"
-import { ROOT_ID } from "@/system-records"
-
+} from "#/capabilities.ts"
+import { ROOT_ID } from "#/system-records.ts"
 import {
   objectCapabilityCheck,
   objectCapabilityChecks,
-} from "./object-capabilities"
+} from "#/ui/model/object-capabilities.ts"
 
 describe("object capabilities", () => {
   it("derives collection and record checks from model actions", () => {

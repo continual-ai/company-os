@@ -1,14 +1,14 @@
 import type { ObjectInsert } from "@company/runtime/effect/object-repository"
-import { modelMetadata } from "company-os/metadata"
-import { Model } from "company-os/model"
 import { Effect } from "effect"
 
+import { Model } from "#/app.model.ts"
+import { modelMetadata } from "#/model-metadata.ts"
 import {
   definedPermissions,
   operatorPermissions,
-} from "@/server/authorization/permission-catalog"
-import { makeObjectSeedRepository } from "@/server/database/object-repository"
-import { currentActorId } from "@/server/invocation-context"
+} from "#/server/authorization/permission-catalog.ts"
+import { makeObjectSeedRepository } from "#/server/database/object-repository.ts"
+import { currentActorId } from "#/server/invocation-context.ts"
 import {
   ALL_AUTHENTICATED_CALLERS_PRINCIPAL_SET_ID,
   ALL_CALLERS_PRINCIPAL_SET_ID,
@@ -18,7 +18,7 @@ import {
   ROOT_ID,
   SYSTEM_ROLE_ASSIGNMENT_ID,
   SYSTEM_SERVICE_ACCOUNT_ID,
-} from "@/system-records"
+} from "#/system-records.ts"
 
 /** Converges required authorization records through repositories. */
 export const seedAuthorization = Effect.fn("@company/seedAuthorization")(

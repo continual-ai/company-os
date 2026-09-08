@@ -9,8 +9,8 @@ import {
   type ObjectRecord,
   type ObjectUpdateInput,
   type ObjectWriterUpdateInput,
-} from "./definition/object"
-import { defineRoot } from "./definition/root"
+} from "#/definition/object.ts"
+import { defineRoot } from "#/definition/root.ts"
 import {
   RecordAlias,
   RecordId,
@@ -20,7 +20,7 @@ import {
   type InferSchema,
   type RecordAlias as RecordAliasType,
   type RecordIdentifier,
-} from "./definition/schema"
+} from "#/definition/schema.ts"
 import {
   toEffectInputSchema,
   toEffectObjectCreateSchema,
@@ -28,7 +28,7 @@ import {
   toEffectObjectUpdateSchema,
   toEffectObjectWriterUpdateSchema,
   toEffectSchema,
-} from "./effect-schema"
+} from "#/effect-schema.ts"
 
 const AccountId = RecordId("account")
 const Root = defineRoot({ id: "root", name: "Root" })

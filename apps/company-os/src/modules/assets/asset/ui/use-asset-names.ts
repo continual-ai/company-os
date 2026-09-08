@@ -1,7 +1,7 @@
 import { RecordId, type FileRef } from "@company/runtime"
 import { useQueries } from "@tanstack/react-query"
 
-import { data } from "@/app-client"
+import { data } from "#/app-client.ts"
 
 const assetId = RecordId("asset")
 

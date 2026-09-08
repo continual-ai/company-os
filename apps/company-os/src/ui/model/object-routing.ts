@@ -1,20 +1,24 @@
 import type { ObjectType } from "@company/runtime"
+import {
+  type ObjectCollectionSearch,
+  type ObjectCollectionView,
+} from "@company/ui/model/collection-view"
 import type { QueryClient } from "@tanstack/react-query"
 import { notFound } from "@tanstack/react-router"
-import { Model } from "company-os/model"
 
-import { modelUi } from "@/app-ui"
-import { modelCollectionQuery } from "@/model-collection-query"
-
-import { calendarDay, collectionDateWindow } from "./collection-dates"
-import { clientFor, type ModelObject } from "./object-client"
-import { objectListRequest } from "./object-collection-query"
+import { Model } from "#/app.model.ts"
+import { modelUi } from "#/app.ui.ts"
+import { modelCollectionQuery } from "#/model-collection-query.ts"
+import {
+  calendarDay,
+  collectionDateWindow,
+} from "#/ui/model/collection-dates.ts"
+import { clientFor, type ModelObject } from "#/ui/model/object-client.ts"
+import { objectListRequest } from "#/ui/model/object-collection-query.ts"
 import {
   emptyObjectCollectionViewState,
   resolveObjectCollectionView,
-  type ObjectCollectionSearch,
-  type ObjectCollectionView,
-} from "./object-collection-view"
+} from "#/ui/model/object-collection-view.ts"
 
 export function objectHref(object: ObjectType, recordId?: string) {
   const base = modelUi[object.id]?.navigation?.path ?? `/objects/${object.id}`

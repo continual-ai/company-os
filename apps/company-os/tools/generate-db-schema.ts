@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 
-import { schemaSql } from "@/server/database/schema"
+import { schemaSql } from "#/server/database/schema.ts"
 
 const target = fileURLToPath(new URL("../schema.sql", import.meta.url))
 const content = schemaSql

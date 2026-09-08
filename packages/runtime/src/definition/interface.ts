@@ -1,12 +1,12 @@
-import { definitionId } from "./identity"
-import type { Properties } from "./property"
+import { definitionId } from "#/definition/identity.ts"
+import type { Properties } from "#/definition/property.ts"
 import type {
   AnySchema,
   EnumSchema,
   ImageSchema,
   SchemaDefinition,
-} from "./schema"
-import { assertReferencePropertyName } from "./schema"
+} from "#/definition/schema.ts"
+import { assertReferencePropertyName } from "#/definition/schema.ts"
 
 export interface InterfaceDisplay<
   TProperties extends Readonly<Record<string, AnySchema>>,

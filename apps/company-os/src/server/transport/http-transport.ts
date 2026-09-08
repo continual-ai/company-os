@@ -15,24 +15,23 @@ import {
 } from "effect/unstable/http"
 import { HttpApiBuilder } from "effect/unstable/httpapi"
 
-import { capabilityPermission } from "@/capabilities"
-import { InvalidEventCursor } from "@/events"
-import { applicationHttpApi } from "@/http-api"
-import { Authentication } from "@/server/auth/authentication"
-import { Authorization } from "@/server/authorization/authorization-service"
-import { CommittedChanges } from "@/server/database/committed-changes"
-import { Database } from "@/server/database/database"
-import { EventJournal } from "@/server/events/event-journal"
-import { EventNotifications } from "@/server/events/event-notifications"
-import { streamEvents } from "@/server/events/event-stream"
-import { ModelImplementation } from "@/server/model/model-implementation"
-import { searchRecords } from "@/server/model/search-records"
-
+import { capabilityPermission } from "#/capabilities.ts"
+import { InvalidEventCursor } from "#/events.ts"
+import { applicationHttpApi } from "#/http-api.ts"
+import { Authentication } from "#/server/auth/authentication.ts"
+import { Authorization } from "#/server/authorization/authorization-service.ts"
+import { CommittedChanges } from "#/server/database/committed-changes.ts"
+import { Database } from "#/server/database/database.ts"
+import { EventJournal } from "#/server/events/event-journal.ts"
+import { EventNotifications } from "#/server/events/event-notifications.ts"
+import { streamEvents } from "#/server/events/event-stream.ts"
+import { ModelImplementation } from "#/server/model/model-implementation.ts"
+import { searchRecords } from "#/server/model/search-records.ts"
 import {
   internalApiError,
   unauthenticatedApiError,
   withApiErrors,
-} from "./api-error"
+} from "#/server/transport/api-error.ts"
 
 class HttpTransportFailure extends Data.TaggedError("HttpTransportFailure")<{
   readonly cause: unknown
