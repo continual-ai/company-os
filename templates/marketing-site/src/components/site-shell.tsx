@@ -3,7 +3,7 @@ import { cn } from "@company/ui/lib/utils"
 import { Link } from "@tanstack/react-router"
 import { modelMetadata } from "company-os/metadata"
 
-import { clientPortalUrl, companyOsUrl } from "@/lib/app-urls"
+import { clientPortalUrl, appUrl } from "@/lib/app-urls"
 
 export function SiteShell({ children }: { children: React.ReactNode }) {
   return (
@@ -20,11 +20,8 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
             >
               Client Portal
             </a>
-            <a
-              href={companyOsUrl}
-              className={cn(buttonVariants({ size: "sm" }))}
-            >
-              Company OS
+            <a href={appUrl} className={cn(buttonVariants({ size: "sm" }))}>
+              Open app
             </a>
           </nav>
         </div>

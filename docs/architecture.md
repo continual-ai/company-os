@@ -5,6 +5,12 @@ Company OS is one source-owned modular application. A domain lives in
 specialized interface live together. PostgreSQL is the authority for business records. People,
 integrations, and agents use the same governed operations through HTTP, the typed client, or MCP.
 
+Use **app** for an application and its configuration, **model** for the shared domain
+definitions, and **module** for a cohesive set of capabilities. Company OS is the starter's
+product name; apps built from it do not need company-specific terminology or an "OS" suffix.
+The `@company/*` package namespace and `apps/company-os` deployment key identify the foundation,
+not the app's display name.
+
 ## Boundaries
 
 | Source                         | Responsibility                                                                                        |

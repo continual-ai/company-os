@@ -7,7 +7,7 @@ import {
 } from "@tanstack/react-router"
 import { useEffect } from "react"
 
-import { applicationConfig } from "@/customization/config"
+import { appConfig } from "@/customization/config"
 import {
   appName,
   canonicalMetadata,
@@ -32,7 +32,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           Application error
         </p>
         <h1 className="mt-2 text-2xl font-semibold tracking-tight">
-          {applicationConfig.identity.productName} could not load this page.
+          {appConfig.identity.name} could not load this page.
         </h1>
         <p className="mt-3 text-sm text-muted-foreground">
           {error instanceof Error
@@ -58,7 +58,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           { charSet: "utf-8" },
           { name: "viewport", content: "width=device-width, initial-scale=1" },
           { name: "robots", content: "noindex, nofollow" },
-          { name: "theme-color", content: applicationConfig.brand.themeColor },
+          { name: "theme-color", content: appConfig.brand.themeColor },
           ...document.meta,
           ...(location.meta ?? []),
         ],
@@ -66,8 +66,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           { rel: "stylesheet", href: appCss },
           {
             rel: "icon",
-            href: applicationConfig.brand.favicon.href,
-            type: applicationConfig.brand.favicon.type,
+            href: appConfig.brand.favicon.href,
+            type: appConfig.brand.favicon.type,
           },
           ...(location.links ?? []),
         ],

@@ -5,7 +5,18 @@ here alongside the UI and server that run them. The public `company-os/model` ex
 browser-safe contract; the private server binds it to permissions, transactions, HTTP, and MCP.
 
 Start here to change a business operation. The reusable packages supply shared machinery, not the
-company's business rules.
+app's business rules.
+
+## App identity and configuration
+
+`src/model-metadata.ts` supplies the shared name used by the starter apps. Customize the central
+app's display name, branding, and home copy through `appConfig` in `src/customization/config.ts`.
+`src/app-metadata.ts` supplies the generated protocol adapters with the configured app name.
+`VITE_APP_URL` is the public origin used for canonical URLs and MCP origin checks; it is compiled
+into the app at build time. The marketing-site template uses the same variable to link to this app.
+
+Display names are independent of the stable `company-os` deployment key and `@company/*` package
+namespace. An app does not need to represent a company or call itself an operating system.
 
 ## Run it
 

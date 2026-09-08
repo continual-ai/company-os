@@ -11,12 +11,11 @@ function Home() {
           {modelMetadata.name}
         </p>
         <h1 className="mt-3 text-3xl font-semibold tracking-tight">
-          A new company application
+          A new application
         </h1>
         <p className="mt-3 text-sm text-muted-foreground">
           Replace this page with the app&apos;s first real surface. Durable
-          records, rules, and authorization stay in the central Company OS
-          application.
+          records, rules, and authorization stay in the central app.
         </p>
       </div>
     </main>

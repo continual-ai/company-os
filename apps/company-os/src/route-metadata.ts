@@ -1,5 +1,5 @@
-import { companyOsUrl } from "@/client-environment"
-import { applicationConfig } from "@/customization/config"
+import { appUrl } from "@/client-environment"
+import { appConfig } from "@/customization/config"
 
 export type PageMetadata = {
   breadcrumb: string
@@ -14,7 +14,7 @@ export type DocumentMetadata = {
   title: string
 }
 
-export const appName = applicationConfig.identity.productName
+export const appName = appConfig.identity.name
 
 declare module "@tanstack/react-router" {
   interface StaticDataRouteOption {
@@ -81,7 +81,7 @@ export function canonicalMetadata(path: string) {
 }
 
 function absoluteSiteUrl(path: string | undefined) {
-  const siteUrl = companyOsUrl()
+  const siteUrl = appUrl()
   if (!siteUrl || !path) return undefined
 
   return new URL(path, siteUrl).toString()

@@ -18,7 +18,7 @@ type EntryMedia =
       src: string
     }>
 
-type ApplicationConfig = Readonly<{
+type AppConfig = Readonly<{
   brand: Readonly<{
     favicon: Readonly<{ href: string; type: string }>
     mark: BrandAsset | null
@@ -37,17 +37,16 @@ type ApplicationConfig = Readonly<{
     headline: string
   }>
   identity: Readonly<{
-    companyName: string
     descriptor: string
     monogram: string
-    productName: string
+    name: string
   }>
 }>
 
-const companyName = modelMetadata.name
+const appName = modelMetadata.name
 
 /** Shallow application identity and first-launch copy; workflows remain source code. */
-export const applicationConfig: ApplicationConfig = {
+export const appConfig: AppConfig = {
   brand: {
     favicon: { href: "/favicon.svg", type: "image/svg+xml" },
     mark: null,
@@ -55,26 +54,24 @@ export const applicationConfig: ApplicationConfig = {
   },
   entry: {
     description:
-      "Bring company context, governed operations, and the tools to keep improving them into one shared system.",
-    eyebrow: `${companyName} OS`,
+      "Keep records, decisions, and work together in one shared workspace.",
+    eyebrow: appName,
     headline: "One place to run the work that matters.",
     highlights: [
-      "Work from shared company context",
-      "Turn repeatable decisions into governed operations",
-      "Extend the same foundation as the company evolves",
+      "Find the context behind each record",
+      "Coordinate work across your team",
+      "Adapt the app as your process changes",
     ],
     media: null,
   },
   home: {
-    description:
-      "Manage customer relationships, track delivery, and keep the work connected.",
-    eyebrow: companyName,
+    description: "Track work, manage records, and follow what needs attention.",
+    eyebrow: appName,
     headline: "Workspace",
   },
   identity: {
-    companyName,
-    descriptor: "Company operating system",
-    monogram: companyName.slice(0, 1).toUpperCase(),
-    productName: `${companyName} OS`,
+    descriptor: "Shared workspace",
+    monogram: appName.slice(0, 1).toUpperCase(),
+    name: appName,
   },
 }

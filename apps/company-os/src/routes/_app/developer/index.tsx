@@ -9,11 +9,11 @@ function DeveloperCenterOverview() {
     <div className="mx-auto w-full max-w-[90rem] px-5 py-10 lg:px-8 lg:py-14">
       <section className="max-w-3xl">
         <h1 className="text-3xl font-semibold tracking-tight">
-          Understand and extend the company system.
+          Understand and extend the app.
         </h1>
         <p className="mt-3 max-w-2xl leading-7 text-muted-foreground">
-          Inspect the company domain model and its generated interfaces, then
-          build new company software against the same contracts.
+          Inspect the domain model and its generated interfaces, then build new
+          capabilities against the same contracts.
         </p>
       </section>
 

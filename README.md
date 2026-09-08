@@ -14,7 +14,7 @@
   </p>
 </div>
 
-Company OS is a starting point for software that fits how your company works. Fork the repository,
+Company OS is a starting point for software that fits how your team works. Fork the repository,
 change its business model, and build the operations you need: customer relationships, engineering
 delivery, or a domain of your own. You own the source and database.
 

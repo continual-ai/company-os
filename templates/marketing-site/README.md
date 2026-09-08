@@ -1,7 +1,7 @@
 # Marketing site
 
 The public website, built with TanStack Start. It explains the organization and routes people into
-the client portal or Company OS. It owns public content and presentation, not business records or
+the client portal or central app. It owns public content and presentation, not business records or
 operating policy.
 
 ## Develop
@@ -26,7 +26,7 @@ Set the deployed application URLs when they differ from the local defaults:
 
 ```sh
 VITE_CLIENT_PORTAL_URL=https://portal.example.com
-VITE_COMPANY_OS_URL=https://os.example.com
+VITE_APP_URL=https://os.example.com
 ```
 
 ## Source map

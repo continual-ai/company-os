@@ -24,7 +24,7 @@ import { BracesIcon, ChevronsUpDownIcon, SettingsIcon } from "lucide-react"
 
 import { applicationCapabilities } from "@/capabilities"
 import { BrandMark } from "@/customization/brand"
-import { applicationConfig } from "@/customization/config"
+import { appConfig } from "@/customization/config"
 import { operateNavigation } from "@/customization/navigation"
 import {
   getUserInitials,
@@ -49,16 +49,16 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton
               size="lg"
-              tooltip={applicationConfig.identity.productName}
+              tooltip={appConfig.identity.name}
               render={<Link to="/" />}
             >
               <BrandMark className="size-8" />
               <span className="grid flex-1 text-left leading-tight">
                 <span className="truncate text-sm font-semibold">
-                  {applicationConfig.identity.productName}
+                  {appConfig.identity.name}
                 </span>
                 <span className="truncate text-xs text-sidebar-foreground/70">
-                  {applicationConfig.identity.descriptor}
+                  {appConfig.identity.descriptor}
                 </span>
               </span>
             </SidebarMenuButton>

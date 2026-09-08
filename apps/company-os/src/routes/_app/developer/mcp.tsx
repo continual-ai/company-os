@@ -34,8 +34,8 @@ function McpPage() {
           Add your deployment’s origin followed by <code>/api/mcp</code> to a
           compatible MCP client. Configure credentials accepted by that
           deployment’s identity provider. A browser login alone does not
-          authenticate an external agent; Company OS does not issue a separate
-          MCP credential.
+          authenticate an external agent; the app does not issue a separate MCP
+          credential.
         </p>
         <CodeBlock
           label="Endpoint path · prepend your deployment origin"

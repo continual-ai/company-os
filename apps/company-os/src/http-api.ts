@@ -14,7 +14,7 @@ import {
   OpenApi,
 } from "effect/unstable/httpapi"
 
-import { applicationMetadata } from "@/application-metadata"
+import { appMetadata } from "@/app-metadata"
 import { isCapabilityPermission, MAX_CAPABILITY_CHECKS } from "@/capabilities"
 
 import { eventPageSchema, InvalidEventCursor } from "./events"
@@ -166,8 +166,8 @@ export const recordGroup = HttpApiGroup.make("records").add(
 /** The one HTTP contract used by handlers, clients, OpenAPI, and documentation. */
 export const applicationHttpApi = documentIdentity(
   createModelHttpApi(Model, {
-    id: applicationMetadata.id,
-    version: applicationMetadata.version,
+    id: appMetadata.id,
+    version: appMetadata.version,
   })
     .add(capabilityGroup)
     .add(eventGroup)

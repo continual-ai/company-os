@@ -17,14 +17,14 @@ type ApplicationServices =
 let nodeRuntime: ApplicationRuntime | undefined
 
 declare global {
-  var companyOsDevelopmentRuntime: ApplicationRuntime | undefined
+  var appDevelopmentRuntime: ApplicationRuntime | undefined
 }
 
 // SSR module replacement does not run browser HMR disposal hooks. A new revision
 // releases the old development runtime before constructing services with new identities.
 if (import.meta.env.DEV) {
-  void globalThis.companyOsDevelopmentRuntime?.dispose()
-  globalThis.companyOsDevelopmentRuntime = undefined
+  void globalThis.appDevelopmentRuntime?.dispose()
+  globalThis.appDevelopmentRuntime = undefined
 }
 
 const workerRuntimes = new WeakMap<Request, ApplicationRuntime>()
@@ -46,8 +46,7 @@ function resolveRuntime(): ApplicationRuntime {
   if (!runningInWorkerd()) {
     // Long-lived process: scoped infrastructure is built once and shared.
     nodeRuntime ??= makeApplicationRuntime()
-    if (import.meta.env.DEV)
-      globalThis.companyOsDevelopmentRuntime = nodeRuntime
+    if (import.meta.env.DEV) globalThis.appDevelopmentRuntime = nodeRuntime
     return nodeRuntime
   }
   // workerd forbids using I/O such as pooled sockets across requests, so each

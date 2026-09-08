@@ -9,12 +9,12 @@ import {
 import { createFileRoute } from "@tanstack/react-router"
 import { ArrowLeftIcon } from "lucide-react"
 
-import { applicationConfig } from "@/customization/config"
+import { appConfig } from "@/customization/config"
 import { pageOptions } from "@/route-metadata"
 
 const page = {
   breadcrumb: "Sign in",
-  description: `Open ${applicationConfig.identity.productName} through Continual to sign in.`,
+  description: `Open ${appConfig.identity.name} through Continual to sign in.`,
   title: "Sign in with Continual",
 }
 

@@ -69,7 +69,7 @@ describe("page metadata", () => {
 
 describe("document metadata", () => {
   it("builds the title, description, and social metadata from one page", () => {
-    vi.stubEnv("VITE_COMPANY_OS_URL", "https://os.example.com")
+    vi.stubEnv("VITE_APP_URL", "https://os.example.com")
 
     const document = documentHead({
       ...customer,
@@ -89,7 +89,7 @@ describe("document metadata", () => {
   })
 
   it("omits deployment URLs when the public origin is not configured", () => {
-    vi.stubEnv("VITE_COMPANY_OS_URL", "")
+    vi.stubEnv("VITE_APP_URL", "")
 
     expect(documentHead(overview).meta).toContainEqual({
       name: "twitter:card",
@@ -99,7 +99,7 @@ describe("document metadata", () => {
   })
 
   it("normalizes index-route trailing slashes in canonical URLs", () => {
-    vi.stubEnv("VITE_COMPANY_OS_URL", "https://os.example.com")
+    vi.stubEnv("VITE_APP_URL", "https://os.example.com")
 
     expect(canonicalMetadata("/developer/")).toEqual({
       meta: [

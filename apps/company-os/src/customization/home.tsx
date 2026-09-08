@@ -4,7 +4,7 @@ import { Link } from "@tanstack/react-router"
 import { ArrowRightIcon } from "lucide-react"
 
 import { applicationCapabilities } from "@/capabilities"
-import { applicationConfig } from "@/customization/config"
+import { appConfig } from "@/customization/config"
 import { useCapabilities } from "@/ui/application/use-capabilities"
 import { useRecentRecords } from "@/ui/application/use-recent-records"
 import {
@@ -31,13 +31,13 @@ export function Home() {
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-8 lg:px-8">
         <header>
           <p className="text-sm font-medium text-muted-foreground">
-            {applicationConfig.home.eyebrow}
+            {appConfig.home.eyebrow}
           </p>
           <h1 className="mt-2 text-3xl font-semibold tracking-tight">
-            {applicationConfig.home.headline}
+            {appConfig.home.headline}
           </h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-            {applicationConfig.home.description}
+            {appConfig.home.description}
           </p>
         </header>
 

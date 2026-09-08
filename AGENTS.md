@@ -35,6 +35,9 @@ planning artifact instead.
 
 ## Documentation and comments
 
+- Use app, model, module, runtime, and storage for technical concepts. Company OS is the
+  starter's product name; do not impose company-specific terminology or an OS suffix on an
+  app's configured display name. The `@company/*` namespace and stable deployment keys are separate.
 - Prefer clear names, types, small modules, and tests over comments that narrate the code.
 - Do not add UI copy that merely narrates visible structure or implementation. Supporting text must
   convey domain meaning, a consequence, or necessary instruction.

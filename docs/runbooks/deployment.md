@@ -35,7 +35,7 @@ publisher; the checked-in deployment integration is concrete rather than univers
 | `DATABASE_SCHEMA`          | Optional shared schema; defaults to `public`                                            |
 | `APP_SECRET`               | Private deployment secret of at least 32 bytes; do not use the local example value      |
 | `DATABASE_MAX_CONNECTIONS` | Optional pool size; defaults to two for request-scoped runtimes                         |
-| `VITE_COMPANY_OS_URL`      | Public origin, compiled into the UI; also used for canonical URLs and MCP origin checks |
+| `VITE_APP_URL`             | Public origin, compiled into the UI; also used for canonical URLs and MCP origin checks |
 
 Only `VITE_` values are public. Keep credentials in your host's secret/environment configuration.
 Effect Config is the server's typed configuration interface.

@@ -5,7 +5,7 @@ import { modelMetadata } from "company-os/metadata"
 import { ArrowRight, Building2, FolderKanban, Users } from "lucide-react"
 
 import { SiteShell } from "@/components/site-shell"
-import { clientPortalUrl, companyOsUrl } from "@/lib/app-urls"
+import { clientPortalUrl, appUrl } from "@/lib/app-urls"
 
 const capabilities = [
   {
@@ -59,12 +59,12 @@ function MarketingSiteHome() {
                   <ArrowRight data-icon="inline-end" />
                 </a>
                 <a
-                  href={companyOsUrl}
+                  href={appUrl}
                   className={cn(
                     buttonVariants({ variant: "outline", size: "lg" })
                   )}
                 >
-                  Open Company OS
+                  Open app
                 </a>
               </div>
             </div>
