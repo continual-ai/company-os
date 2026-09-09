@@ -1,4 +1,5 @@
 import { Button } from "@company/ui/button"
+import { Checkbox } from "@company/ui/checkbox"
 import { Popover, PopoverContent, PopoverTrigger } from "@company/ui/popover"
 import {
   CalendarDaysIcon,
@@ -114,13 +115,12 @@ export function CollectionLayoutControl({
                 .filter(([id]) => id !== object.display.title)
                 .map(([id, field]) => (
                   <label key={id} className="flex items-center gap-2 text-xs">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={columns.includes(id)}
                       disabled={!columns.includes(id) && columns.length >= 4}
-                      onChange={(event) =>
+                      onCheckedChange={(checked) =>
                         onColumnsChange(
-                          event.target.checked
+                          checked
                             ? [...columns, id]
                             : columns.filter((column) => column !== id)
                         )

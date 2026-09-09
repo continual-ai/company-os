@@ -1,3 +1,4 @@
+import { Checkbox } from "@company/ui/checkbox"
 import { DateTimePicker } from "@company/ui/date-time-picker"
 import { FieldError } from "@company/ui/field"
 import { Input } from "@company/ui/input"
@@ -101,15 +102,14 @@ export function ObjectFormPropertyField({
         {(field) => (
           <field.FormField id={fieldId} label={label} orientation="horizontal">
             {({ ariaDescribedBy, invalid, onBlur, onValueChange, value }) => (
-              <input
+              <Checkbox
                 id={fieldId}
                 name={id}
-                type="checkbox"
                 checked={value === true}
                 aria-invalid={invalid}
                 aria-describedby={ariaDescribedBy}
                 onBlur={onBlur}
-                onChange={(event) => onValueChange(event.currentTarget.checked)}
+                onCheckedChange={onValueChange}
               />
             )}
           </field.FormField>
