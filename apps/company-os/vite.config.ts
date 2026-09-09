@@ -28,6 +28,8 @@ export default defineConfig({
 
     return {
       server: {
+        // A moved port breaks VITE_APP_URL, MCP origin checks, and muscle memory; fail instead.
+        strictPort: true,
         allowedHosts: [
           ".tensorlake.ai",
           ".e2b.app",

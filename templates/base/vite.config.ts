@@ -13,6 +13,7 @@ const sandboxPreviewHosts = [
 export default defineConfig({
   vite: {
     server: {
+      strictPort: true,
       allowedHosts: sandboxPreviewHosts,
     },
   },
