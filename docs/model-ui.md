@@ -94,6 +94,12 @@ Rendering Markdown never executes user-supplied markup.
 
 ## Primitives
 
+The Developer Center's Design system gallery is one page with sidebar anchors, component usage snippets, and live examples. It renders shared primitives and core application
+patterns directly from their production implementations. Gallery examples live under
+`app/ui/developer/design-system`; their model and records are local previews and never enter
+`app.model.ts` or storage. Keep shared styling in `packages/ui` and business-aware presentation
+in `runtime/ui` when extending the gallery.
+
 The shadcn primitives live in `packages/ui` and are owned source, imported as `@company/ui/<name>`
 with `cn` from `@company/ui/lib/utils`. `pnpm ui:add <component>` runs the shadcn CLI with
 `packages/ui/components.json`, gives the generated `#/` imports explicit extensions, and sources

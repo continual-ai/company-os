@@ -27,6 +27,7 @@ import { Route as AppSettingsAppearanceRouteImport } from './routes/_app/setting
 import { Route as AppDeveloperSdkRouteImport } from './routes/_app/developer/sdk'
 import { Route as AppDeveloperModelRouteImport } from './routes/_app/developer/model'
 import { Route as AppDeveloperMcpRouteImport } from './routes/_app/developer/mcp'
+import { Route as AppDeveloperDesignSystemRouteImport } from './routes/_app/developer/design-system'
 import { Route as AppDeveloperApiRouteImport } from './routes/_app/developer/api'
 import { Route as AppSettingsCollectionIndexRouteImport } from './routes/_app/settings/$collection/index'
 import { Route as AppObjectsObjectTypeIndexRouteImport } from './routes/_app/objects/$objectType/index'
@@ -123,6 +124,12 @@ const AppDeveloperMcpRoute = AppDeveloperMcpRouteImport.update({
   path: '/mcp',
   getParentRoute: () => AppDeveloperRouteRoute,
 } as any)
+const AppDeveloperDesignSystemRoute =
+  AppDeveloperDesignSystemRouteImport.update({
+    id: '/design-system',
+    path: '/design-system',
+    getParentRoute: () => AppDeveloperRouteRoute,
+  } as any)
 const AppDeveloperApiRoute = AppDeveloperApiRouteImport.update({
   id: '/api',
   path: '/api',
@@ -170,6 +177,7 @@ export interface FileRoutesByFullPath {
   '/api/mcp': typeof ApiMcpRoute
   '/api/openapi': typeof ApiOpenapiRoute
   '/developer/api': typeof AppDeveloperApiRoute
+  '/developer/design-system': typeof AppDeveloperDesignSystemRoute
   '/developer/mcp': typeof AppDeveloperMcpRoute
   '/developer/model': typeof AppDeveloperModelRoute
   '/developer/sdk': typeof AppDeveloperSdkRoute
@@ -193,6 +201,7 @@ export interface FileRoutesByTo {
   '/api/openapi': typeof ApiOpenapiRoute
   '/': typeof AppIndexRoute
   '/developer/api': typeof AppDeveloperApiRoute
+  '/developer/design-system': typeof AppDeveloperDesignSystemRoute
   '/developer/mcp': typeof AppDeveloperMcpRoute
   '/developer/model': typeof AppDeveloperModelRoute
   '/developer/sdk': typeof AppDeveloperSdkRoute
@@ -220,6 +229,7 @@ export interface FileRoutesById {
   '/api/openapi': typeof ApiOpenapiRoute
   '/_app/': typeof AppIndexRoute
   '/_app/developer/api': typeof AppDeveloperApiRoute
+  '/_app/developer/design-system': typeof AppDeveloperDesignSystemRoute
   '/_app/developer/mcp': typeof AppDeveloperMcpRoute
   '/_app/developer/model': typeof AppDeveloperModelRoute
   '/_app/developer/sdk': typeof AppDeveloperSdkRoute
@@ -247,6 +257,7 @@ export interface FileRouteTypes {
     | '/api/mcp'
     | '/api/openapi'
     | '/developer/api'
+    | '/developer/design-system'
     | '/developer/mcp'
     | '/developer/model'
     | '/developer/sdk'
@@ -270,6 +281,7 @@ export interface FileRouteTypes {
     | '/api/openapi'
     | '/'
     | '/developer/api'
+    | '/developer/design-system'
     | '/developer/mcp'
     | '/developer/model'
     | '/developer/sdk'
@@ -296,6 +308,7 @@ export interface FileRouteTypes {
     | '/api/openapi'
     | '/_app/'
     | '/_app/developer/api'
+    | '/_app/developer/design-system'
     | '/_app/developer/mcp'
     | '/_app/developer/model'
     | '/_app/developer/sdk'
@@ -451,6 +464,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDeveloperMcpRouteImport
       parentRoute: typeof AppDeveloperRouteRoute
     }
+    '/_app/developer/design-system': {
+      id: '/_app/developer/design-system'
+      path: '/design-system'
+      fullPath: '/developer/design-system'
+      preLoaderRoute: typeof AppDeveloperDesignSystemRouteImport
+      parentRoute: typeof AppDeveloperRouteRoute
+    }
     '/_app/developer/api': {
       id: '/_app/developer/api'
       path: '/api'
@@ -498,6 +518,7 @@ declare module '@tanstack/react-router' {
 
 interface AppDeveloperRouteRouteChildren {
   AppDeveloperApiRoute: typeof AppDeveloperApiRoute
+  AppDeveloperDesignSystemRoute: typeof AppDeveloperDesignSystemRoute
   AppDeveloperMcpRoute: typeof AppDeveloperMcpRoute
   AppDeveloperModelRoute: typeof AppDeveloperModelRoute
   AppDeveloperSdkRoute: typeof AppDeveloperSdkRoute
@@ -506,6 +527,7 @@ interface AppDeveloperRouteRouteChildren {
 
 const AppDeveloperRouteRouteChildren: AppDeveloperRouteRouteChildren = {
   AppDeveloperApiRoute: AppDeveloperApiRoute,
+  AppDeveloperDesignSystemRoute: AppDeveloperDesignSystemRoute,
   AppDeveloperMcpRoute: AppDeveloperMcpRoute,
   AppDeveloperModelRoute: AppDeveloperModelRoute,
   AppDeveloperSdkRoute: AppDeveloperSdkRoute,

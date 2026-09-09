@@ -19,6 +19,12 @@ function DeveloperCenterOverview() {
 
       <section className="mt-12 grid gap-px border bg-border md:grid-cols-2 xl:grid-cols-3">
         <DeveloperSurface
+          eyebrow="Design"
+          title="Design system"
+          description="Explore shared components, their states, and the application patterns built from them."
+          to="/developer/design-system"
+        />
+        <DeveloperSurface
           eyebrow="Model"
           title="Domain model"
           description="Explore the model's object types, properties, link types, and governed action types."
@@ -61,6 +67,7 @@ function DeveloperSurface({
     | "/developer/api"
     | "/developer/sdk"
     | "/developer/mcp"
+    | "/developer/design-system"
 }) {
   const content = (
     <>

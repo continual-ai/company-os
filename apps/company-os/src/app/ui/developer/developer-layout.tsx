@@ -81,6 +81,7 @@ export function DeveloperNavigationGroup({
 
 export function DeveloperNavigationItem({
   active,
+  current = "page",
   children,
   code,
   meta,
@@ -88,6 +89,7 @@ export function DeveloperNavigationItem({
   render,
 }: {
   active: boolean
+  current?: "page" | "location"
   children: ReactNode
   code?: ReactNode
   meta?: ReactNode
@@ -102,7 +104,7 @@ export function DeveloperNavigationItem({
       role={render === undefined ? undefined : "link"}
       data-slot="developer-navigation-item"
       aria-pressed={render === undefined ? active : undefined}
-      aria-current={render !== undefined && active ? "page" : undefined}
+      aria-current={render !== undefined && active ? current : undefined}
       className={cn(
         "group flex h-auto w-full min-w-0 items-start justify-start gap-2 px-2.5 py-2 text-left transition-colors outline-none hover:bg-muted focus-visible:ring-1 focus-visible:ring-ring/50",
         active && "bg-muted text-foreground"
