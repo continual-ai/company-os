@@ -1,7 +1,6 @@
 import { it } from "@effect/vitest"
 import { Effect, Layer } from "effect"
 import type * as Scope from "effect/Scope"
-import { afterAll } from "vitest"
 
 import type { ModelCatalog } from "#/runtime/model/index.ts"
 import { systemInvocation } from "#/runtime/server/invocation-context.ts"
@@ -12,6 +11,7 @@ import { Database } from "#/runtime/server/storage/database.ts"
 import { makePostgresSchema } from "#/runtime/server/storage/schema.ts"
 import {
   TestDatabase,
+  type TestDatabaseClone,
   type TestDatabaseTemplate,
 } from "#/runtime/server/storage/testing.ts"
 
@@ -27,6 +27,13 @@ function schemaTemplateSql(model: ModelCatalog) {
 }
 
 /**
+ * Cloning a template and running a scenario takes seconds when every test file
+ * hits PostgreSQL at once. `it.effect` ignores the project's testTimeout, so the
+ * default is set here.
+ */
+const DATABASE_TEST_TIMEOUT = 60_000
+
+/**
  * Runs an Effect test under the system invocation with `layer` built once per
  * test, so every test that clones a database gets its own copy.
  */
@@ -34,7 +41,7 @@ export function layerTest<R, E>(layer: Layer.Layer<R, E>) {
   return <A, E2>(
     name: string,
     body: () => Effect.Effect<A, E2, R | CurrentInvocation | Scope.Scope>,
-    timeout?: number
+    timeout: number = DATABASE_TEST_TIMEOUT
   ) =>
     it.effect(
       name,
@@ -48,22 +55,31 @@ export function layerTest<R, E>(layer: Layer.Layer<R, E>) {
 }
 
 /**
- * One PostgreSQL template per test file, created on first use and dropped after
- * the file's tests. Call at test-file top level. Every build of `database`
- * clones the template into a fresh database and drops the clone with its scope.
+ * One shared template per schema and one clone per test file. Every build of
+ * `database` resets the clone (truncate and restore the journal position) and
+ * opens a fresh pool, so each test starts from the migrated state without paying
+ * for another CREATE DATABASE. Call at test-file top level; the global setup
+ * removes every test database when the run ends.
  */
 export function testDatabase<M extends ModelCatalog>(
   model: M,
-  initialize: DatabaseInitializer = schemaTemplateSql(model)
+  initialize: DatabaseInitializer = schemaTemplateSql(model),
+  /** Names the template for sharing when `initialize` is a function; string initializers share by content. */
+  key?: string
 ) {
   let template: Promise<TestDatabaseTemplate> | undefined
-  const acquire = () => (template ??= TestDatabase.createTemplate(initialize))
-  afterAll(async () => {
-    const created = await template?.catch(() => undefined)
-    if (created !== undefined) await TestDatabase.drop(created)
-  })
+  let clone: Promise<TestDatabaseClone> | undefined
+  const acquire = () =>
+    (template ??= TestDatabase.createTemplate(initialize, key))
+  // Clones and templates are dropped once by the global teardown; per-file drops
+  // would race each other on DROP DATABASE and time out their hooks.
+  const acquireClone = () => (clone ??= acquire().then(TestDatabase.clone))
   const client = Layer.unwrap(
-    Effect.promise(acquire).pipe(Effect.map(TestDatabase.layer))
+    Effect.promise(async () => {
+      const cloned = await acquireClone()
+      await TestDatabase.reset(cloned)
+      return TestDatabase.layer(cloned)
+    })
   )
   const database = Database.layer.pipe(
     Layer.provideMerge(ModelContext.layer(model)),

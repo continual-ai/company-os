@@ -31,9 +31,12 @@ bind to local User or ServiceAccount records at sign-in; roles follow the bootst
 Files named `*-database.test.ts` run in the `database` Vitest project against real PostgreSQL. The
 role must have `CREATEDB`. `DATABASE_URL` selects the server (default
 `postgresql://localhost:5432/postgres`); that database is only the starting connection and is never
-modified. The project creates one migrated template database per run, and every test clones it into
-a uniquely named database, uses the production `Database` binding, and drops the clone, so tests
-share no state and run concurrently. Use a direct connection rather than a transaction pooler.
+modified. Each distinct schema gets one template database per run, built once behind an advisory
+lock and shared by every file that uses it. Each test file clones its template once; before every
+test the clone is truncated and its journal position restored, then the test runs through the
+production `Database` binding. Files run concurrently, tests within a file sequentially, and the
+global teardown drops every `company_os_test_*` database. Use a direct connection rather than a
+transaction pooler.
 `pnpm turbo run test --force` bypasses the Turbo cache after changing the server.
 
 ## Change the persisted shape

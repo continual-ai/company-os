@@ -40,7 +40,7 @@ export default defineConfig({
         ],
       },
       test: {
-        teardownTimeout: 10_000,
+        teardownTimeout: 120_000,
         projects: [
           {
             extends: true,
@@ -55,8 +55,9 @@ export default defineConfig({
             test: {
               globalSetup: "./src/runtime/testing/global-setup.ts",
               include: ["src/**/*-database.test.ts"],
+              hookTimeout: 60_000,
               name: "database",
-              testTimeout: 15_000,
+              testTimeout: 60_000,
             },
           },
         ],

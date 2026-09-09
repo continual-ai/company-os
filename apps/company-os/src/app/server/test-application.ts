@@ -8,8 +8,10 @@ import {
 } from "#/app/server/application-layer.ts"
 import { makeApplicationServicesLayer } from "#/app/server/application-services.ts"
 import { applyMigrations } from "#/app/server/database/migrations.ts"
+import { schemaSql } from "#/app/server/database/schema.ts"
 import { seedSystem } from "#/app/server/seeds/seed-system.ts"
 import { IdentityProvider } from "#/runtime/server/auth/identity-provider.ts"
+import { schemaHash } from "#/runtime/server/migrations.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
 import { PageTokens } from "#/runtime/server/page-tokens.ts"
 import { Database } from "#/runtime/server/storage/database.ts"
@@ -51,7 +53,11 @@ export function testApplication({
   /** Environment the application layer reads while it is built, such as AUTH_* settings. */
   readonly configuration?: Record<string, string>
 } = {}) {
-  const fixture = testDatabase(Model, migrateTemplate)
+  const fixture = testDatabase(
+    Model,
+    migrateTemplate,
+    `migrated:${schemaHash(schemaSql)}`
+  )
   const services = makeApplicationServicesLayer({
     database: fixture.database,
     pageTokens: PageTokens.layerTest,
