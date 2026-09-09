@@ -21,17 +21,51 @@ it("derives progression from the primary enum and shows each state once", () => 
   expect(html).not.toContain("<button")
 })
 
-it("offers field editing only when the caller supplies edit authority", () => {
+it("offers direct selection for every status when the caller supplies update authority", () => {
   const html = renderToStaticMarkup(
     <ObjectRecordStatusProgress
       object={Account}
       record={{ id: "account_example", stage: "customer" }}
-      onEdit={() => {}}
+      onChange={() => {}}
     />
   )
   expect(html).toContain("<button")
-  expect(html).toContain('aria-label="Edit Stage: Customer"')
+  expect(html).toContain('aria-label="Set stage to Customer"')
+  expect(html).toContain('aria-label="Set stage to Prospect"')
+  expect(html).toContain('aria-label="Set stage to Inactive"')
+  expect(html.match(/aria-pressed="true"/g)).toHaveLength(1)
+  expect(html).not.toContain("aria-haspopup")
   expect(html).toContain('data-record-field="stage"')
+})
+
+it("keeps the persisted selection and disables changes while another status saves", () => {
+  const html = renderToStaticMarkup(
+    <ObjectRecordStatusProgress
+      object={Account}
+      record={{ id: "account_example", stage: "customer" }}
+      onChange={() => {}}
+      pendingValue="inactive"
+    />
+  )
+  expect(html).toContain('aria-busy="true"')
+  expect(html.match(/ disabled=""/g)).toHaveLength(3)
+  expect(html).toMatch(/aria-label="Set stage to Customer" aria-pressed="true"/)
+  expect(html).toContain("Saving stage")
+})
+
+it("shows failed saves without changing the selected status", () => {
+  const html = renderToStaticMarkup(
+    <ObjectRecordStatusProgress
+      object={Account}
+      record={{ id: "account_example", stage: "customer" }}
+      onChange={() => {}}
+      error="This record has changed. Reload and try again."
+    />
+  )
+  expect(html).toContain('role="alert"')
+  expect(html).toContain("This record has changed.")
+  expect(html).toMatch(/aria-label="Set stage to Customer" aria-pressed="true"/)
+  expect(html).not.toContain('disabled=""')
 })
 
 it("keeps unrecognized states visible", () => {

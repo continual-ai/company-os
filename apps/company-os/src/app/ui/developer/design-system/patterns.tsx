@@ -9,6 +9,7 @@ import {
   SelectValue,
 } from "@company/ui/select"
 import { toast } from "@company/ui/toast"
+import { useMutation } from "@tanstack/react-query"
 import { useMemo, useState } from "react"
 
 import {
@@ -78,6 +79,10 @@ function PatternExamples({
   const first = records[0] ?? exampleRecords[0]!
   const references = new Map()
   const projected = tableRecord(ExampleProject, first)
+  const statusUpdate = useMutation({
+    mutationFn: ({ field, value }: { field: string; value: string }) =>
+      update(first, { [field]: value }),
+  })
 
   async function update(record: ClientRecord, changes: ObjectFormInput) {
     if (failSave)
@@ -143,7 +148,25 @@ function PatternExamples({
             <ObjectRecordStatusProgress
               object={ExampleProject}
               record={projected}
+              onChange={(field, value) => statusUpdate.mutate({ field, value })}
+              pendingValue={
+                statusUpdate.isPending
+                  ? statusUpdate.variables.value
+                  : undefined
+              }
+              error={statusUpdate.error?.message}
             />
+            <Label
+              htmlFor="ds-status-save-failure"
+              className="mt-4 flex items-center gap-2 text-xs text-muted-foreground"
+            >
+              <Checkbox
+                id="ds-status-save-failure"
+                checked={failSave}
+                onCheckedChange={setFailSave}
+              />
+              Simulate status save failure
+            </Label>
           </Example>
           <Example
             title="Choices and property values"

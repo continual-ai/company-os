@@ -1,5 +1,6 @@
 import { Button } from "@company/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@company/ui/tabs"
+import { useMutation } from "@tanstack/react-query"
 import { PencilIcon } from "lucide-react"
 import { useMemo, useRef, useState } from "react"
 
@@ -63,6 +64,10 @@ export function ObjectRecordPage({
 
   const pageElement = useRef<HTMLDivElement>(null)
   const state = useObjectRecord(object, recordId)
+  const statusUpdate = useMutation({
+    mutationFn: ({ field, value }: { field: string; value: string }) =>
+      state.update({ [field]: value }),
+  })
   const [localTab, setLocalTab] = useState("overview")
   const [editing, setEditing] = useState<ReadonlyArray<string> | "all">()
   const related = useMemo(
@@ -220,7 +225,17 @@ export function ObjectRecordPage({
             <ObjectRecordStatusProgress
               object={object}
               record={tableRecord(object, record)}
-              onEdit={edit}
+              onChange={
+                state.can("update")
+                  ? (field, value) => statusUpdate.mutate({ field, value })
+                  : undefined
+              }
+              pendingValue={
+                statusUpdate.isPending
+                  ? statusUpdate.variables.value
+                  : undefined
+              }
+              error={statusUpdate.error?.message}
               disabled={editing !== undefined}
             />
           </div>
