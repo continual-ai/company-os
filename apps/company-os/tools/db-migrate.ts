@@ -7,6 +7,7 @@ import {
   ensureDatabaseSchema,
 } from "#/app/server/database/migrations.ts"
 import * as Postgres from "#/app/server/database/postgres.ts"
+import { localConfigLayer } from "#/app/server/local-config.ts"
 import { seedSystem } from "#/app/server/seeds/seed-system.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
 import { Database } from "#/runtime/server/storage/database.ts"
@@ -103,4 +104,8 @@ Effect.gen(function* () {
     yield* ensureLocalDatabase(Redacted.value(databaseUrl.value))
   }
   yield* migrate
-}).pipe(NodeRuntime.runMain)
+}).pipe(
+  // Deployments pass --if-configured and must not inherit development defaults.
+  Effect.provide(localConfigLayer({ development: !skipWhenUnconfigured })),
+  NodeRuntime.runMain
+)

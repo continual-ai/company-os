@@ -5,6 +5,7 @@ import { Config, Effect, Redacted } from "effect"
 import { localDatabaseTarget } from "#/app/server/database/db-reset-target.ts"
 import { applyMigrations } from "#/app/server/database/migrations.ts"
 import * as Postgres from "#/app/server/database/postgres.ts"
+import { withLocalConfig } from "#/app/server/local-config.ts"
 import { seedSystem } from "#/app/server/seeds/seed-system.ts"
 
 Effect.gen(function* () {
@@ -26,4 +27,9 @@ Effect.gen(function* () {
   yield* Effect.log(
     "Database reset complete; all committed migrations applied and required records ensured."
   )
-}).pipe(Effect.provide(Postgres.databaseAndClientLayer), NodeRuntime.runMain)
+}).pipe(
+  Effect.provide(
+    withLocalConfig(Postgres.databaseAndClientLayer, { development: true })
+  ),
+  NodeRuntime.runMain
+)

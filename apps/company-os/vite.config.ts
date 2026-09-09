@@ -1,8 +1,9 @@
 /// <reference types="vitest/config" />
 
-import { defineConfig } from "@continual/tanstack-start/vite"
+import { existsSync } from "node:fs"
+import { loadEnvFile } from "node:process"
 
-import { loadLocalEnvironment } from "#/app/server/local-environment.ts"
+import { defineConfig } from "@continual/tanstack-start/vite"
 
 export default defineConfig({
   tanstackStart: {
@@ -16,16 +17,14 @@ export default defineConfig({
       },
     },
   },
-  vite: ({ command, mode, isPreview }) => {
-    const localDevelopment =
-      command === "serve" && mode === "development" && !isPreview
-    loadLocalEnvironment({ includeExample: localDevelopment })
-    if (localDevelopment) {
-      if (!process.env.AUTH_BOOTSTRAP_SUBJECT) {
-        process.env.AUTH_BOOTSTRAP_ISSUER = "local-development"
-        process.env.AUTH_BOOTSTRAP_SUBJECT = "default"
-      }
-    }
+  vite: ({ command, isPreview }) => {
+    // The server reads configuration from the process environment; local
+    // overrides come from these files, app-level first. Development defaults
+    // live in src/app/server/config.ts, not in a file.
+    if (command === "serve" && !isPreview)
+      for (const file of [".env.local", "../../.env.local"])
+        if (existsSync(new URL(file, import.meta.url)))
+          loadEnvFile(new URL(file, import.meta.url))
 
     return {
       server: {

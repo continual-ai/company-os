@@ -18,13 +18,12 @@ Run commands from the repository root with `pnpm --filter company-os <task>`.
 
 ## Local development
 
-`pnpm dev` runs `db:migrate` before the development server. `apps/company-os/.env.example` supplies
-`postgresql://localhost:5432/company_os`; create `.env.local` at the repository root or in the app
-when connection details differ, and note that injected environment variables win over both. The
-migration creates the database when it targets local PostgreSQL, then applies committed migrations
-and ensures the Root and system Actor. It does not install or start PostgreSQL. Verified identities
-bind to local User or ServiceAccount records at sign-in; roles follow the bootstrap policy in
-[deployment](deployment.md).
+`pnpm dev` runs `db:migrate` before the development server. Configuration comes from the process
+environment first, then `.env.local` in the app and at the repository root, then the development
+defaults in `src/app/server/config.ts` (`postgresql://localhost:5432/company_os`, a local
+`APP_SECRET`, and the local administrator bootstrap). Production and `deploy` never use those
+defaults; `apps/company-os/.env.example` lists every key a deployment sets. Only `VITE_` values
+reach browser code.
 
 ## Tests
 

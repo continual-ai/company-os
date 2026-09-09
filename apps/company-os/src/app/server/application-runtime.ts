@@ -2,11 +2,18 @@ import { getRequest } from "@tanstack/react-start/server"
 import { ConfigProvider, type Effect, Layer, ManagedRuntime } from "effect"
 
 import { applicationLayer } from "#/app/server/application-layer.ts"
+import { developmentDefaults } from "#/app/server/config.ts"
 
-/** Builds the server runtime from the same scalar configuration source on every host. */
-function makeApplicationRuntime(configProvider = ConfigProvider.fromEnv()) {
+/**
+ * Builds the server runtime over the process environment. Development also
+ * falls back to the checked-in defaults so a fresh checkout runs without files.
+ */
+function makeApplicationRuntime() {
+  const configuration = import.meta.env.DEV
+    ? ConfigProvider.layerAdd(developmentDefaults)
+    : Layer.empty
   return ManagedRuntime.make(
-    applicationLayer.pipe(Layer.provide(ConfigProvider.layer(configProvider)))
+    applicationLayer.pipe(Layer.provide(configuration))
   )
 }
 

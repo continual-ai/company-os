@@ -5,6 +5,7 @@ import { Config, Effect, Redacted } from "effect"
 
 import { developmentSeedTarget } from "#/app/server/database/db-seed-target.ts"
 import { databaseLayer } from "#/app/server/database/postgres.ts"
+import { withLocalConfig } from "#/app/server/local-config.ts"
 import { seedSystem } from "#/app/server/seeds/seed-system.ts"
 
 const { values } = parseArgs({ options: { help: { type: "boolean" } } })
@@ -27,5 +28,8 @@ if (values.help) {
     yield* Effect.log(`Seeding system records into ${target}.`)
     yield* seedSystem()
     yield* Effect.log("System records ready.")
-  }).pipe(Effect.provide(databaseLayer), NodeRuntime.runMain)
+  }).pipe(
+    Effect.provide(withLocalConfig(databaseLayer, { development: true })),
+    NodeRuntime.runMain
+  )
 }
