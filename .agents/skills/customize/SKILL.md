@@ -14,11 +14,15 @@ only when it exists and its company policy matters. Paths below start at `apps/c
 
 ## Find the smallest change
 
-Choose the relevant row; do not read every example or trace the runtime before starting.
+Start from the closest existing object, Link, or operation definition. Match its naming, schema,
+relationship, and operation conventions; reuse existing definitions instead of duplicating concepts.
+Read the relevant builder/type declaration only if the example leaves the API unclear. Choose the
+relevant row below; do not survey every definition or trace the runtime before starting.
 
 | Request | Edit or inspect |
 | --- | --- |
 | Add an object or field | The owning module's `model/`; `modules/support/model/ticket.ts` is a standard example. Register objects in `model/index.ts`. |
+| Add a Link | `modules/sales/model/links/contact-companies.ts`; use `contact-primary-company.ts` beside it for a subset selection. Register Links in the owning module’s `model/index.ts`. |
 | Add a module | Its `model/index.ts`, then `app.model.ts` and `app.config.ts`; add server/UI roots only for contributions that exist. |
 | Remove an object | Find its references, Links, operation contracts, UI contributions, seeds, and tests with `rg`. Remove those dependencies and the object from its module's `objects` list together; follow the data rules below. |
 | Hide a module | Remove its id from `app.config.ts`, accounting for dependent modules. Keep the complete storage model. |
@@ -33,15 +37,20 @@ implementation choices. Honor backend-only and other scope constraints.
 
 ## Implement
 
-Use standard operations unless the request needs an additional invariant or workflow. Keep business
-policy in named `Effect.fn` operations bound by `defineModuleServer`. Require authority before
-`Records.writer` or `Links.writer`; use `EventJournal.append` for custom facts in the transaction.
+Apply the CRUD-first rule in `AGENTS.md`: a business verb or status change alone does not justify
+a custom Action wrapping create/update/delete. When standard CRUD and model constraints cannot
+express the behavior, implement it as a named `Effect.fn` bound by `defineModuleServer`. Require
+authority before `Records.writer` or `Links.writer`; use `EventJournal.append` for custom facts in
+the transaction.
 Use installed Effect v4 APIs; services use `Context.Service(..., { make })` with a static `.layer`.
 Public intake gets an explicit contract separate from private records. External effects need a
 commit/failure boundary and retries that avoid duplicating the effect.
 
-Module UI uses `useObjectClient(Object)` from `runtime/ui/module.ts`; shell code uses
-`app/app-client.ts`. Use the existing forms, error paths, and server-driven invalidation. Prefer
+Enabled objects automatically get internal collection/record pages, forms, and navigation, subject
+to permissions. `app.ui.ts` is optional presentation customization, not an activation requirement.
+Public intake is a separate surface; a request for Company OS without a public site still includes
+its standard internal pages. Module UI uses `useObjectClient(Object)` from `runtime/ui/module.ts`;
+shell code uses `app/app-client.ts`. Use the existing forms, error paths, and server-driven invalidation. Prefer
 `defineModuleUi` additions/replacements, then a module-owned page for a distinct workflow. Do not
 create a custom route, transport, or service merely to expose standard CRUD.
 
@@ -51,10 +60,17 @@ Use `--baseline` only for confirmed disposable data. Removing source does not au
 retained records: establish their migration, archive, or deletion outcome first. Hiding UI, denying
 access, and deleting data are different requests.
 
+Apply the migration with `pnpm --filter company-os db:migrate`; it also refreshes system roles and
+search. Reload the app and verify the intended user's access. For a missing object, check model
+registration, enablement, applied migrations, and list permissions before adding UI code. Demo
+seeding is for sample business records, not activation.
+
 Test the changed business behavior using `testFoundation(model, { servers })` and `fixture.test`,
 as the operation tests do. The fixture owns database setup/cleanup. Verify relevant denied access,
 rollback, retries, and retained-data migration. Run the repository checks, inspect the diff, and
-report delivered behavior, validation, and remaining activation steps.
+report delivered behavior, validation, and remaining activation steps. App activation and role
+coverage belong in `app/server/integration` using `testApplication` and the governed client;
+writer-only tests do not establish user access.
 
 ## Review or rethink
 
