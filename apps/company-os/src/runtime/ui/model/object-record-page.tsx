@@ -1,6 +1,6 @@
 import { Button } from "@company/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@company/ui/tabs"
-import { PencilIcon, PanelLeftIcon } from "lucide-react"
+import { PencilIcon } from "lucide-react"
 import { useMemo, useRef, useState } from "react"
 
 import {
@@ -18,6 +18,7 @@ import { ObjectPropertiesCard } from "#/runtime/ui/model/object-properties-card.
 import { objectPropertyValue } from "#/runtime/ui/model/object-property-value.tsx"
 import { ObjectRecordDialog } from "#/runtime/ui/model/object-record-dialog.tsx"
 import { ObjectRecordIdentity } from "#/runtime/ui/model/object-record-identity.tsx"
+import { ObjectRecordStatusProgress } from "#/runtime/ui/model/object-record-status-progress.tsx"
 import { ObjectRelationshipCollection } from "#/runtime/ui/model/object-relationship-collection.tsx"
 import { objectHref } from "#/runtime/ui/model/object-routing.ts"
 import { objectTablePropertySchema } from "#/runtime/ui/model/object-table/object-table-cell-types.ts"
@@ -63,7 +64,6 @@ export function ObjectRecordPage({
 
   const pageElement = useRef<HTMLDivElement>(null)
   const state = useObjectRecord(object, recordId)
-  const [showDetails, setShowDetails] = useState(true)
   const [localTab, setLocalTab] = useState("overview")
   const [editing, setEditing] = useState<ReadonlyArray<string> | "all">()
   const related = useMemo(
@@ -176,7 +176,7 @@ export function ObjectRecordPage({
       className="@container flex min-h-0 flex-1 flex-col bg-background"
     >
       <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b px-5 py-3">
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <h1 className="min-w-0 text-xl tracking-tight">
             {title !== undefined ? (
               title
@@ -188,6 +188,11 @@ export function ObjectRecordPage({
               />
             )}
           </h1>
+          <ObjectRecordStatusProgress
+            className="mt-3"
+            object={object}
+            record={tableRecord(object, record)}
+          />
         </div>
         <div className="flex items-center gap-2">
           <ObjectActions
@@ -196,18 +201,6 @@ export function ObjectRecordPage({
             can={state.can}
             placement="record"
           />
-          {hasWorkspace && detailFields.length > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              aria-expanded={showDetails}
-              aria-controls="record-details"
-              onClick={() => setShowDetails(!showDetails)}
-            >
-              <PanelLeftIcon />
-              Details
-            </Button>
-          )}
           <RecordRelatedCreateMenu relationships={related} totals={totals} />
           {edit && (
             <Button
@@ -224,7 +217,7 @@ export function ObjectRecordPage({
         </div>
       </header>
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto @3xl:flex-row @3xl:overflow-hidden">
-        {detailFields.length > 0 && (!hasWorkspace || showDetails) && (
+        {detailFields.length > 0 && (
           <aside
             id="record-details"
             className={
