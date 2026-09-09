@@ -6,6 +6,7 @@ import type { InterfaceType } from "#/runtime/model/definition/interface.ts"
 import type { LinkType } from "#/runtime/model/definition/link.ts"
 import type { ModuleDefinition } from "#/runtime/model/definition/module.ts"
 import type {
+  ObjectDefinition,
   ObjectRef,
   ObjectType,
 } from "#/runtime/model/definition/object.ts"
@@ -53,22 +54,20 @@ type InterfaceImplementerIdFor<
     : never
   : never
 
+/** Interface references resolve to the model's implementers; concrete references are already exact. */
 type BoundProperty<TProperty, TObjects extends ReadonlyArray<ObjectType>> =
   TProperty extends RecordIdSchema<infer TTargetTypeId, infer _TRecordTypeId>
     ? TTargetTypeId extends TObjects[number]["id"] | RootType["id"]
       ? TProperty
-      : Omit<TProperty, "_Type" | "_Value"> & {
+      : Omit<TProperty, "_Type"> & {
           readonly _Type?: RecordIds<
-            InterfaceImplementerId<TObjects, TTargetTypeId>
-          >
-          readonly _Value?: RecordIds<
             InterfaceImplementerId<TObjects, TTargetTypeId>
           >
         }
     : TProperty
 
 type BoundProperties<
-  TProperties extends ObjectType["properties"],
+  TProperties extends ObjectDefinition["properties"],
   TObjects extends ReadonlyArray<ObjectType>,
 > = {
   readonly [TKey in keyof TProperties]: BoundProperty<
@@ -77,29 +76,24 @@ type BoundProperties<
   >
 }
 
-/** An object whose interface references resolve to the model's implementers. */
+type BoundDefinition<
+  D extends ObjectDefinition,
+  TObjects extends ReadonlyArray<ObjectType>,
+> = {
+  readonly [TKey in keyof D]: TKey extends "properties"
+    ? BoundProperties<D[TKey], TObjects>
+    : D[TKey]
+}
+
+/** The same object re-derived from a definition whose interface references are bound to the model. */
 type BoundObject<
   TObject extends ObjectType,
   TObjects extends ReadonlyArray<ObjectType>,
 > =
-  TObject extends ObjectType<
-    infer TId,
-    infer TCollection,
-    infer TProperties,
-    infer TActions,
-    infer TParent,
-    infer TInterfaces,
-    infer TQueries
-  >
-    ? ObjectType<
-        TId,
-        TCollection,
-        BoundProperties<TProperties, TObjects>,
-        TActions,
-        TParent,
-        TInterfaces,
-        TQueries
-      >
+  TObject extends ObjectType<infer D>
+    ? BoundDefinition<D, TObjects> extends infer TBound extends ObjectDefinition
+      ? ObjectType<TBound>
+      : never
     : never
 
 type ObjectRegistry<TObjects extends ReadonlyArray<ObjectType>> = {
@@ -163,37 +157,29 @@ export interface ModelCatalog {
   root: RootType
 }
 
+/** A composed model; the registries derive from its module tuple, and `ModelCatalog` is its open form. */
 export interface Model<
   TModules extends ReadonlyArray<ModuleDefinition> =
     ReadonlyArray<ModuleDefinition>,
-  TObjects extends ReadonlyArray<ObjectType> = ReadonlyArray<ObjectType>,
-  TLinks extends ReadonlyArray<LinkType> = ReadonlyArray<LinkType>,
-  TInterfaces extends ReadonlyArray<InterfaceType> =
-    ReadonlyArray<InterfaceType>,
 > {
   readonly [modelTypes]?: {
-    readonly links: TLinks
-    readonly interfaces: TInterfaces
-    readonly objects: ReadonlyArray<BoundObject<TObjects[number], TObjects>>
+    readonly links: ModuleLinks<TModules>
+    readonly interfaces: ModuleInterfaces<TModules>
+    readonly objects: ReadonlyArray<
+      BoundObject<ModuleObjects<TModules>[number], ModuleObjects<TModules>>
+    >
   }
-  actions: ActionRegistry<TObjects>
+  actions: ActionRegistry<ModuleObjects<TModules>>
   actor: typeof Actor
-  interfaces: InterfaceRegistry<TInterfaces>
+  interfaces: InterfaceRegistry<ModuleInterfaces<TModules>>
   kind: "model"
-  links: LinkRegistry<TLinks>
+  links: LinkRegistry<ModuleLinks<TModules>>
   modules: ModuleRegistry<TModules>
   name: string
-  objects: ObjectRegistry<TObjects>
-  queries: QueryRegistry<TObjects>
+  objects: ObjectRegistry<ModuleObjects<TModules>>
+  queries: QueryRegistry<ModuleObjects<TModules>>
   root: RootType
 }
-
-type ComposedModel<TModules extends ReadonlyArray<ModuleDefinition>> = Model<
-  TModules,
-  ModuleObjects<TModules>,
-  ModuleLinks<TModules>,
-  ModuleInterfaces<TModules>
->
 
 export type ModelObject<TModel extends ModelCatalog> = NonNullable<
   TModel[typeof modelTypes]
@@ -284,9 +270,9 @@ export function enableModules<
   const TModules extends ReadonlyArray<ModuleDefinition>,
   const TIds extends ReadonlyArray<TModules[number]["id"]>,
 >(
-  model: ComposedModel<TModules>,
+  model: Model<TModules>,
   enabled: TIds
-): ComposedModel<SelectModules<TModules, TIds[number]>> {
+): Model<SelectModules<TModules, TIds[number]>> {
   const composed: ReadonlyArray<ModuleDefinition> = Object.values(model.modules)
   const unknown = enabled.filter((id) => !Object.hasOwn(model.modules, id))
   if (unknown.length > 0)
@@ -302,7 +288,7 @@ export function enableModules<
   // SAFETY: the enabled module list is a subset of the composed tuple, so the
   // narrowed registries are exactly the ones defineModel derives from that subset.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  return defineModel({ modules, name: model.name }) as unknown as ComposedModel<
+  return defineModel({ modules, name: model.name }) as unknown as Model<
     SelectModules<TModules, TIds[number]>
   >
 }
@@ -310,7 +296,7 @@ export function enableModules<
 /** Closes, validates, and indexes a portable model over the kernel Root and Actor. */
 export function defineModel<
   const TModules extends ReadonlyArray<ModuleDefinition>,
->(definition: { modules: TModules; name: string }): ComposedModel<TModules> {
+>(definition: { modules: TModules; name: string }): Model<TModules> {
   const moduleInterfaces: ReadonlyArray<InterfaceType> = [
     ...coreInterfaces,
     ...definition.modules.flatMap((module) => module.interfaces),
@@ -360,7 +346,7 @@ export function defineModel<
 
   // SAFETY: duplicate identifiers were rejected before building the registries.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  return catalog as unknown as ComposedModel<TModules>
+  return catalog as unknown as Model<TModules>
 }
 
 export function modelActions(model: ModelCatalog): ReadonlyArray<Action> {

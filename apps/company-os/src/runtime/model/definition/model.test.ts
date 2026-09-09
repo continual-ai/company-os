@@ -2,6 +2,10 @@ import { describe, expect, expectTypeOf, it } from "vitest"
 
 import { AuthorizationScope } from "#/runtime/model/core/authorization-scope.ts"
 import { Root } from "#/runtime/model/core/root.ts"
+import type {
+  ActionInput,
+  ActionOutput,
+} from "#/runtime/model/definition/action.ts"
 import { defineError } from "#/runtime/model/definition/error.ts"
 import {
   defineInterface,
@@ -17,9 +21,15 @@ import {
 import { defineModule } from "#/runtime/model/definition/module.ts"
 import {
   defineObject,
+  type ObjectParent,
+  type ObjectRecord,
   type ObjectType,
 } from "#/runtime/model/definition/object.ts"
-import { schema } from "#/runtime/model/definition/schema.ts"
+import {
+  type RecordId,
+  type RecordIdentifier,
+  schema,
+} from "#/runtime/model/definition/schema.ts"
 
 const TestActor = defineInterface({
   id: "testActor",
@@ -75,6 +85,127 @@ function defineTestModel<
   })
   return defineModel({ modules: [testModule], name: definition.name })
 }
+
+describe("definition inference", () => {
+  it("derives every typed member from the one definition without annotations", () => {
+    expectTypeOf(Contact.id).toEqualTypeOf<"contact">()
+    expectTypeOf(Contact.collection).toEqualTypeOf<"contacts">()
+    expectTypeOf(Contact.display.title).toEqualTypeOf<"name">()
+    expectTypeOf(Contact.parent).toEqualTypeOf<ObjectParent<"root", "root">>()
+    expectTypeOf<ObjectRecord<typeof Contact>["name"]>().toEqualTypeOf<string>()
+    expectTypeOf<ObjectRecord<typeof Contact>["parent"]>().toEqualTypeOf<
+      RecordId<"root">
+    >()
+    expectTypeOf<keyof typeof Contact.actions>().toEqualTypeOf<
+      "batchDelete" | "create" | "delete" | "enroll" | "update"
+    >()
+    expectTypeOf<keyof typeof Contact.queries>().toEqualTypeOf<never>()
+    expectTypeOf(Contact.actions.enroll.scope).toEqualTypeOf<"object">()
+    expectTypeOf<ActionInput<typeof Contact.actions.enroll>>().toEqualTypeOf<{
+      readonly id: RecordIdentifier<"contact">
+      readonly notify?: boolean
+    }>()
+    expectTypeOf<ActionOutput<typeof Contact.actions.enroll>>().toEqualTypeOf<{
+      readonly enrolled: boolean
+    }>()
+    expectTypeOf(Contact.actions.enroll.errors).toEqualTypeOf<
+      readonly [typeof EnrollmentFailed]
+    >()
+    expectTypeOf(Contact).toExtend<ObjectType>()
+    expectTypeOf(TestActor.id).toEqualTypeOf<"testActor">()
+    expectTypeOf(TestActor.properties).toEqualTypeOf<{}>()
+  })
+
+  it("rejects definitions that break the object contract", () => {
+    expect(() =>
+      defineTestModel({
+        interfaces: [TestActor],
+        links: [],
+        name: "Wrong parent",
+        objects: [
+          defineObject({
+            id: "orphan",
+            collection: "orphans",
+            name: "Orphan",
+            pluralName: "Orphans",
+            // @ts-expect-error A parent is an object, an interface, or Root.
+            parent: EnrollmentFailed,
+            properties: { name: schema.string() },
+            display: { title: "name" },
+          }),
+        ],
+      })
+    ).toThrow(/parent type/)
+    expect(() =>
+      defineObject({
+        id: "mislabeled",
+        collection: "mislabeleds",
+        name: "Mislabeled",
+        pluralName: "Mislabeleds",
+        properties: { name: schema.string() },
+        // @ts-expect-error Display roles name the object's own properties.
+        display: { title: "label" },
+      })
+    ).toThrow(/display title references unknown property 'label'/)
+    expect(() =>
+      defineObject({
+        id: "unsearchable",
+        collection: "unsearchables",
+        name: "Unsearchable",
+        pluralName: "Unsearchables",
+        properties: { name: schema.string() },
+        display: { title: "name" },
+        // @ts-expect-error Search fields name the object's own properties.
+        search: { fields: ["label"] },
+      })
+    ).toThrow(/search field 'label' must be text/)
+    expect(
+      defineObject({
+        id: "extra",
+        collection: "extras",
+        name: "Extra",
+        pluralName: "Extras",
+        properties: { name: schema.string() },
+        display: { title: "name" },
+        // @ts-expect-error Unknown members are rejected instead of inferred.
+        legacyName: "Extra",
+      })
+    ).not.toHaveProperty("legacyName")
+    expect(() =>
+      defineObject({
+        id: "duplicated",
+        collection: "duplicateds",
+        name: "Duplicated",
+        pluralName: "Duplicateds",
+        properties: { name: schema.string() },
+        display: { title: "name" },
+        actions: {
+          ping: { name: "Ping", description: "Pings.", scope: "collection" },
+        },
+        queries: {
+          ping: { name: "Ping", description: "Pings.", scope: "collection" },
+        },
+      })
+    ).toThrow(/duplicates operation 'ping'/)
+    expect(() =>
+      defineObject({
+        id: "redefined",
+        collection: "redefineds",
+        name: "Redefined",
+        pluralName: "Redefineds",
+        properties: { name: schema.string() },
+        display: { title: "name" },
+        actions: {
+          create: {
+            name: "Create",
+            description: "Creates.",
+            scope: "collection",
+          },
+        },
+      })
+    ).toThrow(/standard action 'create' may only be disabled with false/)
+  })
+})
 
 describe("model definitions", () => {
   it("indexes objects and their first-class actions", () => {

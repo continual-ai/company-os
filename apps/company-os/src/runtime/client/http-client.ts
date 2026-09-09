@@ -204,30 +204,25 @@ type ClientEndpointMatches<
     ? true
     : false
 
-type ClientLinkSide<TObject extends ObjectType, TLink> =
-  TLink extends LinkType<
-    string,
-    infer TForward extends LinkTraversal,
-    infer TReverse extends LinkTraversal
-  >
-    ?
-        | (ClientEndpointMatches<TObject, TForward["from"]> extends true
-            ? {
-                readonly direction: "forward"
-                readonly link: TLink
-                readonly side: TForward
-                readonly target: TReverse
-              }
-            : never)
-        | (ClientEndpointMatches<TObject, TReverse["from"]> extends true
-            ? {
-                readonly direction: "reverse"
-                readonly link: TLink
-                readonly side: TReverse
-                readonly target: TForward
-              }
-            : never)
-    : never
+type ClientLinkSide<TObject extends ObjectType, TLink> = TLink extends LinkType
+  ?
+      | (ClientEndpointMatches<TObject, TLink["forward"]["from"]> extends true
+          ? {
+              readonly direction: "forward"
+              readonly link: TLink
+              readonly side: TLink["forward"]
+              readonly target: TLink["reverse"]
+            }
+          : never)
+      | (ClientEndpointMatches<TObject, TLink["reverse"]["from"]> extends true
+          ? {
+              readonly direction: "reverse"
+              readonly link: TLink
+              readonly side: TLink["reverse"]
+              readonly target: TLink["forward"]
+            }
+          : never)
+  : never
 
 type ClientLinkSides<
   TModel extends ModelCatalog,

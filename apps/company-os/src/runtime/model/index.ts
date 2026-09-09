@@ -37,6 +37,7 @@ export type {
 } from "#/runtime/model/definition/property.ts"
 export { defineInterface } from "#/runtime/model/definition/interface.ts"
 export type {
+  InterfaceDefinition,
   InterfaceDisplay,
   InterfaceImplementation,
   InterfaceType,
@@ -65,12 +66,16 @@ export type {
   ModelObjectUpdateInput,
 } from "#/runtime/model/definition/model-input.ts"
 export { defineModule } from "#/runtime/model/definition/module.ts"
-export type { ModuleDefinition } from "#/runtime/model/definition/module.ts"
+export type {
+  ModuleDefinition,
+  ModuleDefinitionInput,
+} from "#/runtime/model/definition/module.ts"
 export {
   defineLink,
   linkCardinalities,
 } from "#/runtime/model/definition/link.ts"
 export type {
+  LinkDefinition,
   LinkType,
   LinkCardinality,
   LinkEndpoint,
@@ -87,6 +92,7 @@ export type {
   ObjectGetInput,
   ObjectType,
   ObjectCreateInput,
+  ObjectDefinition,
   ObjectDisplay,
   ObjectParent,
   ObjectRef,

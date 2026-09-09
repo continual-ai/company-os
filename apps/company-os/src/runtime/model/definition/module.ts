@@ -1,23 +1,52 @@
 import type { EventType } from "#/runtime/model/definition/event.ts"
+import type {
+  NoExtraKeys,
+  OpenOr,
+} from "#/runtime/model/definition/identity.ts"
 import type { InterfaceType } from "#/runtime/model/definition/interface.ts"
 import type { LinkType } from "#/runtime/model/definition/link.ts"
 import type { ObjectType } from "#/runtime/model/definition/object.ts"
 
-/** A portable, cohesive group of model definitions. */
+/** What `defineModule` accepts. */
+export interface ModuleDefinitionInput {
+  readonly events?: ReadonlyArray<EventType>
+  readonly id: string
+  readonly interfaces?: ReadonlyArray<InterfaceType>
+  readonly links?: ReadonlyArray<LinkType>
+  readonly name: string
+  readonly objects: ReadonlyArray<ObjectType>
+}
+
+type ModuleInterfaces<D extends ModuleDefinitionInput> = D extends {
+  readonly interfaces: infer TInterfaces extends ReadonlyArray<InterfaceType>
+}
+  ? TInterfaces
+  : readonly []
+
+type ModuleLinks<D extends ModuleDefinitionInput> = D extends {
+  readonly links: infer TLinks extends ReadonlyArray<LinkType>
+}
+  ? TLinks
+  : readonly []
+
+/**
+ * A portable, cohesive group of model definitions; the bare `ModuleDefinition`
+ * is the open form every defined module is assignable to.
+ */
 export interface ModuleDefinition<
-  TId extends string = string,
-  TInterfaces extends ReadonlyArray<InterfaceType> =
-    ReadonlyArray<InterfaceType>,
-  TLinks extends ReadonlyArray<LinkType> = ReadonlyArray<LinkType>,
-  TObjects extends ReadonlyArray<ObjectType> = ReadonlyArray<ObjectType>,
+  D extends ModuleDefinitionInput = ModuleDefinitionInput,
 > {
   readonly events: ReadonlyArray<EventType>
-  readonly id: TId
-  readonly interfaces: TInterfaces
+  readonly id: D["id"]
+  readonly interfaces: OpenOr<
+    D,
+    ReadonlyArray<InterfaceType>,
+    ModuleInterfaces<D>
+  >
   readonly kind: "module"
-  readonly links: TLinks
+  readonly links: OpenOr<D, ReadonlyArray<LinkType>, ModuleLinks<D>>
   readonly name: string
-  readonly objects: TObjects
+  readonly objects: D["objects"]
 }
 
 /**
@@ -25,31 +54,21 @@ export interface ModuleDefinition<
  * module's dependencies are derived from the types its definitions reference,
  * so they are never declared by hand.
  */
-export function defineModule<
-  const TId extends string,
-  const TObjects extends ReadonlyArray<ObjectType>,
-  const TInterfaces extends ReadonlyArray<InterfaceType> = readonly [],
-  const TLinks extends ReadonlyArray<LinkType> = readonly [],
->(definition: {
-  readonly events?: ReadonlyArray<EventType>
-  readonly id: TId
-  readonly interfaces?: TInterfaces
-  readonly links?: TLinks
-  readonly name: string
-  readonly objects: TObjects
-}): ModuleDefinition<TId, TInterfaces, TLinks, TObjects> {
-  // SAFETY: an omitted list is exactly the generic default `readonly []`.
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  const interfaces = (definition.interfaces ?? []) as TInterfaces
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  const links = (definition.links ?? []) as TLinks
-  return {
-    events: definition.events ?? [],
-    id: definition.id,
-    interfaces,
+export function defineModule<const D extends ModuleDefinitionInput>(
+  definition: D & NoExtraKeys<D, ModuleDefinitionInput>
+): ModuleDefinition<D> {
+  const input: ModuleDefinitionInput = definition
+  const module: ModuleDefinition = {
+    events: input.events ?? [],
+    id: input.id,
+    interfaces: input.interfaces ?? [],
     kind: "module",
-    links,
-    name: definition.name,
-    objects: definition.objects,
+    links: input.links ?? [],
+    name: input.name,
+    objects: input.objects,
   }
+  // SAFETY: an omitted list is exactly the derived `readonly []`; every other
+  // member is the definition's own value.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  return module as ModuleDefinition<D>
 }

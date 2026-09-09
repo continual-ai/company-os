@@ -1,4 +1,8 @@
-import { definitionId } from "#/runtime/model/definition/identity.ts"
+import {
+  definitionId,
+  type NoExtraKeys,
+  type OpenOr,
+} from "#/runtime/model/definition/identity.ts"
 import type { Properties } from "#/runtime/model/definition/property.ts"
 import type {
   AnySchema,
@@ -28,25 +32,52 @@ export interface InterfaceDisplay<
   title: keyof TProperties & string
 }
 
-export interface InterfaceType<
-  TId extends string = string,
-  TProperties extends Readonly<Record<string, AnySchema>> = Readonly<
+interface InterfaceDisplayDefinition {
+  icon?: string
+  image?: string
+  status?: string
+  subtitle?: string
+  title: string
+}
+
+/** What `defineInterface` accepts; `display` roles are checked against `properties` in the parameter. */
+export interface InterfaceDefinition {
+  readonly description?: string
+  readonly display?: InterfaceDisplayDefinition
+  readonly id: string
+  readonly name: string
+  readonly pluralName: string
+  readonly properties?: Readonly<Record<string, AnySchema>>
+}
+
+type InterfaceProperties<D extends InterfaceDefinition> = D extends {
+  readonly properties: infer TProperties extends Readonly<
     Record<string, AnySchema>
-  >,
+  >
+}
+  ? TProperties
+  : {}
+
+type InterfaceDefinitionConstraints<D extends InterfaceDefinition> =
+  NoExtraKeys<D, InterfaceDefinition> & {
+    readonly display?: InterfaceDisplay<InterfaceProperties<D>>
+  }
+
+/** A defined interface; the bare `InterfaceType` is the open form every defined interface is assignable to. */
+export interface InterfaceType<
+  D extends InterfaceDefinition = InterfaceDefinition,
 > {
   description?: string
-  display?: {
-    icon?: string
-    image?: string
-    status?: string
-    subtitle?: string
-    title: string
-  }
-  id: TId
+  display?: InterfaceDisplayDefinition
+  id: D["id"]
   kind: "interface"
   name: string
   pluralName: string
-  properties: TProperties
+  properties: OpenOr<
+    D,
+    Readonly<Record<string, AnySchema>>,
+    InterfaceProperties<D>
+  >
 }
 
 export interface InterfaceImplementation<
@@ -210,40 +241,26 @@ export function bindInterfaceImplementations<
  * marker capabilities; shared properties require explicit mappings from each
  * implementing object. Object-specific defaults and writes stay on the object.
  */
-export function defineInterface<
-  const TId extends string,
-  const TProperties extends Readonly<Record<string, AnySchema>> = {},
->(definition: {
-  description?: string
-  display?: InterfaceDisplay<TProperties>
-  id: TId
-  name: string
-  pluralName: string
-  properties?: TProperties
-}): InterfaceType<TId, TProperties> {
-  definitionId(definition.id)
-  // SAFETY: omission selects the generic's default empty property map; an
-  // explicitly supplied property map is preserved unchanged.
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  const properties = (definition.properties ?? {}) as TProperties
+export function defineInterface<const D extends InterfaceDefinition>(
+  definition: D & InterfaceDefinitionConstraints<D>
+): InterfaceType<D> {
+  const input: InterfaceDefinition = definition
+  definitionId(input.id)
+  const properties = input.properties ?? {}
   for (const [propertyId, property] of Object.entries(properties)) {
     definitionId(propertyId)
-    assertReferencePropertyName(
-      `Interface '${definition.id}'`,
-      propertyId,
-      property
-    )
+    assertReferencePropertyName(`Interface '${input.id}'`, propertyId, property)
     if (
       Object.hasOwn(property, "default") ||
       property.immutable === true ||
       property.outputOnly === true
     ) {
       throw new Error(
-        `Interface '${definition.id}' property '${propertyId}' cannot declare object write behavior.`
+        `Interface '${input.id}' property '${propertyId}' cannot declare object write behavior.`
       )
     }
   }
-  for (const [role, propertyId] of Object.entries(definition.display ?? {})) {
+  for (const [role, propertyId] of Object.entries(input.display ?? {})) {
     if (role === "icon") {
       definitionId(propertyId)
       continue
@@ -251,31 +268,33 @@ export function defineInterface<
     const property = properties[propertyId]
     if (property === undefined) {
       throw new Error(
-        `Interface '${definition.id}' display ${role} references unknown property '${propertyId}'.`
+        `Interface '${input.id}' display ${role} references unknown property '${propertyId}'.`
       )
     }
     if (role === "image" && property.kind !== "image") {
       throw new Error(
-        `Interface '${definition.id}' display image must reference an image property.`
+        `Interface '${input.id}' display image must reference an image property.`
       )
     }
     if (role === "status" && property.kind !== "enum") {
       throw new Error(
-        `Interface '${definition.id}' display status must reference an enum property.`
+        `Interface '${input.id}' display status must reference an enum property.`
       )
     }
   }
 
-  const value: InterfaceType<TId, TProperties> = {
-    id: definitionId(definition.id),
+  const value: InterfaceType = {
+    id: definitionId(input.id),
     kind: "interface" as const,
-    name: definition.name,
-    pluralName: definition.pluralName,
+    name: input.name,
+    pluralName: input.pluralName,
     properties,
   }
-  if (definition.description !== undefined) {
-    value.description = definition.description
+  if (input.description !== undefined) {
+    value.description = input.description
   }
-  if (definition.display !== undefined) value.display = definition.display
-  return value
+  if (input.display !== undefined) value.display = input.display
+  // SAFETY: every member was built from the same definition the return type derives from.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  return value as InterfaceType<D>
 }

@@ -9,7 +9,11 @@ import {
   bindActions,
   standardActions,
 } from "#/runtime/model/definition/action.ts"
-import { definitionId } from "#/runtime/model/definition/identity.ts"
+import {
+  definitionId,
+  type NoExtraKeys,
+  type OpenOr,
+} from "#/runtime/model/definition/identity.ts"
 import {
   type InterfaceImplementation,
   type InterfaceImplementationConstraints,
@@ -118,38 +122,120 @@ export interface ObjectDisplay<TProperties extends Properties> {
   title: (keyof TProperties & string) | "id"
 }
 
-export interface ObjectType<
-  TId extends string = string,
-  TCollection extends string = string,
-  TProperties extends Properties = Properties,
-  TActions extends Readonly<Record<string, Action>> = Readonly<
-    Record<string, Action>
-  >,
-  TParent extends ObjectParent = ObjectParent,
-  TInterfaces extends Readonly<Record<string, InterfaceImplementation>> =
-    Readonly<Record<string, InterfaceImplementation>>,
-  TQueries extends Readonly<Record<string, CustomQuery>> = Readonly<
-    Record<string, CustomQuery>
-  >,
-> {
-  actions: TActions
-  queries: TQueries
-  collection: TCollection
-  description?: string
-  display: {
-    icon?: string
-    image?: string
-    status?: string
-    subtitle?: string
-    title: string
+type ParentDefinition = InterfaceType | ObjectType | RootType
+
+interface ObjectDisplayDefinition {
+  icon?: string
+  image?: string
+  status?: string
+  subtitle?: string
+  title: string
+}
+
+/**
+ * What `defineObject` accepts. Constraints that relate one member to another,
+ * such as display roles naming real properties, live in the parameter's
+ * intersection so the whole definition still infers as one literal type.
+ */
+export interface ObjectDefinition {
+  readonly actions?: ActionDefinitions
+  readonly queries?: QueryDefinitions
+  readonly collection: string
+  readonly description?: string
+  readonly display: ObjectDisplayDefinition
+  readonly id: string
+  readonly implements?: InterfaceImplementationInputs
+  readonly name: string
+  readonly parent?: ParentDefinition
+  readonly pluralName: string
+  readonly properties: Readonly<Record<string, AnySchema>>
+  /** Opts into cross-object search. Only these text fields are indexed; display title matches rank higher. */
+  readonly search?: { readonly fields: ReadonlyArray<string> }
+  readonly uniqueBy?: Readonly<Record<string, ReadonlyArray<string>>>
+}
+
+type ObjectActionDefinitions<D extends ObjectDefinition> = D extends {
+  readonly actions: infer TActions extends ActionDefinitions
+}
+  ? TActions
+  : {}
+
+type ObjectQueryDefinitions<D extends ObjectDefinition> = D extends {
+  readonly queries: infer TQueries extends QueryDefinitions
+}
+  ? TQueries
+  : {}
+
+type ObjectImplementations<D extends ObjectDefinition> = D extends {
+  readonly implements: infer TImplementations extends
+    InterfaceImplementationInputs
+}
+  ? TImplementations
+  : readonly []
+
+/** The declared parent, or Root when the definition omits one. */
+type ObjectParentDefinition<D extends ObjectDefinition> = D extends {
+  readonly parent: infer TParent extends ParentDefinition
+}
+  ? TParent
+  : RootType
+
+type ObjectDefinitionConstraints<D extends ObjectDefinition> = NoExtraKeys<
+  D,
+  ObjectDefinition
+> & {
+  readonly display: ObjectDisplay<NormalizeProperties<D["properties"]>>
+  readonly implements?: InterfaceImplementationConstraints<
+    D["properties"],
+    ObjectImplementations<D>
+  >
+  readonly search?: {
+    readonly fields: ReadonlyArray<keyof D["properties"] & string>
   }
-  id: TId
-  interfaces: TInterfaces
+}
+
+declare const objectDefinition: unique symbol
+
+/**
+ * A defined object. Every typed member derives from the one definition `D`;
+ * the bare `ObjectType` is the open form every defined object is assignable
+ * to, so derived members fall back to their open shapes when `D` is not one
+ * literal definition. The phantom definition slot lets a model re-derive an
+ * object whose interface references are bound to that model's implementers.
+ */
+export interface ObjectType<D extends ObjectDefinition = ObjectDefinition> {
+  readonly [objectDefinition]?: D
+  actions: OpenOr<
+    D,
+    Readonly<Record<string, Action>>,
+    NormalizedActions<D["id"], ObjectActionDefinitions<D>>
+  >
+  queries: OpenOr<
+    D,
+    Readonly<Record<string, CustomQuery>>,
+    BoundQueries<D["id"], ObjectQueryDefinitions<D>>
+  >
+  collection: D["collection"]
+  description?: string
+  display: D["display"]
+  id: D["id"]
+  interfaces: OpenOr<
+    D,
+    Readonly<Record<string, InterfaceImplementation>>,
+    InterfaceImplementationMap<ObjectImplementations<D>>
+  >
   kind: "object"
   name: string
-  parent: TParent
+  parent: OpenOr<
+    D,
+    ObjectParent,
+    ObjectParent<
+      ObjectParentDefinition<D>["id"],
+      ObjectParentDefinition<D>["kind"]
+    >
+  >
   pluralName: string
-  properties: TProperties
+  properties: OpenOr<D, Properties, NormalizeProperties<D["properties"]>>
   search?: { readonly fields: ReadonlyArray<string> } | undefined
   uniqueBy: Readonly<Record<string, ReadonlyArray<string>>>
 }
@@ -316,71 +402,36 @@ const reservedPropertyIds = new Set([
   "updatedBy",
 ])
 
-type ParentDefinition = InterfaceType | ObjectType | RootType
-
 /**
  * Defines a portable model object and derives its enabled standard actions.
  * `parent` is the ownership and authorization hierarchy and defaults to Root;
  * ordinary business relationships belong in links.
  */
-export function defineObject<
-  const TId extends string,
-  const TCollection extends string,
-  const TProperties extends Readonly<Record<string, AnySchema>>,
-  const TActionDefinitions extends ActionDefinitions = {},
-  const TParent extends ParentDefinition = RootType,
-  const TImplementations extends InterfaceImplementationInputs = [],
-  const TQueries extends QueryDefinitions = {},
->(definition: {
-  actions?: TActionDefinitions
-  queries?: TQueries
-  collection: TCollection
-  description?: string
-  display: ObjectDisplay<NormalizeProperties<TProperties>>
-  id: TId
-  implements?: TImplementations &
-    InterfaceImplementationConstraints<TProperties, TImplementations>
-  name: string
-  parent?: TParent
-  pluralName: string
-  properties: TProperties
-  /** Opts into cross-object search. Only these text fields are indexed; display title matches rank higher. */
-  search?: { readonly fields: ReadonlyArray<keyof TProperties & string> }
-  uniqueBy?: Readonly<Record<string, ReadonlyArray<string>>>
-}): ObjectType<
-  TId,
-  TCollection,
-  NormalizeProperties<TProperties>,
-  NormalizedActions<TId, TActionDefinitions>,
-  ObjectParent<TParent["id"], TParent["kind"]>,
-  InterfaceImplementationMap<TImplementations>,
-  BoundQueries<TId, TQueries>
-> {
-  const parent: ParentDefinition = definition.parent ?? Root
-  if (Object.hasOwn(definition.properties, parent.id)) {
+export function defineObject<const D extends ObjectDefinition>(
+  definition: D & ObjectDefinitionConstraints<D>
+): ObjectType<D> {
+  const input: ObjectDefinition = definition
+  const parent: ParentDefinition = input.parent ?? Root
+  if (Object.hasOwn(input.properties, parent.id)) {
     throw new Error(
-      `Object '${definition.id}' cannot redefine its '${parent.id}' parent as property '${parent.id}'; use the standard 'parent'.`
+      `Object '${input.id}' cannot redefine its '${parent.id}' parent as property '${parent.id}'; use the standard 'parent'.`
     )
   }
-  for (const [propertyId, property] of Object.entries(definition.properties)) {
+  for (const [propertyId, property] of Object.entries(input.properties)) {
     definitionId(propertyId)
-    assertReferencePropertyName(
-      `Object '${definition.id}'`,
-      propertyId,
-      property
-    )
+    assertReferencePropertyName(`Object '${input.id}'`, propertyId, property)
     if (reservedPropertyIds.has(propertyId)) {
       throw new Error(
-        `Object '${definition.id}' cannot redefine base property '${propertyId}'.`
+        `Object '${input.id}' cannot redefine base property '${propertyId}'.`
       )
     }
   }
-  const uniqueBy = definition.uniqueBy ?? {}
+  const uniqueBy = input.uniqueBy ?? {}
   for (const [ruleId, fields] of Object.entries(uniqueBy)) {
     definitionId(ruleId)
     if (fields.length === 0) {
       throw new Error(
-        `Object '${definition.id}' unique rule '${ruleId}' must reference at least one field.`
+        `Object '${input.id}' unique rule '${ruleId}' must reference at least one field.`
       )
     }
     const duplicateField = fields.find(
@@ -388,18 +439,18 @@ export function defineObject<
     )
     if (duplicateField !== undefined) {
       throw new Error(
-        `Object '${definition.id}' unique rule '${ruleId}' references field '${duplicateField}' more than once.`
+        `Object '${input.id}' unique rule '${ruleId}' references field '${duplicateField}' more than once.`
       )
     }
   }
 
-  const properties = normalizeProperties(definition.properties)
-  if (definition.search !== undefined) {
-    if (definition.search.fields.length === 0)
+  const properties = normalizeProperties(input.properties)
+  if (input.search !== undefined) {
+    if (input.search.fields.length === 0)
       throw new Error(
-        `Object '${definition.id}' search requires at least one field.`
+        `Object '${input.id}' search requires at least one field.`
       )
-    for (const field of definition.search.fields) {
+    for (const field of input.search.fields) {
       const property = properties[field]
       if (
         property?.kind !== "string" ||
@@ -407,16 +458,16 @@ export function defineObject<
         property.format === "timestamp"
       )
         throw new Error(
-          `Object '${definition.id}' search field '${field}' must be text.`
+          `Object '${input.id}' search field '${field}' must be text.`
         )
     }
   }
   const interfaces = bindInterfaceImplementations(
-    definition.id,
+    input.id,
     properties,
-    definition.implements ?? []
+    input.implements ?? []
   )
-  for (const [role, propertyId] of Object.entries(definition.display)) {
+  for (const [role, propertyId] of Object.entries(input.display)) {
     if (role === "icon") {
       definitionId(propertyId)
       continue
@@ -427,27 +478,27 @@ export function defineObject<
     const property = properties[propertyId]
     if (property === undefined) {
       throw new Error(
-        `Object '${definition.id}' display ${role} references unknown property '${propertyId}'.`
+        `Object '${input.id}' display ${role} references unknown property '${propertyId}'.`
       )
     }
     if (role === "image" && property.kind !== "image") {
       throw new Error(
-        `Object '${definition.id}' display image must reference an image property.`
+        `Object '${input.id}' display image must reference an image property.`
       )
     }
     if (role === "status" && property.kind !== "enum") {
       throw new Error(
-        `Object '${definition.id}' display status must reference an enum property.`
+        `Object '${input.id}' display status must reference an enum property.`
       )
     }
   }
 
   const identity = {
-    id: definitionId(definition.id),
-    collection: definitionId(definition.collection),
+    id: definitionId(input.id),
+    collection: definitionId(input.collection),
   }
-  const bound = bindActions(identity, definition.actions)
-  const queries = bindQueries(identity, definition.queries)
+  const bound = bindActions(identity, input.actions)
+  const queries = bindQueries(identity, input.queries)
   for (const id of Object.keys(queries)) {
     if (Object.hasOwn(bound.actions, id))
       throw new Error(`Object '${identity.id}' duplicates operation '${id}'.`)
@@ -456,14 +507,14 @@ export function defineObject<
     kind: "object" as const,
     id: identity.id,
     collection: identity.collection,
-    name: definition.name,
+    name: input.name,
     interfaces,
     parent: { kind: parent.kind, typeId: parent.id },
-    pluralName: definition.pluralName,
-    display: definition.display,
+    pluralName: input.pluralName,
+    display: input.display,
     properties,
     uniqueBy,
-    ...(definition.search === undefined ? {} : { search: definition.search }),
+    ...(input.search === undefined ? {} : { search: input.search }),
   }
   const actions = {
     ...Object.fromEntries(
@@ -481,17 +532,9 @@ export function defineObject<
     ...metadata,
     actions,
     queries,
-  } as unknown as ObjectType<
-    TId,
-    TCollection,
-    NormalizeProperties<TProperties>,
-    NormalizedActions<TId, TActionDefinitions>,
-    ObjectParent<TParent["id"], TParent["kind"]>,
-    InterfaceImplementationMap<TImplementations>,
-    BoundQueries<TId, TQueries>
-  >
-  if (definition.description !== undefined) {
-    return { ...object, description: definition.description }
+  } as unknown as ObjectType<D>
+  if (input.description !== undefined) {
+    return { ...object, description: input.description }
   }
   return object
 }

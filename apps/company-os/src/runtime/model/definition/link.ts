@@ -1,4 +1,7 @@
-import { definitionId } from "#/runtime/model/definition/identity.ts"
+import {
+  definitionId,
+  type NoExtraKeys,
+} from "#/runtime/model/definition/identity.ts"
 import type { InterfaceType } from "#/runtime/model/definition/interface.ts"
 import type { ObjectType } from "#/runtime/model/definition/object.ts"
 
@@ -30,89 +33,86 @@ export interface LinkTraversal<
   to: TTo
 }
 
-export interface LinkType<
-  TId extends string = string,
-  TForward extends LinkTraversal = LinkTraversal,
-  TReverse extends LinkTraversal = LinkTraversal,
-  TWriteFrom extends TForward["key"] | TReverse["key"] | false =
-    | TForward["key"]
-    | TReverse["key"]
-    | false,
-> {
+interface LinkTraversalDefinition {
+  readonly cardinality: LinkCardinality
+  readonly description?: string
+  readonly from: LinkTarget
+  readonly key: string
+  readonly label: string
+  readonly to: LinkTarget
+}
+
+/**
+ * What `defineLink` accepts. The parameter additionally requires `reverse` to
+ * mirror the forward endpoints and `writeFrom` to name one traversal key.
+ */
+export interface LinkDefinition {
+  readonly description?: string
+  readonly forward: LinkTraversalDefinition
+  readonly id: string
+  readonly name: string
+  readonly reverse: LinkTraversalDefinition
+  readonly subsetOf?: LinkType
+  readonly writeFrom: string | false
+}
+
+type LinkDefinitionConstraints<D extends LinkDefinition> = NoExtraKeys<
+  D,
+  LinkDefinition
+> & {
+  readonly reverse: {
+    readonly from: D["forward"]["to"]
+    readonly to: D["forward"]["from"]
+  }
+  readonly writeFrom: D["forward"]["key"] | D["reverse"]["key"] | false
+}
+
+type LinkEndpointOf<TTarget extends LinkTarget> = LinkEndpoint<
+  TTarget["id"],
+  TTarget["kind"]
+>
+
+type LinkTraversalOf<TTraversal extends LinkTraversalDefinition> =
+  LinkTraversal<
+    LinkEndpointOf<TTraversal["from"]>,
+    LinkEndpointOf<TTraversal["to"]>,
+    TTraversal["key"],
+    TTraversal["cardinality"]
+  >
+
+/** A defined link; the bare `LinkType` is the open form every defined link is assignable to. */
+export interface LinkType<D extends LinkDefinition = LinkDefinition> {
   description?: string
   /** A role selection within another relationship, with identical endpoint orientation. */
   subsetOf?: string
-  forward: TForward
-  id: TId
+  forward: LinkTraversalOf<D["forward"]>
+  id: D["id"]
   kind: "link"
   name: string
-  reverse: TReverse
+  reverse: LinkTraversalOf<D["reverse"]>
   /** Key of the one traversal that owns public mutations, or false when immutable. */
-  writeFrom: TWriteFrom
+  writeFrom: D["writeFrom"]
 }
 
 /**
  * Defines both named traversals of a portable business relationship. The
  * contract leaves storage and protocol projection unspecified.
  */
-export function defineLink<
-  const TId extends string,
-  const TForwardFrom extends LinkTarget,
-  const TForwardTo extends LinkTarget,
-  const TForwardKey extends string,
-  const TForwardCardinality extends LinkCardinality,
-  const TReverseKey extends string,
-  const TReverseCardinality extends LinkCardinality,
-  const TWriteFrom extends TForwardKey | TReverseKey | false,
->(definition: {
-  description?: string
-  subsetOf?: LinkType
-  forward: {
-    cardinality: TForwardCardinality
-    description?: string
-    from: TForwardFrom
-    key: TForwardKey
-    label: string
-    to: TForwardTo
-  }
-  id: TId
-  name: string
-  reverse: {
-    cardinality: TReverseCardinality
-    description?: string
-    from: TForwardTo
-    key: TReverseKey
-    label: string
-    to: TForwardFrom
-  }
-  writeFrom: TWriteFrom
-}): LinkType<
-  TId,
-  LinkTraversal<
-    LinkEndpoint<TForwardFrom["id"], TForwardFrom["kind"]>,
-    LinkEndpoint<TForwardTo["id"], TForwardTo["kind"]>,
-    TForwardKey,
-    TForwardCardinality
-  >,
-  LinkTraversal<
-    LinkEndpoint<TForwardTo["id"], TForwardTo["kind"]>,
-    LinkEndpoint<TForwardFrom["id"], TForwardFrom["kind"]>,
-    TReverseKey,
-    TReverseCardinality
-  >,
-  TWriteFrom
-> {
-  const { forward, reverse } = definition
+export function defineLink<const D extends LinkDefinition>(
+  definition: D & LinkDefinitionConstraints<D>
+): LinkType<D> {
+  const input: LinkDefinition = definition
+  const { forward, reverse } = input
   if (
-    definition.subsetOf !== undefined &&
-    (definition.subsetOf.forward.from.typeId !== forward.from.id ||
-      definition.subsetOf.reverse.from.typeId !== reverse.from.id ||
-      definition.subsetOf.forward.cardinality !== "many" ||
-      definition.subsetOf.reverse.cardinality !== "many" ||
-      definition.subsetOf.subsetOf !== undefined)
+    input.subsetOf !== undefined &&
+    (input.subsetOf.forward.from.typeId !== forward.from.id ||
+      input.subsetOf.reverse.from.typeId !== reverse.from.id ||
+      input.subsetOf.forward.cardinality !== "many" ||
+      input.subsetOf.reverse.cardinality !== "many" ||
+      input.subsetOf.subsetOf !== undefined)
   )
     throw new Error(
-      `Link '${definition.id}' must select from a many-to-many relationship with identical endpoints.`
+      `Link '${input.id}' must select from a many-to-many relationship with identical endpoints.`
     )
 
   definitionId(forward.key)
@@ -124,41 +124,24 @@ export function defineLink<
     forward.to.kind !== reverse.from.kind
   ) {
     throw new Error(
-      `Link '${definition.id}' reverse traversal must mirror its forward endpoints.`
+      `Link '${input.id}' reverse traversal must mirror its forward endpoints.`
     )
   }
   if (
-    definition.writeFrom !== false &&
-    definition.writeFrom !== forward.key &&
-    definition.writeFrom !== reverse.key
+    input.writeFrom !== false &&
+    input.writeFrom !== forward.key &&
+    input.writeFrom !== reverse.key
   ) {
     throw new Error(
-      `Link '${definition.id}' writeFrom must name one of its traversal keys.`
+      `Link '${input.id}' writeFrom must name one of its traversal keys.`
     )
   }
 
-  const link: LinkType<
-    TId,
-    LinkTraversal<
-      LinkEndpoint<TForwardFrom["id"], TForwardFrom["kind"]>,
-      LinkEndpoint<TForwardTo["id"], TForwardTo["kind"]>,
-      TForwardKey,
-      TForwardCardinality
-    >,
-    LinkTraversal<
-      LinkEndpoint<TForwardTo["id"], TForwardTo["kind"]>,
-      LinkEndpoint<TForwardFrom["id"], TForwardFrom["kind"]>,
-      TReverseKey,
-      TReverseCardinality
-    >,
-    TWriteFrom
-  > = {
+  const link: LinkType = {
     kind: "link",
-    ...(definition.subsetOf === undefined
-      ? {}
-      : { subsetOf: definition.subsetOf.id }),
-    id: definitionId(definition.id),
-    name: definition.name,
+    ...(input.subsetOf === undefined ? {} : { subsetOf: input.subsetOf.id }),
+    id: definitionId(input.id),
+    name: input.name,
     forward: {
       cardinality: forward.cardinality,
       from: { kind: forward.from.kind, typeId: forward.from.id },
@@ -173,7 +156,7 @@ export function defineLink<
       label: reverse.label,
       to: { kind: reverse.to.kind, typeId: reverse.to.id },
     },
-    writeFrom: definition.writeFrom,
+    writeFrom: input.writeFrom,
   }
   if (forward.description !== undefined) {
     link.forward.description = forward.description
@@ -181,8 +164,10 @@ export function defineLink<
   if (reverse.description !== undefined) {
     link.reverse.description = reverse.description
   }
-  if (definition.description !== undefined) {
-    link.description = definition.description
+  if (input.description !== undefined) {
+    link.description = input.description
   }
-  return link
+  // SAFETY: every member was built from the same definition the return type derives from.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  return link as LinkType<D>
 }
