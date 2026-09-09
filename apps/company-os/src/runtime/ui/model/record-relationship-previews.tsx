@@ -1,4 +1,5 @@
-import { Button } from "#/runtime/ui/components/button.tsx"
+import { Button } from "@company/ui/button"
+
 import { ObjectRecordSummary } from "#/runtime/ui/model/object-record-summary.tsx"
 import { useRecordReferences } from "#/runtime/ui/model/object-references.ts"
 import { objectHref } from "#/runtime/ui/model/object-routing.ts"

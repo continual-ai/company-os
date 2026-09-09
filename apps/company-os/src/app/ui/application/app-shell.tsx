@@ -1,3 +1,10 @@
+import {
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+  useSidebar,
+} from "@company/ui/sidebar"
+import { TooltipProvider } from "@company/ui/tooltip"
 import { useLocation, useMatchRoute } from "@tanstack/react-router"
 import { useEffect } from "react"
 
@@ -8,13 +15,6 @@ import { SiteHeader } from "#/app/ui/application/site-header.tsx"
 import { DeveloperSidebar } from "#/app/ui/developer/developer-sidebar.tsx"
 import { SettingsSidebar } from "#/app/ui/settings/settings-sidebar.tsx"
 import type { AuthenticatedUser } from "#/runtime/contract/authenticated-user.ts"
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-  useSidebar,
-} from "#/runtime/ui/components/sidebar.tsx"
-import { TooltipProvider } from "#/runtime/ui/components/tooltip.tsx"
 import { ObjectCreateProvider } from "#/runtime/ui/model/object-create-provider.tsx"
 import { PageChromeProvider } from "#/runtime/ui/model/page-chrome.tsx"
 import { RecentRecordsProvider } from "#/runtime/ui/model/recent-records.tsx"

@@ -1,3 +1,13 @@
+import { Button } from "@company/ui/button"
+import {
+  Command,
+  CommandDialog,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@company/ui/command"
+import { SidebarMenuButton } from "@company/ui/sidebar"
 import { useQuery } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
 import { HomeIcon, PlusIcon, SearchIcon, CodeIcon } from "lucide-react"
@@ -14,16 +24,6 @@ import { data } from "#/app/app-client.ts"
 import { presentation } from "#/app/app-presentation.ts"
 import { RecentRecords } from "#/app/ui/application/recent-records-group.tsx"
 import type { RecordSummary } from "#/runtime/contract/record-search.ts"
-import { Button } from "#/runtime/ui/components/button.tsx"
-import {
-  Command,
-  CommandDialog,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "#/runtime/ui/components/command.tsx"
-import { SidebarMenuButton } from "#/runtime/ui/components/sidebar.tsx"
 import { useModelNavigation } from "#/runtime/ui/model/module-navigation.tsx"
 import { useObjectCreate } from "#/runtime/ui/model/object-create-context.ts"
 import { ObjectRecordIdentity } from "#/runtime/ui/model/object-record-identity.tsx"

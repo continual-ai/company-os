@@ -1,9 +1,8 @@
+import { Button } from "@company/ui/button"
+import { cn } from "@company/ui/lib/utils"
 import { useLocation } from "@tanstack/react-router"
 import { ListIcon } from "lucide-react"
 import { useId, useState, type ReactElement, type ReactNode } from "react"
-
-import { Button } from "#/runtime/ui/components/button.tsx"
-import { cn } from "#/runtime/ui/lib/utils.ts"
 
 /** Local navigation stays beside an independently scrolling page on desktop. */
 export function DeveloperLayout({

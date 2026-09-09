@@ -5,6 +5,9 @@ import type { ESTree } from "@oxlint/plugins"
 
 const CENTRAL_APP_SOURCE = /(?:^|\/)apps\/company-os\/src\/(.+)$/
 const CENTRAL_APP_PACKAGE = "company-os"
+const UI_PACKAGE = "@company/ui"
+/** The design system: primitives, hooks, lib, and styles that no app or model may leak into. */
+const UI_PACKAGE_SOURCE = /(?:^|\/)packages\/ui\//
 /** Every workspace app other than the central one is a satellite over its exports. */
 const SATELLITE_APP = /(?:^|\/)apps\/(?!company-os\/)[^/]+\//
 const APP_PACKAGE_SCOPE = "@company/"
@@ -12,7 +15,6 @@ const SATELLITE_ALLOWED_CENTRAL_IMPORTS = new Set([
   "company-os/client",
   "company-os/config",
   "company-os/model",
-  "company-os/styles.css",
 ])
 const TEST_FILE = /\.test\.[cm]?[jt]sx?$/
 const MODULE_SURFACES = new Set(["model", "server", "ui", "seeds"])
@@ -23,8 +25,6 @@ interface SourceRole {
   readonly model: boolean
   /** Portable kernel layers that build Effect schemas and may import `effect` and `typeid-js`. */
   readonly modelWithEffect: boolean
-  /** shadcn primitives under `runtime/ui/components`, which depend only on other primitives, `ui/lib`, and `ui/hooks`. */
-  readonly primitive: boolean
   readonly module: { readonly name: string; readonly surface: string } | null
   readonly runtime: boolean
   readonly runtimeServer: boolean
@@ -54,7 +54,6 @@ function sourceRole(sourcePath: string): SourceRole {
     module?.surface === "model" ||
     sourcePath === "app.model.ts"
   const runtime = sourcePath.startsWith("runtime/")
-  const primitive = sourcePath.startsWith("runtime/ui/components/")
   const runtimeServer =
     sourcePath.startsWith("runtime/server/") ||
     /^runtime\/[^/]+\/server\//.test(sourcePath)
@@ -73,7 +72,6 @@ function sourceRole(sourcePath: string): SourceRole {
     model,
     modelWithEffect,
     module,
-    primitive,
     runtime,
     runtimeServer,
     test: TEST_FILE.test(sourcePath),
@@ -120,7 +118,8 @@ function modelReason(role: SourceRole, specifier: string): string | null {
       "app",
       "routes",
     ]) ||
-    target?.endsWith(".tsx")
+    target?.endsWith(".tsx") ||
+    isPackage(specifier, UI_PACKAGE)
   )
     return "Portable model definitions cannot import execution, persistence, client, presentation, or application code."
   if (
@@ -155,6 +154,12 @@ function runtimeReason(role: SourceRole, specifier: string): string | null {
   return null
 }
 
+function serverUiReason(role: SourceRole, specifier: string): string | null {
+  return role.runtimeServer && isPackage(specifier, UI_PACKAGE)
+    ? "Server execution cannot depend on React presentation."
+    : null
+}
+
 function moduleReason(
   module: NonNullable<SourceRole["module"]>,
   specifier: string
@@ -181,7 +186,12 @@ function moduleReason(
       return `Another module's ${otherModule[2] ?? ""}/ is private; depend only on its model/.`
   }
   const server = module.surface === "server" || module.surface === "seeds"
-  if (server && (targetHasSegment(target, ["ui"]) || target?.endsWith(".tsx")))
+  if (
+    server &&
+    (targetHasSegment(target, ["ui"]) ||
+      target?.endsWith(".tsx") ||
+      isPackage(specifier, UI_PACKAGE))
+  )
     return "Module server execution cannot depend on presentation."
   if (
     !server &&
@@ -192,19 +202,15 @@ function moduleReason(
   return null
 }
 
-const PRIMITIVE_TARGETS = [
-  "/runtime/ui/components/",
-  "/runtime/ui/lib/",
-  "/runtime/ui/hooks/",
-]
-
-function primitiveReason(specifier: string): string | null {
-  const target = privateTarget(specifier)
+function uiPackageReason(specifier: string): string | null {
   if (
-    target !== null &&
-    !PRIMITIVE_TARGETS.some((prefix) => target.startsWith(prefix))
+    isPackage(specifier, CENTRAL_APP_PACKAGE) ||
+    specifier.startsWith(APP_PACKAGE_SCOPE) ||
+    isPackage(specifier, "effect") ||
+    specifier.startsWith("@effect/") ||
+    specifier.startsWith("@tanstack/")
   )
-    return "UI primitives depend only on other primitives, ui/lib, and ui/hooks; model presentation composes them, never the reverse."
+    return "The design system depends on no app, model, Effect, or TanStack code; apps compose its primitives, never the reverse."
   return null
 }
 
@@ -219,28 +225,33 @@ function browserReason(specifier: string): string | null {
 }
 
 function centralAppReason(role: SourceRole, specifier: string): string | null {
-  if (specifier.startsWith(APP_PACKAGE_SCOPE))
+  if (
+    specifier.startsWith(APP_PACKAGE_SCOPE) &&
+    !isPackage(specifier, UI_PACKAGE)
+  )
     return "The central app cannot depend on satellite apps; they depend on it."
   if (isPackage(specifier, CENTRAL_APP_PACKAGE))
     return "Use #/ for private imports inside the central app instead of its package name."
   return (
     (role.model ? modelReason(role, specifier) : null) ??
     (role.runtime ? runtimeReason(role, specifier) : null) ??
-    (role.primitive && !role.test ? primitiveReason(specifier) : null) ??
+    serverUiReason(role, specifier) ??
     (role.module && !role.test ? moduleReason(role.module, specifier) : null) ??
     (role.browser && !role.test ? browserReason(specifier) : null)
   )
 }
 
 function satelliteReason(specifier: string): string | null {
-  if (specifier.startsWith(APP_PACKAGE_SCOPE))
+  if (
+    specifier.startsWith(APP_PACKAGE_SCOPE) &&
+    !isPackage(specifier, UI_PACKAGE)
+  )
     return "Satellite apps are independent deployables and cannot import one another."
   if (
     isPackage(specifier, CENTRAL_APP_PACKAGE) &&
-    !SATELLITE_ALLOWED_CENTRAL_IMPORTS.has(specifier) &&
-    !specifier.startsWith("company-os/ui/")
+    !SATELLITE_ALLOWED_CENTRAL_IMPORTS.has(specifier)
   )
-    return "Satellite apps consume the central app only through company-os/model, company-os/client, company-os/config, company-os/ui/*, and company-os/styles.css."
+    return "Satellite apps consume the central app only through company-os/model, company-os/client, and company-os/config; primitives come from @company/ui."
   return null
 }
 
@@ -248,6 +259,8 @@ function boundaryReason(filename: string, specifier: string): string | null {
   const sourcePath = centralAppSourcePath(filename)
   if (sourcePath !== null)
     return centralAppReason(sourceRole(sourcePath), specifier)
+  if (UI_PACKAGE_SOURCE.test(normalize(filename)))
+    return uiPackageReason(specifier)
   if (SATELLITE_APP.test(normalize(filename))) return satelliteReason(specifier)
   return null
 }

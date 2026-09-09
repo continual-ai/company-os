@@ -1,5 +1,6 @@
+import { cn } from "@company/ui/lib/utils"
+
 import { appConfig } from "#/app/customization/config.ts"
-import { cn } from "#/runtime/ui/lib/utils.ts"
 
 export function BrandMark({ className }: { className?: string | undefined }) {
   const mark = appConfig.brand.mark

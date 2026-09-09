@@ -1,6 +1,6 @@
+import { formatPhoneNumberForDisplay } from "@company/ui/lib/phone-number"
 import { useEffect, useRef, useState } from "react"
 
-import { formatPhoneNumberForDisplay } from "#/runtime/ui/lib/phone-number.ts"
 import type { ObjectTableCellType } from "#/runtime/ui/model/object-table/object-table-cell-types.ts"
 import {
   objectTableValueText,

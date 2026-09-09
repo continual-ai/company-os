@@ -12,7 +12,8 @@ because it hosts or observes the system.
 
 The repository expresses that ownership as one application the company clones: the kernel under
 `src/runtime`, every module under `src/modules`, and the shell under `src/app`, all owned source.
-A package is a deploy unit, so only apps are packages. Each project has one composed model in
+A package is a deploy unit, so apps are packages; the one library package is the source-neutral
+design system in `packages/ui`. Each project has one composed model in
 `app.model.ts` and one enabled list in `app.config.ts`; cloning the repository instantiates both.
 Focused apps such as a portal remain interfaces over the central app's governed capabilities and
 never import its private implementation. Continual-specific code appears only at a real hosted
@@ -61,8 +62,9 @@ an external boundary rather than leak into company policy.
 
 ## Extraction tests
 
-A package is a deploy unit, so a new package means a new app. Consider a new abstraction, service,
-or module when it:
+A package is a deploy unit, so a new package means a new app; the design system is the sole
+library exception because it is source-neutral and shared by every app. Consider a new abstraction,
+service, or module when it:
 
 - has a stable responsibility proven by concrete callers;
 - removes provider or transport coupling from business behavior;

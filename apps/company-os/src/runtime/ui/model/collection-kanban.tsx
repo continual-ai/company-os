@@ -1,6 +1,6 @@
+import { Button } from "@company/ui/button"
 import { PlusIcon } from "lucide-react"
 
-import { Button } from "#/runtime/ui/components/button.tsx"
 import {
   CollectionCard,
   CollectionDropZone,

@@ -1,8 +1,8 @@
+import { Input } from "@company/ui/input"
 import { SearchIcon } from "lucide-react"
 import type { ReactNode } from "react"
 
 import { DeveloperLayout } from "#/app/ui/developer/developer-layout.tsx"
-import { Input } from "#/runtime/ui/components/input.tsx"
 
 export interface DeveloperBrowserStat {
   readonly label: string

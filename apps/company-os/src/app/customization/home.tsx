@@ -1,10 +1,10 @@
+import { Button } from "@company/ui/button"
+import { Skeleton } from "@company/ui/skeleton"
 import { Link } from "@tanstack/react-router"
 import { ArrowRightIcon } from "lucide-react"
 
 import { appConfig } from "#/app/customization/config.ts"
 import { applicationCapabilities } from "#/runtime/contract/capabilities.ts"
-import { Button } from "#/runtime/ui/components/button.tsx"
-import { Skeleton } from "#/runtime/ui/components/skeleton.tsx"
 import { useModelNavigation } from "#/runtime/ui/model/module-navigation.tsx"
 import { ObjectRecordSummary } from "#/runtime/ui/model/object-record-summary.tsx"
 import { useRecentRecords } from "#/runtime/ui/model/recent-records.tsx"

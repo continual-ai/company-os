@@ -1,13 +1,12 @@
-import { CopyIcon, EllipsisIcon } from "lucide-react"
-
-import { Button } from "#/runtime/ui/components/button.tsx"
+import { Button } from "@company/ui/button"
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
-} from "#/runtime/ui/components/dropdown-menu.tsx"
-import { toast } from "#/runtime/ui/components/toast.tsx"
+} from "@company/ui/dropdown-menu"
+import { toast } from "@company/ui/toast"
+import { CopyIcon, EllipsisIcon } from "lucide-react"
 
 export function RecordIdentifier({ value }: { readonly value: string }) {
   return (

@@ -1,15 +1,10 @@
+import { Button } from "@company/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@company/ui/card"
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
 
 import { Escalation } from "#/modules/support-engineering/model/index.ts"
 import { Ticket } from "#/modules/support/model/index.ts"
-import { Button } from "#/runtime/ui/components/button.tsx"
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "#/runtime/ui/components/card.tsx"
 import {
   formErrorFromCause,
   formErrorMessages,

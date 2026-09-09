@@ -1,14 +1,14 @@
-import { Link } from "@tanstack/react-router"
-
-import { Deal } from "#/modules/sales/model/deal.ts"
-import { PipelineSummary } from "#/modules/sales/ui/deal/pipeline-summary.tsx"
-import { Button } from "#/runtime/ui/components/button.tsx"
+import { Button } from "@company/ui/button"
 import {
   Popover,
   PopoverTrigger,
   PopoverContent,
   PopoverTitle,
-} from "#/runtime/ui/components/popover.tsx"
+} from "@company/ui/popover"
+import { Link } from "@tanstack/react-router"
+
+import { Deal } from "#/modules/sales/model/deal.ts"
+import { PipelineSummary } from "#/modules/sales/ui/deal/pipeline-summary.tsx"
 import { useObjectClient } from "#/runtime/ui/module.ts"
 
 export function DealToolbar() {

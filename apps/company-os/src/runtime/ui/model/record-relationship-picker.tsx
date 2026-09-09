@@ -1,19 +1,14 @@
-import { CheckIcon, ChevronDownIcon, LinkIcon } from "lucide-react"
-import { useState } from "react"
-
-import { Button } from "#/runtime/ui/components/button.tsx"
+import { Button } from "@company/ui/button"
 import {
   Command,
   CommandEmpty,
   CommandInput,
   CommandItem,
   CommandList,
-} from "#/runtime/ui/components/command.tsx"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "#/runtime/ui/components/popover.tsx"
+} from "@company/ui/command"
+import { Popover, PopoverContent, PopoverTrigger } from "@company/ui/popover"
+import { CheckIcon, ChevronDownIcon, LinkIcon } from "lucide-react"
+import { useState } from "react"
 
 export function RecordRelationshipPicker({
   relationships,

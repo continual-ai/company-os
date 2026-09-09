@@ -1,7 +1,7 @@
+import { Button } from "@company/ui/button"
 import { Link } from "@tanstack/react-router"
 
 import type { Lead } from "#/modules/sales/model/lead.ts"
-import { Button } from "#/runtime/ui/components/button.tsx"
 import type { RecordUiProps } from "#/runtime/ui/module.ts"
 
 export function LeadConversion({ record }: RecordUiProps<typeof Lead>) {

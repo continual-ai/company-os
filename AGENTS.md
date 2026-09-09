@@ -35,11 +35,14 @@ apps/company-os/src/
   app.server.ts   custom operation contributions
   app.ui.ts       presentation contributions
 apps/client-portal/  a satellite app over the central app's exports; delete or copy it
+packages/ui/      the design system: shadcn primitives, hooks, lib, styles.css, ui:add tooling
 tools/            the oxlint plugin and kernel-drift
 ```
 
-A package is a deploy unit. `apps/*` are workspace packages; the kernel and the modules are
-directories. Do not add packages for code that ships inside the app.
+A package is a deploy unit, so `apps/*` are workspace packages and the kernel and modules are
+directories. `packages/ui` is the one library: source-neutral primitives with React as a peer
+dependency, consumed by every app. Do not add packages for code that ships inside one app or that
+is derived from the company's model.
 
 Every module is composed in `app.model.ts` and its tables always migrate. Persistence, cascades,
 integrity, and the event journal always run on that complete model. `app.config.ts` lists the
@@ -81,8 +84,9 @@ re-exports are allowed only from the registered entrypoints: `runtime/model/inde
   check.
 
 Apps form a hub and spokes. `apps/company-os` is the hub; every other app is a satellite that
-imports `company-os/model`, `company-os/client`, `company-os/config`, `company-os/ui/*`, and
-`company-os/styles.css` only, never another satellite, and never the hub's internals. Satellites
+imports `company-os/model`, `company-os/client`, and `company-os/config` only, takes its
+primitives and stylesheet from `@company/ui`, never imports another satellite, and never reaches
+the hub's internals. Satellites
 call the central app from server code through `createClient` and forward the hosting platform's
 identity headers; no app mints identity. Those package exports are the hub's public surface; keep
 the list short, and keep `runtime/client/create-client.ts` free of React, TanStack, and the app
@@ -126,11 +130,12 @@ Feature code uses the semantic client from `app/app-client.ts`: `useQuery(data.o
 and `useMutation(data.object.update())` on one application cache. Router loaders preload the same
 requests. Actual server writes drive invalidation. Forms own drafts in TanStack Form through
 `useAppForm`, decode with Effect Schema, and render server violations through the standard paths.
-Use the source-owned shadcn components and Tailwind tokens under `runtime/ui`. Add and remove
+Use the source-owned shadcn components and Tailwind tokens from `@company/ui`. Add and remove
 primitives with `pnpm ui:add <component>` and `pnpm ui:remove <component>`, which run the shadcn CLI
-against `apps/company-os/components.json` and normalize its output to this repository's imports.
-Primitives under `runtime/ui/components` depend only on other primitives, `ui/lib`, and `ui/hooks`;
-model presentation composes them, never the reverse. Do not add another framework or component
+against `packages/ui/components.json` and normalize its output to this repository's imports. The
+design system imports no app, model, Effect, or TanStack code; model presentation under
+`runtime/ui` composes its primitives, never the reverse. Each app's stylesheet imports
+`@company/ui/styles.css` and adds its own `@source`. Do not add another framework or component
 library. Generic routes under `routes/_app/objects` and
 `routes/_app/settings` serve every object through `navigation.path`; never add object-specific
 branches to shared routes or renderers. Use named UI additions and replacements for light

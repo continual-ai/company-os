@@ -1,7 +1,6 @@
+import { Input } from "@company/ui/input"
 import { SearchIcon } from "lucide-react"
 import { useEffect, useState } from "react"
-
-import { Input } from "#/runtime/ui/components/input.tsx"
 
 export function CollectionSearch({
   label,

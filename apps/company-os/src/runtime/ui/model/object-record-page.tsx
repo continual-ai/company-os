@@ -1,13 +1,8 @@
+import { Button } from "@company/ui/button"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@company/ui/tabs"
 import { PencilIcon, PanelLeftIcon } from "lucide-react"
 import { useMemo, useRef, useState } from "react"
 
-import { Button } from "#/runtime/ui/components/button.tsx"
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "#/runtime/ui/components/tabs.tsx"
 import {
   ObjectActions,
   type ResolvedObjectUi,

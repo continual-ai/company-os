@@ -1,4 +1,4 @@
-import "company-os/ui/button"
+import "@company/ui/button"
 import "company-os/config"
 import "company-os/client"
 import "company-os/model"

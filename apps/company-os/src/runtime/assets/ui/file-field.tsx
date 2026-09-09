@@ -1,3 +1,5 @@
+import { Button } from "@company/ui/button"
+import { Input } from "@company/ui/input"
 import { FileIcon, UploadIcon, XIcon } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 
@@ -5,8 +7,6 @@ import { assetContentUrl } from "#/runtime/assets/ui/content-url.ts"
 import { useAssetNames } from "#/runtime/assets/ui/use-asset-names.ts"
 import { type FileRef, type ImageRef } from "#/runtime/model/index.ts"
 import { ROOT_ID } from "#/runtime/model/system-records.ts"
-import { Button } from "#/runtime/ui/components/button.tsx"
-import { Input } from "#/runtime/ui/components/input.tsx"
 import { formErrorFromCause } from "#/runtime/ui/forms/form-errors.ts"
 import { useModelRuntime } from "#/runtime/ui/model/runtime-context.tsx"
 

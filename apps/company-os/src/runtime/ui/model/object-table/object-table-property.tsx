@@ -1,3 +1,4 @@
+import { cn } from "@company/ui/lib/utils"
 import {
   AtSignIcon,
   CalendarDaysIcon,
@@ -16,7 +17,6 @@ import {
 import type { ComponentProps, ReactNode } from "react"
 
 import type { PropertyDefinition } from "#/runtime/model/index.ts"
-import { cn } from "#/runtime/ui/lib/utils.ts"
 import { objectTablePropertySchema } from "#/runtime/ui/model/object-table/object-table-cell-types.ts"
 
 function ObjectTablePropertyIcon({

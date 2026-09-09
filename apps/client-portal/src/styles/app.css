@@ -1,3 +1,3 @@
-@import "company-os/styles.css";
+@import "@company/ui/styles.css";
 
 @source "../**/*.{ts,tsx}";

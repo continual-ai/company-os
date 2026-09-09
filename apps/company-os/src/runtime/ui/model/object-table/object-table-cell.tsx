@@ -1,3 +1,26 @@
+import { Checkbox } from "@company/ui/checkbox"
+import {
+  Command,
+  CommandEmpty,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@company/ui/command"
+import { Input } from "@company/ui/input"
+import { cn } from "@company/ui/lib/utils"
+import { Popover, PopoverContent, PopoverTrigger } from "@company/ui/popover"
+import {
+  PreviewCard,
+  PreviewCardContent,
+  PreviewCardTrigger,
+} from "@company/ui/preview-card"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@company/ui/select"
 import { ImageIcon } from "lucide-react"
 import { type ComponentType, useEffect, useRef, useState } from "react"
 
@@ -8,33 +31,6 @@ import type {
   ObjectType,
   PropertyDefinition,
 } from "#/runtime/model/index.ts"
-import { Checkbox } from "#/runtime/ui/components/checkbox.tsx"
-import {
-  Command,
-  CommandEmpty,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "#/runtime/ui/components/command.tsx"
-import { Input } from "#/runtime/ui/components/input.tsx"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "#/runtime/ui/components/popover.tsx"
-import {
-  PreviewCard,
-  PreviewCardContent,
-  PreviewCardTrigger,
-} from "#/runtime/ui/components/preview-card.tsx"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "#/runtime/ui/components/select.tsx"
-import { cn } from "#/runtime/ui/lib/utils.ts"
 import { ObjectChoiceBadge } from "#/runtime/ui/model/object-choice-badge.tsx"
 import { ObjectRecordIdentity } from "#/runtime/ui/model/object-record-identity.tsx"
 import { objectRecordHref } from "#/runtime/ui/model/object-routing.ts"

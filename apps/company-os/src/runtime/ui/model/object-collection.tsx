@@ -1,3 +1,12 @@
+import { Button } from "@company/ui/button"
+import { ConfirmActionButton } from "@company/ui/confirm-action-button"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@company/ui/select"
 import { functionalUpdate, type OnChangeFn } from "@tanstack/react-table"
 import {
   PencilIcon,
@@ -15,15 +24,6 @@ import {
   type ReactNode,
 } from "react"
 
-import { Button } from "#/runtime/ui/components/button.tsx"
-import { ConfirmActionButton } from "#/runtime/ui/components/confirm-action-button.tsx"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "#/runtime/ui/components/select.tsx"
 import {
   calendarDay,
   collectionDateWindow,

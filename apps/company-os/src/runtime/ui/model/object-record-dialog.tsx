@@ -1,5 +1,3 @@
-import { useCallback, useMemo, useRef, useState } from "react"
-
 import {
   AlertDialog,
   AlertDialogAction,
@@ -9,16 +7,18 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "#/runtime/ui/components/alert-dialog.tsx"
-import { Button } from "#/runtime/ui/components/button.tsx"
+} from "@company/ui/alert-dialog"
+import { Button } from "@company/ui/button"
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "#/runtime/ui/components/dialog.tsx"
-import { FieldError } from "#/runtime/ui/components/field.tsx"
+} from "@company/ui/dialog"
+import { FieldError } from "@company/ui/field"
+import { useCallback, useMemo, useRef, useState } from "react"
+
 import { useAppForm } from "#/runtime/ui/forms/app-form.ts"
 import {
   focusFirstFormError,

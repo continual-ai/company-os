@@ -90,7 +90,7 @@ through custom actions, React extensions, and client data access.
 
 ```text
 apps/company-os/src/
-  runtime/     the kernel: model DSL, execution, storage, authorization, events, UI foundation
+  runtime/     the kernel: model DSL, execution, storage, authorization, events, model UI
   modules/     the business: one directory per module, all the same shape
   app/         the shell: layout, settings, sign-in, developer pages, client assembly
   routes/      TanStack Start routes, generic over the model
@@ -141,7 +141,7 @@ API; delete it if you have no portal, or copy it to start another. See
 | `pnpm build`                           | Build the app and the starter                                |
 | `pnpm format`                          | Format source and documentation                              |
 | `pnpm --filter company-os db:generate` | Regenerate `schema.sql` from the composed model              |
-| `pnpm ui:add <component>`              | Add a shadcn primitive to `src/runtime/ui/components`        |
+| `pnpm ui:add <component>`              | Add a shadcn primitive to `packages/ui`                      |
 | `pnpm ui:remove <component>`           | Remove a primitive after proving nothing imports it          |
 
 Tests need a PostgreSQL role with `CREATEDB`; they create and remove isolated databases. [AGENTS.md](AGENTS.md)

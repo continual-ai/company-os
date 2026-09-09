@@ -1,3 +1,4 @@
+import { Button } from "@company/ui/button"
 import { createFileRoute } from "@tanstack/react-router"
 import { useEffect, useState } from "react"
 
@@ -7,7 +8,6 @@ import {
   SettingsRow,
   SettingsSection,
 } from "#/app/ui/settings/settings-page.tsx"
-import { Button } from "#/runtime/ui/components/button.tsx"
 
 const page = {
   breadcrumb: "Appearance",

@@ -1,8 +1,3 @@
-import { Link } from "@tanstack/react-router"
-import { ArrowLeftIcon, type LucideIcon } from "lucide-react"
-import type { ReactElement, ReactNode } from "react"
-
-import { CommandPaletteButton } from "#/app/ui/application/command-palette.tsx"
 import {
   Sidebar,
   SidebarContent,
@@ -13,7 +8,12 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "#/runtime/ui/components/sidebar.tsx"
+} from "@company/ui/sidebar"
+import { Link } from "@tanstack/react-router"
+import { ArrowLeftIcon, type LucideIcon } from "lucide-react"
+import type { ReactElement, ReactNode } from "react"
+
+import { CommandPaletteButton } from "#/app/ui/application/command-palette.tsx"
 
 export function SecondarySidebar({ children }: { children: ReactNode }) {
   return (

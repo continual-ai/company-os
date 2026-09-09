@@ -1,7 +1,7 @@
+import { buttonVariants } from "@company/ui/button"
 import { initDesignMode, initTelemetry } from "@continual/sdk/app-preview"
 import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router"
 import { appMetadata } from "company-os/config"
-import { buttonVariants } from "company-os/ui/button"
 import { useEffect } from "react"
 
 import appCss from "#/styles/app.css?url"

@@ -73,13 +73,11 @@ const expectedDiagnostics: Record<string, Record<string, number>> = {
   "apps/company-os/src/modules/sales/ui/imports-seeds.tsx": {
     [IMPORT_BOUNDARIES]: 2,
   },
-  "apps/company-os/src/runtime/ui/components/imports-model.tsx": {
-    [IMPORT_BOUNDARIES]: 2,
-  },
+  "packages/ui/src/components/imports-apps.tsx": { [IMPORT_BOUNDARIES]: 3 },
   "apps/company-os/src/app/ui/imports-server.tsx": { [IMPORT_BOUNDARIES]: 2 },
   "apps/company-os/src/routes/imports-server.tsx": { [IMPORT_BOUNDARIES]: 1 },
   "apps/client-portal/src/imports-central-internals.tsx": {
-    [IMPORT_BOUNDARIES]: 2,
+    [IMPORT_BOUNDARIES]: 3,
   },
 }
 

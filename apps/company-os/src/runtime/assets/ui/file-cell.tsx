@@ -1,13 +1,9 @@
+import { Button } from "@company/ui/button"
+import { Popover, PopoverContent, PopoverTrigger } from "@company/ui/popover"
 import { PaperclipIcon } from "lucide-react"
 
 import { AssetPreviews } from "#/runtime/assets/ui/asset-preview.tsx"
 import type { PropertyDefinition } from "#/runtime/model/index.ts"
-import { Button } from "#/runtime/ui/components/button.tsx"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "#/runtime/ui/components/popover.tsx"
 import { ObjectTableCellSurface } from "#/runtime/ui/model/object-table/object-table-cell-surface.tsx"
 import { objectTablePropertySchema } from "#/runtime/ui/model/object-table/object-table-cell-types.ts"
 import type { ObjectTableValue } from "#/runtime/ui/model/object-table/object-table-config.ts"

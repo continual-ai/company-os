@@ -1,3 +1,5 @@
+import { Button } from "@company/ui/button"
+import { cn } from "@company/ui/lib/utils"
 import { useDraggable } from "@dnd-kit/react"
 import { Link } from "@tanstack/react-router"
 import {
@@ -7,8 +9,6 @@ import {
   PencilIcon,
 } from "lucide-react"
 
-import { Button } from "#/runtime/ui/components/button.tsx"
-import { cn } from "#/runtime/ui/lib/utils.ts"
 import {
   CollectionDropZone,
   type CollectionDragData,

@@ -1,4 +1,28 @@
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@company/ui/alert-dialog"
+import { Button } from "@company/ui/button"
+import { Checkbox } from "@company/ui/checkbox"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@company/ui/dropdown-menu"
+import { Input } from "@company/ui/input"
+import { Popover, PopoverContent, PopoverTrigger } from "@company/ui/popover"
+import {
   ArrowDownAZIcon,
   ArrowUpAZIcon,
   CheckIcon,
@@ -14,34 +38,6 @@ import {
   MAX_BATCH_DELETE_SIZE,
   type ObjectType,
 } from "#/runtime/model/index.ts"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "#/runtime/ui/components/alert-dialog.tsx"
-import { Button } from "#/runtime/ui/components/button.tsx"
-import { Checkbox } from "#/runtime/ui/components/checkbox.tsx"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "#/runtime/ui/components/dropdown-menu.tsx"
-import { Input } from "#/runtime/ui/components/input.tsx"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "#/runtime/ui/components/popover.tsx"
 import {
   objectTableColumnMeta,
   objectTablePropertyColumns,

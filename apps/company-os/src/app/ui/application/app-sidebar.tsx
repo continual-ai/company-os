@@ -1,3 +1,24 @@
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@company/ui/dropdown-menu"
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarRail,
+} from "@company/ui/sidebar"
 import { Link, useMatchRoute } from "@tanstack/react-router"
 import { BracesIcon, ChevronsUpDownIcon, SettingsIcon } from "lucide-react"
 
@@ -10,27 +31,6 @@ import {
 } from "#/app/ui/application/authenticated-user.tsx"
 import { CommandPaletteButton } from "#/app/ui/application/command-palette.tsx"
 import { applicationCapabilities } from "#/runtime/contract/capabilities.ts"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "#/runtime/ui/components/dropdown-menu.tsx"
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarRail,
-} from "#/runtime/ui/components/sidebar.tsx"
 import { ModuleNavigation } from "#/runtime/ui/model/module-navigation.tsx"
 import { useCapabilities } from "#/runtime/ui/model/use-capabilities.ts"
 

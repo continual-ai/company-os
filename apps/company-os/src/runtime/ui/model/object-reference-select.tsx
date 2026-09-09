@@ -1,23 +1,19 @@
-import { useQueries } from "@tanstack/react-query"
-import { CheckIcon, ChevronDownIcon, XIcon } from "lucide-react"
-import { useEffect, useRef, useState } from "react"
-
-import { modelTypeAccepts, type ListRequest } from "#/runtime/model/index.ts"
-import { ROOT_ID } from "#/runtime/model/system-records.ts"
-import { Button } from "#/runtime/ui/components/button.tsx"
+import { Button } from "@company/ui/button"
 import {
   Command,
   CommandEmpty,
   CommandInput,
   CommandItem,
   CommandList,
-} from "#/runtime/ui/components/command.tsx"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "#/runtime/ui/components/popover.tsx"
-import { cn } from "#/runtime/ui/lib/utils.ts"
+} from "@company/ui/command"
+import { cn } from "@company/ui/lib/utils"
+import { Popover, PopoverContent, PopoverTrigger } from "@company/ui/popover"
+import { useQueries } from "@tanstack/react-query"
+import { CheckIcon, ChevronDownIcon, XIcon } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
+
+import { modelTypeAccepts, type ListRequest } from "#/runtime/model/index.ts"
+import { ROOT_ID } from "#/runtime/model/system-records.ts"
 import {
   clientFor,
   modelObjectProperty,

@@ -1,13 +1,13 @@
-import { PlusIcon } from "lucide-react"
-import { useMemo } from "react"
-
-import { Button } from "#/runtime/ui/components/button.tsx"
+import { Button } from "@company/ui/button"
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
-} from "#/runtime/ui/components/dropdown-menu.tsx"
+} from "@company/ui/dropdown-menu"
+import { PlusIcon } from "lucide-react"
+import { useMemo } from "react"
+
 import { objectCapabilityCheck } from "#/runtime/ui/model/object-capabilities.ts"
 import {
   recordObjectTypes,

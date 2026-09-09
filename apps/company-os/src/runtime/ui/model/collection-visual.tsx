@@ -1,8 +1,8 @@
+import { Button } from "@company/ui/button"
 import { DragDropProvider } from "@dnd-kit/react"
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react"
 import { useRef, useState } from "react"
 
-import { Button } from "#/runtime/ui/components/button.tsx"
 import { CollectionCalendar } from "#/runtime/ui/model/collection-calendar.tsx"
 import {
   CollectionCard,

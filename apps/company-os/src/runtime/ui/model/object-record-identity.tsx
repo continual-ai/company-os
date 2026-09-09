@@ -1,16 +1,16 @@
+import { Badge } from "@company/ui/badge"
+import { Button } from "@company/ui/button"
+import { cn } from "@company/ui/lib/utils"
+import {
+  PreviewCard,
+  PreviewCardContent,
+  PreviewCardTrigger,
+} from "@company/ui/preview-card"
 import { Link } from "@tanstack/react-router"
 import { XIcon } from "lucide-react"
 
 import { assetContentUrl } from "#/runtime/assets/ui/content-url.ts"
 import type { ObjectType } from "#/runtime/model/index.ts"
-import { Badge } from "#/runtime/ui/components/badge.tsx"
-import { Button } from "#/runtime/ui/components/button.tsx"
-import {
-  PreviewCard,
-  PreviewCardContent,
-  PreviewCardTrigger,
-} from "#/runtime/ui/components/preview-card.tsx"
-import { cn } from "#/runtime/ui/lib/utils.ts"
 import type { ObjectRecordPresentation } from "#/runtime/ui/model/object-client.ts"
 import { objectIcon } from "#/runtime/ui/model/object-icon.ts"
 import { objectTablePropertySchema } from "#/runtime/ui/model/object-table/object-table-cell-types.ts"

@@ -3,7 +3,8 @@ import {
   FieldDescription,
   FieldError,
   FieldLabel,
-} from "#/runtime/ui/components/field.tsx"
+} from "@company/ui/field"
+
 import { useFieldContext } from "#/runtime/ui/forms/form-context.ts"
 import {
   formErrorMessages,

@@ -1,4 +1,14 @@
 import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@company/ui/breadcrumb"
+import { Button } from "@company/ui/button"
+import { SidebarTrigger } from "@company/ui/sidebar"
+import {
   Link,
   useMatches,
   useCanGoBack,
@@ -8,16 +18,6 @@ import { ArrowLeftIcon } from "lucide-react"
 import { Fragment } from "react"
 
 import { pageMetadataForMatch } from "#/app/ui/route-metadata.ts"
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "#/runtime/ui/components/breadcrumb.tsx"
-import { Button } from "#/runtime/ui/components/button.tsx"
-import { SidebarTrigger } from "#/runtime/ui/components/sidebar.tsx"
 import { usePageChrome } from "#/runtime/ui/model/page-chrome.tsx"
 
 export function SiteHeader() {

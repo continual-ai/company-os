@@ -1,3 +1,7 @@
+import { Badge } from "@company/ui/badge"
+import { Button } from "@company/ui/button"
+import { CodeBlock } from "@company/ui/code-block"
+import { cn } from "@company/ui/lib/utils"
 import { CodeXmlIcon, ExternalLinkIcon, FileJsonIcon } from "lucide-react"
 import { useDeferredValue, useEffect, useMemo, useState } from "react"
 
@@ -26,10 +30,6 @@ import {
   type OpenApiOperation,
   type OpenApiSchema,
 } from "#/app/ui/developer/openapi-reference-model.ts"
-import { Badge } from "#/runtime/ui/components/badge.tsx"
-import { Button } from "#/runtime/ui/components/button.tsx"
-import { CodeBlock } from "#/runtime/ui/components/code-block.tsx"
-import { cn } from "#/runtime/ui/lib/utils.ts"
 
 const noPreferredTags: ReadonlyArray<string> = []
 

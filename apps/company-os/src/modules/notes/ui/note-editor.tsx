@@ -1,4 +1,5 @@
-import { MarkdownEditor } from "#/runtime/ui/components/markdown-editor.tsx"
+import { MarkdownEditor } from "@company/ui/markdown-editor"
+
 import type { FieldEditorProps } from "#/runtime/ui/module.ts"
 
 export function NoteEditor({

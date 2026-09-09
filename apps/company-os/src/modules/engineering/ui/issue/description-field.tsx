@@ -1,4 +1,5 @@
-import { Textarea } from "#/runtime/ui/components/textarea.tsx"
+import { Textarea } from "@company/ui/textarea"
+
 import type { FieldEditorProps } from "#/runtime/ui/module.ts"
 
 export function IssueDescription({

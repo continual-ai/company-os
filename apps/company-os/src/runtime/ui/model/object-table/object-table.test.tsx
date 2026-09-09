@@ -29,3 +29,25 @@ it("renders a read-only identity column when the model uses its record ID as tit
   expect(html).toContain("role_assignment_example")
   expect(html).toContain("Search Role assignments")
 })
+
+it("keeps row selection in its own pinned column", () => {
+  const html = renderToStaticMarkup(
+    <ModelUiProvider value={presentation}>
+      <ObjectTable
+        object={RoleAssignment}
+        records={[
+          {
+            id: "role_assignment_example",
+            parent: "platform_system",
+            principal: "user_example",
+            role: "role_example",
+          },
+        ]}
+      />
+    </ModelUiProvider>
+  )
+
+  expect(html).toMatch(
+    /<td[^>]*>.*?Select row 1.*?<\/td>.*?<td[^>]*>.*?role_assignment_example/s
+  )
+})

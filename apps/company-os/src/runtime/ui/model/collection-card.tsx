@@ -1,10 +1,10 @@
+import { Button } from "@company/ui/button"
+import { cn } from "@company/ui/lib/utils"
 import { useDraggable, useDroppable } from "@dnd-kit/react"
 import { Link } from "@tanstack/react-router"
 import { GripVerticalIcon, PencilIcon } from "lucide-react"
 import type { ReactNode } from "react"
 
-import { Button } from "#/runtime/ui/components/button.tsx"
-import { cn } from "#/runtime/ui/lib/utils.ts"
 import {
   modelObjectProperty,
   recordLabel,

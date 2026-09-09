@@ -1,9 +1,9 @@
+import { Button } from "@company/ui/button"
 import { useInfiniteQuery } from "@tanstack/react-query"
 import { useMemo, useState } from "react"
 
 import { modelCollectionQuery } from "#/runtime/client/model-collection-query.ts"
 import type { ModelLinkTraversal } from "#/runtime/model/index.ts"
-import { Button } from "#/runtime/ui/components/button.tsx"
 import type {
   FormLinkDeltaValue,
   FormValue,

@@ -1,12 +1,12 @@
-import { ChevronDownIcon, PlusIcon } from "lucide-react"
-
-import { Button } from "#/runtime/ui/components/button.tsx"
+import { Button } from "@company/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "#/runtime/ui/components/dropdown-menu.tsx"
+} from "@company/ui/dropdown-menu"
+import { ChevronDownIcon, PlusIcon } from "lucide-react"
+
 import { useObjectCreate } from "#/runtime/ui/model/object-create-context.ts"
 import { ObjectIcon } from "#/runtime/ui/model/object-record-identity.tsx"
 import type { RecordRelationship } from "#/runtime/ui/model/record-relationships.ts"

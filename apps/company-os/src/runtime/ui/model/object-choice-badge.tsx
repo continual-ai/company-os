@@ -1,7 +1,7 @@
+import { cn } from "@company/ui/lib/utils"
 import { FactoryIcon, ShoppingBagIcon, TruckIcon } from "lucide-react"
 
 import type { Choice, ChoiceColor } from "#/runtime/model/index.ts"
-import { cn } from "#/runtime/ui/lib/utils.ts"
 
 const tagColorClasses = {
   blue: "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300",

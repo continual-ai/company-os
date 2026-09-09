@@ -1,4 +1,4 @@
-import { cn } from "#/runtime/ui/lib/utils.ts"
+import { cn } from "@company/ui/lib/utils"
 
 export function SettingsPage({
   title,

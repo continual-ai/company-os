@@ -1,7 +1,7 @@
+import { ConfirmActionButton } from "@company/ui/confirm-action-button"
 import { useMutation } from "@tanstack/react-query"
 
 import { Lead } from "#/modules/sales/model/lead.ts"
-import { ConfirmActionButton } from "#/runtime/ui/components/confirm-action-button.tsx"
 import type { RecordUiProps } from "#/runtime/ui/module.ts"
 import { useObjectClient } from "#/runtime/ui/module.ts"
 

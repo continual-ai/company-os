@@ -1,3 +1,22 @@
+import { Button } from "@company/ui/button"
+import { Checkbox } from "@company/ui/checkbox"
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@company/ui/empty"
+import { cn } from "@company/ui/lib/utils"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@company/ui/table"
 import {
   createColumnHelper,
   type ColumnFiltersState,
@@ -31,25 +50,6 @@ import {
   type ObjectType,
   type PropertyDefinition,
 } from "#/runtime/model/index.ts"
-import { Button } from "#/runtime/ui/components/button.tsx"
-import { Checkbox } from "#/runtime/ui/components/checkbox.tsx"
-import {
-  Empty,
-  EmptyContent,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "#/runtime/ui/components/empty.tsx"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "#/runtime/ui/components/table.tsx"
-import { cn } from "#/runtime/ui/lib/utils.ts"
 import { CollectionPagination } from "#/runtime/ui/model/collection-pagination.tsx"
 import { ObjectIcon } from "#/runtime/ui/model/object-record-identity.tsx"
 import {
@@ -338,40 +338,53 @@ export function ObjectTable({
         ]
   }, [object.display.title, object.parent, object.properties, parentLabel])
   const columns = useMemo(() => {
-    return columnHelper.columns(
-      properties.map(([propertyId, property]) => {
-        const isIdentity = propertyId === object.display.title
-        const label = isIdentity ? object.name : (property.label ?? propertyId)
+    const propertyColumns = properties.map(([propertyId, property]) => {
+      const isIdentity = propertyId === object.display.title
+      const label = isIdentity ? object.name : (property.label ?? propertyId)
 
-        return columnHelper.accessor((record) => record[propertyId], {
-          id: propertyId,
-          enableColumnFilter: canFilterProperty?.(property) ?? true,
-          enableHiding: propertyId !== object.display.title,
-          enableResizing: true,
-          enableSorting: canSortProperty?.(property) ?? true,
-          filterFn: "objectProperty",
-          sortFn: "objectProperty",
-          sortUndefined: "last",
-          size: propertyColumnSize(
-            propertyId,
-            property.kind,
-            object.display.title
-          ),
-          minSize:
-            propertyId === object.display.title
-              ? (enableRowSelection ? selectionControlWidth : 0) + 176
-              : 120,
-          maxSize: 560,
-          header: label,
-          meta: {
-            essential: isIdentity,
-            label,
-            property,
-            propertyId,
-          },
-        })
+      return columnHelper.accessor((record) => record[propertyId], {
+        id: propertyId,
+        enableColumnFilter: canFilterProperty?.(property) ?? true,
+        enableHiding: propertyId !== object.display.title,
+        enableResizing: true,
+        enableSorting: canSortProperty?.(property) ?? true,
+        filterFn: "objectProperty",
+        sortFn: "objectProperty",
+        sortUndefined: "last",
+        size: propertyColumnSize(
+          propertyId,
+          property.kind,
+          object.display.title
+        ),
+        minSize: propertyId === object.display.title ? 176 : 120,
+        maxSize: 560,
+        header: label,
+        meta: {
+          essential: isIdentity,
+          label,
+          property,
+          propertyId,
+        },
       })
-    )
+    })
+    const selectionColumns = enableRowSelection
+      ? [
+          columnHelper.display({
+            id: "selection",
+            enableColumnFilter: false,
+            enableHiding: false,
+            enableResizing: false,
+            enableSorting: false,
+            size: selectionControlWidth,
+            minSize: selectionControlWidth,
+            maxSize: selectionControlWidth,
+            header: SelectionHeader,
+            cell: SelectionCell,
+          }),
+        ]
+      : []
+
+    return columnHelper.columns([...selectionColumns, ...propertyColumns])
   }, [
     canFilterProperty,
     canSortProperty,
@@ -393,7 +406,10 @@ export function ObjectTable({
 
     return {
       columnPinning: {
-        start: [object.display.title],
+        start: [
+          ...(enableRowSelection ? ["selection"] : []),
+          object.display.title,
+        ],
         end: [],
       },
       columnVisibility: Object.fromEntries(
@@ -403,7 +419,7 @@ export function ObjectTable({
         ])
       ),
     }
-  }, [object.display, properties, visiblePropertyIds])
+  }, [enableRowSelection, object.display, properties, visiblePropertyIds])
 
   const table = useTable({
     features: objectTableFeatures,
@@ -539,33 +555,23 @@ export function ObjectTable({
                         undefined ? (
                         <table.FlexRender header={header} />
                       ) : meta.propertyId === object.display.title ? (
-                        <div className="flex size-full min-w-0">
-                          {enableRowSelection ? (
-                            <div
-                              className="h-full shrink-0"
-                              style={{ width: selectionControlWidth }}
-                            >
-                              <SelectionHeader table={table} />
-                            </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          className="h-8 w-full justify-start overflow-hidden px-2 font-medium hover:bg-muted"
+                          onClick={header.column.getToggleSortingHandler()}
+                        >
+                          <ObjectTableProperty
+                            label={meta.label}
+                            property={meta.property}
+                          />
+                          {direction === "asc" ? (
+                            <ArrowDownIcon className="ml-auto" />
                           ) : null}
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            className="h-8 min-w-0 flex-1 justify-start overflow-hidden px-2 font-medium hover:bg-muted"
-                            onClick={header.column.getToggleSortingHandler()}
-                          >
-                            <ObjectTableProperty
-                              label={meta.label}
-                              property={meta.property}
-                            />
-                            {direction === "asc" ? (
-                              <ArrowDownIcon className="ml-auto" />
-                            ) : null}
-                            {direction === "desc" ? (
-                              <ArrowUpIcon className="ml-auto" />
-                            ) : null}
-                          </Button>
-                        </div>
+                          {direction === "desc" ? (
+                            <ArrowUpIcon className="ml-auto" />
+                          ) : null}
+                        </Button>
                       ) : (
                         <Button
                           type="button"
@@ -738,22 +744,8 @@ export function ObjectTable({
                             )
                           }
                         >
-                          <div
-                            className={cn(
-                              "h-full min-w-0",
-                              meta.propertyId === object.display.title && "flex"
-                            )}
-                          >
-                            {meta.propertyId === object.display.title &&
-                            enableRowSelection ? (
-                              <div
-                                className="h-full shrink-0"
-                                style={{ width: selectionControlWidth }}
-                              >
-                                <SelectionCell row={row} />
-                              </div>
-                            ) : null}
-                            <div className="min-w-0 flex-1">
+                          <div className="h-full min-w-0">
+                            <div className="min-w-0">
                               <ObjectTableCell
                                 active={active}
                                 editing={editing}

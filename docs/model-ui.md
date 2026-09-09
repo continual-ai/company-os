@@ -80,9 +80,9 @@ Rendering Markdown never executes user-supplied markup.
 
 ## Primitives
 
-The shadcn primitives live in `apps/company-os/src/runtime/ui/components` and are owned source.
-`pnpm ui:add <component>` runs the shadcn CLI with `apps/company-os/components.json`, gives the
-generated `#/` imports explicit extensions, and sources `cn` from `runtime/ui/lib/utils.ts` instead
-of the registry's `cn` package. `pnpm ui:remove <component>` deletes a primitive only when nothing
-imports it. Primitives depend on other primitives, `ui/lib`, and `ui/hooks` only; the import rules
-reject a primitive that reaches into model presentation, forms, or the client.
+The shadcn primitives live in `packages/ui` and are owned source, imported as `@company/ui/<name>`
+with `cn` from `@company/ui/lib/utils`. `pnpm ui:add <component>` runs the shadcn CLI with
+`packages/ui/components.json`, gives the generated `#/` imports explicit extensions, and sources
+`cn` from the package instead of the registry's `cn` package. `pnpm ui:remove <component>` deletes
+a primitive only when nothing in the package imports it. The design system depends on no app,
+model, Effect, or TanStack code; the import rules reject a primitive that reaches into any of them.

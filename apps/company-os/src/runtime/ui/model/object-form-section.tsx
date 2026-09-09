@@ -1,11 +1,10 @@
-import type { ReactNode } from "react"
-
 import {
   FieldDescription,
   FieldGroup,
   FieldLegend,
   FieldSet,
-} from "#/runtime/ui/components/field.tsx"
+} from "@company/ui/field"
+import type { ReactNode } from "react"
 
 export function ObjectFormSection({
   children,

@@ -1,7 +1,7 @@
+import { CodeBlock } from "@company/ui/code-block"
 import { Link, createFileRoute } from "@tanstack/react-router"
 
 import { pageOptions } from "#/app/ui/route-metadata.ts"
-import { CodeBlock } from "#/runtime/ui/components/code-block.tsx"
 
 const queryExample = `import { useQuery } from "@tanstack/react-query"
 import { data } from "#/app/app-client.ts"

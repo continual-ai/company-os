@@ -1,16 +1,17 @@
-import { FileField } from "#/runtime/assets/ui/file-field.tsx"
-import { DateTimePicker } from "#/runtime/ui/components/date-time-picker.tsx"
-import { FieldError } from "#/runtime/ui/components/field.tsx"
-import { Input } from "#/runtime/ui/components/input.tsx"
-import { PhoneInput } from "#/runtime/ui/components/phone-input.tsx"
+import { DateTimePicker } from "@company/ui/date-time-picker"
+import { FieldError } from "@company/ui/field"
+import { Input } from "@company/ui/input"
+import { PhoneInput } from "@company/ui/phone-input"
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "#/runtime/ui/components/select.tsx"
-import { Textarea } from "#/runtime/ui/components/textarea.tsx"
+} from "@company/ui/select"
+import { Textarea } from "@company/ui/textarea"
+
+import { FileField } from "#/runtime/assets/ui/file-field.tsx"
 import { useTypedAppFormContext } from "#/runtime/ui/forms/app-form.ts"
 import type {
   FormValue,

@@ -1,3 +1,5 @@
+import { Badge } from "@company/ui/badge"
+import { Button } from "@company/ui/button"
 import {
   BoxesIcon,
   BracesIcon,
@@ -29,8 +31,6 @@ import type {
   PropertyDefinition,
 } from "#/runtime/model/index.ts"
 import type { ModelCatalog } from "#/runtime/model/index.ts"
-import { Badge } from "#/runtime/ui/components/badge.tsx"
-import { Button } from "#/runtime/ui/components/button.tsx"
 
 type ModelDefinition = ModelCatalog
 type ModelObject = ObjectType

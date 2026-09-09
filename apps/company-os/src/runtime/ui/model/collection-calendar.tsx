@@ -1,14 +1,14 @@
-import { PlusIcon } from "lucide-react"
-import { useState } from "react"
-
-import { Button } from "#/runtime/ui/components/button.tsx"
+import { Button } from "@company/ui/button"
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "#/runtime/ui/components/dialog.tsx"
-import { cn } from "#/runtime/ui/lib/utils.ts"
+} from "@company/ui/dialog"
+import { cn } from "@company/ui/lib/utils"
+import { PlusIcon } from "lucide-react"
+import { useState } from "react"
+
 import {
   CollectionCard,
   CollectionDropZone,

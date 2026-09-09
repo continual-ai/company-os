@@ -1,3 +1,5 @@
+import { Button } from "@company/ui/button"
+import { Popover, PopoverContent, PopoverTrigger } from "@company/ui/popover"
 import {
   CalendarDaysIcon,
   ListIcon,
@@ -8,12 +10,6 @@ import {
 } from "lucide-react"
 
 import type { ObjectType } from "#/runtime/model/index.ts"
-import { Button } from "#/runtime/ui/components/button.tsx"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "#/runtime/ui/components/popover.tsx"
 import {
   collectionLayoutFields,
   defaultCollectionLayout,

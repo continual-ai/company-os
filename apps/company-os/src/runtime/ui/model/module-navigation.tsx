@@ -1,6 +1,3 @@
-import { Link, useLocation } from "@tanstack/react-router"
-import { useMemo } from "react"
-
 import {
   SidebarGroup,
   SidebarGroupLabel,
@@ -8,7 +5,10 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
-} from "#/runtime/ui/components/sidebar.tsx"
+} from "@company/ui/sidebar"
+import { Link, useLocation } from "@tanstack/react-router"
+import { useMemo } from "react"
+
 import {
   createModelNavigation,
   modelNavigationChecks,

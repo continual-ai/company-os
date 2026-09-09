@@ -1,4 +1,5 @@
-import { Button } from "#/runtime/ui/components/button.tsx"
+import { Button } from "@company/ui/button"
+
 import { useFormContext } from "#/runtime/ui/forms/form-context.ts"
 
 export function FormSubmitButton({

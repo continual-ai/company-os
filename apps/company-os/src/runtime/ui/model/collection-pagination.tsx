@@ -1,4 +1,4 @@
-import { Button } from "#/runtime/ui/components/button.tsx"
+import { Button } from "@company/ui/button"
 
 export function CollectionPagination({
   loaded,

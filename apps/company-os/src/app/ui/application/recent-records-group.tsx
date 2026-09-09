@@ -1,5 +1,6 @@
+import { CommandGroup, CommandItem } from "@company/ui/command"
+
 import { presentation } from "#/app/app-presentation.ts"
-import { CommandGroup, CommandItem } from "#/runtime/ui/components/command.tsx"
 import { tableRecord } from "#/runtime/ui/model/object-client.ts"
 import { ObjectRecordIdentity } from "#/runtime/ui/model/object-record-identity.tsx"
 import { objectHref } from "#/runtime/ui/model/object-routing.ts"

@@ -1,8 +1,8 @@
+import { Markdown } from "@company/ui/markdown"
 import { Link } from "@tanstack/react-router"
 import { ArrowUpRightIcon } from "lucide-react"
 
 import type { Note } from "#/modules/notes/model/index.ts"
-import { Markdown } from "#/runtime/ui/components/markdown.tsx"
 import type { RecordSummaryProps, RecordUiProps } from "#/runtime/ui/module.ts"
 import { RecordAttribution } from "#/runtime/ui/module.ts"
 

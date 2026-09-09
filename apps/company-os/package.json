@@ -13,9 +13,7 @@
   "exports": {
     "./model": "./src/app.model.ts",
     "./client": "./src/runtime/client/create-client.ts",
-    "./config": "./src/app.config.ts",
-    "./ui/*": "./src/runtime/ui/components/*.tsx",
-    "./styles.css": "./src/runtime/ui/styles/globals.css"
+    "./config": "./src/app.config.ts"
   },
   "scripts": {
     "build": "vite build",
@@ -31,22 +29,15 @@
     "preview": "pnpm build && vite preview --port 3102 --host 0.0.0.0",
     "reset": "pnpm run db:reset",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit",
-    "ui:add": "tsx tools/ui-add.ts",
-    "ui:remove": "tsx tools/ui-remove.ts"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@base-ui/react": "catalog:",
+    "@company/ui": "workspace:*",
     "@continual/sdk": "catalog:",
     "@dnd-kit/react": "^0.5.0",
     "@effect/platform-node": "catalog:",
     "@effect/sql-pg": "catalog:",
-    "@fontsource-variable/geist": "catalog:",
     "@modelcontextprotocol/server": "catalog:",
-    "@shikijs/core": "catalog:",
-    "@shikijs/engine-javascript": "catalog:",
-    "@shikijs/langs": "catalog:",
-    "@shikijs/themes": "catalog:",
     "@tanstack/react-form": "catalog:",
     "@tanstack/react-query": "5.102.8",
     "@tanstack/react-router": "catalog:",
@@ -54,10 +45,6 @@
     "@tanstack/react-start": "catalog:",
     "@tanstack/react-table": "catalog:",
     "@tanstack/react-virtual": "^3.14.10",
-    "class-variance-authority": "catalog:",
-    "clsx": "catalog:",
-    "cmdk": "catalog:",
-    "date-fns": "catalog:",
     "effect": "catalog:",
     "file-type": "22.0.2",
     "image-size": "^2.0.2",
@@ -65,13 +52,7 @@
     "lucide-react": "catalog:",
     "pg": "catalog:",
     "react": "catalog:",
-    "react-day-picker": "catalog:",
     "react-dom": "catalog:",
-    "react-markdown": "catalog:",
-    "react-phone-number-input": "catalog:",
-    "remark-gfm": "catalog:",
-    "tailwind-merge": "catalog:",
-    "tw-animate-css": "catalog:",
     "typeid-js": "catalog:"
   },
   "devDependencies": {
@@ -81,8 +62,6 @@
     "@types/pg": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
-    "shadcn": "catalog:",
-    "tailwindcss": "catalog:",
     "tsx": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",

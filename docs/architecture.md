@@ -7,12 +7,12 @@ HTTP and OpenAPI, and MCP.
 
 ## Three directories, one direction
 
-| Directory  | Owns                                                                                                                                                                        |
-| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `runtime/` | The kernel: portable model DSL, shared contracts, browser client, server execution and storage, UI foundation, test helpers, and the kernel modules `access/` and `assets/` |
-| `modules/` | The business: one directory per capability, each shaped `model/ server/ ui/ seeds/`                                                                                         |
-| `app/`     | The shell: layout, settings, sign-in, developer pages, the assembled client and presentation runtime, host adapters, migrations                                             |
-| `routes/`  | TanStack Start file routes, generic over the model                                                                                                                          |
+| Directory  | Owns                                                                                                                                                                             |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `runtime/` | The kernel: portable model DSL, shared contracts, browser client, server execution and storage, model presentation, test helpers, and the kernel modules `access/` and `assets/` |
+| `modules/` | The business: one directory per capability, each shaped `model/ server/ ui/ seeds/`                                                                                              |
+| `app/`     | The shell: layout, settings, sign-in, developer pages, the assembled client and presentation runtime, host adapters, migrations                                                  |
+| `routes/`  | TanStack Start file routes, generic over the model                                                                                                                               |
 
 Dependencies point one way. `runtime/` imports nothing from `modules/`, `app/`, or `routes/`. A
 module imports itself, other modules' `model/`, and `runtime/`. The shell imports everything. Model
@@ -20,7 +20,11 @@ code (`runtime/model`, `runtime/contract`, every `*/model/**`) imports no server
 Node, or PostgreSQL code, so the composed model is browser-safe by construction. The oxlint plugin in
 `tools/oxlint/company-os` enforces these rules and Vite import protection is the transitive check.
 
-Upstream owns `runtime/`; customers change it last. `pnpm kernel:drift` lists kernel files a
+The design system is the one library package. `packages/ui` holds the shadcn primitives, hooks,
+`cn`, and `styles.css`, with React as a peer dependency so every app shares one copy. It imports no
+app, model, Effect, or TanStack code; `runtime/ui` composes its primitives into model presentation.
+
+Upstream owns `runtime/` and `packages/ui`; customers change them last. `pnpm kernel:drift` lists kernel files a
 checkout has changed relative to an upstream ref, and `pnpm upstream:merge` pulls upstream through
 an ordinary Git merge.
 
@@ -103,8 +107,8 @@ does not change its ownership scope or grant another principal access to it.
 
 Every other workspace app is a satellite over the central one: a hub-and-spoke shape, never a web.
 `apps/client-portal` is the shipped example, a customer-facing interface that imports
-`company-os/model`, `company-os/client`, `company-os/config`, `company-os/ui/*`, and
-`company-os/styles.css` only, never another satellite. Its server functions call the central app
+`company-os/model`, `company-os/client`, and `company-os/config` only, takes primitives from
+`@company/ui`, and never imports another satellite. Its server functions call the central app
 through `createClient`, pointed at `COMPANY_OS_URL` and forwarding the hosting platform's identity
 headers. It is not a second business authority. A company deletes the directory when it has no
 portal and copies it to start another satellite. See the [portal](../apps/client-portal/README.md).

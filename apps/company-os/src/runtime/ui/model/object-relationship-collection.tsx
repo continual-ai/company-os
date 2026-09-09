@@ -1,9 +1,9 @@
+import { Button } from "@company/ui/button"
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query"
 import { UnlinkIcon } from "lucide-react"
 import { useState, type ReactNode } from "react"
 
 import { modelCollectionQuery } from "#/runtime/client/model-collection-query.ts"
-import { Button } from "#/runtime/ui/components/button.tsx"
 import { CollectionPagination } from "#/runtime/ui/model/collection-pagination.tsx"
 import { useObjectUi } from "#/runtime/ui/model/module-ui.tsx"
 import {

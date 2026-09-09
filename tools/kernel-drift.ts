@@ -4,10 +4,10 @@ import { spawnSync } from "node:child_process"
 // before an upgrade: every listed file is a place a merge can conflict and a
 // reason to move that change into a module instead.
 const ref = process.argv[2] ?? "upstream/main"
-const kernel = "apps/company-os/src/runtime"
+const kernel = ["apps/company-os/src/runtime", "packages/ui"]
 const result = spawnSync(
   "git",
-  ["diff", "--stat", `${ref}...HEAD`, "--", kernel],
+  ["diff", "--stat", `${ref}...HEAD`, "--", ...kernel],
   {
     encoding: "utf8",
   }

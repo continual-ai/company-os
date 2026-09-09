@@ -1,3 +1,22 @@
+import { Button } from "@company/ui/button"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@company/ui/command"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@company/ui/dropdown-menu"
+import { Input } from "@company/ui/input"
+import { Popover, PopoverContent, PopoverTrigger } from "@company/ui/popover"
 import {
   CheckIcon,
   ChevronLeftIcon,
@@ -8,29 +27,6 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react"
 
 import type { PropertyDefinition } from "#/runtime/model/index.ts"
-import { Button } from "#/runtime/ui/components/button.tsx"
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "#/runtime/ui/components/command.tsx"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "#/runtime/ui/components/dropdown-menu.tsx"
-import { Input } from "#/runtime/ui/components/input.tsx"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "#/runtime/ui/components/popover.tsx"
 import { type ObjectTableFilterValue } from "#/runtime/ui/model/collection-view.ts"
 import { objectTablePropertySchema } from "#/runtime/ui/model/object-table/object-table-cell-types.ts"
 import {
