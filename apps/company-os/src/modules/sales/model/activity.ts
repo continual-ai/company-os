@@ -2,7 +2,7 @@ import { NoteSubject } from "#/modules/notes/model/index.ts"
 import { Company } from "#/modules/sales/model/company.ts"
 import { Contact } from "#/modules/sales/model/contact.ts"
 import { Deal } from "#/modules/sales/model/deal.ts"
-import { Root, User } from "#/runtime/access/model/index.ts"
+import { User } from "#/runtime/access/model/index.ts"
 import { defineObject, schema } from "#/runtime/model/index.ts"
 
 export const Activity = defineObject({
@@ -11,7 +11,6 @@ export const Activity = defineObject({
   name: "Activity",
   pluralName: "Activities",
   description: "A task, call, or meeting with a customer or prospect.",
-  parent: Root,
   implements: [{ interface: NoteSubject }],
   properties: {
     title: schema.string({ label: "Title", maxLength: 300, minLength: 1 }),

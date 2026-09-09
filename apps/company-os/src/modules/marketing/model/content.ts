@@ -1,6 +1,6 @@
 import { Campaign } from "#/modules/marketing/model/campaign.ts"
 import { NoteSubject } from "#/modules/notes/model/index.ts"
-import { Root, User } from "#/runtime/access/model/index.ts"
+import { User } from "#/runtime/access/model/index.ts"
 import { defineObject, schema } from "#/runtime/model/index.ts"
 
 export const Content = defineObject({
@@ -9,7 +9,6 @@ export const Content = defineObject({
   name: "Content",
   pluralName: "Content",
   description: "Track an article, post, or ad. Saving does not publish it.",
-  parent: Root,
   implements: [{ interface: NoteSubject }],
   properties: {
     title: schema.string({ label: "Title", maxLength: 300, minLength: 1 }),

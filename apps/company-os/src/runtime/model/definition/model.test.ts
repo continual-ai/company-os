@@ -1,5 +1,7 @@
 import { describe, expect, expectTypeOf, it } from "vitest"
 
+import { AuthorizationScope } from "#/runtime/model/core/authorization-scope.ts"
+import { Root } from "#/runtime/model/core/root.ts"
 import { defineError } from "#/runtime/model/definition/error.ts"
 import {
   defineInterface,
@@ -8,6 +10,7 @@ import {
 import { defineLink, type LinkType } from "#/runtime/model/definition/link.ts"
 import {
   defineModel,
+  enableModules,
   modelObjectLinkTraversals,
   modelTypeAccepts,
 } from "#/runtime/model/definition/model.ts"
@@ -16,18 +19,12 @@ import {
   defineObject,
   type ObjectType,
 } from "#/runtime/model/definition/object.ts"
-import { defineRoot, type RootType } from "#/runtime/model/definition/root.ts"
 import { schema } from "#/runtime/model/definition/schema.ts"
 
 const TestActor = defineInterface({
   id: "testActor",
   name: "Test actor",
   pluralName: "Test actors",
-})
-const Root = defineRoot({
-  id: "root",
-  implements: [{ interface: TestActor }],
-  name: "Root",
 })
 
 const EnrollmentFailed = defineError({
@@ -41,7 +38,6 @@ const Contact = defineObject({
   id: "contact",
   collection: "contacts",
   name: "Contact",
-  parent: Root,
   pluralName: "Contacts",
   properties: {
     name: schema.string(),
@@ -61,18 +57,14 @@ const Contact = defineObject({
 })
 
 function defineTestModel<
-  const TRoot extends RootType,
   const TObjects extends ReadonlyArray<ObjectType>,
   const TLinks extends ReadonlyArray<LinkType>,
   const TInterfaces extends ReadonlyArray<InterfaceType>,
-  const TActor extends TInterfaces[number],
 >(definition: {
-  actor: TActor
   interfaces: TInterfaces
   links: TLinks
   name: string
   objects: TObjects
-  root: TRoot
 }) {
   const testModule = defineModule({
     id: "test",
@@ -81,23 +73,16 @@ function defineTestModel<
     name: "Test",
     objects: definition.objects,
   })
-  return defineModel({
-    actor: definition.actor,
-    modules: [testModule],
-    name: definition.name,
-    root: definition.root,
-  })
+  return defineModel({ modules: [testModule], name: definition.name })
 }
 
 describe("model definitions", () => {
   it("indexes objects and their first-class actions", () => {
     const model = defineTestModel({
-      actor: TestActor,
       interfaces: [TestActor],
       name: "Example",
       objects: [Contact],
       links: [],
-      root: Root,
     })
 
     expect(Object.keys(model.modules)).toEqual(["test"])
@@ -172,10 +157,8 @@ describe("model definitions", () => {
 
     expect(() =>
       defineModel({
-        actor: TestActor,
         modules: [module, module],
         name: "Duplicate modules",
-        root: Root,
       })
     ).toThrow("Module id 'contacts' is registered more than once.")
   })
@@ -185,19 +168,16 @@ describe("model definitions", () => {
       id: "withoutBatchDelete",
       collection: "withoutBatchDeletes",
       name: "Without batch delete",
-      parent: Root,
       pluralName: "Without batch deletes",
       properties: { name: schema.string() },
       display: { title: "name" },
       actions: { batchDelete: false },
     })
     const model = defineTestModel({
-      actor: TestActor,
       interfaces: [TestActor],
       name: "Without batch delete model",
       objects: [WithoutBatchDelete],
       links: [],
-      root: Root,
     })
 
     expect(Object.keys(WithoutBatchDelete.actions)).toContain("delete")
@@ -213,19 +193,16 @@ describe("model definitions", () => {
       id: "contact",
       collection: "otherContacts",
       name: "Other contact",
-      parent: Root,
       pluralName: "Other contacts",
       properties: { name: schema.string() },
       display: { title: "name" },
     })
     expect(() =>
       defineTestModel({
-        actor: TestActor,
         interfaces: [TestActor],
         name: "Example",
         objects: [Contact, OtherContact],
         links: [],
-        root: Root,
       })
     ).toThrow(/Object id 'contact'/)
 
@@ -233,19 +210,16 @@ describe("model definitions", () => {
       id: "person",
       collection: "contacts",
       name: "Person",
-      parent: Root,
       pluralName: "People",
       properties: { name: schema.string() },
       display: { title: "name" },
     })
     expect(() =>
       defineTestModel({
-        actor: TestActor,
         interfaces: [TestActor],
         name: "Example",
         objects: [Contact, SameCollection],
         links: [],
-        root: Root,
       })
     ).toThrow(/collection 'contacts'/)
   })
@@ -256,7 +230,6 @@ describe("model definitions", () => {
       collection: "invalidUniques",
       display: { title: "name" },
       name: "Invalid unique",
-      parent: Root,
       pluralName: "Invalid uniques",
       properties: { name: schema.string() },
       uniqueBy: { missing: ["missing"] },
@@ -264,12 +237,10 @@ describe("model definitions", () => {
 
     expect(() =>
       defineTestModel({
-        actor: TestActor,
         interfaces: [TestActor],
         links: [],
         name: "Invalid unique model",
         objects: [InvalidUnique],
-        root: Root,
       })
     ).toThrow(/unique rule 'missing' references unknown field 'missing'/)
   })
@@ -280,7 +251,6 @@ describe("model definitions", () => {
       collection: "accounts",
       display: { title: "name" },
       name: "Account",
-      parent: Root,
       pluralName: "Accounts",
       properties: { name: schema.string() },
     })
@@ -289,7 +259,6 @@ describe("model definitions", () => {
       collection: "profiles",
       display: { title: "name" },
       name: "Profile",
-      parent: Root,
       pluralName: "Profiles",
       properties: { name: schema.string() },
       uniqueBy: { account: ["account"] },
@@ -316,32 +285,117 @@ describe("model definitions", () => {
 
     expect(() =>
       defineTestModel({
-        actor: TestActor,
         interfaces: [TestActor],
         links: [ProfileAccount],
         name: "Invalid link unique model",
         objects: [Account, Profile],
-        root: Root,
       })
     ).toThrow(/references unknown field 'account'/)
   })
 
-  it("requires the declared actor interface to have an implementer", () => {
-    const Identity = defineInterface({
-      id: "identity",
-      name: "Identity",
-      pluralName: "Identities",
+  it("registers the kernel interfaces before any module", () => {
+    const model = defineTestModel({
+      interfaces: [],
+      links: [],
+      name: "Kernel",
+      objects: [Contact],
     })
+    expect(Object.keys(model.interfaces)).toEqual([
+      "actor",
+      "authorizationScope",
+    ])
+    expect(model.actor.id).toBe("actor")
     expect(() =>
       defineTestModel({
-        actor: Identity,
-        interfaces: [TestActor, Identity],
+        interfaces: [
+          defineInterface({ id: "actor", name: "Actor", pluralName: "Actors" }),
+        ],
         links: [],
-        name: "Missing actor",
+        name: "Duplicate actor",
         objects: [Contact],
-        root: Root,
       })
-    ).toThrow(/Actor interface 'identity' has no implementer/)
+    ).toThrow("Interface id 'actor' is registered more than once.")
+  })
+
+  it("derives module dependencies from referenced types and links", () => {
+    const Company = defineObject({
+      id: "company",
+      collection: "companies",
+      name: "Company",
+      pluralName: "Companies",
+      properties: { name: schema.string() },
+      display: { title: "name" },
+    })
+    const ContactCompanies = defineLink({
+      id: "contactCompanies",
+      writeFrom: "companies",
+      name: "Contact companies",
+      forward: {
+        cardinality: "many",
+        from: Contact,
+        key: "companies",
+        label: "Companies",
+        to: Company,
+      },
+      reverse: {
+        cardinality: "many",
+        from: Company,
+        key: "contacts",
+        label: "Contacts",
+        to: Contact,
+      },
+    })
+    const PrimaryCompany = defineLink({
+      id: "contactPrimaryCompany",
+      subsetOf: ContactCompanies,
+      writeFrom: "primaryCompany",
+      name: "Primary company",
+      forward: {
+        cardinality: "zeroOrOne",
+        from: Contact,
+        key: "primaryCompany",
+        label: "Primary company",
+        to: Company,
+      },
+      reverse: {
+        cardinality: "many",
+        from: Company,
+        key: "primaryContacts",
+        label: "Primary contacts",
+        to: Contact,
+      },
+    })
+    const contacts = defineModule({
+      id: "contacts",
+      name: "Contacts",
+      objects: [Contact],
+    })
+    const companies = defineModule({
+      id: "companies",
+      name: "Companies",
+      links: [ContactCompanies],
+      objects: [Company],
+    })
+    const roles = defineModule({
+      id: "roles",
+      name: "Roles",
+      links: [PrimaryCompany],
+      objects: [],
+    })
+    const model = defineModel({
+      modules: [contacts, companies, roles],
+      name: "Dependencies",
+    })
+
+    expect(Object.keys(enableModules(model, ["contacts"]).modules)).toEqual([
+      "contacts",
+    ])
+    expect(() => enableModules(model, ["companies"])).toThrow(
+      "Module 'companies' depends on module 'contacts' (link 'contactCompanies' references 'contact'), which is not enabled."
+    )
+    expect(() => enableModules(model, ["contacts", "roles"])).toThrow(
+      "Module 'roles' depends on module 'companies' (link 'contactPrimaryCompany' references 'company'), which is not enabled."
+    )
   })
 
   it("rejects object references absent from the model", () => {
@@ -349,7 +403,6 @@ describe("model definitions", () => {
       id: "account",
       collection: "accounts",
       name: "Account",
-      parent: Root,
       pluralName: "Accounts",
       properties: { name: schema.string() },
       display: { title: "name" },
@@ -378,12 +431,10 @@ describe("model definitions", () => {
 
     expectTypeOf(Membership.parent.typeId).toEqualTypeOf<"account">()
     const completeModel = defineTestModel({
-      actor: TestActor,
       interfaces: [TestActor],
       name: "Complete",
       objects: [Account, Membership],
       links: [],
-      root: Root,
     })
     expect(completeModel.actions.membership.create.input).toMatchObject({
       properties: {
@@ -393,12 +444,10 @@ describe("model definitions", () => {
 
     expect(() =>
       defineTestModel({
-        actor: TestActor,
         interfaces: [TestActor],
         name: "Example",
         objects: [Membership],
         links: [],
-        root: Root,
       })
     ).toThrow(/parent type 'account' is not registered as object/)
   })
@@ -408,7 +457,6 @@ describe("model definitions", () => {
       id: "account",
       collection: "accounts",
       name: "Account",
-      parent: Root,
       pluralName: "Accounts",
       properties: { name: schema.string() },
       display: { title: "name" },
@@ -419,7 +467,6 @@ describe("model definitions", () => {
         id: "membership",
         collection: "memberships",
         name: "Membership",
-        parent: Root,
         pluralName: "Memberships",
         properties: { accountId: schema.reference(Account) },
         display: { title: "accountId" },
@@ -453,7 +500,6 @@ describe("model definitions", () => {
       id: "company",
       collection: "companies",
       name: "Company",
-      parent: Root,
       pluralName: "Companies",
       properties: { name: schema.string() },
       display: { title: "name" },
@@ -462,7 +508,6 @@ describe("model definitions", () => {
       id: "companyContact",
       collection: "companyContacts",
       name: "Company contact",
-      parent: Root,
       pluralName: "Company contacts",
       properties: { name: schema.string() },
       display: { title: "name" },
@@ -488,12 +533,10 @@ describe("model definitions", () => {
     })
 
     const model = defineTestModel({
-      actor: TestActor,
       interfaces: [TestActor],
       name: "Example",
       objects: [Company, CompanyContact],
       links: [Contacts],
-      root: Root,
     })
 
     expect(model.links.companyContacts.forward).toEqual({
@@ -520,7 +563,6 @@ describe("model definitions", () => {
       id: "conflictingAction",
       collection: "conflictingActions",
       name: "Conflicting action",
-      parent: Root,
       pluralName: "Conflicting actions",
       properties: { name: schema.string() },
       display: { title: "name" },
@@ -534,12 +576,10 @@ describe("model definitions", () => {
     })
     expect(() =>
       defineTestModel({
-        actor: TestActor,
         interfaces: [TestActor],
         links: [],
         name: "Conflicting action",
         objects: [ConflictingAction],
-        root: Root,
       })
     ).toThrow(/Action 'conflictingAction\.list'.*generated Query method/)
 
@@ -547,7 +587,6 @@ describe("model definitions", () => {
       id: "account",
       collection: "accounts",
       name: "Account",
-      parent: Root,
       pluralName: "Accounts",
       properties: { name: schema.string() },
       display: { title: "name" },
@@ -573,12 +612,10 @@ describe("model definitions", () => {
     })
     expect(() =>
       defineTestModel({
-        actor: TestActor,
         interfaces: [TestActor],
         links: [ConflictingLink],
         name: "Conflicting Link",
         objects: [Account, Contact],
-        root: Root,
       })
     ).toThrow(/Link traversal 'contact\.get'.*Query or Action method/)
   })
@@ -588,7 +625,6 @@ describe("model definitions", () => {
       id: "company",
       collection: "companies",
       name: "Company",
-      parent: Root,
       pluralName: "Companies",
       properties: { name: schema.string() },
       display: { title: "name" },
@@ -597,7 +633,6 @@ describe("model definitions", () => {
       id: "employee",
       collection: "employees",
       name: "Employee",
-      parent: Root,
       pluralName: "Employees",
       properties: { name: schema.string() },
       display: { title: "name" },
@@ -623,12 +658,10 @@ describe("model definitions", () => {
       },
     })
     const model = defineTestModel({
-      actor: TestActor,
       interfaces: [TestActor],
       links: [CompanyEmployees],
       name: "Company employees",
       objects: [Company, Employee],
-      root: Root,
     })
 
     expect(model.objects.employee.properties).not.toHaveProperty("company")
@@ -669,7 +702,6 @@ describe("model definitions", () => {
       id: "activity",
       collection: "activities",
       name: "Activity",
-      parent: Root,
       pluralName: "Activities",
       properties: { name: schema.string() },
       display: { title: "name" },
@@ -695,12 +727,10 @@ describe("model definitions", () => {
     })
 
     const model = defineTestModel({
-      actor: TestActor,
       interfaces: [TestActor, Party],
       links: [InvalidOwner],
       name: "Test",
       objects: [Activity],
-      root: Root,
     })
     expect(model.links.invalidOwner.forward.from.kind).toBe("interface")
   })
@@ -720,7 +750,6 @@ describe("model definitions", () => {
       id: "company",
       collection: "companies",
       name: "Company",
-      parent: Root,
       pluralName: "Companies",
       properties: {
         logo: schema.image({ nullable: true }),
@@ -736,12 +765,10 @@ describe("model definitions", () => {
     })
 
     const model = defineTestModel({
-      actor: TestActor,
       name: "Example",
       interfaces: [TestActor, Party],
       objects: [Company],
       links: [],
-      root: Root,
     })
 
     expect(model.interfaces.party.display?.icon).toBe("party")
@@ -761,7 +788,6 @@ describe("model definitions", () => {
         id: "person",
         collection: "people",
         name: "Person",
-        parent: Root,
         pluralName: "People",
         properties: { name: schema.string() },
         display: { title: "name" },
@@ -780,7 +806,6 @@ describe("model definitions", () => {
         id: "duplicateParty",
         collection: "duplicateParties",
         name: "Duplicate party",
-        parent: Root,
         pluralName: "Duplicate parties",
         properties: {
           image: schema.image({ nullable: true }),
@@ -805,9 +830,7 @@ describe("model definitions", () => {
 describe("relationship names", () => {
   const model = (key: string) =>
     defineTestModel({
-      actor: TestActor,
       interfaces: [TestActor],
-      root: Root,
       name: "Inverse names",
       links: [],
       objects: [
@@ -818,7 +841,6 @@ describe("relationship names", () => {
           name: "Message",
           pluralName: "Messages",
           display: { title: "recipient" },
-          parent: Root,
           properties: {
             recipient: schema.reference(Contact, {
               inverse: { key, label: "Messages" },
@@ -843,23 +865,12 @@ describe("relationship names", () => {
 
 describe("root definitions", () => {
   it("supports marker interfaces without property or display boilerplate", () => {
-    const AuthorizationScope = defineInterface({
-      id: "authorizationScope",
-      name: "Authorization scope",
-      pluralName: "Authorization scopes",
-    })
-    const ScopedRoot = defineRoot({
-      id: "root",
-      implements: [{ interface: AuthorizationScope }, { interface: TestActor }],
-      name: "Root",
-    })
     const Workspace = defineObject({
       id: "workspace",
       collection: "workspaces",
       display: { title: "name" },
       implements: [{ interface: AuthorizationScope }],
       name: "Workspace",
-      parent: ScopedRoot,
       pluralName: "Workspaces",
       properties: { name: schema.string() },
     })
@@ -868,7 +879,6 @@ describe("root definitions", () => {
       collection: "permissions",
       display: { title: "name" },
       name: "Permission",
-      parent: ScopedRoot,
       pluralName: "Permissions",
       properties: { name: schema.string() },
     })
@@ -892,12 +902,10 @@ describe("root definitions", () => {
       },
     })
     const model = defineTestModel({
-      actor: TestActor,
-      interfaces: [TestActor, AuthorizationScope],
+      interfaces: [TestActor],
       links: [PermissionScope],
       name: "Scoped model",
       objects: [Workspace, Permission],
-      root: ScopedRoot,
     })
 
     expect(model.interfaces.authorizationScope.properties).toEqual({})
@@ -918,16 +926,6 @@ describe("root definitions", () => {
     expect(modelTypeAccepts(model, "permission", "authorizationScope")).toBe(
       false
     )
-    expect(() =>
-      defineTestModel({
-        actor: TestActor,
-        interfaces: [TestActor],
-        links: [],
-        name: "Missing scope",
-        objects: [],
-        root: ScopedRoot,
-      })
-    ).toThrow(/implements interface 'authorizationScope'.*not registered/)
   })
 
   it("reserves the model-defined root ID within its type registry", () => {
@@ -935,7 +933,6 @@ describe("root definitions", () => {
       id: "root",
       collection: "roots",
       name: "Another root",
-      parent: Root,
       pluralName: "Other roots",
       properties: { name: schema.string() },
       display: { title: "name" },
@@ -943,38 +940,12 @@ describe("root definitions", () => {
 
     expect(() =>
       defineTestModel({
-        actor: TestActor,
         interfaces: [TestActor],
         links: [],
         name: "Root collision",
         objects: [OtherRoot],
-        root: Root,
       })
     ).toThrow(/Root id 'root' must be unique/)
-  })
-
-  it("rejects objects defined beneath a different root", () => {
-    const OtherRoot = defineRoot({ id: "otherRoot", name: "Other root" })
-    const OtherObject = defineObject({
-      id: "otherObject",
-      collection: "otherObjects",
-      name: "Other object",
-      parent: OtherRoot,
-      pluralName: "Other objects",
-      properties: { name: schema.string() },
-      display: { title: "name" },
-    })
-
-    expect(() =>
-      defineTestModel({
-        actor: TestActor,
-        interfaces: [TestActor],
-        links: [],
-        name: "Root mismatch",
-        objects: [OtherObject],
-        root: Root,
-      })
-    ).toThrow(/parent type 'otherRoot' is not registered as root/)
   })
 })
 
@@ -984,7 +955,6 @@ describe("object properties", () => {
       id: "example",
       collection: "examples",
       name: "Example",
-      parent: Root,
       pluralName: "Examples",
       properties: {
         title: schema.string(),
@@ -1020,7 +990,6 @@ describe("object properties", () => {
       id: "exampleOutput",
       collection: "exampleOutputs",
       name: "Example output",
-      parent: Root,
       pluralName: "Example outputs",
       properties: {
         result: schema.string({ nullable: true, outputOnly: true }),

@@ -1,5 +1,5 @@
 import { NoteSubject } from "#/modules/notes/model/index.ts"
-import { Root, User } from "#/runtime/access/model/index.ts"
+import { User } from "#/runtime/access/model/index.ts"
 import { defineObject, schema } from "#/runtime/model/index.ts"
 
 export const Project = defineObject({
@@ -8,7 +8,6 @@ export const Project = defineObject({
   name: "Project",
   pluralName: "Projects",
   description: "Related work organized around a goal and target date.",
-  parent: Root,
   implements: [{ interface: NoteSubject }],
   properties: {
     name: schema.string({ label: "Name", maxLength: 300, minLength: 1 }),

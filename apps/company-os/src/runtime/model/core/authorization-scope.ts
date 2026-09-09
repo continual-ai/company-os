@@ -1,5 +1,6 @@
-import { defineInterface } from "#/runtime/model/index.ts"
+import { defineInterface } from "#/runtime/model/definition/interface.ts"
 
+/** Records where roles can be granted and inherited by the records they own. */
 export const AuthorizationScope = defineInterface({
   id: "authorizationScope",
   name: "Authorization scope",

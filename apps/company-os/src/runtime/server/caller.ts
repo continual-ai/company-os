@@ -1,4 +1,5 @@
-import type { ActorId, IdentityId } from "#/runtime/access/model/ids.ts"
+import type { IdentityId } from "#/runtime/access/model/ids.ts"
+import type { ActorId } from "#/runtime/model/core/actor.ts"
 import { ANONYMOUS_ACTOR_ID } from "#/runtime/model/system-records.ts"
 
 /** Authentication state presented to authorization before an actor is required. */

@@ -7,7 +7,7 @@ import { SalesModule } from "#/modules/sales/model/index.ts"
 import { Lead } from "#/modules/sales/model/lead.ts"
 import { convertLead } from "#/modules/sales/server/convert-lead.ts"
 import { pipelineSummary } from "#/modules/sales/server/pipeline-summary.ts"
-import { Actor, AccessModule, Root } from "#/runtime/access/model/index.ts"
+import { AccessModule } from "#/runtime/access/model/index.ts"
 import { bootstrapSystemActor } from "#/runtime/access/server/bootstrap.ts"
 import { seedAuthorization } from "#/runtime/access/server/seed.ts"
 import { AssetsModule } from "#/runtime/assets/model/index.ts"
@@ -25,8 +25,6 @@ import { TestDatabase } from "#/runtime/server/postgres/testing.ts"
 
 const model = defineModel({
   name: "Sales test",
-  root: Root,
-  actor: Actor,
   modules: [AccessModule, AssetsModule, SalesModule, NotesModule],
 })
 const storage = makePostgresSchema(model)

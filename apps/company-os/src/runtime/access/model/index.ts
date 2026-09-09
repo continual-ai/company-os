@@ -1,8 +1,6 @@
 import { AnonymousActor } from "#/runtime/access/model/anonymous-actor.ts"
 import { GroupMembership } from "#/runtime/access/model/group-membership.ts"
 import { Group } from "#/runtime/access/model/group.ts"
-import { Actor } from "#/runtime/access/model/interfaces/actor.ts"
-import { AuthorizationScope } from "#/runtime/access/model/interfaces/authorization-scope.ts"
 import { Identity } from "#/runtime/access/model/interfaces/identity.ts"
 import { Principal } from "#/runtime/access/model/interfaces/principal.ts"
 import { PrincipalSet } from "#/runtime/access/model/principal-set.ts"
@@ -12,11 +10,11 @@ import { ServiceAccount } from "#/runtime/access/model/service-account.ts"
 import { User } from "#/runtime/access/model/user.ts"
 import { defineModule } from "#/runtime/model/index.ts"
 
+/** Kernel module that implements the model's Actor, Identity, and Principal roles. */
 export const AccessModule = defineModule({
   id: "access",
   name: "Access",
-  interfaces: [Actor, AuthorizationScope, Identity, Principal],
-  links: [],
+  interfaces: [Identity, Principal],
   objects: [
     User,
     ServiceAccount,
@@ -29,8 +27,6 @@ export const AccessModule = defineModule({
   ],
 })
 
-export { Root } from "#/runtime/access/model/root.ts"
-
 export {
   Role,
   PrincipalSet,
@@ -41,7 +37,5 @@ export {
   AnonymousActor,
   GroupMembership,
   Identity,
-  Actor,
-  AuthorizationScope,
   Principal,
 }

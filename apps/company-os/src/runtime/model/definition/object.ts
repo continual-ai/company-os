@@ -1,5 +1,7 @@
 import { Brand } from "effect"
 
+import type { ActorId } from "#/runtime/model/core/actor.ts"
+import { Root, type RootType } from "#/runtime/model/core/root.ts"
 import {
   type ActionDefinitions,
   type Action,
@@ -29,7 +31,6 @@ import {
   type CustomQuery,
   type QueryDefinitions,
 } from "#/runtime/model/definition/query.ts"
-import type { RootType } from "#/runtime/model/definition/root.ts"
 import type {
   AnySchema,
   EnumSchema,
@@ -42,22 +43,13 @@ import type {
 } from "#/runtime/model/definition/schema.ts"
 import { assertReferencePropertyName } from "#/runtime/model/definition/schema.ts"
 
-declare const parentRecordType: unique symbol
-declare const actorRecordType: unique symbol
-
-type RecordIds<TTypeId extends string> = TTypeId extends string
-  ? RecordId<TTypeId>
-  : never
-
 export interface ObjectParent<
   TTypeId extends string = string,
   TKind extends "interface" | "object" | "root" =
     | "interface"
     | "object"
     | "root",
-  TRecordTypeId extends string = TTypeId,
 > {
-  readonly [parentRecordType]?: TRecordTypeId
   readonly kind: TKind
   readonly typeId: TTypeId
 }
@@ -73,23 +65,27 @@ export type ObjectRef<TObjectType extends string = string> =
 
 export interface BaseRecord<
   TObjectType extends string = string,
-  TParentTypeId extends string = string,
-  TActorTypeId extends string = string,
+  TParentId extends RecordId = RecordId,
 > {
   readonly aliases: ReadonlyArray<RecordAlias>
   readonly metadata: Readonly<Record<string, string>>
   readonly createdAt: Timestamp
-  readonly createdBy: RecordIds<TActorTypeId>
+  readonly createdBy: ActorId
   readonly etag: Etag
   readonly id: RecordId<TObjectType>
-  readonly parent: TParentTypeId extends string
-    ? RecordId<TParentTypeId>
-    : never
+  /** The owning record; the root record when the object is defined directly beneath Root. */
+  readonly parent: TParentId
   /** Whether ordinary mutations are reserved for trusted system workflows. */
   readonly systemManaged: boolean
   readonly updatedAt: Timestamp
-  readonly updatedBy: RecordIds<TActorTypeId>
+  readonly updatedBy: ActorId
 }
+
+/** Interface parents accept any implementer, so only concrete parents narrow the ID. */
+export type ObjectParentRecordId<TObject extends ObjectType> =
+  TObject["parent"]["kind"] extends "interface"
+    ? RecordId
+    : RecordId<TObject["parent"]["typeId"]>
 
 export type Etag = string & Brand.Brand<"Etag">
 export const Etag = Brand.make<Etag>(
@@ -129,17 +125,13 @@ export interface ObjectType<
   TActions extends Readonly<Record<string, Action>> = Readonly<
     Record<string, Action>
   >,
-  TParentTypeId extends string = string,
-  TParentKind extends ObjectParent["kind"] = ObjectParent["kind"],
-  TParentRecordTypeId extends string = TParentTypeId,
+  TParent extends ObjectParent = ObjectParent,
   TInterfaces extends Readonly<Record<string, InterfaceImplementation>> =
     Readonly<Record<string, InterfaceImplementation>>,
-  TActorRecordTypeId extends string = string,
   TQueries extends Readonly<Record<string, CustomQuery>> = Readonly<
     Record<string, CustomQuery>
   >,
 > {
-  readonly [actorRecordType]?: TActorRecordTypeId
   actions: TActions
   queries: TQueries
   collection: TCollection
@@ -155,25 +147,16 @@ export interface ObjectType<
   interfaces: TInterfaces
   kind: "object"
   name: string
-  parent: ObjectParent<TParentTypeId, TParentKind, TParentRecordTypeId>
+  parent: TParent
   pluralName: string
   properties: TProperties
   search?: { readonly fields: ReadonlyArray<string> } | undefined
   uniqueBy: Readonly<Record<string, ReadonlyArray<string>>>
 }
 
-export type ObjectParentRecordTypeId<TObject extends ObjectType> = NonNullable<
-  TObject["parent"][typeof parentRecordType]
->
-
-export type ObjectActorRecordTypeId<TObject extends ObjectType> = NonNullable<
-  TObject[typeof actorRecordType]
->
-
 export type ObjectRecord<TObject extends ObjectType> = BaseRecord<
   TObject["id"],
-  ObjectParentRecordTypeId<TObject>,
-  ObjectActorRecordTypeId<TObject>
+  ObjectParentRecordId<TObject>
 > &
   InferProperties<TObject["properties"]>
 
@@ -226,29 +209,37 @@ interface BaseUpdateProperties {
   readonly metadata?: Readonly<Record<string, string>>
 }
 
+/**
+ * Objects beneath Root never take a parent. An interface parent accepts any
+ * identifier here; the model-bound create input narrows it to implementers.
+ */
 type CreateParent<TObject extends ObjectType> =
   TObject["parent"]["kind"] extends "root"
     ? { readonly parent?: never }
-    : {
-        readonly parent: RecordIdentifier<ObjectParentRecordTypeId<TObject>>
-      }
+    : TObject["parent"]["kind"] extends "object"
+      ? { readonly parent: RecordIdentifier<TObject["parent"]["typeId"]> }
+      : { readonly parent: RecordIdentifier }
 
 type CanonicalCreateParent<TObject extends ObjectType> =
   TObject["parent"]["kind"] extends "root"
     ? { readonly parent?: never }
     : Pick<ObjectRecord<TObject>, "parent">
 
+/** Public create values other than the parent, which the model binds separately. */
+export type ObjectCreateProperties<TObject extends ObjectType> = Simplify<
+  BaseCreateProperties & {
+    readonly [
+      TKey in RequiredCreatePropertyKeys<TObject["properties"]>
+    ]: PropertyInputValue<TObject["properties"][TKey]>
+  } & {
+    readonly [
+      TKey in OptionalCreatePropertyKeys<TObject["properties"]>
+    ]?: PropertyInputValue<TObject["properties"][TKey]>
+  }
+>
+
 export type ObjectCreateInput<TObject extends ObjectType> = Simplify<
-  BaseCreateProperties &
-    CreateParent<TObject> & {
-      readonly [
-        TKey in RequiredCreatePropertyKeys<TObject["properties"]>
-      ]: PropertyInputValue<TObject["properties"][TKey]>
-    } & {
-      readonly [
-        TKey in OptionalCreatePropertyKeys<TObject["properties"]>
-      ]?: PropertyInputValue<TObject["properties"][TKey]>
-    }
+  ObjectCreateProperties<TObject> & CreateParent<TObject>
 >
 
 type ObjectUpdateChanges<TObject extends ObjectType> = Simplify<
@@ -329,15 +320,15 @@ type ParentDefinition = InterfaceType | ObjectType | RootType
 
 /**
  * Defines a portable model object and derives its enabled standard actions.
- * `parent` is the canonical ownership hierarchy; ordinary business
- * relationships belong in links.
+ * `parent` is the ownership and authorization hierarchy and defaults to Root;
+ * ordinary business relationships belong in links.
  */
 export function defineObject<
   const TId extends string,
   const TCollection extends string,
   const TProperties extends Readonly<Record<string, AnySchema>>,
   const TActionDefinitions extends ActionDefinitions = {},
-  const TParent extends ParentDefinition = ParentDefinition,
+  const TParent extends ParentDefinition = RootType,
   const TImplementations extends InterfaceImplementationInputs = [],
   const TQueries extends QueryDefinitions = {},
 >(definition: {
@@ -350,7 +341,7 @@ export function defineObject<
   implements?: TImplementations &
     InterfaceImplementationConstraints<TProperties, TImplementations>
   name: string
-  parent: TParent
+  parent?: TParent
   pluralName: string
   properties: TProperties
   /** Opts into cross-object search. Only these text fields are indexed; display title matches rank higher. */
@@ -361,17 +352,14 @@ export function defineObject<
   TCollection,
   NormalizeProperties<TProperties>,
   NormalizedActions<TId, TActionDefinitions>,
-  TParent["id"],
-  TParent["kind"],
-  TParent["kind"] extends "interface" ? string : TParent["id"],
+  ObjectParent<TParent["id"], TParent["kind"]>,
   InterfaceImplementationMap<TImplementations>,
-  string,
   BoundQueries<TId, TQueries>
 > {
-  const semanticParentPropertyId = definition.parent.id
-  if (Object.hasOwn(definition.properties, semanticParentPropertyId)) {
+  const parent: ParentDefinition = definition.parent ?? Root
+  if (Object.hasOwn(definition.properties, parent.id)) {
     throw new Error(
-      `Object '${definition.id}' cannot redefine its '${definition.parent.id}' parent as property '${semanticParentPropertyId}'; use the standard 'parent'.`
+      `Object '${definition.id}' cannot redefine its '${parent.id}' parent as property '${parent.id}'; use the standard 'parent'.`
     )
   }
   for (const [propertyId, property] of Object.entries(definition.properties)) {
@@ -470,10 +458,7 @@ export function defineObject<
     collection: identity.collection,
     name: definition.name,
     interfaces,
-    parent: {
-      kind: definition.parent.kind,
-      typeId: definition.parent.id,
-    },
+    parent: { kind: parent.kind, typeId: parent.id },
     pluralName: definition.pluralName,
     display: definition.display,
     properties,
@@ -501,11 +486,8 @@ export function defineObject<
     TCollection,
     NormalizeProperties<TProperties>,
     NormalizedActions<TId, TActionDefinitions>,
-    TParent["id"],
-    TParent["kind"],
-    TParent["id"],
+    ObjectParent<TParent["id"], TParent["kind"]>,
     InterfaceImplementationMap<TImplementations>,
-    string,
     BoundQueries<TId, TQueries>
   >
   if (definition.description !== undefined) {

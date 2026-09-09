@@ -1,14 +1,11 @@
-import { Actor } from "#/runtime/access/model/interfaces/actor.ts"
 import { Identity } from "#/runtime/access/model/interfaces/identity.ts"
 import { Principal } from "#/runtime/access/model/interfaces/principal.ts"
-import { Root } from "#/runtime/access/model/root.ts"
-import { defineObject, schema } from "#/runtime/model/index.ts"
+import { defineObject, schema, Actor } from "#/runtime/model/index.ts"
 
 export const ServiceAccount = defineObject({
   id: "serviceAccount",
   collection: "serviceAccounts",
   name: "Service account",
-  parent: Root,
   pluralName: "Service accounts",
   description: "An account for an integration, application, or agent.",
   actions: {

@@ -1,7 +1,7 @@
+import type { EventType } from "#/runtime/model/definition/event.ts"
 import type { InterfaceType } from "#/runtime/model/definition/interface.ts"
 import type { LinkType } from "#/runtime/model/definition/link.ts"
 import type { ObjectType } from "#/runtime/model/definition/object.ts"
-import type { AnySchema } from "#/runtime/model/definition/schema.ts"
 
 /** A portable, cohesive group of model definitions. */
 export interface ModuleDefinition<
@@ -11,42 +11,45 @@ export interface ModuleDefinition<
   TLinks extends ReadonlyArray<LinkType> = ReadonlyArray<LinkType>,
   TObjects extends ReadonlyArray<ObjectType> = ReadonlyArray<ObjectType>,
 > {
+  readonly events: ReadonlyArray<EventType>
   readonly id: TId
   readonly interfaces: TInterfaces
   readonly kind: "module"
   readonly links: TLinks
   readonly name: string
-  /** Other modules that must be explicitly composed alongside this one. */
-  readonly requires?: ReadonlyArray<string>
-  readonly events?: ReadonlyArray<{
-    readonly type: string
-    readonly version: number
-    readonly subject: ObjectType
-    readonly data: AnySchema
-  }>
   readonly objects: TObjects
 }
 
-/** Defines a browser-safe model capability for composition into a model. */
+/**
+ * Defines a browser-safe model capability for composition into a model. A
+ * module's dependencies are derived from the types its definitions reference,
+ * so they are never declared by hand.
+ */
 export function defineModule<
   const TId extends string,
-  const TInterfaces extends ReadonlyArray<InterfaceType>,
-  const TLinks extends ReadonlyArray<LinkType>,
   const TObjects extends ReadonlyArray<ObjectType>,
+  const TInterfaces extends ReadonlyArray<InterfaceType> = readonly [],
+  const TLinks extends ReadonlyArray<LinkType> = readonly [],
 >(definition: {
+  readonly events?: ReadonlyArray<EventType>
   readonly id: TId
-  readonly interfaces: TInterfaces
-  readonly links: TLinks
+  readonly interfaces?: TInterfaces
+  readonly links?: TLinks
   readonly name: string
-  /** Other modules that must be explicitly composed alongside this one. */
-  readonly requires?: ReadonlyArray<string>
-  readonly events?: ReadonlyArray<{
-    readonly type: string
-    readonly version: number
-    readonly subject: ObjectType
-    readonly data: AnySchema
-  }>
   readonly objects: TObjects
 }): ModuleDefinition<TId, TInterfaces, TLinks, TObjects> {
-  return { ...definition, kind: "module" }
+  // SAFETY: an omitted list is exactly the generic default `readonly []`.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  const interfaces = (definition.interfaces ?? []) as TInterfaces
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  const links = (definition.links ?? []) as TLinks
+  return {
+    events: definition.events ?? [],
+    id: definition.id,
+    interfaces,
+    kind: "module",
+    links,
+    name: definition.name,
+    objects: definition.objects,
+  }
 }

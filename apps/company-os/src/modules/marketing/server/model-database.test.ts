@@ -4,7 +4,7 @@ import { expect, it } from "vitest"
 import { MarketingModule } from "#/modules/marketing/model/index.ts"
 import { NotesModule } from "#/modules/notes/model/index.ts"
 import { SalesModule } from "#/modules/sales/model/index.ts"
-import { Actor, AccessModule, Root } from "#/runtime/access/model/index.ts"
+import { AccessModule } from "#/runtime/access/model/index.ts"
 import { AssetsModule } from "#/runtime/assets/model/index.ts"
 import { defineModel } from "#/runtime/model/index.ts"
 import { Database, Records } from "#/runtime/server/index.ts"
@@ -15,8 +15,6 @@ import { testFoundation } from "#/runtime/testing/foundation.ts"
 it("persists its own model with only declared dependencies", async () => {
   const model = defineModel({
     name: "Marketing test",
-    root: Root,
-    actor: Actor,
     modules: [
       AccessModule,
       AssetsModule,

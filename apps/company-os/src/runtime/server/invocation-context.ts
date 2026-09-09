@@ -1,6 +1,7 @@
 import { Data, Effect } from "effect"
 
-import type { ActorId, IdentityId } from "#/runtime/access/model/ids.ts"
+import type { IdentityId } from "#/runtime/access/model/ids.ts"
+import type { ActorId } from "#/runtime/model/core/actor.ts"
 import {
   ANONYMOUS_ACTOR_ID,
   SYSTEM_SERVICE_ACCOUNT_ID,

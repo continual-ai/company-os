@@ -1,7 +1,10 @@
-import { AuthorizationScope } from "#/runtime/access/model/interfaces/authorization-scope.ts"
 import { Principal } from "#/runtime/access/model/interfaces/principal.ts"
 import { Role } from "#/runtime/access/model/role.ts"
-import { defineObject, schema } from "#/runtime/model/index.ts"
+import {
+  defineObject,
+  schema,
+  AuthorizationScope,
+} from "#/runtime/model/index.ts"
 
 export const RoleAssignment = defineObject({
   id: "roleAssignment",

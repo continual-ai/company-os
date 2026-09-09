@@ -3,10 +3,9 @@ import { Data, type Effect } from "effect"
 import type {
   BaseRecord,
   Etag,
-  ObjectActorRecordTypeId,
   ObjectCreateValues,
+  ObjectParentRecordId,
   ObjectRecord,
-  ObjectParentRecordTypeId,
   ObjectType,
   ObjectUpdateValues,
 } from "#/runtime/model/definition/object.ts"
@@ -81,11 +80,7 @@ export class RecordAliasNotFound extends Data.TaggedError(
 
 /** Canonical insert values; persistence supplies the tag and timestamps. */
 export type ObjectInsert<TObject extends ObjectType> = Omit<
-  BaseRecord<
-    TObject["id"],
-    ObjectParentRecordTypeId<TObject>,
-    ObjectActorRecordTypeId<TObject>
-  >,
+  BaseRecord<TObject["id"], ObjectParentRecordId<TObject>>,
   "createdAt" | "etag" | "updatedAt"
 > &
   Omit<ObjectCreateValues<TObject>, "parent">

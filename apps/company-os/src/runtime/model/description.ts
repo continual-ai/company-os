@@ -1,3 +1,4 @@
+import type { RootType } from "#/runtime/model/core/root.ts"
 import type { Action } from "#/runtime/model/definition/action.ts"
 import type { InterfaceType } from "#/runtime/model/definition/interface.ts"
 import type { LinkType } from "#/runtime/model/definition/link.ts"
@@ -17,7 +18,6 @@ import {
   modelRelationships,
   type ModelRelationship,
 } from "#/runtime/model/definition/relationship.ts"
-import type { RootType } from "#/runtime/model/definition/root.ts"
 
 export const MODEL_DESCRIPTION_VERSION = "0.30" as const
 

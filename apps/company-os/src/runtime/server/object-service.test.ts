@@ -13,7 +13,6 @@ import {
   normalizePageSize,
   PageToken,
 } from "#/runtime/model/definition/request.ts"
-import { defineRoot } from "#/runtime/model/definition/root.ts"
 import {
   EmailAddress,
   RecordAlias,
@@ -31,7 +30,6 @@ import {
 } from "#/runtime/server/object-repository.ts"
 import * as ObjectService from "#/runtime/server/object-service.ts"
 
-const Root = defineRoot({ id: "root", name: "Root" })
 const RootId = RecordId("root")
 const UserId = RecordId("user")
 
@@ -39,7 +37,6 @@ const Account = defineObject({
   id: "account",
   collection: "accounts",
   name: "Account",
-  parent: Root,
   pluralName: "Accounts",
   properties: {
     email: schema.email({ nullable: true }),
@@ -61,7 +58,6 @@ const ReadOnlyAccount = defineObject({
   id: "readOnlyAccount",
   collection: "readOnlyAccounts",
   name: "Read-only account",
-  parent: Root,
   pluralName: "Read-only accounts",
   actions: {
     batchDelete: false,

@@ -16,11 +16,13 @@ import type {
   LinkTraversal,
   LinkType,
 } from "#/runtime/model/definition/link.ts"
+import type {
+  ModelObjectCreateInput,
+  ModelObjectUpdateInput,
+} from "#/runtime/model/definition/model-input.ts"
 import {
   type ModelCatalog,
   type ModelEndpointObjectTypeId,
-  type ModelObjectCreateInput,
-  type ModelObjectUpdateInput,
   type ModelObject,
   modelObjectLinkTraversals,
   modelObjects,

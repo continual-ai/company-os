@@ -1,30 +1,17 @@
 import { describe, expect, it } from "vitest"
 
-import { defineInterface } from "#/runtime/model/definition/interface.ts"
 import { defineModel } from "#/runtime/model/definition/model.ts"
 import { defineModule } from "#/runtime/model/definition/module.ts"
 import { defineObject } from "#/runtime/model/definition/object.ts"
-import { defineRoot } from "#/runtime/model/definition/root.ts"
 import { schema } from "#/runtime/model/definition/schema.ts"
 import { describeModel } from "#/runtime/model/description.ts"
 import { lintModelDescription } from "#/runtime/model/model-lint.ts"
 
-const Actor = defineInterface({
-  id: "actor",
-  name: "Actor",
-  pluralName: "Actors",
-})
-const Root = defineRoot({
-  id: "root",
-  implements: [{ interface: Actor }],
-  name: "Root",
-})
 const Example = defineObject({
   id: "example",
   collection: "examples",
   display: { title: "eventDate" },
   name: "Example",
-  parent: Root,
   pluralName: "Examples",
   properties: {
     archived: schema.boolean({ label: "Archived" }),
@@ -34,18 +21,16 @@ const Example = defineObject({
   },
 })
 const Model = defineModel({
-  actor: Actor,
   modules: [
     defineModule({
       id: "example",
-      interfaces: [Actor],
+      interfaces: [],
       links: [],
       name: "Example",
       objects: [Example],
     }),
   ],
   name: "Example",
-  root: Root,
 })
 
 describe("model policy", () => {
@@ -55,7 +40,6 @@ describe("model policy", () => {
       collection: "searchables",
       name: "Searchable",
       pluralName: "Searchables",
-      parent: Root,
       display: { title: "name" as const },
       properties: {
         name: schema.string(),

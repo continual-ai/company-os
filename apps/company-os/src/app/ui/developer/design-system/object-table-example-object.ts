@@ -1,12 +1,9 @@
-import { defineObject, defineRoot, schema } from "#/runtime/model/index.ts"
-
-const Root = defineRoot({ id: "root", name: "Root" })
+import { defineObject, schema } from "#/runtime/model/index.ts"
 
 export const ObjectTableExampleCompany = defineObject({
   id: "objectTableExampleCompany",
   collection: "objectTableExampleCompanies",
   name: "Company",
-  parent: Root,
   pluralName: "Companies",
   properties: {
     logo: schema.image({ label: "Logo", aspectRatio: 1, nullable: true }),

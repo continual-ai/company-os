@@ -1,7 +1,6 @@
 import { NoteSubject } from "#/modules/notes/model/index.ts"
 import { Company } from "#/modules/sales/model/company.ts"
 import { Contact } from "#/modules/sales/model/contact.ts"
-import { Root } from "#/runtime/access/model/index.ts"
 import {
   defineEvent,
   defineObject,
@@ -16,7 +15,6 @@ export const Lead = defineObject({
   id: "lead",
   collection: "leads",
   name: "Lead",
-  parent: Root,
   pluralName: "Leads",
   description: "A potential customer to qualify and follow up with.",
   implements: [{ interface: NoteSubject }],

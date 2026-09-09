@@ -1,7 +1,6 @@
 import { Campaign } from "#/modules/marketing/model/campaign.ts"
 import { NoteSubject } from "#/modules/notes/model/index.ts"
 import { Contact } from "#/modules/sales/model/index.ts"
-import { Root } from "#/runtime/access/model/index.ts"
 import { defineObject, schema } from "#/runtime/model/index.ts"
 
 export const Enrollment = defineObject({
@@ -10,7 +9,6 @@ export const Enrollment = defineObject({
   name: "Enrollment",
   pluralName: "Enrollments",
   description: "Track a contact's progress and next follow-up in a campaign.",
-  parent: Root,
   implements: [{ interface: NoteSubject }],
   properties: {
     name: schema.string({ label: "Name", maxLength: 300, minLength: 1 }),

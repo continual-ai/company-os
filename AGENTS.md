@@ -225,7 +225,8 @@ routing, bundling, or application dependencies.
 
 Keep installed module lists explicit in `app.model.ts`, server contributions in `app.server.ts`,
 and presentation in `app.ui.ts`. The default is the minimal Access and Assets foundation; no business
-module is required. Add business modules in source rather than with environment profiles. Declare
-required module IDs with `requires`. Put fixture code/assets in the owning module; only small
-cross-module scenarios and test compositions belong in `src/examples`. A changed model needs an
-explicit migration or a fresh disposable baseline; never implicitly drop another deployment's tables.
+module is required. Add business modules in source rather than with environment profiles. Module
+dependencies are derived from the types and links a module references, never declared. Put fixture
+code/assets in the owning module; only small cross-module scenarios and test compositions belong in
+`src/examples`. A changed model needs an explicit migration or a fresh disposable baseline; never
+implicitly drop another deployment's tables.

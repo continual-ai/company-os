@@ -26,7 +26,9 @@ describe("module enablement", () => {
   it("names the missing dependency when a list is not closed", () => {
     expect(() =>
       enableModules(Model, ["access", "assets", "notes", "support"])
-    ).toThrow(/requires module 'sales'/)
+    ).toThrow(
+      /Module 'support' depends on module 'sales' \(object 'ticket' references 'company'\), which is not enabled\./
+    )
   })
 
   it("rejects ids that are not composed", () => {

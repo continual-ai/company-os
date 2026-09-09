@@ -1,6 +1,5 @@
 import { Repository } from "#/modules/engineering/model/repository.ts"
 import { NoteSubject } from "#/modules/notes/model/index.ts"
-import { Root } from "#/runtime/access/model/index.ts"
 import { defineObject, schema } from "#/runtime/model/index.ts"
 
 export const PullRequest = defineObject({
@@ -10,7 +9,6 @@ export const PullRequest = defineObject({
   pluralName: "Pull requests",
   description:
     "Track a code change, its reviews, and checks. Merge it in your code hosting service.",
-  parent: Root,
   implements: [{ interface: NoteSubject }],
   properties: {
     title: schema.string({ label: "Title", maxLength: 300, minLength: 1 }),

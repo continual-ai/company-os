@@ -1,7 +1,6 @@
 import { Issue } from "#/modules/engineering/model/index.ts"
 import { TicketIssues } from "#/modules/support-engineering/model/ticket-issues.ts"
 import { Ticket } from "#/modules/support/model/index.ts"
-import { Root } from "#/runtime/access/model/index.ts"
 import {
   defineEvent,
   defineModule,
@@ -15,7 +14,6 @@ export const Escalation = defineObject({
   collection: "escalations",
   name: "Engineering escalation",
   pluralName: "Engineering escalations",
-  parent: Root,
   description:
     "A support request handed to engineering, with a durable receipt for retries.",
   properties: {
@@ -64,8 +62,6 @@ export const TicketEscalated = defineEvent({
 export const SupportEngineeringModule = defineModule({
   id: "supportEngineering",
   name: "Support engineering",
-  requires: ["support", "engineering"],
-  interfaces: [],
   links: [TicketIssues],
   objects: [Escalation],
   events: [TicketEscalated],

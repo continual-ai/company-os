@@ -12,7 +12,6 @@ import { defineModule } from "#/runtime/model/index.ts"
 
 export const SalesModule = defineModule({
   id: "sales",
-  requires: ["access", "notes"],
   name: "Sales",
   interfaces: [Party],
   events: [LeadConverted],

@@ -8,12 +8,10 @@ import {
 import { Effect } from "effect"
 import { describe, expect, it } from "vitest"
 
-import { defineInterface } from "#/runtime/model/definition/interface.ts"
 import { defineModel } from "#/runtime/model/definition/model.ts"
 import { defineModule } from "#/runtime/model/definition/module.ts"
 import { defineObject } from "#/runtime/model/definition/object.ts"
 import { PageToken } from "#/runtime/model/definition/request.ts"
-import { defineRoot } from "#/runtime/model/definition/root.ts"
 import { schema } from "#/runtime/model/definition/schema.ts"
 import { NotFoundError } from "#/runtime/model/definition/standard-error.ts"
 import { CurrentInvocation } from "#/runtime/server/invocation.ts"
@@ -24,21 +22,10 @@ import {
 } from "#/runtime/server/mcp.ts"
 import { type ModelServiceMap } from "#/runtime/server/model-implementation.ts"
 
-const Actor = defineInterface({
-  id: "actor",
-  name: "Actor",
-  pluralName: "Actors",
-})
-const Root = defineRoot({
-  id: "root",
-  implements: [{ interface: Actor }],
-  name: "Root",
-})
 const Contact = defineObject({
   id: "contact",
   collection: "contacts",
   name: "Contact",
-  parent: Root,
   pluralName: "Contacts",
   properties: { name: schema.string() },
   display: { title: "name" },
@@ -53,18 +40,16 @@ const Contact = defineObject({
   },
 })
 const TestModel = defineModel({
-  actor: Actor,
   modules: [
     defineModule({
       id: "contacts",
-      interfaces: [Actor],
+      interfaces: [],
       links: [],
       name: "Contacts",
       objects: [Contact],
     }),
   ],
   name: "Test",
-  root: Root,
 })
 
 function services(): ModelServiceMap<typeof TestModel> {

@@ -6,10 +6,7 @@ import { defineModule } from "#/runtime/model/index.ts"
 
 export const MarketingModule = defineModule({
   id: "marketing",
-  requires: ["sales", "notes"],
   name: "Marketing",
-  interfaces: [],
-  links: [],
   objects: [Campaign, Content, Enrollment, Outreach],
 })
 

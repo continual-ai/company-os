@@ -2,14 +2,12 @@ import { expect, it } from "vitest"
 
 import { EngineeringModule } from "#/modules/engineering/model/index.ts"
 import { NotesModule } from "#/modules/notes/model/index.ts"
-import { Actor, AccessModule, Root } from "#/runtime/access/model/index.ts"
+import { AccessModule } from "#/runtime/access/model/index.ts"
 import { defineModel, describeModel } from "#/runtime/model/index.ts"
 
 it("composes Notes with Engineering without installing Sales", () => {
   const model = defineModel({
     name: "Engineering",
-    root: Root,
-    actor: Actor,
     modules: [AccessModule, NotesModule, EngineeringModule],
   })
   const description = describeModel(model)

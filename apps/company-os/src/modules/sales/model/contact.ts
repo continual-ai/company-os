@@ -1,13 +1,11 @@
 import { NoteSubject } from "#/modules/notes/model/index.ts"
 import { Party } from "#/modules/sales/model/interfaces/party.ts"
-import { Root } from "#/runtime/access/model/index.ts"
 import { defineObject, schema } from "#/runtime/model/index.ts"
 
 export const Contact = defineObject({
   id: "contact",
   collection: "contacts",
   name: "Contact",
-  parent: Root,
   pluralName: "Contacts",
   description: "A customer, prospect, or partner you work with.",
   implements: [

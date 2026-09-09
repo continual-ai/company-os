@@ -1,6 +1,5 @@
 import { NoteSubject } from "#/modules/notes/model/index.ts"
 import { Ticket } from "#/modules/support/model/ticket.ts"
-import { Root } from "#/runtime/access/model/index.ts"
 import { defineObject, schema } from "#/runtime/model/index.ts"
 
 export const Reply = defineObject({
@@ -9,7 +8,6 @@ export const Reply = defineObject({
   name: "Reply",
   pluralName: "Replies",
   description: "A message about a support ticket. Saving does not send it.",
-  parent: Root,
   implements: [{ interface: NoteSubject }],
   properties: {
     subject: schema.string({ label: "Subject", maxLength: 300, minLength: 1 }),
