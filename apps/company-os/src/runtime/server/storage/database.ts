@@ -28,8 +28,10 @@ export interface PostgresDatabase {
   readonly sql: PgClient.PgClient
   /**
    * Runs `body` in one PostgreSQL transaction. A call made while a transaction
-   * is already active joins it: no savepoint is opened, its events stage into
-   * the same buffer, and its failure fails the enclosing transaction. Options
+   * is already active joins it: no savepoint is opened and its events stage into
+   * the same buffer. An uncaught failure fails the enclosing transaction; a
+   * caller that catches an inner failure keeps the writes made before it, so
+   * "try, recover, continue" flows need an explicit rollback strategy. Options
    * apply only to the call that opens the transaction.
    */
   readonly transaction: <A, E, R>(

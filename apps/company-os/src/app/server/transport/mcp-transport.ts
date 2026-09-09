@@ -1,5 +1,6 @@
 import { Context, Data, Effect, Layer, Option, Schema } from "effect"
 
+import { EnabledModel } from "#/app.model.ts"
 import { appMetadata } from "#/app/app-metadata.ts"
 import { appUrl } from "#/app/client-environment.ts"
 import { RecordId } from "#/runtime/model/index.ts"
@@ -57,6 +58,7 @@ const make = Effect.gen(function* () {
           throw new Error("MCP invocation context is missing.")
         }
         return {
+          exposed: EnabledModel,
           implementation,
           name: appMetadata.name,
           version: appMetadata.version,

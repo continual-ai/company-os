@@ -8,6 +8,7 @@ import {
 } from "effect/unstable/http"
 import { HttpApiBuilder } from "effect/unstable/httpapi"
 
+import { EnabledModel } from "#/app.model.ts"
 import { createApplicationHttpApi } from "#/app/http-api.ts"
 import { createCapabilities } from "#/runtime/client/capabilities.ts"
 import { InvalidEventCursor } from "#/runtime/client/events.ts"
@@ -45,10 +46,10 @@ function requestHeaders(request: ModelHttpRequest): Headers {
 
 const make = Effect.gen(function* () {
   const modelContext = yield* ModelContext
-  const { model: Model } = modelContext
-  const searchRecords = createRecordSearch(Model)
-  const { capabilityPermission } = createCapabilities(Model)
-  const { api: applicationHttpApi } = createApplicationHttpApi(Model)
+  // Transports expose EnabledModel; services behind them run on the complete model.
+  const searchRecords = createRecordSearch(EnabledModel)
+  const { capabilityPermission } = createCapabilities(EnabledModel)
+  const { api: applicationHttpApi } = createApplicationHttpApi(EnabledModel)
   const operations = yield* Operations
   const database = yield* Database
   const authentication = yield* Authentication
@@ -96,7 +97,8 @@ const make = Effect.gen(function* () {
   const objectGroupsLayer = createModelHttpHandlers(
     applicationHttpApi,
     implementation,
-    invoke
+    invoke,
+    EnabledModel
   )
   const capabilityGroupLayer = HttpApiBuilder.group(
     applicationHttpApi,

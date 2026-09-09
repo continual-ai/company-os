@@ -10,7 +10,9 @@ integrations, and agents. No broker or separate worker is involved.
    stage `created`, `updated`, and `deleted` facts; link writers stage actual `linked` and
    `unlinked` changes, including primary replacement and deletion cascades.
 2. `Database.transaction` opens one PostgreSQL transaction with one event buffer. A nested call
-   joins it, so its events stage into the same buffer and its failure fails the whole write.
+   joins it: no savepoint, one buffer. An uncaught inner failure fails the whole write; catching an
+   inner failure keeps the writes made before it, so recover-and-continue flows must roll back
+   explicitly.
 3. Immediately before commit, the transaction updates the [search index](search.md) for staged
    subjects, allocates journal positions under a single locked counter row, inserts the events, and
    calls `pg_notify`. PostgreSQL delivers the wakeup after commit; the payload carries no records.

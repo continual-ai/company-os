@@ -120,7 +120,8 @@ function standardHandlers(
 export function createModelHttpHandlers(
   api: unknown,
   implementation: ExecutableModelImplementation,
-  invoke: ModelHttpInvoke
+  invoke: ModelHttpInvoke,
+  exposed: ModelCatalog = implementation.model
 ) {
   // SAFETY: callers provide an Effect HttpApi containing groups generated from
   // implementation.model; the dynamic compiler validates those same keys.
@@ -128,7 +129,7 @@ export function createModelHttpHandlers(
   const dynamicApi = api as DynamicHttpApi
   const ServerApi = customMethodServerApi(dynamicApi)
 
-  const groupLayers = modelObjects(implementation.model).map((object) =>
+  const groupLayers = modelObjects(exposed).map((object) =>
     HttpApiBuilder.group(ServerApi, object.id, (initialHandlers) => {
       // SAFETY: Effect decoded these handlers from the model-derived group.
       let handlers = standardHandlers(
@@ -149,11 +150,7 @@ export function createModelHttpHandlers(
           (request) =>
             invoke(
               request,
-              executableModelOperation(
-                implementation.model,
-                object.id,
-                action.id
-              ),
+              executableModelOperation(exposed, object.id, action.id),
               modelOperation(
                 implementation,
                 object.id,
@@ -166,13 +163,10 @@ export function createModelHttpHandlers(
         )
       }
 
-      for (const traversal of modelObjectLinkTraversals(
-        implementation.model,
-        object
-      )) {
+      for (const traversal of modelObjectLinkTraversals(exposed, object)) {
         const register = (operation: "link" | "list" | "unlink") => {
           const descriptor = linkDescriptor(
-            implementation.model,
+            exposed,
             object,
             traversal,
             operation

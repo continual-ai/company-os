@@ -49,6 +49,8 @@ type ModelMcpResult =
   | { readonly error: ApiError; readonly success: false }
 
 export interface ModelMcpBinding {
+  /** Model whose operations become tools; defaults to the implementation's complete model. */
+  readonly exposed?: ModelCatalog
   readonly implementation: {
     readonly links: Pick<typeof Links.Service, "link" | "list" | "unlink">
     readonly model: ModelCatalog
@@ -154,6 +156,7 @@ function mcpSchema(schema: Schema.Codec<unknown, unknown>) {
 /** Projects every query and action in a model implementation as an MCP tool. */
 export function createModelMcpServer({
   implementation,
+  exposed = implementation.model,
   name,
   run,
   version,
@@ -163,14 +166,14 @@ export function createModelMcpServer({
     version,
   })
 
-  for (const descriptor of executableModelOperations(implementation.model)) {
+  for (const descriptor of executableModelOperations(exposed)) {
     const { definition, object } = descriptor
     if (descriptor.linkTraversal !== undefined) {
       const traversal = descriptor.linkTraversal
       const input = Schema.Struct({
         id: toEffectRecordIdentifierSchema(object.id),
         ...(definition.id === "list"
-          ? (linkListInputSchema(implementation.model, traversal)?.fields ?? {
+          ? (linkListInputSchema(exposed, traversal)?.fields ?? {
               pageSize: Schema.optionalKey(pageSizeSchema),
               pageToken: Schema.optionalKey(Schema.String),
             })
@@ -182,7 +185,7 @@ export function createModelMcpServer({
       })
       const output =
         definition.id === "list"
-          ? linkPageOutputSchema(implementation.model, traversal)
+          ? linkPageOutputSchema(exposed, traversal)
           : Schema.Struct({})
       server.registerTool(
         descriptor.key,

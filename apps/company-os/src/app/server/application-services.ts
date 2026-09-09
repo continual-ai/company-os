@@ -1,6 +1,6 @@
 import { Effect, Layer } from "effect"
 
-import { EnabledModel } from "#/app.model.ts"
+import { Model } from "#/app.model.ts"
 import { serverModules } from "#/app.server.ts"
 import type { CurrentInvocation } from "#/runtime/server/invocation.ts"
 import { modelImplementation } from "#/runtime/server/model/implementation.ts"
@@ -16,12 +16,16 @@ import { Database } from "#/runtime/server/storage/database.ts"
 
 export type ApplicationServicesInfrastructure = ServicesInfrastructure
 
-export const ModelImplementation = modelImplementation(EnabledModel)
+/**
+ * Services, storage, cascades, and the event journal always see the complete
+ * model. Exposure through HTTP, MCP, and the UI is decided by EnabledModel.
+ */
+export const ModelImplementation = modelImplementation(Model)
 
 export function makeApplicationServicesLayer(
   infrastructure: ApplicationServicesInfrastructure
 ) {
-  return makeServicesLayer(EnabledModel, serverModules, infrastructure)
+  return makeServicesLayer(Model, serverModules, infrastructure)
 }
 
 type ApplicationEnvironment = Layer.Success<

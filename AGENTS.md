@@ -40,11 +40,12 @@ tools/            create-app, the oxlint plugin
 A package is a deploy unit. `apps/*` and `templates/*` are workspace packages; the kernel and the
 modules are directories. Do not add packages for code that ships inside the app.
 
-Every module is composed in `app.model.ts` and its tables always migrate. `app.config.ts` lists the
-modules that are enabled; `enableModules` derives the exposed model, and every consumer (HTTP API,
-MCP, OpenAPI, UI composition, navigation, routing, search) receives that one derived model. No
-component or route asks whether a module is enabled. Disabling a module hides its operations and
-leaves its data. Access and Assets are kernel modules and are always enabled. Never let an
+Every module is composed in `app.model.ts` and its tables always migrate. Persistence, cascades,
+integrity, and the event journal always run on that complete model. `app.config.ts` lists the
+modules that are enabled; `enableModules` derives `EnabledModel`, and every exposure boundary (HTTP
+API, MCP tools, OpenAPI, UI composition, navigation, routing, search) receives that one derived
+model. No component or route asks whether a module is enabled. Disabling a module hides its
+operations and leaves its data and relationships intact. Access and Assets are kernel modules and are always enabled. Never let an
 environment variable choose the module set; two deployments with different modules are two commits.
 
 ## Customization ladder

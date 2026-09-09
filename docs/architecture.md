@@ -34,10 +34,13 @@ an ordinary Git merge.
 - `app.server.ts` lists the custom operation contributions bound with `defineModuleServer`.
 - `app.ui.ts` composes presentation contributions with `composeModelUi(EnabledModel, ...)`.
 
-Every consumer receives `EnabledModel`: the HTTP API and OpenAPI document, MCP tools, the semantic
-client, navigation, the generic routes, record search, and capability checks. No component or route
-asks whether a module is enabled. Disabling a module makes its operations not found and leaves its
-tables and data in place. Access and Assets are kernel modules and are always enabled. The list is
+Persistence never sees the enabled list: services, storage, cascades, integrity checks, and the
+event journal run on the complete `Model`, so a relationship into a disabled module still cascades
+and journals when its visible side changes. Every exposure boundary receives `EnabledModel`: the
+HTTP API and OpenAPI document, MCP tools, the semantic client, navigation, the generic routes,
+record search, and capability checks. No component or route asks whether a module is enabled.
+Disabling a module makes its operations not found and leaves its tables, data, and relationships in
+place. Access and Assets are kernel modules and are always enabled. The list is
 code; an environment variable never chooses the module set.
 
 ## Operations

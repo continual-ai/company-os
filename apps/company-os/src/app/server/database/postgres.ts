@@ -1,7 +1,7 @@
 import { PgClient } from "@effect/sql-pg"
 import { Config, Layer, Redacted } from "effect"
 
-import { EnabledModel } from "#/app.model.ts"
+import { Model } from "#/app.model.ts"
 import { EventNotifications } from "#/runtime/server/events/event-notifications.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
 import { Database } from "#/runtime/server/storage/database.ts"
@@ -70,7 +70,7 @@ const clientLayer = PgClient.layerConfig({
 
 /** The application-typed Effect SQL database backed by the configured PostgreSQL client. */
 export const databaseLayer = Database.layer.pipe(
-  Layer.provideMerge(ModelContext.layer(EnabledModel)),
+  Layer.provideMerge(ModelContext.layer(Model)),
   Layer.provide(clientLayer)
 )
 
