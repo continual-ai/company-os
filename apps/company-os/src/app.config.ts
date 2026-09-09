@@ -24,6 +24,7 @@ export const enabledModules = [
   "sales",
   "marketing",
   "engineering",
+  "hiring",
   "support",
   "supportEngineering",
 ] as const satisfies ReadonlyArray<keyof (typeof Model)["modules"]>

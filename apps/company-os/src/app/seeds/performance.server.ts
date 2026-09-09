@@ -4,6 +4,7 @@ import { Model } from "#/app.model.ts"
 import { seedDevelopmentTeam } from "#/app/seeds/team.server.ts"
 import { ModelImplementation } from "#/app/server/application-services.ts"
 import { seedEngineeringPerformance } from "#/modules/engineering/seeds/index.ts"
+import { seedHiringPerformance } from "#/modules/hiring/seeds/index.ts"
 import { seedMarketingPerformance } from "#/modules/marketing/seeds/index.ts"
 import { seedSalesPerformance } from "#/modules/sales/seeds/index.ts"
 import { seedSupportPerformance } from "#/modules/support/seeds/index.ts"
@@ -21,6 +22,7 @@ export function performanceScenario(size: number) {
     run: Effect.gen(function* () {
       const owners = yield* seedDevelopmentTeam()
       const sales = yield* seedSalesPerformance(size, owners)
+      yield* seedHiringPerformance(size, owners)
       yield* seedEngineeringPerformance(sales)
       yield* seedMarketingPerformance(sales)
       const tickets = yield* seedSupportPerformance(sales)

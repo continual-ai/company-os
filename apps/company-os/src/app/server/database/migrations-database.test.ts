@@ -8,6 +8,7 @@ import {
   applyMigrations,
   verifyDatabaseModel,
 } from "#/app/server/database/migrations.ts"
+import { migrations } from "#/app/server/database/migrations/index.ts"
 import { schemaSql } from "#/app/server/database/schema.ts"
 import { testApplication } from "#/app/server/test-application.ts"
 import { Database } from "#/runtime/server/storage/database.ts"
@@ -40,7 +41,7 @@ application.test("does not reapply completed migrations", () =>
     const { sql } = yield* Database
     expect(
       yield* sql`select migration_id as id from company_os_migrations`
-    ).toEqual([{ id: 1 }])
+    ).toEqual(migrations.map(({ id }) => ({ id })))
     expect(yield* sql`select id from event_journal_state`).toEqual([{ id: 1 }])
   })
 )

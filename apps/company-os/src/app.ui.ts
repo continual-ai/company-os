@@ -1,5 +1,6 @@
 import { EnabledModel } from "#/app.model.ts"
 import { EngineeringUi } from "#/modules/engineering/ui/index.ts"
+import { HiringUi } from "#/modules/hiring/ui/index.ts"
 import { MarketingUi } from "#/modules/marketing/ui/index.ts"
 import { NotesUi } from "#/modules/notes/ui/index.ts"
 import { SalesUi } from "#/modules/sales/ui/index.ts"
@@ -17,5 +18,6 @@ export const modelUi = composeModelUi(
   SalesUi,
   MarketingUi,
   EngineeringUi,
+  HiringUi,
   SupportUi
 )
