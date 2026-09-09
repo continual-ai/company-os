@@ -18,6 +18,8 @@
     "prepare": "effect-tsgo patch --no-typescript --oxlint",
     "reset": "turbo run reset --filter=\"./apps/*\"",
     "test": "turbo run test",
+    "ui:add": "pnpm --filter company-os ui:add --",
+    "ui:remove": "pnpm --filter company-os ui:remove --",
     "upstream:merge": "git fetch upstream && git merge upstream/main"
   },
   "devDependencies": {

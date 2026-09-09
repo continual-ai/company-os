@@ -20,6 +20,8 @@ interface SourceRole {
   readonly model: boolean
   /** Portable kernel layers that build Effect schemas and may import `effect` and `typeid-js`. */
   readonly modelWithEffect: boolean
+  /** shadcn primitives under `runtime/ui/components`, which depend only on other primitives, `ui/lib`, and `ui/hooks`. */
+  readonly primitive: boolean
   readonly module: { readonly name: string; readonly surface: string } | null
   readonly runtime: boolean
   readonly runtimeServer: boolean
@@ -49,6 +51,7 @@ function sourceRole(sourcePath: string): SourceRole {
     module?.surface === "model" ||
     sourcePath === "app.model.ts"
   const runtime = sourcePath.startsWith("runtime/")
+  const primitive = sourcePath.startsWith("runtime/ui/components/")
   const runtimeServer =
     sourcePath.startsWith("runtime/server/") ||
     /^runtime\/[^/]+\/server\//.test(sourcePath)
@@ -67,6 +70,7 @@ function sourceRole(sourcePath: string): SourceRole {
     model,
     modelWithEffect,
     module,
+    primitive,
     runtime,
     runtimeServer,
     test: TEST_FILE.test(sourcePath),
@@ -185,6 +189,22 @@ function moduleReason(
   return null
 }
 
+const PRIMITIVE_TARGETS = [
+  "/runtime/ui/components/",
+  "/runtime/ui/lib/",
+  "/runtime/ui/hooks/",
+]
+
+function primitiveReason(specifier: string): string | null {
+  const target = privateTarget(specifier)
+  if (
+    target !== null &&
+    !PRIMITIVE_TARGETS.some((prefix) => target.startsWith(prefix))
+  )
+    return "UI primitives depend only on other primitives, ui/lib, and ui/hooks; model presentation composes them, never the reverse."
+  return null
+}
+
 function browserReason(specifier: string): string | null {
   const target = privateTarget(specifier)
   if (
@@ -203,6 +223,7 @@ function centralAppReason(role: SourceRole, specifier: string): string | null {
   return (
     (role.model ? modelReason(role, specifier) : null) ??
     (role.runtime ? runtimeReason(role, specifier) : null) ??
+    (role.primitive && !role.test ? primitiveReason(specifier) : null) ??
     (role.module && !role.test ? moduleReason(role.module, specifier) : null) ??
     (role.browser && !role.test ? browserReason(specifier) : null)
   )

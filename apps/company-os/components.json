@@ -14,7 +14,7 @@
     "components": "#/runtime/ui/components",
     "hooks": "#/runtime/ui/hooks",
     "lib": "#/runtime/ui/lib",
-    "utils": "#/runtime/ui/lib/utils",
+    "utils": "#/runtime/ui/lib/utils.ts",
     "ui": "#/runtime/ui/components"
   },
   "rtl": false,

@@ -120,8 +120,12 @@ Feature code uses the semantic client from `app/app-client.ts`: `useQuery(data.o
 and `useMutation(data.object.update())` on one application cache. Router loaders preload the same
 requests. Actual server writes drive invalidation. Forms own drafts in TanStack Form through
 `useAppForm`, decode with Effect Schema, and render server violations through the standard paths.
-Use the source-owned shadcn components and Tailwind tokens under `runtime/ui`. Do not add another
-framework or component library. Generic routes under `routes/_app/objects` and
+Use the source-owned shadcn components and Tailwind tokens under `runtime/ui`. Add and remove
+primitives with `pnpm ui:add <component>` and `pnpm ui:remove <component>`, which run the shadcn CLI
+against `apps/company-os/components.json` and normalize its output to this repository's imports.
+Primitives under `runtime/ui/components` depend only on other primitives, `ui/lib`, and `ui/hooks`;
+model presentation composes them, never the reverse. Do not add another framework or component
+library. Generic routes under `routes/_app/objects` and
 `routes/_app/settings` serve every object through `navigation.path`; never add object-specific
 branches to shared routes or renderers. Use named UI additions and replacements for light
 customization and ordinary module-owned pages for distinct workflows.

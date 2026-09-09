@@ -141,6 +141,8 @@ See [deployment](docs/runbooks/deployment.md) for production builds and identity
 | `pnpm build`                           | Build the app and the starter                                |
 | `pnpm format`                          | Format source and documentation                              |
 | `pnpm --filter company-os db:generate` | Regenerate `schema.sql` from the composed model              |
+| `pnpm ui:add <component>`              | Add a shadcn primitive to `src/runtime/ui/components`        |
+| `pnpm ui:remove <component>`           | Remove a primitive after proving nothing imports it          |
 
 Tests need a PostgreSQL role with `CREATEDB`; they create and remove isolated databases. [AGENTS.md](AGENTS.md)
 holds the repository-wide constraints that contributors and agents follow.

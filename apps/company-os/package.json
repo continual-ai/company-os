@@ -29,7 +29,9 @@
     "preview": "pnpm build && vite preview --port 3102 --host 0.0.0.0",
     "reset": "pnpm run db:reset",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "ui:add": "tsx tools/ui-add.ts",
+    "ui:remove": "tsx tools/ui-remove.ts"
   },
   "dependencies": {
     "@base-ui/react": "catalog:",

@@ -77,3 +77,12 @@ validates mappings; `object-record-page.tsx` assembles details, overview, relati
 tabs; `record-relationships.ts` binds the relationship catalog to one record's queries and supported
 writes; `object-record-dialog.tsx` and `object-form.ts` own draft lifetime and submission decoding.
 Rendering Markdown never executes user-supplied markup.
+
+## Primitives
+
+The shadcn primitives live in `apps/company-os/src/runtime/ui/components` and are owned source.
+`pnpm ui:add <component>` runs the shadcn CLI with `apps/company-os/components.json`, gives the
+generated `#/` imports explicit extensions, and sources `cn` from `runtime/ui/lib/utils.ts` instead
+of the registry's `cn` package. `pnpm ui:remove <component>` deletes a primitive only when nothing
+imports it. Primitives depend on other primitives, `ui/lib`, and `ui/hooks` only; the import rules
+reject a primitive that reaches into model presentation, forms, or the client.
