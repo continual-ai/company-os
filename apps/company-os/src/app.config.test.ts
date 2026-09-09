@@ -1,16 +1,9 @@
 import { describe, expect, it } from "vitest"
 
-import { enabledModules } from "#/app.config.ts"
-import { EnabledModel, Model } from "#/app.model.ts"
+import { Model } from "#/app.model.ts"
 import { enableModules } from "#/runtime/model/index.ts"
 
 describe("module enablement", () => {
-  it("exposes exactly the enabled modules", () => {
-    expect(Object.keys(EnabledModel.modules)).toEqual([...enabledModules])
-    if (enabledModules.length === Object.keys(Model.modules).length)
-      expect(EnabledModel).toBe(Model)
-  })
-
   it("hides disabled objects without changing storage", () => {
     const sales = enableModules(Model, ["access", "assets", "notes", "sales"])
     expect(Object.keys(sales.modules)).toEqual([

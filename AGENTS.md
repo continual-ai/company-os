@@ -9,9 +9,9 @@ reason to preserve a weak design. Prefer simple, idiomatic, editable source.
 - `apps/company-os/src/modules/<name>/{model,server,ui,seeds}` owns business capabilities; omit unused surfaces.
 - `src/runtime` owns the kernel; `src/app` owns the shell. Add a module, edit an existing module, then
   edit the kernel only when necessary. Explain departures from the first rung in the commit.
-- `app.model.ts` composes and migrates every module. `app.config.ts` selects enabled modules in code;
-  all exposure uses `EnabledModel`. Disabling hides operations without deleting data. Access and
-  Assets stay enabled. Enabled objects get internal pages and navigation automatically, subject to
+- `app.model.ts` composes and migrates every module. Settings > Platform > Modules stores activation in the database;
+  UI, HTTP, and MCP expose the active model. Disabling hides operations without deleting data. Access,
+  Assets, and Platform stay enabled. Enabled objects get internal pages and navigation automatically, subject to
   permissions. Register only custom server/UI contributions in `app.server.ts` and `app.ui.ts`.
 - Apps are deployable packages. `packages/ui` is the sole shared library. Do not create packages for
   app-internal code or replace the checked-in stack. Ship modules for real production use.

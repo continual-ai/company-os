@@ -18,7 +18,7 @@ export type ApplicationServicesInfrastructure = ServicesInfrastructure
 
 /**
  * Services, storage, cascades, and the event journal always see the complete
- * model. Exposure through HTTP, MCP, and the UI is decided by EnabledModel.
+ * model. Database activation controls exposure through HTTP, MCP, and the UI.
  */
 export const ModelImplementation = modelImplementation(Model)
 

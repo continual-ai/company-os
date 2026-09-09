@@ -1,7 +1,7 @@
 import { Effect, Layer } from "effect"
 import { expect } from "vitest"
 
-import { EnabledModel } from "#/app.model.ts"
+import { Model } from "#/app.model.ts"
 import { testApplication } from "#/app/server/test-application.ts"
 import { HttpTransport } from "#/app/server/transport/http-transport.ts"
 import { createEffectClient } from "#/runtime/client/create-client.ts"
@@ -34,12 +34,12 @@ application.test(
       const api = yield* HttpTransport
       const fetch: typeof globalThis.fetch = (input, init) =>
         Effect.runPromise(api.handle(new Request(input, init)))
-      const client = createEffectClient(EnabledModel, {
+      const client = createEffectClient(Model, {
         baseUrl: "http://company.test",
         fetch,
         headers: { "x-test-recruiter": "yes" },
       })
-      const anonymous = createEffectClient(EnabledModel, {
+      const anonymous = createEffectClient(Model, {
         baseUrl: "http://company.test",
         fetch,
       })

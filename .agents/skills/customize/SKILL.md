@@ -23,9 +23,9 @@ relevant row below; do not survey every definition or trace the runtime before s
 | --- | --- |
 | Add an object or field | The owning module's `model/`; `modules/support/model/ticket.ts` is a standard example. Register objects in `model/index.ts`. |
 | Add a Link | `modules/sales/model/links/contact-companies.ts`; use `contact-primary-company.ts` beside it for a subset selection. Register Links in the owning module’s `model/index.ts`. |
-| Add a module | Its `model/index.ts`, then `app.model.ts` and `app.config.ts`; add server/UI roots only for contributions that exist. |
+| Add a module | Its `model/index.ts`, then `app.model.ts`; add server/UI roots only for contributions that exist. |
 | Remove an object | Find its references, Links, operation contracts, UI contributions, seeds, and tests with `rg`. Remove those dependencies and the object from its module's `objects` list together; follow the data rules below. |
-| Hide a module | Remove its id from `app.config.ts`, accounting for dependent modules. Keep the complete storage model. |
+| Hide a module | Turn it off in Settings > Platform > Modules and confirm any dependent modules. Keep the complete storage model. |
 | Add a business Action | `modules/sales/model/lead.ts`, `modules/sales/server/convert-lead.ts`, and the adjacent `operations-database.test.ts`. |
 | Aggregate records | `modules/sales/server/pipeline-summary.ts` filters authorized rows before aggregation. |
 | Customize UI | `modules/support/ui/ticket/config.ts` for views; `modules/sales/ui/lead/config.ts` for record extensions. Identity and shell changes belong in `app/customization`. |

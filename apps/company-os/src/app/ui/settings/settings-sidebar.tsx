@@ -1,6 +1,7 @@
 import { Link, useLocation, useMatchRoute } from "@tanstack/react-router"
 import {
   BotIcon,
+  BlocksIcon,
   PaletteIcon,
   SettingsIcon,
   ShieldCheckIcon,
@@ -8,13 +9,14 @@ import {
   UserRoundIcon,
 } from "lucide-react"
 
-import { EnabledModel } from "#/app.model.ts"
+import { Model } from "#/app.model.ts"
 import { presentation } from "#/app/app-presentation.ts"
 import {
   SecondarySidebar,
   SecondarySidebarItem,
   SecondarySidebarSection,
 } from "#/app/ui/application/secondary-sidebar.tsx"
+import { settingsChecks } from "#/app/ui/settings/settings-capabilities.ts"
 import { objectHref } from "#/runtime/ui/model/object-routing.ts"
 import { useCapabilities } from "#/runtime/ui/model/use-capabilities.ts"
 
@@ -26,18 +28,18 @@ const personalItems = [
 
 /** Memberships and assignments are reached from the collection that owns them, so they keep it active. */
 const accessItems = [
-  { object: EnabledModel.objects.user, icon: UserRoundIcon, owns: [] },
+  { object: Model.objects.user, icon: UserRoundIcon, owns: [] },
   {
-    object: EnabledModel.objects.role,
+    object: Model.objects.role,
     icon: ShieldCheckIcon,
-    owns: [EnabledModel.objects.roleAssignment],
+    owns: [Model.objects.roleAssignment],
   },
   {
-    object: EnabledModel.objects.group,
+    object: Model.objects.group,
     icon: UsersRoundIcon,
-    owns: [EnabledModel.objects.groupMembership],
+    owns: [Model.objects.groupMembership],
   },
-  { object: EnabledModel.objects.serviceAccount, icon: BotIcon, owns: [] },
+  { object: Model.objects.serviceAccount, icon: BotIcon, owns: [] },
 ].map(({ object, icon, owns }) => ({
   label: object.pluralName,
   icon,
@@ -49,12 +51,12 @@ const accessItems = [
     ),
   },
 }))
-const accessChecks = accessItems.map(({ check }) => check)
+const moduleCheck = { permission: "moduleSetting.catalog" } as const
 
 export function SettingsSidebar() {
   const matchRoute = useMatchRoute()
   const pathname = useLocation({ select: (location) => location.pathname })
-  const capabilities = useCapabilities(accessChecks)
+  const capabilities = useCapabilities(settingsChecks)
   const access = accessItems.filter((item) => capabilities.can(item.check))
 
   return (
@@ -85,6 +87,16 @@ export function SettingsSidebar() {
           ))}
         </SecondarySidebarSection>
       )}
+      {capabilities.can(moduleCheck) ? (
+        <SecondarySidebarSection label="Platform">
+          <SecondarySidebarItem
+            icon={BlocksIcon}
+            isActive={pathname === "/settings/modules"}
+            label="Modules"
+            link={<Link to="/settings/modules" />}
+          />
+        </SecondarySidebarSection>
+      ) : null}
     </SecondarySidebar>
   )
 }

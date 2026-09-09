@@ -1,12 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router"
 
-import { EnabledModel } from "#/app.model.ts"
+import { applicationRuntime } from "#/app/server/application-runtime.ts"
 import { checkCapability } from "#/app/server/authorization/check-capability.ts"
+import { activeModuleModel } from "#/modules/platform/server/index.ts"
 import { applicationCapabilities } from "#/runtime/contract/capabilities.ts"
 import { describeModel } from "#/runtime/model/index.ts"
 
 /** Describes the exposed model, not every composed module. */
-const modelDescription = describeModel(EnabledModel)
 
 export const Route = createFileRoute("/api/description")({
   server: {
@@ -20,7 +20,12 @@ export const Route = createFileRoute("/api/description")({
         ) {
           return new Response(null, { status: 403 })
         }
-        return Response.json(modelDescription)
+        return Response.json(
+          describeModel(
+            (await applicationRuntime.runPromise(activeModuleModel())).model
+          ),
+          { headers: { "cache-control": "no-store" } }
+        )
       },
     },
   },

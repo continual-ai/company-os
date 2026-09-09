@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { Schema } from "effect"
 
-import { EnabledModel } from "#/app.model.ts"
 import { ModelExplorer } from "#/app/ui/developer/model-explorer.tsx"
 import { pageOptions } from "#/app/ui/route-metadata.ts"
+import { useModelRuntime } from "#/runtime/ui/model/runtime-context.tsx"
 
 const page = {
   breadcrumb: "Domain model",
@@ -22,12 +22,13 @@ export const Route = createFileRoute("/_app/developer/model")({
 })
 
 function ModelOverview() {
+  const { model } = useModelRuntime()
   const { item } = Route.useSearch()
   const navigate = Route.useNavigate()
 
   return (
     <ModelExplorer
-      model={EnabledModel}
+      model={model}
       {...(item === undefined ? {} : { selectedItem: item })}
       onSelectedItemChange={(nextItem) => {
         void navigate({ replace: true, search: { item: nextItem } })

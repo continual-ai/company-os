@@ -1,11 +1,15 @@
 import { Context, Data, Effect, Layer, Option, Schema } from "effect"
 
 import { appMetadata } from "#/app.config.ts"
-import { EnabledModel } from "#/app.model.ts"
 import { appUrl } from "#/app/client/environment.ts"
+import {
+  activeModuleModel,
+  requireModuleOperation,
+} from "#/modules/platform/server/index.ts"
 import { RecordId } from "#/runtime/model/index.ts"
 import {
   internalApiError,
+  withApiErrors,
   unauthenticatedApiError,
 } from "#/runtime/server/api-error.ts"
 import { Authentication } from "#/runtime/server/auth/authentication.ts"
@@ -14,7 +18,9 @@ import {
   createModelMcpHandler,
   validateModelMcpRequest,
 } from "#/runtime/server/mcp.ts"
+import type { ModelContext } from "#/runtime/server/model-context.ts"
 import { ModelImplementation } from "#/runtime/server/model/implementation.ts"
+import type { Database } from "#/runtime/server/storage/database.ts"
 
 class McpTransportFailure extends Data.TaggedError("McpTransportFailure")<{
   readonly cause: unknown
@@ -40,13 +46,15 @@ const invocationContextSchema = Schema.Struct({
 
 const make = Effect.gen(function* () {
   const operations = yield* Operations
-  const runPromise = Effect.runPromiseWith(yield* Effect.context())
+  const runPromise = Effect.runPromiseWith(
+    yield* Effect.context<Database | ModelContext>()
+  )
   const authentication = yield* Authentication
   const implementation = yield* ModelImplementation
   const requestPolicy = { allowedHostnames: allowedMcpHostnames() }
   const handler = yield* Effect.acquireRelease(
     Effect.sync(() =>
-      createModelMcpHandler((context) => {
+      createModelMcpHandler(async (context) => {
         // SAFETY: authInfo is constructed below after application authentication;
         // the HTTP client cannot inject this handler-only value.
         const invocation = Option.getOrUndefined(
@@ -58,13 +66,17 @@ const make = Effect.gen(function* () {
           throw new Error("MCP invocation context is missing.")
         }
         return {
-          exposed: EnabledModel,
+          exposed: (await runPromise(activeModuleModel())).model,
           implementation,
           name: appMetadata.name,
           version: appMetadata.version,
           run: (descriptor, operation) =>
             runPromise(
-              operations.run(invocation, descriptor, operation).pipe(
+              requireModuleOperation(descriptor).pipe(
+                Effect.andThen(
+                  operations.run(invocation, descriptor, operation)
+                ),
+                (effect) => withApiErrors(effect, descriptor),
                 Effect.match({
                   onFailure: (error) => ({ error, success: false as const }),
                   onSuccess: ({ value }) => ({ success: true as const, value }),

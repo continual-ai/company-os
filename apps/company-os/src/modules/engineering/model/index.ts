@@ -5,6 +5,7 @@ import { PullRequest } from "#/modules/engineering/model/pull-request.ts"
 import { Repository } from "#/modules/engineering/model/repository.ts"
 import { defineModule } from "#/runtime/model/index.ts"
 export const EngineeringModule = defineModule({
+  description: "Organize projects, issues, repositories, and pull requests.",
   id: "engineering",
   name: "Engineering",
   links: [IssuePullRequests],

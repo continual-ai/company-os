@@ -12,6 +12,7 @@ import { defineModule } from "#/runtime/model/index.ts"
 
 /** Kernel module that implements the model's Actor, Identity, and Principal roles. */
 export const AccessModule = defineModule({
+  description: "Manage identities, groups, roles, and permissions.",
   id: "access",
   name: "Access",
   interfaces: [Identity, Principal],

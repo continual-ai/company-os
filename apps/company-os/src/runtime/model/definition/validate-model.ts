@@ -367,7 +367,7 @@ interface ModuleDependency {
  * Modules another module depends on, derived from every type and link its
  * definitions reference. Kernel types such as Root and Actor have no owner.
  */
-function moduleDependencies(
+export function moduleDependencies(
   module: ModuleDefinition,
   modules: ReadonlyArray<ModuleDefinition>
 ): ReadonlyArray<ModuleDependency> {

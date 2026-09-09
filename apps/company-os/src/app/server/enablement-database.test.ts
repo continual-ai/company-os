@@ -3,6 +3,7 @@ import { OpenApi } from "effect/unstable/httpapi"
 import { expect } from "vitest"
 
 import { Model } from "#/app.model.ts"
+import { PlatformServer } from "#/modules/platform/server/index.ts"
 import { SalesServer } from "#/modules/sales/server/index.ts"
 import { SupportEngineeringServer } from "#/modules/support-engineering/server/index.ts"
 import { Ticket } from "#/modules/support/model/index.ts"
@@ -29,7 +30,7 @@ const withoutEscalations = enableModules(Model, [
   "support",
 ])
 const fixture = testFoundation(Model, {
-  servers: [SalesServer, SupportEngineeringServer],
+  servers: [PlatformServer, SalesServer, SupportEngineeringServer],
 })
 const implementation = modelImplementation(Model)
 const ticketIssues = modelObjectLinkTraversals(Model, Ticket).find(

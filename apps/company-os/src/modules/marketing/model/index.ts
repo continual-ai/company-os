@@ -5,6 +5,7 @@ import { Outreach } from "#/modules/marketing/model/outreach.ts"
 import { defineModule } from "#/runtime/model/index.ts"
 
 export const MarketingModule = defineModule({
+  description: "Plan campaigns, content, audiences, and outreach.",
   id: "marketing",
   name: "Marketing",
   objects: [Campaign, Content, Enrollment, Outreach],

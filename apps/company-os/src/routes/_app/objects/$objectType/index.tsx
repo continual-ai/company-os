@@ -4,6 +4,7 @@ import { presentation } from "#/app/app-presentation.ts"
 import { objectCollectionRoute } from "#/app/ui/model/object-routes.ts"
 import { ModelCollectionPage } from "#/runtime/ui/model/model-pages.tsx"
 import { routeObject } from "#/runtime/ui/model/object-routing.ts"
+import { useModelRuntime } from "#/runtime/ui/model/runtime-context.tsx"
 
 function resolveObject({ objectType }: { readonly objectType: string }) {
   return routeObject(presentation, objectType)
@@ -15,7 +16,8 @@ export const Route = createFileRoute("/_app/objects/$objectType/")({
 })
 
 function CollectionPage() {
-  const object = resolveObject(Route.useParams())
+  const runtime = useModelRuntime()
+  const object = routeObject(runtime, Route.useParams().objectType)
   const navigate = Route.useNavigate()
   return (
     <ModelCollectionPage

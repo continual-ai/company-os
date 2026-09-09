@@ -10,7 +10,10 @@ import type {
   ObjectCollectionFilter,
   ObjectCollectionSort,
 } from "#/runtime/ui/model/collection-view.ts"
-import { objectCapabilityCheck } from "#/runtime/ui/model/object-capabilities.ts"
+import {
+  objectCapabilityCheck,
+  collectionCapabilityBatches,
+} from "#/runtime/ui/model/object-capabilities.ts"
 import {
   clientFor,
   type ClientRecord,
@@ -64,20 +67,10 @@ export function useObjectCollection(
     [page.data]
   )
   const references = useObjectReferencePages(object, recordPages)
-  const checks = useMemo(() => {
-    const actions = Object.keys(object.actions)
-    const forTarget = (target?: string) =>
-      actions.flatMap((action) => {
-        const check = objectCapabilityCheck(runtime, object, action, target)
-        return check === undefined ? [] : [check]
-      })
-    return [
-      forTarget(),
-      ...recordPages.map((batch) =>
-        batch.flatMap((record) => forTarget(record.id))
-      ),
-    ]
-  }, [runtime, object, recordPages])
+  const checks = useMemo(
+    () => collectionCapabilityBatches(runtime, object, recordPages),
+    [runtime, object, recordPages]
+  )
   const capabilities = useCapabilityBatches(checks)
   const totalSize = page.data?.pages[0]?.totalSize ?? 0
   const loading = page.isFetching

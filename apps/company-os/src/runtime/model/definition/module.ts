@@ -13,6 +13,7 @@ export interface ModuleDefinitionInput {
   readonly id: string
   readonly interfaces?: ReadonlyArray<InterfaceType>
   readonly links?: ReadonlyArray<LinkType>
+  readonly description?: string | undefined
   readonly name: string
   readonly objects: ReadonlyArray<ObjectType>
 }
@@ -45,6 +46,7 @@ export interface ModuleDefinition<
   >
   readonly kind: "module"
   readonly links: OpenOr<D, ReadonlyArray<LinkType>, ModuleLinks<D>>
+  readonly description?: string | undefined
   readonly name: string
   readonly objects: D["objects"]
 }
@@ -65,6 +67,7 @@ export function defineModule<const D extends ModuleDefinitionInput>(
     kind: "module",
     links: input.links ?? [],
     name: input.name,
+    description: input.description,
     objects: input.objects,
   }
   // SAFETY: an omitted list is exactly the derived `readonly []`; every other

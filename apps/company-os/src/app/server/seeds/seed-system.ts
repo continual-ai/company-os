@@ -1,5 +1,6 @@
 import { Effect } from "effect"
 
+import { seedModuleSettings } from "#/modules/platform/server/index.ts"
 import { bootstrapSystemActor } from "#/runtime/access/server/bootstrap.ts"
 import { seedAuthorization } from "#/runtime/access/server/seed.ts"
 import { createPermissionCatalog } from "#/runtime/server/authorization/permission-catalog.ts"
@@ -13,14 +14,20 @@ export const seedSystem = Effect.fn("@company/seedSystem")(function* () {
   const { definedPermissions } = createPermissionCatalog(model)
   const business = new Set(
     Object.values(model.modules)
-      .filter((module) => module.id !== "access")
+      .filter((module) => module.id !== "access" && module.id !== "platform")
       .flatMap((module) => module.objects.map((object) => object.id))
   )
   const operatorPermissions = definedPermissions.filter((permission) =>
     business.has(permission.split(".")[0]!)
   )
   yield* bootstrapSystemActor()
-  yield* seedAuthorization(operatorPermissions).pipe(
+  yield* seedAuthorization([
+    ...operatorPermissions,
+    "moduleSetting.catalog",
+    "moduleSetting.get",
+    "moduleSetting.list",
+  ]).pipe(Effect.provideService(CurrentInvocation, systemInvocation))
+  yield* seedModuleSettings().pipe(
     Effect.provideService(CurrentInvocation, systemInvocation)
   )
 })

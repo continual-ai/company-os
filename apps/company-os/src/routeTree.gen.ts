@@ -23,6 +23,7 @@ import { Route as AppSettingsIndexRouteImport } from './routes/_app/settings/ind
 import { Route as AppDeveloperIndexRouteImport } from './routes/_app/developer/index'
 import { Route as ApiV1SplatRouteImport } from './routes/api/v1/$'
 import { Route as AppSettingsProfileRouteImport } from './routes/_app/settings/profile'
+import { Route as AppSettingsModulesRouteImport } from './routes/_app/settings/modules'
 import { Route as AppSettingsAppearanceRouteImport } from './routes/_app/settings/appearance'
 import { Route as AppDeveloperSdkRouteImport } from './routes/_app/developer/sdk'
 import { Route as AppDeveloperModelRouteImport } from './routes/_app/developer/model'
@@ -104,6 +105,11 @@ const AppSettingsProfileRoute = AppSettingsProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => AppSettingsRouteRoute,
 } as any)
+const AppSettingsModulesRoute = AppSettingsModulesRouteImport.update({
+  id: '/modules',
+  path: '/modules',
+  getParentRoute: () => AppSettingsRouteRoute,
+} as any)
 const AppSettingsAppearanceRoute = AppSettingsAppearanceRouteImport.update({
   id: '/appearance',
   path: '/appearance',
@@ -182,6 +188,7 @@ export interface FileRoutesByFullPath {
   '/developer/model': typeof AppDeveloperModelRoute
   '/developer/sdk': typeof AppDeveloperSdkRoute
   '/settings/appearance': typeof AppSettingsAppearanceRoute
+  '/settings/modules': typeof AppSettingsModulesRoute
   '/settings/profile': typeof AppSettingsProfileRoute
   '/api/v1/$': typeof ApiV1SplatRoute
   '/developer/': typeof AppDeveloperIndexRoute
@@ -206,6 +213,7 @@ export interface FileRoutesByTo {
   '/developer/model': typeof AppDeveloperModelRoute
   '/developer/sdk': typeof AppDeveloperSdkRoute
   '/settings/appearance': typeof AppSettingsAppearanceRoute
+  '/settings/modules': typeof AppSettingsModulesRoute
   '/settings/profile': typeof AppSettingsProfileRoute
   '/api/v1/$': typeof ApiV1SplatRoute
   '/developer': typeof AppDeveloperIndexRoute
@@ -234,6 +242,7 @@ export interface FileRoutesById {
   '/_app/developer/model': typeof AppDeveloperModelRoute
   '/_app/developer/sdk': typeof AppDeveloperSdkRoute
   '/_app/settings/appearance': typeof AppSettingsAppearanceRoute
+  '/_app/settings/modules': typeof AppSettingsModulesRoute
   '/_app/settings/profile': typeof AppSettingsProfileRoute
   '/api/v1/$': typeof ApiV1SplatRoute
   '/_app/developer/': typeof AppDeveloperIndexRoute
@@ -262,6 +271,7 @@ export interface FileRouteTypes {
     | '/developer/model'
     | '/developer/sdk'
     | '/settings/appearance'
+    | '/settings/modules'
     | '/settings/profile'
     | '/api/v1/$'
     | '/developer/'
@@ -286,6 +296,7 @@ export interface FileRouteTypes {
     | '/developer/model'
     | '/developer/sdk'
     | '/settings/appearance'
+    | '/settings/modules'
     | '/settings/profile'
     | '/api/v1/$'
     | '/developer'
@@ -313,6 +324,7 @@ export interface FileRouteTypes {
     | '/_app/developer/model'
     | '/_app/developer/sdk'
     | '/_app/settings/appearance'
+    | '/_app/settings/modules'
     | '/_app/settings/profile'
     | '/api/v1/$'
     | '/_app/developer/'
@@ -436,6 +448,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsProfileRouteImport
       parentRoute: typeof AppSettingsRouteRoute
     }
+    '/_app/settings/modules': {
+      id: '/_app/settings/modules'
+      path: '/modules'
+      fullPath: '/settings/modules'
+      preLoaderRoute: typeof AppSettingsModulesRouteImport
+      parentRoute: typeof AppSettingsRouteRoute
+    }
     '/_app/settings/appearance': {
       id: '/_app/settings/appearance'
       path: '/appearance'
@@ -539,6 +558,7 @@ const AppDeveloperRouteRouteWithChildren =
 
 interface AppSettingsRouteRouteChildren {
   AppSettingsAppearanceRoute: typeof AppSettingsAppearanceRoute
+  AppSettingsModulesRoute: typeof AppSettingsModulesRoute
   AppSettingsProfileRoute: typeof AppSettingsProfileRoute
   AppSettingsIndexRoute: typeof AppSettingsIndexRoute
   AppSettingsCollectionRecordIdRoute: typeof AppSettingsCollectionRecordIdRoute
@@ -547,6 +567,7 @@ interface AppSettingsRouteRouteChildren {
 
 const AppSettingsRouteRouteChildren: AppSettingsRouteRouteChildren = {
   AppSettingsAppearanceRoute: AppSettingsAppearanceRoute,
+  AppSettingsModulesRoute: AppSettingsModulesRoute,
   AppSettingsProfileRoute: AppSettingsProfileRoute,
   AppSettingsIndexRoute: AppSettingsIndexRoute,
   AppSettingsCollectionRecordIdRoute: AppSettingsCollectionRecordIdRoute,

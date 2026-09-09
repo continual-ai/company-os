@@ -11,6 +11,7 @@ import {
   type ObjectCollectionSearch,
   type ObjectCollectionView,
 } from "#/runtime/ui/model/collection-view.ts"
+import { collectionCapabilityBatches } from "#/runtime/ui/model/object-capabilities.ts"
 import {
   clientFor,
   type ModelObject,
@@ -20,6 +21,7 @@ import {
   emptyObjectCollectionViewState,
   resolveObjectCollectionView,
 } from "#/runtime/ui/model/object-collection-view.ts"
+import { recordReferenceRequests } from "#/runtime/ui/model/object-references.ts"
 import { type ModelUiRuntime } from "#/runtime/ui/model/runtime-context.tsx"
 
 export function objectHref(
@@ -99,7 +101,7 @@ export async function preloadCollection(
     views === undefined
       ? (search.state ?? emptyObjectCollectionViewState)
       : resolveObjectCollectionView(views, search).state
-  await cache.ensureInfiniteQueryData(
+  const result = await cache.ensureInfiniteQueryData(
     modelCollectionQuery(
       clientFor(runtime, object).list,
       objectListRequest(
@@ -114,4 +116,18 @@ export async function preloadCollection(
       )
     )
   )
+  const pages = result.pages.map((page) => page.items)
+  await Promise.all([
+    ...collectionCapabilityBatches(runtime, object, pages)
+      .filter((checks) => checks.length > 0)
+      .map((checks) => cache.prefetchQuery(runtime.capabilities(checks))),
+    ...pages
+      .flatMap((records) =>
+        recordReferenceRequests(
+          runtime,
+          records.map((record) => ({ object, record }))
+        )
+      )
+      .map(({ query }) => cache.prefetchQuery(query)),
+  ])
 }

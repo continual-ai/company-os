@@ -49,3 +49,22 @@ export function objectCapabilityChecks(
   }
   return [...checks.values()]
 }
+
+/** Collection and page batches are shared by route preloading and mounted table controls. */
+export function collectionCapabilityBatches(
+  runtime: ModelUiRuntime,
+  object: ModelObject,
+  pages: ReadonlyArray<ReadonlyArray<{ readonly id: string }>>
+) {
+  const forTarget = (target?: string) =>
+    Object.keys(object.actions).flatMap((action) => {
+      const check = objectCapabilityCheck(runtime, object, action, target)
+      return check === undefined ? [] : [check]
+    })
+  return [
+    forTarget(),
+    ...pages.map((records) =>
+      records.flatMap((record) => forTarget(record.id))
+    ),
+  ]
+}

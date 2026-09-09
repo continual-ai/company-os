@@ -40,6 +40,7 @@ create table "objects" (
     'role',
     'roleAssignment',
     'asset',
+    'moduleSetting',
     'note',
     'activity',
     'company',
@@ -295,6 +296,26 @@ create table "assets" (
 );
 
 create index "assets_parent_id_idx" on "assets" ("parent_id");
+
+-- ===========================================================================
+-- Domain objects: Platform
+-- ===========================================================================
+
+-- Module (moduleSetting)
+-- Activation of a capability installed in this application. Disabling
+-- preserves its records.
+create table "module_settings" (
+  "id" text not null,
+  -- Ownership parent. References roots.id.
+  "parent_id" text not null,
+  "module_id" text not null,
+  "enabled" boolean not null,
+  primary key ("id"),
+  foreign key ("id") references "objects" ("id") on delete cascade
+);
+
+create index "module_settings_parent_id_idx" on "module_settings" ("parent_id");
+create unique index "module_settings_module_unique" on "module_settings" ("module_id");
 
 -- ===========================================================================
 -- Domain objects: Notes
@@ -1003,6 +1024,16 @@ alter table "assets"
 
 alter table "assets"
   add constraint "assets_object_parent_fk"
+  foreign key ("id", "parent_id") references "objects" ("id", "parent_id")
+  on delete cascade;
+
+alter table "module_settings"
+  add constraint "module_settings_parent_root_fk"
+  foreign key ("parent_id") references "roots" ("id")
+  on delete restrict;
+
+alter table "module_settings"
+  add constraint "module_settings_object_parent_fk"
   foreign key ("id", "parent_id") references "objects" ("id", "parent_id")
   on delete cascade;
 

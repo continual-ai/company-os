@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { appMetadata } from "company-os/config"
-import { EnabledModel } from "company-os/model"
+import { Model } from "company-os/model"
 
 import { listPeople } from "#/company-os.functions.ts"
 
@@ -9,7 +9,7 @@ export const Route = createFileRoute("/")({
   component: Home,
 })
 
-const objectNames = Object.values(EnabledModel.objects)
+const objectNames = Object.values(Model.objects)
   .map((object) => object.pluralName)
   .sort()
 

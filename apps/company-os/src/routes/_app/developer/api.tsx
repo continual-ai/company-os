@@ -1,18 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { Schema } from "effect"
 
-import { EnabledModel } from "#/app.model.ts"
 import { OpenApiReference } from "#/app/ui/developer/openapi-reference.tsx"
 import { pageOptions } from "#/app/ui/route-metadata.ts"
+import { useModelRuntime } from "#/runtime/ui/model/runtime-context.tsx"
 
 const page = {
   breadcrumb: "API reference",
   description: "Explore the OpenAPI contract generated from the domain model.",
   title: "API reference",
 }
-const modelApiTags = Object.values(EnabledModel.modules).flatMap((module) =>
-  module.objects.map((object) => object.pluralName)
-)
 const ApiReferenceSearch = Schema.Struct({
   operation: Schema.optional(Schema.String),
 })
@@ -24,6 +21,10 @@ export const Route = createFileRoute("/_app/developer/api")({
 })
 
 function ApiReferencePage() {
+  const { model } = useModelRuntime()
+  const modelApiTags = Object.values(model.modules).flatMap((module) =>
+    module.objects.map((object) => object.pluralName)
+  )
   const { operation } = Route.useSearch()
   const navigate = Route.useNavigate()
 

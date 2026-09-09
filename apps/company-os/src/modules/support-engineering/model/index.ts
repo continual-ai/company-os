@@ -60,6 +60,7 @@ export const TicketEscalated = defineEvent({
   }),
 })
 export const SupportEngineeringModule = defineModule({
+  description: "Connect customer support tickets with engineering issues.",
   id: "supportEngineering",
   name: "Support engineering",
   links: [TicketIssues],

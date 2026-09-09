@@ -4,6 +4,7 @@ import { presentation } from "#/app/app-presentation.ts"
 import { objectCollectionRoute } from "#/app/ui/model/object-routes.ts"
 import { ModelCollectionPage } from "#/runtime/ui/model/model-pages.tsx"
 import { routeObjectAtPath } from "#/runtime/ui/model/object-routing.ts"
+import { useModelRuntime } from "#/runtime/ui/model/runtime-context.tsx"
 
 /** Access objects declare `/settings/<collection>` as their navigation path. */
 function resolveObject({ collection }: { readonly collection: string }) {
@@ -16,7 +17,11 @@ export const Route = createFileRoute("/_app/settings/$collection/")({
 })
 
 function CollectionPage() {
-  const object = resolveObject(Route.useParams())
+  const runtime = useModelRuntime()
+  const object = routeObjectAtPath(
+    runtime,
+    `/settings/${Route.useParams().collection}`
+  )
   const navigate = Route.useNavigate()
   return (
     <ModelCollectionPage

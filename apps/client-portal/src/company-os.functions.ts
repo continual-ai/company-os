@@ -2,7 +2,7 @@ import { runtimeIdentityHeaders } from "@continual/sdk/app"
 import { createServerFn } from "@tanstack/react-start"
 import { getRequest } from "@tanstack/react-start/server"
 import { createClient } from "company-os/client"
-import { EnabledModel } from "company-os/model"
+import { Model } from "company-os/model"
 
 /** COMPANY_OS_URL names the central app; development defaults to its dev port. */
 function companyOsUrl(): string {
@@ -16,7 +16,7 @@ function companyOsUrl(): string {
  * forwarded from the hosting platform; this app never mints identity itself.
  */
 function companyOs(request: Request) {
-  return createClient(EnabledModel, {
+  return createClient(Model, {
     baseUrl: companyOsUrl(),
     headers: runtimeIdentityHeaders(request),
   })

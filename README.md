@@ -64,8 +64,11 @@ Tell your coding agent the outcome, who uses it, and the scope. Two skills guide
 > Rank correctness risks and simplifications by impact; review only.
 
 Business code lives in `apps/company-os/src/modules`; the kernel is in `src/runtime` and the shell
-in `src/app`. `app.model.ts` composes every module. `app.config.ts` selects the modules exposed to
-UI, HTTP, and MCP, leaving disabled modules' data intact. Access and Assets are always enabled.
+in `src/app`. `app.model.ts` composes every module. Administrators explore and enable modules in
+Settings > Platform > Modules. Activation is stored in the database and controls UI, HTTP, and MCP,
+leaving disabled modules' data intact. Access, Assets, and Platform are always enabled. Enabling a
+module also enables its dependencies; turning one off asks you to confirm any dependent modules. Newly added optional modules
+start disabled on existing installations; an initial setup enables all installed modules.
 Change product identity and the entry experience in `src/app/customization`.
 
 [AGENTS.md](AGENTS.md) holds repository conventions. The skills point to working source examples;

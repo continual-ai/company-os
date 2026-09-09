@@ -50,6 +50,7 @@ export const NoteSubjects = defineLink({
 })
 
 export const NotesModule = defineModule({
+  description: "Attach shared notes and activity to business records.",
   id: "notes",
   name: "Notes",
   interfaces: [NoteSubject],

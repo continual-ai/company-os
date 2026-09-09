@@ -6,8 +6,9 @@ import {
 } from "effect/unstable/httpapi"
 
 import { appMetadata } from "#/app.config.ts"
-import { EnabledModel } from "#/app.model.ts"
+import { Model } from "#/app.model.ts"
 import { createApplicationHttpApi } from "#/runtime/contract/application-http-api.ts"
+import type { ModelCatalog } from "#/runtime/model/index.ts"
 
 /** Documents the default trusted ingress contract; verification stays in IdentityProvider. */
 function documentIdentity<
@@ -36,7 +37,7 @@ function documentIdentity<
   })
 }
 
-const contract = createApplicationHttpApi(EnabledModel, {
+const contract = createApplicationHttpApi(Model, {
   id: appMetadata.id,
   version: appMetadata.version,
 })
@@ -44,5 +45,13 @@ const contract = createApplicationHttpApi(EnabledModel, {
 /** The one HTTP contract used by handlers, the browser client, OpenAPI, and tests. */
 export const applicationHttpApi = documentIdentity(contract.api)
 
-/** OpenAPI document for the exposed model; served to developers with the `develop` capability. */
-export const openApiDocument = OpenApi.fromApi(applicationHttpApi)
+export function activeOpenApiDocument(model: ModelCatalog) {
+  return OpenApi.fromApi(
+    documentIdentity(
+      createApplicationHttpApi(model, {
+        id: appMetadata.id,
+        version: appMetadata.version,
+      }).api
+    )
+  )
+}

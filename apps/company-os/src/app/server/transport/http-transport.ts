@@ -8,10 +8,17 @@ import {
 } from "effect/unstable/http"
 import { HttpApiBuilder } from "effect/unstable/httpapi"
 
-import { EnabledModel } from "#/app.model.ts"
+import { Model } from "#/app.model.ts"
 import { applicationHttpApi } from "#/app/server/http-api.ts"
+import {
+  activeModuleModel,
+  requireModuleOperation,
+} from "#/modules/platform/server/index.ts"
 import { createCapabilities } from "#/runtime/contract/capabilities.ts"
-import { InvalidEventCursor } from "#/runtime/contract/events.ts"
+import {
+  InvalidEventCursor,
+  type EventPage,
+} from "#/runtime/contract/events.ts"
 import { HttpValidationMiddleware } from "#/runtime/contract/http-api.ts"
 import type { ExecutableModelOperation } from "#/runtime/model/operations.ts"
 import {
@@ -46,9 +53,8 @@ function requestHeaders(request: ModelHttpRequest): Headers {
 
 const make = Effect.gen(function* () {
   const modelContext = yield* ModelContext
-  // Transports expose EnabledModel; services behind them run on the complete model.
-  const searchRecords = createRecordSearch(EnabledModel)
-  const { capabilityPermission } = createCapabilities(EnabledModel)
+  // Register the installed contract once; each request checks database activation.
+  const { capabilityPermission } = createCapabilities(Model)
   const operations = yield* Operations
   const database = yield* Database
   const authentication = yield* Authentication
@@ -56,6 +62,24 @@ const make = Effect.gen(function* () {
   const notifications = yield* EventNotifications
   const events = yield* EventJournal
   const implementation = yield* ModelImplementation
+
+  const active = activeModuleModel().pipe(
+    Effect.provideService(Database, database),
+    Effect.provideService(ModelContext, modelContext)
+  )
+  const filterActiveEvents = (page: EventPage) =>
+    active.pipe(
+      Effect.map(({ model }) => ({
+        ...page,
+        items: page.items.filter((event) =>
+          event.subjects.every(
+            (subject) =>
+              Object.hasOwn(model.objects, subject.objectType) ||
+              subject.objectType === model.root.id
+          )
+        ),
+      }))
+    )
 
   const invoke = (
     request: ModelHttpRequest,
@@ -65,6 +89,10 @@ const make = Effect.gen(function* () {
     authentication.invocation(requestHeaders(request)).pipe(
       Effect.flatMap((invocation) =>
         Effect.gen(function* () {
+          yield* requireModuleOperation(descriptor).pipe(
+            Effect.provideService(Database, database),
+            Effect.provideService(ModelContext, modelContext)
+          )
           const { value: result, changes } = yield* operations.run(
             invocation,
             descriptor,
@@ -97,7 +125,7 @@ const make = Effect.gen(function* () {
     applicationHttpApi,
     implementation,
     invoke,
-    EnabledModel
+    Model
   )
   const capabilityGroupLayer = HttpApiBuilder.group(
     applicationHttpApi,
@@ -118,6 +146,25 @@ const make = Effect.gen(function* () {
                 }))
               )
               .pipe(
+                Effect.flatMap((result) =>
+                  active.pipe(
+                    Effect.map(({ model }) => ({
+                      results: result.results.map((entry, index) => ({
+                        allowed:
+                          entry.allowed &&
+                          (request.payload.checks[index]!.permission.startsWith(
+                            "application."
+                          ) ||
+                            Object.hasOwn(
+                              model.objects,
+                              request.payload.checks[index]!.permission.split(
+                                "."
+                              )[0]!
+                            )),
+                      })),
+                    }))
+                  )
+                ),
                 Effect.catch((error) =>
                   Effect.logError("Capability evaluation failed", error).pipe(
                     Effect.andThen(Effect.fail(internalApiError()))
@@ -152,6 +199,7 @@ const make = Effect.gen(function* () {
               streamEvents(
                 (cursor) =>
                   events.list({ cursor, pageSize: 200 }).pipe(
+                    Effect.flatMap(filterActiveEvents),
                     Effect.provideService(CurrentInvocation, invocation),
                     Effect.catch((error) =>
                       error instanceof InvalidEventCursor
@@ -182,6 +230,7 @@ const make = Effect.gen(function* () {
             ),
             Effect.flatMap((invocation) =>
               events.list(request.query).pipe(
+                Effect.flatMap(filterActiveEvents),
                 Effect.provideService(CurrentInvocation, invocation),
                 Effect.mapError((error) =>
                   error instanceof InvalidEventCursor
@@ -203,7 +252,10 @@ const make = Effect.gen(function* () {
             unauthenticatedApiError("Authentication credentials are invalid.")
           ),
           Effect.flatMap((invocation) =>
-            searchRecords(request.payload).pipe(
+            active.pipe(
+              Effect.flatMap(({ model }) =>
+                createRecordSearch(model)(request.payload)
+              ),
               Effect.provideService(CurrentInvocation, invocation),
               Effect.provideService(Database, database),
               Effect.provideService(ModelContext, modelContext),

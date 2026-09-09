@@ -1,7 +1,7 @@
 import { Effect, Stream } from "effect"
 import { useEffect } from "react"
 
-import { EnabledModel } from "#/app.model.ts"
+import { Model } from "#/app.model.ts"
 import { client } from "#/app/app-client.ts"
 import { createEventConsumer } from "#/app/client/event-consumer.ts"
 import { runClientEffect } from "#/runtime/client/create-client.ts"
@@ -21,8 +21,7 @@ export function useModelEvents(identity: string, initialCursor?: string) {
       read: (cursor, signal) =>
         runClientEffect(client.events.list({ cursor, pageSize: 200 }), signal),
       isInvalidCursor: (error) => error instanceof InvalidEventCursor,
-      apply: (page) =>
-        applyEventPage(modelData().queryClient, page, EnabledModel),
+      apply: (page) => applyEventPage(modelData().queryClient, page, Model),
     })
     const connect = async () => {
       if (

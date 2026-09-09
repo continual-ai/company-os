@@ -54,7 +54,7 @@ export function useRecordReferences(items: ReadonlyArray<ReferenceItem>) {
 }
 
 /** Page-local requests retain their query keys when later pages introduce more references. */
-function recordReferenceRequests(
+export function recordReferenceRequests(
   runtime: ModelUiRuntime,
   items: ReadonlyArray<ReferenceItem>
 ) {

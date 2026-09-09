@@ -11,6 +11,7 @@ import { DealCompanies } from "#/modules/sales/model/links/deal-companies.ts"
 import { defineModule } from "#/runtime/model/index.ts"
 
 export const SalesModule = defineModule({
+  description: "Track companies, contacts, leads, and deals.",
   id: "sales",
   name: "Sales",
   interfaces: [Party],

@@ -14,6 +14,7 @@ import { Account, fixtureModel } from "#/runtime/testing/fixture-model.ts"
 import { testPresentation } from "#/runtime/testing/presentation.ts"
 import type { ClientRecord } from "#/runtime/ui/model/object-client.ts"
 import { objectListRequest } from "#/runtime/ui/model/object-collection-query.ts"
+import { preloadCollection } from "#/runtime/ui/model/object-routing.ts"
 import { ModelUiProvider } from "#/runtime/ui/model/runtime-context.tsx"
 import { useObjectCollection } from "#/runtime/ui/model/use-object-collection.ts"
 
@@ -124,7 +125,9 @@ it("retains existing actions and reference labels while appended pages resolve, 
       pageParams: [undefined],
     })
     expect(render()).toContain("&quot;create&quot;:false")
-    await Promise.all([...pending.values()].map((load) => load()))
+    await preloadCollection(runtime, cache, Account, {})
+    expect(render()).toContain("&quot;create&quot;:true")
+    expect(render()).toContain("&quot;edit&quot;:true")
     expect(render()).toContain("&quot;actor&quot;:&quot;Zoe&quot;")
     cache.setQueryData(query.queryKey, {
       pages: [first, second],
