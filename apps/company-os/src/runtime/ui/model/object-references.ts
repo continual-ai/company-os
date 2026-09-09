@@ -1,5 +1,6 @@
-import { useQueries } from "@tanstack/react-query"
+import { hashKey, useQueries } from "@tanstack/react-query"
 
+import { isNewerOrEqualRecord } from "#/runtime/client/model-cache.ts"
 import { MAX_PAGE_SIZE } from "#/runtime/model/index.ts"
 import { ROOT_ID } from "#/runtime/model/system-records.ts"
 import {
@@ -12,7 +13,10 @@ import {
   type ModelObject,
 } from "#/runtime/ui/model/object-client.ts"
 import { objectTablePropertySchema } from "#/runtime/ui/model/object-table/object-table-cell-types.ts"
-import { useModelRuntime } from "#/runtime/ui/model/runtime-context.tsx"
+import {
+  useModelRuntime,
+  type ModelUiRuntime,
+} from "#/runtime/ui/model/runtime-context.tsx"
 
 function chunks<T>(values: ReadonlyArray<T>, size: number): ReadonlyArray<T[]> {
   const result: T[][] = []
@@ -27,18 +31,33 @@ export function useObjectReferences(
   object: ModelObject,
   records: ReadonlyArray<ClientRecord>
 ) {
-  return useRecordReferences(records.map((record) => ({ object, record })))
+  return useObjectReferencePages(object, [records])
+}
+
+export function useObjectReferencePages(
+  object: ModelObject,
+  pages: ReadonlyArray<ReadonlyArray<ClientRecord>>
+) {
+  return useRecordReferenceBatches(
+    pages.map((records) => records.map((record) => ({ object, record })))
+  )
+}
+
+type ReferenceItem = {
+  readonly object: ModelObject
+  readonly record: ClientRecord
 }
 
 /** Resolves a heterogeneous collection together, including audit actors. */
-export function useRecordReferences(
-  items: ReadonlyArray<{
-    readonly object: ModelObject
-    readonly record: ClientRecord
-  }>
-) {
-  const runtime = useModelRuntime()
+export function useRecordReferences(items: ReadonlyArray<ReferenceItem>) {
+  return useRecordReferenceBatches([items])
+}
 
+/** Page-local requests retain their query keys when later pages introduce more references. */
+function recordReferenceRequests(
+  runtime: ModelUiRuntime,
+  items: ReadonlyArray<ReferenceItem>
+) {
   const references = new Map<string, Set<string>>()
   const add = (type: string, value: unknown) => {
     if (typeof value !== "string" || value === ROOT_ID) return
@@ -54,7 +73,7 @@ export function useRecordReferences(
       if (field.kind === "recordId") add(field.typeId, record[key])
     }
   }
-  const requests = [...references].flatMap(([type, ids]) =>
+  return [...references].flatMap(([type, ids]) =>
     recordObjectTypes(runtime, type).flatMap((target) =>
       chunks([...ids].sort(), MAX_PAGE_SIZE).map((batch) => ({
         target,
@@ -65,12 +84,29 @@ export function useRecordReferences(
       }))
     )
   )
+}
+
+function useRecordReferenceBatches(
+  batches: ReadonlyArray<ReadonlyArray<ReferenceItem>>
+) {
+  const runtime = useModelRuntime()
+  const requests = [
+    ...new Map(
+      batches
+        .flatMap((items) => recordReferenceRequests(runtime, items))
+        .map((request) => [hashKey(request.query.queryKey), request])
+    ).values(),
+  ]
   const results = useQueries({ queries: requests.map(({ query }) => query) })
   const labels = new Map<string, string>([[ROOT_ID, runtime.model.root.name]])
   const recordsById = new Map<string, ObjectRecordPresentation>()
+  const versions = new Map<string, ClientRecord>()
   results.forEach((result, index) => {
     const target = requests[index]!.target
     for (const record of result.data?.items ?? []) {
+      const previous = versions.get(record.id)
+      if (previous && !isNewerOrEqualRecord(record, previous)) continue
+      versions.set(record.id, record)
       labels.set(record.id, recordLabel(target, record))
       recordsById.set(record.id, {
         object: target,

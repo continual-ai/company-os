@@ -18,10 +18,10 @@ import {
 } from "#/runtime/ui/model/object-client.ts"
 import { objectListRequest } from "#/runtime/ui/model/object-collection-query.ts"
 import type { ObjectFormInput } from "#/runtime/ui/model/object-form.ts"
-import { useObjectReferences } from "#/runtime/ui/model/object-references.ts"
+import { useObjectReferencePages } from "#/runtime/ui/model/object-references.ts"
 import type { ObjectTableValue } from "#/runtime/ui/model/object-table/object-table-config.ts"
 import { useModelRuntime } from "#/runtime/ui/model/runtime-context.tsx"
-import { useCapabilities } from "#/runtime/ui/model/use-capabilities.ts"
+import { useCapabilityBatches } from "#/runtime/ui/model/use-capabilities.ts"
 
 export type ObjectCollectionList = (
   request: ListRequest
@@ -59,20 +59,26 @@ export function useObjectCollection(
       }
     return [...unique.values()]
   }, [page.data])
-  const references = useObjectReferences(object, records)
-  const checks = useMemo(
-    () =>
-      Object.keys(object.actions).flatMap((action) => {
-        return [undefined, ...records.map((record) => record.id)].flatMap(
-          (target) => {
-            const check = objectCapabilityCheck(runtime, object, action, target)
-            return check === undefined ? [] : [check]
-          }
-        )
-      }),
-    [runtime, object, records]
+  const recordPages = useMemo(
+    () => page.data?.pages.map((batch) => batch.items) ?? [],
+    [page.data]
   )
-  const capabilities = useCapabilities(checks)
+  const references = useObjectReferencePages(object, recordPages)
+  const checks = useMemo(() => {
+    const actions = Object.keys(object.actions)
+    const forTarget = (target?: string) =>
+      actions.flatMap((action) => {
+        const check = objectCapabilityCheck(runtime, object, action, target)
+        return check === undefined ? [] : [check]
+      })
+    return [
+      forTarget(),
+      ...recordPages.map((batch) =>
+        batch.flatMap((record) => forTarget(record.id))
+      ),
+    ]
+  }, [runtime, object, recordPages])
+  const capabilities = useCapabilityBatches(checks)
   const totalSize = page.data?.pages[0]?.totalSize ?? 0
   const loading = page.isFetching
   const error =
@@ -130,6 +136,7 @@ export function useObjectCollection(
     loading,
     nextPage,
     requestKey,
+    request,
     records,
     referenceLabels: references.labels,
     references: references.records,
