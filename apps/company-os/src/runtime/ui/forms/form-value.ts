@@ -21,3 +21,12 @@ export type FormValue =
   | ReadonlyArray<string>
   | ReadonlyArray<FormValueObject>
   | FormValueObject
+
+/** The controlled-input contract a form field hands to whichever control renders it. */
+export interface FormControlAccessibility {
+  readonly ariaDescribedBy?: string | undefined
+  readonly invalid: boolean
+  readonly onBlur: () => void
+  readonly onValueChange: (value: FormValue) => void
+  readonly value: FormValue
+}

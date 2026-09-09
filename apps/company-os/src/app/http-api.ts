@@ -187,3 +187,6 @@ export const {
   eventGroup,
   recordGroup,
 } = createApplicationHttpApi(EnabledModel)
+
+/** OpenAPI document for the exposed model; served to developers with the `develop` capability. */
+export const openApiDocument = OpenApi.fromApi(applicationHttpApi)

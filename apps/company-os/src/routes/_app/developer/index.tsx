@@ -42,12 +42,6 @@ function DeveloperCenterOverview() {
           description="Connect Claude, ChatGPT, Cursor, and other MCP clients to governed capabilities."
           to="/developer/mcp"
         />
-        <DeveloperSurface
-          eyebrow="Interface"
-          title="Design system"
-          description="Develop and verify the foundations, components, and operating patterns used across apps."
-          to="/developer/design-system"
-        />
       </section>
     </div>
   )
@@ -67,7 +61,6 @@ function DeveloperSurface({
     | "/developer/api"
     | "/developer/sdk"
     | "/developer/mcp"
-    | "/developer/design-system"
 }) {
   const content = (
     <>

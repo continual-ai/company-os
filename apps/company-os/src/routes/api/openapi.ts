@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router"
 
+import { openApiDocument } from "#/app/http-api.ts"
 import { checkCapability } from "#/app/server/authorization/check-capability.ts"
-import { application } from "#/app/server/composition-root.ts"
 import { applicationCapabilities } from "#/runtime/client/capabilities.ts"
 
 export const Route = createFileRoute("/api/openapi")({
@@ -16,7 +16,7 @@ export const Route = createFileRoute("/api/openapi")({
         ) {
           return new Response(null, { status: 403 })
         }
-        return Response.json(application.http.document)
+        return Response.json(openApiDocument)
       },
     },
   },

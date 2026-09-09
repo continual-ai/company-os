@@ -17,7 +17,7 @@ import {
 import type {
   FormValue,
   FormValueObject,
-} from "#/runtime/ui/model/form-value.ts"
+} from "#/runtime/ui/forms/form-value.ts"
 import {
   modelObjectProperty,
   type ClientRecord,

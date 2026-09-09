@@ -15,7 +15,7 @@ import { useTypedAppFormContext } from "#/runtime/ui/forms/app-form.ts"
 import type {
   FormValue,
   FormValueObject,
-} from "#/runtime/ui/model/form-value.ts"
+} from "#/runtime/ui/forms/form-value.ts"
 import type { ResolvedObjectUi } from "#/runtime/ui/model/module-ui.tsx"
 import type {
   ModelObject,

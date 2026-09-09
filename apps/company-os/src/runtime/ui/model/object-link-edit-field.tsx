@@ -7,7 +7,7 @@ import { Button } from "#/runtime/ui/components/button.tsx"
 import type {
   FormLinkDeltaValue,
   FormValue,
-} from "#/runtime/ui/model/form-value.ts"
+} from "#/runtime/ui/forms/form-value.ts"
 import {
   describeReferences,
   linkClientFor,

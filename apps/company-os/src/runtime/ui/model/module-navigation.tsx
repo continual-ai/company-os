@@ -1,4 +1,5 @@
 import { Link, useLocation } from "@tanstack/react-router"
+import { useMemo } from "react"
 
 import {
   SidebarGroup,
@@ -8,16 +9,25 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from "#/runtime/ui/components/sidebar.tsx"
-import { createModelNavigation } from "#/runtime/ui/model/model-navigation.ts"
+import {
+  createModelNavigation,
+  modelNavigationChecks,
+} from "#/runtime/ui/model/model-navigation.ts"
 import { useModelRuntime } from "#/runtime/ui/model/runtime-context.tsx"
 import { useCapabilities } from "#/runtime/ui/model/use-capabilities.ts"
 
+/** Module destinations and their list checks, computed once per runtime. */
+export function useModelNavigation() {
+  const runtime = useModelRuntime()
+  return useMemo(() => {
+    const modules = createModelNavigation(runtime)
+    return { modules, checks: modelNavigationChecks(modules) }
+  }, [runtime])
+}
+
 export function ModuleNavigation() {
-  const modelNavigation = createModelNavigation(useModelRuntime())
-  const modelNavigationChecks = modelNavigation.flatMap((module) =>
-    module.items.map((item) => item.check)
-  )
-  const capabilities = useCapabilities(modelNavigationChecks)
+  const { modules: modelNavigation, checks } = useModelNavigation()
+  const capabilities = useCapabilities(checks)
   const pathname = useLocation({ select: (location) => location.pathname })
   return (
     <>

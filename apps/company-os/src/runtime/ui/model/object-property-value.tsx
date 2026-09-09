@@ -8,7 +8,7 @@ import {
   type ObjectRecordPresentation,
 } from "#/runtime/ui/model/object-client.ts"
 import { ObjectRecordIdentity } from "#/runtime/ui/model/object-record-identity.tsx"
-import { objectHref } from "#/runtime/ui/model/object-routing.ts"
+import { objectRecordHref } from "#/runtime/ui/model/object-routing.ts"
 import { objectTablePropertySchema } from "#/runtime/ui/model/object-table/object-table-cell-types.ts"
 import {
   objectTableValueText,
@@ -45,7 +45,7 @@ export function objectPropertyValue(
       <ObjectRecordIdentity
         {...reference}
         className="max-w-full"
-        href={objectHref(runtime, reference.object, value)}
+        href={objectRecordHref(runtime, reference.object, value)}
       />
     )
   }

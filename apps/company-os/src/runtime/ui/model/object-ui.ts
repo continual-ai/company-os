@@ -1,12 +1,12 @@
 import type { ComponentType, ReactNode } from "react"
 
 import type { ObjectType, ObjectRecord } from "#/runtime/model/index.ts"
+import type { FormControlAccessibility } from "#/runtime/ui/forms/form-value.ts"
 import type {
   ObjectCollectionSearch,
   ObjectCollectionView,
   ObjectCollectionViewState,
 } from "#/runtime/ui/model/collection-view.ts"
-import type { FormControlAccessibility } from "#/runtime/ui/model/field-editor.ts"
 
 type ActionId<O extends ObjectType> = keyof O["actions"] & string
 export interface RecordUiProps<O extends ObjectType> {

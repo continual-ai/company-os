@@ -4,13 +4,14 @@ import { presentation } from "#/app/app-presentation.ts"
 import { objectRecordRoute } from "#/app/ui/model/object-routes.ts"
 import { ModelRecordPage } from "#/runtime/ui/model/model-pages.tsx"
 import { objectRecordTabSearch } from "#/runtime/ui/model/object-record-view.ts"
-import { routeObject } from "#/runtime/ui/model/object-routing.ts"
+import { routeObjectAtPath } from "#/runtime/ui/model/object-routing.ts"
 
-function resolveObject({ objectType }: { readonly objectType: string }) {
-  return routeObject(presentation, objectType)
+/** Access objects declare `/settings/<collection>` as their navigation path. */
+function resolveObject({ collection }: { readonly collection: string }) {
+  return routeObjectAtPath(presentation, `/settings/${collection}`)
 }
 
-export const Route = createFileRoute("/_app/objects/$objectType/$recordId")({
+export const Route = createFileRoute("/_app/settings/$collection/$recordId")({
   ...objectRecordRoute(resolveObject),
   component: RecordPage,
 })
@@ -21,7 +22,7 @@ function RecordPage() {
   const params = Route.useParams()
   return (
     <ModelRecordPage
-      key={`${params.objectType}:${params.recordId}`}
+      key={`${params.collection}:${params.recordId}`}
       object={resolveObject(params)}
       recordId={params.recordId}
       tab={search.tab}

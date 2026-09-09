@@ -28,20 +28,11 @@ import { Route as AppDeveloperSdkRouteImport } from './routes/_app/developer/sdk
 import { Route as AppDeveloperModelRouteImport } from './routes/_app/developer/model'
 import { Route as AppDeveloperMcpRouteImport } from './routes/_app/developer/mcp'
 import { Route as AppDeveloperApiRouteImport } from './routes/_app/developer/api'
-import { Route as AppDeveloperDesignSystemRouteRouteImport } from './routes/_app/developer/design-system/route'
+import { Route as AppSettingsCollectionIndexRouteImport } from './routes/_app/settings/$collection/index'
 import { Route as AppObjectsObjectTypeIndexRouteImport } from './routes/_app/objects/$objectType/index'
-import { Route as AppDeveloperDesignSystemIndexRouteImport } from './routes/_app/developer/design-system/index'
-import { Route as AppSettingsaccessUsersRouteImport } from './routes/_app/settings/(access)/users'
-import { Route as AppSettingsaccessServiceAccountsRouteImport } from './routes/_app/settings/(access)/service-accounts'
-import { Route as AppSettingsaccessRolesRouteImport } from './routes/_app/settings/(access)/roles'
-import { Route as AppSettingsaccessRoleAssignmentsRouteImport } from './routes/_app/settings/(access)/role-assignments'
-import { Route as AppSettingsaccessGroupsRouteImport } from './routes/_app/settings/(access)/groups'
-import { Route as AppSettingsaccessGroupMembershipsRouteImport } from './routes/_app/settings/(access)/group-memberships'
+import { Route as AppSettingsCollectionRecordIdRouteImport } from './routes/_app/settings/$collection/$recordId'
 import { Route as AppObjectsObjectTypeRecordIdRouteImport } from './routes/_app/objects/$objectType/$recordId'
-import { Route as AppDeveloperDesignSystemFoundationsRouteImport } from './routes/_app/developer/design-system/foundations'
 import { Route as ApiV1AssetsAssetIdContentRouteImport } from './routes/api/v1/assets/$assetId/content'
-import { Route as AppDeveloperDesignSystemPatternsObjectTableRouteImport } from './routes/_app/developer/design-system/patterns/object-table'
-import { Route as AppDeveloperDesignSystemComponentsComponentIdRouteRouteImport } from './routes/_app/developer/design-system/components/$componentId/route'
 
 const SignInRoute = SignInRouteImport.update({
   id: '/sign-in',
@@ -137,11 +128,11 @@ const AppDeveloperApiRoute = AppDeveloperApiRouteImport.update({
   path: '/api',
   getParentRoute: () => AppDeveloperRouteRoute,
 } as any)
-const AppDeveloperDesignSystemRouteRoute =
-  AppDeveloperDesignSystemRouteRouteImport.update({
-    id: '/design-system',
-    path: '/design-system',
-    getParentRoute: () => AppDeveloperRouteRoute,
+const AppSettingsCollectionIndexRoute =
+  AppSettingsCollectionIndexRouteImport.update({
+    id: '/$collection/',
+    path: '/$collection/',
+    getParentRoute: () => AppSettingsRouteRoute,
   } as any)
 const AppObjectsObjectTypeIndexRoute =
   AppObjectsObjectTypeIndexRouteImport.update({
@@ -149,43 +140,10 @@ const AppObjectsObjectTypeIndexRoute =
     path: '/objects/$objectType/',
     getParentRoute: () => AppRouteRoute,
   } as any)
-const AppDeveloperDesignSystemIndexRoute =
-  AppDeveloperDesignSystemIndexRouteImport.update({
-    id: '/',
-    path: '/',
-    getParentRoute: () => AppDeveloperDesignSystemRouteRoute,
-  } as any)
-const AppSettingsaccessUsersRoute = AppSettingsaccessUsersRouteImport.update({
-  id: '/(access)/users',
-  path: '/users',
-  getParentRoute: () => AppSettingsRouteRoute,
-} as any)
-const AppSettingsaccessServiceAccountsRoute =
-  AppSettingsaccessServiceAccountsRouteImport.update({
-    id: '/(access)/service-accounts',
-    path: '/service-accounts',
-    getParentRoute: () => AppSettingsRouteRoute,
-  } as any)
-const AppSettingsaccessRolesRoute = AppSettingsaccessRolesRouteImport.update({
-  id: '/(access)/roles',
-  path: '/roles',
-  getParentRoute: () => AppSettingsRouteRoute,
-} as any)
-const AppSettingsaccessRoleAssignmentsRoute =
-  AppSettingsaccessRoleAssignmentsRouteImport.update({
-    id: '/(access)/role-assignments',
-    path: '/role-assignments',
-    getParentRoute: () => AppSettingsRouteRoute,
-  } as any)
-const AppSettingsaccessGroupsRoute = AppSettingsaccessGroupsRouteImport.update({
-  id: '/(access)/groups',
-  path: '/groups',
-  getParentRoute: () => AppSettingsRouteRoute,
-} as any)
-const AppSettingsaccessGroupMembershipsRoute =
-  AppSettingsaccessGroupMembershipsRouteImport.update({
-    id: '/(access)/group-memberships',
-    path: '/group-memberships',
+const AppSettingsCollectionRecordIdRoute =
+  AppSettingsCollectionRecordIdRouteImport.update({
+    id: '/$collection/$recordId',
+    path: '/$collection/$recordId',
     getParentRoute: () => AppSettingsRouteRoute,
   } as any)
 const AppObjectsObjectTypeRecordIdRoute =
@@ -194,29 +152,11 @@ const AppObjectsObjectTypeRecordIdRoute =
     path: '/objects/$objectType/$recordId',
     getParentRoute: () => AppRouteRoute,
   } as any)
-const AppDeveloperDesignSystemFoundationsRoute =
-  AppDeveloperDesignSystemFoundationsRouteImport.update({
-    id: '/foundations',
-    path: '/foundations',
-    getParentRoute: () => AppDeveloperDesignSystemRouteRoute,
-  } as any)
 const ApiV1AssetsAssetIdContentRoute =
   ApiV1AssetsAssetIdContentRouteImport.update({
     id: '/api/v1/assets/$assetId/content',
     path: '/api/v1/assets/$assetId/content',
     getParentRoute: () => rootRouteImport,
-  } as any)
-const AppDeveloperDesignSystemPatternsObjectTableRoute =
-  AppDeveloperDesignSystemPatternsObjectTableRouteImport.update({
-    id: '/patterns/object-table',
-    path: '/patterns/object-table',
-    getParentRoute: () => AppDeveloperDesignSystemRouteRoute,
-  } as any)
-const AppDeveloperDesignSystemComponentsComponentIdRouteRoute =
-  AppDeveloperDesignSystemComponentsComponentIdRouteRouteImport.update({
-    id: '/components/$componentId',
-    path: '/components/$componentId',
-    getParentRoute: () => AppDeveloperDesignSystemRouteRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -229,7 +169,6 @@ export interface FileRoutesByFullPath {
   '/api/health': typeof ApiHealthRoute
   '/api/mcp': typeof ApiMcpRoute
   '/api/openapi': typeof ApiOpenapiRoute
-  '/developer/design-system': typeof AppDeveloperDesignSystemRouteRouteWithChildren
   '/developer/api': typeof AppDeveloperApiRoute
   '/developer/mcp': typeof AppDeveloperMcpRoute
   '/developer/model': typeof AppDeveloperModelRoute
@@ -239,18 +178,10 @@ export interface FileRoutesByFullPath {
   '/api/v1/$': typeof ApiV1SplatRoute
   '/developer/': typeof AppDeveloperIndexRoute
   '/settings/': typeof AppSettingsIndexRoute
-  '/developer/design-system/foundations': typeof AppDeveloperDesignSystemFoundationsRoute
   '/objects/$objectType/$recordId': typeof AppObjectsObjectTypeRecordIdRoute
-  '/settings/group-memberships': typeof AppSettingsaccessGroupMembershipsRoute
-  '/settings/groups': typeof AppSettingsaccessGroupsRoute
-  '/settings/role-assignments': typeof AppSettingsaccessRoleAssignmentsRoute
-  '/settings/roles': typeof AppSettingsaccessRolesRoute
-  '/settings/service-accounts': typeof AppSettingsaccessServiceAccountsRoute
-  '/settings/users': typeof AppSettingsaccessUsersRoute
-  '/developer/design-system/': typeof AppDeveloperDesignSystemIndexRoute
+  '/settings/$collection/$recordId': typeof AppSettingsCollectionRecordIdRoute
   '/objects/$objectType/': typeof AppObjectsObjectTypeIndexRoute
-  '/developer/design-system/components/$componentId': typeof AppDeveloperDesignSystemComponentsComponentIdRouteRoute
-  '/developer/design-system/patterns/object-table': typeof AppDeveloperDesignSystemPatternsObjectTableRoute
+  '/settings/$collection/': typeof AppSettingsCollectionIndexRoute
   '/api/v1/assets/$assetId/content': typeof ApiV1AssetsAssetIdContentRoute
 }
 export interface FileRoutesByTo {
@@ -270,18 +201,10 @@ export interface FileRoutesByTo {
   '/api/v1/$': typeof ApiV1SplatRoute
   '/developer': typeof AppDeveloperIndexRoute
   '/settings': typeof AppSettingsIndexRoute
-  '/developer/design-system/foundations': typeof AppDeveloperDesignSystemFoundationsRoute
   '/objects/$objectType/$recordId': typeof AppObjectsObjectTypeRecordIdRoute
-  '/settings/group-memberships': typeof AppSettingsaccessGroupMembershipsRoute
-  '/settings/groups': typeof AppSettingsaccessGroupsRoute
-  '/settings/role-assignments': typeof AppSettingsaccessRoleAssignmentsRoute
-  '/settings/roles': typeof AppSettingsaccessRolesRoute
-  '/settings/service-accounts': typeof AppSettingsaccessServiceAccountsRoute
-  '/settings/users': typeof AppSettingsaccessUsersRoute
-  '/developer/design-system': typeof AppDeveloperDesignSystemIndexRoute
+  '/settings/$collection/$recordId': typeof AppSettingsCollectionRecordIdRoute
   '/objects/$objectType': typeof AppObjectsObjectTypeIndexRoute
-  '/developer/design-system/components/$componentId': typeof AppDeveloperDesignSystemComponentsComponentIdRouteRoute
-  '/developer/design-system/patterns/object-table': typeof AppDeveloperDesignSystemPatternsObjectTableRoute
+  '/settings/$collection': typeof AppSettingsCollectionIndexRoute
   '/api/v1/assets/$assetId/content': typeof ApiV1AssetsAssetIdContentRoute
 }
 export interface FileRoutesById {
@@ -296,7 +219,6 @@ export interface FileRoutesById {
   '/api/mcp': typeof ApiMcpRoute
   '/api/openapi': typeof ApiOpenapiRoute
   '/_app/': typeof AppIndexRoute
-  '/_app/developer/design-system': typeof AppDeveloperDesignSystemRouteRouteWithChildren
   '/_app/developer/api': typeof AppDeveloperApiRoute
   '/_app/developer/mcp': typeof AppDeveloperMcpRoute
   '/_app/developer/model': typeof AppDeveloperModelRoute
@@ -306,18 +228,10 @@ export interface FileRoutesById {
   '/api/v1/$': typeof ApiV1SplatRoute
   '/_app/developer/': typeof AppDeveloperIndexRoute
   '/_app/settings/': typeof AppSettingsIndexRoute
-  '/_app/developer/design-system/foundations': typeof AppDeveloperDesignSystemFoundationsRoute
   '/_app/objects/$objectType/$recordId': typeof AppObjectsObjectTypeRecordIdRoute
-  '/_app/settings/(access)/group-memberships': typeof AppSettingsaccessGroupMembershipsRoute
-  '/_app/settings/(access)/groups': typeof AppSettingsaccessGroupsRoute
-  '/_app/settings/(access)/role-assignments': typeof AppSettingsaccessRoleAssignmentsRoute
-  '/_app/settings/(access)/roles': typeof AppSettingsaccessRolesRoute
-  '/_app/settings/(access)/service-accounts': typeof AppSettingsaccessServiceAccountsRoute
-  '/_app/settings/(access)/users': typeof AppSettingsaccessUsersRoute
-  '/_app/developer/design-system/': typeof AppDeveloperDesignSystemIndexRoute
+  '/_app/settings/$collection/$recordId': typeof AppSettingsCollectionRecordIdRoute
   '/_app/objects/$objectType/': typeof AppObjectsObjectTypeIndexRoute
-  '/_app/developer/design-system/components/$componentId': typeof AppDeveloperDesignSystemComponentsComponentIdRouteRoute
-  '/_app/developer/design-system/patterns/object-table': typeof AppDeveloperDesignSystemPatternsObjectTableRoute
+  '/_app/settings/$collection/': typeof AppSettingsCollectionIndexRoute
   '/api/v1/assets/$assetId/content': typeof ApiV1AssetsAssetIdContentRoute
 }
 export interface FileRouteTypes {
@@ -332,7 +246,6 @@ export interface FileRouteTypes {
     | '/api/health'
     | '/api/mcp'
     | '/api/openapi'
-    | '/developer/design-system'
     | '/developer/api'
     | '/developer/mcp'
     | '/developer/model'
@@ -342,18 +255,10 @@ export interface FileRouteTypes {
     | '/api/v1/$'
     | '/developer/'
     | '/settings/'
-    | '/developer/design-system/foundations'
     | '/objects/$objectType/$recordId'
-    | '/settings/group-memberships'
-    | '/settings/groups'
-    | '/settings/role-assignments'
-    | '/settings/roles'
-    | '/settings/service-accounts'
-    | '/settings/users'
-    | '/developer/design-system/'
+    | '/settings/$collection/$recordId'
     | '/objects/$objectType/'
-    | '/developer/design-system/components/$componentId'
-    | '/developer/design-system/patterns/object-table'
+    | '/settings/$collection/'
     | '/api/v1/assets/$assetId/content'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -373,18 +278,10 @@ export interface FileRouteTypes {
     | '/api/v1/$'
     | '/developer'
     | '/settings'
-    | '/developer/design-system/foundations'
     | '/objects/$objectType/$recordId'
-    | '/settings/group-memberships'
-    | '/settings/groups'
-    | '/settings/role-assignments'
-    | '/settings/roles'
-    | '/settings/service-accounts'
-    | '/settings/users'
-    | '/developer/design-system'
+    | '/settings/$collection/$recordId'
     | '/objects/$objectType'
-    | '/developer/design-system/components/$componentId'
-    | '/developer/design-system/patterns/object-table'
+    | '/settings/$collection'
     | '/api/v1/assets/$assetId/content'
   id:
     | '__root__'
@@ -398,7 +295,6 @@ export interface FileRouteTypes {
     | '/api/mcp'
     | '/api/openapi'
     | '/_app/'
-    | '/_app/developer/design-system'
     | '/_app/developer/api'
     | '/_app/developer/mcp'
     | '/_app/developer/model'
@@ -408,18 +304,10 @@ export interface FileRouteTypes {
     | '/api/v1/$'
     | '/_app/developer/'
     | '/_app/settings/'
-    | '/_app/developer/design-system/foundations'
     | '/_app/objects/$objectType/$recordId'
-    | '/_app/settings/(access)/group-memberships'
-    | '/_app/settings/(access)/groups'
-    | '/_app/settings/(access)/role-assignments'
-    | '/_app/settings/(access)/roles'
-    | '/_app/settings/(access)/service-accounts'
-    | '/_app/settings/(access)/users'
-    | '/_app/developer/design-system/'
+    | '/_app/settings/$collection/$recordId'
     | '/_app/objects/$objectType/'
-    | '/_app/developer/design-system/components/$componentId'
-    | '/_app/developer/design-system/patterns/object-table'
+    | '/_app/settings/$collection/'
     | '/api/v1/assets/$assetId/content'
   fileRoutesById: FileRoutesById
 }
@@ -570,12 +458,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDeveloperApiRouteImport
       parentRoute: typeof AppDeveloperRouteRoute
     }
-    '/_app/developer/design-system': {
-      id: '/_app/developer/design-system'
-      path: '/design-system'
-      fullPath: '/developer/design-system'
-      preLoaderRoute: typeof AppDeveloperDesignSystemRouteRouteImport
-      parentRoute: typeof AppDeveloperRouteRoute
+    '/_app/settings/$collection/': {
+      id: '/_app/settings/$collection/'
+      path: '/$collection'
+      fullPath: '/settings/$collection/'
+      preLoaderRoute: typeof AppSettingsCollectionIndexRouteImport
+      parentRoute: typeof AppSettingsRouteRoute
     }
     '/_app/objects/$objectType/': {
       id: '/_app/objects/$objectType/'
@@ -584,53 +472,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppObjectsObjectTypeIndexRouteImport
       parentRoute: typeof AppRouteRoute
     }
-    '/_app/developer/design-system/': {
-      id: '/_app/developer/design-system/'
-      path: '/'
-      fullPath: '/developer/design-system/'
-      preLoaderRoute: typeof AppDeveloperDesignSystemIndexRouteImport
-      parentRoute: typeof AppDeveloperDesignSystemRouteRoute
-    }
-    '/_app/settings/(access)/users': {
-      id: '/_app/settings/(access)/users'
-      path: '/users'
-      fullPath: '/settings/users'
-      preLoaderRoute: typeof AppSettingsaccessUsersRouteImport
-      parentRoute: typeof AppSettingsRouteRoute
-    }
-    '/_app/settings/(access)/service-accounts': {
-      id: '/_app/settings/(access)/service-accounts'
-      path: '/service-accounts'
-      fullPath: '/settings/service-accounts'
-      preLoaderRoute: typeof AppSettingsaccessServiceAccountsRouteImport
-      parentRoute: typeof AppSettingsRouteRoute
-    }
-    '/_app/settings/(access)/roles': {
-      id: '/_app/settings/(access)/roles'
-      path: '/roles'
-      fullPath: '/settings/roles'
-      preLoaderRoute: typeof AppSettingsaccessRolesRouteImport
-      parentRoute: typeof AppSettingsRouteRoute
-    }
-    '/_app/settings/(access)/role-assignments': {
-      id: '/_app/settings/(access)/role-assignments'
-      path: '/role-assignments'
-      fullPath: '/settings/role-assignments'
-      preLoaderRoute: typeof AppSettingsaccessRoleAssignmentsRouteImport
-      parentRoute: typeof AppSettingsRouteRoute
-    }
-    '/_app/settings/(access)/groups': {
-      id: '/_app/settings/(access)/groups'
-      path: '/groups'
-      fullPath: '/settings/groups'
-      preLoaderRoute: typeof AppSettingsaccessGroupsRouteImport
-      parentRoute: typeof AppSettingsRouteRoute
-    }
-    '/_app/settings/(access)/group-memberships': {
-      id: '/_app/settings/(access)/group-memberships'
-      path: '/group-memberships'
-      fullPath: '/settings/group-memberships'
-      preLoaderRoute: typeof AppSettingsaccessGroupMembershipsRouteImport
+    '/_app/settings/$collection/$recordId': {
+      id: '/_app/settings/$collection/$recordId'
+      path: '/$collection/$recordId'
+      fullPath: '/settings/$collection/$recordId'
+      preLoaderRoute: typeof AppSettingsCollectionRecordIdRouteImport
       parentRoute: typeof AppSettingsRouteRoute
     }
     '/_app/objects/$objectType/$recordId': {
@@ -640,13 +486,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppObjectsObjectTypeRecordIdRouteImport
       parentRoute: typeof AppRouteRoute
     }
-    '/_app/developer/design-system/foundations': {
-      id: '/_app/developer/design-system/foundations'
-      path: '/foundations'
-      fullPath: '/developer/design-system/foundations'
-      preLoaderRoute: typeof AppDeveloperDesignSystemFoundationsRouteImport
-      parentRoute: typeof AppDeveloperDesignSystemRouteRoute
-    }
     '/api/v1/assets/$assetId/content': {
       id: '/api/v1/assets/$assetId/content'
       path: '/api/v1/assets/$assetId/content'
@@ -654,48 +493,10 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiV1AssetsAssetIdContentRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_app/developer/design-system/patterns/object-table': {
-      id: '/_app/developer/design-system/patterns/object-table'
-      path: '/patterns/object-table'
-      fullPath: '/developer/design-system/patterns/object-table'
-      preLoaderRoute: typeof AppDeveloperDesignSystemPatternsObjectTableRouteImport
-      parentRoute: typeof AppDeveloperDesignSystemRouteRoute
-    }
-    '/_app/developer/design-system/components/$componentId': {
-      id: '/_app/developer/design-system/components/$componentId'
-      path: '/components/$componentId'
-      fullPath: '/developer/design-system/components/$componentId'
-      preLoaderRoute: typeof AppDeveloperDesignSystemComponentsComponentIdRouteRouteImport
-      parentRoute: typeof AppDeveloperDesignSystemRouteRoute
-    }
   }
 }
-
-interface AppDeveloperDesignSystemRouteRouteChildren {
-  AppDeveloperDesignSystemFoundationsRoute: typeof AppDeveloperDesignSystemFoundationsRoute
-  AppDeveloperDesignSystemIndexRoute: typeof AppDeveloperDesignSystemIndexRoute
-  AppDeveloperDesignSystemComponentsComponentIdRouteRoute: typeof AppDeveloperDesignSystemComponentsComponentIdRouteRoute
-  AppDeveloperDesignSystemPatternsObjectTableRoute: typeof AppDeveloperDesignSystemPatternsObjectTableRoute
-}
-
-const AppDeveloperDesignSystemRouteRouteChildren: AppDeveloperDesignSystemRouteRouteChildren =
-  {
-    AppDeveloperDesignSystemFoundationsRoute:
-      AppDeveloperDesignSystemFoundationsRoute,
-    AppDeveloperDesignSystemIndexRoute: AppDeveloperDesignSystemIndexRoute,
-    AppDeveloperDesignSystemComponentsComponentIdRouteRoute:
-      AppDeveloperDesignSystemComponentsComponentIdRouteRoute,
-    AppDeveloperDesignSystemPatternsObjectTableRoute:
-      AppDeveloperDesignSystemPatternsObjectTableRoute,
-  }
-
-const AppDeveloperDesignSystemRouteRouteWithChildren =
-  AppDeveloperDesignSystemRouteRoute._addFileChildren(
-    AppDeveloperDesignSystemRouteRouteChildren,
-  )
 
 interface AppDeveloperRouteRouteChildren {
-  AppDeveloperDesignSystemRouteRoute: typeof AppDeveloperDesignSystemRouteRouteWithChildren
   AppDeveloperApiRoute: typeof AppDeveloperApiRoute
   AppDeveloperMcpRoute: typeof AppDeveloperMcpRoute
   AppDeveloperModelRoute: typeof AppDeveloperModelRoute
@@ -704,8 +505,6 @@ interface AppDeveloperRouteRouteChildren {
 }
 
 const AppDeveloperRouteRouteChildren: AppDeveloperRouteRouteChildren = {
-  AppDeveloperDesignSystemRouteRoute:
-    AppDeveloperDesignSystemRouteRouteWithChildren,
   AppDeveloperApiRoute: AppDeveloperApiRoute,
   AppDeveloperMcpRoute: AppDeveloperMcpRoute,
   AppDeveloperModelRoute: AppDeveloperModelRoute,
@@ -720,25 +519,16 @@ interface AppSettingsRouteRouteChildren {
   AppSettingsAppearanceRoute: typeof AppSettingsAppearanceRoute
   AppSettingsProfileRoute: typeof AppSettingsProfileRoute
   AppSettingsIndexRoute: typeof AppSettingsIndexRoute
-  AppSettingsaccessGroupMembershipsRoute: typeof AppSettingsaccessGroupMembershipsRoute
-  AppSettingsaccessGroupsRoute: typeof AppSettingsaccessGroupsRoute
-  AppSettingsaccessRoleAssignmentsRoute: typeof AppSettingsaccessRoleAssignmentsRoute
-  AppSettingsaccessRolesRoute: typeof AppSettingsaccessRolesRoute
-  AppSettingsaccessServiceAccountsRoute: typeof AppSettingsaccessServiceAccountsRoute
-  AppSettingsaccessUsersRoute: typeof AppSettingsaccessUsersRoute
+  AppSettingsCollectionRecordIdRoute: typeof AppSettingsCollectionRecordIdRoute
+  AppSettingsCollectionIndexRoute: typeof AppSettingsCollectionIndexRoute
 }
 
 const AppSettingsRouteRouteChildren: AppSettingsRouteRouteChildren = {
   AppSettingsAppearanceRoute: AppSettingsAppearanceRoute,
   AppSettingsProfileRoute: AppSettingsProfileRoute,
   AppSettingsIndexRoute: AppSettingsIndexRoute,
-  AppSettingsaccessGroupMembershipsRoute:
-    AppSettingsaccessGroupMembershipsRoute,
-  AppSettingsaccessGroupsRoute: AppSettingsaccessGroupsRoute,
-  AppSettingsaccessRoleAssignmentsRoute: AppSettingsaccessRoleAssignmentsRoute,
-  AppSettingsaccessRolesRoute: AppSettingsaccessRolesRoute,
-  AppSettingsaccessServiceAccountsRoute: AppSettingsaccessServiceAccountsRoute,
-  AppSettingsaccessUsersRoute: AppSettingsaccessUsersRoute,
+  AppSettingsCollectionRecordIdRoute: AppSettingsCollectionRecordIdRoute,
+  AppSettingsCollectionIndexRoute: AppSettingsCollectionIndexRoute,
 }
 
 const AppSettingsRouteRouteWithChildren =

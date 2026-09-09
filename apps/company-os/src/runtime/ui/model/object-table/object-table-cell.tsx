@@ -37,7 +37,7 @@ import {
 import { cn } from "#/runtime/ui/lib/utils.ts"
 import { ObjectChoiceBadge } from "#/runtime/ui/model/object-choice-badge.tsx"
 import { ObjectRecordIdentity } from "#/runtime/ui/model/object-record-identity.tsx"
-import { objectHref } from "#/runtime/ui/model/object-routing.ts"
+import { objectRecordHref } from "#/runtime/ui/model/object-routing.ts"
 import {
   formatObjectTableCellText,
   objectTableCellInputValue,
@@ -211,7 +211,7 @@ function TextCell({
       ? undefined
       : {
           ...reference,
-          href: objectHref(runtime, reference.object, externalValue),
+          href: objectRecordHref(runtime, reference.object, externalValue),
         })
   const formattedValue = formatObjectTableCellText(type, externalValue)
 

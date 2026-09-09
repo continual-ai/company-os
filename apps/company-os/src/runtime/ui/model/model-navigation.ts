@@ -35,3 +35,10 @@ export function createModelNavigation(runtime: ModelUiRuntime) {
     }))
     .filter((module) => module.items.length > 0)
 }
+
+/** The advisory list checks behind every navigation destination, preloadable outside React. */
+export function modelNavigationChecks(
+  navigation: ReturnType<typeof createModelNavigation>
+) {
+  return navigation.flatMap((module) => module.items.map((item) => item.check))
+}

@@ -5,6 +5,7 @@ import {
   type ApplicationServicesInfrastructure,
 } from "#/app/server/application-services.ts"
 import { identityProviderLayer } from "#/app/server/auth/provider.ts"
+import * as Postgres from "#/app/server/database/postgres.ts"
 import { Readiness } from "#/app/server/readiness.ts"
 import { HttpTransport } from "#/app/server/transport/http-transport.ts"
 import { McpTransport } from "#/app/server/transport/mcp-transport.ts"
@@ -51,3 +52,9 @@ export function makeApplicationLayer(
     readiness
   )
 }
+
+/** The deployed application: PostgreSQL infrastructure, business services, authentication, and transports. */
+export const applicationLayer = makeApplicationLayer({
+  database: Postgres.databaseLayer,
+  eventNotifications: Postgres.eventNotificationsLayer,
+})

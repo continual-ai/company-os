@@ -5,6 +5,7 @@ import {
   createContext,
   useContext,
   useEffect,
+  useMemo,
   useState,
   type ReactNode,
 } from "react"
@@ -13,11 +14,7 @@ import { data } from "#/app/app-client.ts"
 import { presentation } from "#/app/app-presentation.ts"
 import { capabilityPermission } from "#/app/capabilities.ts"
 import type { RecordSummary } from "#/app/records.ts"
-import { RecentRecords } from "#/app/ui/application/recent-records.tsx"
-import {
-  modelNavigation,
-  modelNavigationChecks,
-} from "#/app/ui/model/model-navigation.ts"
+import { RecentRecords } from "#/app/ui/application/recent-records-group.tsx"
 import { Button } from "#/runtime/ui/components/button.tsx"
 import {
   Command,
@@ -28,27 +25,39 @@ import {
   CommandList,
 } from "#/runtime/ui/components/command.tsx"
 import { SidebarMenuButton } from "#/runtime/ui/components/sidebar.tsx"
+import { useModelNavigation } from "#/runtime/ui/model/module-navigation.tsx"
 import { useObjectCreate } from "#/runtime/ui/model/object-create-context.ts"
 import { ObjectRecordIdentity } from "#/runtime/ui/model/object-record-identity.tsx"
 import { objectHref } from "#/runtime/ui/model/object-routing.ts"
 import type { ObjectTableRecord } from "#/runtime/ui/model/object-table/object-table-config.ts"
 import { useCapabilities } from "#/runtime/ui/model/use-capabilities.ts"
 
-const destinations = modelNavigation.flatMap((module) =>
-  module.items.map((item) => ({ ...item, module: module.name }))
-)
-const createCommands = destinations
-  .filter(
-    ({ object }) => "create" in object.actions && object.parent.kind === "root"
-  )
-  .map((item) => ({
-    ...item,
-    check: { permission: capabilityPermission(`${item.object.id}.create`) },
-  }))
-const checks = [
-  ...modelNavigationChecks,
-  ...createCommands.map((item) => item.check),
-]
+/** Collections and root-level create commands, with the checks that gate them. */
+function usePaletteCommands() {
+  const navigation = useModelNavigation()
+  return useMemo(() => {
+    const destinations = navigation.modules.flatMap((module) =>
+      module.items.map((item) => ({ ...item, module: module.name }))
+    )
+    const createCommands = destinations
+      .filter(
+        ({ object }) =>
+          "create" in object.actions && object.parent.kind === "root"
+      )
+      .map((item) => ({
+        ...item,
+        check: { permission: capabilityPermission(`${item.object.id}.create`) },
+      }))
+    return {
+      destinations,
+      createCommands,
+      checks: [
+        ...navigation.checks,
+        ...createCommands.map((item) => item.check),
+      ],
+    }
+  }, [navigation])
+}
 const utilityCommands = [
   { label: "Home", to: "/", icon: HomeIcon },
   { label: "Developer Center", to: "/developer", icon: CodeIcon },
@@ -80,6 +89,7 @@ function PaletteContent({ close }: { readonly close: () => void }) {
   const [query, setQuery] = useState("")
   const navigate = useNavigate()
   const create = useObjectCreate()
+  const { destinations, createCommands, checks } = usePaletteCommands()
   const capabilities = useCapabilities(checks)
   const trimmed = input.trim()
   useEffect(() => {

@@ -33,9 +33,43 @@ export function objectHref(
     ? base
     : `${base}/${encodeURIComponent(recordId)}`
 }
+/** Hidden objects without a configured path have no pages; their records render as plain identities. */
+function objectRouted(runtime: ModelUiRuntime, object: ObjectType) {
+  const navigation = runtime.ui[object.id]?.navigation
+  return navigation?.path !== undefined || navigation?.hidden !== true
+}
+
+export function objectRecordHref(
+  runtime: ModelUiRuntime,
+  object: ObjectType,
+  recordId: string
+) {
+  return objectRouted(runtime, object)
+    ? objectHref(runtime, object, recordId)
+    : undefined
+}
+
+/** The object served under `/objects/<id>`; objects at a configured path or without pages are not found here. */
 export function routeObject(runtime: ModelUiRuntime, id: string): ModelObject {
   const object = Object.values(runtime.model.objects).find(
     (candidate) => candidate.id === id
+  )
+  if (
+    !object ||
+    !objectRouted(runtime, object) ||
+    runtime.ui[object.id]?.navigation?.path !== undefined
+  )
+    throw notFound()
+  return object
+}
+
+/** The object whose configured navigation path is `path`, such as `/settings/users`. */
+export function routeObjectAtPath(
+  runtime: ModelUiRuntime,
+  path: string
+): ModelObject {
+  const object = Object.values(runtime.model.objects).find(
+    (candidate) => runtime.ui[candidate.id]?.navigation?.path === path
   )
   if (!object) throw notFound()
   return object

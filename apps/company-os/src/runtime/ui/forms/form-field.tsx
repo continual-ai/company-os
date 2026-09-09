@@ -9,8 +9,10 @@ import {
   formErrorMessages,
   type FormErrorValue,
 } from "#/runtime/ui/forms/form-errors.ts"
-import type { FormControlAccessibility } from "#/runtime/ui/model/field-editor.ts"
-import type { FormValue } from "#/runtime/ui/model/form-value.ts"
+import type {
+  FormControlAccessibility,
+  FormValue,
+} from "#/runtime/ui/forms/form-value.ts"
 
 /** Uniform field presentation over the current TanStack Form field. */
 export function FormField({

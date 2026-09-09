@@ -4,7 +4,6 @@ import {
   BracesIcon,
   CodeXmlIcon,
   PackageIcon,
-  PaletteIcon,
   PlugIcon,
 } from "lucide-react"
 
@@ -24,11 +23,6 @@ const developerNavigation = [
   },
   { label: "TypeScript", to: "/developer/sdk", icon: PackageIcon },
   { label: "MCP", to: "/developer/mcp", icon: PlugIcon },
-  {
-    label: "Design system",
-    to: "/developer/design-system",
-    icon: PaletteIcon,
-  },
 ] as const
 
 export function DeveloperSidebar() {

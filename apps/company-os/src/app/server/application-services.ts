@@ -2,7 +2,6 @@ import { Effect, Layer } from "effect"
 
 import { EnabledModel } from "#/app.model.ts"
 import { serverModules } from "#/app.server.ts"
-import { verifyDatabaseModel } from "#/app/server/database/migrations.ts"
 import { Database } from "#/runtime/server/database/database.ts"
 import type { CurrentInvocation } from "#/runtime/server/invocation.ts"
 import { modelImplementation } from "#/runtime/server/model/implementation.ts"
@@ -22,15 +21,7 @@ export const ModelImplementation = modelImplementation(EnabledModel)
 export function makeApplicationServicesLayer(
   infrastructure: ApplicationServicesInfrastructure
 ) {
-  const services = makeServicesLayer(
-    EnabledModel,
-    serverModules,
-    infrastructure
-  )
-  return Layer.merge(
-    services,
-    Layer.effectDiscard(verifyDatabaseModel()).pipe(Layer.provide(services))
-  )
+  return makeServicesLayer(EnabledModel, serverModules, infrastructure)
 }
 
 type ApplicationEnvironment = Layer.Success<

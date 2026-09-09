@@ -1,4 +1,4 @@
-import { Link, useMatchRoute } from "@tanstack/react-router"
+import { Link, useLocation, useMatchRoute } from "@tanstack/react-router"
 import {
   BotIcon,
   PaletteIcon,
@@ -8,95 +8,83 @@ import {
   UserRoundIcon,
 } from "lucide-react"
 
+import { EnabledModel } from "#/app.model.ts"
+import { presentation } from "#/app/app-presentation.ts"
 import {
   SecondarySidebar,
   SecondarySidebarItem,
   SecondarySidebarSection,
 } from "#/app/ui/application/secondary-sidebar.tsx"
+import { objectHref } from "#/runtime/ui/model/object-routing.ts"
 import { useCapabilities } from "#/runtime/ui/model/use-capabilities.ts"
 
-const settingsSections = [
-  {
-    label: "Personal",
-    items: [
-      { label: "General", to: "/settings", icon: SettingsIcon },
-      { label: "Profile", to: "/settings/profile", icon: UserRoundIcon },
-      { label: "Appearance", to: "/settings/appearance", icon: PaletteIcon },
-    ],
-  },
-  {
-    label: "Access",
-    items: [
-      {
-        capability: { permission: "user.list" },
-        label: "Users",
-        to: "/settings/users",
-        icon: UserRoundIcon,
-      },
-      {
-        capability: { permission: "role.list" },
-        label: "Roles",
-        to: "/settings/roles",
-        icon: ShieldCheckIcon,
-      },
-      {
-        capability: { permission: "group.list" },
-        label: "Groups",
-        to: "/settings/groups",
-        icon: UsersRoundIcon,
-      },
-      {
-        capability: { permission: "serviceAccount.list" },
-        label: "Service accounts",
-        to: "/settings/service-accounts",
-        icon: BotIcon,
-      },
-    ],
-  },
+const personalItems = [
+  { label: "General", to: "/settings", icon: SettingsIcon },
+  { label: "Profile", to: "/settings/profile", icon: UserRoundIcon },
+  { label: "Appearance", to: "/settings/appearance", icon: PaletteIcon },
 ] as const
 
-const accessChecks = settingsSections[1].items.map(
-  ({ capability }) => capability
-)
-
-function settingsItemIsActive(
-  to: (typeof settingsSections)[number]["items"][number]["to"],
-  matchRoute: ReturnType<typeof useMatchRoute>
-) {
-  if (matchRoute({ to })) return true
-  if (to === "/settings/roles") {
-    return Boolean(matchRoute({ to: "/settings/role-assignments" }))
-  }
-  if (to === "/settings/groups") {
-    return Boolean(matchRoute({ to: "/settings/group-memberships" }))
-  }
-  return false
-}
+/** Memberships and assignments are reached from the collection that owns them, so they keep it active. */
+const accessItems = [
+  { object: EnabledModel.objects.user, icon: UserRoundIcon, owns: [] },
+  {
+    object: EnabledModel.objects.role,
+    icon: ShieldCheckIcon,
+    owns: [EnabledModel.objects.roleAssignment],
+  },
+  {
+    object: EnabledModel.objects.group,
+    icon: UsersRoundIcon,
+    owns: [EnabledModel.objects.groupMembership],
+  },
+  { object: EnabledModel.objects.serviceAccount, icon: BotIcon, owns: [] },
+].map(({ object, icon, owns }) => ({
+  label: object.pluralName,
+  icon,
+  to: objectHref(presentation, object),
+  paths: [object, ...owns].map((owned) => objectHref(presentation, owned)),
+  check: {
+    permission: presentation.permissions.capabilityPermission(
+      `${object.id}.list`
+    ),
+  },
+}))
+const accessChecks = accessItems.map(({ check }) => check)
 
 export function SettingsSidebar() {
   const matchRoute = useMatchRoute()
+  const pathname = useLocation({ select: (location) => location.pathname })
   const capabilities = useCapabilities(accessChecks)
+  const access = accessItems.filter((item) => capabilities.can(item.check))
 
   return (
     <SecondarySidebar>
-      {settingsSections.map((section) => {
-        const items = section.items.filter(
-          (item) => !("capability" in item) || capabilities.can(item.capability)
-        )
-        return items.length === 0 ? null : (
-          <SecondarySidebarSection key={section.label} label={section.label}>
-            {items.map((item) => (
-              <SecondarySidebarItem
-                key={item.to}
-                icon={item.icon}
-                isActive={settingsItemIsActive(item.to, matchRoute)}
-                label={item.label}
-                link={<Link to={item.to} />}
-              />
-            ))}
-          </SecondarySidebarSection>
-        )
-      })}
+      <SecondarySidebarSection label="Personal">
+        {personalItems.map((item) => (
+          <SecondarySidebarItem
+            key={item.to}
+            icon={item.icon}
+            isActive={Boolean(matchRoute({ to: item.to }))}
+            label={item.label}
+            link={<Link to={item.to} />}
+          />
+        ))}
+      </SecondarySidebarSection>
+      {access.length === 0 ? null : (
+        <SecondarySidebarSection label="Access">
+          {access.map((item) => (
+            <SecondarySidebarItem
+              key={item.to}
+              icon={item.icon}
+              isActive={item.paths.some(
+                (path) => pathname === path || pathname.startsWith(`${path}/`)
+              )}
+              label={item.label}
+              link={<Link to={item.to} />}
+            />
+          ))}
+        </SecondarySidebarSection>
+      )}
     </SecondarySidebar>
   )
 }

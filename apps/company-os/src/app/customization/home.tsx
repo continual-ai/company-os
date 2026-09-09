@@ -2,13 +2,10 @@ import { Link } from "@tanstack/react-router"
 import { ArrowRightIcon } from "lucide-react"
 
 import { appConfig } from "#/app/customization/config.ts"
-import {
-  modelNavigation,
-  modelNavigationChecks,
-} from "#/app/ui/model/model-navigation.ts"
 import { applicationCapabilities } from "#/runtime/client/capabilities.ts"
 import { Button } from "#/runtime/ui/components/button.tsx"
 import { Skeleton } from "#/runtime/ui/components/skeleton.tsx"
+import { useModelNavigation } from "#/runtime/ui/model/module-navigation.tsx"
 import { ObjectRecordSummary } from "#/runtime/ui/model/object-record-summary.tsx"
 import { useRecentRecords } from "#/runtime/ui/model/recent-records.tsx"
 import { useCapabilities } from "#/runtime/ui/model/use-capabilities.ts"
@@ -16,7 +13,8 @@ import { useCapabilities } from "#/runtime/ui/model/use-capabilities.ts"
 /** Source-owned workspace entry; destinations come from the installed modules. */
 export function Home() {
   const recent = useRecentRecords()
-  const capabilities = useCapabilities(modelNavigationChecks)
+  const { modules: modelNavigation, checks } = useModelNavigation()
+  const capabilities = useCapabilities(checks)
   const modules = modelNavigation
     .map((module) => ({
       ...module,

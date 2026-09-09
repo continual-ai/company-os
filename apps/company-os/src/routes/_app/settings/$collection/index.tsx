@@ -3,13 +3,14 @@ import { createFileRoute } from "@tanstack/react-router"
 import { presentation } from "#/app/app-presentation.ts"
 import { objectCollectionRoute } from "#/app/ui/model/object-routes.ts"
 import { ModelCollectionPage } from "#/runtime/ui/model/model-pages.tsx"
-import { routeObject } from "#/runtime/ui/model/object-routing.ts"
+import { routeObjectAtPath } from "#/runtime/ui/model/object-routing.ts"
 
-function resolveObject({ objectType }: { readonly objectType: string }) {
-  return routeObject(presentation, objectType)
+/** Access objects declare `/settings/<collection>` as their navigation path. */
+function resolveObject({ collection }: { readonly collection: string }) {
+  return routeObjectAtPath(presentation, `/settings/${collection}`)
 }
 
-export const Route = createFileRoute("/_app/objects/$objectType/")({
+export const Route = createFileRoute("/_app/settings/$collection/")({
   ...objectCollectionRoute(resolveObject),
   component: CollectionPage,
 })

@@ -7,9 +7,12 @@ import { getCurrentUser } from "#/app/current-user.functions.ts"
 import { AppShell } from "#/app/ui/application/app-shell.tsx"
 import { allowedCapabilitiesQuery } from "#/app/ui/application/load-capabilities.ts"
 import { useModelEvents } from "#/app/ui/application/use-model-events.ts"
-import { modelNavigationChecks } from "#/app/ui/model/model-navigation.ts"
 import { modelData } from "#/runtime/client/data-client.ts"
 import { runClientEffect } from "#/runtime/client/model-query-client.ts"
+import {
+  createModelNavigation,
+  modelNavigationChecks,
+} from "#/runtime/ui/model/model-navigation.ts"
 import { ModelUiProvider } from "#/runtime/ui/model/runtime-context.tsx"
 
 export const Route = createFileRoute("/_app")({
@@ -33,7 +36,9 @@ export const Route = createFileRoute("/_app")({
   loader: async ({ context }) => {
     // Advisory navigation checks must not fail the route when their observer unmounts or a check fails.
     await context.queryClient.prefetchQuery(
-      allowedCapabilitiesQuery(modelNavigationChecks)
+      allowedCapabilitiesQuery(
+        modelNavigationChecks(createModelNavigation(presentation))
+      )
     )
   },
   component: CompanyAppLayout,
