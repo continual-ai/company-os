@@ -3,7 +3,6 @@ import { EngineeringUi } from "#/modules/engineering/ui/index.ts"
 import { MarketingUi } from "#/modules/marketing/ui/index.ts"
 import { NotesUi } from "#/modules/notes/ui/index.ts"
 import { SalesUi } from "#/modules/sales/ui/index.ts"
-import { SupportEngineeringUi } from "#/modules/support-engineering/ui/index.ts"
 import { SupportUi } from "#/modules/support/ui/index.ts"
 import { AccessUi } from "#/runtime/access/ui/index.ts"
 import { AssetsUi } from "#/runtime/assets/ui/index.ts"
@@ -18,6 +17,5 @@ export const modelUi = composeModelUi(
   SalesUi,
   MarketingUi,
   EngineeringUi,
-  SupportUi,
-  SupportEngineeringUi
+  SupportUi
 )
