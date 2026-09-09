@@ -188,23 +188,24 @@ export function ObjectCollection({
             initialValues: { ...source.create?.initialValues, ...values },
           })
       : undefined
-  const renderActions = (record: ClientRecord) => (
+  const renderActions = (record: ClientRecord, selected = false) => (
     <>
       {collection.canUpdate(record.id) ? (
         <Button
           type="button"
           variant="ghost"
-          size="icon-xs"
+          size={selected ? "sm" : "icon-xs"}
           aria-label={`Edit ${object.name.toLowerCase()}`}
           onClick={() => setEditing(record)}
         >
           <PencilIcon />
+          {selected && "Edit"}
         </Button>
       ) : null}
       {source.unlink && (
         <Button
           variant="ghost"
-          size="icon-xs"
+          size={selected ? "sm" : "icon-xs"}
           aria-label={`Unlink ${object.name.toLowerCase()}`}
           onClick={() => {
             setMutationError(undefined)
@@ -218,9 +219,12 @@ export function ObjectCollection({
           }}
         >
           <UnlinkIcon />
+          {selected && "Unlink"}
         </Button>
       )}
-      {source.deleteRecords !== undefined && collection.canDelete(record.id) ? (
+      {!selected &&
+      source.deleteRecords !== undefined &&
+      collection.canDelete(record.id) ? (
         <ConfirmActionButton
           actionLabel="Delete"
           title={`Delete ${object.name.toLowerCase()}?`}
@@ -366,7 +370,6 @@ export function ObjectCollection({
               : undefined
           }
           canDeleteRecord={collection.canDelete}
-          enableRowSelection={source.deleteRecords !== undefined}
           toolbarActions={source.renderAdd?.(collection.records)}
           pagination={{
             hasNextPage: collection.hasNextPage,
@@ -382,11 +385,11 @@ export function ObjectCollection({
               {layoutControls}
             </div>
           }
-          renderRecordActions={(record) => {
+          renderSelectedRecordActions={(recordId) => {
             const original = collection.records.find(
-              ({ id }) => id === record.id
+              ({ id }) => id === recordId
             )
-            return original === undefined ? null : renderActions(original)
+            return original === undefined ? null : renderActions(original, true)
           }}
         />
       ) : (

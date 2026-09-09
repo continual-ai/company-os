@@ -118,7 +118,7 @@ export interface ObjectTableProps {
     | undefined
   parentLabel?: string | undefined
   recordHref?: ((recordId: string) => string) | undefined
-  renderRecordActions?: ((record: ObjectTableRecord) => ReactNode) | undefined
+  renderSelectedRecordActions?: ((recordId: string) => ReactNode) | undefined
   toolbarActions?: ReactNode
   resolveImageSrc?: ObjectTableImageResolver | undefined
   resolveRecord?: ObjectTableRecordResolver | undefined
@@ -132,7 +132,7 @@ const columnHelper = createColumnHelper<
   ObjectTableRecord
 >()
 
-const selectionControlWidth = 36
+const selectionControlWidth = 56
 const titleColumnWidth = 276
 const addColumnWidth = 136
 
@@ -219,7 +219,7 @@ function SelectionHeader({
   "table"
 >) {
   return (
-    <div className="flex size-full items-center justify-center">
+    <div className="flex size-full items-center pl-3 sm:pl-5">
       <Checkbox
         aria-label="Select all loaded rows"
         disabled={!table.getRowModel().rows.some((row) => row.getCanSelect())}
@@ -237,7 +237,7 @@ function SelectionCell({
   row,
 }: Pick<CellContext<typeof objectTableFeatures, ObjectTableRecord>, "row">) {
   return (
-    <div className="flex size-full items-center justify-center">
+    <div className="flex size-full items-center pl-3 sm:pl-5">
       <Checkbox
         aria-label={`Select row ${row.getDisplayIndex() + 1}`}
         checked={row.getIsSelected()}
@@ -281,7 +281,7 @@ export function ObjectTable({
   onColumnVisibilityChange,
   onSortingChange,
   pagination,
-  renderRecordActions,
+  renderSelectedRecordActions,
   toolbarActions,
   resolveImageSrc,
   resolveRecord,
@@ -429,11 +429,7 @@ export function ObjectTable({
     initialState,
     columnResizeMode: "onChange",
     enableMultiSort: true,
-    enableRowSelection: !enableRowSelection
-      ? false
-      : canDeleteRecord === undefined
-        ? true
-        : (row) => canDeleteRecord(row.original.id),
+    enableRowSelection,
     enableSortingRemoval: true,
     manualFiltering: onColumnFiltersChange !== undefined,
     manualSorting: onSortingChange !== undefined,
@@ -506,6 +502,8 @@ export function ObjectTable({
         tableTitle={tableTitle}
         onCreateRecord={onCreateRecord}
         onDeleteRecords={onDeleteRecords}
+        canDeleteRecord={canDeleteRecord}
+        renderSelectedRecordActions={renderSelectedRecordActions}
         toolbarActions={toolbarActions}
       />
 
@@ -544,7 +542,8 @@ export function ObjectTable({
                             : "none"
                       }
                       className={cn(
-                        "relative h-8 border-r border-b p-0 text-xs",
+                        "relative h-8 border-b p-0 text-xs",
+                        header.column.id !== "selection" && "border-r",
                         header.column.getIsPinned()
                           ? "z-10 bg-background"
                           : "bg-muted/20"
@@ -635,7 +634,7 @@ export function ObjectTable({
                   <TableRow
                     aria-rowindex={rowIndex + 2}
                     data-state={row.getIsSelected() ? "selected" : undefined}
-                    className="group h-8 hover:bg-muted/30"
+                    className="group h-8 hover:bg-muted/30 [&>td]:inset-shadow-[0_-1px_var(--border)]"
                   >
                     {row.getVisibleCells().map((cell) => {
                       const meta = cell.column.columnDef.meta
@@ -648,7 +647,8 @@ export function ObjectTable({
                           <TableCell
                             key={cell.id}
                             className={cn(
-                              "h-8 overflow-hidden border-r p-0",
+                              "h-8 overflow-hidden p-0",
+                              cell.column.id !== "selection" && "border-r",
                               pinned && objectTablePinnedCellClassName
                             )}
                             style={pinnedColumnStyle(cell.column)}
@@ -787,13 +787,7 @@ export function ObjectTable({
                     <TableCell
                       className="h-8 border-r p-0"
                       style={{ width: addColumnWidth }}
-                    >
-                      {renderRecordActions === undefined ? null : (
-                        <div className="flex h-full items-center justify-end gap-1 px-1">
-                          {renderRecordActions(row.original)}
-                        </div>
-                      )}
-                    </TableCell>
+                    />
                   </TableRow>
                 </Fragment>
               )

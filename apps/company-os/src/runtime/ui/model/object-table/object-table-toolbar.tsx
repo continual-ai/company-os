@@ -48,6 +48,8 @@ import { ObjectTableProperty } from "#/runtime/ui/model/object-table/object-tabl
 import { ObjectTableSearch } from "#/runtime/ui/model/object-table/object-table-search.tsx"
 
 interface ObjectTableToolbarProps {
+  canDeleteRecord?: ((recordId: string) => boolean) | undefined
+  renderSelectedRecordActions?: ((recordId: string) => ReactNode) | undefined
   object: ObjectType
   onCreateRecord?: (() => Promise<void> | void) | undefined
   onDeleteRecords?:
@@ -199,6 +201,8 @@ export function ObjectTableColumnMenu({
 }
 
 export function ObjectTableToolbar({
+  canDeleteRecord,
+  renderSelectedRecordActions,
   object,
   onCreateRecord,
   onDeleteRecords,
@@ -206,7 +210,11 @@ export function ObjectTableToolbar({
   tableTitle,
   toolbarActions,
 }: ObjectTableToolbarProps) {
-  const selectedCount = table.getSelectedRowIds().length
+  const selectedIds = table.getSelectedRowIds()
+  const selectedCount = selectedIds.length
+  const canDeleteSelected = selectedIds.every(
+    (id) => canDeleteRecord?.(id) ?? true
+  )
   const canFilter = table
     .getAllLeafColumns()
     .some((column) => column.getCanFilter())
@@ -241,7 +249,9 @@ export function ObjectTableToolbar({
               >
                 Clear
               </Button>
-              {onDeleteRecords === undefined ? null : (
+              {selectedCount === 1 &&
+                renderSelectedRecordActions?.(selectedIds[0]!)}
+              {onDeleteRecords === undefined || !canDeleteSelected ? null : (
                 <AlertDialog
                   open={deleteOpen}
                   onOpenChange={(open) => {
