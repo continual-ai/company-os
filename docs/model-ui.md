@@ -35,6 +35,10 @@ The record header browses the most recently opened standalone collection for tha
 its filters and ordering for the session. Previous and next replace the current history entry; next
 loads another page when needed. The counter appears only when the record is in the loaded results.
 A fresh direct link uses the default list, without scanning every page to guess a position.
+Left and right arrows use the same record navigation; Escape returns to the originating collection.
+Press `?` for the current page's shortcuts. Components register shortcuts with
+`useKeyboardShortcuts` from `@company/ui/keyboard-shortcuts`; registrations follow their lifetime.
+Handled events, typing, composition, dialogs, menus, and focused controls retain their own keys.
 The command palette suggests explicitly visited records; prefetches and background refreshes do not
 count as visits.
 

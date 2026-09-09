@@ -7,6 +7,7 @@ import {
   CommandItem,
   CommandList,
 } from "@company/ui/command"
+import { useKeyboardShortcuts } from "@company/ui/keyboard-shortcuts"
 import { SidebarMenuButton } from "@company/ui/sidebar"
 import { useQuery } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
@@ -277,16 +278,19 @@ export function CommandPaletteButton() {
 
 export function CommandPalette({ children }: { readonly children: ReactNode }) {
   const [open, setOpen] = useState(false)
-  useEffect(() => {
-    const key = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
-        event.preventDefault()
-        setOpen((value) => !value)
-      }
-    }
-    window.addEventListener("keydown", key)
-    return () => window.removeEventListener("keydown", key)
-  }, [])
+  useKeyboardShortcuts([
+    {
+      id: "command-palette",
+      key: "k",
+      mod: true,
+      label: "⌘ / Ctrl + K",
+      description: "Search and commands",
+      group: "General",
+      allowInEditable: true,
+      allowInOverlay: open,
+      run: () => setOpen((value) => !value),
+    },
+  ])
   return (
     <OpenPalette.Provider value={() => setOpen(true)}>
       {children}

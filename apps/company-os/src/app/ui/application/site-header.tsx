@@ -7,6 +7,7 @@ import {
   BreadcrumbSeparator,
 } from "@company/ui/breadcrumb"
 import { Button } from "@company/ui/button"
+import { useKeyboardShortcuts } from "@company/ui/keyboard-shortcuts"
 import { SidebarTrigger, useSidebar } from "@company/ui/sidebar"
 import {
   Link,
@@ -31,6 +32,25 @@ export function SiteHeader() {
   const pageChrome = usePageChrome()
   const router = useRouter()
   const canGoBack = useCanGoBack()
+  useKeyboardShortcuts(
+    pageChrome.collectionHref
+      ? [
+          {
+            id: "back-to-collection",
+            key: "Escape",
+            label: "Esc",
+            description: `Back to ${pageChrome.collectionLabel}`,
+            group: "Records",
+            run: () => {
+              void router.navigate({
+                to: pageChrome.collectionHref!,
+                replace: true,
+              })
+            },
+          },
+        ]
+      : []
+  )
   const breadcrumbs = useMatches({
     select: (matches) =>
       matches.flatMap((match) => {
@@ -134,6 +154,30 @@ function RecordPager({ navigation }: { navigation: RecordNavigation }) {
       setNavigating(false)
     }
   }
+  useKeyboardShortcuts([
+    {
+      id: "previous-record",
+      key: "ArrowLeft",
+      label: "←",
+      description: "Previous record",
+      group: "Records",
+      enabled: !previousDisabled,
+      run: () => {
+        void move("previous")
+      },
+    },
+    {
+      id: "next-record",
+      key: "ArrowRight",
+      label: "→",
+      description: "Next record",
+      group: "Records",
+      enabled: !nextDisabled,
+      run: () => {
+        void move("next")
+      },
+    },
+  ])
   return (
     <nav
       className="ml-auto flex items-center gap-1"
@@ -155,7 +199,8 @@ function RecordPager({ navigation }: { navigation: RecordNavigation }) {
         variant="ghost"
         size="icon-sm"
         aria-label="Previous record"
-        title="Previous record"
+        aria-keyshortcuts="ArrowLeft"
+        title="Previous record (←)"
         disabled={previousDisabled}
         onClick={() => {
           void move("previous")
@@ -168,7 +213,8 @@ function RecordPager({ navigation }: { navigation: RecordNavigation }) {
         size="icon-sm"
         aria-label="Next record"
         aria-busy={navigation.loading}
-        title="Next record"
+        aria-keyshortcuts="ArrowRight"
+        title="Next record (→)"
         disabled={nextDisabled}
         onClick={() => {
           void move("next")

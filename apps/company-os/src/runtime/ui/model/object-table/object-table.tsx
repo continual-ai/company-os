@@ -8,6 +8,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@company/ui/empty"
+import { useKeyboardShortcuts } from "@company/ui/keyboard-shortcuts"
 import { cn } from "@company/ui/lib/utils"
 import {
   Table,
@@ -289,6 +290,29 @@ export function ObjectTable({
   tableTitle,
   visiblePropertyIds,
 }: ObjectTableProps) {
+  useKeyboardShortcuts([
+    {
+      id: "table-move",
+      key: "ArrowUp",
+      label: "↑ ↓ ← →",
+      description: "Move between focused cells",
+      group: "Table",
+    },
+    {
+      id: "table-edit",
+      key: "Enter",
+      label: "Enter / F2",
+      description: "Edit the focused cell",
+      group: "Table",
+    },
+    {
+      id: "table-cancel",
+      key: "Escape",
+      label: "Esc",
+      description: "Cancel cell editing or clear selection",
+      group: "Table",
+    },
+  ])
   const [isHorizontallyScrolled, setIsHorizontallyScrolled] = useState(false)
   const properties = useMemo(() => {
     const entries = [
