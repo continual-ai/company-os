@@ -7,7 +7,7 @@ import type { Model } from "#/app.model.ts"
  */
 export const appMetadata = {
   id: "application",
-  name: "Example",
+  name: "Company OS",
   version: "0.0.0",
   defaultCurrency: "USD",
 } as const
