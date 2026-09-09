@@ -1,15 +1,19 @@
 import { Effect, Layer } from "effect"
 
 import type { ModuleDefinition, ObjectType } from "#/runtime/model/index.ts"
-import type {
-  CustomOperationService,
-  ObjectImplementation,
-} from "#/runtime/server/model-implementation.ts"
+import type { CustomOperationService } from "#/runtime/server/model-implementation.ts"
+import type { ObjectService } from "#/runtime/server/model/object-service.ts"
 
+/** Overrides may fail and require anything; binding supplies their services and erases the types once. */
+type Loose<S> = {
+  readonly [K in keyof S]: S[K] extends (
+    input: infer I
+  ) => Effect.Effect<infer A, unknown, unknown>
+    ? (input: I) => Effect.Effect<A, unknown, unknown>
+    : S[K]
+}
 type Overrides<O extends ObjectType> = CustomOperationService<O, unknown> &
-  Partial<
-    Omit<ObjectImplementation<O, unknown>, keyof CustomOperationService<O>>
-  >
+  Partial<Loose<ObjectService<O>>>
 type ModuleOverrides<M extends ModuleDefinition> = {
   readonly [
     O in M["objects"][number] as keyof CustomOperationService<O> extends never

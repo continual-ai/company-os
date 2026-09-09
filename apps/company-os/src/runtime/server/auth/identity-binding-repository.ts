@@ -4,14 +4,14 @@ import {
   RecordId,
   type RecordId as RecordIdType,
 } from "#/runtime/model/index.ts"
-import { Database } from "#/runtime/server/database/database.ts"
-import { identityBindings } from "#/runtime/server/database/schema.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
-import { insertValues } from "#/runtime/server/postgres/index.ts"
+import { Database } from "#/runtime/server/storage/database.ts"
+import { insertValues } from "#/runtime/server/storage/index.ts"
 import {
   projection,
   type SelectionRow,
-} from "#/runtime/server/postgres/index.ts"
+} from "#/runtime/server/storage/index.ts"
+import { identityBindings } from "#/runtime/server/storage/infrastructure.ts"
 
 export type BoundIdentity =
   | { readonly id: RecordId<"serviceAccount">; readonly kind: "serviceAccount" }

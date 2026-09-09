@@ -4,7 +4,7 @@ import { PgClient } from "@effect/sql-pg"
 import { Config, Data, Effect, Layer, Redacted } from "effect"
 import { Client } from "pg"
 
-import { pgTypes } from "#/runtime/server/postgres/pg-types.ts"
+import { pgTypes } from "#/runtime/server/storage/pg-types.ts"
 
 const defaultAdminUrl = "postgresql://localhost:5432/postgres"
 

@@ -3,13 +3,13 @@ import { Layer } from "effect"
 import type { ModelCatalog } from "#/runtime/model/index.ts"
 import { AuthorizationRepository } from "#/runtime/server/authorization/authorization-repository.ts"
 import { Authorization } from "#/runtime/server/authorization/authorization-service.ts"
-import type { Database } from "#/runtime/server/database/database.ts"
 import { EventJournal } from "#/runtime/server/events/event-journal.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
 import { Links } from "#/runtime/server/model/link-service.ts"
 import { ObjectRepositories } from "#/runtime/server/model/object-repositories.ts"
 import { RecordIdentifierResolver } from "#/runtime/server/model/record-identifier-resolver.ts"
 import { PageTokens } from "#/runtime/server/page-tokens.ts"
+import type { Database } from "#/runtime/server/storage/database.ts"
 
 /** Builds one execution foundation for HTTP, jobs, and isolated module tests. */
 export function foundationLayer<E>(

@@ -8,7 +8,7 @@ import { applyMigrations } from "#/app/server/database/migrations.ts"
 import { dumpSchema } from "#/app/server/database/schema-dump.ts"
 import { schemaSql } from "#/app/server/database/schema.ts"
 import { TestDatabase } from "#/app/server/database/test-database.ts"
-import { Database } from "#/runtime/server/database/database.ts"
+import { Database } from "#/runtime/server/storage/database.ts"
 
 it("replayed migrations match the declared schema, including indexes, functions, and comments", async () => {
   const declared = await TestDatabase.createTemplate(schemaSql)

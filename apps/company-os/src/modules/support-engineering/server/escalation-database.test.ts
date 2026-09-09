@@ -7,14 +7,14 @@ import {
 } from "#/app/server/application-services.ts"
 import { itDatabase } from "#/app/server/database/it-database.ts"
 import { seedSystem } from "#/app/server/seeds/seed-system.ts"
-import { CommittedChanges } from "#/runtime/server/database/committed-changes.ts"
-import { Database } from "#/runtime/server/database/database.ts"
 import {
   anonymousInvocation,
   systemInvocation,
 } from "#/runtime/server/invocation-context.ts"
 import { CurrentInvocation } from "#/runtime/server/invocation.ts"
 import { PageTokens } from "#/runtime/server/page-tokens.ts"
+import { CommittedChanges } from "#/runtime/server/storage/committed-changes.ts"
+import { Database } from "#/runtime/server/storage/database.ts"
 
 itDatabase(
   "escalates once under concurrent retries and preserves authorization and atomic rollback",

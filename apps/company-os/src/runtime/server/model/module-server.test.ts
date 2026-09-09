@@ -8,12 +8,12 @@ import {
   defineObject,
   schema,
 } from "#/runtime/model/index.ts"
-import { Database } from "#/runtime/server/database/database.ts"
 import {
   defineModuleServer,
   type OperationRequirements,
 } from "#/runtime/server/model/module-server.ts"
 import { makeServicesLayer } from "#/runtime/server/services.ts"
+import { Database } from "#/runtime/server/storage/database.ts"
 
 class Greeting extends Context.Service<Greeting, { readonly value: string }>()(
   "test/Greeting"

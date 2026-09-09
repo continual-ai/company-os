@@ -85,19 +85,21 @@ See [Engineering Issue](../modules/engineering/src/model/issue.ts) for a standar
 
 ## Custom server behavior
 
-Write named `Effect.fn` operations. Use `Records`, `Database`, `Authorization`, `EventJournal`, and
-`ModelContext` from `@company/runtime/server`. Services supplied by providers may be layerless;
-constructed services expose `.layer`. Add a new service only for a cohesive capability or useful
-substitution boundary, not to forward existing methods.
+Write named `Effect.fn` operations. Use `Records`, `Links`, `Database`, `Authorization`,
+`EventJournal`, and `ModelContext` from `#/runtime/server/index.ts`. Services supplied by providers
+may be layerless; constructed services expose `.layer`. Add a new service only for a cohesive
+capability or useful substitution boundary, not to forward existing methods.
 
 [SalesServer](../modules/sales/src/server/index.ts) binds custom operations to their declared model methods.
 The runtime supplies standard CRUD. The app composes these contributions and shared infrastructure;
 it does not need a Sales-specific adapter. Current invocation and transaction event buffers are
 never captured when binding module operations.
 
-Use `Records.writer(Object)` for validated writes with event recording. Custom SQL uses
-`Database.sql` and `ModelContext.table(Object)`, not a second hand-maintained schema. Actions own
-atomic transactions and authorization. SQL queries must filter authorized rows before aggregation;
+Use `Records.writer(Object)` for validated writes with event recording and
+`Links.writer(Object)` for validated relationship changes; neither checks a capability, so call
+`Authorization.require` first. Custom SQL uses `Database.sql` and `ModelContext.table(Object)`, not
+a second hand-maintained schema. Actions own authorization and open one `Database.transaction`;
+standard writes inside it join that transaction rather than opening their own. SQL queries must filter authorized rows before aggregation;
 keep currencies separate and use PostgreSQL numeric arithmetic. Expected domain failures use the
 model's portable error contract so HTTP and MCP need no domain-specific error switches.
 

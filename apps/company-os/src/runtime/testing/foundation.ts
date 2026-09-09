@@ -3,14 +3,14 @@ import { Effect, Layer } from "effect"
 import { bootstrapSystemActor } from "#/runtime/access/server/bootstrap.ts"
 import { seedAuthorization } from "#/runtime/access/server/seed.ts"
 import type { ModelCatalog } from "#/runtime/model/index.ts"
-import { Database } from "#/runtime/server/database/database.ts"
 import { foundationLayer } from "#/runtime/server/foundation.ts"
 import { systemInvocation } from "#/runtime/server/invocation-context.ts"
 import { CurrentInvocation } from "#/runtime/server/invocation.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
 import { PageTokens } from "#/runtime/server/page-tokens.ts"
-import { TestDatabase } from "#/runtime/server/postgres/testing.ts"
 import { makeSchemaSql } from "#/runtime/server/schema.ts"
+import { Database } from "#/runtime/server/storage/database.ts"
+import { TestDatabase } from "#/runtime/server/storage/testing.ts"
 
 /** Creates an isolated template; each layer scope gets a fresh database with real authorization and event services. */
 export async function testFoundation(model: ModelCatalog) {

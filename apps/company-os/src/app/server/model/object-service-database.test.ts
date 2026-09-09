@@ -14,15 +14,13 @@ import {
   modelObjectLinkTraversals,
 } from "#/runtime/model/index.ts"
 import { ROOT_ID } from "#/runtime/model/system-records.ts"
-import { Database } from "#/runtime/server/database/database.ts"
-import { makeObjectRepository } from "#/runtime/server/database/object-repository.ts"
 import { Records } from "#/runtime/server/index.ts"
 import { systemInvocation } from "#/runtime/server/invocation-context.ts"
 import { CurrentInvocation } from "#/runtime/server/invocation.ts"
 import { Links } from "#/runtime/server/model/link-service.ts"
-import { makeObjectService } from "#/runtime/server/model/object-service.ts"
 import { PageTokens } from "#/runtime/server/page-tokens.ts"
-import { makeLinkRepository } from "#/runtime/server/postgres/index.ts"
+import { Database } from "#/runtime/server/storage/database.ts"
+import { makeLinkRepository } from "#/runtime/server/storage/index.ts"
 
 itDatabase(
   "coordinates Link updates even when ordinary creation is disabled",
@@ -101,16 +99,7 @@ itDatabase(
       // Keep the pagination fixture independent of the creation cases above.
       yield* services.contact.delete({ id: linkedContact.id })
       yield* services.company.delete({ id: linkedCompany.id })
-      const repository = yield* makeObjectRepository(Model.objects.company)
-      // Exercise a runtime contract variant against the same physical Company storage.
-      const updateOnly = {
-        ...Model.objects.company,
-        actions: { ...Model.objects.company.actions },
-      }
-      Reflect.deleteProperty(updateOnly.actions, "create")
-      const service = yield* makeObjectService(updateOnly, repository)
-      expect("create" in service).toBe(false)
-      yield* service.update({
+      yield* services.company.update({
         id: company.id,
         etag: company.etag,
         links: { contacts: { add: [contact.id] } },

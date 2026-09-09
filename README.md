@@ -55,7 +55,13 @@ at `/developer` explores the model, the API, and the MCP tools.
 the ones the UI, API, and MCP expose:
 
 ```ts
-export const enabledModules = ["access", "assets", "notes", "sales", "support"] as const
+export const enabledModules = [
+  "access",
+  "assets",
+  "notes",
+  "sales",
+  "support",
+] as const
 ```
 
 Remove an id and its screens, endpoints, and tools disappear while its tables and data stay. The
@@ -127,14 +133,14 @@ See [deployment](docs/runbooks/deployment.md) for production builds and identity
 
 ## Development
 
-| Command                                | Purpose                                                       |
-| -------------------------------------- | ------------------------------------------------------------- |
-| `pnpm dev`                             | Migrate and run the app                                       |
+| Command                                | Purpose                                                      |
+| -------------------------------------- | ------------------------------------------------------------ |
+| `pnpm dev`                             | Migrate and run the app                                      |
 | `pnpm check`                           | Lint, typecheck, schema check, model lint, format, dead code |
-| `pnpm test`                            | Unit tests and isolated PostgreSQL tests                      |
-| `pnpm build`                           | Build the app and the starter                                 |
-| `pnpm format`                          | Format source and documentation                               |
-| `pnpm --filter company-os db:generate` | Regenerate `schema.sql` from the composed model               |
+| `pnpm test`                            | Unit tests and isolated PostgreSQL tests                     |
+| `pnpm build`                           | Build the app and the starter                                |
+| `pnpm format`                          | Format source and documentation                              |
+| `pnpm --filter company-os db:generate` | Regenerate `schema.sql` from the composed model              |
 
 Tests need a PostgreSQL role with `CREATEDB`; they create and remove isolated databases. [AGENTS.md](AGENTS.md)
 holds the repository-wide constraints that contributors and agents follow.

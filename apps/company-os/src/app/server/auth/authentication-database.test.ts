@@ -8,12 +8,12 @@ import { seedSystem } from "#/app/server/seeds/seed-system.ts"
 import { ADMINISTRATOR_ROLE_ID } from "#/runtime/model/system-records.ts"
 import { Authentication } from "#/runtime/server/auth/authentication.ts"
 import { IdentityProvider } from "#/runtime/server/auth/identity-provider.ts"
-import { Database } from "#/runtime/server/database/database.ts"
 import { PageTokens } from "#/runtime/server/page-tokens.ts"
+import { Database } from "#/runtime/server/storage/database.ts"
 import {
   tableProjection,
   type TableRow,
-} from "#/runtime/server/postgres/index.ts"
+} from "#/runtime/server/storage/index.ts"
 
 itDatabase(
   "shares verification within a request and reserves bootstrap for the configured subject",

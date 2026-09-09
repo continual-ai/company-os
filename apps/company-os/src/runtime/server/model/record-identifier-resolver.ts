@@ -7,10 +7,10 @@ import {
   type RecordId,
   type RecordIdentifier,
 } from "#/runtime/model/index.ts"
-import { Database } from "#/runtime/server/database/database.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
-import { RecordAliasNotFound } from "#/runtime/server/object-repository.ts"
-import { resolveRecordAliases as resolvePostgresRecordAliases } from "#/runtime/server/postgres/index.ts"
+import { Database } from "#/runtime/server/storage/database.ts"
+import { resolveRecordAliases as resolvePostgresRecordAliases } from "#/runtime/server/storage/index.ts"
+import { RecordAliasNotFound } from "#/runtime/server/storage/object-repository.ts"
 
 const make = Effect.gen(function* () {
   const context = yield* ModelContext

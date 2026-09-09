@@ -3,16 +3,16 @@ import { Effect } from "effect"
 import { Asset } from "#/runtime/assets/model/asset.ts"
 import { AssetPrecondition } from "#/runtime/assets/server/asset-error.ts"
 import type { AssetReference } from "#/runtime/assets/server/references.ts"
-import type { Database } from "#/runtime/server/database/database.ts"
-import { assetReferences } from "#/runtime/server/database/schema.ts"
 import type { ModelContext } from "#/runtime/server/model-context.ts"
-import { insertValues } from "#/runtime/server/postgres/index.ts"
+import type { Database } from "#/runtime/server/storage/database.ts"
+import { insertValues } from "#/runtime/server/storage/index.ts"
 import {
   sqlValue,
   projection,
   type SelectionRow,
   inValues,
-} from "#/runtime/server/postgres/index.ts"
+} from "#/runtime/server/storage/index.ts"
+import { assetReferences } from "#/runtime/server/storage/infrastructure.ts"
 
 /** Transactional reference index: field values remain authoritative; foreign keys protect deletion. */
 export function replaceAssetReferences(

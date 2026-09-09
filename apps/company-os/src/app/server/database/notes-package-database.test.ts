@@ -14,8 +14,8 @@ import {
 import { Database, Records } from "#/runtime/server/index.ts"
 import { systemInvocation } from "#/runtime/server/invocation-context.ts"
 import { CurrentInvocation } from "#/runtime/server/invocation.ts"
-import { makePostgresSchema } from "#/runtime/server/postgres/index.ts"
-import { tableName } from "#/runtime/server/postgres/table.ts"
+import { makePostgresSchema } from "#/runtime/server/storage/index.ts"
+import { tableName } from "#/runtime/server/storage/table.ts"
 import { testFoundation } from "#/runtime/testing/foundation.ts"
 
 const Topic = defineObject({

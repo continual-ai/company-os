@@ -17,9 +17,9 @@ import {
   InvalidListRequest,
   type RepositoryFilter,
   type RepositoryListRequest,
-} from "#/runtime/server/object-repository.ts"
-import { inValues } from "#/runtime/server/postgres/statement.ts"
-import { type Column } from "#/runtime/server/postgres/table.ts"
+} from "#/runtime/server/storage/object-repository.ts"
+import { inValues } from "#/runtime/server/storage/statement.ts"
+import { type Column } from "#/runtime/server/storage/table.ts"
 
 export type QueryValue = boolean | null | number | string
 

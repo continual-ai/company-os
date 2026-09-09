@@ -9,21 +9,21 @@ import { runSeedScenario } from "#/app/server/application-services.ts"
 import { itDatabase } from "#/app/server/database/it-database.ts"
 import { companies, leads } from "#/app/server/database/schema.ts"
 import { seedSystem } from "#/app/server/seeds/seed-system.ts"
-import { Database } from "#/runtime/server/database/database.ts"
-import {
-  assetBlobs,
-  eventJournal,
-  seedRuns,
-} from "#/runtime/server/database/schema.ts"
 import { systemInvocation } from "#/runtime/server/invocation-context.ts"
 import { CurrentInvocation } from "#/runtime/server/invocation.ts"
 import { PageTokens } from "#/runtime/server/page-tokens.ts"
+import { Database } from "#/runtime/server/storage/database.ts"
 import {
   tableProjection,
   type TableRow,
   projection,
   type SelectionRow,
-} from "#/runtime/server/postgres/index.ts"
+} from "#/runtime/server/storage/index.ts"
+import {
+  assetBlobs,
+  eventJournal,
+  seedRuns,
+} from "#/runtime/server/storage/infrastructure.ts"
 
 itDatabase(
   "seeds connected records and real assets once, preserves edits, and rolls back failures",

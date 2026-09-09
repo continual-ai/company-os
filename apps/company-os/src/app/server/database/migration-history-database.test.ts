@@ -6,14 +6,14 @@ import {
   applyMigrations,
   verifyDatabaseModel,
 } from "#/app/server/database/migrations.ts"
-import { Database } from "#/runtime/server/database/database.ts"
 import {
   applySchemaMigrations,
   schemaHash,
   verifySchemaMigrations,
 } from "#/runtime/server/migrations.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
-import { TestDatabase } from "#/runtime/server/postgres/testing.ts"
+import { Database } from "#/runtime/server/storage/database.ts"
+import { TestDatabase } from "#/runtime/server/storage/testing.ts"
 
 it("boots the app from its committed baseline and rejects migration drift", async () => {
   const template = await TestDatabase.createTemplate("")

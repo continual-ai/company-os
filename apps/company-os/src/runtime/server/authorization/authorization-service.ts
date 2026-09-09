@@ -13,10 +13,10 @@ import {
   SYSTEM_SERVICE_ACCOUNT_ID,
 } from "#/runtime/model/system-records.ts"
 import { AuthorizationRepository } from "#/runtime/server/authorization/authorization-repository.ts"
+import type { OperationAccessRequest } from "#/runtime/server/authorization/permission-catalog.ts"
 import { callerForActor, type Caller } from "#/runtime/server/caller.ts"
 import { currentAuthorizationActorId } from "#/runtime/server/invocation-context.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
-import { type ObjectAccessRequest } from "#/runtime/server/object-service.ts"
 
 export class AuthorizationTargetNotFound extends Data.TaggedError(
   "AuthorizationTargetNotFound"
@@ -38,13 +38,6 @@ function permittedAtTarget(
     permittedScopeIds.has(target.id) ||
     target.ancestorIds.some((ancestorId) => permittedScopeIds.has(ancestorId))
   )
-}
-
-interface OperationAccessRequest {
-  readonly operationId: string
-  readonly objectType: string
-  readonly parentId?: string
-  readonly recordIds?: ReadonlyArray<string>
 }
 
 interface PermissionRequest {
@@ -88,7 +81,6 @@ function isSystemCaller(caller: Caller): boolean {
 const make = Effect.gen(function* () {
   const context = yield* ModelContext
   const { model: Model } = context
-  const { capabilityPermission } = context.capabilities
   const { objectPermission, permissionDefinition } = context.permissions
   const repository = yield* AuthorizationRepository
 
@@ -210,52 +202,27 @@ const make = Effect.gen(function* () {
     return yield* requirePermissionFor(callerForActor(actorId), request)
   })
 
+  /**
+   * Fails unless the caller may run one operation. Record operations check the
+   * named records; collection operations check the creation parent (root by
+   * default); `list` is an object-level gate whose readable rows are filtered
+   * separately through `visibleWithin`.
+   */
   const require = Effect.fn("@company/Authorization.require")(function* (
-    request: ObjectAccessRequest
+    request: OperationAccessRequest
   ) {
     const definition = permissionDefinition(objectPermission(request))
-    // Enumeration is an object-level gate; readable records are filtered separately.
     const targetIds =
-      request.operation === "list"
+      request.operationId === "list"
         ? undefined
-        : (request.recordIds ??
-          (request.parentId === undefined ? [ROOT_ID] : [request.parentId]))
-    return yield* requirePermission({
-      ...definition,
-      targetIds,
-    })
-  })
-
-  const requireOperation = Effect.fn("@company/Authorization.requireOperation")(
-    function* (request: OperationAccessRequest) {
-      const definition = permissionDefinition(
-        capabilityPermission(`${request.objectType}.${request.operationId}`)
-      )
-      return yield* requirePermission({
-        ...definition,
-        targetIds:
-          request.recordIds ??
-          (request.parentId === undefined ? [ROOT_ID] : [request.parentId]),
-      })
-    }
-  )
-
-  const requireOperationFor = Effect.fn(
-    "@company/Authorization.requireOperationFor"
-  )(function* (caller: Caller, request: OperationAccessRequest) {
-    const definition = permissionDefinition(
-      capabilityPermission(`${request.objectType}.${request.operationId}`)
-    )
-    return yield* requirePermissionFor(caller, {
-      ...definition,
-      targetIds:
-        request.recordIds ??
-        (request.parentId === undefined ? [ROOT_ID] : [request.parentId]),
-    })
+        : (request.recordIds ?? [request.parentId ?? ROOT_ID])
+    return yield* requirePermission({ ...definition, targetIds })
   })
 
   const visibleWithin = Effect.fn("@company/Authorization.visibleWithin")(
-    function* (request: ObjectAccessRequest) {
+    function* (
+      request: Pick<OperationAccessRequest, "objectType" | "operationId">
+    ) {
       const actorId = yield* currentAuthorizationActorId
       const permission = objectPermission(request)
       const caller = callerForActor(actorId)
@@ -328,8 +295,6 @@ const make = Effect.gen(function* () {
     checkCapabilities,
     checkCapabilitiesFor,
     require,
-    requireOperation,
-    requireOperationFor,
     visibleWithin,
   }
 })

@@ -4,8 +4,8 @@ import type * as Scope from "effect/Scope"
 import { inject } from "vitest"
 
 import { TestDatabase } from "#/app/server/database/test-database.ts"
-import type { Database } from "#/runtime/server/database/database.ts"
 import type { ModelContext } from "#/runtime/server/model-context.ts"
+import type { Database } from "#/runtime/server/storage/database.ts"
 
 /** Runs an Effect test against a fresh clone of the migrated PostgreSQL template. */
 export const itDatabase: Vitest.Test<Database | ModelContext | Scope.Scope> = (

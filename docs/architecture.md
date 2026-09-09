@@ -73,7 +73,7 @@ operation. Lists and hydration return ordinary resources, without BASIC/FULL vie
 `Operations.run` supplies current identity, action transactions, error normalization, and committed
 write metadata at HTTP and MCP ingress. Custom operations still enforce their own business rules
 and atomicity when called directly. Provider binding uses only explicit layer outputs; invocation
-and savepoint state come from the current call.
+and transaction state come from the current call.
 
 Effect v4 services use `Context.Service(..., { make })`, named `Effect.fn` operations, and static
 `.layer` implementations. Acquire dependencies in `make`, compose layers at the application

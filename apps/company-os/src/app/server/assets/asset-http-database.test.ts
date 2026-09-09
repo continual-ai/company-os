@@ -14,9 +14,9 @@ import { createModelClient } from "#/runtime/client/http-client.ts"
 import { ROOT_ID } from "#/runtime/model/system-records.ts"
 import { Authentication } from "#/runtime/server/auth/authentication.ts"
 import { IdentityProvider } from "#/runtime/server/auth/identity-provider.ts"
-import { Database } from "#/runtime/server/database/database.ts"
 import { CurrentInvocation } from "#/runtime/server/invocation.ts"
 import { PageTokens } from "#/runtime/server/page-tokens.ts"
+import { Database } from "#/runtime/server/storage/database.ts"
 
 itDatabase(
   "routes colon actions through the generated HTTP contract and publishes committed write scopes",

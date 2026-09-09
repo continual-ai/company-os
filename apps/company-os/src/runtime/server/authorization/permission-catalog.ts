@@ -4,7 +4,14 @@ import {
 } from "#/runtime/client/capabilities.ts"
 import { modelObjects } from "#/runtime/model/index.ts"
 import type { ModelCatalog } from "#/runtime/model/index.ts"
-import type { ObjectAccessRequest } from "#/runtime/server/object-service.ts"
+
+/** One model operation on one object, optionally narrowed to records or a creation parent. */
+export interface OperationAccessRequest {
+  readonly objectType: string
+  readonly operationId: string
+  readonly parentId?: string
+  readonly recordIds?: ReadonlyArray<string>
+}
 
 function permissionOperation(operation: string): string {
   switch (operation) {
@@ -23,12 +30,12 @@ export function createPermissionCatalog(Model: ModelCatalog) {
     capabilityPermissions,
     isCapabilityPermission,
   } = createCapabilities(Model)
-  /** Maps a runtime object operation to the model's exact permission vocabulary. */
+  /** Maps a model operation to the exact permission vocabulary; batch variants share their singular permission. */
   function objectPermission(
-    request: ObjectAccessRequest
+    request: Pick<OperationAccessRequest, "objectType" | "operationId">
   ): CapabilityPermission {
     return capabilityPermission(
-      `${request.objectType}.${permissionOperation(request.operation)}`
+      `${request.objectType}.${permissionOperation(request.operationId)}`
     )
   }
 

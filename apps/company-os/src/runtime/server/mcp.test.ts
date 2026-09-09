@@ -132,16 +132,14 @@ describe("model MCP projection", () => {
     // SAFETY: the preceding test and services() validate this closed binding;
     // widening here keeps the protocol test focused on runtime behavior.
     const links = {
-      initialize: () => Effect.void,
-      link: () => Effect.void,
+      link: () => Effect.succeed(undefined),
       list: () =>
         Effect.succeed({
           items: [],
           nextPageToken: PageToken("unused"),
           totalSize: 0,
         }),
-      unlink: () => Effect.void,
-      update: () => Effect.void,
+      unlink: () => Effect.succeed(undefined),
     }
     const implementation: ModelMcpBinding["implementation"] = {
       links,

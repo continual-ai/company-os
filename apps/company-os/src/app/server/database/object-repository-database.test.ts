@@ -1,4 +1,4 @@
-import { Effect } from "effect"
+import { Effect, Layer, Schema } from "effect"
 import { describe, expect, expectTypeOf } from "vitest"
 
 import { Model } from "#/app.model.ts"
@@ -7,42 +7,49 @@ import { applyMigrations } from "#/app/server/database/migrations.ts"
 import { Storage } from "#/app/server/database/schema.ts"
 import {
   lineItems,
-  recordAliases,
   objects,
   parties,
+  recordAliases,
 } from "#/app/server/database/schema.ts"
 import { seedSystem } from "#/app/server/seeds/seed-system.ts"
 import {
   DomainName,
   EmailAddress,
+  MAX_BATCH_DELETE_SIZE,
+  MAX_BATCH_GET_SIZE,
   PageToken,
   RecordAlias,
   RecordId,
+  Timestamp,
 } from "#/runtime/model/index.ts"
 import {
   ROOT_ID,
   SYSTEM_SERVICE_ACCOUNT_ID,
 } from "#/runtime/model/system-records.ts"
-import { Database } from "#/runtime/server/database/database.ts"
-import { makeObjectRepository } from "#/runtime/server/database/object-repository.ts"
+import { foundationLayer } from "#/runtime/server/foundation.ts"
 import { systemInvocation } from "#/runtime/server/invocation-context.ts"
 import { CurrentInvocation } from "#/runtime/server/invocation.ts"
-import { RecordIdentifierResolver } from "#/runtime/server/model/record-identifier-resolver.ts"
+import { ObjectRepositories } from "#/runtime/server/model/object-repositories.ts"
 import {
-  InvalidListRequest,
-  RecordAliasConflict,
-  RecordAliasNotFound,
-  ObjectNotFound,
-  ObjectParentTypeMismatch,
-  ObjectWriteConflict,
-} from "#/runtime/server/object-repository.ts"
-import * as ObjectService from "#/runtime/server/object-service.ts"
+  InvalidBatchRequest,
+  makeObjectService,
+} from "#/runtime/server/model/object-service.ts"
+import { RecordIdentifierResolver } from "#/runtime/server/model/record-identifier-resolver.ts"
 import { PageTokens } from "#/runtime/server/page-tokens.ts"
-import { assignments } from "#/runtime/server/postgres/index.ts"
+import { Database } from "#/runtime/server/storage/database.ts"
+import { assignments } from "#/runtime/server/storage/index.ts"
 import {
   tableProjection,
   type TableRow,
-} from "#/runtime/server/postgres/index.ts"
+} from "#/runtime/server/storage/index.ts"
+import {
+  InvalidListRequest,
+  ObjectNotFound,
+  ObjectParentTypeMismatch,
+  ObjectWriteConflict,
+  RecordAliasConflict,
+  RecordAliasNotFound,
+} from "#/runtime/server/storage/object-repository.ts"
 
 const CompanyId = RecordId("company")
 
@@ -67,29 +74,26 @@ function snakeCase(value: string): string {
   return value.replaceAll(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase()
 }
 
+const TYPE_ID = /^[a-z_]+_[0-9a-hjkmnp-tv-z]{26}$/
+
 describe("Effect SQL object repository", () => {
   itDatabase(
     "migrates and preserves object invariants across standard methods",
     Effect.fn(function* () {
-      let nextId = 0
       const root = ROOT_ID
-      const context = systemInvocation
+      const database = yield* Database
+      const sql = database.sql
+      yield* applyMigrations()
+      yield* applyMigrations()
+      yield* seedSystem()
       const result = yield* Effect.gen(function* () {
-        const database = yield* Database
-        const sql = database.sql
-        yield* applyMigrations()
-        yield* applyMigrations()
-
-        yield* seedSystem()
-        const identifiers = yield* RecordIdentifierResolver.make
-        const repository = yield* makeObjectRepository(Model.objects.company)
-        const service = ObjectService.make(Model.objects.company, repository, {
-          authorize: () => Effect.void,
-          generateRecordId: () => `company_${++nextId}`,
-          rootId: root,
-          resolveRecordAliases: identifiers.resolveAliases,
-          visibleWithin: () => Effect.succeed([root]),
-        })
+        const identifiers = yield* RecordIdentifierResolver
+        const records = yield* ObjectRepositories
+        const repository = records.get(Model.objects.company)
+        const service = yield* makeObjectService(Model.objects.company)
+        const leadService = yield* makeObjectService(Model.objects.lead)
+        const dealService = yield* makeObjectService(Model.objects.deal)
+        const lineItemService = yield* makeObjectService(Model.objects.lineItem)
 
         const hubspotExample = RecordAlias("hubspot:portal_1:company:example")
         const hubspotBravo = RecordAlias("hubspot:portal_1:company:bravo")
@@ -97,6 +101,9 @@ describe("Effect SQL object repository", () => {
         const salesforceExample = RecordAlias(
           "salesforce:org_1:account:example"
         )
+        const invalidCreate = yield* service
+          .create({ name: "" })
+          .pipe(Effect.flip)
         const first = yield* service.create({
           aliases: [hubspotExample],
           domain: DomainName("example.example"),
@@ -110,6 +117,9 @@ describe("Effect SQL object repository", () => {
           id: first.id,
           name: "Example Corporation",
         })
+        const staleServiceWrite = yield* service
+          .update({ etag: first.etag, id: first.id, name: "Also stale" })
+          .pipe(Effect.flip)
         const aliasDelta = yield* service.update({
           aliases: { add: [salesforceExample], remove: [hubspotExample] },
           id: first.id,
@@ -136,6 +146,16 @@ describe("Effect SQL object repository", () => {
         const batch = yield* service.batchGet({
           ids: [hubspotBravo, legacyExample],
         })
+        const emptyBatchGet = yield* service
+          .batchGet({ ids: [] })
+          .pipe(Effect.flip)
+        const oversizedBatchGet = yield* service
+          .batchGet({
+            ids: Array.from({ length: MAX_BATCH_GET_SIZE + 1 }, (_, index) =>
+              CompanyId(`company_oversized_${index}`)
+            ),
+          })
+          .pipe(Effect.flip)
         const clearedSecond = yield* service.update({
           aliases: [],
           id: second.id,
@@ -226,7 +246,7 @@ describe("Effect SQL object repository", () => {
             parent: RootId(first.id),
           })
           .pipe(Effect.flip)
-        const userRepository = yield* makeObjectRepository(Model.objects.user)
+        const userRepository = records.get(Model.objects.user)
         const userRecord = {
           aliases: [],
           createdBy: SYSTEM_SERVICE_ACCOUNT_ID,
@@ -261,19 +281,7 @@ describe("Effect SQL object repository", () => {
           .pipe(Effect.flip)
         const rolledBack = yield* repository.get(rollbackId).pipe(Effect.flip)
 
-        const leadRepository = yield* makeObjectRepository(Model.objects.lead)
-        const leadService = ObjectService.make(
-          Model.objects.lead,
-          leadRepository,
-          {
-            authorize: () => Effect.void,
-            generateRecordId: () => "lead_1",
-            rootId: root,
-            resolveRecordAliases: identifiers.resolveAliases,
-            visibleWithin: () => Effect.succeed([root]),
-          }
-        )
-        yield* leadService.create({
+        const lead = yield* leadService.create({
           companyName: "Example",
           email: EmailAddress("Lead@Example.Example"),
           name: "Ada",
@@ -288,19 +296,11 @@ describe("Effect SQL object repository", () => {
         const wrongTypeAlias = yield* leadService
           .get({ id: legacyExample })
           .pipe(Effect.flip)
+        const convertedAt = Timestamp("2024-01-01T00:00:00.000Z")
+        const writerOutput = yield* records
+          .writer(Model.objects.lead)
+          .update({ id: lead.id, convertedAt })
 
-        const dealRepository = yield* makeObjectRepository(Model.objects.deal)
-        const dealService = ObjectService.make(
-          Model.objects.deal,
-          dealRepository,
-          {
-            authorize: () => Effect.void,
-            generateRecordId: () => "deal_1",
-            rootId: root,
-            resolveRecordAliases: identifiers.resolveAliases,
-            visibleWithin: () => Effect.succeed([root]),
-          }
-        )
         const deal = yield* dealService.create({
           name: "Expansion",
           parent: legacyExample,
@@ -313,20 +313,6 @@ describe("Effect SQL object repository", () => {
         expectTypeOf<StoredDeal["parentId"]>().toEqualTypeOf<
           RecordId<"authorizationScope">
         >()
-        const lineItemRepository = yield* makeObjectRepository(
-          Model.objects.lineItem
-        )
-        const lineItemService = ObjectService.make(
-          Model.objects.lineItem,
-          lineItemRepository,
-          {
-            authorize: () => Effect.void,
-            generateRecordId: () => "line_item_1",
-            rootId: root,
-            resolveRecordAliases: identifiers.resolveAliases,
-            visibleWithin: () => Effect.succeed([root]),
-          }
-        )
         const lineItem = yield* lineItemService.create({
           name: "Implementation",
           parent: deal.id,
@@ -340,6 +326,28 @@ describe("Effect SQL object repository", () => {
         const retainedAfterBatchDelete = yield* service.batchGet({
           ids: [second.id, first.id],
         })
+        const third = yield* service.create({
+          aliases: [RecordAlias("legacy:company:charlie")],
+          name: "Charlie",
+        })
+        const fourth = yield* service.create({ name: "Delta" })
+        const duplicateBatchDelete = yield* service
+          .batchDelete({
+            ids: [third.id, RecordAlias("legacy:company:charlie")],
+          })
+          .pipe(Effect.flip)
+        const emptyBatchDelete = yield* service
+          .batchDelete({ ids: [] })
+          .pipe(Effect.flip)
+        const oversizedBatchDelete = yield* service
+          .batchDelete({
+            ids: Array.from({ length: MAX_BATCH_DELETE_SIZE + 1 }, (_, index) =>
+              CompanyId(`company_oversized_${index}`)
+            ),
+          })
+          .pipe(Effect.flip)
+        yield* service.batchDelete({ ids: [third.id, fourth.id] })
+        const deleted = yield* repository.get(third.id).pipe(Effect.flip)
         const lineItemKindRows = yield* sql<
           TableRow<typeof lineItems>
         >`select ${tableProjection(lineItems)}
@@ -381,6 +389,11 @@ describe("Effect SQL object repository", () => {
           clearedAlias,
           clearedSecond,
           columns,
+          deal,
+          deleted,
+          duplicateBatchDelete,
+          emptyBatchDelete,
+          emptyBatchGet,
           storedDeals,
           first,
           firstPage,
@@ -388,12 +401,15 @@ describe("Effect SQL object repository", () => {
           foundByAlias,
           filtered,
           inconsistentParent,
+          invalidCreate,
           invalidFilterValue,
           leads,
           lineItem,
           lineItemKindRows,
           lineItemObjectRows,
           mismatchedCursor,
+          oversizedBatchDelete,
+          oversizedBatchGet,
           partyRows,
           retainedAfterBatchDelete,
           removedAlias,
@@ -404,24 +420,32 @@ describe("Effect SQL object repository", () => {
           secondPage,
           sortedFirstPage,
           sortedSecondPage,
+          staleServiceWrite,
           staleWrite,
           tamperedCursor,
           updated,
           userWithSharedEmail,
+          writerOutput,
           wrongParent,
           wrongTypeAlias,
           zeroPageSize,
           oversizedPage,
         }
       }).pipe(
-        Effect.provideService(CurrentInvocation, context),
-        Effect.provide(PageTokens.layerTest)
+        Effect.provideService(CurrentInvocation, systemInvocation),
+        Effect.provide(
+          foundationLayer(Model, {
+            database: Layer.succeed(Database, database),
+            pageTokens: PageTokens.layerTest,
+          })
+        )
       )
 
+      expect(result.invalidCreate).toBeInstanceOf(Schema.SchemaError)
       expect(result.first).toMatchObject({
         aliases: ["hubspot:portal_1:company:example"],
         domain: "example.example",
-        id: "company_1",
+        id: expect.stringMatching(TYPE_ID),
         lifecycleStage: "prospect",
         name: "Example",
         parent: ROOT_ID,
@@ -434,6 +458,7 @@ describe("Effect SQL object repository", () => {
       expect(result.updated.etag).not.toBe(result.first.etag)
       expect(Date.parse(result.first.createdAt)).not.toBeNaN()
       expect(Date.parse(result.updated.updatedAt)).not.toBeNaN()
+      expect(result.staleServiceWrite).toBeInstanceOf(ObjectWriteConflict)
       expect(result.aliasDelta.aliases).toEqual([
         "salesforce:org_1:account:example",
       ])
@@ -456,10 +481,20 @@ describe("Effect SQL object repository", () => {
         result.second.id,
         result.first.id,
       ])
+      expect(result.emptyBatchGet).toBeInstanceOf(InvalidBatchRequest)
+      expect(result.emptyBatchGet).toMatchObject({ operation: "batchGet" })
+      expect(result.oversizedBatchGet).toBeInstanceOf(InvalidBatchRequest)
       expect(result.batchDeleteFailure).toBeDefined()
       expect(result.retainedAfterBatchDelete.items.map(({ id }) => id)).toEqual(
         [result.second.id, result.first.id]
       )
+      expect(result.duplicateBatchDelete).toBeInstanceOf(InvalidBatchRequest)
+      expect(result.duplicateBatchDelete).toMatchObject({
+        operation: "batchDelete",
+      })
+      expect(result.emptyBatchDelete).toBeInstanceOf(InvalidBatchRequest)
+      expect(result.oversizedBatchDelete).toBeInstanceOf(InvalidBatchRequest)
+      expect(result.deleted).toBeInstanceOf(ObjectNotFound)
       expect(result.firstPage.items.map(({ id }) => id)).toEqual([
         result.second.id,
       ])
@@ -502,6 +537,7 @@ describe("Effect SQL object repository", () => {
       expect(result.leads.items[0]).toMatchObject({
         email: "lead@example.example",
       })
+      expect(result.writerOutput.convertedAt).toBe("2024-01-01T00:00:00.000Z")
       expect(result.partyRows.map(({ id }) => id)).toEqual([
         result.first.id,
         result.second.id,
@@ -509,25 +545,25 @@ describe("Effect SQL object repository", () => {
       expect(result.inconsistentParent).toBeDefined()
       expect(result.lineItem).toMatchObject({
         name: "Implementation",
-        parent: "deal_1",
+        parent: result.deal.id,
         quantity: 1,
       })
       expect(result.storedDeals).toEqual([
         expect.objectContaining({
-          id: "deal_1",
+          id: result.deal.id,
           parentId: result.first.id,
         }),
       ])
       expect(result.lineItemKindRows).toEqual([
         expect.objectContaining({
-          parentId: "deal_1",
+          parentId: result.deal.id,
           id: result.lineItem.id,
         }),
       ])
       expect(
         result.lineItemObjectRows.find(({ id }) => id === result.lineItem.id)
       ).toMatchObject({
-        ancestorIds: ["deal_1", result.first.id, ROOT_ID],
+        ancestorIds: [result.deal.id, result.first.id, ROOT_ID],
       })
       for (const object of Object.values(Model.objects)) {
         expect(

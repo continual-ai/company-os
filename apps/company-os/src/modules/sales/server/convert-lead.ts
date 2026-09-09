@@ -15,7 +15,7 @@ import {
   Records,
   Authorization,
   EventJournal,
-  makeLinkWriter,
+  Links,
   RecordIdentifierResolver,
 } from "#/runtime/server/index.ts"
 
@@ -41,16 +41,16 @@ export const convertLead = Effect.fn("sales.convertLead")(function* (
   const companies = records.writer(Company)
   const contacts = records.writer(Contact)
   const leads = records.writer(Lead)
-  const links = yield* makeLinkWriter
+  const contactLinks = (yield* Links).writer(Contact)
   const id = yield* (yield* RecordIdentifierResolver).resolve("lead", input.id)
   return yield* database.transaction(() =>
     Effect.gen(function* () {
-      yield* authorization.requireOperation({
+      yield* authorization.require({
         operationId: "convert",
         objectType: "lead",
         recordIds: [id],
       })
-      yield* authorization.requireOperation({
+      yield* authorization.require({
         objectType: "lead",
         operationId: "get",
         recordIds: [id],
@@ -77,7 +77,7 @@ export const convertLead = Effect.fn("sales.convertLead")(function* (
 
       let companyId = lead.company
       if (companyId !== null) {
-        yield* authorization.requireOperation({
+        yield* authorization.require({
           objectType: "company",
           operationId: "get",
           recordIds: [companyId],
@@ -100,9 +100,7 @@ export const convertLead = Effect.fn("sales.convertLead")(function* (
         name: lead.name,
         phone: lead.phone,
       })
-      yield* links.initialize(Contact, contact.id, {
-        primaryCompany: companyId,
-      })
+      yield* contactLinks.initialize(contact.id, { primaryCompany: companyId })
       const convertedAt = yield* DateTime.now
       yield* leads.update({
         company: companyId,

@@ -16,13 +16,13 @@ import {
   type VerifiedIdentityInvocation,
 } from "#/runtime/server/auth/identity-provider.ts"
 import { anonymousCaller, identityCaller } from "#/runtime/server/caller.ts"
-import { Database } from "#/runtime/server/database/database.ts"
 import {
   anonymousInvocation,
   authenticatedInvocation,
   systemInvocation,
 } from "#/runtime/server/invocation-context.ts"
 import { CurrentInvocation } from "#/runtime/server/invocation.ts"
+import { Database } from "#/runtime/server/storage/database.ts"
 
 class IdentityInactive extends Data.TaggedError("IdentityInactive")<{
   readonly identityId: IdentityId

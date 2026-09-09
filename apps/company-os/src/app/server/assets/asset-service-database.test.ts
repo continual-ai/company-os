@@ -8,13 +8,13 @@ import { seedSystem } from "#/app/server/seeds/seed-system.ts"
 import { AssetService } from "#/runtime/assets/server/asset-service.ts"
 import { RecordId } from "#/runtime/model/index.ts"
 import { ROOT_ID } from "#/runtime/model/system-records.ts"
-import { Database } from "#/runtime/server/database/database.ts"
 import {
   anonymousInvocation,
   systemInvocation,
 } from "#/runtime/server/invocation-context.ts"
 import { CurrentInvocation } from "#/runtime/server/invocation.ts"
 import { PageTokens } from "#/runtime/server/page-tokens.ts"
+import { Database } from "#/runtime/server/storage/database.ts"
 
 itDatabase(
   "verifies uploads, protects content, and keeps references consistent through deletion",

@@ -1,13 +1,13 @@
 import { Context, Effect, Layer } from "effect"
 
-import { Database } from "#/runtime/server/database/database.ts"
-import { assetBlobs } from "#/runtime/server/database/schema.ts"
-import { insertValues, assignments } from "#/runtime/server/postgres/index.ts"
+import { Database } from "#/runtime/server/storage/database.ts"
+import { insertValues, assignments } from "#/runtime/server/storage/index.ts"
 import {
   conflictColumns,
   projection,
   type SelectionRow,
-} from "#/runtime/server/postgres/index.ts"
+} from "#/runtime/server/storage/index.ts"
+import { assetBlobs } from "#/runtime/server/storage/infrastructure.ts"
 
 /** Bounded private blobs. PostgreSQL keeps the default portable across current deployments. */
 export class BlobStorage extends Context.Service<BlobStorage>()(

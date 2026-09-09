@@ -4,15 +4,15 @@ import {
   ROOT_ID,
   SYSTEM_SERVICE_ACCOUNT_ID,
 } from "#/runtime/model/system-records.ts"
-import { Database } from "#/runtime/server/database/database.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
-import { insertValues, assignments } from "#/runtime/server/postgres/index.ts"
+import { Database } from "#/runtime/server/storage/database.ts"
+import { insertValues, assignments } from "#/runtime/server/storage/index.ts"
 import {
   conflictColumns,
   projection,
   type SelectionRow,
   inValues,
-} from "#/runtime/server/postgres/index.ts"
+} from "#/runtime/server/storage/index.ts"
 
 class SystemActorBootstrapConflict extends Data.TaggedError(
   "SystemActorBootstrapConflict"

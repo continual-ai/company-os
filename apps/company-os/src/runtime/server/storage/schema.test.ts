@@ -10,12 +10,12 @@ import {
   schema,
   AuthorizationScope,
 } from "#/runtime/model/index.ts"
-import { makePostgresSchema } from "#/runtime/server/postgres/schema.ts"
-import type { TableRow } from "#/runtime/server/postgres/statement.ts"
+import { makePostgresSchema } from "#/runtime/server/storage/schema.ts"
+import type { TableRow } from "#/runtime/server/storage/statement.ts"
 import {
   tableColumns as getTableColumns,
   tableName as getTableName,
-} from "#/runtime/server/postgres/table.ts"
+} from "#/runtime/server/storage/table.ts"
 
 const Identity = defineInterface({
   id: "identity",

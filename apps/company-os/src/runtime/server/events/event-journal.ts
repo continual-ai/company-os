@@ -5,22 +5,22 @@ import { Context, Effect, Layer, Schema } from "effect"
 import { eventPageSchema, InvalidEventCursor } from "#/runtime/client/events.ts"
 import { PageToken } from "#/runtime/model/index.ts"
 import { Authorization } from "#/runtime/server/authorization/authorization-service.ts"
-import { Database } from "#/runtime/server/database/database.ts"
-import {
-  eventJournal,
-  eventJournalState,
-} from "#/runtime/server/database/schema.ts"
 import { makeEventWriter } from "#/runtime/server/events/event-writer.ts"
 import { CurrentInvocation } from "#/runtime/server/invocation.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
 import { PageTokens } from "#/runtime/server/page-tokens.ts"
+import { Database } from "#/runtime/server/storage/database.ts"
 import {
   tableProjection,
   type TableRow,
   projection,
   type SelectionRow,
   inValues,
-} from "#/runtime/server/postgres/index.ts"
+} from "#/runtime/server/storage/index.ts"
+import {
+  eventJournal,
+  eventJournalState,
+} from "#/runtime/server/storage/infrastructure.ts"
 
 const cursorSchema = Schema.Struct({
   kind: Schema.Literal("events.v1"),

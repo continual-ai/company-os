@@ -2,7 +2,6 @@ import { Effect, Layer } from "effect"
 
 import { EnabledModel } from "#/app.model.ts"
 import { serverModules } from "#/app.server.ts"
-import { Database } from "#/runtime/server/database/database.ts"
 import type { CurrentInvocation } from "#/runtime/server/invocation.ts"
 import { modelImplementation } from "#/runtime/server/model/implementation.ts"
 import {
@@ -13,6 +12,7 @@ import {
   makeServicesLayer,
   type ServicesInfrastructure,
 } from "#/runtime/server/services.ts"
+import { Database } from "#/runtime/server/storage/database.ts"
 
 export type ApplicationServicesInfrastructure = ServicesInfrastructure
 

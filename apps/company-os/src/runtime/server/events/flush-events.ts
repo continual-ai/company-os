@@ -3,17 +3,17 @@ import { randomUUID } from "node:crypto"
 import { Effect } from "effect"
 import { SqlError, UnknownError } from "effect/unstable/sql/SqlError"
 
-import {
-  eventJournal,
-  eventJournalState,
-} from "#/runtime/server/database/schema.ts"
 import type { PendingEvent } from "#/runtime/server/events/event-buffer.ts"
-import { assignments, insertValues } from "#/runtime/server/postgres/index.ts"
+import { assignments, insertValues } from "#/runtime/server/storage/index.ts"
 import {
   tableProjection,
   type TableRow,
   type PostgresDatabase,
-} from "#/runtime/server/postgres/index.ts"
+} from "#/runtime/server/storage/index.ts"
+import {
+  eventJournal,
+  eventJournalState,
+} from "#/runtime/server/storage/infrastructure.ts"
 
 /** Last work before COMMIT: no business locks or external effects may follow position allocation. */
 export const flushEvents = (

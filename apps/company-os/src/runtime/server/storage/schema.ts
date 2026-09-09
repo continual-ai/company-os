@@ -15,7 +15,7 @@ import {
   quoteLiteral as literal,
   type Table,
   type ColumnDefinition,
-} from "#/runtime/server/postgres/table.ts"
+} from "#/runtime/server/storage/table.ts"
 
 type TraversalId<
   M extends ModelCatalog,

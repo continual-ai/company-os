@@ -3,10 +3,10 @@ import { Effect, Schema } from "effect"
 import { createRecordSearchContract } from "#/runtime/client/record-search.ts"
 import type { ModelCatalog } from "#/runtime/model/index.ts"
 import { Authorization } from "#/runtime/server/authorization/authorization-service.ts"
-import { Database } from "#/runtime/server/database/database.ts"
-import { recordSearch } from "#/runtime/server/database/schema.ts"
-import { searchVector } from "#/runtime/server/database/search-index.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
+import { Database } from "#/runtime/server/storage/database.ts"
+import { recordSearch } from "#/runtime/server/storage/infrastructure.ts"
+import { searchVector } from "#/runtime/server/storage/search-index.ts"
 
 export function createRecordSearch(model: ModelCatalog) {
   const {

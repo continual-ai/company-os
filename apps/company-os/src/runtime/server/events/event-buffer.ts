@@ -16,7 +16,7 @@ export interface PendingEvent {
   readonly occurredAt: string
 }
 
-/** A buffer is scoped to a database transaction/savepoint, never to an HTTP request. */
+/** A buffer is scoped to one open database transaction, never to an HTTP request. */
 export const PendingEvents = Context.Reference<Array<PendingEvent> | undefined>(
   "@company/PendingEvents",
   { defaultValue: () => undefined }

@@ -8,10 +8,10 @@ import {
   OPERATOR_ROLE_ID,
   ROOT_ID,
 } from "#/runtime/model/system-records.ts"
-import { Database } from "#/runtime/server/database/database.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
 import { ObjectRepositories } from "#/runtime/server/model/object-repositories.ts"
 import { makeObjectService } from "#/runtime/server/model/object-service.ts"
+import { Database } from "#/runtime/server/storage/database.ts"
 
 export class RoleScopeMismatch extends Data.TaggedError("RoleScopeMismatch")<{
   readonly actualScopeType: string
@@ -35,7 +35,7 @@ const make = Effect.gen(function* () {
   const database = yield* Database
   const repository = yield* RoleAssignmentRepository
   const roleRepository = (yield* ObjectRepositories).get(Role)
-  const base = yield* makeObjectService(RoleAssignment, repository)
+  const base = yield* makeObjectService(RoleAssignment)
 
   const create = Effect.fn("@company/RoleAssignmentService.create")(function* (
     input: ObjectCreateInput<typeof RoleAssignment>

@@ -17,7 +17,7 @@ import {
   Authorization,
   Database,
   EventJournal,
-  makeLinkWriter,
+  Links,
   Records,
   RecordIdentifierResolver,
 } from "#/runtime/server/index.ts"
@@ -32,18 +32,18 @@ export const createIssue = Effect.fn("supportEngineering.createIssue")(
     const database = yield* Database
     const records = yield* Records
     const events = yield* EventJournal
-    const links = yield* makeLinkWriter
+    const ticketLinks = (yield* Links).writer(Ticket)
     const ticketId = yield* (yield* RecordIdentifierResolver).resolve(
       "ticket",
       input.ticket
     )
     return yield* database.transaction(() =>
       Effect.gen(function* () {
-        yield* authorization.requireOperation({
+        yield* authorization.require({
           objectType: "escalation",
           operationId: "createIssue",
         })
-        yield* authorization.requireOperation({
+        yield* authorization.require({
           objectType: "ticket",
           operationId: "get",
           recordIds: [ticketId],
@@ -54,7 +54,7 @@ export const createIssue = Effect.fn("supportEngineering.createIssue")(
           filter: { field: "ticket", operator: "eq", value: ticketId },
         })).items[0]
         if (existing) {
-          yield* authorization.requireOperation({
+          yield* authorization.require({
             objectType: "issue",
             operationId: "get",
             recordIds: [existing.issue],
@@ -78,7 +78,7 @@ export const createIssue = Effect.fn("supportEngineering.createIssue")(
             },
           } satisfies ApiError<typeof FailedPreconditionError>)
         }
-        yield* authorization.requireOperation({
+        yield* authorization.require({
           objectType: "issue",
           operationId: "create",
           parentId: ROOT_ID,
@@ -89,7 +89,7 @@ export const createIssue = Effect.fn("supportEngineering.createIssue")(
           priority: ticket.priority,
           status: "backlog",
         })
-        yield* links.initialize(Ticket, ticket.id, { issues: [issue.id] })
+        yield* ticketLinks.initialize(ticket.id, { issues: [issue.id] })
         const escalation = yield* records
           .writer(Escalation)
           .create({ name: ticket.subject, ticket: ticket.id, issue: issue.id })

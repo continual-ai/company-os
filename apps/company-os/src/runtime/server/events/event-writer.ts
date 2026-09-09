@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto"
 
-import { DateTime, Effect, Option, Schema } from "effect"
+import { DateTime, Effect, Schema } from "effect"
 
 import { toEffectSchema } from "#/runtime/contract/schema.ts"
 import { modelTypeAccepts } from "#/runtime/model/index.ts"
@@ -10,7 +10,6 @@ import type {
   ObjectType,
   RecordId,
 } from "#/runtime/model/index.ts"
-import type { Database } from "#/runtime/server/database/database.ts"
 import {
   stageEvent,
   type EventSubject,
@@ -18,13 +17,14 @@ import {
 import { eventReferences } from "#/runtime/server/events/event-references.ts"
 import { CurrentInvocation } from "#/runtime/server/invocation.ts"
 import type { ModelContext } from "#/runtime/server/model-context.ts"
+import type { Database } from "#/runtime/server/storage/database.ts"
 import {
   projection,
   type SelectionRow,
   inValues,
-} from "#/runtime/server/postgres/index.ts"
+} from "#/runtime/server/storage/index.ts"
 
-/** Shared by standard writers and EventJournal; uses the caller's existing Fragment transaction. */
+/** Shared by standard writers and EventJournal; stages into the caller's open transaction and attributes facts to its invocation. */
 export function makeEventWriter(
   database: typeof Database.Service,
   context: typeof ModelContext.Service
@@ -61,16 +61,8 @@ export function makeEventWriter(
     readonly version?: number
     readonly subjects: ReadonlyArray<EventSubject>
     readonly data: unknown
-    readonly actorId?: string
   }) {
-    const invocation = yield* Effect.serviceOption(CurrentInvocation)
-    const actorId = Option.isSome(invocation)
-      ? invocation.value.actorId
-      : input.actorId
-    if (actorId === undefined)
-      return yield* Effect.die(
-        "Recording an event requires an invocation or an explicit internal actor."
-      )
+    const { actorId } = yield* CurrentInvocation
     const occurredAt = DateTime.formatIso(yield* DateTime.now)
     // Validate against the installed public contract before a bad event could poison replay.
     const decoded = yield* Schema.decodeUnknownEffect(eventFactSchema)({
