@@ -1,7 +1,7 @@
 import { Link, createFileRoute } from "@tanstack/react-router"
 import { ArrowRightIcon } from "lucide-react"
 
-import { componentGroups } from "#/ui/developer/design-system/component-metadata.ts"
+import { componentGroups } from "#/app/ui/developer/design-system/component-metadata.ts"
 
 export const Route = createFileRoute("/_app/developer/design-system/")({
   component: DesignSystemOverview,

@@ -167,4 +167,4 @@ package has its source at the package root and maps `#/*` to `./*`.
 
 Private imports name concrete files, so TypeScript, Node-based scripts, and app builds use the
 same mapping without `tsconfig.paths`. Node 24.14+ on the 24.x line or Node 25.4+ is required.
-The existing package-boundaries Oxlint rule enforces the import convention.
+The import-boundaries Oxlint rule enforces the import convention.

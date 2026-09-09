@@ -1,6 +1,23 @@
-import { AccessUi } from "@company/runtime/ui/access"
-import { AssetsUi } from "@company/runtime/ui/assets"
-import { composeModelUi } from "@company/runtime/ui/model/module-ui"
+import { EnabledModel } from "#/app.model.ts"
+import { EngineeringUi } from "#/modules/engineering/ui/index.ts"
+import { MarketingUi } from "#/modules/marketing/ui/index.ts"
+import { NotesUi } from "#/modules/notes/ui/index.ts"
+import { SalesUi } from "#/modules/sales/ui/index.ts"
+import { SupportEngineeringUi } from "#/modules/support-engineering/ui/index.ts"
+import { SupportUi } from "#/modules/support/ui/index.ts"
+import { AccessUi } from "#/runtime/access/ui/index.ts"
+import { AssetsUi } from "#/runtime/assets/ui/index.ts"
+import { composeModelUi } from "#/runtime/ui/model/module-ui.tsx"
 
-import { Model } from "#/app.model.ts"
-export const modelUi = composeModelUi(Model, AccessUi, AssetsUi)
+/** Presentation contributions for the modules composed in app.model.ts. */
+export const modelUi = composeModelUi(
+  EnabledModel,
+  AccessUi,
+  AssetsUi,
+  NotesUi,
+  SalesUi,
+  MarketingUi,
+  EngineeringUi,
+  SupportUi,
+  SupportEngineeringUi
+)

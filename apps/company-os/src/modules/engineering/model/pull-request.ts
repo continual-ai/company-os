@@ -1,0 +1,65 @@
+import { Repository } from "#/modules/engineering/model/repository.ts"
+import { NoteSubject } from "#/modules/notes/model/index.ts"
+import { Root } from "#/runtime/access/model/index.ts"
+import { defineObject, schema } from "#/runtime/model/index.ts"
+
+export const PullRequest = defineObject({
+  id: "pullRequest",
+  collection: "pullRequests",
+  name: "Pull request",
+  pluralName: "Pull requests",
+  description:
+    "Track a code change, its reviews, and checks. Merge it in your code hosting service.",
+  parent: Root,
+  implements: [{ interface: NoteSubject }],
+  properties: {
+    title: schema.string({ label: "Title", maxLength: 300, minLength: 1 }),
+    repository: schema.reference(Repository, {
+      label: "Repository",
+      inverse: { key: "pullRequests", label: "Pull requests" },
+    }),
+    number: schema.number({
+      label: "Number",
+      nullable: true,
+      integer: true,
+      minimum: 1,
+    }),
+    url: schema.url({ label: "URL", nullable: true }),
+    status: schema.select({
+      label: "Status",
+      default: "draft",
+      options: [
+        { value: "draft", label: "Draft" },
+        { value: "open", label: "Open" },
+        { value: "merged", label: "Merged" },
+        { value: "closed", label: "Closed" },
+      ],
+    }),
+    review: schema.select({
+      label: "Review",
+      default: "pending",
+      options: [
+        { value: "pending", label: "Pending" },
+        { value: "changesRequested", label: "Changes requested" },
+        { value: "approved", label: "Approved" },
+      ],
+    }),
+    checks: schema.select({
+      label: "Checks",
+      default: "pending",
+      options: [
+        { value: "pending", label: "Pending" },
+        { value: "passing", label: "Passing" },
+        { value: "failing", label: "Failing" },
+      ],
+    }),
+    headCommit: schema.string({
+      label: "Head commit",
+      maxLength: 300,
+      nullable: true,
+    }),
+    observedAt: schema.timestamp({ label: "Last observed", nullable: true }),
+  },
+  search: { fields: ["title", "url", "headCommit"] },
+  display: { title: "title", icon: "gitPullRequest", status: "status" },
+})

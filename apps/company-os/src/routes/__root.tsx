@@ -7,15 +7,15 @@ import {
 } from "@tanstack/react-router"
 import { useEffect } from "react"
 
-import { appConfig } from "#/customization/config.ts"
+import { appConfig } from "#/app/customization/config.ts"
 import {
   appName,
   canonicalMetadata,
   documentHead,
   resolvePageMetadata,
-} from "#/route-metadata.ts"
+} from "#/app/route-metadata.ts"
 
-import appCss from "#/styles/app.css?url"
+import appCss from "#/app/styles/app.css?url"
 
 const rootDocument = {
   breadcrumb: "Home",

@@ -1,17 +1,17 @@
-import { ObjectTable } from "@company/runtime/ui/model/object-table/object-table"
-import type {
-  ObjectTableRecord,
-  ObjectTableValue,
-} from "@company/runtime/ui/model/object-table/object-table-config"
 import { createFileRoute } from "@tanstack/react-router"
 import { useCallback, useState } from "react"
 
-import { pageOptions } from "#/route-metadata.ts"
-import { exampleCompanyRecords } from "#/ui/developer/design-system/object-table-example-data.ts"
+import { pageOptions } from "#/app/route-metadata.ts"
+import { exampleCompanyRecords } from "#/app/ui/developer/design-system/object-table-example-data.ts"
 import {
   objectTableExampleVisiblePropertyIds,
   ObjectTableExampleCompany,
-} from "#/ui/developer/design-system/object-table-example-object.ts"
+} from "#/app/ui/developer/design-system/object-table-example-object.ts"
+import type {
+  ObjectTableRecord,
+  ObjectTableValue,
+} from "#/runtime/ui/model/object-table/object-table-config.ts"
+import { ObjectTable } from "#/runtime/ui/model/object-table/object-table.tsx"
 
 const page = {
   breadcrumb: "Object table",

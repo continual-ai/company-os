@@ -1,8 +1,9 @@
-import { EngineeringModule } from "@company/engineering/model"
-import { NotesModule } from "@company/notes/model"
-import { defineModel, describeModel } from "@company/runtime/model"
-import { Actor, AccessModule, Root } from "@company/runtime/model/access"
 import { expect, it } from "vitest"
+
+import { EngineeringModule } from "#/modules/engineering/model/index.ts"
+import { NotesModule } from "#/modules/notes/model/index.ts"
+import { Actor, AccessModule, Root } from "#/runtime/access/model/index.ts"
+import { defineModel, describeModel } from "#/runtime/model/index.ts"
 
 it("composes Notes with Engineering without installing Sales", () => {
   const model = defineModel({

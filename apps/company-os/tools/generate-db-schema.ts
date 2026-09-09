@@ -1,20 +1,23 @@
 import { readFileSync, writeFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 
-import { schemaHash } from "@company/runtime/server/migrations"
-
-import { schemaSql } from "#/server/database/schema.ts"
+import { schemaSql } from "#/app/server/database/schema.ts"
+import { schemaHash } from "#/runtime/server/migrations.ts"
 
 const target = fileURLToPath(new URL("../schema.sql", import.meta.url))
 const baseline = fileURLToPath(
-  new URL("../src/server/database/migrations/0001-initial.ts", import.meta.url)
+  new URL(
+    "../src/app/server/database/migrations/0001-initial.ts",
+    import.meta.url
+  )
 )
 if (process.argv.includes("--check")) {
   if (readFileSync(target, "utf8") !== schemaSql)
     throw new Error(
       "schema.sql differs from the model. Run pnpm --filter company-os db:generate."
     )
-  const { migrations } = await import("#/server/database/migrations/index.ts")
+  const { migrations } =
+    await import("#/app/server/database/migrations/index.ts")
   if (migrations.at(-1)?.schemaHash !== schemaHash(schemaSql))
     throw new Error(
       "The migration sequence does not reach the current schema. Regenerate the disposable baseline or add a migration for retained data."

@@ -8,8 +8,7 @@
   ],
   "rules": {
     "company-os/filename-case": "error",
-    "company-os/no-internal-reexports": "error",
-    "company-os/package-boundaries": "error",
-    "company-os/visual-drift": "error"
+    "company-os/import-boundaries": "error",
+    "company-os/no-internal-reexports": "error"
   }
 }

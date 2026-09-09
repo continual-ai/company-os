@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { Effect } from "effect"
 
-import { applicationRuntime } from "#/server/application-runtime.ts"
-import { HttpTransport } from "#/server/transport/http-transport.ts"
+import { applicationRuntime } from "#/app/server/application-runtime.ts"
+import { HttpTransport } from "#/app/server/transport/http-transport.ts"
 
 function handle(request: Request): Promise<Response> {
   return applicationRuntime.runPromise(

@@ -2,7 +2,7 @@
 
 import { defineConfig } from "@continual/tanstack-start/vite"
 
-import { loadLocalEnvironment } from "#/server/local-environment.ts"
+import { loadLocalEnvironment } from "#/app/server/local-environment.ts"
 
 export default defineConfig({
   tanstackStart: {
@@ -54,7 +54,7 @@ export default defineConfig({
             extends: true,
             test: {
               globalSetup:
-                "./src/server/database/test-database-global-setup.ts",
+                "./src/app/server/database/test-database-global-setup.ts",
               include: ["src/**/*-database.test.ts"],
               name: "database",
               testTimeout: 15_000,

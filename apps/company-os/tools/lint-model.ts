@@ -1,6 +1,5 @@
-import { describeModel, lintModelDescription } from "@company/runtime/model"
-
 import { Model } from "#/app.model.ts"
+import { describeModel, lintModelDescription } from "#/runtime/model/index.ts"
 
 const diagnostics = lintModelDescription(describeModel(Model))
 for (const diagnostic of diagnostics) {

@@ -1,5 +1,12 @@
-import { AccessServer } from "@company/runtime/server/access"
-import { AssetsServer } from "@company/runtime/server/assets"
+import { SalesServer } from "#/modules/sales/server/index.ts"
+import { SupportEngineeringServer } from "#/modules/support-engineering/server/index.ts"
+import { AccessServer } from "#/runtime/access/server/index.ts"
+import { AssetsServer } from "#/runtime/assets/server/index.ts"
 
-/** Server contributions for the definitions installed in app.model.ts. */
-export const serverModules = [AccessServer, AssetsServer] as const
+/** Custom operation contributions for the modules composed in app.model.ts. */
+export const serverModules = [
+  AccessServer,
+  AssetsServer,
+  SalesServer,
+  SupportEngineeringServer,
+] as const

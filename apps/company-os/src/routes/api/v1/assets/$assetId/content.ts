@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router"
 
-import { handleAssetContent } from "#/server/transport/asset-content.ts"
+import { handleAssetContent } from "#/app/server/transport/asset-content.ts"
 export const Route = createFileRoute("/api/v1/assets/$assetId/content")({
   server: {
     handlers: {

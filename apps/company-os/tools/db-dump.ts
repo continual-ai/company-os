@@ -2,8 +2,8 @@ import { writeFile } from "node:fs/promises"
 
 import { Config, Effect, Redacted } from "effect"
 
-import { databaseSchemaConfig } from "#/server/database/postgres.ts"
-import { dumpSchema } from "#/server/database/schema-dump.ts"
+import { databaseSchemaConfig } from "#/app/server/database/postgres.ts"
+import { dumpSchema } from "#/app/server/database/schema-dump.ts"
 
 const { url, schema } = await Effect.runPromise(
   Config.all({

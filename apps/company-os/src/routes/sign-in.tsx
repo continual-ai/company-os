@@ -1,16 +1,16 @@
-import { Button } from "@company/runtime/ui/button"
+import { createFileRoute } from "@tanstack/react-router"
+import { ArrowLeftIcon } from "lucide-react"
+
+import { appConfig } from "#/app/customization/config.ts"
+import { pageOptions } from "#/app/route-metadata.ts"
+import { Button } from "#/runtime/ui/components/button.tsx"
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@company/runtime/ui/card"
-import { createFileRoute } from "@tanstack/react-router"
-import { ArrowLeftIcon } from "lucide-react"
-
-import { appConfig } from "#/customization/config.ts"
-import { pageOptions } from "#/route-metadata.ts"
+} from "#/runtime/ui/components/card.tsx"
 
 const page = {
   breadcrumb: "Sign in",

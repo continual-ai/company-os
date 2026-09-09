@@ -1,8 +1,8 @@
-import { ModelCollectionPage } from "@company/runtime/ui/model/model-pages"
 import { createFileRoute } from "@tanstack/react-router"
 
-import { Model } from "#/app.model.ts"
-import { pageOptions } from "#/route-metadata.ts"
+import { EnabledModel } from "#/app.model.ts"
+import { pageOptions } from "#/app/route-metadata.ts"
+import { ModelCollectionPage } from "#/runtime/ui/model/model-pages.tsx"
 
 export const Route = createFileRoute("/_app/settings/(access)/roles")({
   ...pageOptions({
@@ -14,5 +14,5 @@ export const Route = createFileRoute("/_app/settings/(access)/roles")({
 })
 
 function RolesPage() {
-  return <ModelCollectionPage object={Model.objects.role} />
+  return <ModelCollectionPage object={EnabledModel.objects.role} />
 }

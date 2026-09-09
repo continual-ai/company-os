@@ -6,7 +6,7 @@
   "scripts": {
     "app:create": "tsx tools/create-app.ts",
     "build": "turbo run build",
-    "check": "turbo run lint typecheck db:check model:check format:check deadcode && turbo boundaries",
+    "check": "turbo run lint typecheck db:check model:check format:check deadcode",
     "db:seed": "turbo run db:seed --filter=company-os --",
     "deadcode": "knip",
     "deploy": "turbo run deploy --filter=\"./apps/*\"",
@@ -42,6 +42,18 @@
   "knip": {
     "ignore": [
       "fixtures/**"
-    ]
+    ],
+    "workspaces": {
+      "apps/company-os": {
+        "entry": [
+          "src/runtime/model/index.ts",
+          "src/runtime/server/index.ts",
+          "src/runtime/ui/module.ts",
+          "src/runtime/access/model/index.ts",
+          "src/runtime/assets/model/index.ts",
+          "src/modules/*/{model,server,ui,seeds}/index.ts"
+        ]
+      }
+    }
   }
 }

@@ -1,8 +1,7 @@
-import { NoteSubject } from "@company/notes/model"
-import { defineObject, schema } from "@company/runtime/model"
-import { Root } from "@company/runtime/model/access"
-
+import { NoteSubject } from "#/modules/notes/model/index.ts"
 import { Ticket } from "#/modules/support/model/ticket.ts"
+import { Root } from "#/runtime/access/model/index.ts"
+import { defineObject, schema } from "#/runtime/model/index.ts"
 
 export const Reply = defineObject({
   id: "reply",

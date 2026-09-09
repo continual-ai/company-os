@@ -1,9 +1,7 @@
 packages:
   - "apps/*"
-  - "packages/*"
   - "templates/*"
   - "tools"
-  - "modules/*"
 
 catalog:
   "@shikijs/core": 4.4.3

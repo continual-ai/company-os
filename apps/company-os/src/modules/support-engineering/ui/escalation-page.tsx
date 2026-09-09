@@ -1,20 +1,20 @@
-import { Button } from "@company/runtime/ui/button"
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@company/runtime/ui/card"
-import {
-  formErrorFromCause,
-  formErrorMessages,
-} from "@company/runtime/ui/forms/form-errors"
-import { useObjectClient } from "@company/runtime/ui/module"
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
 
 import { Escalation } from "#/modules/support-engineering/model/index.ts"
 import { Ticket } from "#/modules/support/model/index.ts"
+import { Button } from "#/runtime/ui/components/button.tsx"
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "#/runtime/ui/components/card.tsx"
+import {
+  formErrorFromCause,
+  formErrorMessages,
+} from "#/runtime/ui/forms/form-errors.ts"
+import { useObjectClient } from "#/runtime/ui/module.ts"
 
 /** A workflow page can consume several governed objects without changing the shared renderer. */
 export function EscalationPage() {

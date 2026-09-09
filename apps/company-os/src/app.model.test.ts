@@ -1,3 +1,8 @@
+import { describe, expect, expectTypeOf, it } from "vitest"
+
+import { type ActorId, type IdentityId, type PrincipalId } from "#/app.model.ts"
+import { Model } from "#/app.model.ts"
+import { modelMetadata } from "#/model-metadata.ts"
 import {
   describeModel,
   type ModelObjectCreateInput,
@@ -8,12 +13,7 @@ import {
   type RecordAlias,
   type RecordId,
   type RecordIdOf,
-} from "@company/runtime/model"
-import { describe, expect, expectTypeOf, it } from "vitest"
-
-import { type ActorId, type IdentityId, type PrincipalId } from "#/app.model.ts"
-import { Model } from "#/examples/model.ts"
-import { modelMetadata } from "#/model-metadata.ts"
+} from "#/runtime/model/index.ts"
 
 const ContactPrimaryCompany = Model.links.contactPrimaryCompany
 

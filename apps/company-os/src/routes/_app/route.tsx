@@ -1,16 +1,16 @@
-import { modelData } from "@company/runtime/client/data-client"
-import { runClientEffect } from "@company/runtime/client/model-query-client"
-import { ModelUiProvider } from "@company/runtime/ui/model/runtime-context"
 import { Outlet, createFileRoute, redirect } from "@tanstack/react-router"
 import { useEffect, useState } from "react"
 
-import { listEvents } from "#/app-client.ts"
-import { presentation } from "#/app-presentation.ts"
-import { getCurrentUser } from "#/current-user.functions.ts"
-import { AppShell } from "#/ui/application/app-shell.tsx"
-import { allowedCapabilitiesQuery } from "#/ui/application/load-capabilities.ts"
-import { useModelEvents } from "#/ui/application/use-model-events.ts"
-import { modelNavigationChecks } from "#/ui/model/model-navigation.ts"
+import { listEvents } from "#/app/app-client.ts"
+import { presentation } from "#/app/app-presentation.ts"
+import { getCurrentUser } from "#/app/current-user.functions.ts"
+import { AppShell } from "#/app/ui/application/app-shell.tsx"
+import { allowedCapabilitiesQuery } from "#/app/ui/application/load-capabilities.ts"
+import { useModelEvents } from "#/app/ui/application/use-model-events.ts"
+import { modelNavigationChecks } from "#/app/ui/model/model-navigation.ts"
+import { modelData } from "#/runtime/client/data-client.ts"
+import { runClientEffect } from "#/runtime/client/model-query-client.ts"
+import { ModelUiProvider } from "#/runtime/ui/model/runtime-context.tsx"
 
 export const Route = createFileRoute("/_app")({
   beforeLoad: async ({ location }) => {

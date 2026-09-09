@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { Effect } from "effect"
 
-import { applicationRuntime } from "#/server/application-runtime.ts"
-import { McpTransport } from "#/server/transport/mcp-transport.ts"
+import { applicationRuntime } from "#/app/server/application-runtime.ts"
+import { McpTransport } from "#/app/server/transport/mcp-transport.ts"
 
 function handle(request: Request): Promise<Response> {
   return applicationRuntime.runPromise(

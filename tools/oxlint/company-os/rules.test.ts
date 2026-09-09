@@ -27,8 +27,61 @@ const repositoryRoot = resolve(
   "../../.."
 )
 
+const IMPORT_BOUNDARIES = "company-os(import-boundaries)"
+const NO_INTERNAL_REEXPORTS = "company-os(no-internal-reexports)"
+const FILENAME_CASE = "company-os(filename-case)"
+
+/** Expected diagnostic counts per fixture; fixtures absent here must lint clean. */
+const expectedDiagnostics: Record<string, Record<string, number>> = {
+  "apps/company-os/src/bad.Name.ts": { [FILENAME_CASE]: 1 },
+  "apps/company-os/src/import-conventions.ts": {
+    [IMPORT_BOUNDARIES]: 9,
+    [NO_INTERNAL_REEXPORTS]: 1,
+  },
+  "apps/company-os/src/imports-template.ts": { [IMPORT_BOUNDARIES]: 2 },
+  "apps/company-os/src/runtime/model/imports-server.ts": {
+    [IMPORT_BOUNDARIES]: 3,
+  },
+  "apps/company-os/src/runtime/server/imports-modules.ts": {
+    [IMPORT_BOUNDARIES]: 4,
+  },
+  "apps/company-os/src/runtime/server/internal-reexport.ts": {
+    [NO_INTERNAL_REEXPORTS]: 1,
+  },
+  "apps/company-os/src/runtime/server/wildcard-reexport.ts": {
+    [NO_INTERNAL_REEXPORTS]: 1,
+  },
+  "apps/company-os/src/runtime/access/server/imports-ui.ts": {
+    [IMPORT_BOUNDARIES]: 1,
+  },
+  "apps/company-os/src/runtime/ui/imports-server.tsx": {
+    [IMPORT_BOUNDARIES]: 2,
+  },
+  "apps/company-os/src/modules/sales/layout.ts": { [IMPORT_BOUNDARIES]: 1 },
+  "apps/company-os/src/modules/sales/model/imports-effect.ts": {
+    [IMPORT_BOUNDARIES]: 2,
+  },
+  "apps/company-os/src/modules/sales/server/imports-app.ts": {
+    [IMPORT_BOUNDARIES]: 4,
+  },
+  "apps/company-os/src/modules/sales/server/harness.test.ts": {
+    [IMPORT_BOUNDARIES]: 1,
+  },
+  "apps/company-os/src/modules/sales/seeds/composes-notes.ts": {
+    [IMPORT_BOUNDARIES]: 1,
+  },
+  "apps/company-os/src/modules/sales/ui/imports-seeds.tsx": {
+    [IMPORT_BOUNDARIES]: 2,
+  },
+  "apps/company-os/src/app/ui/imports-server.tsx": { [IMPORT_BOUNDARIES]: 2 },
+  "apps/company-os/src/routes/imports-server.tsx": { [IMPORT_BOUNDARIES]: 1 },
+  "templates/base/src/imports-central-internals.tsx": {
+    [IMPORT_BOUNDARIES]: 2,
+  },
+}
+
 describe("Company OS Oxlint rules", () => {
-  it("enforces module layouts and boundaries while allowing public entrypoints", () => {
+  it("enforces import direction, module layout, and public entrypoints", () => {
     const result = spawnSync(
       resolve(repositoryRoot, "node_modules/.bin/oxlint"),
       [
@@ -47,78 +100,18 @@ describe("Company OS Oxlint rules", () => {
     if (!isOxlintOutput(parsed)) {
       throw new Error("Oxlint JSON output must contain diagnostics.")
     }
-    const actual = new Set(
-      parsed.diagnostics.map(({ code, filename }) =>
-        JSON.stringify({
-          code,
-          fixture: filename
-            .replaceAll("\\", "/")
-            .split("fixtures/oxlint/company-os/")
-            .at(-1),
-        })
-      )
-    )
-    expect(
-      parsed.diagnostics.filter(
-        ({ code, filename }) =>
-          code === "company-os(package-boundaries)" &&
-          filename.endsWith("/import-conventions.ts")
-      )
-    ).toHaveLength(9)
-    const expected = [
-      {
-        code: "company-os(package-boundaries)",
-        fixture: "modules/sales/src/model.ts",
-      },
-      {
-        code: "company-os(no-internal-reexports)",
-        fixture: "modules/sales/src/model/internal.ts",
-      },
-      {
-        code: "company-os(package-boundaries)",
-        fixture: "modules/sales/src/model/invalid.ts",
-      },
-      {
-        code: "company-os(package-boundaries)",
-        fixture: "modules/sales/src/ui/invalid.tsx",
-      },
-      {
-        code: "company-os(package-boundaries)",
-        fixture: "modules/sales/src/server/invalid.ts",
-      },
 
-      {
-        code: "company-os(package-boundaries)",
-        fixture: "apps/company-os/src/import-conventions.ts",
-      },
-      {
-        code: "company-os(no-internal-reexports)",
-        fixture: "apps/company-os/src/import-conventions.ts",
-      },
-      {
-        code: "company-os(filename-case)",
-        fixture: "packages/runtime/src/bad.Name.ts",
-      },
-      {
-        code: "company-os(no-internal-reexports)",
-        fixture: "packages/runtime/src/index.ts",
-      },
-      {
-        code: "company-os(no-internal-reexports)",
-        fixture: "packages/runtime/src/internal-reexport.ts",
-      },
-      {
-        code: "company-os(package-boundaries)",
-        fixture: "packages/runtime/src/wrong-boundary.ts",
-      },
-      {
-        code: "company-os(visual-drift)",
-        fixture: "apps/company-os/src/visual-drift.tsx",
-      },
-    ]
+    const actual: Record<string, Record<string, number>> = {}
+    for (const { code, filename } of parsed.diagnostics) {
+      const fixture =
+        filename
+          .replaceAll("\\", "/")
+          .split("fixtures/oxlint/company-os/")
+          .at(-1) ?? filename
+      const counts = (actual[fixture] ??= {})
+      counts[code] = (counts[code] ?? 0) + 1
+    }
 
-    expect(actual).toEqual(
-      new Set(expected.map((diagnostic) => JSON.stringify(diagnostic)))
-    )
+    expect(actual).toEqual(expectedDiagnostics)
   })
 })

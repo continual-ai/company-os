@@ -1,6 +1,0 @@
-@import "@company/runtime/styles.css";
-@import "@company/notes/styles.css";
-
-@source "../**/*.{ts,tsx}";
-
-@source "../../../../modules/**/*.{ts,tsx}";

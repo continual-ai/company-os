@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router"
 
-import { appConfig } from "#/customization/config.ts"
-import { Home } from "#/customization/home.tsx"
-import { pageOptions } from "#/route-metadata.ts"
+import { appConfig } from "#/app/customization/config.ts"
+import { Home } from "#/app/customization/home.tsx"
+import { pageOptions } from "#/app/route-metadata.ts"
 
 const page = {
   breadcrumb: "Home",

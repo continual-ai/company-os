@@ -1,8 +1,8 @@
-import { ModelCollectionPage } from "@company/runtime/ui/model/model-pages"
 import { createFileRoute } from "@tanstack/react-router"
 
-import { Model } from "#/app.model.ts"
-import { pageOptions } from "#/route-metadata.ts"
+import { EnabledModel } from "#/app.model.ts"
+import { pageOptions } from "#/app/route-metadata.ts"
+import { ModelCollectionPage } from "#/runtime/ui/model/model-pages.tsx"
 
 const page = {
   breadcrumb: "Users",
@@ -16,5 +16,5 @@ export const Route = createFileRoute("/_app/settings/(access)/users")({
 })
 
 function UsersSettings() {
-  return <ModelCollectionPage object={Model.objects.user} />
+  return <ModelCollectionPage object={EnabledModel.objects.user} />
 }

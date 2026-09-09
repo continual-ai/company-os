@@ -1,11 +1,18 @@
-import { Issue } from "@company/engineering/model"
-import { toEffectSchema } from "@company/runtime/contract/schema"
+import { Effect, Schema } from "effect"
+
+import { Issue } from "#/modules/engineering/model/index.ts"
+import {
+  Escalation,
+  TicketEscalated,
+} from "#/modules/support-engineering/model/index.ts"
+import { Ticket } from "#/modules/support/model/index.ts"
+import { toEffectSchema } from "#/runtime/contract/schema.ts"
 import type {
   ActionInput,
   ApiError,
   FailedPreconditionError,
-} from "@company/runtime/model"
-import { ROOT_ID } from "@company/runtime/model/system-records"
+} from "#/runtime/model/index.ts"
+import { ROOT_ID } from "#/runtime/model/system-records.ts"
 import {
   Authorization,
   Database,
@@ -13,14 +20,7 @@ import {
   makeLinkWriter,
   Records,
   RecordIdentifierResolver,
-} from "@company/runtime/server"
-import { Effect, Schema } from "effect"
-
-import {
-  Escalation,
-  TicketEscalated,
-} from "#/modules/support-engineering/model/index.ts"
-import { Ticket } from "#/modules/support/model/index.ts"
+} from "#/runtime/server/index.ts"
 
 const Input = toEffectSchema(Escalation.actions.createIssue.input)
 

@@ -1,7 +1,6 @@
-import { defineCollectionView } from "@company/runtime/ui/module"
-import type { ObjectUi } from "@company/runtime/ui/module"
-
 import type { Reply } from "#/modules/support/model/reply.ts"
+import { defineCollectionView } from "#/runtime/ui/module.ts"
+import type { ObjectUi } from "#/runtime/ui/module.ts"
 
 export const replyUi = {
   collection: {

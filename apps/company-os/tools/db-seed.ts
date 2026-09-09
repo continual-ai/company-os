@@ -3,9 +3,9 @@ import { parseArgs } from "node:util"
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 import { Config, Effect, Redacted } from "effect"
 
-import { developmentSeedTarget } from "#/server/database/db-seed-target.ts"
-import { databaseLayer } from "#/server/database/postgres.ts"
-import { seedSystem } from "#/server/seeds/seed-system.ts"
+import { developmentSeedTarget } from "#/app/server/database/db-seed-target.ts"
+import { databaseLayer } from "#/app/server/database/postgres.ts"
+import { seedSystem } from "#/app/server/seeds/seed-system.ts"
 
 const { values } = parseArgs({ options: { help: { type: "boolean" } } })
 if (values.help) {

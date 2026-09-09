@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router"
 
-import { pageOptions } from "#/route-metadata.ts"
-import { DesignSystemLayout } from "#/ui/developer/design-system/design-system-layout.tsx"
+import { pageOptions } from "#/app/route-metadata.ts"
+import { DesignSystemLayout } from "#/app/ui/developer/design-system/design-system-layout.tsx"
 
 const page = {
   breadcrumb: "Design system",

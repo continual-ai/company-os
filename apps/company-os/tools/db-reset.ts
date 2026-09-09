@@ -2,10 +2,10 @@ import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 import { PgClient } from "@effect/sql-pg"
 import { Config, Effect, Redacted } from "effect"
 
-import { localDatabaseTarget } from "#/server/database/db-reset-target.ts"
-import { applyMigrations } from "#/server/database/migrations.ts"
-import * as Postgres from "#/server/database/postgres.ts"
-import { seedSystem } from "#/server/seeds/seed-system.ts"
+import { localDatabaseTarget } from "#/app/server/database/db-reset-target.ts"
+import { applyMigrations } from "#/app/server/database/migrations.ts"
+import * as Postgres from "#/app/server/database/postgres.ts"
+import { seedSystem } from "#/app/server/seeds/seed-system.ts"
 
 Effect.gen(function* () {
   const databaseUrl = yield* Config.redacted("DATABASE_URL")

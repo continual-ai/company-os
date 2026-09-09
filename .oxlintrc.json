@@ -42,9 +42,8 @@
   ],
   "rules": {
     "company-os/filename-case": "error",
+    "company-os/import-boundaries": "error",
     "company-os/no-internal-reexports": "error",
-    "company-os/package-boundaries": "error",
-    "company-os/visual-drift": "error",
     "effecttsgo/any-unknown-in-error-context": "off",
     "effecttsgo/catch-unfailable-effect": "off",
     "effecttsgo/class-self-mismatch": "error",
@@ -107,7 +106,7 @@
       }
     },
     {
-      "files": ["**/src/server/**/*.ts"],
+      "files": ["**/server/**/*.ts"],
       "rules": {
         "effecttsgo/global-date-in-effect": "error"
       }

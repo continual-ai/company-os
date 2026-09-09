@@ -1,16 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { Schema } from "effect"
 
-import { Model } from "#/app.model.ts"
-import { pageOptions } from "#/route-metadata.ts"
-import { OpenApiReference } from "#/ui/developer/openapi-reference.tsx"
+import { EnabledModel } from "#/app.model.ts"
+import { pageOptions } from "#/app/route-metadata.ts"
+import { OpenApiReference } from "#/app/ui/developer/openapi-reference.tsx"
 
 const page = {
   breadcrumb: "API reference",
   description: "Explore the OpenAPI contract generated from the domain model.",
   title: "API reference",
 }
-const modelApiTags = Object.values(Model.modules).flatMap((module) =>
+const modelApiTags = Object.values(EnabledModel.modules).flatMap((module) =>
   module.objects.map((object) => object.pluralName)
 )
 const ApiReferenceSearch = Schema.Struct({

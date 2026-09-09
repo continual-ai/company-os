@@ -1,7 +1,7 @@
-import { CodeBlock } from "@company/runtime/ui/code-block"
 import { Link, createFileRoute } from "@tanstack/react-router"
 
-import { pageOptions } from "#/route-metadata.ts"
+import { pageOptions } from "#/app/route-metadata.ts"
+import { CodeBlock } from "#/runtime/ui/components/code-block.tsx"
 
 const page = {
   breadcrumb: "MCP",

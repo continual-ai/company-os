@@ -1,7 +1,7 @@
-import { NoteSubject } from "@company/notes/model"
-import { defineObject, schema } from "@company/runtime/model"
-import { Root, User } from "@company/runtime/model/access"
-import { Company, Contact } from "@company/sales/model"
+import { NoteSubject } from "#/modules/notes/model/index.ts"
+import { Company, Contact } from "#/modules/sales/model/index.ts"
+import { Root, User } from "#/runtime/access/model/index.ts"
+import { defineObject, schema } from "#/runtime/model/index.ts"
 
 export const Ticket = defineObject({
   id: "ticket",

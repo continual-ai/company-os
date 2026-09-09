@@ -1,8 +1,8 @@
-import { applicationCapabilities } from "@company/runtime/client/capabilities"
 import { createFileRoute } from "@tanstack/react-router"
 
-import { checkCapability } from "#/server/authorization/check-capability.ts"
-import { application } from "#/server/composition-root.ts"
+import { checkCapability } from "#/app/server/authorization/check-capability.ts"
+import { application } from "#/app/server/composition-root.ts"
+import { applicationCapabilities } from "#/runtime/client/capabilities.ts"
 
 export const Route = createFileRoute("/api/description")({
   server: {

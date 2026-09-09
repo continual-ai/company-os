@@ -1,9 +1,9 @@
-import { Badge } from "@company/runtime/ui/badge"
-import { Button } from "@company/runtime/ui/button"
-import { Input } from "@company/runtime/ui/input"
 import { createFileRoute } from "@tanstack/react-router"
 
-import { pageOptions } from "#/route-metadata.ts"
+import { pageOptions } from "#/app/route-metadata.ts"
+import { Badge } from "#/runtime/ui/components/badge.tsx"
+import { Button } from "#/runtime/ui/components/button.tsx"
+import { Input } from "#/runtime/ui/components/input.tsx"
 
 const page = {
   breadcrumb: "Foundations",

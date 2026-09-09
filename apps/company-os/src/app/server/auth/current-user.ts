@@ -1,0 +1,24 @@
+import { Effect } from "effect"
+
+import { applicationRuntime } from "#/app/server/application-runtime.ts"
+import { Authentication } from "#/runtime/server/auth/authentication.ts"
+
+/** Resolves the browser User represented by the current verified request. */
+export function readCurrentUser(headers: Headers) {
+  return applicationRuntime.runPromise(
+    Effect.gen(function* () {
+      const authentication = yield* Authentication
+      const user = yield* authentication.currentUser(headers)
+      if (user === null) return { status: "unauthenticated" as const }
+      return {
+        status: "authenticated" as const,
+        user,
+      }
+    }).pipe(
+      Effect.catchTags({
+        InvalidIdentityAssertion: () =>
+          Effect.succeed({ status: "unauthenticated" as const }),
+      })
+    )
+  )
+}

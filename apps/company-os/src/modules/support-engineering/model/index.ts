@@ -1,15 +1,14 @@
-import { Issue } from "@company/engineering/model"
+import { Issue } from "#/modules/engineering/model/index.ts"
+import { TicketIssues } from "#/modules/support-engineering/model/ticket-issues.ts"
+import { Ticket } from "#/modules/support/model/index.ts"
+import { Root } from "#/runtime/access/model/index.ts"
 import {
   defineEvent,
   defineModule,
   defineObject,
   schema,
   standardErrors,
-} from "@company/runtime/model"
-import { Root } from "@company/runtime/model/access"
-
-import { TicketIssues } from "#/modules/support-engineering/model/ticket-issues.ts"
-import { Ticket } from "#/modules/support/model/index.ts"
+} from "#/runtime/model/index.ts"
 
 export const Escalation = defineObject({
   id: "escalation",

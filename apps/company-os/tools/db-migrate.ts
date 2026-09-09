@@ -1,6 +1,3 @@
-import { Database } from "@company/runtime/server/database/database"
-import { ensureSearchIndex } from "@company/runtime/server/database/search-index"
-import { ModelContext } from "@company/runtime/server/model-context"
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 import { Config, Effect, Option, Redacted } from "effect"
 import { Client } from "pg"
@@ -8,9 +5,12 @@ import { Client } from "pg"
 import {
   applyMigrations,
   ensureDatabaseSchema,
-} from "#/server/database/migrations.ts"
-import * as Postgres from "#/server/database/postgres.ts"
-import { seedSystem } from "#/server/seeds/seed-system.ts"
+} from "#/app/server/database/migrations.ts"
+import * as Postgres from "#/app/server/database/postgres.ts"
+import { seedSystem } from "#/app/server/seeds/seed-system.ts"
+import { Database } from "#/runtime/server/database/database.ts"
+import { ensureSearchIndex } from "#/runtime/server/database/search-index.ts"
+import { ModelContext } from "#/runtime/server/model-context.ts"
 
 // Deployment sequencing lives in this application's own scripts, not in any
 // platform: the deploy task invokes this tool with --if-configured so the

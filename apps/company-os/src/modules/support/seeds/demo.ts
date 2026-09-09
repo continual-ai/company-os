@@ -1,9 +1,9 @@
-import type { RecordId } from "@company/runtime/model"
-import { Records } from "@company/runtime/server"
 import { Effect } from "effect"
 
 import { Reply } from "#/modules/support/model/reply.ts"
 import { Ticket } from "#/modules/support/model/ticket.ts"
+import type { RecordId } from "#/runtime/model/index.ts"
+import { Records } from "#/runtime/server/index.ts"
 
 export const seedSupportDemo = Effect.fn("@company/seedSupportDemo")(
   function* (customer: {

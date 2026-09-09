@@ -1,13 +1,13 @@
-import { ModelCollectionPage } from "@company/runtime/ui/model/model-pages"
-import { validateObjectCollectionSearch } from "@company/runtime/ui/model/object-collection-view"
+import { createFileRoute } from "@tanstack/react-router"
+
+import { presentation } from "#/app/app-presentation.ts"
+import { documentHead } from "#/app/route-metadata.ts"
+import { ModelCollectionPage } from "#/runtime/ui/model/model-pages.tsx"
+import { validateObjectCollectionSearch } from "#/runtime/ui/model/object-collection-view.ts"
 import {
   preloadCollection,
   routeObject,
-} from "@company/runtime/ui/model/object-routing"
-import { createFileRoute } from "@tanstack/react-router"
-
-import { presentation } from "#/app-presentation.ts"
-import { documentHead } from "#/route-metadata.ts"
+} from "#/runtime/ui/model/object-routing.ts"
 export const Route = createFileRoute("/_app/objects/$objectType/")({
   validateSearch: validateObjectCollectionSearch,
   loaderDeps: ({ search }) => search,
