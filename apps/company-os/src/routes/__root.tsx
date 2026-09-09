@@ -1,3 +1,4 @@
+import { Toaster } from "@company/ui/toast"
 import { initDesignMode, initTelemetry } from "@continual/sdk/app-preview"
 import type { QueryClient } from "@tanstack/react-query"
 import {
@@ -97,6 +98,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </head>
       <body>
         {children}
+        <Toaster />
         <Scripts />
       </body>
     </html>
