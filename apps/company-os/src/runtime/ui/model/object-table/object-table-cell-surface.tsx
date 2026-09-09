@@ -59,41 +59,12 @@ export function ObjectTableCellSurface({
   expandActive: boolean
   status?: ObjectTableCellSaveStatus | undefined
 }) {
-  const surfaceRef = useRef<HTMLDivElement>(null)
-
-  useLayoutEffect(() => {
-    const surface = surfaceRef.current
-    if (!active || !expandActive || surface === null) return
-
-    const scrollContainer = surface.closest<HTMLElement>(
-      '[data-slot="table-container"]'
-    )
-    if (scrollContainer === null) return
-
-    const surfaceBounds = surface.getBoundingClientRect()
-    const containerBounds = scrollContainer.getBoundingClientRect()
-    const visibleLeft = Math.max(containerBounds.left, 0)
-    const visibleRight = Math.min(
-      containerBounds.right,
-      document.documentElement.clientWidth
-    )
-    const scrollDelta =
-      surfaceBounds.right > visibleRight
-        ? surfaceBounds.right - visibleRight
-        : surfaceBounds.left < visibleLeft
-          ? surfaceBounds.left - visibleLeft
-          : 0
-
-    if (Math.abs(scrollDelta) >= 1) scrollContainer.scrollLeft += scrollDelta
-  }, [active, expandActive])
-
   return (
     <div
-      ref={surfaceRef}
       className={cn(
-        "relative flex min-w-0 items-center pl-2",
+        "relative flex min-w-0 items-center px-2 py-1.5 leading-5",
         active && expandActive
-          ? "absolute top-0 left-0 z-30 box-border h-auto max-h-48 min-h-8 w-max max-w-[min(24rem,calc(100vw-2rem))] min-w-full items-start overflow-auto py-1 pr-2 shadow-sm"
+          ? "absolute top-0 left-0 z-30 box-border h-auto max-h-48 min-h-8 w-max max-w-[min(24rem,calc(100vw-2rem))] min-w-full items-start overflow-auto shadow-sm"
           : "h-8 w-full overflow-hidden bg-transparent",
         active && expandActive && objectTableCellSelectionClassName,
         className

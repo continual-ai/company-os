@@ -237,7 +237,7 @@ function TextCell({
       ) : href !== null ? (
         <a
           className={cn(
-            "min-w-0 text-interactive underline-offset-2 hover:underline focus-visible:underline focus-visible:outline-none",
+            "min-w-0 text-interactive underline decoration-interactive/30 decoration-1 underline-offset-2 hover:decoration-interactive/70 focus-visible:decoration-interactive focus-visible:outline-none",
             active ? "whitespace-nowrap" : "truncate"
           )}
           href={href}

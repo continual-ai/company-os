@@ -581,7 +581,7 @@ export function ObjectTable({
                         <Button
                           type="button"
                           variant="ghost"
-                          className="h-8 w-full justify-start overflow-hidden px-2 font-medium hover:bg-muted"
+                          className="h-8 w-full justify-start overflow-hidden rounded-none px-2 font-medium hover:bg-muted"
                           onClick={header.column.getToggleSortingHandler()}
                         >
                           <ObjectTableProperty
@@ -599,7 +599,7 @@ export function ObjectTable({
                         <Button
                           type="button"
                           variant="ghost"
-                          className="h-8 w-full justify-start overflow-hidden px-2 font-medium hover:bg-muted"
+                          className="h-8 w-full justify-start overflow-hidden rounded-none px-2 font-medium hover:bg-muted"
                           onClick={header.column.getToggleSortingHandler()}
                         >
                           <ObjectTableProperty
@@ -629,10 +629,8 @@ export function ObjectTable({
                     </TableHead>
                   )
                 })}
-                <TableHead
-                  className="h-8 border-b bg-muted/20 p-0"
-                  style={{ width: addColumnWidth }}
-                >
+                {/* Leave the trailing column flexible so extra viewport width never stretches data columns or their sticky offsets. */}
+                <TableHead className="h-8 border-b bg-muted/20 p-0">
                   <ObjectTableColumnMenu compact table={table} />
                 </TableHead>
               </TableRow>
@@ -808,10 +806,7 @@ export function ObjectTable({
                         </TableCell>
                       )
                     })}
-                    <TableCell
-                      className="h-8 border-r p-0"
-                      style={{ width: addColumnWidth }}
-                    />
+                    <TableCell className="h-8 border-r p-0" />
                   </TableRow>
                 </Fragment>
               )

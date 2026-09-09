@@ -154,7 +154,7 @@ export function ObjectRecordIdentity({
               to={href}
               data-record-id={record.id}
               className={cn(
-                "inline-flex min-w-0 items-center gap-1.5 text-foreground underline-offset-2 hover:underline focus-visible:underline focus-visible:outline-none",
+                "group/record-link inline-flex min-w-0 items-center gap-1.5 text-foreground focus-visible:outline-none",
                 className
               )}
               onClick={(event) => {
@@ -167,7 +167,15 @@ export function ObjectRecordIdentity({
       >
         <ObjectMark image={image} object={object} />
         <span className="min-w-0">
-          <span className="block truncate font-medium">{resolvedTitle}</span>
+          <span
+            className={cn(
+              "block truncate font-medium",
+              href !== undefined &&
+                "underline decoration-foreground/20 decoration-1 underline-offset-2 group-hover/record-link:decoration-foreground/60 group-focus-visible/record-link:decoration-foreground"
+            )}
+          >
+            {resolvedTitle}
+          </span>
           {expanded && subtitle && (
             <span className="block truncate text-xs text-muted-foreground">
               {subtitle}
