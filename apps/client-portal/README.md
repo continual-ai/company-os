@@ -12,7 +12,6 @@ Business definitions, rules, storage, and authorization stay in `apps/company-os
 `company-os/model`, `company-os/client`, and `company-os/config` only, and takes its primitives
 and stylesheet from `@company/ui`. Server functions call the central app through `createClient` from
 `company-os/client`, pointed at `COMPANY_OS_URL` and forwarding the hosting platform's identity
-headers from the incoming request rather than minting identity. Read the
-[architecture](../../docs/architecture.md) and [deployment](../../docs/runbooks/deployment.md) guides
-before connecting or publishing it. Delete this directory if the company has no portal; copy it to
+headers from the incoming request rather than minting identity. [AGENTS.md](AGENTS.md) gives the
+app conventions; the root [README](../../README.md#deployment) covers deployment. Delete this directory if the company has no portal; copy it to
 start another satellite.

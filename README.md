@@ -8,21 +8,15 @@
   <p><strong>Early preview</strong> · TypeScript · Effect v4 · React · PostgreSQL</p>
   <p>
     <a href="#quick-start">Quick start</a> ·
-    <a href="#enable-and-add-modules">Modules</a> ·
-    <a href="docs/modules.md">Build a module</a> ·
-    <a href="docs/architecture.md">Architecture</a>
+    <a href="#make-it-yours">Make it yours</a> ·
+    <a href="#deployment">Deployment</a>
   </p>
 </div>
 
-Company OS is one application you clone and own. It ships with a kernel, a set of proven business
-modules, and a shell. Every module is composed and migrated; a short list in `app.config.ts` decides
-which ones your company exposes. Start with the modules that fit, turn off the rest, and let an agent
-or an engineer build the operations that are yours alone. You own the source and the database.
-
-A module defines its objects and operations in TypeScript. That contract supplies PostgreSQL storage,
-validated APIs, a typed client, MCP tools, and default tables, forms, and record pages. Business rules
-are Effect functions; custom screens are ordinary React components. The same server-side permissions
-and transactions apply whether a person clicks a button or an agent calls a tool.
+Company OS is one application you clone and own. A module defines business records and operations
+in TypeScript; the model supplies PostgreSQL storage, governed CRUD, a typed client, HTTP APIs,
+MCP tools, and default screens. Custom rules are Effect functions and custom screens are React.
+You own the source and database.
 
 The repository runs locally without a Continual account. [Continual](https://continual.ai) maintains
 the project and offers optional hosting. Company OS is open source under the
@@ -41,117 +35,84 @@ pnpm dev
 ```
 
 Open **[localhost:3002](http://localhost:3002)**. Development signs you in as a local administrator;
-no OAuth setup, API key, bucket, or hosted service is needed. `pnpm dev` creates the local database,
-applies the committed migrations, and starts the app. The default connection is
-`postgresql://localhost:5432/company_os`; set `DATABASE_URL` in an ignored `.env.local` for another
-endpoint. See the [database guide](docs/runbooks/database.md).
+no OAuth setup or hosted service is needed. `pnpm dev` creates the local database, applies committed
+migrations, and starts the app. The default database is `postgresql://localhost:5432/company_os`.
+Put overrides in an ignored `.env.local`; see [`.env.example`](apps/company-os/.env.example) for
+configuration. Injected environment values take precedence.
 
-To explore the UI with realistic fictional data, run `pnpm db:seed` after the first startup.
-It adds connected demo records and a larger dataset across every business module. Use
-`pnpm db:seed --scenario demo` for a small walkthrough, or `--scenario performance --size 10000`
-for profiling. Reruns preserve your edits; see [development data](docs/runbooks/database.md#populate-development-data).
-
-The OpenAPI document is at [`/api/openapi`](http://localhost:3002/api/openapi). The Developer Center
-at `/developer` explores the model, the API, and the MCP tools.
-
-## Enable and add modules
-
-`apps/company-os/src/app.model.ts` composes every module. `apps/company-os/src/app.config.ts` lists
-the ones the UI, API, and MCP expose:
-
-```ts
-export const enabledModules = [
-  "access",
-  "assets",
-  "notes",
-  "sales",
-  "support",
-] as const
-```
-
-Remove an id and its screens, endpoints, and tools disappear while its tables and data stay. The
-list must be closed under dependencies; the app tells you which module is missing otherwise. Access
-and Assets are part of the kernel and are always on.
-
-To add your own capability, create a directory under `apps/company-os/src/modules` with the same
-shape as the shipped ones and register it in the four roots:
-
-```text
-apps/company-os/src/modules/sales/
-  model/index.ts                 defineModule: objects, links, interfaces, events
-  model/lead.ts                  one object and its operation contracts
-  server/index.ts                custom operation bindings
-  server/convert-lead.ts         a transactional business action
-  ui/index.ts                    presentation registration
-  ui/lead/conversion-tab.tsx     an ordinary React component
-  seeds/index.ts                 fixture builders
-```
-
-Only `model/` is required. A standard object gets persistence, governed CRUD, APIs, MCP tools, and
-usable screens without its own service or route files. [Building a module](docs/modules.md) walks
-through custom actions, React extensions, and client data access.
-
-## How it is organized
-
-```text
-apps/company-os/src/
-  runtime/     the kernel: model DSL, execution, storage, authorization, events, model UI
-  modules/     the business: one directory per module, all the same shape
-  app/         the shell: layout, settings, sign-in, developer pages, client assembly
-  routes/      TanStack Start routes, generic over the model
-  app.model.ts  app.config.ts  app.server.ts  app.ui.ts
-```
-
-Change things in this order: add a module, then edit a shipped module, then edit the kernel. Upstream
-improvements arrive with `git merge`; keeping kernel edits rare keeps merges clean. The lint rules in
-`tools/oxlint/company-os` enforce the import direction between the three directories.
-
-```text
-React UI       Typed client       HTTP / OpenAPI       MCP tools
-    \               |                   |                /
-     +--------------+-------------------+---------------+
-                            |
-                   Queries and Actions
-                            |
-             Identity → authorization → operations
-                            |
-                 PostgreSQL transactions
-```
-
-A [durable event journal](docs/events.md) records committed changes and typed business facts; open
-browsers apply authorized snapshots and refresh affected queries. [Architecture](docs/architecture.md)
-explains the guarantees and boundaries.
+For fictional development data, run `pnpm db:seed --scenario demo`. Reruns preserve your edits.
+The Developer Center at `/developer` explores the live model, API, and MCP tools;
+[`/api/openapi`](http://localhost:3002/api/openapi) serves the generated OpenAPI contract.
 
 ## Make it yours
 
-Change product identity and the entry experience in `apps/company-os/src/app/customization`, set the
-enabled modules, then build your operation in `apps/company-os/src/modules`. The agent skills under
-`.agents/skills` help with onboarding, customization, and upstream upgrades. A useful first prompt:
+Tell your coding agent the outcome, who uses it, and the scope. Two skills guide the work:
 
-> Use $company-onboard to build our customer onboarding process. Track customers, milestones,
-> owners, blockers, and launch dates. Let an agent prepare follow-ups, with a person approving
-> anything sent to a customer. Build one working operation through the UI and API.
+| Skill                                          | Use it for                                                |
+| ---------------------------------------------- | --------------------------------------------------------- |
+| [onboard](.agents/skills/onboard/SKILL.md)     | Initial company setup and the first working process       |
+| [customize](.agents/skills/customize/SKILL.md) | Features, UI, architecture, reviews, and upstream updates |
 
-`apps/client-portal` is a satellite app for customers over the central app's model and governed
-API; delete it if you have no portal, or copy it to start another. See
-[deployment](docs/runbooks/deployment.md) for production builds and identity.
+> Use $onboard to set this up for our company. Start with customer onboarding: customers,
+> milestones, owners, blockers, and launch dates.
+
+> Use $customize to add hiring: jobs, candidate applications, and employee or agent reviews.
+> Backend only for now; prepare public application submission and keep reviews private.
+
+> Use $customize for a deep architecture review of the application submission flow.
+> Rank correctness risks and simplifications by impact; review only.
+
+Business code lives in `apps/company-os/src/modules`; the kernel is in `src/runtime` and the shell
+in `src/app`. `app.model.ts` composes every module. `app.config.ts` selects the modules exposed to
+UI, HTTP, and MCP, leaving disabled modules' data intact. Access and Assets are always enabled.
+Change product identity and the entry experience in `src/app/customization`.
+
+[AGENTS.md](AGENTS.md) holds repository conventions. The skills point to working source examples;
+code, tests, and generated contracts define the implementation. `apps/client-portal` is an optional
+satellite over the central app's API; delete it if unnecessary or copy it for another interface.
 
 ## Development
 
-| Command                                | Purpose                                                      |
-| -------------------------------------- | ------------------------------------------------------------ |
-| `pnpm dev`                             | Migrate and run the app                                      |
-| `pnpm check`                           | Lint, typecheck, schema check, model lint, format, dead code |
-| `pnpm test`                            | Unit tests and isolated PostgreSQL tests                     |
-| `pnpm build`                           | Build the app and the starter                                |
-| `pnpm format`                          | Format source and documentation                              |
-| `pnpm --filter company-os db:generate` | Regenerate `schema.sql` from the composed model              |
-| `pnpm ui:add <component>`              | Add a shadcn primitive to `packages/ui`                      |
-| `pnpm ui:remove <component>`           | Remove a primitive after proving nothing imports it          |
+| Command                                | Purpose                                                         |
+| -------------------------------------- | --------------------------------------------------------------- |
+| `pnpm dev`                             | Migrate and run the apps                                        |
+| `pnpm check`                           | Lint, typecheck, schema/model checks, formatting, and dead code |
+| `pnpm test`                            | Unit tests and isolated PostgreSQL tests                        |
+| `pnpm build`                           | Build the apps                                                  |
+| `pnpm format`                          | Format the repository                                           |
+| `pnpm --filter company-os db:generate` | Regenerate `schema.sql` after model changes                     |
+| `pnpm --filter company-os db:migrate`  | Apply committed migrations and refresh system records/search    |
+| `pnpm ui:add <component>`              | Add a shadcn primitive to `packages/ui`                         |
+| `pnpm ui:remove <component>`           | Remove an unused primitive                                      |
 
-Tests need a PostgreSQL role with `CREATEDB`; they create and remove isolated databases. [AGENTS.md](AGENTS.md)
-holds the repository-wide constraints that contributors and agents follow.
+Tests need a PostgreSQL role with `CREATEDB` at `DATABASE_URL` (default
+`postgresql://localhost:5432/postgres`). They create and remove isolated databases. After changing
+the database environment, `pnpm turbo run test --force` bypasses cached results.
 
-## License
+Model changes need a matching migration. `db:generate --baseline` rewrites the initial migration
+and is only for disposable data. For retained data, add a numbered migration and test that existing
+records survive; never rewrite applied history. To intentionally rebuild a disposable local database,
+use `CONFIRM_DATABASE_RESET=company_os pnpm reset`, substituting its exact database name.
 
-[Apache License 2.0](LICENSE). Read the license before redistributing Company OS.
+## Deployment
+
+Configure the server and identity values in [`.env.example`](apps/company-os/.env.example).
+Production requires an explicit database connection, deployment secret, and trusted identity provider;
+the local administrator fallback is disabled. Configure the first administrator's verified issuer
+and subject before their first sign-in. Other verified identities receive no role unless configured
+or granted one. Only `VITE_` values are public.
+
+For Continual hosting:
+
+```sh
+pnpm exec continual login
+pnpm exec continual link --project <project-id-or-url>
+pnpm exec continual env pull
+pnpm deploy
+```
+
+Deploy builds `.output`, migrates the configured database, then publishes. Other hosts must preserve
+that order and configure a trusted identity boundary. Keep a restore point before production
+migrations and use changes compatible with overlapping app revisions; an app rollback does not undo
+a migration. Verify `/health` and an authenticated read and write after deployment. Satellites set
+`COMPANY_OS_URL` to the central app and forward verified identity headers.

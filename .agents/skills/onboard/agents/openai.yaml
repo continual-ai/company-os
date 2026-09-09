@@ -1,0 +1,4 @@
+interface:
+  display_name: "Onboard"
+  short_description: "Set up a company and its first working process"
+  default_prompt: "Use $onboard to adapt this app to my company and build our first requested workflow."

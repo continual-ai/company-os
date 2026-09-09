@@ -1,4 +1,0 @@
-interface:
-  display_name: "Company Upgrade"
-  short_description: "Merge upstream safely into a customized fork"
-  default_prompt: "Use $company-upgrade to verify this fork's upstream, merge the latest scaffold changes, and preserve company customizations."

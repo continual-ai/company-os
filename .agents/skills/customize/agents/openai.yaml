@@ -1,0 +1,4 @@
+interface:
+  display_name: "Customize"
+  short_description: "Build, simplify, and review Company OS functionality"
+  default_prompt: "Use $customize for this change or review, starting from the closest working source example."

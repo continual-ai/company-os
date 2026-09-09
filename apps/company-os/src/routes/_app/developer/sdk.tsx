@@ -92,26 +92,30 @@ function SdkPage() {
         <h2 className="text-lg font-medium">Where to put new functionality</h2>
         <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-[minmax(0,1fr)_2fr]">
           <dt className="font-mono break-words">
-            src/modules/&lt;domain&gt;/&lt;object&gt;/model.ts
+            src/modules/&lt;domain&gt;/model/&lt;object&gt;.ts
           </dt>
           <dd className="text-muted-foreground">
             Define fields, relationships, Queries, and Actions. Standard CRUD
             and contracts derive from this model.
           </dd>
-          <dt className="font-mono">&lt;object&gt;/server/</dt>
+          <dt className="font-mono">&lt;domain&gt;/server/</dt>
           <dd className="text-muted-foreground">
             Implement named Effect functions for custom operations. Keep
             operation-specific SQL beside the operation.
           </dd>
-          <dt className="font-mono">&lt;object&gt;/ui/config.ts</dt>
+          <dt className="font-mono">
+            &lt;domain&gt;/ui/&lt;object&gt;/config.ts
+          </dt>
           <dd className="text-muted-foreground">
             Register views, action buttons, record tabs, or field editors. Put
             their React components alongside the configuration.
           </dd>
-          <dt className="font-mono">docs/modules.md</dt>
+          <dt className="font-mono break-words">
+            .agents/skills/customize/SKILL.md
+          </dt>
           <dd className="text-muted-foreground">
-            Follow the complete authoring guide in your checkout. Distinct
-            workflows use ordinary React pages and TanStack routes.
+            Start from the closest working module example. Repository
+            conventions live in AGENTS.md.
           </dd>
         </dl>
       </section>
