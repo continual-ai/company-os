@@ -1,14 +1,14 @@
 import { Effect } from "effect"
 
-import { Database } from "#/runtime/server/database/database.ts"
-import { seedRuns } from "#/runtime/server/database/schema.ts"
 import { systemInvocation } from "#/runtime/server/invocation-context.ts"
 import { CurrentInvocation } from "#/runtime/server/invocation.ts"
-import { insertValues } from "#/runtime/server/postgres/index.ts"
+import { Database } from "#/runtime/server/storage/database.ts"
+import { insertValues } from "#/runtime/server/storage/index.ts"
 import {
   tableProjection,
   type TableRow,
-} from "#/runtime/server/postgres/index.ts"
+} from "#/runtime/server/storage/index.ts"
+import { seedRuns } from "#/runtime/server/storage/infrastructure.ts"
 
 export interface SeedScenario<R = never> {
   readonly name: string

@@ -10,8 +10,9 @@ Continual service, broker, or separate worker for browser updates.
 2. Object writers stage `created`, `updated`, and `deleted` facts. Link writers stage actual
    `linked` and `unlinked` changes, including primary replacement and deletion cascades. Repeating
    an existing Link does not produce another event.
-3. `Database.transaction` keeps a separate event buffer for each savepoint. Successful inner
-   transactions merge their events; rollback discards them.
+3. `Database.transaction` opens one PostgreSQL transaction with one event buffer. A nested call
+   joins the open transaction instead of creating a savepoint, so its events stage into the same
+   buffer and its failure fails the whole write.
 4. Immediately before the outer commit, the database updates the [search index](search.md) for staged
    subjects, then allocates journal positions and inserts
    the events. A single counter row stays locked until commit. This makes committed positions

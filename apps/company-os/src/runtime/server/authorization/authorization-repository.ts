@@ -4,13 +4,13 @@ import { GroupMembership } from "#/runtime/access/model/group-membership.ts"
 import type { IdentityId, PrincipalId } from "#/runtime/access/model/ids.ts"
 import { RoleAssignment } from "#/runtime/access/model/role-assignment.ts"
 import { Role } from "#/runtime/access/model/role.ts"
-import { Database } from "#/runtime/server/database/database.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
+import { Database } from "#/runtime/server/storage/database.ts"
 import {
   projection,
   type SelectionRow,
   inValues,
-} from "#/runtime/server/postgres/index.ts"
+} from "#/runtime/server/storage/index.ts"
 
 const make = Effect.gen(function* () {
   const context = yield* ModelContext

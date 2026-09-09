@@ -12,7 +12,6 @@ import { bootstrapSystemActor } from "#/runtime/access/server/bootstrap.ts"
 import { seedAuthorization } from "#/runtime/access/server/seed.ts"
 import { AssetsModule } from "#/runtime/assets/model/index.ts"
 import { defineModel, Decimal, CurrencyCode } from "#/runtime/model/index.ts"
-import { infrastructureStatements } from "#/runtime/server/database/schema.ts"
 import { foundationLayer } from "#/runtime/server/foundation.ts"
 import { Database, Records, ModelContext } from "#/runtime/server/index.ts"
 import {
@@ -20,8 +19,9 @@ import {
   anonymousInvocation,
 } from "#/runtime/server/invocation-context.ts"
 import { CurrentInvocation } from "#/runtime/server/invocation.ts"
-import { makePostgresSchema } from "#/runtime/server/postgres/index.ts"
-import { TestDatabase } from "#/runtime/server/postgres/testing.ts"
+import { makePostgresSchema } from "#/runtime/server/storage/index.ts"
+import { infrastructureStatements } from "#/runtime/server/storage/infrastructure.ts"
+import { TestDatabase } from "#/runtime/server/storage/testing.ts"
 
 const model = defineModel({
   name: "Sales test",

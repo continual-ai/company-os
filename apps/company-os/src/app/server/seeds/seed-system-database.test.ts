@@ -22,19 +22,19 @@ import {
   SYSTEM_SERVICE_ACCOUNT_ID,
   SYSTEM_ROLE_ASSIGNMENT_ID,
 } from "#/runtime/model/system-records.ts"
-import { Database } from "#/runtime/server/database/database.ts"
 import {
   authenticatedInvocation,
   ReservedSystemActor,
 } from "#/runtime/server/invocation-context.ts"
-import { assignments, insertValues } from "#/runtime/server/postgres/index.ts"
+import { Database } from "#/runtime/server/storage/database.ts"
+import { assignments, insertValues } from "#/runtime/server/storage/index.ts"
 import {
   tableProjection,
   type TableRow,
   projection,
   type SelectionRow,
   inValues,
-} from "#/runtime/server/postgres/index.ts"
+} from "#/runtime/server/storage/index.ts"
 
 describe("Company OS seeds", () => {
   itDatabase(

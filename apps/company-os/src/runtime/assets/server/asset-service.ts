@@ -10,16 +10,16 @@ import {
   type ObjectGetInput,
 } from "#/runtime/model/index.ts"
 import { Authorization } from "#/runtime/server/authorization/authorization-service.ts"
-import { Database } from "#/runtime/server/database/database.ts"
 import { currentActorId } from "#/runtime/server/invocation-context.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
 import { ObjectRepositories } from "#/runtime/server/model/object-repositories.ts"
 import { makeObjectService } from "#/runtime/server/model/object-service.ts"
 import { RecordIdentifierResolver } from "#/runtime/server/model/record-identifier-resolver.ts"
+import { Database } from "#/runtime/server/storage/database.ts"
 import {
   projection,
   type SelectionRow,
-} from "#/runtime/server/postgres/index.ts"
+} from "#/runtime/server/storage/index.ts"
 
 const make = Effect.gen(function* () {
   const assets = (yield* ModelContext).table(Asset)
@@ -30,14 +30,14 @@ const make = Effect.gen(function* () {
   const identifiers = yield* RecordIdentifierResolver
   const records = yield* ObjectRepositories
   const repository = records.get(Asset)
-  const base = yield* makeObjectService(Asset, repository)
+  const base = yield* makeObjectService(Asset)
   const writer = records.writer(Asset)
 
   const beginUpload = Effect.fn("@company/Assets.beginUpload")(function* (
     input: ActionInput<typeof Asset.actions.beginUpload>
   ) {
     const scope = yield* identifiers.resolve("authorizationScope", input.scope)
-    yield* authorization.requireOperation({
+    yield* authorization.require({
       objectType: "asset",
       operationId: "beginUpload",
       parentId: scope,
@@ -62,7 +62,7 @@ const make = Effect.gen(function* () {
           where ${assets.columns.id} = ${id} for update`
   const requireUploader = Effect.fn("@company/Assets.requireUploader")(
     function* (id: string) {
-      yield* authorization.requireOperation({
+      yield* authorization.require({
         objectType: "asset",
         operationId: "completeUpload",
         recordIds: [id],

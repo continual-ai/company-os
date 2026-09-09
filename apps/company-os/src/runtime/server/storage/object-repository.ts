@@ -1,8 +1,18 @@
-import { Cause, Effect, Option, Schema } from "effect"
+import { Cause, Data, Effect, Option, Schema } from "effect"
 import { isSqlError, type SqlError } from "effect/unstable/sql/SqlError"
 import type { Fragment } from "effect/unstable/sql/Statement"
 
 import { toEffectObjectSchema } from "#/runtime/contract/schema.ts"
+import type {
+  ObjectActorRecordTypeId,
+  ObjectCreateValues,
+  ObjectParentRecordTypeId,
+  ObjectUpdateValues,
+} from "#/runtime/model/definition/object.ts"
+import type {
+  CanonicalListRequest,
+  CanonicalObjectFilter,
+} from "#/runtime/model/definition/request.ts"
 import {
   normalizePageSize,
   type RecordId,
@@ -14,24 +24,10 @@ import {
   type ObjectRecord,
   type ObjectType,
   type Page,
+  type BaseRecord,
+  type Etag,
 } from "#/runtime/model/index.ts"
-import {
-  ObjectNotFound,
-  ObjectDeleteRestricted,
-  ObjectUniqueConflict,
-  RecordAliasConflict,
-  ObjectParentNotFound,
-  ObjectParentTypeMismatch,
-  ObjectWriteConflict,
-  InvalidListRequest,
-  type ObjectDeleteTarget,
-  type ObjectInsert,
-  type ObjectRepositoryUpdate,
-  type RepositoryListRequest,
-  type RepositoryListVisibility,
-  type Repository,
-} from "#/runtime/server/object-repository.ts"
-import { type PostgresDatabase } from "#/runtime/server/postgres/database.ts"
+import { type PostgresDatabase } from "#/runtime/server/storage/database.ts"
 import {
   cursorCondition,
   cursorFingerprint,
@@ -41,29 +37,29 @@ import {
   makeObjectQueryCompiler,
   orderExpression,
   recordValue,
-} from "#/runtime/server/postgres/object-query.ts"
+} from "#/runtime/server/storage/object-query.ts"
 import {
   objectUniqueConstraintName,
   physicalPropertyKey,
   type PostgresStorage,
-} from "#/runtime/server/postgres/schema.ts"
+} from "#/runtime/server/storage/schema.ts"
 import {
   insertValues,
   assignments,
-} from "#/runtime/server/postgres/statement.ts"
+} from "#/runtime/server/storage/statement.ts"
 import {
   sqlValue,
   projection,
   type SelectionRow,
   inValues,
   conflictColumns,
-} from "#/runtime/server/postgres/statement.ts"
+} from "#/runtime/server/storage/statement.ts"
 import {
   tableName,
   tableColumns,
   type Table,
   type Column,
-} from "#/runtime/server/postgres/table.ts"
+} from "#/runtime/server/storage/table.ts"
 
 type StoragePropertyValues<TObject extends ObjectType> = Partial<
   Readonly<
@@ -94,6 +90,110 @@ type ObjectUpdatePropertyValues<TObject extends ObjectType> = Omit<
 type CanonicalStoragePropertyValues<TObject extends ObjectType> =
   | ObjectInsertPropertyValues<TObject>
   | ObjectUpdatePropertyValues<TObject>
+
+export class ObjectNotFound extends Data.TaggedError("ObjectNotFound")<{
+  readonly objectType: string
+  readonly recordId: string
+}> {}
+
+export class ObjectWriteConflict extends Data.TaggedError(
+  "ObjectWriteConflict"
+)<{
+  readonly objectType: string
+  readonly recordId: string
+}> {}
+
+class ObjectDeleteRestricted extends Data.TaggedError(
+  "ObjectDeleteRestricted"
+)<{
+  readonly objectType: string
+  readonly recordIds: ReadonlyArray<string>
+}> {}
+
+class ObjectUniqueConflict extends Data.TaggedError("ObjectUniqueConflict")<{
+  readonly fields: ReadonlyArray<string>
+  readonly objectType: string
+  readonly rule: string
+}> {}
+
+class ObjectParentNotFound extends Data.TaggedError("ObjectParentNotFound")<{
+  readonly objectType: string
+  readonly parentId: string
+}> {}
+
+export class ObjectParentTypeMismatch extends Data.TaggedError(
+  "ObjectParentTypeMismatch"
+)<{
+  readonly actualParentObjectType: string
+  readonly expectedParentTypeId: string
+  readonly objectType: string
+  readonly parentId: string
+}> {}
+
+export class InvalidListRequest extends Data.TaggedError("InvalidListRequest")<{
+  readonly message: string
+  readonly objectType: string
+}> {}
+
+export class RecordAliasConflict extends Data.TaggedError(
+  "RecordAliasConflict"
+)<{
+  readonly alias: string
+  readonly conflictingRecordId: string
+  readonly recordId: string
+}> {}
+
+export class RecordAliasNotFound extends Data.TaggedError(
+  "RecordAliasNotFound"
+)<{
+  readonly alias: string
+}> {}
+
+/** Canonical insert values; persistence supplies the tag and timestamps. */
+export type ObjectInsert<TObject extends ObjectType> = Omit<
+  BaseRecord<
+    TObject["id"],
+    ObjectParentRecordTypeId<TObject>,
+    ObjectActorRecordTypeId<TObject>
+  >,
+  "createdAt" | "etag" | "updatedAt"
+> &
+  Omit<ObjectCreateValues<TObject>, "parent">
+
+/** Canonical update command accepted by persistence. */
+export type ObjectRepositoryUpdate<TObject extends ObjectType> =
+  ObjectUpdateValues<TObject> & {
+    /** Record version that must still exist when the write commits. */
+    readonly etag: Etag
+    readonly id: RecordId<TObject["id"]>
+    readonly updatedBy: ObjectRecord<TObject>["updatedBy"]
+  }
+
+/** Canonical query values accepted by a repository list. */
+export type RepositoryListRequest<TObject extends ObjectType> =
+  CanonicalListRequest<TObject> & {
+    /** Internal edge constraint, established by the governed Link service. */
+    readonly relatedTo?: {
+      readonly linkId: string
+      readonly direction: "forward" | "reverse"
+      readonly sourceId: string
+    }
+  }
+
+/** Canonical query filter accepted by a repository list. */
+export type RepositoryFilter<TObject extends ObjectType> =
+  CanonicalObjectFilter<TObject>
+
+/** Internal hierarchy constraint supplied by governed services, never callers. */
+export interface RepositoryListVisibility {
+  readonly visibleWithin: ReadonlyArray<string>
+}
+
+/** Record version that must still exist when an atomic batch delete commits. */
+export interface ObjectDeleteTarget<TObject extends ObjectType> {
+  readonly etag: Etag
+  readonly id: RecordId<TObject["id"]>
+}
 
 export type PostgresRepositoryError =
   | InvalidListRequest
@@ -490,97 +590,95 @@ function makeRepository<
         ...properties
       } = record
 
-      yield* db.transaction(() =>
-        Effect.gen(function* () {
-          const parentRowsFields = {
-            ancestorIds: objects.columns.ancestorIds,
-            objectType: objects.columns.objectType,
-          }
-          const parentRows = yield* sql<
-            SelectionRow<typeof parentRowsFields>
-          >`select ${projection(parentRowsFields)}
+      yield* Effect.gen(function* () {
+        const parentRowsFields = {
+          ancestorIds: objects.columns.ancestorIds,
+          objectType: objects.columns.objectType,
+        }
+        const parentRows = yield* sql<
+          SelectionRow<typeof parentRowsFields>
+        >`select ${projection(parentRowsFields)}
           from ${objects}
           where ${objects.columns.id} = ${parentId}
           limit ${1}`
-          const parent = parentRows[0]
-          if (parent === undefined) {
-            return yield* Effect.fail(
-              new ObjectParentNotFound({
-                objectType: object.id,
-                parentId,
-              })
-            )
-          }
-          const parentMatches =
-            parentInterfaceTable !== undefined
-              ? (yield* sql<{
-                  present: number
-                }>`select 1 as present
+        const parent = parentRows[0]
+        if (parent === undefined) {
+          return yield* Effect.fail(
+            new ObjectParentNotFound({
+              objectType: object.id,
+              parentId,
+            })
+          )
+        }
+        const parentMatches =
+          parentInterfaceTable !== undefined
+            ? (yield* sql<{
+                present: number
+              }>`select 1 as present
           from ${parentInterfaceTable}
           where ${parentInterfaceTable.columns.id} = ${parentId}
           limit ${1}`).length === 1
-              : parent.objectType === object.parent.typeId
-          if (!parentMatches) {
+            : parent.objectType === object.parent.typeId
+        if (!parentMatches) {
+          return yield* Effect.fail(
+            new ObjectParentTypeMismatch({
+              actualParentObjectType: parent.objectType,
+              expectedParentTypeId: object.parent.typeId,
+              objectType: object.id,
+              parentId,
+            })
+          )
+        }
+
+        yield* sql`insert into ${objects} ${insertValues(sql, objects, {
+          ancestorIds: [parentId, ...parent.ancestorIds],
+          metadata,
+          createdById: createdBy,
+          id,
+          objectType: object.id,
+          parentId,
+          systemManaged,
+          updatedById: updatedBy,
+        })}`
+        if (aliases.length > 0) {
+          yield* sql`insert into ${recordAliases} ${insertValues(
+            sql,
+            recordAliases,
+            aliases.map((alias) => ({ alias, objectId: id }))
+          )}
+          on conflict do nothing`
+          const ownersFields = {
+            alias: recordAliases.columns.alias,
+            objectId: recordAliases.columns.objectId,
+          }
+          const owners = yield* sql<
+            SelectionRow<typeof ownersFields>
+          >`select ${projection(ownersFields)}
+          from ${recordAliases}
+          where ${inValues(sql, recordAliases.columns.alias, [...aliases])}`
+          const conflictOwner = owners.find((owner) => owner.objectId !== id)
+          if (conflictOwner !== undefined) {
             return yield* Effect.fail(
-              new ObjectParentTypeMismatch({
-                actualParentObjectType: parent.objectType,
-                expectedParentTypeId: object.parent.typeId,
-                objectType: object.id,
-                parentId,
+              new RecordAliasConflict({
+                alias: conflictOwner.alias,
+                conflictingRecordId: conflictOwner.objectId,
+                recordId: id,
               })
             )
           }
-
-          yield* sql`insert into ${objects} ${insertValues(sql, objects, {
-            ancestorIds: [parentId, ...parent.ancestorIds],
-            metadata,
-            createdById: createdBy,
-            id,
-            objectType: object.id,
-            parentId,
-            systemManaged,
-            updatedById: updatedBy,
-          })}`
-          if (aliases.length > 0) {
-            yield* sql`insert into ${recordAliases} ${insertValues(
-              sql,
-              recordAliases,
-              aliases.map((alias) => ({ alias, objectId: id }))
-            )}
-          on conflict do nothing`
-            const ownersFields = {
-              alias: recordAliases.columns.alias,
-              objectId: recordAliases.columns.objectId,
-            }
-            const owners = yield* sql<
-              SelectionRow<typeof ownersFields>
-            >`select ${projection(ownersFields)}
-          from ${recordAliases}
-          where ${inValues(sql, recordAliases.columns.alias, [...aliases])}`
-            const conflictOwner = owners.find((owner) => owner.objectId !== id)
-            if (conflictOwner !== undefined) {
-              return yield* Effect.fail(
-                new RecordAliasConflict({
-                  alias: conflictOwner.alias,
-                  conflictingRecordId: conflictOwner.objectId,
-                  recordId: id,
-                })
-              )
-            }
-          }
-          const objectValues = {
-            id,
-            ...toStorageProperties(properties),
-            parentId,
-          }
-          yield* sql`insert into ${table} ${insertValues(sql, table, objectValues)}`
-          for (const interfaceTable of interfaceTables) {
-            yield* sql`insert into ${interfaceTable} ${insertValues(sql, interfaceTable, { id })}`
-          }
-          return undefined
-        }).pipe((effect) =>
-          translateUniqueConflict(effect, object, uniqueConstraints)
-        )
+        }
+        const objectValues = {
+          id,
+          ...toStorageProperties(properties),
+          parentId,
+        }
+        yield* sql`insert into ${table} ${insertValues(sql, table, objectValues)}`
+        for (const interfaceTable of interfaceTables) {
+          yield* sql`insert into ${interfaceTable} ${insertValues(sql, interfaceTable, { id })}`
+        }
+        return undefined
+      }).pipe((effect) =>
+        translateUniqueConflict(effect, object, uniqueConstraints)
       )
 
       return yield* get(id)
@@ -600,73 +698,71 @@ function makeRepository<
         ...properties
       } = record
 
-      yield* db.transaction(() =>
-        Effect.gen(function* () {
-          const parentRowsFields2 = {
-            ancestorIds: objects.columns.ancestorIds,
-            objectType: objects.columns.objectType,
-          }
-          const parentRows = yield* sql<
-            SelectionRow<typeof parentRowsFields2>
-          >`select ${projection(parentRowsFields2)}
+      yield* Effect.gen(function* () {
+        const parentRowsFields2 = {
+          ancestorIds: objects.columns.ancestorIds,
+          objectType: objects.columns.objectType,
+        }
+        const parentRows = yield* sql<
+          SelectionRow<typeof parentRowsFields2>
+        >`select ${projection(parentRowsFields2)}
           from ${objects}
           where ${objects.columns.id} = ${parentId}
           limit ${1}`
-          const parent = parentRows[0]
-          if (parent === undefined) {
-            return yield* Effect.fail(
-              new ObjectParentNotFound({ objectType: object.id, parentId })
-            )
-          }
-          const parentMatches =
-            parentInterfaceTable !== undefined
-              ? (yield* sql<{
-                  present: number
-                }>`select 1 as present
+        const parent = parentRows[0]
+        if (parent === undefined) {
+          return yield* Effect.fail(
+            new ObjectParentNotFound({ objectType: object.id, parentId })
+          )
+        }
+        const parentMatches =
+          parentInterfaceTable !== undefined
+            ? (yield* sql<{
+                present: number
+              }>`select 1 as present
           from ${parentInterfaceTable}
           where ${parentInterfaceTable.columns.id} = ${parentId}
           limit ${1}`).length === 1
-              : parent.objectType === object.parent.typeId
-          if (!parentMatches) {
-            return yield* Effect.fail(
-              new ObjectParentTypeMismatch({
-                actualParentObjectType: parent.objectType,
-                expectedParentTypeId: object.parent.typeId,
-                objectType: object.id,
-                parentId,
-              })
-            )
-          }
+            : parent.objectType === object.parent.typeId
+        if (!parentMatches) {
+          return yield* Effect.fail(
+            new ObjectParentTypeMismatch({
+              actualParentObjectType: parent.objectType,
+              expectedParentTypeId: object.parent.typeId,
+              objectType: object.id,
+              parentId,
+            })
+          )
+        }
 
-          const existingRowsFields = {
-            objectType: objects.columns.objectType,
-            parentId: objects.columns.parentId,
-          }
-          const existingRows = yield* sql<
-            SelectionRow<typeof existingRowsFields>
-          >`select ${projection(existingRowsFields)}
+        const existingRowsFields = {
+          objectType: objects.columns.objectType,
+          parentId: objects.columns.parentId,
+        }
+        const existingRows = yield* sql<
+          SelectionRow<typeof existingRowsFields>
+        >`select ${projection(existingRowsFields)}
           from ${objects}
           where ${objects.columns.id} = ${id}
           limit ${1}`
-          const existing = existingRows[0]
-          if (
-            existing !== undefined &&
-            (existing.objectType !== object.id ||
-              existing.parentId !== parentId)
-          ) {
-            return yield* Effect.fail(conflict(object, id))
-          }
+        const existing = existingRows[0]
+        if (
+          existing !== undefined &&
+          (existing.objectType !== object.id || existing.parentId !== parentId)
+        ) {
+          return yield* Effect.fail(conflict(object, id))
+        }
 
-          yield* sql`insert into ${objects} ${insertValues(sql, objects, {
-            ancestorIds: [parentId, ...parent.ancestorIds],
-            metadata,
-            createdById: createdBy,
-            id,
-            objectType: object.id,
-            parentId,
-            systemManaged,
-            updatedById: updatedBy,
-          })}
+        yield* sql`insert into ${objects} ${insertValues(sql, objects, {
+          ancestorIds: [parentId, ...parent.ancestorIds],
+          metadata,
+          createdById: createdBy,
+          id,
+          objectType: object.id,
+          parentId,
+          systemManaged,
+          updatedById: updatedBy,
+        })}
           on conflict (${conflictColumns(sql, objects.columns.id)})
           do update set ${assignments(sql, objects, {
             metadata,
@@ -676,54 +772,53 @@ function makeRepository<
             updatedById: updatedBy,
           })}`
 
-          if (aliases.length > 0) {
-            yield* sql`insert into ${recordAliases} ${insertValues(
-              sql,
-              recordAliases,
-              aliases.map((alias) => ({ alias, objectId: id }))
-            )}
+        if (aliases.length > 0) {
+          yield* sql`insert into ${recordAliases} ${insertValues(
+            sql,
+            recordAliases,
+            aliases.map((alias) => ({ alias, objectId: id }))
+          )}
           on conflict do nothing`
-            const ownersFields2 = {
-              alias: recordAliases.columns.alias,
-              objectId: recordAliases.columns.objectId,
-            }
-            const owners = yield* sql<
-              SelectionRow<typeof ownersFields2>
-            >`select ${projection(ownersFields2)}
+          const ownersFields2 = {
+            alias: recordAliases.columns.alias,
+            objectId: recordAliases.columns.objectId,
+          }
+          const owners = yield* sql<
+            SelectionRow<typeof ownersFields2>
+          >`select ${projection(ownersFields2)}
           from ${recordAliases}
           where ${inValues(sql, recordAliases.columns.alias, [...aliases])}`
-            const conflictOwner = owners.find((owner) => owner.objectId !== id)
-            if (conflictOwner !== undefined) {
-              return yield* Effect.fail(
-                new RecordAliasConflict({
-                  alias: conflictOwner.alias,
-                  conflictingRecordId: conflictOwner.objectId,
-                  recordId: id,
-                })
-              )
-            }
+          const conflictOwner = owners.find((owner) => owner.objectId !== id)
+          if (conflictOwner !== undefined) {
+            return yield* Effect.fail(
+              new RecordAliasConflict({
+                alias: conflictOwner.alias,
+                conflictingRecordId: conflictOwner.objectId,
+                recordId: id,
+              })
+            )
           }
-          yield* sql`delete
+        }
+        yield* sql`delete
           from ${recordAliases}
           where ${recordAliases.columns.objectId} = ${id}
             and ${inValues(sql, recordAliases.columns.alias, aliases, true)}`
 
-          const storageProperties = toStorageProperties(properties)
-          const objectValues = { id, ...storageProperties, parentId }
-          const onConflict =
-            Object.keys(storageProperties).length === 0
-              ? sql`on conflict do nothing`
-              : sql`on conflict (${conflictColumns(sql, idColumn)})
+        const storageProperties = toStorageProperties(properties)
+        const objectValues = { id, ...storageProperties, parentId }
+        const onConflict =
+          Object.keys(storageProperties).length === 0
+            ? sql`on conflict do nothing`
+            : sql`on conflict (${conflictColumns(sql, idColumn)})
           do update set ${assignments(sql, table, storageProperties)}`
-          yield* sql`insert into ${table} ${insertValues(sql, table, objectValues)} ${onConflict}`
-          for (const interfaceTable of interfaceTables) {
-            yield* sql`insert into ${interfaceTable} ${insertValues(sql, interfaceTable, { id })}
+        yield* sql`insert into ${table} ${insertValues(sql, table, objectValues)} ${onConflict}`
+        for (const interfaceTable of interfaceTables) {
+          yield* sql`insert into ${interfaceTable} ${insertValues(sql, interfaceTable, { id })}
           on conflict do nothing`
-          }
-          return undefined
-        }).pipe((effect) =>
-          translateUniqueConflict(effect, object, uniqueConstraints)
-        )
+        }
+        return undefined
+      }).pipe((effect) =>
+        translateUniqueConflict(effect, object, uniqueConstraints)
       )
 
       return yield* get(id)
@@ -738,90 +833,88 @@ function makeRepository<
       ...properties
     }: ObjectRepositoryUpdate<TObject>) {
       const storageProperties = toStorageProperties(properties)
-      yield* db.transaction(() =>
-        Effect.gen(function* () {
-          const updatedFields = { id: objects.columns.id }
-          const updated = yield* sql<
-            SelectionRow<typeof updatedFields>
-          >`update ${objects} set ${assignments(
-            sql,
-            objects,
-            metadata === undefined
-              ? {
-                  etag: sql`(${objects.columns.etag}::numeric + 1)::text`,
-                  updatedAt: sql`now()`,
-                  updatedById: updatedBy,
-                }
-              : {
-                  etag: sql`(${objects.columns.etag}::numeric + 1)::text`,
-                  metadata,
-                  updatedAt: sql`now()`,
-                  updatedById: updatedBy,
-                }
-          )}
+      yield* Effect.gen(function* () {
+        const updatedFields = { id: objects.columns.id }
+        const updated = yield* sql<
+          SelectionRow<typeof updatedFields>
+        >`update ${objects} set ${assignments(
+          sql,
+          objects,
+          metadata === undefined
+            ? {
+                etag: sql`(${objects.columns.etag}::numeric + 1)::text`,
+                updatedAt: sql`now()`,
+                updatedById: updatedBy,
+              }
+            : {
+                etag: sql`(${objects.columns.etag}::numeric + 1)::text`,
+                metadata,
+                updatedAt: sql`now()`,
+                updatedById: updatedBy,
+              }
+        )}
           where (${objects.columns.id} = ${id} and ${objects.columns.objectType} = ${object.id} and ${objects.columns.etag} = ${etag})
           returning ${projection(updatedFields)}`
-          if (updated.length === 0)
-            return yield* Effect.fail(conflict(object, id))
+        if (updated.length === 0)
+          return yield* Effect.fail(conflict(object, id))
 
-          const aliasesToAdd =
-            aliases === undefined
-              ? []
-              : isAliasReplacement(aliases)
-                ? aliases
-                : (aliases.add ?? [])
-          if (aliasesToAdd.length > 0) {
-            yield* sql`insert into ${recordAliases} ${insertValues(
-              sql,
-              recordAliases,
-              aliasesToAdd.map((alias) => ({ alias, objectId: id }))
-            )}
+        const aliasesToAdd =
+          aliases === undefined
+            ? []
+            : isAliasReplacement(aliases)
+              ? aliases
+              : (aliases.add ?? [])
+        if (aliasesToAdd.length > 0) {
+          yield* sql`insert into ${recordAliases} ${insertValues(
+            sql,
+            recordAliases,
+            aliasesToAdd.map((alias) => ({ alias, objectId: id }))
+          )}
           on conflict do nothing`
-            const ownersFields3 = {
-              alias: recordAliases.columns.alias,
-              objectId: recordAliases.columns.objectId,
-            }
-            const owners = yield* sql<
-              SelectionRow<typeof ownersFields3>
-            >`select ${projection(ownersFields3)}
+          const ownersFields3 = {
+            alias: recordAliases.columns.alias,
+            objectId: recordAliases.columns.objectId,
+          }
+          const owners = yield* sql<
+            SelectionRow<typeof ownersFields3>
+          >`select ${projection(ownersFields3)}
           from ${recordAliases}
           where ${inValues(sql, recordAliases.columns.alias, [...aliasesToAdd])}`
-            const conflictOwner = owners.find((owner) => owner.objectId !== id)
-            if (conflictOwner !== undefined) {
-              return yield* Effect.fail(
-                new RecordAliasConflict({
-                  alias: conflictOwner.alias,
-                  conflictingRecordId: conflictOwner.objectId,
-                  recordId: id,
-                })
-              )
-            }
+          const conflictOwner = owners.find((owner) => owner.objectId !== id)
+          if (conflictOwner !== undefined) {
+            return yield* Effect.fail(
+              new RecordAliasConflict({
+                alias: conflictOwner.alias,
+                conflictingRecordId: conflictOwner.objectId,
+                recordId: id,
+              })
+            )
           }
+        }
 
-          if (aliases !== undefined) {
-            if (isAliasReplacement(aliases)) {
-              yield* sql`delete
+        if (aliases !== undefined) {
+          if (isAliasReplacement(aliases)) {
+            yield* sql`delete
           from ${recordAliases}
           where ${recordAliases.columns.objectId} = ${id}
             and ${inValues(sql, recordAliases.columns.alias, aliases, true)}`
-            } else {
-              const aliasesToRemove = aliases.remove ?? []
-              if (aliasesToRemove.length > 0) {
-                yield* sql`delete
+          } else {
+            const aliasesToRemove = aliases.remove ?? []
+            if (aliasesToRemove.length > 0) {
+              yield* sql`delete
           from ${recordAliases}
           where (${recordAliases.columns.objectId} = ${id} and ${inValues(sql, recordAliases.columns.alias, [...aliasesToRemove])})`
-              }
             }
           }
+        }
 
-          if (Object.keys(storageProperties).length > 0) {
-            yield* sql`update ${table} set ${assignments(sql, table, storageProperties)}
+        if (Object.keys(storageProperties).length > 0) {
+          yield* sql`update ${table} set ${assignments(sql, table, storageProperties)}
           where ${idColumn} = ${id}`
-          }
-          return undefined
-        }).pipe((effect) =>
-          translateUniqueConflict(effect, object, uniqueConstraints)
-        )
+        }
+        return undefined
+      }).pipe((effect) =>
+        translateUniqueConflict(effect, object, uniqueConstraints)
       )
 
       return yield* get(id)
@@ -846,45 +939,37 @@ function makeRepository<
       function* (targets: ReadonlyArray<ObjectDeleteTarget<TObject>>) {
         if (targets.length === 0) return undefined
 
-        yield* db
-          .transaction(() =>
-            Effect.gen(function* () {
-              const targetCondition = sql.join(
-                " OR ",
-                true,
-                "false"
-              )(
-                targets
-                  .map(
-                    ({ etag, id }) =>
-                      sql`(${objects.columns.id} = ${id} and ${objects.columns.etag} = ${etag})`
-                  )
-                  .filter((part) => part !== undefined)
+        yield* Effect.gen(function* () {
+          const targetCondition = sql.join(
+            " OR ",
+            true,
+            "false"
+          )(
+            targets
+              .map(
+                ({ etag, id }) =>
+                  sql`(${objects.columns.id} = ${id} and ${objects.columns.etag} = ${etag})`
               )
-              const deletedFields2 = { id: objects.columns.id }
-              const deleted = yield* sql<
-                SelectionRow<typeof deletedFields2>
-              >`delete
+              .filter((part) => part !== undefined)
+          )
+          const deletedFields2 = { id: objects.columns.id }
+          const deleted = yield* sql<SelectionRow<typeof deletedFields2>>`delete
           from ${objects}
           where ${sql.and([sql`${objects.columns.objectType} = ${object.id}`, targetCondition].filter((part) => part !== undefined))}
           returning ${projection(deletedFields2)}`
-              const deletedIds = new Set(deleted.map(({ id }) => id))
-              const conflictTarget = targets.find(
-                ({ id }) => !deletedIds.has(id)
-              )
-              if (conflictTarget !== undefined) {
-                return yield* Effect.fail(conflict(object, conflictTarget.id))
-              }
-              return undefined
-            })
+          const deletedIds = new Set(deleted.map(({ id }) => id))
+          const conflictTarget = targets.find(({ id }) => !deletedIds.has(id))
+          if (conflictTarget !== undefined) {
+            return yield* Effect.fail(conflict(object, conflictTarget.id))
+          }
+          return undefined
+        }).pipe((effect) =>
+          translateDeleteRestriction(
+            effect,
+            object,
+            targets.map(({ id }) => id)
           )
-          .pipe((effect) =>
-            translateDeleteRestriction(
-              effect,
-              object,
-              targets.map(({ id }) => id)
-            )
-          )
+        )
         return undefined
       }
     )
@@ -903,9 +988,11 @@ function makeRepository<
 }
 
 /**
- * Builds the standard repository for one semantic object and its Effect SQL
- * storage table. Application-specific repositories may add typed queries to the
- * returned capability without bypassing its hydration and write invariants.
+ * Builds the PostgreSQL persistence for one semantic object. It receives values
+ * already validated by a governed service and owns storage translation, record
+ * tags, timestamps, concurrency checks, and integrity translation. Multi-statement
+ * writes assume the caller holds the transaction; `Records` supplies it together
+ * with event recording.
  */
 export function makeObjectRepository<
   const TModel extends ModelCatalog,
@@ -915,7 +1002,7 @@ export function makeObjectRepository<
   object: TObject,
   db: PostgresDatabase,
   pageTokens: PageTokenCodec
-): Effect.Effect<Repository<TObject, PostgresRepositoryError>> {
+) {
   return makeRepository(storage, object, db).pipe(
     Effect.map(({ makeList, ...repository }) => ({
       ...repository,
@@ -924,15 +1011,11 @@ export function makeObjectRepository<
   )
 }
 
-/** Builds the idempotent upsert capability used by trusted system seeds. */
+/** Builds the idempotent upsert used by trusted system seeds. */
 export function makeObjectSeedRepository<
   const TModel extends ModelCatalog,
   const TObject extends TModel["objects"][keyof TModel["objects"] & string],
->(
-  storage: PostgresStorage<TModel>,
-  object: TObject,
-  db: PostgresDatabase
-): Effect.Effect<Pick<Repository<TObject, PostgresRepositoryError>, "upsert">> {
+>(storage: PostgresStorage<TModel>, object: TObject, db: PostgresDatabase) {
   return makeRepository(storage, object, db).pipe(
     Effect.map(({ upsert }) => ({ upsert }))
   )

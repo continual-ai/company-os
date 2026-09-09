@@ -7,7 +7,7 @@ import {
   Authorization,
   ModelContext,
 } from "#/runtime/server/index.ts"
-import { inValues } from "#/runtime/server/postgres/index.ts"
+import { inValues } from "#/runtime/server/storage/index.ts"
 
 const Output = toEffectSchema(Deal.queries.pipelineSummary.output)
 
@@ -19,13 +19,13 @@ export const pipelineSummary = Effect.fn("sales.pipelineSummary")(function* () {
   const context = yield* ModelContext
   const deals = context.table(Deal)
   const objects = context.storage.core.objects
-  yield* authorization.requireOperation({
+  yield* authorization.require({
     objectType: "deal",
     operationId: "pipelineSummary",
   })
   const scopes = yield* authorization.visibleWithin({
     objectType: "deal",
-    operation: "get",
+    operationId: "get",
   })
   if (scopes.length === 0) return { groups: [] }
   const currency = sql`${deals.columns.amount}->>'currency'`

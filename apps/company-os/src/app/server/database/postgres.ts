@@ -2,10 +2,10 @@ import { PgClient } from "@effect/sql-pg"
 import { Config, Layer, Redacted } from "effect"
 
 import { EnabledModel } from "#/app.model.ts"
-import { Database } from "#/runtime/server/database/database.ts"
 import { EventNotifications } from "#/runtime/server/events/event-notifications.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
-import { pgTypes } from "#/runtime/server/postgres/index.ts"
+import { Database } from "#/runtime/server/storage/database.ts"
+import { pgTypes } from "#/runtime/server/storage/index.ts"
 
 const SCHEMA_NAME_PATTERN = /^[a-z_][a-z0-9_]*$/
 

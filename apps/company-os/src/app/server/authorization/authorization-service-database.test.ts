@@ -1,4 +1,4 @@
-import { Effect, Layer } from "effect"
+import { Effect } from "effect"
 import { describe, expect } from "vitest"
 
 import { Model } from "#/app.model.ts"
@@ -41,7 +41,6 @@ import {
   anonymousCaller,
   authenticatedCaller,
 } from "#/runtime/server/caller.ts"
-import { Database } from "#/runtime/server/database/database.ts"
 import {
   anonymousInvocation,
   authenticatedInvocation,
@@ -54,8 +53,9 @@ import { ObjectRepositories } from "#/runtime/server/model/object-repositories.t
 import { makeObjectService } from "#/runtime/server/model/object-service.ts"
 import { RecordIdentifierResolver } from "#/runtime/server/model/record-identifier-resolver.ts"
 import { PageTokens } from "#/runtime/server/page-tokens.ts"
-import type { TableRow } from "#/runtime/server/postgres/index.ts"
-import { insertValues, assignments } from "#/runtime/server/postgres/index.ts"
+import { Database } from "#/runtime/server/storage/database.ts"
+import type { TableRow } from "#/runtime/server/storage/index.ts"
+import { insertValues, assignments } from "#/runtime/server/storage/index.ts"
 
 const now = Timestamp("2026-08-23T00:00:00.000Z")
 const UserId = RecordId("user")
@@ -249,15 +249,12 @@ describe("Authorization", () => {
         yield* sql`delete
           from ${objects}
           where ${objects.columns.id} = ${publicAdmissionAssignmentId}`
-        const companyRepository = objectRepositories.get(Model.objects.company)
         const identifiers = yield* RecordIdentifierResolver.make
         const companyService = yield* makeObjectService(
-          Model.objects.company,
-          companyRepository
+          Model.objects.company
         ).pipe(
-          Effect.provide(
-            Links.layer.pipe(Layer.provide(ObjectRepositories.layer))
-          ),
+          Effect.provide(Links.layer),
+          Effect.provideService(ObjectRepositories, objectRepositories),
           Effect.provideService(Authorization, authorization),
           Effect.provideService(RecordIdentifierResolver, identifiers)
         )
@@ -419,9 +416,7 @@ describe("Authorization", () => {
             Effect.provideService(ObjectRepositories, objectRepositories)
           )
         const roleAssignmentService = yield* RoleAssignmentService.make.pipe(
-          Effect.provide(
-            Links.layer.pipe(Layer.provide(ObjectRepositories.layer))
-          ),
+          Effect.provide(Links.layer),
           Effect.provideService(
             AuthorizationRepository,
             authorizationRepository

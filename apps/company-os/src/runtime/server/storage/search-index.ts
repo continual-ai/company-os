@@ -4,20 +4,20 @@ import type { Constructor } from "effect/unstable/sql/Statement"
 import type { Fragment } from "effect/unstable/sql/Statement"
 
 import type { ObjectType } from "#/runtime/model/index.ts"
-import {
-  recordSearch,
-  searchIndexState,
-} from "#/runtime/server/database/schema.ts"
 import type { ModelContext } from "#/runtime/server/model-context.ts"
-import { insertValues, assignments } from "#/runtime/server/postgres/index.ts"
-import type { Column } from "#/runtime/server/postgres/index.ts"
+import { insertValues, assignments } from "#/runtime/server/storage/index.ts"
+import type { Column } from "#/runtime/server/storage/index.ts"
 import {
   tableColumns,
   tableProjection,
   type TableRow,
   conflictColumns,
   type PostgresDatabase,
-} from "#/runtime/server/postgres/index.ts"
+} from "#/runtime/server/storage/index.ts"
+import {
+  recordSearch,
+  searchIndexState,
+} from "#/runtime/server/storage/infrastructure.ts"
 
 /** Shared tokenization makes email domains, URLs, hyphens, and names searchable as word prefixes. */
 export function searchVector(sql: Constructor, text: Fragment) {

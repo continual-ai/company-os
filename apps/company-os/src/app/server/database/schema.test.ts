@@ -6,7 +6,7 @@ import {
   tableColumns,
   tableName,
   type TableRow,
-} from "#/runtime/server/postgres/index.ts"
+} from "#/runtime/server/storage/index.ts"
 
 describe("PostgreSQL schema", () => {
   it("projects model fields, relationships, and infrastructure constraints", () => {

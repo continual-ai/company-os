@@ -4,7 +4,7 @@ import {
   tableColumns,
   type Column,
   type Table,
-} from "#/runtime/server/postgres/table.ts"
+} from "#/runtime/server/storage/table.ts"
 
 type Input<A> = A extends string ? string : A
 

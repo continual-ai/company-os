@@ -5,8 +5,6 @@ import type { Effect } from "effect"
 import { type Action } from "#/runtime/model/definition/action.ts"
 import {
   type ModelCatalog,
-  type ModelObjectCreateInput,
-  type ModelObjectUpdateInput,
   modelObjects,
 } from "#/runtime/model/definition/model.ts"
 import type { ObjectType } from "#/runtime/model/definition/object.ts"
@@ -24,8 +22,10 @@ import {
   type ExecutableModelOperation,
 } from "#/runtime/model/operations.ts"
 import type { CurrentInvocation } from "#/runtime/server/invocation.ts"
-import type { LinkService } from "#/runtime/server/link-service.ts"
-import type { Service } from "#/runtime/server/object-service.ts"
+import type { Links } from "#/runtime/server/model/link-service.ts"
+import type { ObjectService } from "#/runtime/server/model/object-service.ts"
+
+type LinkOperations = Pick<typeof Links.Service, "link" | "list" | "unlink">
 
 type CustomOperations<TObject extends ObjectType> = TObject["actions"] &
   TObject["queries"]
@@ -49,44 +49,21 @@ export type CustomOperationService<
     : never
 }
 
-/** Queries and actions that implement one object in a closed model. */
-export type ObjectImplementation<
-  TObject extends ObjectType,
-  R = CurrentInvocation,
-> = Service<TObject, unknown, R> & CustomOperationService<TObject, R>
-
-/** Closed-model writes include declared relationship initialization and deltas. */
-export type ModelObjectService<
-  TModel extends ModelCatalog,
-  TObject extends ObjectType,
-  TService,
-> = {
-  readonly [K in keyof TService]: K extends "create"
-    ? (
-        input: ModelObjectCreateInput<TModel, TObject>
-      ) => ReturnType<Extract<TService[K], (...args: never[]) => unknown>>
-    : K extends "update"
-      ? (
-          input: ModelObjectUpdateInput<TModel, TObject>
-        ) => ReturnType<Extract<TService[K], (...args: never[]) => unknown>>
-      : TService[K]
-}
+/** Standard operations, including declared Link initialization and deltas, plus custom queries and actions for one object. */
+type ObjectImplementation<TObject extends ObjectType> = ObjectService<TObject> &
+  CustomOperationService<TObject>
 
 export type ModelServiceMap<TModel extends ModelCatalog> = {
   readonly [
     TObjectId in keyof TModel["objects"]
   ]: TModel["objects"][TObjectId] extends ObjectType
-    ? ModelObjectService<
-        TModel,
-        TModel["objects"][TObjectId],
-        ObjectImplementation<TModel["objects"][TObjectId]>
-      >
+    ? ObjectImplementation<TModel["objects"][TObjectId]>
     : never
 }
 
 /** A portable model exhaustively bound to its existing governed services. */
 export interface ModelImplementation<TModel extends ModelCatalog> {
-  readonly links: LinkService<unknown, CurrentInvocation>
+  readonly links: LinkOperations
   readonly model: TModel
   readonly services: ModelServiceMap<TModel>
 }
@@ -100,7 +77,7 @@ function operation(service: object, name: string): unknown {
 export function implementModel<TModel extends ModelCatalog>(
   model: TModel,
   services: ModelServiceMap<TModel>,
-  links: LinkService<unknown, CurrentInvocation>
+  links: LinkOperations
 ): ModelImplementation<TModel> {
   const descriptors = executableModelOperations(model)
   for (const object of modelObjects(model)) {
@@ -151,7 +128,7 @@ export function modelOperation(
 /** Dispatches an already validated object or Link operation. */
 export function executeModelOperation(
   implementation: {
-    readonly links: LinkService<unknown, CurrentInvocation>
+    readonly links: LinkOperations
     readonly services: Readonly<Record<string, object>>
   },
   descriptor: ExecutableModelOperation,

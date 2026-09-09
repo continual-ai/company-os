@@ -23,10 +23,10 @@ describe("authorization permission catalog", () => {
 
   it("uses one permission for singular and batch forms", () => {
     expect(
-      objectPermission({ objectType: "company", operation: "batchGet" })
+      objectPermission({ objectType: "company", operationId: "batchGet" })
     ).toBe("company.get")
     expect(
-      objectPermission({ objectType: "company", operation: "batchDelete" })
+      objectPermission({ objectType: "company", operationId: "batchDelete" })
     ).toBe("company.delete")
   })
 })

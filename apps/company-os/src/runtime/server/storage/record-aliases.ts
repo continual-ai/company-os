@@ -8,14 +8,14 @@ import {
   type ModelCatalog,
   type ModelObjectRef,
 } from "#/runtime/model/index.ts"
-import { RecordAliasNotFound } from "#/runtime/server/object-repository.ts"
-import { type PostgresDatabase } from "#/runtime/server/postgres/database.ts"
-import type { PostgresStorage } from "#/runtime/server/postgres/schema.ts"
+import { type PostgresDatabase } from "#/runtime/server/storage/database.ts"
+import { RecordAliasNotFound } from "#/runtime/server/storage/object-repository.ts"
+import type { PostgresStorage } from "#/runtime/server/storage/schema.ts"
 import {
   projection,
   type SelectionRow,
   inValues,
-} from "#/runtime/server/postgres/statement.ts"
+} from "#/runtime/server/storage/statement.ts"
 
 export type PostgresRecordAliasResolutionError = RecordAliasNotFound | SqlError
 

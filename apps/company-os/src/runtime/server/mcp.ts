@@ -39,8 +39,8 @@ import {
   type ExecutableModelOperation,
 } from "#/runtime/model/operations.ts"
 import type { CurrentInvocation } from "#/runtime/server/invocation.ts"
-import type { LinkService } from "#/runtime/server/link-service.ts"
 import { executeModelOperation } from "#/runtime/server/model-implementation.ts"
+import type { Links } from "#/runtime/server/model/link-service.ts"
 
 type ModelMcpOperation = Effect.Effect<unknown, unknown, CurrentInvocation>
 
@@ -50,7 +50,7 @@ type ModelMcpResult =
 
 export interface ModelMcpBinding {
   readonly implementation: {
-    readonly links: LinkService<unknown, CurrentInvocation>
+    readonly links: Pick<typeof Links.Service, "link" | "list" | "unlink">
     readonly model: ModelCatalog
     readonly services: Readonly<Record<string, object>>
   }

@@ -48,18 +48,18 @@ import {
   ROOT_ID,
 } from "#/runtime/model/system-records.ts"
 import { makeApplicationKeys } from "#/runtime/server/application-keys.ts"
-import { Database } from "#/runtime/server/database/database.ts"
-import { identityBindings } from "#/runtime/server/database/schema.ts"
 import {
   makeEncryptedPageTokenCodec,
   PageTokens,
 } from "#/runtime/server/page-tokens.ts"
-import { assignments } from "#/runtime/server/postgres/index.ts"
+import { Database } from "#/runtime/server/storage/database.ts"
+import { assignments } from "#/runtime/server/storage/index.ts"
 import {
   projection,
   type SelectionRow,
-} from "#/runtime/server/postgres/index.ts"
-import { makeLinkRepository } from "#/runtime/server/postgres/index.ts"
+} from "#/runtime/server/storage/index.ts"
+import { makeLinkRepository } from "#/runtime/server/storage/index.ts"
+import { identityBindings } from "#/runtime/server/storage/infrastructure.ts"
 
 type ApplicationHttpClient = ModelHttpClient<typeof Model> &
   HttpApiClient.Client<typeof capabilityGroup>

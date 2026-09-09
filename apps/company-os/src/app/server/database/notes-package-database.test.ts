@@ -14,13 +14,13 @@ import {
   defineRoot,
   RecordId,
 } from "#/runtime/model/index.ts"
-import { Database } from "#/runtime/server/database/database.ts"
 import { makeEncryptedPageTokenCodec } from "#/runtime/server/page-tokens.ts"
+import { Database } from "#/runtime/server/storage/database.ts"
 import {
   makeLinkRepository,
   makeObjectRepository,
   makePostgresSchema,
-} from "#/runtime/server/postgres/index.ts"
+} from "#/runtime/server/storage/index.ts"
 
 it("migrates and persists a Notes-only model without the demo domains", async () => {
   const Actor = defineInterface({

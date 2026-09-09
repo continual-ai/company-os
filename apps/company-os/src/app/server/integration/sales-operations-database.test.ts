@@ -14,8 +14,6 @@ import {
   modelObjectLinkTraversals,
 } from "#/runtime/model/index.ts"
 import { ROOT_ID } from "#/runtime/model/system-records.ts"
-import { CommittedChanges } from "#/runtime/server/database/committed-changes.ts"
-import { Database } from "#/runtime/server/database/database.ts"
 import { Records } from "#/runtime/server/index.ts"
 import {
   anonymousInvocation,
@@ -24,6 +22,8 @@ import {
 import { CurrentInvocation } from "#/runtime/server/invocation.ts"
 import { Links } from "#/runtime/server/model/link-service.ts"
 import { PageTokens } from "#/runtime/server/page-tokens.ts"
+import { CommittedChanges } from "#/runtime/server/storage/committed-changes.ts"
+import { Database } from "#/runtime/server/storage/database.ts"
 
 itDatabase(
   "keeps custom queries scoped, conversions atomic, and primary affiliation a selection",

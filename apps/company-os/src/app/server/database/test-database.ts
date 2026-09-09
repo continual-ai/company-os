@@ -3,10 +3,10 @@ import { Effect, Layer, Redacted } from "effect"
 
 import { Model } from "#/app.model.ts"
 import { applyMigrations } from "#/app/server/database/migrations.ts"
-import { Database } from "#/runtime/server/database/database.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
-import { pgTypes } from "#/runtime/server/postgres/index.ts"
-import { TestDatabase as PostgresTestDatabase } from "#/runtime/server/postgres/testing.ts"
+import { Database } from "#/runtime/server/storage/database.ts"
+import { pgTypes } from "#/runtime/server/storage/index.ts"
+import { TestDatabase as PostgresTestDatabase } from "#/runtime/server/storage/testing.ts"
 
 async function migrate(url: string) {
   await Effect.runPromise(

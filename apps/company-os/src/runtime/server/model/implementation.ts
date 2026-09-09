@@ -6,9 +6,7 @@ import type {
   ObjectType,
 } from "#/runtime/model/index.ts"
 import type { Authorization } from "#/runtime/server/authorization/authorization-service.ts"
-import type { Database } from "#/runtime/server/database/database.ts"
 import type { CurrentInvocation } from "#/runtime/server/invocation.ts"
-import type { LinkService } from "#/runtime/server/link-service.ts"
 import type { ModelContext } from "#/runtime/server/model-context.ts"
 import {
   implementModel,
@@ -17,9 +15,10 @@ import {
 } from "#/runtime/server/model-implementation.ts"
 import { Links } from "#/runtime/server/model/link-service.ts"
 import type { OperationRequirements } from "#/runtime/server/model/module-server.ts"
-import { ObjectRepositories } from "#/runtime/server/model/object-repositories.ts"
+import type { ObjectRepositories } from "#/runtime/server/model/object-repositories.ts"
 import { makeObjectService } from "#/runtime/server/model/object-service.ts"
 import type { RecordIdentifierResolver } from "#/runtime/server/model/record-identifier-resolver.ts"
+import type { Database } from "#/runtime/server/storage/database.ts"
 
 type Contribution = {
   readonly module: ModuleDefinition
@@ -48,7 +47,7 @@ export class ModelImplementation extends Context.Service<
   {
     readonly model: ModelCatalog
     readonly services: Readonly<Record<string, object>>
-    readonly links: LinkService<unknown, CurrentInvocation>
+    readonly links: Pick<typeof Links.Service, "link" | "list" | "unlink">
   }
 >()("@company/runtime/ModelImplementation") {}
 
@@ -79,7 +78,6 @@ export function modelImplementationLayer<
     Effect.gen(function* () {
       const context = yield* Layer.build(services)
       const foundationContext: Context.Context<Foundation> = context
-      const repositories = Context.get(context, ObjectRepositories)
       const links = Context.get(context, Links)
       const overrides: Record<string, object> = {}
       for (const contribution of contributions) {
@@ -141,7 +139,7 @@ export function modelImplementationLayer<
       }
       const objects: ReadonlyArray<ObjectType> = Object.values(model.objects)
       const entries = yield* Effect.forEach(objects, (object) =>
-        makeObjectService(object, repositories.get(object)).pipe(
+        makeObjectService(object).pipe(
           Effect.provideContext(foundationContext),
           Effect.map(
             (standard: object) =>

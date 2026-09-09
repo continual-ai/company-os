@@ -8,9 +8,9 @@ import {
 } from "#/app/server/database/migrations.ts"
 import * as Postgres from "#/app/server/database/postgres.ts"
 import { seedSystem } from "#/app/server/seeds/seed-system.ts"
-import { Database } from "#/runtime/server/database/database.ts"
-import { ensureSearchIndex } from "#/runtime/server/database/search-index.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
+import { Database } from "#/runtime/server/storage/database.ts"
+import { ensureSearchIndex } from "#/runtime/server/storage/search-index.ts"
 
 // Deployment sequencing lives in this application's own scripts, not in any
 // platform: the deploy task invokes this tool with --if-configured so the

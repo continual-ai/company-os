@@ -8,10 +8,10 @@ import { itDatabase } from "#/app/server/database/it-database.ts"
 import { seedSystem } from "#/app/server/seeds/seed-system.ts"
 import { contactViews } from "#/modules/sales/ui/index.ts"
 import { EmailAddress, type ListRequest } from "#/runtime/model/index.ts"
-import { Database } from "#/runtime/server/database/database.ts"
 import { systemInvocation } from "#/runtime/server/invocation-context.ts"
 import { CurrentInvocation } from "#/runtime/server/invocation.ts"
 import { PageTokens } from "#/runtime/server/page-tokens.ts"
+import { Database } from "#/runtime/server/storage/database.ts"
 import { objectListRequest } from "#/runtime/ui/model/object-collection-query.ts"
 
 itDatabase(

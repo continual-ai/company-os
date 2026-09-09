@@ -2,7 +2,6 @@ import { Layer, type Effect } from "effect"
 
 import { BlobStorage } from "#/runtime/assets/server/blob-storage.ts"
 import type { ModelCatalog, ModuleDefinition } from "#/runtime/model/index.ts"
-import type { Database } from "#/runtime/server/database/database.ts"
 import { foundationLayer } from "#/runtime/server/foundation.ts"
 import { Operations } from "#/runtime/server/invoke.ts"
 import {
@@ -10,6 +9,7 @@ import {
   type ModuleRequirements,
 } from "#/runtime/server/model/implementation.ts"
 import type { PageTokens } from "#/runtime/server/page-tokens.ts"
+import type { Database } from "#/runtime/server/storage/database.ts"
 
 export interface ServicesInfrastructure {
   readonly blobStorage?: Layer.Layer<BlobStorage, unknown>

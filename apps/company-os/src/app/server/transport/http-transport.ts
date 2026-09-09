@@ -20,7 +20,6 @@ import {
 } from "#/runtime/server/api-error.ts"
 import { Authentication } from "#/runtime/server/auth/authentication.ts"
 import { Authorization } from "#/runtime/server/authorization/authorization-service.ts"
-import { Database } from "#/runtime/server/database/database.ts"
 import { EventJournal } from "#/runtime/server/events/event-journal.ts"
 import { EventNotifications } from "#/runtime/server/events/event-notifications.ts"
 import { streamEvents } from "#/runtime/server/events/event-stream.ts"
@@ -34,6 +33,7 @@ import { Operations } from "#/runtime/server/invoke.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
 import { ModelImplementation } from "#/runtime/server/model/implementation.ts"
 import { createRecordSearch } from "#/runtime/server/record-search.ts"
+import { Database } from "#/runtime/server/storage/database.ts"
 
 class HttpTransportFailure extends Data.TaggedError("HttpTransportFailure")<{
   readonly cause: unknown

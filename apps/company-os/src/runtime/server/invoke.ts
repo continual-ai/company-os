@@ -2,12 +2,12 @@ import { Context, Effect, Layer } from "effect"
 
 import type { ExecutableModelOperation } from "#/runtime/model/operations.ts"
 import { withApiErrors } from "#/runtime/server/api-error.ts"
-import { CommittedChanges } from "#/runtime/server/database/committed-changes.ts"
-import { Database } from "#/runtime/server/database/database.ts"
 import {
   CurrentInvocation,
   type InvocationContext,
 } from "#/runtime/server/invocation.ts"
+import { CommittedChanges } from "#/runtime/server/storage/committed-changes.ts"
+import { Database } from "#/runtime/server/storage/database.ts"
 
 const make = Effect.gen(function* () {
   const database = yield* Database

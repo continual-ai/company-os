@@ -10,7 +10,7 @@ import { ROOT_ID } from "#/runtime/model/system-records.ts"
 import { currentActorId } from "#/runtime/server/invocation-context.ts"
 import { ObjectRepositories } from "#/runtime/server/model/object-repositories.ts"
 import { makeObjectService } from "#/runtime/server/model/object-service.ts"
-import type { ObjectInsert } from "#/runtime/server/object-repository.ts"
+import type { ObjectInsert } from "#/runtime/server/storage/object-repository.ts"
 
 type UserRecord = ObjectRecord<typeof User>
 type UserCreateInput = ObjectCreateInput<typeof User>
@@ -18,7 +18,7 @@ type UserCreateInput = ObjectCreateInput<typeof User>
 const make = Effect.gen(function* () {
   const records = yield* ObjectRepositories
   const repository = records.get(User)
-  const base = yield* makeObjectService(User, repository)
+  const base = yield* makeObjectService(User)
   const writer = records.writer(User)
 
   const provision = Effect.fn("@company/UserService.provision")(function* (

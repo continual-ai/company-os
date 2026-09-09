@@ -1,13 +1,13 @@
 import { Context, Effect, Layer } from "effect"
 
 import { RoleAssignment } from "#/runtime/access/model/index.ts"
-import { Database } from "#/runtime/server/database/database.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
 import { ObjectRepositories } from "#/runtime/server/model/object-repositories.ts"
+import { Database } from "#/runtime/server/storage/database.ts"
 import {
   projection,
   type SelectionRow,
-} from "#/runtime/server/postgres/index.ts"
+} from "#/runtime/server/storage/index.ts"
 
 const make = Effect.gen(function* () {
   const context = yield* ModelContext

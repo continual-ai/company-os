@@ -7,23 +7,25 @@ import { createPermissionCatalog } from "#/runtime/server/authorization/permissi
 import {
   makePostgresSchema,
   type ObjectTable,
-} from "#/runtime/server/postgres/schema.ts"
+} from "#/runtime/server/storage/schema.ts"
 
 function createModelContext(model: ModelCatalog) {
   const storage = makePostgresSchema(model)
+  const installed = (object: ObjectType): boolean =>
+    model.objects[object.id] === object ||
+    Object.values(model.modules).some((module) =>
+      module.objects.includes(object)
+    )
   return {
     model,
     storage,
     capabilities: createCapabilities(model),
     permissions: createPermissionCatalog(model),
     eventFactSchema: createEventFactSchema(model),
+    /** Whether this exact definition is part of the composed model, not merely an object with the same id. */
+    installed,
     table<O extends ObjectType>(object: O): ObjectTable<O> {
-      if (
-        model.objects[object.id] !== object &&
-        !Object.values(model.modules).some((module) =>
-          module.objects.includes(object)
-        )
-      )
+      if (!installed(object))
         throw new Error(`Object '${object.id}' is not installed in this model.`)
       // SAFETY: storage was compiled from this exact object definition.
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion

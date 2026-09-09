@@ -14,12 +14,6 @@ import {
   modelObjectLinkTraversals,
 } from "#/runtime/model/index.ts"
 import { ROOT_ID } from "#/runtime/model/system-records.ts"
-import { CommittedChanges } from "#/runtime/server/database/committed-changes.ts"
-import { Database } from "#/runtime/server/database/database.ts"
-import {
-  eventJournal,
-  eventJournalState,
-} from "#/runtime/server/database/schema.ts"
 import { EventJournal } from "#/runtime/server/events/event-journal.ts"
 import { flushEvents } from "#/runtime/server/events/flush-events.ts"
 import { Records } from "#/runtime/server/index.ts"
@@ -27,11 +21,17 @@ import { systemInvocation } from "#/runtime/server/invocation-context.ts"
 import { CurrentInvocation } from "#/runtime/server/invocation.ts"
 import { Links } from "#/runtime/server/model/link-service.ts"
 import { PageTokens } from "#/runtime/server/page-tokens.ts"
-import { assignments } from "#/runtime/server/postgres/index.ts"
+import { CommittedChanges } from "#/runtime/server/storage/committed-changes.ts"
+import { Database } from "#/runtime/server/storage/database.ts"
+import { assignments } from "#/runtime/server/storage/index.ts"
 import {
   tableProjection,
   type TableRow,
-} from "#/runtime/server/postgres/index.ts"
+} from "#/runtime/server/storage/index.ts"
+import {
+  eventJournal,
+  eventJournalState,
+} from "#/runtime/server/storage/infrastructure.ts"
 
 function application<A, E, R>(program: Effect.Effect<A, E, R>) {
   return Effect.gen(function* () {
@@ -50,7 +50,7 @@ function application<A, E, R>(program: Effect.Effect<A, E, R>) {
 }
 
 itDatabase(
-  "records business writes, semantic events, savepoints, and Link cascades atomically",
+  "records business writes, semantic events, joined transactions, and Link cascades atomically",
   () =>
     application(
       Effect.gen(function* () {
@@ -74,40 +74,37 @@ itDatabase(
           (yield* journal.list({ cursor: start.nextCursor })).items
         ).toEqual([])
 
+        // Nested calls join the open transaction: a caught nested failure keeps
+        // its writes and events, and everything commits or rolls back together.
         yield* database
           .transaction(() =>
             Effect.gen(function* () {
               yield* services.company.create({ name: "Kept" })
               expect([...changes]).toEqual([])
-              yield* database.transaction((tx) =>
-                tx
-                  .transaction(() =>
-                    services.company
-                      .create({ name: "Nested transaction handle rollback" })
-                      .pipe(Effect.andThen(Effect.fail("rollback")))
-                  )
-                  .pipe(Effect.catch(() => Effect.void))
-              )
-
               yield* database
-                .transaction(() =>
-                  services.contact
-                    .create({ name: "Savepoint rollback" })
-                    .pipe(Effect.andThen(Effect.fail("rollback")))
+                .transaction((tx) =>
+                  tx.transaction(() =>
+                    services.contact
+                      .create({ name: "Joined" })
+                      .pipe(Effect.andThen(Effect.fail("nested failure")))
+                  )
                 )
                 .pipe(Effect.catch(() => Effect.void))
             })
           )
           .pipe(Effect.provideService(CommittedChanges, changes))
-        expect([...changes]).toEqual(["company"])
+        expect([...changes].sort()).toEqual(["company", "contact"])
         expect(
           (yield* services.company.list({})).items.map((item) => item.name)
         ).toEqual(["Kept"])
         expect(
+          (yield* services.contact.list({})).items.map((item) => item.name)
+        ).toEqual(["Joined"])
+        expect(
           (yield* journal.list({ cursor: start.nextCursor })).items.map(
             (item) => item.type
           )
-        ).toEqual(["company.created"])
+        ).toEqual(["company.created", "contact.created"])
 
         const lead = yield* services.lead.create({
           name: "Ada",

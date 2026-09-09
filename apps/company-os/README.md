@@ -83,7 +83,7 @@ model, even though all three module entrypoints live together. See
 | [`tools`](tools)                             | Database commands and checks for model/storage boundaries       |
 
 Reusable primitives stay in `@company/runtime/ui`, portable definitions in `@company/runtime/model`, and the
-PostgreSQL repository implementation in `@company/runtime/server/postgres`. Other apps may consume public
+PostgreSQL storage implementation in `src/runtime/server/storage`. Other apps may consume public
 `company-os/model` and `company-os/metadata` exports; private services stay private.
 
 ## Read and write paths

@@ -1,6 +1,6 @@
 import { Context, Effect, Layer } from "effect"
 
-import { Database } from "#/runtime/server/database/database.ts"
+import { Database } from "#/runtime/server/storage/database.ts"
 
 const make = Effect.gen(function* () {
   const database = yield* Database

@@ -11,7 +11,7 @@ type ServiceAccountCreateInput = ObjectCreateInput<typeof ServiceAccount>
 const make = Effect.gen(function* () {
   const records = yield* ObjectRepositories
   const repository = records.get(ServiceAccount)
-  const base = yield* makeObjectService(ServiceAccount, repository)
+  const base = yield* makeObjectService(ServiceAccount)
   const writer = records.writer(ServiceAccount)
 
   const provision = Effect.fn("@company/ServiceAccountService.provision")(

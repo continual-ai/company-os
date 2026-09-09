@@ -2,77 +2,54 @@ import { Effect } from "effect"
 import { expect } from "vitest"
 
 import { itDatabase } from "#/app/server/database/it-database.ts"
-import { Database } from "#/runtime/server/database/database.ts"
-import { seedRuns } from "#/runtime/server/database/schema.ts"
-import { insertValues } from "#/runtime/server/postgres/index.ts"
+import { Database } from "#/runtime/server/storage/database.ts"
+import { insertValues } from "#/runtime/server/storage/index.ts"
 import {
   tableProjection,
   type TableRow,
-} from "#/runtime/server/postgres/index.ts"
+} from "#/runtime/server/storage/index.ts"
+import { seedRuns } from "#/runtime/server/storage/infrastructure.ts"
+
+const names = (database: typeof Database.Service) =>
+  database.sql<TableRow<typeof seedRuns>>`select ${tableProjection(seedRuns)}
+          from ${seedRuns}`.pipe(
+    Effect.map((rows) => rows.map(({ name }) => name).sort())
+  )
 
 itDatabase(
-  "releases nested savepoints while preserving rollback and sibling isolation",
+  "nested transaction calls join the enclosing transaction",
   Effect.fn(function* () {
     const database = yield* Database
     const sql = database.sql
+    const insert = (name: string) =>
+      sql`insert into ${seedRuns} ${insertValues(sql, seedRuns, { name, parameters: "{}" })}`
     yield* database.transaction((tx) =>
-      Effect.forEach(
-        ["one", "two", "three"],
-        (name) =>
-          tx.transaction((child) =>
-            Effect.gen(function* () {
-              yield* child.sql<
-                Record<string, unknown>
-              >`insert into ${seedRuns} ${insertValues(sql, seedRuns, { name, parameters: "{}" })}`
-              const failed = yield* Effect.result(
-                child.transaction((inner) =>
-                  Effect.gen(function* () {
-                    yield* inner.sql<
-                      Record<string, unknown>
-                    >`insert into ${seedRuns} ${insertValues(sql, seedRuns, { name: `${name}-failed`, parameters: "{}" })}`
-                    return yield* Effect.fail(new Error("rollback child only"))
-                  })
-                )
-              )
-              expect(failed._tag).toBe("Failure")
-            })
-          ),
-        { concurrency: 3 }
-      ).pipe(
-        Effect.tap(() =>
-          Effect.gen(function* () {
-            const locks = yield* sql`select count(*)::double precision as count
-          from pg_locks
-
-          where pid = pg_backend_pid() and locktype = 'transactionid'`
-            expect(locks[0]!.count).toBe(1)
-          })
+      Effect.gen(function* () {
+        for (const name of ["one", "two"])
+          yield* tx.transaction(() => insert(name))
+        // Joining opens no savepoint: a nested failure leaves its writes to the enclosing decision.
+        const failed = yield* Effect.result(
+          tx.transaction(() =>
+            insert("three").pipe(Effect.andThen(Effect.fail("nested failure")))
+          )
         )
-      )
+        expect(failed._tag).toBe("Failure")
+        expect(yield* names(database)).toEqual(["one", "three", "two"])
+        const locks = yield* sql`select count(*)::double precision as count
+          from pg_locks
+          where pid = pg_backend_pid() and locktype = 'transactionid'`
+        expect(locks[0]!.count).toBe(1)
+      })
     )
-    expect(
-      (yield* sql<TableRow<typeof seedRuns>>`select ${tableProjection(seedRuns)}
-          from ${seedRuns}`)
-        .map(({ name }) => name)
-        .sort()
-    ).toEqual(["one", "three", "two"])
+    expect(yield* names(database)).toEqual(["one", "three", "two"])
     const failed = yield* Effect.result(
       database.transaction((tx) =>
-        Effect.gen(function* () {
-          yield* tx.transaction(
-            (inner) =>
-              inner.sql<
-                Record<string, unknown>
-              >`insert into ${seedRuns} ${insertValues(sql, seedRuns, { name: "rolled-back", parameters: "{}" })}`
-          )
-          return yield* Effect.fail(new Error("rollback outer"))
-        })
+        tx
+          .transaction(() => insert("rolled-back"))
+          .pipe(Effect.andThen(Effect.fail("rollback outer")))
       )
     )
     expect(failed._tag).toBe("Failure")
-    expect(
-      yield* sql<TableRow<typeof seedRuns>>`select ${tableProjection(seedRuns)}
-          from ${seedRuns}`
-    ).toHaveLength(3)
+    expect(yield* names(database)).toEqual(["one", "three", "two"])
   })
 )

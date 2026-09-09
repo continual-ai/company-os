@@ -105,18 +105,27 @@ export function executableModelOperations(
   })
 }
 
-/** Resolves one operation from the normalized closed-model catalog. */
+const objectOperationIndexes = new WeakMap<
+  ModelCatalog,
+  ReadonlyMap<string, ExecutableModelOperation>
+>()
+
+/** Resolves one object operation from the normalized closed-model catalog. */
 export function executableModelOperation(
   model: ModelCatalog,
   objectType: string,
   operationId: string
 ): ExecutableModelOperation {
-  const descriptor = executableModelOperations(model).find(
-    ({ definition, linkTraversal, object }) =>
-      object.id === objectType &&
-      linkTraversal === undefined &&
-      definition.id === operationId
-  )
+  let index = objectOperationIndexes.get(model)
+  if (index === undefined) {
+    index = new Map(
+      executableModelOperations(model)
+        .filter(({ linkTraversal }) => linkTraversal === undefined)
+        .map((descriptor) => [descriptor.key, descriptor])
+    )
+    objectOperationIndexes.set(model, index)
+  }
+  const descriptor = index.get(`${objectType}.${operationId}`)
   if (descriptor === undefined) {
     throw new Error(
       `Model operation '${objectType}.${operationId}' is unknown.`

@@ -90,5 +90,5 @@ pnpm --filter company-os db:migrate --rebuild-search
 
 The code is concentrated in `src/records.ts` (public contract),
 `src/server/model/search-records.ts` (authorized query),
-`src/server/database/search-index.ts` (projection and rebuild), and
+`src/runtime/server/storage/search-index.ts` (projection and rebuild), and
 `src/ui/application/command-palette.tsx` (interaction).

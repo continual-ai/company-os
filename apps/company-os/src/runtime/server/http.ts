@@ -31,11 +31,11 @@ import {
   type ExecutableModelOperation,
 } from "#/runtime/model/operations.ts"
 import type { CurrentInvocation } from "#/runtime/server/invocation.ts"
-import type { LinkService } from "#/runtime/server/link-service.ts"
 import {
   executeModelOperation,
   modelOperation,
 } from "#/runtime/server/model-implementation.ts"
+import type { Links } from "#/runtime/server/model/link-service.ts"
 
 export interface ModelHttpRequest {
   readonly params?: Readonly<Record<string, unknown>>
@@ -72,7 +72,7 @@ type CompleteHandlers = HttpApiBuilder.Handlers<
 >
 
 type ExecutableModelImplementation = {
-  readonly links: LinkService<unknown, CurrentInvocation>
+  readonly links: Pick<typeof Links.Service, "link" | "list" | "unlink">
   readonly model: ModelCatalog
   readonly services: Readonly<Record<string, object>>
 }

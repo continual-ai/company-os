@@ -2,14 +2,14 @@ import { Effect } from "effect"
 import { expect } from "vitest"
 
 import { itDatabase } from "#/app/server/database/it-database.ts"
-import { Database } from "#/runtime/server/database/database.ts"
+import { Database } from "#/runtime/server/storage/database.ts"
 import {
   assignments,
   defineTable,
   insertValues,
   tableProjection,
   type TableRow,
-} from "#/runtime/server/postgres/index.ts"
+} from "#/runtime/server/storage/index.ts"
 
 itDatabase(
   "preserves SQL expressions, JSON arrays, defaults, and model names at the driver boundary",

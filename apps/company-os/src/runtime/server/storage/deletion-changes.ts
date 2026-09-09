@@ -1,15 +1,15 @@
 import { Effect } from "effect"
 
 import { modelTypeAccepts, type ObjectType } from "#/runtime/model/index.ts"
-import type { Database } from "#/runtime/server/database/database.ts"
 import { makeEventWriter } from "#/runtime/server/events/event-writer.ts"
 import type { ModelContext } from "#/runtime/server/model-context.ts"
+import type { Database } from "#/runtime/server/storage/database.ts"
 import {
   projection,
   type SelectionRow,
   inValues,
   sqlValue,
-} from "#/runtime/server/postgres/index.ts"
+} from "#/runtime/server/storage/index.ts"
 
 const cascades = (cardinality: string) => cardinality !== "one"
 

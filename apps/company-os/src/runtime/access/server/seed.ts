@@ -18,10 +18,10 @@ import {
   SYSTEM_SERVICE_ACCOUNT_ID,
 } from "#/runtime/model/system-records.ts"
 import { createPermissionCatalog } from "#/runtime/server/authorization/permission-catalog.ts"
-import { makeObjectSeedRepository } from "#/runtime/server/database/object-repository.ts"
 import { currentActorId } from "#/runtime/server/invocation-context.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
-import type { ObjectInsert } from "#/runtime/server/object-repository.ts"
+import { makeObjectSeedRepository } from "#/runtime/server/model/object-repositories.ts"
+import type { ObjectInsert } from "#/runtime/server/storage/object-repository.ts"
 
 /** Converges required authorization records through repositories. */
 export const seedAuthorization = Effect.fn("@company/seedAuthorization")(

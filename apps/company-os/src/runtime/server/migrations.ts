@@ -4,7 +4,7 @@ import { Effect } from "effect"
 import * as Migrator from "effect/unstable/sql/Migrator"
 import * as SqlClient from "effect/unstable/sql/SqlClient"
 
-import { Database } from "#/runtime/server/database/database.ts"
+import { Database } from "#/runtime/server/storage/database.ts"
 
 export interface SchemaMigration {
   readonly id: number

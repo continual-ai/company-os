@@ -1,7 +1,7 @@
 import { defineRule } from "@oxlint/plugins"
 
 const PUBLIC_ENTRYPOINT =
-  /(?:^|\/)apps\/company-os\/src\/(?:runtime\/(?:model\/index|server\/index|server\/postgres\/index|ui\/module|access\/model\/index|assets\/model\/index)|modules\/[^/]+\/(?:model|server|ui|seeds)\/index|app\.model)\.ts$/
+  /(?:^|\/)apps\/company-os\/src\/(?:runtime\/(?:model\/index|server\/index|server\/storage\/index|ui\/module|access\/model\/index|assets\/model\/index)|modules\/[^/]+\/(?:model|server|ui|seeds)\/index|app\.model)\.ts$/
 
 function isPublicEntrypoint(filename: string): boolean {
   return PUBLIC_ENTRYPOINT.test(filename.replaceAll("\\", "/"))

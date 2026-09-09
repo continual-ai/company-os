@@ -1,6 +1,6 @@
 import type { ImageRef } from "#/runtime/model/index.ts"
 import type { EventSubject } from "#/runtime/server/events/event-buffer.ts"
-import { defineTable } from "#/runtime/server/postgres/table.ts"
+import { defineTable } from "#/runtime/server/storage/table.ts"
 export const identityBindings = defineTable<{
   issuer: string
   subject: string

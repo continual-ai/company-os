@@ -1,6 +1,6 @@
 # Database workflow
 
-The central Company OS app uses `@company/runtime/server/postgres` with the Effect PostgreSQL driver. The portable
+The central Company OS app uses `src/runtime/server/storage` with the Effect PostgreSQL driver. The portable
 model is the source of truth for objects, properties, interfaces, ownership, Links, and uniqueness.
 The app instantiates that projection, owns the migration sequence, and binds the derived storage
 to its repositories and services.
@@ -30,7 +30,7 @@ PostgreSQL URL
 ```
 
 `Database` is an Effect service for sharing the Effect SQL client and transaction boundary; it
-is not a second repository abstraction. The reusable `@company/runtime/server/postgres` functions receive that
+is not a second repository abstraction. The `src/runtime/server/storage` functions receive that
 database value explicitly and implement the portable repository contracts. Production and
 tests use the same binding. They differ only in where the PostgreSQL URL and lifecycle come from.
 
