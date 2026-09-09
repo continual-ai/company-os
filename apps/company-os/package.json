@@ -18,7 +18,6 @@
   "scripts": {
     "build": "vite build",
     "db:check": "tsx --import ./tools/environment.ts tools/generate-db-schema.ts --check",
-    "db:dump": "tsx --import ./tools/environment.ts tools/db-dump.ts",
     "db:generate": "tsx --import ./tools/environment.ts tools/generate-db-schema.ts",
     "db:migrate": "tsx --import ./tools/environment.ts tools/db-migrate.ts",
     "db:reset": "tsx --import ./tools/environment.ts tools/db-reset.ts",

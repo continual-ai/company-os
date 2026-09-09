@@ -1,13 +1,11 @@
-import { ConfigProvider, Effect, Layer, Schema } from "effect"
+import { Effect, Layer, Schema } from "effect"
 import { FetchHttpClient } from "effect/unstable/http"
 import { HttpApiClient } from "effect/unstable/httpapi"
 import { expect } from "vitest"
 
 import { Model } from "#/app.model.ts"
 import { applicationHttpApi } from "#/app/http-api.ts"
-import { makeApplicationLayer } from "#/app/server/application-layer.ts"
-import { itDatabase } from "#/app/server/database/it-database.ts"
-import { seedSystem } from "#/app/server/seeds/seed-system.ts"
+import { testApplication } from "#/app/server/test-application.ts"
 import { HttpTransport } from "#/app/server/transport/http-transport.ts"
 import { AssetService } from "#/runtime/assets/server/asset-service.ts"
 import { createModelClient } from "#/runtime/client/http-client.ts"
@@ -15,22 +13,29 @@ import { ROOT_ID } from "#/runtime/model/system-records.ts"
 import { Authentication } from "#/runtime/server/auth/authentication.ts"
 import { IdentityProvider } from "#/runtime/server/auth/identity-provider.ts"
 import { CurrentInvocation } from "#/runtime/server/invocation.ts"
-import { PageTokens } from "#/runtime/server/page-tokens.ts"
-import { Database } from "#/runtime/server/storage/database.ts"
 
-itDatabase(
+const subject = {
+  issuer: "test",
+  subject: "owner",
+  kind: "user" as const,
+  name: "Owner",
+  email: "owner@example.test",
+}
+const application = testApplication({
+  configuration: {
+    AUTH_BOOTSTRAP_ISSUER: "test",
+    AUTH_BOOTSTRAP_SUBJECT: "owner",
+  },
+  identityProvider: Layer.succeed(IdentityProvider, {
+    identify: () =>
+      Effect.succeed({ actor: subject, authorizationSubject: subject }),
+  }),
+})
+
+application.test(
   "routes colon actions through the generated HTTP contract and publishes committed write scopes",
-  Effect.fn(function* () {
-    const database = yield* Database
-    yield* seedSystem().pipe(Effect.provide(PageTokens.layerTest))
-    const subject = {
-      issuer: "test",
-      subject: "owner",
-      kind: "user" as const,
-      name: "Owner",
-      email: "owner@example.test",
-    }
-    yield* Effect.gen(function* () {
+  () =>
+    Effect.gen(function* () {
       const api = yield* HttpTransport
       const authentication = yield* Authentication
       const assets = yield* AssetService
@@ -179,26 +184,5 @@ itDatabase(
       expect(batchDeleted.headers.get("x-model-changes")).toBe(
         "company,contact"
       )
-    }).pipe(
-      Effect.provide(
-        makeApplicationLayer({
-          database: Layer.succeed(Database, database),
-          pageTokens: PageTokens.layerTest,
-          identityProvider: Layer.succeed(IdentityProvider, {
-            identify: () =>
-              Effect.succeed({ actor: subject, authorizationSubject: subject }),
-          }),
-        }).pipe(
-          Layer.provide(
-            ConfigProvider.layer(
-              ConfigProvider.fromEnvRecord({
-                AUTH_BOOTSTRAP_ISSUER: "test",
-                AUTH_BOOTSTRAP_SUBJECT: "owner",
-              })
-            )
-          )
-        )
-      )
-    )
-  })
+    })
 )

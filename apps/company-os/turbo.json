@@ -16,10 +16,6 @@
       ]
     },
     "db:check": {},
-    "db:dump": {
-      "cache": false,
-      "passThroughEnv": ["DATABASE_SCHEMA", "DATABASE_URL", "PGPASSWORD"]
-    },
     "db:generate": {
       "cache": false
     },

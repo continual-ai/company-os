@@ -34,5 +34,3 @@ export const SalesUi = defineModuleUi(SalesModule, {
   } satisfies ObjectUi<typeof Deal>,
   lineItem: lineItemUi,
 })
-
-export { contactViews } from "#/modules/sales/ui/contact/views.ts"

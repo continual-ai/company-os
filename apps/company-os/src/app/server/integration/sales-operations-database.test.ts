@@ -1,11 +1,9 @@
-import { Effect, Exit, Layer } from "effect"
+import { Effect, Exit } from "effect"
 import { expect } from "vitest"
 
 import { Model } from "#/app.model.ts"
-import { makeApplicationLayer } from "#/app/server/application-layer.ts"
 import { ModelImplementation } from "#/app/server/application-services.ts"
-import { itDatabase } from "#/app/server/database/it-database.ts"
-import { seedSystem } from "#/app/server/seeds/seed-system.ts"
+import { testApplication } from "#/app/server/test-application.ts"
 import { UserService } from "#/runtime/access/server/user-service.ts"
 import {
   CurrencyCode,
@@ -15,22 +13,19 @@ import {
 } from "#/runtime/model/index.ts"
 import { ROOT_ID } from "#/runtime/model/system-records.ts"
 import { Records } from "#/runtime/server/index.ts"
-import {
-  anonymousInvocation,
-  systemInvocation,
-} from "#/runtime/server/invocation-context.ts"
+import { anonymousInvocation } from "#/runtime/server/invocation-context.ts"
 import { CurrentInvocation } from "#/runtime/server/invocation.ts"
 import { Links } from "#/runtime/server/model/link-service.ts"
-import { PageTokens } from "#/runtime/server/page-tokens.ts"
 import { CommittedChanges } from "#/runtime/server/storage/committed-changes.ts"
 import { Database } from "#/runtime/server/storage/database.ts"
 
-itDatabase(
+const application = testApplication()
+
+application.test(
   "keeps custom queries scoped, conversions atomic, and primary affiliation a selection",
-  Effect.fn(function* () {
-    const database = yield* Database
-    yield* seedSystem().pipe(Effect.provide(PageTokens.layerTest))
-    yield* Effect.gen(function* () {
+  () =>
+    Effect.gen(function* () {
+      const database = yield* Database
       // Constructed under system invocation deliberately: bindings must never capture its authority.
       const { services } = yield* ModelImplementation
       const users = yield* UserService
@@ -316,14 +311,5 @@ itDatabase(
           0
         )
       ).toBe(3)
-    }).pipe(
-      Effect.provide(
-        makeApplicationLayer({
-          database: Layer.succeed(Database, database),
-          pageTokens: PageTokens.layerTest,
-        })
-      ),
-      Effect.provideService(CurrentInvocation, systemInvocation)
-    )
-  })
+    })
 )

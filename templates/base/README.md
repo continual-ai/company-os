@@ -1,19 +1,21 @@
 # base
 
-The minimal starter for any optional Company OS application.
-It carries the full deployment contract and consumes the central app's model and UI, with a single placeholder page to replace.
-
-Create an app from it with a name of your choice:
+The starter for an optional app: a separate interface, such as a portal or public site, over the
+central app's governed capabilities. It ships the deployment contract, the app stylesheet, a health
+route, and one placeholder page to replace.
 
 ```sh
 pnpm app:create base <app-name>
+pnpm turbo run dev --filter=<app-name>
 ```
 
-Run commands from the repository root. The generator installs the workspace and typechecks the copy;
-start it with `pnpm turbo run dev --filter=<app-name>`. Replace its placeholder page with your
-workflow. Authentication and backend data access are not preconfigured.
+Run both from the repository root. The generator copies the template into `apps/<app-name>`, sets
+the package name and `continual` key, installs the workspace, and typechecks the copy. The directory
+name is the permanent app key; never rename a deployed app. Each app needs its own development port.
 
-Business definitions and rules stay in the central app. This optional interface may import
-`company-os/model`, `company-os/metadata`, `company-os/ui/*`, and `company-os/styles.css`; it calls the
-governed API for business operations. Read [architecture](../../docs/architecture.md) and
-[deployment](../../docs/runbooks/deployment.md) before connecting or publishing it.
+Business definitions, rules, storage, and authorization stay in `apps/company-os`. A copy imports
+`company-os/model`, `company-os/metadata`, `company-os/ui/*`, and `company-os/styles.css` only and
+calls the central app's HTTP API for business operations, forwarding the hosting platform's identity
+headers from the incoming request rather than minting identity itself. Read the
+[architecture](../../docs/architecture.md) and [deployment](../../docs/runbooks/deployment.md) guides
+before connecting or publishing it.

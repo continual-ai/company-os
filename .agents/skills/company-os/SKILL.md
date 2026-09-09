@@ -43,7 +43,7 @@ Read both references only for a genuinely cross-cutting design decision.
 - Local operation, ordinary infrastructure, and a modular monolith are economical starting points,
   not product doctrine.
 - A hosting platform such as Continual is an optional operator around a company-owned Company OS,
-  not the owner of its business model. The vendored `@company/*` foundation implies no hosted
+  not the owner of its business model. The source-owned kernel under `src/runtime` implies no hosted
   dependency, a hosted capability must be justified by concrete operational value, and platform
   interfaces, conversations, queues, caches, or audit views must not silently become a parallel
   business authority. When the platform must supply something, define the boundary in company terms

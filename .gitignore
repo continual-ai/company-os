@@ -23,8 +23,5 @@ todos.json
 # typescript
 *.tsbuildinfo
 
-# Local live-database schema inspection
-schema.actual.sql
-
 # Agent worktrees
 .claude/worktrees/

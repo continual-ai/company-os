@@ -15,15 +15,8 @@ import { createEventConsumer } from "#/app/event-consumer.ts"
 import { applicationHttpApi } from "#/app/http-api.ts"
 import type { capabilityGroup } from "#/app/http-api.ts"
 import { makeApplicationLayer } from "#/app/server/application-layer.ts"
-import { itDatabase } from "#/app/server/database/it-database.ts"
-import {
-  notes,
-  objects,
-  roleAssignments,
-  Storage,
-  users,
-} from "#/app/server/database/schema.ts"
-import { seedSystem } from "#/app/server/seeds/seed-system.ts"
+import { Storage } from "#/app/server/database/schema.ts"
+import { testApplication } from "#/app/server/test-application.ts"
 import { HttpTransport } from "#/app/server/transport/http-transport.ts"
 import { McpTransport } from "#/app/server/transport/mcp-transport.ts"
 import { createModelDataClient } from "#/runtime/client/data-client.ts"
@@ -63,6 +56,14 @@ import { identityBindings } from "#/runtime/server/storage/infrastructure.ts"
 
 type ApplicationHttpClient = ModelHttpClient<typeof Model> &
   HttpApiClient.Client<typeof capabilityGroup>
+
+const application = testApplication()
+const { objects } = Storage.core
+const {
+  note: notes,
+  roleAssignment: roleAssignments,
+  user: users,
+} = Storage.objects
 
 const testPageTokens = makeEncryptedPageTokenCodec(
   makeApplicationKeys(
@@ -115,713 +116,723 @@ const httpOperationIds = new Set(
 )
 
 describe("application HTTP server", () => {
-  itDatabase(
+  application.test(
     "assembles generated CRUD with Continual identity and anonymous authorization",
-    Effect.fn(function* () {
-      vi.stubGlobal(
-        "fetch",
-        vi.fn(async () =>
-          Response.json({
-            actorId: "us_test",
-            email: "owner@example.com",
-            name: "Owner",
-          })
+    () =>
+      Effect.gen(function* () {
+        vi.stubGlobal(
+          "fetch",
+          vi.fn(async () =>
+            Response.json({
+              actorId: "us_test",
+              email: "owner@example.com",
+              name: "Owner",
+            })
+          )
         )
-      )
-      const database = yield* Database
-      const sql = database.sql
-      yield* seedSystem().pipe(
-        Effect.provideService(PageTokens, testPageTokens)
-      )
+        const database = yield* Database
+        const sql = database.sql
 
-      const runtime = yield* Effect.acquireRelease(
-        Effect.sync(() =>
-          ManagedRuntime.make(
-            makeApplicationLayer({
-              database: Layer.succeed(Database, database),
-              pageTokens: Layer.succeed(PageTokens, testPageTokens),
-            }).pipe(
-              Layer.provide(
-                ConfigProvider.layer(
-                  ConfigProvider.fromEnvRecord({
-                    CONTINUAL_URL: "https://continual.example",
-                    AUTH_BOOTSTRAP_SUBJECT: "us_test",
-                  })
+        const runtime = yield* Effect.acquireRelease(
+          Effect.sync(() =>
+            ManagedRuntime.make(
+              makeApplicationLayer({
+                database: Layer.succeed(Database, database),
+                pageTokens: Layer.succeed(PageTokens, testPageTokens),
+              }).pipe(
+                Layer.provide(
+                  ConfigProvider.layer(
+                    ConfigProvider.fromEnvRecord({
+                      CONTINUAL_URL: "https://continual.example",
+                      AUTH_BOOTSTRAP_SUBJECT: "us_test",
+                    })
+                  )
                 )
               )
             )
-          )
-        ),
-        (managedRuntime) => Effect.promise(() => managedRuntime.dispose())
-      )
+          ),
+          (managedRuntime) => Effect.promise(() => managedRuntime.dispose())
+        )
 
-      const api = yield* Effect.promise(() => runtime.runPromise(HttpTransport))
-      const mcp = yield* Effect.promise(() => runtime.runPromise(McpTransport))
-      const rejectedMcpOrigin = yield* Effect.promise(() =>
-        runtime.runPromise(
-          mcp.handle(
-            new Request("http://localhost/api/mcp", {
-              body: JSON.stringify({
-                id: 1,
-                jsonrpc: "2.0",
-                method: "tools/list",
-              }),
-              headers: {
-                accept: "application/json, text/event-stream",
-                "content-type": "application/json",
-                host: "localhost",
-                origin: "https://attacker.example",
-              },
-              method: "POST",
-            })
-          )
+        const api = yield* Effect.promise(() =>
+          runtime.runPromise(HttpTransport)
         )
-      )
-      expect(rejectedMcpOrigin.status).toBe(403)
-
-      const listedMcpTools = yield* Effect.promise(() =>
-        runtime.runPromise(
-          mcp.handle(
-            new Request("http://localhost/api/mcp", {
-              body: JSON.stringify({
-                id: 2,
-                jsonrpc: "2.0",
-                method: "tools/list",
-              }),
-              headers: {
-                accept: "application/json, text/event-stream",
-                "content-type": "application/json",
-                host: "localhost",
-              },
-              method: "POST",
-            })
-          )
+        const mcp = yield* Effect.promise(() =>
+          runtime.runPromise(McpTransport)
         )
-      )
-      expect(listedMcpTools.status).toBe(200)
-      const listedMcpBody = yield* Effect.promise(() => listedMcpTools.text())
-      const listedMcpJson = listedMcpBody
-        .split("\n")
-        .find((line) => line.startsWith("data:"))
-        ?.slice("data:".length)
-        .trim()
-      const listedMcpPayload = Schema.decodeUnknownSync(
-        Schema.Struct({
-          result: Schema.Struct({
-            tools: Schema.Array(Schema.Struct({ name: Schema.String })),
-          }),
-        })
-      )(JSON.parse(listedMcpJson ?? listedMcpBody))
-      const mcpToolNames = new Set(
-        listedMcpPayload.result.tools.map(({ name }) => name)
-      )
-      expect(
-        modelProjectionContract.filter(
-          ({ mcpToolName }) => !mcpToolNames.has(mcpToolName)
-        )
-      ).toEqual([])
-      expect(
-        modelProjectionContract.filter(
-          ({ httpOperationId }) => !httpOperationIds.has(httpOperationId)
-        )
-      ).toEqual([])
-      const anonymousCapabilities = yield* Effect.promise(() =>
-        runtime.runPromise(
-          api.handle(
-            new Request("http://company.test/api/v1/capabilities:check", {
-              body: JSON.stringify({
-                checks: [{ permission: "company.create", target: ROOT_ID }],
-              }),
-              headers: {
-                "content-type": "application/json",
-              },
-              method: "POST",
-            })
-          )
-        )
-      )
-      expect(anonymousCapabilities.status).toBe(200)
-      expect(yield* Effect.promise(() => anonymousCapabilities.json())).toEqual(
-        { results: [{ allowed: false }] }
-      )
-
-      const invalidCompany = yield* Effect.promise(() =>
-        runtime.runPromise(
-          api.handle(
-            new Request("http://company.test/api/v1/companies", {
-              body: JSON.stringify({ domain: "test", name: "Invalid" }),
-              headers: {
-                "content-type": "application/json",
-                ...runtimeHeaders,
-              },
-              method: "POST",
-            })
-          )
-        )
-      )
-      expect(invalidCompany.status).toBe(400)
-      expect(yield* Effect.promise(() => invalidCompany.json())).toMatchObject({
-        details: {
-          violations: [{ path: ["domain"], reason: "INVALID" }],
-        },
-        reason: "VALIDATION_FAILED",
-        status: "INVALID_ARGUMENT",
-      })
-
-      const fetchApi: typeof globalThis.fetch = async (input, init) => {
-        const url =
-          typeof input === "string"
-            ? input
-            : input instanceof URL
-              ? input.href
-              : input.url
-        const headers = new Headers(init?.headers)
-        for (const [name, value] of Object.entries(runtimeHeaders)) {
-          headers.set(name, value)
-        }
-        return runtime.runPromise(
-          api.handle(new Request(url, { ...init, headers }))
-        )
-      }
-      const nativeClient = yield* HttpApiClient.make(applicationHttpApi, {
-        baseUrl: "http://company.test",
-      }).pipe(Effect.provide(FetchHttpClient.layer))
-      // SAFETY: applicationHttpApi is projected from the same closed Model
-      // represented by ApplicationHttpClient.
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-      const client = nativeClient as unknown as ApplicationHttpClient
-      // SAFETY: the native Effect client is generated from this same Model.
-      const model = createModelClient(Model, nativeClient)
-      const useTestFetch = <A, E>(effect: Effect.Effect<A, E>) =>
-        effect.pipe(Effect.provideService(FetchHttpClient.Fetch, fetchApi))
-
-      const ticket = yield* useTestFetch(
-        model.ticket.create({ subject: "HTTP to MCP escalation" })
-      )
-      const escalation = yield* useTestFetch(
-        model.escalation.createIssue({ ticket: ticket.id })
-      )
-      const repeated = yield* Effect.promise(() =>
-        runtime.runPromise(
-          mcp.handle(
-            new Request("http://localhost/api/mcp", {
-              method: "POST",
-              headers: {
-                ...runtimeHeaders,
-                accept: "application/json, text/event-stream",
-                "content-type": "application/json",
-                host: "localhost",
-              },
-              body: JSON.stringify({
-                id: 3,
-                jsonrpc: "2.0",
-                method: "tools/call",
-                params: {
-                  name: "escalation.createIssue",
-                  arguments: { ticket: ticket.id },
+        const rejectedMcpOrigin = yield* Effect.promise(() =>
+          runtime.runPromise(
+            mcp.handle(
+              new Request("http://localhost/api/mcp", {
+                body: JSON.stringify({
+                  id: 1,
+                  jsonrpc: "2.0",
+                  method: "tools/list",
+                }),
+                headers: {
+                  accept: "application/json, text/event-stream",
+                  "content-type": "application/json",
+                  host: "localhost",
+                  origin: "https://attacker.example",
                 },
-              }),
-            })
-          )
-        )
-      )
-      expect(repeated.status).toBe(200)
-      const repeatedBody = yield* Effect.promise(() => repeated.text())
-      const repeatedJson = repeatedBody
-        .split("\n")
-        .find((line) => line.startsWith("data:"))
-        ?.slice(5)
-        .trim()
-      const repeatedPayload = Schema.decodeUnknownSync(
-        Schema.Struct({
-          result: Schema.Struct({
-            isError: Schema.optional(Schema.Boolean),
-            content: Schema.Array(
-              Schema.Struct({
-                type: Schema.String,
-                text: Schema.optional(Schema.String),
+                method: "POST",
               })
-            ),
-          }),
-        })
-      )(JSON.parse(repeatedJson ?? repeatedBody))
-      expect(repeatedPayload.result.isError).not.toBe(true)
-      expect(
-        repeatedPayload.result.content.some((item) =>
-          item.text?.includes(escalation.issue)
-        )
-      ).toBe(true)
-      expect((yield* useTestFetch(model.escalation.list({}))).totalSize).toBe(1)
-      expect((yield* useTestFetch(model.issue.list({}))).totalSize).toBe(1)
-
-      const streamed = yield* useTestFetch(
-        nativeClient.events
-          .streamEvents({
-            params: customMethodParams("stream"),
-            query: { cursor: "now" },
-          })
-          .pipe(
-            Effect.flatMap((stream) =>
-              Stream.runCollect(stream.pipe(Stream.take(1)))
-            ),
-            Effect.timeout("5 seconds")
+            )
           )
-      )
-      expect(streamed).toHaveLength(1)
-      expect(streamed[0]?.data.reset).toBe(true)
-      expect(streamed[0]?.id).toBe(streamed[0]?.data.nextCursor)
+        )
+        expect(rejectedMcpOrigin.status).toBe(403)
 
-      const capabilities = yield* useTestFetch(
-        client.capabilities.checkCapabilities({
-          params: { check: "check" },
-          payload: {
-            checks: [
-              { permission: "company.create", target: ROOT_ID },
-              { permission: "lead.convert", target: "missing-lead" },
-            ],
-          },
-        })
-      )
-      expect(capabilities.results).toEqual([
-        { allowed: true },
-        { allowed: false },
-      ])
-
-      const initial = yield* useTestFetch(model.company.list({ pageSize: 10 }))
-      expect(initial).toEqual({
-        items: [],
-        nextPageToken: null,
-        totalSize: 0,
-      })
-
-      const created = yield* useTestFetch(
-        model.company.create({ name: "Northstar" })
-      )
-      expect(created).toMatchObject({
-        lifecycleStage: "prospect",
-        name: "Northstar",
-      })
-      const search = yield* useTestFetch(
-        nativeClient.records.searchRecords({
-          params: customMethodParams("search"),
-          payload: { query: "north", objectTypes: ["company"] },
-        })
-      )
-      expect(search.hits).toMatchObject([
-        { id: created.id, objectType: "company", title: "Northstar" },
-      ])
-      expect(search.hasMore).toBe(false)
-      const note = yield* useTestFetch(
-        model.note.create({
-          content: "Introductory call",
-          links: { subjects: [created.id] },
-        })
-      )
-      expect(
-        yield* useTestFetch(model.note.subjects.list({ id: note.id }))
-      ).toMatchObject({
-        items: [{ id: created.id, objectType: "company" }],
-        nextPageToken: null,
-        totalSize: 1,
-      })
-      const contact = yield* useTestFetch(
-        model.contact.create({
-          links: { primaryCompany: created.id },
-          name: "Ada Lovelace",
-        })
-      )
-      expect(
-        yield* makeLinkRepository(Storage, database, testPageTokens).list({
-          direction: "reverse",
-          linkId: "contactCompanies",
-          pageSize: 10,
-          sourceId: created.id,
-        })
-      ).toMatchObject({
-        items: [{ id: contact.id, objectType: "contact" }],
-        nextPageToken: null,
-        totalSize: 1,
-      })
-      const linkedContacts = yield* useTestFetch(
-        model.company.contacts.list({ id: created.id })
-      )
-      expect(linkedContacts.items).toMatchObject([
-        { id: contact.id, objectType: "contact" },
-      ])
-      const secondContact = yield* useTestFetch(
-        model.contact.create({ name: "Grace Hopper" })
-      )
-      const updated = yield* useTestFetch(
-        model.company.update({
-          etag: created.etag,
-          id: created.id,
-          links: {
-            contacts: {
-              add: [secondContact.id],
-              remove: [contact.id],
-            },
-          },
-          name: "Northstar Systems",
-        })
-      )
-      expect(updated.name).toBe("Northstar Systems")
-      expect(
-        yield* useTestFetch(model.company.contacts.list({ id: created.id }))
-      ).toMatchObject({
-        items: [{ id: secondContact.id, objectType: "contact" }],
-        nextPageToken: null,
-        totalSize: 1,
-      })
-      expect(
-        yield* Effect.flip(
-          useTestFetch(
-            model.company.update({
-              etag: updated.etag,
-              id: created.id,
-              links: {
-                contacts: {
-                  add: [RecordAlias("test:contact:missing")],
+        const listedMcpTools = yield* Effect.promise(() =>
+          runtime.runPromise(
+            mcp.handle(
+              new Request("http://localhost/api/mcp", {
+                body: JSON.stringify({
+                  id: 2,
+                  jsonrpc: "2.0",
+                  method: "tools/list",
+                }),
+                headers: {
+                  accept: "application/json, text/event-stream",
+                  "content-type": "application/json",
+                  host: "localhost",
                 },
-              },
-              name: "This must roll back",
-            })
+                method: "POST",
+              })
+            )
           )
         )
-      ).toMatchObject({ reason: "NOT_FOUND" })
-      expect(
-        yield* useTestFetch(model.company.list({ pageSize: 10 }))
-      ).toMatchObject({
-        items: [expect.objectContaining({ name: "Northstar Systems" })],
-      })
-      yield* useTestFetch(
-        model.company.contacts.unlink({
-          id: created.id,
-          target: contact.id,
-        })
-      )
-      expect(
-        yield* useTestFetch(model.company.contacts.list({ id: created.id }))
-      ).toMatchObject({
-        items: [{ id: secondContact.id, objectType: "contact" }],
-        nextPageToken: null,
-        totalSize: 1,
-      })
-      yield* useTestFetch(
-        model.company.contacts.link({
-          id: created.id,
-          target: contact.id,
-        })
-      )
-      yield* useTestFetch(
-        model.contact.primaryCompany.link({
-          id: contact.id,
-          target: created.id,
-        })
-      )
-      expect(
-        yield* useTestFetch(
-          model.contact.primaryCompany.list({ id: contact.id })
+        expect(listedMcpTools.status).toBe(200)
+        const listedMcpBody = yield* Effect.promise(() => listedMcpTools.text())
+        const listedMcpJson = listedMcpBody
+          .split("\n")
+          .find((line) => line.startsWith("data:"))
+          ?.slice("data:".length)
+          .trim()
+        const listedMcpPayload = Schema.decodeUnknownSync(
+          Schema.Struct({
+            result: Schema.Struct({
+              tools: Schema.Array(Schema.Struct({ name: Schema.String })),
+            }),
+          })
+        )(JSON.parse(listedMcpJson ?? listedMcpBody))
+        const mcpToolNames = new Set(
+          listedMcpPayload.result.tools.map(({ name }) => name)
         )
-      ).toMatchObject({
-        items: [{ id: created.id, objectType: "company" }],
-        nextPageToken: null,
-        totalSize: 1,
-      })
+        expect(
+          modelProjectionContract.filter(
+            ({ mcpToolName }) => !mcpToolNames.has(mcpToolName)
+          )
+        ).toEqual([])
+        expect(
+          modelProjectionContract.filter(
+            ({ httpOperationId }) => !httpOperationIds.has(httpOperationId)
+          )
+        ).toEqual([])
+        const anonymousCapabilities = yield* Effect.promise(() =>
+          runtime.runPromise(
+            api.handle(
+              new Request("http://company.test/api/v1/capabilities:check", {
+                body: JSON.stringify({
+                  checks: [{ permission: "company.create", target: ROOT_ID }],
+                }),
+                headers: {
+                  "content-type": "application/json",
+                },
+                method: "POST",
+              })
+            )
+          )
+        )
+        expect(anonymousCapabilities.status).toBe(200)
+        expect(
+          yield* Effect.promise(() => anonymousCapabilities.json())
+        ).toEqual({ results: [{ allowed: false }] })
 
-      yield* sql`update ${objects} set ${assignments(sql, objects, { createdAt: "2001-01-01T00:00:00.000123Z" })}
+        const invalidCompany = yield* Effect.promise(() =>
+          runtime.runPromise(
+            api.handle(
+              new Request("http://company.test/api/v1/companies", {
+                body: JSON.stringify({ domain: "test", name: "Invalid" }),
+                headers: {
+                  "content-type": "application/json",
+                  ...runtimeHeaders,
+                },
+                method: "POST",
+              })
+            )
+          )
+        )
+        expect(invalidCompany.status).toBe(400)
+        expect(
+          yield* Effect.promise(() => invalidCompany.json())
+        ).toMatchObject({
+          details: {
+            violations: [{ path: ["domain"], reason: "INVALID" }],
+          },
+          reason: "VALIDATION_FAILED",
+          status: "INVALID_ARGUMENT",
+        })
+
+        const fetchApi: typeof globalThis.fetch = async (input, init) => {
+          const url =
+            typeof input === "string"
+              ? input
+              : input instanceof URL
+                ? input.href
+                : input.url
+          const headers = new Headers(init?.headers)
+          for (const [name, value] of Object.entries(runtimeHeaders)) {
+            headers.set(name, value)
+          }
+          return runtime.runPromise(
+            api.handle(new Request(url, { ...init, headers }))
+          )
+        }
+        const nativeClient = yield* HttpApiClient.make(applicationHttpApi, {
+          baseUrl: "http://company.test",
+        }).pipe(Effect.provide(FetchHttpClient.layer))
+        // SAFETY: applicationHttpApi is projected from the same closed Model
+        // represented by ApplicationHttpClient.
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+        const client = nativeClient as unknown as ApplicationHttpClient
+        // SAFETY: the native Effect client is generated from this same Model.
+        const model = createModelClient(Model, nativeClient)
+        const useTestFetch = <A, E>(effect: Effect.Effect<A, E>) =>
+          effect.pipe(Effect.provideService(FetchHttpClient.Fetch, fetchApi))
+
+        const ticket = yield* useTestFetch(
+          model.ticket.create({ subject: "HTTP to MCP escalation" })
+        )
+        const escalation = yield* useTestFetch(
+          model.escalation.createIssue({ ticket: ticket.id })
+        )
+        const repeated = yield* Effect.promise(() =>
+          runtime.runPromise(
+            mcp.handle(
+              new Request("http://localhost/api/mcp", {
+                method: "POST",
+                headers: {
+                  ...runtimeHeaders,
+                  accept: "application/json, text/event-stream",
+                  "content-type": "application/json",
+                  host: "localhost",
+                },
+                body: JSON.stringify({
+                  id: 3,
+                  jsonrpc: "2.0",
+                  method: "tools/call",
+                  params: {
+                    name: "escalation.createIssue",
+                    arguments: { ticket: ticket.id },
+                  },
+                }),
+              })
+            )
+          )
+        )
+        expect(repeated.status).toBe(200)
+        const repeatedBody = yield* Effect.promise(() => repeated.text())
+        const repeatedJson = repeatedBody
+          .split("\n")
+          .find((line) => line.startsWith("data:"))
+          ?.slice(5)
+          .trim()
+        const repeatedPayload = Schema.decodeUnknownSync(
+          Schema.Struct({
+            result: Schema.Struct({
+              isError: Schema.optional(Schema.Boolean),
+              content: Schema.Array(
+                Schema.Struct({
+                  type: Schema.String,
+                  text: Schema.optional(Schema.String),
+                })
+              ),
+            }),
+          })
+        )(JSON.parse(repeatedJson ?? repeatedBody))
+        expect(repeatedPayload.result.isError).not.toBe(true)
+        expect(
+          repeatedPayload.result.content.some((item) =>
+            item.text?.includes(escalation.issue)
+          )
+        ).toBe(true)
+        expect((yield* useTestFetch(model.escalation.list({}))).totalSize).toBe(
+          1
+        )
+        expect((yield* useTestFetch(model.issue.list({}))).totalSize).toBe(1)
+
+        const streamed = yield* useTestFetch(
+          nativeClient.events
+            .streamEvents({
+              params: customMethodParams("stream"),
+              query: { cursor: "now" },
+            })
+            .pipe(
+              Effect.flatMap((stream) =>
+                Stream.runCollect(stream.pipe(Stream.take(1)))
+              ),
+              Effect.timeout("5 seconds")
+            )
+        )
+        expect(streamed).toHaveLength(1)
+        expect(streamed[0]?.data.reset).toBe(true)
+        expect(streamed[0]?.id).toBe(streamed[0]?.data.nextCursor)
+
+        const capabilities = yield* useTestFetch(
+          client.capabilities.checkCapabilities({
+            params: { check: "check" },
+            payload: {
+              checks: [
+                { permission: "company.create", target: ROOT_ID },
+                { permission: "lead.convert", target: "missing-lead" },
+              ],
+            },
+          })
+        )
+        expect(capabilities.results).toEqual([
+          { allowed: true },
+          { allowed: false },
+        ])
+
+        const initial = yield* useTestFetch(
+          model.company.list({ pageSize: 10 })
+        )
+        expect(initial).toEqual({
+          items: [],
+          nextPageToken: null,
+          totalSize: 0,
+        })
+
+        const created = yield* useTestFetch(
+          model.company.create({ name: "Northstar" })
+        )
+        expect(created).toMatchObject({
+          lifecycleStage: "prospect",
+          name: "Northstar",
+        })
+        const search = yield* useTestFetch(
+          nativeClient.records.searchRecords({
+            params: customMethodParams("search"),
+            payload: { query: "north", objectTypes: ["company"] },
+          })
+        )
+        expect(search.hits).toMatchObject([
+          { id: created.id, objectType: "company", title: "Northstar" },
+        ])
+        expect(search.hasMore).toBe(false)
+        const note = yield* useTestFetch(
+          model.note.create({
+            content: "Introductory call",
+            links: { subjects: [created.id] },
+          })
+        )
+        expect(
+          yield* useTestFetch(model.note.subjects.list({ id: note.id }))
+        ).toMatchObject({
+          items: [{ id: created.id, objectType: "company" }],
+          nextPageToken: null,
+          totalSize: 1,
+        })
+        const contact = yield* useTestFetch(
+          model.contact.create({
+            links: { primaryCompany: created.id },
+            name: "Ada Lovelace",
+          })
+        )
+        expect(
+          yield* makeLinkRepository(Storage, database, testPageTokens).list({
+            direction: "reverse",
+            linkId: "contactCompanies",
+            pageSize: 10,
+            sourceId: created.id,
+          })
+        ).toMatchObject({
+          items: [{ id: contact.id, objectType: "contact" }],
+          nextPageToken: null,
+          totalSize: 1,
+        })
+        const linkedContacts = yield* useTestFetch(
+          model.company.contacts.list({ id: created.id })
+        )
+        expect(linkedContacts.items).toMatchObject([
+          { id: contact.id, objectType: "contact" },
+        ])
+        const secondContact = yield* useTestFetch(
+          model.contact.create({ name: "Grace Hopper" })
+        )
+        const updated = yield* useTestFetch(
+          model.company.update({
+            etag: created.etag,
+            id: created.id,
+            links: {
+              contacts: {
+                add: [secondContact.id],
+                remove: [contact.id],
+              },
+            },
+            name: "Northstar Systems",
+          })
+        )
+        expect(updated.name).toBe("Northstar Systems")
+        expect(
+          yield* useTestFetch(model.company.contacts.list({ id: created.id }))
+        ).toMatchObject({
+          items: [{ id: secondContact.id, objectType: "contact" }],
+          nextPageToken: null,
+          totalSize: 1,
+        })
+        expect(
+          yield* Effect.flip(
+            useTestFetch(
+              model.company.update({
+                etag: updated.etag,
+                id: created.id,
+                links: {
+                  contacts: {
+                    add: [RecordAlias("test:contact:missing")],
+                  },
+                },
+                name: "This must roll back",
+              })
+            )
+          )
+        ).toMatchObject({ reason: "NOT_FOUND" })
+        expect(
+          yield* useTestFetch(model.company.list({ pageSize: 10 }))
+        ).toMatchObject({
+          items: [expect.objectContaining({ name: "Northstar Systems" })],
+        })
+        yield* useTestFetch(
+          model.company.contacts.unlink({
+            id: created.id,
+            target: contact.id,
+          })
+        )
+        expect(
+          yield* useTestFetch(model.company.contacts.list({ id: created.id }))
+        ).toMatchObject({
+          items: [{ id: secondContact.id, objectType: "contact" }],
+          nextPageToken: null,
+          totalSize: 1,
+        })
+        yield* useTestFetch(
+          model.company.contacts.link({
+            id: created.id,
+            target: contact.id,
+          })
+        )
+        yield* useTestFetch(
+          model.contact.primaryCompany.link({
+            id: contact.id,
+            target: created.id,
+          })
+        )
+        expect(
+          yield* useTestFetch(
+            model.contact.primaryCompany.list({ id: contact.id })
+          )
+        ).toMatchObject({
+          items: [{ id: created.id, objectType: "company" }],
+          nextPageToken: null,
+          totalSize: 1,
+        })
+
+        yield* sql`update ${objects} set ${assignments(sql, objects, { createdAt: "2001-01-01T00:00:00.000123Z" })}
           where ${objects.columns.id} = ${contact.id}`
-      yield* sql`update ${objects} set ${assignments(sql, objects, { createdAt: "2001-01-01T00:00:00.000456Z" })}
+        yield* sql`update ${objects} set ${assignments(sql, objects, { createdAt: "2001-01-01T00:00:00.000456Z" })}
           where ${objects.columns.id} = ${secondContact.id}`
-      const firstContactPage = yield* useTestFetch(
-        model.company.contacts.list({ id: created.id, pageSize: 1 })
-      )
-      expect(firstContactPage.items.map(({ id }) => id)).toEqual([
-        secondContact.id,
-      ])
-      expect(firstContactPage.nextPageToken).not.toBeNull()
-      expect(firstContactPage.totalSize).toBe(2)
-      const nextContactPageToken =
-        firstContactPage.nextPageToken === null
-          ? yield* Effect.die("Expected another contact page")
-          : firstContactPage.nextPageToken
-      expect(nextContactPageToken.length).toBeLessThan(256)
-      const mismatchedLinkCursor = yield* makeLinkRepository(
-        Storage,
-        database,
-        testPageTokens
-      )
-        .list({
-          direction: "reverse",
-          linkId: "contactCompanies",
-          pageSize: 1,
-          pageToken: nextContactPageToken,
-          sourceId: ROOT_ID,
-        })
-        .pipe(Effect.flip)
-      expect(mismatchedLinkCursor).toMatchObject({
-        _tag: "InvalidLinkListRequest",
-      })
-      const secondContactPage = yield* useTestFetch(
-        model.company.contacts.list({
-          id: created.id,
-          pageSize: 1,
-          pageToken: nextContactPageToken,
-        })
-      )
-      expect(secondContactPage.items.map(({ id }) => id)).toEqual([contact.id])
-      expect(secondContactPage.nextPageToken).toBeNull()
-      expect(secondContactPage.totalSize).toBe(2)
-      yield* sql`update ${objects} set ${assignments(sql, objects, { createdAt: "2001-01-01T00:00:00.000123Z" })}
-          where ${objects.columns.id} = ${secondContact.id}`
-      const tiedFirst = yield* useTestFetch(
-        model.company.contacts.list({ id: created.id, pageSize: 1 })
-      )
-      const tiedIds = [contact.id, secondContact.id].sort((left, right) =>
-        left < right ? 1 : left > right ? -1 : 0
-      )
-      expect(tiedFirst.items.map(({ id }) => id)).toEqual(tiedIds.slice(0, 1))
-      const tiedToken =
-        tiedFirst.nextPageToken ??
-        (yield* Effect.die("Expected tied timestamp page"))
-      const tiedSecond = yield* useTestFetch(
-        model.company.contacts.list({
-          id: created.id,
-          pageSize: 1,
-          pageToken: tiedToken,
-        })
-      )
-      expect(tiedSecond.items.map(({ id }) => id)).toEqual(tiedIds.slice(1))
-      expect(
-        yield* makeLinkRepository(Storage, database, testPageTokens).list(
-          {
+        const firstContactPage = yield* useTestFetch(
+          model.company.contacts.list({ id: created.id, pageSize: 1 })
+        )
+        expect(firstContactPage.items.map(({ id }) => id)).toEqual([
+          secondContact.id,
+        ])
+        expect(firstContactPage.nextPageToken).not.toBeNull()
+        expect(firstContactPage.totalSize).toBe(2)
+        const nextContactPageToken =
+          firstContactPage.nextPageToken === null
+            ? yield* Effect.die("Expected another contact page")
+            : firstContactPage.nextPageToken
+        expect(nextContactPageToken.length).toBeLessThan(256)
+        const mismatchedLinkCursor = yield* makeLinkRepository(
+          Storage,
+          database,
+          testPageTokens
+        )
+          .list({
             direction: "reverse",
             linkId: "contactCompanies",
             pageSize: 1,
-            sourceId: created.id,
-          },
-          {
-            targets: [
-              {
-                objectType: "contact",
-                visibleWithin: [secondContact.id],
-              },
-            ],
-          }
+            pageToken: nextContactPageToken,
+            sourceId: ROOT_ID,
+          })
+          .pipe(Effect.flip)
+        expect(mismatchedLinkCursor).toMatchObject({
+          _tag: "InvalidLinkListRequest",
+        })
+        const secondContactPage = yield* useTestFetch(
+          model.company.contacts.list({
+            id: created.id,
+            pageSize: 1,
+            pageToken: nextContactPageToken,
+          })
         )
-      ).toMatchObject({
-        items: [{ id: secondContact.id, objectType: "contact" }],
-        nextPageToken: null,
-        totalSize: 1,
-      })
+        expect(secondContactPage.items.map(({ id }) => id)).toEqual([
+          contact.id,
+        ])
+        expect(secondContactPage.nextPageToken).toBeNull()
+        expect(secondContactPage.totalSize).toBe(2)
+        yield* sql`update ${objects} set ${assignments(sql, objects, { createdAt: "2001-01-01T00:00:00.000123Z" })}
+          where ${objects.columns.id} = ${secondContact.id}`
+        const tiedFirst = yield* useTestFetch(
+          model.company.contacts.list({ id: created.id, pageSize: 1 })
+        )
+        const tiedIds = [contact.id, secondContact.id].sort((left, right) =>
+          left < right ? 1 : left > right ? -1 : 0
+        )
+        expect(tiedFirst.items.map(({ id }) => id)).toEqual(tiedIds.slice(0, 1))
+        const tiedToken =
+          tiedFirst.nextPageToken ??
+          (yield* Effect.die("Expected tied timestamp page"))
+        const tiedSecond = yield* useTestFetch(
+          model.company.contacts.list({
+            id: created.id,
+            pageSize: 1,
+            pageToken: tiedToken,
+          })
+        )
+        expect(tiedSecond.items.map(({ id }) => id)).toEqual(tiedIds.slice(1))
+        expect(
+          yield* makeLinkRepository(Storage, database, testPageTokens).list(
+            {
+              direction: "reverse",
+              linkId: "contactCompanies",
+              pageSize: 1,
+              sourceId: created.id,
+            },
+            {
+              targets: [
+                {
+                  objectType: "contact",
+                  visibleWithin: [secondContact.id],
+                },
+              ],
+            }
+          )
+        ).toMatchObject({
+          items: [{ id: secondContact.id, objectType: "contact" }],
+          nextPageToken: null,
+          totalSize: 1,
+        })
 
-      const destination = yield* useTestFetch(
-        model.company.create({ name: "Analytical Engine" })
-      )
-      yield* useTestFetch(
-        model.company.contacts.link({
-          id: destination.id,
-          target: contact.id,
-        })
-      )
-      yield* useTestFetch(
-        model.company.contacts.link({
-          id: destination.id,
-          target: contact.id,
-        })
-      )
-      yield* useTestFetch(
-        model.contact.primaryCompany.link({
-          id: contact.id,
-          target: destination.id,
-        })
-      )
-      expect(
+        const destination = yield* useTestFetch(
+          model.company.create({ name: "Analytical Engine" })
+        )
         yield* useTestFetch(
-          model.contact.primaryCompany.list({ id: contact.id })
+          model.company.contacts.link({
+            id: destination.id,
+            target: contact.id,
+          })
         )
-      ).toMatchObject({
-        items: [{ id: destination.id, objectType: "company" }],
-        nextPageToken: null,
-        totalSize: 1,
-      })
-      expect(
-        yield* useTestFetch(model.company.contacts.list({ id: created.id }))
-      ).toMatchObject({
-        items: expect.arrayContaining([
-          expect.objectContaining({
-            id: secondContact.id,
-            objectType: "contact",
-          }),
-          expect.objectContaining({ id: contact.id, objectType: "contact" }),
-        ]),
-        nextPageToken: null,
-        totalSize: 2,
-      })
-
-      yield* useTestFetch(
-        model.company.delete({ etag: updated.etag, id: created.id })
-      )
-      expect(
-        yield* useTestFetch(model.note.subjects.list({ id: note.id }))
-      ).toEqual({
-        items: [],
-        nextPageToken: null,
-        totalSize: 0,
-      })
-      const history = yield* Effect.promise(() =>
-        runtime.runPromise(
-          api.handle(
-            new Request(
-              "http://company.test/api/v1/events?type=company.deleted",
-              { headers: runtimeHeaders }
-            )
+        yield* useTestFetch(
+          model.company.contacts.link({
+            id: destination.id,
+            target: contact.id,
+          })
+        )
+        yield* useTestFetch(
+          model.contact.primaryCompany.link({
+            id: contact.id,
+            target: destination.id,
+          })
+        )
+        expect(
+          yield* useTestFetch(
+            model.contact.primaryCompany.list({ id: contact.id })
           )
-        )
-      )
-      expect(history.status).toBe(200)
-      expect(history.headers.get("cache-control")).toBe("private, no-store")
-      const eventPage = Schema.decodeUnknownSync(eventPageSchema)(
-        yield* Effect.promise(() => history.json())
-      )
-      expect(eventPage.items).toMatchObject([
-        {
-          type: "company.deleted",
-          subjects: [{ id: created.id, objectType: "company" }],
-        },
-      ])
-      const replay = yield* Effect.promise(() =>
-        runtime.runPromise(
-          api.handle(
-            new Request(
-              `http://company.test/api/v1/events?type=company.deleted&cursor=${encodeURIComponent(eventPage.nextCursor)}`,
-              { headers: runtimeHeaders }
-            )
-          )
-        )
-      )
-      expect(
-        Schema.decodeUnknownSync(eventPageSchema)(
-          yield* Effect.promise(() => replay.json())
-        ).items
-      ).toEqual([])
-      const anonymousEvents = yield* Effect.promise(() =>
-        runtime.runPromise(
-          api.handle(new Request("http://company.test/api/v1/events"))
-        )
-      )
-      expect(
-        Schema.decodeUnknownSync(eventPageSchema)(
-          yield* Effect.promise(() => anonymousEvents.json())
-        ).items
-      ).toEqual([])
-      const invalidCursor = yield* Effect.promise(() =>
-        runtime.runPromise(
-          api.handle(
-            new Request("http://company.test/api/v1/events?cursor=broken", {
-              headers: runtimeHeaders,
-            })
-          )
-        )
-      )
-      expect(invalidCursor.status).toBe(400)
-
-      const secondBrowser = yield* Effect.acquireRelease(
-        Effect.sync(createModelDataClient),
-        (cache) => Effect.sync(() => cache.dispose())
-      )
-      const observed = modelQuery(
-        ["company"],
-        "get",
-        { id: destination.id },
-        (signal) =>
-          runClientEffect(
-            useTestFetch(model.company.get({ id: destination.id })),
-            signal
-          )
-      )
-      const readCached = () =>
-        Effect.promise(() => secondBrowser.queryClient.fetchQuery(observed))
-      let offline = false
-      const consumer = createEventConsumer({
-        read: (cursor, signal) =>
-          offline
-            ? Promise.reject(new Error("offline"))
-            : Effect.runPromise(
-                useTestFetch(
-                  nativeClient.events.listEvents({ query: { cursor } })
-                ),
-                { signal }
-              ),
-        apply: (page) =>
-          page.reset
-            ? secondBrowser.reset()
-            : secondBrowser.invalidate(
-                page.items.flatMap((event) =>
-                  event.subjects.map((subject) => subject.objectType)
-                )
-              ),
-        isInvalidCursor: (error) => error instanceof InvalidEventCursor,
-      })
-      const signal = new AbortController().signal
-      yield* Effect.promise(() => consumer.poll(signal))
-      expect((yield* readCached()).name).toBe("Analytical Engine")
-      offline = true
-      yield* useTestFetch(
-        model.company.update({
-          id: destination.id,
-          name: "Changed in the first browser",
+        ).toMatchObject({
+          items: [{ id: destination.id, objectType: "company" }],
+          nextPageToken: null,
+          totalSize: 1,
         })
-      )
-      expect((yield* readCached()).name).toBe("Analytical Engine")
-      yield* Effect.promise(() =>
-        expect(consumer.poll(signal)).rejects.toThrow("offline")
-      )
-      offline = false
-      yield* Effect.promise(() => consumer.poll(signal))
-      expect((yield* readCached()).name).toBe("Changed in the first browser")
+        expect(
+          yield* useTestFetch(model.company.contacts.list({ id: created.id }))
+        ).toMatchObject({
+          items: expect.arrayContaining([
+            expect.objectContaining({
+              id: secondContact.id,
+              objectType: "contact",
+            }),
+            expect.objectContaining({ id: contact.id, objectType: "contact" }),
+          ]),
+          nextPageToken: null,
+          totalSize: 2,
+        })
 
-      const rowFields = { content: notes.columns.content }
-      const [persistedNote] = yield* sql<
-        SelectionRow<typeof rowFields>
-      >`select ${projection(rowFields)}
+        yield* useTestFetch(
+          model.company.delete({ etag: updated.etag, id: created.id })
+        )
+        expect(
+          yield* useTestFetch(model.note.subjects.list({ id: note.id }))
+        ).toEqual({
+          items: [],
+          nextPageToken: null,
+          totalSize: 0,
+        })
+        const history = yield* Effect.promise(() =>
+          runtime.runPromise(
+            api.handle(
+              new Request(
+                "http://company.test/api/v1/events?type=company.deleted",
+                { headers: runtimeHeaders }
+              )
+            )
+          )
+        )
+        expect(history.status).toBe(200)
+        expect(history.headers.get("cache-control")).toBe("private, no-store")
+        const eventPage = Schema.decodeUnknownSync(eventPageSchema)(
+          yield* Effect.promise(() => history.json())
+        )
+        expect(eventPage.items).toMatchObject([
+          {
+            type: "company.deleted",
+            subjects: [{ id: created.id, objectType: "company" }],
+          },
+        ])
+        const replay = yield* Effect.promise(() =>
+          runtime.runPromise(
+            api.handle(
+              new Request(
+                `http://company.test/api/v1/events?type=company.deleted&cursor=${encodeURIComponent(eventPage.nextCursor)}`,
+                { headers: runtimeHeaders }
+              )
+            )
+          )
+        )
+        expect(
+          Schema.decodeUnknownSync(eventPageSchema)(
+            yield* Effect.promise(() => replay.json())
+          ).items
+        ).toEqual([])
+        const anonymousEvents = yield* Effect.promise(() =>
+          runtime.runPromise(
+            api.handle(new Request("http://company.test/api/v1/events"))
+          )
+        )
+        expect(
+          Schema.decodeUnknownSync(eventPageSchema)(
+            yield* Effect.promise(() => anonymousEvents.json())
+          ).items
+        ).toEqual([])
+        const invalidCursor = yield* Effect.promise(() =>
+          runtime.runPromise(
+            api.handle(
+              new Request("http://company.test/api/v1/events?cursor=broken", {
+                headers: runtimeHeaders,
+              })
+            )
+          )
+        )
+        expect(invalidCursor.status).toBe(400)
+
+        const secondBrowser = yield* Effect.acquireRelease(
+          Effect.sync(createModelDataClient),
+          (cache) => Effect.sync(() => cache.dispose())
+        )
+        const observed = modelQuery(
+          ["company"],
+          "get",
+          { id: destination.id },
+          (signal) =>
+            runClientEffect(
+              useTestFetch(model.company.get({ id: destination.id })),
+              signal
+            )
+        )
+        const readCached = () =>
+          Effect.promise(() => secondBrowser.queryClient.fetchQuery(observed))
+        let offline = false
+        const consumer = createEventConsumer({
+          read: (cursor, signal) =>
+            offline
+              ? Promise.reject(new Error("offline"))
+              : Effect.runPromise(
+                  useTestFetch(
+                    nativeClient.events.listEvents({ query: { cursor } })
+                  ),
+                  { signal }
+                ),
+          apply: (page) =>
+            page.reset
+              ? secondBrowser.reset()
+              : secondBrowser.invalidate(
+                  page.items.flatMap((event) =>
+                    event.subjects.map((subject) => subject.objectType)
+                  )
+                ),
+          isInvalidCursor: (error) => error instanceof InvalidEventCursor,
+        })
+        const signal = new AbortController().signal
+        yield* Effect.promise(() => consumer.poll(signal))
+        expect((yield* readCached()).name).toBe("Analytical Engine")
+        offline = true
+        yield* useTestFetch(
+          model.company.update({
+            id: destination.id,
+            name: "Changed in the first browser",
+          })
+        )
+        expect((yield* readCached()).name).toBe("Analytical Engine")
+        yield* Effect.promise(() =>
+          expect(consumer.poll(signal)).rejects.toThrow("offline")
+        )
+        offline = false
+        yield* Effect.promise(() => consumer.poll(signal))
+        expect((yield* readCached()).name).toBe("Changed in the first browser")
+
+        const rowFields = { content: notes.columns.content }
+        const [persistedNote] = yield* sql<
+          SelectionRow<typeof rowFields>
+        >`select ${projection(rowFields)}
           from ${notes}
           where ${notes.columns.id} = ${note.id}`
-      expect(persistedNote).toEqual({ content: "Introductory call" })
-      const rowFields2 = { createdById: objects.columns.createdById }
-      const [auditedObject] = yield* sql<
-        SelectionRow<typeof rowFields2>
-      >`select ${projection(rowFields2)}
+        expect(persistedNote).toEqual({ content: "Introductory call" })
+        const rowFields2 = { createdById: objects.columns.createdById }
+        const [auditedObject] = yield* sql<
+          SelectionRow<typeof rowFields2>
+        >`select ${projection(rowFields2)}
           from ${objects}
           where ${objects.columns.id} = ${destination.id}`
-      expect(auditedObject?.createdById).toBe("us_test")
-      const rowFields3 = { id: users.columns.id, name: users.columns.name }
-      const [projectedUser] = yield* sql<
-        SelectionRow<typeof rowFields3>
-      >`select ${projection(rowFields3)}
+        expect(auditedObject?.createdById).toBe("us_test")
+        const rowFields3 = { id: users.columns.id, name: users.columns.name }
+        const [projectedUser] = yield* sql<
+          SelectionRow<typeof rowFields3>
+        >`select ${projection(rowFields3)}
           from ${users}
           where ${users.columns.id} = ${"us_test"}`
-      expect(projectedUser).toEqual({ id: "us_test", name: "Owner" })
-      const rowFields4 = { identityId: identityBindings.columns.identityId }
-      const [binding] = yield* sql<
-        SelectionRow<typeof rowFields4>
-      >`select ${projection(rowFields4)}
+        expect(projectedUser).toEqual({ id: "us_test", name: "Owner" })
+        const rowFields4 = { identityId: identityBindings.columns.identityId }
+        const [binding] = yield* sql<
+          SelectionRow<typeof rowFields4>
+        >`select ${projection(rowFields4)}
           from ${identityBindings}
           where ${identityBindings.columns.subject} = ${"us_test"}`
-      expect(binding).toEqual({ identityId: "us_test" })
-      const rowFields5 = {
-        principalId: roleAssignments.columns.principalId,
-        roleId: roleAssignments.columns.roleId,
-      }
-      const [assignment] = yield* sql<
-        SelectionRow<typeof rowFields5>
-      >`select ${projection(rowFields5)}
+        expect(binding).toEqual({ identityId: "us_test" })
+        const rowFields5 = {
+          principalId: roleAssignments.columns.principalId,
+          roleId: roleAssignments.columns.roleId,
+        }
+        const [assignment] = yield* sql<
+          SelectionRow<typeof rowFields5>
+        >`select ${projection(rowFields5)}
           from ${roleAssignments}
           where ${roleAssignments.columns.principalId} = ${"us_test"}`
-      expect(assignment).toEqual({
-        principalId: "us_test",
-        roleId: ADMINISTRATOR_ROLE_ID,
-      })
-    }),
+        expect(assignment).toEqual({
+          principalId: "us_test",
+          roleId: ADMINISTRATOR_ROLE_ID,
+        })
+      }),
     10_000
   )
 })

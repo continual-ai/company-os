@@ -1,0 +1,372 @@
+import { AccessModule, User } from "#/runtime/access/model/index.ts"
+import { AssetsModule } from "#/runtime/assets/model/index.ts"
+import {
+  AuthorizationScope,
+  defineEvent,
+  defineInterface,
+  defineLink,
+  defineModel,
+  defineModule,
+  defineObject,
+  schema,
+  standardErrors,
+} from "#/runtime/model/index.ts"
+
+/** Polymorphic role shared by accounts and people. */
+export const Participant = defineInterface({
+  id: "participant",
+  name: "Participant",
+  pluralName: "Participants",
+  properties: {
+    image: schema.image({ label: "Image", nullable: true }),
+    name: schema.string({ label: "Name" }),
+  },
+  display: { icon: "participant", image: "image", title: "name" },
+})
+
+/** Marker role for records a memo can be about. */
+const Topic = defineInterface({
+  id: "topic",
+  name: "Topic",
+  pluralName: "Topics",
+})
+
+export const Account = defineObject({
+  id: "account",
+  collection: "accounts",
+  name: "Account",
+  pluralName: "Accounts",
+  description: "An organization the company works with.",
+  implements: [
+    { interface: AuthorizationScope },
+    { interface: Topic },
+    {
+      interface: Participant,
+      propertyMapping: { image: "logo", name: "name" },
+    },
+  ],
+  properties: {
+    name: schema.string({ label: "Name", minLength: 1, maxLength: 200 }),
+    logo: schema.image({ label: "Logo", aspectRatio: 1, nullable: true }),
+    domain: schema.domain({ label: "Domain", maxLength: 253, nullable: true }),
+    website: schema.url({ label: "Website", maxLength: 2_048, nullable: true }),
+    industry: schema.select({
+      label: "Industry",
+      nullable: true,
+      options: [
+        { value: "software", label: "Software" },
+        { value: "services", label: "Services" },
+      ],
+    }),
+    stage: schema.select({
+      label: "Stage",
+      default: "prospect",
+      options: [
+        { value: "prospect", label: "Prospect", color: "blue" },
+        { value: "customer", label: "Customer", color: "green" },
+        { value: "inactive", label: "Inactive", color: "gray" },
+      ],
+    }),
+  },
+  search: { fields: ["name", "website"] },
+  display: {
+    icon: "building",
+    image: "logo",
+    title: "name",
+    subtitle: "domain",
+    status: "stage",
+  },
+})
+
+export const Person = defineObject({
+  id: "person",
+  collection: "people",
+  name: "Person",
+  pluralName: "People",
+  implements: [
+    { interface: Topic },
+    {
+      interface: Participant,
+      propertyMapping: { image: "photo", name: "name" },
+    },
+  ],
+  properties: {
+    photo: schema.image({ label: "Photo", aspectRatio: 1, nullable: true }),
+    name: schema.string({ label: "Name", minLength: 1, maxLength: 200 }),
+    email: schema.email({ label: "Email", maxLength: 320, nullable: true }),
+    phone: schema.phone({ label: "Phone", maxLength: 50, nullable: true }),
+    consent: schema.select({
+      label: "Email consent",
+      default: "unknown",
+      options: [
+        { value: "unknown", label: "Unknown" },
+        { value: "optedIn", label: "Opted in" },
+        { value: "optedOut", label: "Opted out" },
+      ],
+    }),
+  },
+  search: { fields: ["name", "email"] },
+  display: { icon: "person", image: "photo", title: "name", subtitle: "email" },
+})
+
+const PersonAccounts = defineLink({
+  id: "personAccounts",
+  name: "Person accounts",
+  writeFrom: "people",
+  forward: {
+    from: Person,
+    to: Account,
+    key: "accounts",
+    cardinality: "many",
+    label: "Accounts",
+  },
+  reverse: {
+    from: Account,
+    to: Person,
+    key: "people",
+    cardinality: "many",
+    label: "People",
+  },
+})
+
+const PersonPrimaryAccount = defineLink({
+  id: "personPrimaryAccount",
+  name: "Person primary account",
+  writeFrom: "primaryAccount",
+  subsetOf: PersonAccounts,
+  forward: {
+    from: Person,
+    to: Account,
+    key: "primaryAccount",
+    cardinality: "zeroOrOne",
+    label: "Primary account",
+  },
+  reverse: {
+    from: Account,
+    to: Person,
+    key: "primaryPeople",
+    cardinality: "many",
+    label: "Primary people",
+  },
+})
+
+export const Prospect = defineObject({
+  id: "prospect",
+  collection: "prospects",
+  name: "Prospect",
+  pluralName: "Prospects",
+  implements: [{ interface: Topic }],
+  actions: {
+    convert: {
+      name: "Convert prospect",
+      description:
+        "Creates a person and links it to a new account named after the prospect.",
+      idempotent: true,
+      scope: "object",
+      output: {
+        account: schema.reference({ id: "account" }),
+        person: schema.reference({ id: "person" }),
+      },
+      errors: [
+        standardErrors.aborted,
+        standardErrors.alreadyExists,
+        standardErrors.failedPrecondition,
+      ],
+    },
+  },
+  properties: {
+    name: schema.string({ label: "Name", minLength: 1, maxLength: 200 }),
+    accountName: schema.string({
+      label: "Account name",
+      minLength: 1,
+      maxLength: 200,
+      nullable: true,
+    }),
+    email: schema.email({ label: "Email", maxLength: 320, nullable: true }),
+    source: schema.select({
+      label: "Source",
+      default: "unknown",
+      options: [
+        { value: "unknown", label: "Unknown" },
+        { value: "inbound", label: "Inbound" },
+        { value: "referral", label: "Referral" },
+      ],
+    }),
+    status: schema.select({
+      label: "Status",
+      default: "new",
+      options: [
+        { value: "new", label: "New" },
+        { value: "working", label: "Working" },
+        { value: "qualified", label: "Qualified" },
+      ],
+    }),
+    convertedAccount: schema.reference(Account, {
+      label: "Converted account",
+      inverse: { key: "convertedProspects", label: "Converted prospects" },
+      nullable: true,
+      outputOnly: true,
+    }),
+    convertedPerson: schema.reference(Person, {
+      label: "Converted person",
+      inverse: { key: "convertedProspects", label: "Converted prospects" },
+      nullable: true,
+      outputOnly: true,
+    }),
+    convertedAt: schema.timestamp({
+      label: "Converted at",
+      nullable: true,
+      outputOnly: true,
+    }),
+  },
+  search: { fields: ["name", "accountName", "email"] },
+  display: {
+    icon: "prospect",
+    title: "name",
+    subtitle: "accountName",
+    status: "status",
+  },
+})
+
+export const ProspectConverted = defineEvent({
+  type: "prospect.converted",
+  version: 1,
+  subject: Prospect,
+  data: schema.object({
+    account: schema.reference(Account),
+    person: schema.reference(Person),
+  }),
+})
+
+export const Order = defineObject({
+  id: "order",
+  collection: "orders",
+  name: "Order",
+  pluralName: "Orders",
+  parent: AuthorizationScope,
+  implements: [{ interface: Topic }],
+  properties: {
+    name: schema.string({ label: "Name", minLength: 1, maxLength: 200 }),
+    stage: schema.select({
+      label: "Stage",
+      default: "draft",
+      options: [
+        { value: "draft", label: "Draft" },
+        { value: "quoted", label: "Quoted" },
+        { value: "won", label: "Won" },
+        { value: "lost", label: "Lost" },
+      ],
+    }),
+    amount: schema.money({ label: "Amount", nullable: true }),
+    expectedCloseDate: schema.date({
+      label: "Expected close date",
+      nullable: true,
+    }),
+    owner: schema.reference(User, {
+      label: "Owner",
+      nullable: true,
+      inverse: { key: "orders", label: "Orders" },
+    }),
+    nextStep: schema.string({
+      label: "Next step",
+      maxLength: 5_000,
+      nullable: true,
+    }),
+    nextStepDate: schema.date({ label: "Next step due", nullable: true }),
+  },
+  search: { fields: ["name", "nextStep"] },
+  display: { icon: "order", title: "name", status: "stage" },
+})
+
+export const OrderLine = defineObject({
+  id: "orderLine",
+  collection: "orderLines",
+  name: "Order line",
+  pluralName: "Order lines",
+  parent: Order,
+  properties: {
+    name: schema.string({ label: "Name", minLength: 1, maxLength: 200 }),
+    quantity: schema.number({
+      label: "Quantity",
+      default: 1,
+      integer: true,
+      minimum: 1,
+    }),
+    unitPrice: schema.money({ label: "Unit price", nullable: true }),
+  },
+  search: { fields: ["name"] },
+  display: { icon: "orderLine", title: "name", subtitle: "quantity" },
+})
+
+const Document = defineObject({
+  id: "document",
+  collection: "documents",
+  name: "Document",
+  pluralName: "Documents",
+  properties: {
+    title: schema.string({ label: "Title", minLength: 1, maxLength: 200 }),
+    attachments: schema.array(schema.file({ maxBytes: 25_000_000 }), {
+      label: "Attachments",
+      default: [],
+    }),
+  },
+  display: { icon: "document", title: "title" },
+})
+
+export const Memo = defineObject({
+  id: "memo",
+  collection: "memos",
+  name: "Memo",
+  pluralName: "Memos",
+  properties: {
+    content: schema.string({
+      label: "Content",
+      minLength: 1,
+      maxLength: 10_000,
+    }),
+  },
+  search: { fields: ["content"] },
+  display: { icon: "memo", title: "content" },
+})
+
+const MemoTopics = defineLink({
+  id: "memoTopics",
+  name: "Memo topics",
+  writeFrom: "topics",
+  forward: {
+    from: Memo,
+    to: Topic,
+    key: "topics",
+    cardinality: "many",
+    label: "Topics",
+  },
+  reverse: {
+    from: Topic,
+    to: Memo,
+    key: "memos",
+    cardinality: "many",
+    label: "Memos",
+  },
+})
+
+/** A representative business domain for kernel tests: ownership, interfaces, links, and a custom action. */
+export const FixtureModule = defineModule({
+  id: "fixture",
+  name: "Fixture",
+  interfaces: [Participant, Topic],
+  events: [ProspectConverted],
+  links: [PersonAccounts, PersonPrimaryAccount, MemoTopics],
+  objects: [Account, Person, Prospect, Order, OrderLine, Document, Memo],
+})
+
+/** Only the kernel modules. */
+export const kernelModel = defineModel({
+  name: "Kernel",
+  modules: [AccessModule, AssetsModule],
+})
+
+/** The kernel modules plus the fixture domain. */
+export const fixtureModel = defineModel({
+  name: "Fixture",
+  modules: [AccessModule, AssetsModule, FixtureModule],
+})

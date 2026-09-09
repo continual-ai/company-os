@@ -1,0 +1,79 @@
+# Model UI
+
+Every enabled object gets a collection page, a record page, field editors, related-record
+collections, and a creation flow from the model alone. The generic routes under
+`routes/_app/objects/$objectType` and `routes/_app/settings/$collection` render the standard pages in
+`runtime/ui/model`; an object's `navigation.path` decides which route serves it. Modules customize
+through `ObjectUi` registrations, never by adding branches to shared components.
+
+## Record pages
+
+Identity comes from the model's `display` (title, subtitle, status, image, icon). `record.properties`
+and `record.relationships` prioritize detail fields and named relationship tabs without hiding
+anything; the remaining relationships stay reachable through a searchable menu. Overview opens by
+default when a record has related collections or long text and shows the newest records from each
+featured relationship with authorized counts. Other tabs load when opened.
+
+Field edits open focused dialogs that submit only the selected fields with the revision captured
+when the editor opened. Full-record editing remains available. Command/Ctrl-Enter submits; a dirty
+form asks before discarding; a revision conflict preserves the draft instead of overwriting or
+rebasing it. Creation shows editable properties under Details and references, required parents, and
+declared Links under Related records. Pickers can create a related record without losing the outer
+draft. Initial links are part of the create transaction, so a failure rolls back the record and its
+associations together; initializing from the non-writable direction still requires update permission
+on the endpoint that owns the association.
+
+Lists default to creation time descending, then id. Back follows browser history through related
+records to the originating collection; relationship tab changes replace the current history entry.
+The command palette suggests explicitly visited records; prefetches and background refreshes do not
+count as visits.
+
+## Collection views
+
+A view is source-owned presentation registered on the object's `collection.views`; the first view
+is the default and **Reset view** restores it. Users change layout, mappings, filters, and date
+window in the URL of a standalone collection or in local state when embedded. There is no saved-view
+table or background write.
+
+```ts
+defineCollectionView("pipeline", "Pipeline", {
+  layout: { type: "kanban", groupBy: "stage" },
+  columns: ["name", "amount", "expectedCloseDate"],
+})
+```
+
+| Layout   | Mapping                      | Behavior                                                                   |
+| -------- | ---------------------------- | -------------------------------------------------------------------------- |
+| Table    | Columns, filters, sorting    | Virtualized rows, incremental loading, inline editing, atomic batch delete |
+| Feed     | None                         | One record summary per row, as Notes uses                                  |
+| Kanban   | One select field             | Columns follow declared choice order; nullable fields get Unassigned       |
+| Calendar | Start date, optional end     | Six-week grid, multi-day entries, mobile agenda                            |
+| Gantt    | Distinct start and end dates | Date bars with range movement and end resizing                             |
+
+Layout mappings are validated against the object during UI composition. Date-only values never
+shift through a timezone; timestamps display and move in UTC. Dragging submits one revision-checked
+update; a failed write keeps the confirmed record and shows the error. Output-only or immutable
+mappings cannot be dragged.
+
+All layouts use the same list queries, cache, and mutations. Calendar and Gantt add a server-side
+date-window predicate. These are presentation filters, not authorization; the server filters rows
+independently. Relationship collections reuse the target object's views, summaries, toolbar, and
+actions; interface-target Links show heterogeneous records and need a concrete target for property
+filtering and sorting.
+
+## Extension points
+
+`fieldEditors` replace a property editor while the shared form keeps validation, drafts, and
+conflict handling; Notes supplies a Markdown editor this way. `summaryComponent` renders a record in
+feeds and previews. `overviewComponent`, `additionalTabs`, and `title` extend the record page;
+`toolbarComponent` adds collection controls; `actions` place a custom Action's control on rows and
+records. `collection.pageComponent` and `record.pageComponent` replace a page for a distinct
+workflow while the route, navigation, and client stay standard. `overview` and `related` are
+reserved tab ids.
+
+Ownership inside `runtime/ui/model`: `model-pages.tsx` selects the standard or replaced page;
+`object-collection.tsx` owns the collection query and layout selection; `collection-layout.ts`
+validates mappings; `object-record-page.tsx` assembles details, overview, relationships, and custom
+tabs; `record-relationships.ts` binds the relationship catalog to one record's queries and supported
+writes; `object-record-dialog.tsx` and `object-form.ts` own draft lifetime and submission decoding.
+Rendering Markdown never executes user-supplied markup.

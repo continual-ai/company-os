@@ -1,110 +1,62 @@
-# Modeling company operations
+# Modeling
 
-`company-os/model` is the browser-safe source of business meaning. It declares the vocabulary that
-the operating application, generated interfaces, integrations, and agents share. Implementations,
-authorization, persistence, and provider configuration remain in the central application.
+The model is the shared vocabulary that the application, generated interfaces, integrations, and
+agents use. It is composed in `app.model.ts` from module definitions and exported to optional apps
+as `company-os/model`. Definitions are portable TypeScript; execution, authorization, persistence,
+and configuration live in `runtime/server` and the shell. Code and tests are authoritative for exact
+types; this guide explains how the concepts fit.
 
-The code and tests are authoritative for exact types. This guide explains how the concepts fit
-together when changing the model.
+## Vocabulary
 
-## Core definitions
+- A **Model** is the validated catalog one installation exposes.
+- A **Module** groups definitions for composition and enablement. It is not a runtime boundary or
+  a separate source of authority.
+- The **Root** is the kernel's singleton owner at the top of the hierarchy; the **Actor** is the
+  kernel identity that operations attribute writes to.
+- An **Object** is a durable record type with identity, lifecycle, and policy.
+- An **Interface** names a role several object types implement, such as `NoteSubject`.
+- A **Property** is schema-declared data on an object, interface, or operation value.
+- A **Query** reads state. An **Action** is a governed operation that may change it.
+- An **Event** is a declared business fact appended in the transaction that made it true.
 
-- A **Model** is the validated catalog exposed by one Company OS installation.
-- A **Module** groups related definitions for composition without becoming a separate runtime or
-  source of authority. Applications may use its metadata to organize interfaces.
-- The **Root** is the singleton structural owner at the top of the model hierarchy.
-- An **Object** is a durable business or operational record with identity, lifecycle, and policy.
-- An **Interface** names a polymorphic role shared by multiple object types.
-- A **Property** is schema-declared data stored on an object, interface, or structured action value.
-- A **Query** reads model state without changing it.
-- An **Action** is a governed operation that may change state or perform business behavior.
+Every object receives standard Queries and the CRUD Actions it does not disable. Add a custom Action
+for a transition or invariant ordinary writes cannot express; its implementation owns authorization,
+the transaction boundary, and failure behavior.
 
-Objects receive standard reads and enabled CRUD actions from the runtime. Add a custom Action for a
-business transition or invariant that ordinary object operations cannot express. Its server
-implementation owns authorization, transaction boundaries, failure behavior, and consequential
-effects.
-
-## Choose one relationship representation
+## One representation per relationship
 
 | Need                                                                          | Model it as                            |
 | ----------------------------------------------------------------------------- | -------------------------------------- |
 | Durable ownership and authorization inheritance                               | `parent`                               |
-| Directional state stored inline on one record                                 | A record-reference property            |
+| Directional state stored on one record                                        | A `schema.reference` property          |
 | Shared bidirectional vocabulary without independent identity                  | A Link                                 |
 | Attributes, lifecycle, history, or distinct authorization on the relationship | An Object referencing its participants |
 
-Do not represent the same fact as both a property and a Link. Declare exact cardinality only when
-services, storage, deletion behavior, and tests preserve it.
+Never encode one fact as both a property and a Link. Declare exact cardinality only when storage,
+deletion behavior, and tests preserve it. Objects default to the Root as parent; set `parent` only
+for real ownership. A reference owns its foreign key, restricts deleting its target, and may declare
+`inverse: { key, label }` for the reverse direction. Links declare both traversal directions so
+storage orientation never leaks into the contract. `modelRelationships(Model)` projects references,
+Links, and ownership into one catalog that navigation and record pages consume.
 
-Each object declares its canonical parent independently of its business relationships. Creates
-directly beneath the model root use the application's configured root record; nested creates supply
-their parent. Links define both traversal directions so storage orientation does not leak into the
-business contract.
+Prefer many-to-many Links for business participation. A primary role is a `subsetOf` selection from
+that Link: `ContactPrimaryCompany` is a subset of `ContactCompanies`, selecting a primary adds the
+membership in the same transaction, a composite key guarantees every primary is a member, and
+removing the membership clears the selection. Use an association Object when participation needs
+dates, roles, allocation, or its own permissions; `Escalation` in `support-engineering` carries a
+durable receipt for a cross-module transition.
 
 ## Properties and invariants
 
-Use the portable schema vocabulary for object properties and action inputs and outputs. A writable
-property is required on create unless it is nullable or has a default. Output-only properties come
-from the implementation and are never accepted from callers.
+A writable property is required on create unless it is nullable or has a default. `outputOnly`
+properties come from the implementation and are never accepted from callers. `uniqueBy` declares
+identity rules storage enforces transactionally; Link cardinality already owns edge uniqueness, so
+do not restate it. Reference properties use the relationship noun (`company`, `principal`), never an
+`Id` suffix. Every record has one canonical id and may carry aliases from external systems; public
+operations accept either, while stored references and events use canonical ids. `search.fields`
+opts an object into record search; `display` names the title, subtitle, status, image, and icon
+that every generated surface uses.
 
-Use `uniqueBy` for durable record identity rules that storage must enforce transactionally. Link
-cardinality owns edge uniqueness; do not restate the same relationship invariant in `uniqueBy`.
-
-Public record-reference properties use the relationship noun, such as `company` or `principal`,
-rather than an `Id` suffix. Physical storage may use names such as `company_id` where distinguishing
-the stored scalar is useful.
-
-Every record has one canonical ID and may have qualified aliases for identifiers from external
-systems. Public operations may locate a record by either form, but repositories, stored references,
-events, and returned relationships use canonical IDs.
-
-## Definitions versus implementations
-
-The model declares what callers can understand and invoke. The central app supplies how those
-operations execute:
-
-- object services validate values, resolve identifiers, authorize callers, and supply audit context;
-- custom operation functions coordinate domain behavior and transactions;
-- repositories preserve persistence, concurrency, and atomicity invariants; and
-- HTTP, OpenAPI, clients, and MCP project the same bound implementation.
-
-Keep Effect, repositories, handlers, database clients, secrets, provider SDKs, and React components
-out of `company-os/model`. Use portable `@company/runtime/model` definitions where they support the shared
-contract.
-
-## Work on the model
-
-Model definitions live under `apps/company-os/src/modules`. The included sales module is an example
-business slice and can be replaced. After changing the model, update its governed implementation
-and persistence projection in the central app, then run:
-
-```sh
-pnpm turbo run test --filter=company-os
-pnpm check
-pnpm test
-```
-
-Follow the [database workflow](runbooks/database.md) when the persisted shape changes.
-
-## Relationships and primary roles
-
-`modelRelationships(Model)` projects Links, persisted references, and ownership into one catalog with
-two named directions. A reference owns its FK and may declare `inverse: { key, label }`; the inverse
-is derived, never independently stored. Reference deletion currently restricts deleting its target.
-Ownership relationships are explicitly marked as parents. This is metadata and navigation over the
-existing storage, not a second schema or a graph database.
-
-Use plural associations for business participation. ContactCompanies supports multiple affiliations.
-ContactPrimaryCompany declares `subsetOf: ContactCompanies` and at most one primary company. Selecting
-a primary adds the membership in the same transaction. A composite FK ensures every primary is a member;
-removing that membership clears the selection. Switching primary preserves other memberships. No
-implicit first-element selection or duplicate independently writable membership field is involved.
-
-DealCompanies describes commercial participation. Deal.parent accepts an AuthorizationScope and controls
-access independently. The migration copies existing Company parents into DealCompanies while preserving
-parent IDs, ancestry, and grants. Existing company-scoped deals retain their security scope; new deals
-can choose a root or another supported scope. Adding or removing a commercial company never reparents a deal.
-
-Use an association Object when participation needs dates, roles, allocation, lifecycle, history, or its
-own authorization. Its participant references get the same reverse navigation. Do not add hypothetical
-fields or a generic role engine before a real operation needs them.
+`pnpm --filter company-os model:check` lints descriptions, labels, and naming across the composed
+model. After changing definitions, regenerate the storage projection with the
+[database workflow](runbooks/database.md) and run `pnpm check` and `pnpm test`.

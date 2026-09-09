@@ -10,12 +10,14 @@ import {
   schema,
   AuthorizationScope,
 } from "#/runtime/model/index.ts"
+import { makeSchemaSql } from "#/runtime/server/schema.ts"
 import { makePostgresSchema } from "#/runtime/server/storage/schema.ts"
 import type { TableRow } from "#/runtime/server/storage/statement.ts"
 import {
   tableColumns as getTableColumns,
   tableName as getTableName,
 } from "#/runtime/server/storage/table.ts"
+import { fixtureModel } from "#/runtime/testing/fixture-model.ts"
 
 const Identity = defineInterface({
   id: "identity",
@@ -24,6 +26,54 @@ const Identity = defineInterface({
 })
 
 describe("makePostgresSchema", () => {
+  it("projects model fields, relationships, and infrastructure constraints", () => {
+    const storage = makePostgresSchema(fixtureModel)
+    expect(Object.keys(getTableColumns(storage.objects.person))).toEqual([
+      "id",
+      "parentId",
+      "photo",
+      "name",
+      "email",
+      "phone",
+      "consent",
+    ])
+    expect(
+      Object.keys(getTableColumns(storage.linkTables.personPrimaryAccount))
+    ).toEqual(["forwardId", "reverseId"])
+    expectTypeOf<
+      TableRow<typeof storage.objects.order>["parentId"]
+    >().toEqualTypeOf<RecordId<"authorizationScope">>()
+    expectTypeOf<
+      TableRow<typeof storage.objects.orderLine>["parentId"]
+    >().toEqualTypeOf<RecordId<"order">>()
+    expect(getTableName(storage.interfaces.participant)).toBe(
+      "interface_participant"
+    )
+    expect(getTableName(storage.interfaces.topic)).toBe("interface_topic")
+    expect(Object.keys(getTableColumns(storage.objects.memo))).toEqual([
+      "id",
+      "parentId",
+      "content",
+    ])
+    expect(storage.core.objects.columns.createdAt.type).toBe(
+      "timestamp with time zone"
+    )
+    expect(storage.objects.order.columns.expectedCloseDate.type).toBe("date")
+    expect(storage.objects.role.columns.permissions.type).toBe("text[]")
+    const ddl = makeSchemaSql(fixtureModel)
+    expect(ddl).toContain(
+      '"created_at" timestamp with time zone not null default now()'
+    )
+    expect(ddl).toContain(
+      '"updated_at" timestamp with time zone not null default now()'
+    )
+    expect(ddl).toContain(`"etag" text not null default '1'`)
+    expect(ddl).not.toContain("users_email_unique")
+    expect(ddl).toContain('"order_lines_object_parent_fk"')
+    expect(ddl).toContain("create trigger event_journal_append_only")
+    expect(ddl).toContain("create index record_search_document_idx")
+  })
+
   it("projects marker memberships for root and object implementers", () => {
     const Workspace = defineObject({
       id: "workspace",

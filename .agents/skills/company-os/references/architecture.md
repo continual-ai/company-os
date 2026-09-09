@@ -1,6 +1,6 @@
 # Company OS architecture context
 
-Use this reference for rationale and tradeoffs that are not evident from the package graph. The
+Use this reference for rationale and tradeoffs that are not evident from the source tree. The
 current implementation is evidence, not a target architecture.
 
 ## Intended ownership
@@ -61,7 +61,8 @@ an external boundary rather than leak into company policy.
 
 ## Extraction tests
 
-Consider a new abstraction or package when it:
+A package is a deploy unit, so a new package means a new app. Consider a new abstraction, service,
+or module when it:
 
 - has a stable responsibility proven by concrete callers;
 - removes provider or transport coupling from business behavior;
@@ -71,16 +72,18 @@ Consider a new abstraction or package when it:
 
 Do not extract solely to match a diagram, a future platform idea, or a familiar architecture style.
 
-## Open design questions
+## Settled and open
 
-Treat at least these as revisable unless the user explicitly settles them:
+Settled: one application, every module composed and migrated, enablement as a code-defined list
+that no environment variable overrides, the app owning its migration history, and upstream changes
+arriving as source merges rather than package versions. Revisit these only with an explicit
+decision.
+
+Still revisable unless the user settles them:
 
 - the final semantic API vocabulary and how much behavior it describes;
-- whether module enablement should ever become a governed runtime record rather than code;
 - client grouping, URL conventions, and protocol projection details;
-- persistence mapping and migration ownership;
-- authorization and approval semantics;
-- whether the kernel should ever be published as a versioned package instead of merged as source.
+- authorization and approval semantics, including where human approval enters an Action.
 
 ## Source-owned starting points
 

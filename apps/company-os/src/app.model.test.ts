@@ -79,27 +79,28 @@ describe("model contract", () => {
         "pipelineSummary"
       >["groups"][number]["count"]
     >().toEqualTypeOf<number>()
-    expect(description.modules.map((module) => module.id)).toEqual([
-      "access",
-      "assets",
-      "notes",
-      "sales",
-      "marketing",
-      "engineering",
-      "support",
-      "supportEngineering",
-    ])
+    expect(description.modules.map((module) => module.id)).toEqual(
+      Object.keys(Model.modules)
+    )
+    expect(description.modules.map((module) => module.id)).toEqual(
+      expect.arrayContaining(["access", "assets", "notes", "sales"])
+    )
     expect(
       description.modules.flatMap((module) => module.objectIds).sort()
     ).toEqual(description.objects.map((object) => object.id).sort())
-    expect(description.interfaces.map((item) => item.id)).toEqual([
-      "actor",
-      "authorizationScope",
-      "identity",
-      "principal",
-      "noteSubject",
-      "party",
-    ])
+    expect(description.interfaces.map((item) => item.id)).toEqual(
+      Object.keys(Model.interfaces)
+    )
+    expect(description.interfaces.map((item) => item.id)).toEqual(
+      expect.arrayContaining([
+        "actor",
+        "authorizationScope",
+        "identity",
+        "principal",
+        "noteSubject",
+        "party",
+      ])
+    )
     expect(description.interfaces).toContainEqual(
       expect.objectContaining({
         id: "party",
@@ -116,14 +117,17 @@ describe("model contract", () => {
         .filter((query) => query.objectType === "lead")
         .map((query) => query.id)
     ).toEqual(["get", "list", "batchGet"])
-    expect(description.links.map((link) => link.id)).toEqual([
-      "noteSubjects",
-      "contactCompanies",
-      "contactPrimaryCompany",
-      "dealCompanies",
-      "issuePullRequests",
-      "ticketIssues",
-    ])
+    expect(description.links.map((link) => link.id)).toEqual(
+      Object.keys(Model.links)
+    )
+    expect(description.links.map((link) => link.id)).toEqual(
+      expect.arrayContaining([
+        "noteSubjects",
+        "contactCompanies",
+        "contactPrimaryCompany",
+        "dealCompanies",
+      ])
+    )
     expect(description.links).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -243,61 +247,37 @@ describe("model contract", () => {
     expectTypeOf(
       Model.objects.deal.parent.typeId
     ).toEqualTypeOf<"authorizationScope">()
+    // Note subjects are exactly the NoteSubject implementers, whichever modules supply them.
+    type NoteSubjectId = RecordIdOf<
+      typeof Model,
+      (typeof Model.interfaces)["noteSubject"]
+    >
     expectTypeOf<
       NonNullable<
-        ModelObjectCreateInput<typeof Model, typeof Model.objects.note>["links"]
-      >["subjects"]
-    >().toEqualTypeOf<
-      | ReadonlyArray<
-          | RecordAlias
-          | RecordId<"company">
-          | RecordId<"contact">
-          | RecordId<"deal">
-          | RecordId<"lead">
-          | RecordId<"activity">
-          | RecordId<"campaign">
-          | RecordId<"content">
-          | RecordId<"enrollment">
-          | RecordId<"outreach">
-          | RecordId<"ticket">
-          | RecordId<"reply">
-          | RecordId<"issue">
-          | RecordId<"project">
-          | RecordId<"repository">
-          | RecordId<"pullRequest">
-        >
-      | undefined
-    >()
+        NonNullable<
+          ModelObjectCreateInput<
+            typeof Model,
+            typeof Model.objects.note
+          >["links"]
+        >["subjects"]
+      >[number]
+    >().toEqualTypeOf<RecordAlias | NoteSubjectId>()
     expectTypeOf<
+      RecordId<"company"> | RecordId<"contact"> | RecordId<"lead">
+    >().toExtend<NoteSubjectId>()
+    expectTypeOf<RecordId<"user">>().not.toExtend<NoteSubjectId>()
+    expectTypeOf<RecordId<"role">>().not.toExtend<NoteSubjectId>()
+    expectTypeOf<"contacts" | "primaryContacts" | "notes">().toExtend<
       keyof NonNullable<
         ModelObjectCreateInput<
           typeof Model,
           typeof Model.objects.company
         >["links"]
       >
-    >().toEqualTypeOf<"contacts" | "primaryContacts" | "deals" | "notes">()
+    >()
     expectTypeOf<
       RecordIdOf<typeof Model, (typeof Model.interfaces)["party"]>
     >().toEqualTypeOf<RecordId<"company"> | RecordId<"contact">>()
-    expectTypeOf<
-      RecordIdOf<typeof Model, (typeof Model.interfaces)["noteSubject"]>
-    >().toEqualTypeOf<
-      | RecordId<"company">
-      | RecordId<"contact">
-      | RecordId<"deal">
-      | RecordId<"lead">
-      | RecordId<"activity">
-      | RecordId<"campaign">
-      | RecordId<"content">
-      | RecordId<"enrollment">
-      | RecordId<"outreach">
-      | RecordId<"ticket">
-      | RecordId<"reply">
-      | RecordId<"issue">
-      | RecordId<"project">
-      | RecordId<"repository">
-      | RecordId<"pullRequest">
-    >()
     expectTypeOf<IdentityId>().toEqualTypeOf<
       RecordId<"serviceAccount"> | RecordId<"user">
     >()
@@ -313,14 +293,22 @@ describe("model contract", () => {
     expectTypeOf<
       ObjectRecord<typeof Model.objects.company>["createdBy"]
     >().toEqualTypeOf<ActorId>()
-    expectTypeOf<
-      ModelObjectCreateInput<
-        typeof Model,
-        typeof Model.objects.roleAssignment
-      >["parent"]
-    >().toEqualTypeOf<
-      RecordAlias | RecordId<"company"> | RecordId<"root"> | RecordId<"issue">
+    // Role assignments attach to any AuthorizationScope implementer plus the root.
+    type RoleAssignmentParent = ModelObjectCreateInput<
+      typeof Model,
+      typeof Model.objects.roleAssignment
+    >["parent"]
+    expectTypeOf<RoleAssignmentParent>().toEqualTypeOf<
+      | RecordAlias
+      | RecordIdOf<
+          typeof Model,
+          (typeof Model.interfaces)["authorizationScope"]
+        >
     >()
+    expectTypeOf<
+      RecordAlias | RecordId<"company"> | RecordId<"root">
+    >().toExtend<RoleAssignmentParent>()
+    expectTypeOf<RecordId<"contact">>().not.toExtend<RoleAssignmentParent>()
     expectTypeOf<
       ModelObjectCreateInput<
         typeof Model,

@@ -1,170 +1,97 @@
 # Architecture
 
-Company OS is one source-owned modular application. A domain lives in
-`apps/company-os/src/modules/<domain>` or a source-owned package under `modules/<domain>`:
-its portable definitions, server behavior, and specialized interface live together. PostgreSQL is the authority for business records. People,
-integrations, and agents use the same governed operations through HTTP, the typed client, or MCP.
+Company OS is one application a company clones and owns. The kernel, every module, and the shell
+live in `apps/company-os/src`. PostgreSQL is the authority for business records. People,
+integrations, and agents reach the same governed operations through the React UI, the typed client,
+HTTP and OpenAPI, and MCP.
 
-Use **app** for an application and its configuration, **model** for the shared domain
-definitions, and **module** for a cohesive set of capabilities. Company OS is the starter's
-product name; apps built from it do not need company-specific terminology or an "OS" suffix.
-The `@company/*` package namespace and `apps/company-os` deployment key identify the foundation,
-not the app's display name.
+## Three directories, one direction
 
-## Boundaries
+| Directory  | Owns                                                                                                                                                                        |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `runtime/` | The kernel: portable model DSL, shared contracts, browser client, server execution and storage, UI foundation, test helpers, and the kernel modules `access/` and `assets/` |
+| `modules/` | The business: one directory per capability, each shaped `model/ server/ ui/ seeds/`                                                                                         |
+| `app/`     | The shell: layout, settings, sign-in, developer pages, client assembly, host adapters, migrations                                                                           |
+| `routes/`  | TanStack Start file routes, generic over the model                                                                                                                          |
 
-| Source                                         | Responsibility                                                                       |
-| ---------------------------------------------- | ------------------------------------------------------------------------------------ |
-| `apps/company-os/src/app.{model,server,ui}.ts` | Explicit composition of definitions, implementations, and presentation               |
-| `apps/company-os/src/server`                   | Host providers, migration sequence, deployment configuration, and transport assembly |
-| `apps/company-os/src/ui/application`           | Application shell and product entrypoints                                            |
-| `packages/runtime/src/model`                   | Portable definitions and shared Access/Assets contracts                              |
-| `packages/runtime/src/server`                  | Effect services, authorization, transactions, SQL, events, and protocol machinery    |
-| `packages/runtime/src/contract`                | Shared Effect Schema decoders and HTTP contracts                                     |
-| `packages/runtime/src/client`                  | Browser/SSR-safe semantic query clients                                              |
-| `packages/runtime/src/ui`                      | Tokens, primitives, forms, model pages, and relationship navigation                  |
-| `modules/*`                                    | Domain definitions, custom operations, specialized UI, seeds, and isolated tests     |
-| `templates/*`                                  | Executable starters for optional interfaces over the central app                     |
+Dependencies point one way. `runtime/` imports nothing from `modules/`, `app/`, or `routes/`. A
+module imports itself, other modules' `model/`, and `runtime/`. The shell imports everything. Model
+code (`runtime/model`, `runtime/contract`, every `*/model/**`) imports no server, UI, client, React,
+Node, or PostgreSQL code, so the composed model is browser-safe by construction. The oxlint plugin in
+`tools/oxlint/company-os` enforces these rules and Vite import protection is the transitive check.
 
-The model export composes browser-safe app and module-package definitions using portable `@company/runtime/model` APIs. A recursive import
-check rejects Effect, UI, server code, and provider imports anywhere in that export's dependency
-graph. The `company-os/metadata` export is equally browser-safe. Optional apps import those public
-exports and call governed APIs; they cannot import private server modules. There is one migration
-ledger and business authority, regardless of how many interfaces a company deploys.
+Upstream owns `runtime/`; customers change it last. `pnpm kernel:drift` lists kernel files a
+checkout has changed relative to an upstream ref, and `pnpm upstream:merge` pulls upstream through
+an ordinary Git merge.
 
-Modules are copied and edited as ordinary source. Installing one means composing its model and,
-when it has custom behavior, binding its operation functions at the application assembly. No dynamic
-discovery, runtime unloading, service locator, or second plugin container is involved. Removing a
-module in a customized app with durable data requires an explicit migration and policy review.
-For this disposable template, update composition and regenerate the initial baseline.
+## Four composition roots
 
-Start with the [module authoring guide](modules.md). Standard object behavior is derived; custom
-operation implementations are needed only for additional behavior or invariants. Generic routes give installed
-objects a usable interface. Specialized workflows compose or replace those components. Each module can expose `model/index.ts`,
-`server/index.ts`, and `ui/index.ts`. Their independent application roots keep the model browser-safe while
-binding custom operations and UI once. UI contributions control navigation, saved views, actions,
-record tabs/overview, property editors, and page replacements. Standard routes consume those
-contributions; they contain no per-object presentation switches.
+- `app.model.ts` composes every module with `defineModel` into `Model`. This is the storage
+  authority: `schema.sql` and the migrations project this model, whether or not a module is enabled.
+- `app.config.ts` exports `enabledModules`. `enableModules(Model, enabledModules)` derives
+  `EnabledModel`, failing at startup when the list is not closed under the dependencies the model
+  graph implies (references, links, interface implementations) and naming the missing module.
+- `app.server.ts` lists the custom operation contributions bound with `defineModuleServer`.
+- `app.ui.ts` composes presentation contributions with `composeModelUi(EnabledModel, ...)`.
 
-Larger modules keep object definitions under `model/`, custom operations under `server/`, and presentation under `ui/`.
-Surface entrypoints expose deliberate named exports. UI configuration registers components; module
-entrypoints compose them. Page and form assembly
-resolve UI configuration and pass explicit props to standard components. Additive extensions
-(`additionalTabs`, toolbar controls, Action placements) and replacements (pages, overview, field
-editors) have distinct names. A custom workflow can own an ordinary React page and TanStack route;
-it continues to use the semantic client and governed server operations.
+Every consumer receives `EnabledModel`: the HTTP API and OpenAPI document, MCP tools, the semantic
+client, navigation, the generic routes, record search, and capability checks. No component or route
+asks whether a module is enabled. Disabling a module makes its operations not found and leaves its
+tables and data in place. Access and Assets are kernel modules and are always enabled. The list is
+code; an environment variable never chooses the module set.
 
-## Model and operations
+## Operations
 
-Objects are durable identities. References express directional state; Links express a shared
-bidirectional relationship without independent identity; association Objects carry their own
-attributes, lifecycle, history, or policy. `parent` alone defines ownership and authorization
-inheritance. See [modeling](modeling.md).
+The model declares Objects, Interfaces, Links, Events, Queries, and Actions. The kernel derives
+standard CRUD, list filtering and cursor pagination, storage, HTTP, MCP tools, and default pages.
+Custom Queries and Actions are named `Effect.fn` functions bound to their declared method through
+`defineModuleServer`; they use the kernel services exported from `runtime/server/index.ts`:
+`Database`, `Records`, `Links`, `Authorization`, `EventJournal`, `ModelContext`, and
+`RecordIdentifierResolver`.
 
-Queries and Actions stay distinct because their execution guarantees differ. They share schema,
-error, identity, and transport machinery. Queries read authorized state. Actions perform governed
-transitions; standard writes and custom business transitions use the same repositories and
-transaction boundary. HTTP custom methods use literal colon suffixes, such as
-`/api/v1/companies:batchGet` and `/api/v1/leads/{id}:convert`.
-`GET /api/v1/companies` supports filtering, sorting, and cursor pagination. Structured filters and
-sort arrays are JSON-encoded query parameters by the generated codec. There is no separate search
-operation. Lists and hydration return ordinary resources, without BASIC/FULL views or permission envelopes.
+`Operations.run` in `runtime/server/invoke.ts` is the one invocation boundary for HTTP and MCP. It
+supplies the current invocation, opens one transaction for an Action, normalizes API errors, and
+collects the object types a write touched for cache invalidation. Custom operations still enforce
+their own authorization and invariants, so calling them from a test or a seed gives the same
+guarantees. `Database.transaction` joins an open transaction rather than nesting, so a standard
+write inside a custom Action shares its atomicity and its event buffer. Queries are read-only and
+filter authorized rows before aggregating.
 
-`Operations.run` supplies current identity, action transactions, error normalization, and committed
-write metadata at HTTP and MCP ingress. Custom operations still enforce their own business rules
-and atomicity when called directly. Provider binding uses only explicit layer outputs; invocation
-and transaction state come from the current call.
-
-Effect v4 services use `Context.Service(..., { make })`, named `Effect.fn` operations, and static
-`.layer` implementations. Acquire dependencies in `make`, compose layers at the application
-boundary, and use typed failures for expected business outcomes. Portable model definitions do not
-require Effect. Effect SQL supplies parameterized statements and transactions. The PostgreSQL adapter derives
-physical storage and standard repositories from the portable model; custom operations share that client.
-
-Custom operations default to named Effect functions. Services represent dependencies and cohesive
-capabilities; repositories encapsulate persistence when useful. There is no mandatory service/repository
-pair per object. SQL may live beside an operation, but authorization must constrain rows before an
-aggregate and business writes must preserve model invariants. See [the operation guide](modules.md#custom-server-behavior).
+Custom HTTP methods use colon suffixes such as `POST /api/v1/leads/{id}:convert`; lists accept
+JSON-encoded filter and sort parameters on `GET /api/v1/<collection>`. Application-level
+capabilities outside the model, such as event replay and record search, are separate groups on the
+same HTTP contract in `app/http-api.ts`.
 
 ## Reads and changes
 
-`src/app-client.ts` projects the portable model into native TanStack Query and mutation options.
-Feature code uses `useQuery(data.contact.list(...))` and `useMutation(data.contact.update())`.
-Router preloads the same options; SSR owns one cache per request and hydrates the browser cache.
-The Effect HTTP client remains private transport infrastructure. There is no Atom request cache,
-TanStack DB replica, or feature-specific query hook to learn.
-
-Collections render their authorized list response immediately. Reference labels use bounded,
-authorized list queries without blocking records. Relationship pages return full discriminated
-records in one HTTP response. Advisory IAM checks are batched separately; the server always
-authorizes reads and writes independently of those hints.
-
-Transactions supply canonical results and `x-model-changes`. The shared cache reconciler cancels
-older in-flight reads, updates existing appearances by ordered etag, removes tombstones, and
-revalidates affected membership, ordering, counts, and custom reports. It does not attempt to run
-server predicates or permissions locally. The journal streams authorized changes from other
-clients through the same reconciliation path. Permissions changes clear cached records.
-
-This is cached server state with realtime delivery and resumable catch-up. Writes require the
-server; there is no offline write queue. Forms own their drafts and starting etag until submission.
-Read [Data access](data.md) for the complete lifecycle and [Durable events](events.md) for journal
-ordering, full payload visibility, authentication renewal, and notification failure recovery.
+`app/app-client.ts` derives the semantic client and TanStack Query options from `EnabledModel`.
+Feature code uses `useQuery(data.contact.list(...))` and `useMutation(data.contact.update())`;
+router loaders preload the same options. Committed writes report affected object types in
+`x-model-changes`; the shared cache applies canonical records by ordered etag and revalidates
+affected lists, counts, and reports. Other browsers receive the same facts through the authorized
+event feed. Details are in [client data](data.md) and [durable events](events.md).
 
 ## Identity and policy
 
-The default deployed authentication adapter retains Continual's proxy/runtime assertion contract.
-`CONTINUAL_URL` pins the verifier; a forwarded origin cannot select a different authority. The app
-verifies the assertion remotely, resolves a local identity binding, and constructs invocation
-context. Concurrent consumers of the same request headers share identity resolution. Development
-alone supplies a local identity without an external provider. No app mints a platform identity.
-
-Continual owns credential verification, login/session lifecycle, and deployment access. Company OS
-owns its principals, roles, groups, business permissions, ownership scopes, query visibility, and
-audit attribution. Hosting access does not imply business administrator access. First-administrator
-bootstrap requires `AUTH_BOOTSTRAP_ISSUER` and `AUTH_BOOTSTRAP_SUBJECT`; ordinary provisioning defaults
-to no role unless `AUTH_DEFAULT_ROLE=operator` is explicitly chosen. Existing grants are preserved.
-
-Current fine-grained authorization is role grants scoped to an ownership hierarchy, including group
-membership. Reads constrain results to authorized scopes; mutations enforce policy again on the
-server. Arbitrary relationship-based policy expressions and richer workload/delegated identity
-remain separate future work. A replacement `IdentityProvider.layer` can integrate another trusted
-login boundary without changing business policy or domain services.
+An identity provider proves who is calling; Company OS decides what that principal may do. The
+default provider in `app/server/auth/identity-provider.ts` verifies Continual runtime assertions
+pinned to `CONTINUAL_URL`; `IDENTITY_PROVIDER=jwt` selects the JWT adapter, and development alone
+supplies a local administrator. `makeApplicationLayer` in `app/server/application-layer.ts` accepts
+a replacement provider layer. Roles, groups, scoped grants, record visibility, and audit attribution
+belong to the Access module and are enforced on every operation, never inferred from a cached UI
+capability check. See [deployment and identity](runbooks/deployment.md).
 
 ## Files
 
-An Asset owns a durable file ID, upload state, metadata, and protected bytes. `schema.image()` and
-`schema.file()` store an asset reference; image alternative text belongs to that particular usage.
-Attachment fields are arrays of file references. The shared editor reserves an asset, uploads with
-progress/cancellation, completes verification, and only then submits the reference with the form.
-Asset-field traversal is compiled at service/repository construction. Objects without asset fields
-have no asset-index persistence work.
+An Asset owns a durable file id, upload state, metadata, and protected bytes. `schema.image()` and
+`schema.file()` store asset references. The default `BlobStorage` keeps bytes in PostgreSQL;
+delivery authorizes access to the Asset on every request, completed content is immutable, and a
+transactional reference index prevents deleting an asset that a record still uses. Attaching a file
+does not change its ownership scope or grant another principal access to it.
 
-The default BlobStorage layer uses PostgreSQL, supports files up to 25 MB and image dimensions up to
-40 megapixels, and needs no bucket or hosting change. Binary file types are detected from signatures; PNG/JPEG/WebP/GIF dimensions are checked.
-Text uploads are decoded as UTF-8. Non-image files are served as downloads with a conservative
-content type, while metadata retains their detected type for file-field constraints. This is not a
-malware scanner or image transformation service. Delivery authorizes access to the Asset on every
-request. Completed content cannot be overwritten. Field writes validate availability, type/size
-constraints, and read permission; a transactional reference index prevents deletion while in use.
+## Optional apps
 
-An Asset has its own ownership scope. The default editor uses the form's selected parent scope;
-attaching a file does not grant another principal access to it or automatically change its scope.
-Workflows with narrower sharing must choose an appropriate asset scope explicitly.
-
-Cancellation attempts to delete its reserved asset. Disconnected clients can leave pending assets,
-which remain visible and deletable in Assets. Removing a file field unlinks that usage; it does not
-delete a potentially shared asset. Old placeholder asset IDs from earlier forks require re-upload.
-`makeApplicationLayer` accepts a replacement BlobStorage layer; any remote implementation must also
-address retention and deletion of external bytes rather than assuming PostgreSQL foreign keys
-will remove them.
-
-## Private imports
-
-Each source package maps `#/*` to `./src/*` in `package.json`. Use `#/path/filename.ts`
-(or `.tsx`) for all private imports, including files in the same folder. Cross-package imports
-use declared package exports without source extensions. The development tooling
-package has its source at the package root and maps `#/*` to `./*`.
-
-Private imports name concrete files, so TypeScript, Node-based scripts, and app builds use the
-same mapping without `tsconfig.paths`. Node 24.14+ on the 24.x line or Node 25.4+ is required.
-The import-boundaries Oxlint rule enforces the import convention.
+`templates/base` is the starter for a separate interface such as a portal. A copy imports
+`company-os/model`, `company-os/metadata`, `company-os/ui/*`, and `company-os/styles.css` only and
+calls the central app's governed API, forwarding the hosting platform's identity headers. It is not
+a second business authority. See the [base starter](../templates/base/README.md).

@@ -53,8 +53,7 @@ export default defineConfig({
           {
             extends: true,
             test: {
-              globalSetup:
-                "./src/app/server/database/test-database-global-setup.ts",
+              globalSetup: "./src/runtime/testing/global-setup.ts",
               include: ["src/**/*-database.test.ts"],
               name: "database",
               testTimeout: 15_000,

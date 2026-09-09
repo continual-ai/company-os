@@ -1,169 +1,152 @@
 # Building a module
 
-A module owns a cohesive business capability: definitions, custom operations, specialized UI,
-and tests. Keep standard object behavior derived from the model. Create a package per domain,
-not per object or function. App-specific modules can use the same structure inside the app.
+A module is a cohesive business capability under `apps/company-os/src/modules/<name>`. It owns its
+definitions, custom operations, presentation, and fixtures, and it is testable without the shell.
+Standard CRUD, storage, HTTP, MCP tools, and default pages derive from the model; write custom code
+only for behavior or invariants the model cannot express. Create one directory per capability, not
+per object.
 
-## Structure and composition
+## Directory shape
 
 ```text
-modules/sales/
-  package.json
-  src/
-    model/
-      index.ts
-      lead.ts
-      links/contact-companies.ts
-    server/
-      index.ts
-      convert-lead.ts
-      operations-database.test.ts
-    ui/
-      index.ts
-      lead/config.ts
-      lead/convert-button.tsx
-    seeds/
-      index.ts
-      demo.ts
-      performance.ts
-      assets/
+apps/company-os/src/modules/sales/
+  model/
+    index.ts                    defineModule; exports the definitions other modules may reference
+    lead.ts                     one object, its operation contracts, and its events
+    interfaces/party.ts         a polymorphic role several objects implement
+    links/contact-companies.ts  an association without identity
+  server/
+    index.ts                    defineModuleServer binds custom operations to declared methods
+    convert-lead.ts             one transactional business action
+    operations-database.test.ts PostgreSQL tests for the module's rules
+  ui/
+    index.ts                    defineModuleUi composes each object's presentation
+    lead/config.ts              typed extensions for one object
+    lead/convert-button.tsx     an ordinary React component
+    lead/views.ts               saved collection views
+  seeds/
+    index.ts                    fixture builders the shell invokes explicitly
 ```
 
-Package exports map each public surface to its folder's entrypoint:
+Only `model/` is required. Notes has no `server/`; Support Engineering has no `seeds/`. Do not add
+empty folders or forwarding files. Each `index.ts` is a registered entrypoint and may re-export by
+name; everything else imports concrete files with `#/` paths and explicit extensions.
 
-```json
-{
-  "./model": "./src/model/index.ts",
-  "./server": "./src/server/index.ts",
-  "./ui": "./src/ui/index.ts",
-  "./seeds": "./src/seeds/index.ts"
-}
+A module imports itself, other modules' `model/`, and `runtime/`. It never imports `app/`, the
+composition roots, or another module's `server/`, `ui/`, or `seeds/`. When two otherwise independent
+modules need a relationship, put the Link, any bridging Object, and the Action that joins them in a
+small bridge module that depends on both, as `support-engineering` does for Support and Engineering.
+
+## Model
+
+Use `defineObject`, `defineLink`, `defineInterface`, `defineEvent`, and `defineModule` from
+`#/runtime/model/index.ts`. Keep an object's properties, custom operation contracts, `search`
+fields, and `display` metadata together in its file. Objects default to the kernel `Root` as parent;
+set `parent` only for durable ownership and authorization ancestry. The module's dependencies are
+derived from the types its definitions reference, so nothing declares them by hand.
+
+```ts
+export const SalesModule = defineModule({
+  id: "sales",
+  name: "Sales",
+  interfaces: [Party],
+  events: [LeadConverted],
+  links: [ContactCompanies, ContactPrimaryCompany, DealCompanies],
+  objects: [Activity, Company, Contact, Lead, Deal, LineItem],
+})
 ```
 
-Expose only the surfaces the module needs. `/model` exports portable definitions; `/server` exports
-implementations registered with `defineModuleServer`; `/ui` exports `defineModuleUi` registrations;
-`/seeds` exports explicitly invoked fixture builders. Seeds are server-only even when a particular
-helper only constructs values. Stylesheets belong in `ui/` and may have an explicit CSS export.
+A module that implements an interface owned elsewhere lists it in `implements`; composition resolves
+interface references to the installed concrete types. Read [modeling](modeling.md) before choosing
+between a parent, a reference property, a Link, and an association Object.
 
-A small surface can live entirely in `index.ts`; do not create forwarding files or empty folders
-for symmetry. Larger surfaces organize their implementation files within the folder. Tests live
-beside the behavior they exercise. Public entrypoints may expose explicit named exports, but
-internal code imports definitions directly instead of following re-export chains. Use public model
-imports for dependencies on another domain. Private imports use `#/` with actual source extensions.
-Oxlint enforces the source folders, browser/server import boundaries, and public-only re-exports.
+`modules/sales/model/lead.ts` shows a custom Action contract and its event; `modules/engineering`
+shows a standard object graph with no custom operations at all.
 
-The application composes three ordinary TypeScript graphs:
+## Custom server operations
 
-| Entry point         | Responsibility                                          |
-| ------------------- | ------------------------------------------------------- |
-| `src/app.model.ts`  | Install definitions into one complete model             |
-| `src/app.server.ts` | Register custom module implementations and their layers |
-| `src/app.ui.ts`     | Compose module presentation registrations               |
+Write named `Effect.fn` functions and bind them to the declared method in `server/index.ts`:
 
-Declare dependencies in `package.json`, install with pnpm, and import contributions at the relevant
-roots. There is no generated code, dynamic discovery, runtime unloading, or second plugin container.
-Model-only modules need no server or UI registration. Missing dependencies and conflicting
-registrations fail during composition. Removing a disposable template module means removing its
-contributions and regenerating the app's initial database baseline.
+```ts
+export const SalesServer = defineModuleServer(SalesModule, {
+  lead: { convert: convertLead },
+  deal: { pipelineSummary },
+})
+```
 
-## Model definitions
+Operations use the kernel services from `#/runtime/server/index.ts`. `Authorization.require`
+establishes the caller's authority for the operation and the records it touches. `Records.writer(O)`
+and `Links.writer(O)` validate, attribute, and record events but do not authorize, so require first.
+`Records.get(O)` reads. `RecordIdentifierResolver` turns a canonical id or alias into a record id.
+`Database.sql` with `ModelContext.table(O)` and the statement helpers in
+`#/runtime/server/storage/index.ts` supports custom SQL without a second schema.
 
-Use `defineObject`, `defineLink`, and `defineModule` from `@company/runtime/model`. Keep each object's
-properties, operations, display metadata, and relationship ownership together. Export definitions
-other modules need through the module's model entrypoint.
+An Action opens one `Database.transaction`; standard writes inside it join that transaction, and a
+failure anywhere rolls back everything. `EventJournal.append(Event, { subject, data })` records a
+declared business fact in the same transaction. Custom SQL that writes must preserve revision and
+integrity rules and append a declared event covering the affected records; raw SQL is not
+intercepted. Queries are read-only and constrain rows to the caller's scopes before aggregating.
+Expected domain failures use the model's `ApiError` contract so HTTP and MCP need no per-module
+error handling. `modules/sales/server/convert-lead.ts` is the executable example.
 
-References express directional state. Links express associations; use `subsetOf` for a primary
-selection within a larger association. Use an Object when the relationship has attributes,
-lifecycle, history, or permissions. `parent` describes ownership and authorization ancestry.
-
-A standalone module knows an interface contract, not all its future implementors. Composing the
-model resolves interface references to the installed concrete object types. Runtime validation
-checks those same memberships.
-
-See [Engineering Issue](../modules/engineering/src/model/issue.ts) for a standard object and
-[Sales Lead](../modules/sales/src/model/lead.ts) for custom action and event contracts.
-
-## Custom server behavior
-
-Write named `Effect.fn` operations. Use `Records`, `Links`, `Database`, `Authorization`,
-`EventJournal`, and `ModelContext` from `#/runtime/server/index.ts`. Services supplied by providers
-may be layerless; constructed services expose `.layer`. Add a new service only for a cohesive
-capability or useful substitution boundary, not to forward existing methods.
-
-[SalesServer](../modules/sales/src/server/index.ts) binds custom operations to their declared model methods.
-The runtime supplies standard CRUD. The app composes these contributions and shared infrastructure;
-it does not need a Sales-specific adapter. Current invocation and transaction event buffers are
-never captured when binding module operations.
-
-Use `Records.writer(Object)` for validated writes with event recording and
-`Links.writer(Object)` for validated relationship changes; neither checks a capability, so call
-`Authorization.require` first. Custom SQL uses `Database.sql` and `ModelContext.table(Object)`, not
-a second hand-maintained schema. Actions own authorization and open one `Database.transaction`;
-standard writes inside it join that transaction rather than opening their own. SQL queries must filter authorized rows before aggregation;
-keep currencies separate and use PostgreSQL numeric arithmetic. Expected domain failures use the
-model's portable error contract so HTTP and MCP need no domain-specific error switches.
+Add a `Context.Service` only for a cohesive capability or a real substitution boundary, never to
+forward existing methods. Pass its layer as the third argument of `defineModuleServer`.
 
 ## UI
 
-Use `@company/runtime/ui/module` for module authoring helpers and `@company/runtime/ui/*` for primitives. `defineModuleUi` checks object,
-field, and action names against the module's definitions. `composeModelUi` validates relationships
-and tab conflicts against the complete model. The application's `ModelUiProvider` supplies the
-semantic client and shared presentation configuration.
+`defineModuleUi` in `ui/index.ts` checks object, property, and action names against the module's
+definitions. Each object's extensions live in `ui/<object>/config.ts` as an `ObjectUi<typeof O>`:
+`navigation`, `fieldEditors`, `actions` with their placements, `collection` (`views`,
+`toolbarComponent`, `pageComponent`), and `record` (`properties`, `relationships`, `title`,
+`summaryComponent`, `overviewComponent`, `additionalTabs`, `pageComponent`). Saved views come from
+`defineCollectionView`. Import these from `#/runtime/ui/module.ts` and primitives from
+`#/runtime/ui/components/*.tsx`.
 
-Module components call `useObjectClient(Object)`. These query/mutation options use the app's
-QueryClient, request keys, and server-driven invalidation. Do not add private HTTP clients or
-object-specific branches to shared routes. Extensions support field editors, record summaries,
-additional tabs, collection controls, and complete page replacements. Notes demonstrates a custom
-Markdown editor and timeline reused across overview, relationships, and standalone collections.
+Components read and write through `useObjectClient(O)`, which returns the same query and mutation
+options the shell uses, on the same cache, with server-driven invalidation. Do not add private HTTP
+clients or object-specific branches to shared routes. Use additions for light customization and an
+ordinary React page with `pageComponent` for a distinct workflow; the escalation page in
+`modules/support-engineering/ui` is one. [Model UI](model-ui.md) describes what the default pages
+already provide.
 
-## Tests and PostgreSQL
+## Seeds
 
-```sh
-pnpm --filter @company/sales test
-pnpm --filter @company/marketing test
-pnpm --filter @company/engineering test
+`seeds/index.ts` exports explicitly invoked fixture builders such as `seedSalesDemo`, written with
+the same `Records` writers as production code. A seed may compose another module's `seeds/index.ts`
+and return the ids a scenario needs. The shell owns scenarios in `app/seeds/`, selects volume, and
+links records across modules with `linkSeedRecords`. Nothing seeds on import or on startup.
+
+## Register the module
+
+1. `app.model.ts`: add the module to `defineModel({ modules })`. This changes the storage
+   projection; follow the [database workflow](runbooks/database.md).
+2. `app.server.ts`: add its `defineModuleServer` result when it has custom operations.
+3. `app.ui.ts`: add its `defineModuleUi` result.
+4. `app.config.ts`: add its id to `enabledModules` when the UI, API, and MCP should expose it. The
+   list must be closed under dependencies; startup names any missing module.
+
+Missing dependencies, duplicate ids, invalid layout mappings, and conflicting tabs fail during
+composition, not at request time.
+
+## Test a module alone
+
+Compose only the module and the modules it depends on, then use `testFoundation` from
+`#/runtime/testing/foundation.ts`:
+
+```ts
+const model = defineModel({
+  name: "Engineering test",
+  modules: [AccessModule, AssetsModule, NotesModule, EngineeringModule],
+})
+const fixture = await testFoundation(model)
+// Effect.provide(fixture.layer) supplies Database, Records, Links, Authorization,
+// EventJournal, and initialized system records against an isolated PostgreSQL database.
+await fixture.dispose()
 ```
 
-Modules are testable without the app. Compose only their declared model dependencies, initialize
-the model's SQL projection, and provide `foundationLayer` when testing governed behavior. Supply
-test layers only for actual external providers. Pure rules and rendering need no database.
-
-`@company/runtime/testing` creates isolated databases and scoped clones from caller-supplied DDL or
-an initializer. Tests require a PostgreSQL role with `CREATEDB`; `DATABASE_URL` selects the connection
-(default `postgresql://localhost:5432/postgres`). The configured database is never truncated.
-`@company/runtime/testing/foundation` supplies `testFoundation(model)`: real authorization, writers,
-events, initialized system records, and isolated scoped databases. Dispose the template after the suite.
-The Sales test uses the real Access services and event journal. App tests cover transport assembly,
-identity adapters, and cross-module workflows.
-
-## Migrations and seeds
-
-The composed application owns one migration sequence. Module definitions feed the shared SQL
-projection; the app's baseline includes precisely the installed model. This template regenerates
-its initial baseline instead of preserving disposable migration history. Customized deployments
-with durable data own their subsequent explicit SQL migrations.
-
-Module seed helpers provide domain data through the same model and storage APIs. The app selects
-the scenario and volume; fixtures never import the app. Keep test initialization explicit rather
-than seeding automatically when a module is imported.
-
-## Static application composition
-
-`app.model.ts` exports the one installed `Model`; `company-os/model` exposes that same portable
-value to optional interfaces. It contains Access and Assets by default. Register business modules
-in source, with their custom implementations in `app.server.ts` and presentation in `app.ui.ts`.
-There are no environment-selected module profiles. Package dependencies make imports available;
-the model derives each module's dependencies from the types and links it references and fails
-when an enabled module depends on one that is not enabled.
-
-Reusable domains belong in `modules/<domain>` packages. Bespoke domains may stay under the app's
-`src/modules/<domain>` with the same surface folders. Extract a package when another app or fork
-needs a stable boundary; do not require publication to npm. All these sources remain editable.
-
-A cross-domain integration is a module of its own when either side remains useful independently.
-The app-owned Support–Engineering bridge owns its link, escalation receipt, custom Action, and
-React page. Support alone does not import Engineering. See [dogfooding](dogfooding.md).
-
-`src/examples` contains explicit test compositions and demo scenarios. Production roots do not
-import the full fixture model. Module `/seeds` exports own fixture implementations and assets;
-small cross-domain scenarios join their returned IDs. No seed runs on import or normal startup.
+Name PostgreSQL tests `*-database.test.ts`; they run in the `database` Vitest project and need a
+role with `CREATEDB`. Pure rules and rendering use the `unit` project and no database. Test
+authorization with a real invocation (`systemInvocation`, `anonymousInvocation`) rather than a
+mocked service. `modules/engineering/server/model-database.test.ts` verifies a module persists with
+only its declared dependencies; `modules/sales/server/operations-database.test.ts` exercises a
+custom Action end to end.

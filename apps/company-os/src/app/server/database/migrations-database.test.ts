@@ -1,30 +1,40 @@
 import { Effect, Exit } from "effect"
 import * as Migrator from "effect/unstable/sql/Migrator"
 import * as SqlClient from "effect/unstable/sql/SqlClient"
-import { expect, inject, it } from "vitest"
+import { expect, it } from "vitest"
 
-import { itDatabase } from "#/app/server/database/it-database.ts"
-import { applyMigrations } from "#/app/server/database/migrations.ts"
-import { dumpSchema } from "#/app/server/database/schema-dump.ts"
+import { Model } from "#/app.model.ts"
+import {
+  applyMigrations,
+  verifyDatabaseModel,
+} from "#/app/server/database/migrations.ts"
 import { schemaSql } from "#/app/server/database/schema.ts"
-import { TestDatabase } from "#/app/server/database/test-database.ts"
+import { testApplication } from "#/app/server/test-application.ts"
 import { Database } from "#/runtime/server/storage/database.ts"
+import { TestDatabase } from "#/runtime/server/storage/testing.ts"
+import { testDatabase } from "#/runtime/testing/database.ts"
+import { readSchemaCatalog } from "#/runtime/testing/schema-catalog.ts"
+
+const application = testApplication()
+const empty = testDatabase(Model, "")
 
 it("replayed migrations match the declared schema, including indexes, functions, and comments", async () => {
   const declared = await TestDatabase.createTemplate(schemaSql)
   try {
-    const [actual, expected] = await Promise.all([
-      dumpSchema(TestDatabase.url(inject("testDatabaseTemplate"))),
-      dumpSchema(TestDatabase.url(declared)),
+    const [migrated, expected] = await Promise.all([
+      readSchemaCatalog(TestDatabase.url(await application.template())),
+      readSchemaCatalog(TestDatabase.url(declared)),
     ])
-    expect(actual).toBe(expected)
+    expect(migrated.tables.length).toBeGreaterThan(10)
+    expect(migrated).toEqual(expected)
   } finally {
     await TestDatabase.drop(declared)
   }
 })
 
-itDatabase("does not reapply completed migrations", () =>
+application.test("does not reapply completed migrations", () =>
   Effect.gen(function* () {
+    yield* verifyDatabaseModel()
     yield* applyMigrations()
     yield* applyMigrations()
     const { sql } = yield* Database
@@ -35,7 +45,7 @@ itDatabase("does not reapply completed migrations", () =>
   })
 )
 
-itDatabase(
+application.test(
   "rolls back a failing whole-file migration, including function bodies",
   () =>
     Effect.gen(function* () {
@@ -66,4 +76,18 @@ itDatabase(
       to_regprocedure('migration_probe()') as function_name`
       ).toEqual([{ table_name: null, function_name: null }])
     })
+)
+
+empty.test("refuses to start before the committed baseline is applied", () =>
+  Effect.gen(function* () {
+    expect(Exit.isFailure(yield* verifyDatabaseModel().pipe(Effect.exit))).toBe(
+      true
+    )
+    yield* applyMigrations()
+    yield* verifyDatabaseModel()
+    const { sql } = yield* Database
+    expect(yield* sql`select to_regclass('objects')::text as registry`).toEqual(
+      [{ registry: "objects" }]
+    )
+  })
 )

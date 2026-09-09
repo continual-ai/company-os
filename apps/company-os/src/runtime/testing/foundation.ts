@@ -1,40 +1,93 @@
 import { Effect, Layer } from "effect"
 
 import { bootstrapSystemActor } from "#/runtime/access/server/bootstrap.ts"
+import { AccessServer } from "#/runtime/access/server/index.ts"
 import { seedAuthorization } from "#/runtime/access/server/seed.ts"
-import type { ModelCatalog } from "#/runtime/model/index.ts"
-import { foundationLayer } from "#/runtime/server/foundation.ts"
+import { AssetsServer } from "#/runtime/assets/server/index.ts"
+import type { ModelCatalog, ModuleDefinition } from "#/runtime/model/index.ts"
 import { systemInvocation } from "#/runtime/server/invocation-context.ts"
 import { CurrentInvocation } from "#/runtime/server/invocation.ts"
-import { ModelContext } from "#/runtime/server/model-context.ts"
+import type { ModelContext } from "#/runtime/server/model-context.ts"
 import { PageTokens } from "#/runtime/server/page-tokens.ts"
-import { makeSchemaSql } from "#/runtime/server/schema.ts"
-import { Database } from "#/runtime/server/storage/database.ts"
-import { TestDatabase } from "#/runtime/server/storage/testing.ts"
+import { makeServicesLayer } from "#/runtime/server/services.ts"
+import type { Database } from "#/runtime/server/storage/database.ts"
+import {
+  layerTest,
+  testDatabase,
+  type DatabaseInitializer,
+} from "#/runtime/testing/database.ts"
 
-/** Creates an isolated template; each layer scope gets a fresh database with real authorization and event services. */
-export async function testFoundation(model: ModelCatalog) {
-  const template = await TestDatabase.createTemplate(
-    makeSchemaSql(model) +
-      "\ninsert into event_journal_state (id, position) values (1, 0);"
+type ServerContributions = ReadonlyArray<{
+  readonly module: ModuleDefinition
+  readonly implementations: Effect.Effect<object, unknown, unknown>
+  readonly layer: Layer.Layer<never, unknown, unknown>
+}>
+type Servers<C extends ServerContributions> = Parameters<
+  typeof makeServicesLayer<C>
+>[1]
+type KernelServers = readonly [typeof AccessServer, typeof AssetsServer]
+type Services<C extends ServerContributions> = Layer.Success<
+  ReturnType<typeof makeServicesLayer<readonly [...KernelServers, ...C]>>
+>
+
+/** The system actor and built-in roles; operators are granted nothing. */
+const bootstrapAuthorization = bootstrapSystemActor().pipe(
+  Effect.andThen(seedAuthorization())
+)
+
+/** Runs `seed` once per built `services` under the system invocation, alongside the services themselves. */
+export function seededLayer<R, E>(
+  services: Layer.Layer<R | Database | ModelContext, E>,
+  seed: Effect.Effect<
+    unknown,
+    unknown,
+    R | Database | ModelContext | CurrentInvocation
+  > = bootstrapAuthorization
+) {
+  return Layer.merge(
+    services,
+    Layer.effectDiscard(
+      seed.pipe(Effect.provideService(CurrentInvocation, systemInvocation))
+    ).pipe(Layer.provide(services))
   )
-  const database = Database.layer.pipe(
-    Layer.provideMerge(ModelContext.layer(model)),
-    Layer.provide(TestDatabase.layer(template))
-  )
-  const services = foundationLayer(model, {
-    database,
+}
+
+/**
+ * The kernel's execution foundation over an isolated database: standard services
+ * for every object in `model`, the kernel module servers, the given module
+ * servers, and a seeded system actor. Every custom action in `model` needs a
+ * server. Call at test-file top level; `test` runs each case on a fresh clone
+ * under the system invocation.
+ */
+export function testFoundation<
+  M extends ModelCatalog,
+  const C extends ServerContributions = readonly [],
+>(
+  model: M,
+  options: {
+    readonly servers?: Servers<C>
+    readonly initialize?: DatabaseInitializer
+    readonly seed?: Effect.Effect<
+      unknown,
+      unknown,
+      Services<C> | CurrentInvocation
+    >
+  } = {}
+) {
+  const fixture = testDatabase(model, options.initialize)
+  // SAFETY: `servers` was checked against the foundation at the call site and
+  // the kernel servers require only the foundation, so the merged tuple has no
+  // unmet operation services.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  const contributions = [
+    AccessServer,
+    AssetsServer,
+    ...(options.servers ?? []),
+  ] as unknown as Servers<readonly [...KernelServers, ...C]>
+  const services = makeServicesLayer(model, contributions, {
+    database: fixture.database,
     pageTokens: PageTokens.layerTest,
   })
-  const initialize = Layer.effectDiscard(
-    bootstrapSystemActor().pipe(
-      Effect.andThen(seedAuthorization()),
-      Effect.provideService(CurrentInvocation, systemInvocation)
-    )
-  ).pipe(Layer.provide(services))
-  return {
-    database,
-    layer: Layer.merge(services, initialize),
-    dispose: () => TestDatabase.drop(template),
-  }
+  const layer = seededLayer(services, options.seed)
+  return { ...fixture, services, layer, test: layerTest(layer) }
 }

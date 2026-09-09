@@ -13,12 +13,6 @@ export interface TestDatabaseTemplate {
   readonly databaseName: string
 }
 
-declare module "vitest" {
-  export interface ProvidedContext {
-    readonly testDatabaseTemplate: TestDatabaseTemplate
-  }
-}
-
 class TestDatabaseError extends Data.TaggedError("TestDatabaseError")<{
   readonly cause: unknown
   readonly message: string

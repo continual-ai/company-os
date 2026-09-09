@@ -1,28 +1,46 @@
-import { Effect, Layer } from "effect"
+import { Effect } from "effect"
 import { expect } from "vitest"
 
-import {
-  ModelImplementation,
-  makeApplicationServicesLayer,
-} from "#/app/server/application-services.ts"
-import { itDatabase } from "#/app/server/database/it-database.ts"
-import { seedSystem } from "#/app/server/seeds/seed-system.ts"
-import {
-  anonymousInvocation,
-  systemInvocation,
-} from "#/runtime/server/invocation-context.ts"
+import { EngineeringModule } from "#/modules/engineering/model/index.ts"
+import { NotesModule } from "#/modules/notes/model/index.ts"
+import { SalesModule } from "#/modules/sales/model/index.ts"
+import { SalesServer } from "#/modules/sales/server/index.ts"
+import { SupportEngineeringModule } from "#/modules/support-engineering/model/index.ts"
+import { SupportEngineeringServer } from "#/modules/support-engineering/server/index.ts"
+import { SupportModule } from "#/modules/support/model/index.ts"
+import { AccessModule } from "#/runtime/access/model/index.ts"
+import { AssetsModule } from "#/runtime/assets/model/index.ts"
+import { defineModel } from "#/runtime/model/index.ts"
+import { anonymousInvocation } from "#/runtime/server/invocation-context.ts"
 import { CurrentInvocation } from "#/runtime/server/invocation.ts"
-import { PageTokens } from "#/runtime/server/page-tokens.ts"
+import { modelImplementation } from "#/runtime/server/model/implementation.ts"
 import { CommittedChanges } from "#/runtime/server/storage/committed-changes.ts"
 import { Database } from "#/runtime/server/storage/database.ts"
+import { testFoundation } from "#/runtime/testing/foundation.ts"
 
-itDatabase(
+const model = defineModel({
+  name: "Support engineering test",
+  modules: [
+    AccessModule,
+    AssetsModule,
+    NotesModule,
+    SalesModule,
+    SupportModule,
+    EngineeringModule,
+    SupportEngineeringModule,
+  ],
+})
+const fixture = testFoundation(model, {
+  servers: [SalesServer, SupportEngineeringServer],
+})
+const implementation = modelImplementation(model)
+
+fixture.test(
   "escalates once under concurrent retries and preserves authorization and atomic rollback",
-  Effect.fn(function* () {
-    const database = yield* Database
-    yield* seedSystem().pipe(Effect.provide(PageTokens.layerTest))
-    yield* Effect.gen(function* () {
-      const { services } = yield* ModelImplementation
+  () =>
+    Effect.gen(function* () {
+      const database = yield* Database
+      const { services } = yield* implementation
       const ticket = yield* services.ticket.create({
         subject: "Export drops attachments",
         description: "Customer export is missing files.",
@@ -95,14 +113,5 @@ itDatabase(
       ).toEqual([{ count: 1 }])
       yield* services.escalation.createIssue({ ticket: rollback.id })
       expect((yield* services.issue.list({})).totalSize).toBe(2)
-    }).pipe(
-      Effect.provide(
-        makeApplicationServicesLayer({
-          database: Layer.succeed(Database, database),
-          pageTokens: PageTokens.layerTest,
-        })
-      ),
-      Effect.provideService(CurrentInvocation, systemInvocation)
-    )
-  })
+    })
 )

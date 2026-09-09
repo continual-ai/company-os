@@ -13,10 +13,12 @@
     "dev": "turbo run dev --filter=\"./apps/*\"",
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
+    "kernel:drift": "tsx tools/kernel-drift.ts",
     "lint": "turbo run lint",
     "prepare": "effect-tsgo patch --no-typescript --oxlint",
     "reset": "turbo run reset --filter=\"./apps/*\"",
-    "test": "turbo run test"
+    "test": "turbo run test",
+    "upstream:merge": "git fetch upstream && git merge upstream/main"
   },
   "devDependencies": {
     "@continual/cli": "catalog:",

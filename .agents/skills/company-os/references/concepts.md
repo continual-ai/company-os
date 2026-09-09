@@ -49,7 +49,7 @@ These meanings help discussion; they do not require corresponding framework type
 | Operating model | The business meaning and policy a company actually runs on |
 | Object | A durable business type; a record is one stored instance |
 | Capability | Something an authorized person, app, integration, or agent can do |
-| Module | A possible way to organize related source or navigation; its effect on API, storage, policy, and deployment is deliberately undecided |
+| Module | A cohesive business capability in one source directory, always composed and migrated; the enabled list decides whether the UI, API, and MCP expose it |
 | App | An executable interface over company capabilities, often spanning several business concerns |
 | Document | Knowledge with identity, provenance, and access rules |
 | Skill | Source-owned instructions for performing work |
