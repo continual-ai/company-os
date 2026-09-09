@@ -6,6 +6,7 @@ import {
   CommandItem,
   CommandList,
 } from "@company/ui/command"
+import { DateTime } from "@company/ui/date-time"
 import { Input } from "@company/ui/input"
 import { cn } from "@company/ui/lib/utils"
 import { Popover, PopoverContent, PopoverTrigger } from "@company/ui/popover"
@@ -222,7 +223,13 @@ function TextCell({
           : undefined
       }
     >
-      {displayIdentity !== undefined ? (
+      {(type === "date" || type === "timestamp") && externalValue.length > 0 ? (
+        <DateTime
+          className="min-w-0 truncate"
+          value={externalValue}
+          kind={type === "date" ? "date" : "datetime"}
+        />
+      ) : displayIdentity !== undefined ? (
         <ObjectRecordIdentity
           {...displayIdentity}
           resolveImageSrc={resolveImageSrc}

@@ -1,3 +1,4 @@
+import { DateTime } from "@company/ui/date-time"
 import type { ReactNode } from "react"
 
 import { AssetPreviews } from "#/runtime/assets/ui/asset-preview.tsx"
@@ -75,6 +76,18 @@ export function objectPropertyValue(
     })
     return (
       <AssetPreviews references={assets} image={fileSchema.kind === "image"} />
+    )
+  }
+  if (
+    schema.kind === "string" &&
+    (schema.format === "date" || schema.format === "timestamp") &&
+    typeof value === "string"
+  ) {
+    return (
+      <DateTime
+        value={value}
+        kind={schema.format === "date" ? "date" : "datetime"}
+      />
     )
   }
   if (schema.kind === "enum" && typeof value === "string") {

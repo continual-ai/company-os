@@ -14,18 +14,6 @@ export type ObjectTableCellEditingChange = (editing: boolean) => void
 export type ObjectTableCellSaveStatus = "error" | "idle" | "saved" | "saving"
 
 const numberFormatter = new Intl.NumberFormat("en-US")
-const dateFormatter = new Intl.DateTimeFormat("en-US", {
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-})
-const timestampFormatter = new Intl.DateTimeFormat("en-US", {
-  day: "numeric",
-  hour: "numeric",
-  minute: "2-digit",
-  month: "short",
-  year: "numeric",
-})
 
 export function objectTableCellInputValue(value: ObjectTableValue): string {
   if (value === null || value === "") return ""
@@ -55,14 +43,6 @@ export function formatObjectTableCellText(
   if (type === "number" && fallback.length > 0) {
     const number = Number(fallback)
     if (Number.isFinite(number)) return numberFormatter.format(number)
-  }
-  if (type === "date" && fallback.length > 0) {
-    const date = new Date(`${fallback}T00:00:00`)
-    if (!Number.isNaN(date.getTime())) return dateFormatter.format(date)
-  }
-  if (type === "timestamp" && fallback.length > 0) {
-    const date = new Date(fallback)
-    if (!Number.isNaN(date.getTime())) return timestampFormatter.format(date)
   }
   if (type === "phone" && fallback.length > 0) {
     return formatPhoneNumberForDisplay(fallback)

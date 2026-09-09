@@ -30,6 +30,7 @@ import { Textarea } from "@company/ui/textarea"
 import { LoaderCircleIcon, PlusIcon } from "lucide-react"
 import { useState } from "react"
 
+import { dateTimePage } from "#/app/ui/developer/design-system/date-time-examples.tsx"
 import {
   Example,
   type ComponentSection,
@@ -38,6 +39,7 @@ import { switchPage } from "#/app/ui/developer/design-system/switch-examples.tsx
 
 export const controlSections: ReadonlyArray<ComponentSection> = [
   switchPage,
+  dateTimePage,
   {
     id: "button",
     title: "Button",
