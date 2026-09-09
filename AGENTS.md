@@ -34,12 +34,12 @@ apps/company-os/src/
   app.config.ts   appMetadata and enabledModules: deployment identity and exposed modules
   app.server.ts   custom operation contributions
   app.ui.ts       presentation contributions
-templates/base/   the one starter for an optional app; it imports company-os/* only
-tools/            create-app, the oxlint plugin
+apps/client-portal/  a satellite app over the central app's exports; delete or copy it
+tools/            the oxlint plugin and kernel-drift
 ```
 
-A package is a deploy unit. `apps/*` and `templates/*` are workspace packages; the kernel and the
-modules are directories. Do not add packages for code that ships inside the app.
+A package is a deploy unit. `apps/*` are workspace packages; the kernel and the modules are
+directories. Do not add packages for code that ships inside the app.
 
 Every module is composed in `app.model.ts` and its tables always migrate. Persistence, cascades,
 integrity, and the event journal always run on that complete model. `app.config.ts` lists the
@@ -80,11 +80,13 @@ re-exports are allowed only from the registered entrypoints: `runtime/model/inde
   `**/server/**`, `**/seeds/**`, or `runtime/testing/**`. Vite import protection is the transitive
   check.
 
-Optional apps import `company-os/model`, `company-os/client`, `company-os/config`,
-`company-os/ui/*`, and `company-os/styles.css` only. They call the central app from server code
-through `createClient` and forward the hosting platform's identity headers; no app mints identity.
-Those package exports are the public surface of the central app; `runtime/client/create-client.ts`
-must stay free of React, TanStack, and the app shell so that surface remains portable.
+Apps form a hub and spokes. `apps/company-os` is the hub; every other app is a satellite that
+imports `company-os/model`, `company-os/client`, `company-os/config`, `company-os/ui/*`, and
+`company-os/styles.css` only, never another satellite, and never the hub's internals. Satellites
+call the central app from server code through `createClient` and forward the hosting platform's
+identity headers; no app mints identity. Those package exports are the hub's public surface; keep
+the list short, and keep `runtime/client/create-client.ts` free of React, TanStack, and the app
+shell so the surface stays portable. Anything outside this repository uses OpenAPI or MCP.
 
 ## Modules
 

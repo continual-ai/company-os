@@ -38,7 +38,7 @@ const expectedDiagnostics: Record<string, Record<string, number>> = {
     [IMPORT_BOUNDARIES]: 9,
     [NO_INTERNAL_REEXPORTS]: 1,
   },
-  "apps/company-os/src/imports-template.ts": { [IMPORT_BOUNDARIES]: 2 },
+  "apps/company-os/src/imports-satellite.ts": { [IMPORT_BOUNDARIES]: 2 },
   "apps/company-os/src/runtime/model/imports-server.ts": {
     [IMPORT_BOUNDARIES]: 3,
   },
@@ -78,7 +78,7 @@ const expectedDiagnostics: Record<string, Record<string, number>> = {
   },
   "apps/company-os/src/app/ui/imports-server.tsx": { [IMPORT_BOUNDARIES]: 2 },
   "apps/company-os/src/routes/imports-server.tsx": { [IMPORT_BOUNDARIES]: 1 },
-  "templates/base/src/imports-central-internals.tsx": {
+  "apps/client-portal/src/imports-central-internals.tsx": {
     [IMPORT_BOUNDARIES]: 2,
   },
 }

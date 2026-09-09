@@ -5,8 +5,10 @@ import type { ESTree } from "@oxlint/plugins"
 
 const CENTRAL_APP_SOURCE = /(?:^|\/)apps\/company-os\/src\/(.+)$/
 const CENTRAL_APP_PACKAGE = "company-os"
-const TEMPLATE_PACKAGE_SCOPE = "@company-template/"
-const TEMPLATE_ALLOWED_CENTRAL_IMPORTS = new Set([
+/** Every workspace app other than the central one is a satellite over its exports. */
+const SATELLITE_APP = /(?:^|\/)apps\/(?!company-os\/)[^/]+\//
+const APP_PACKAGE_SCOPE = "@company/"
+const SATELLITE_ALLOWED_CENTRAL_IMPORTS = new Set([
   "company-os/client",
   "company-os/config",
   "company-os/model",
@@ -217,8 +219,8 @@ function browserReason(specifier: string): string | null {
 }
 
 function centralAppReason(role: SourceRole, specifier: string): string | null {
-  if (specifier.startsWith(TEMPLATE_PACKAGE_SCOPE))
-    return "The central app cannot depend on optional app templates."
+  if (specifier.startsWith(APP_PACKAGE_SCOPE))
+    return "The central app cannot depend on satellite apps; they depend on it."
   if (isPackage(specifier, CENTRAL_APP_PACKAGE))
     return "Use #/ for private imports inside the central app instead of its package name."
   return (
@@ -230,15 +232,15 @@ function centralAppReason(role: SourceRole, specifier: string): string | null {
   )
 }
 
-function templateReason(specifier: string): string | null {
-  if (specifier.startsWith(TEMPLATE_PACKAGE_SCOPE))
-    return "Optional apps are independent deployables and cannot import one another."
+function satelliteReason(specifier: string): string | null {
+  if (specifier.startsWith(APP_PACKAGE_SCOPE))
+    return "Satellite apps are independent deployables and cannot import one another."
   if (
     isPackage(specifier, CENTRAL_APP_PACKAGE) &&
-    !TEMPLATE_ALLOWED_CENTRAL_IMPORTS.has(specifier) &&
+    !SATELLITE_ALLOWED_CENTRAL_IMPORTS.has(specifier) &&
     !specifier.startsWith("company-os/ui/")
   )
-    return "Optional apps consume the central app only through company-os/model, company-os/client, company-os/config, company-os/ui/*, and company-os/styles.css."
+    return "Satellite apps consume the central app only through company-os/model, company-os/client, company-os/config, company-os/ui/*, and company-os/styles.css."
   return null
 }
 
@@ -246,8 +248,7 @@ function boundaryReason(filename: string, specifier: string): string | null {
   const sourcePath = centralAppSourcePath(filename)
   if (sourcePath !== null)
     return centralAppReason(sourceRole(sourcePath), specifier)
-  if (/(?:^|\/)templates\/[^/]+\//.test(normalize(filename)))
-    return templateReason(specifier)
+  if (SATELLITE_APP.test(normalize(filename))) return satelliteReason(specifier)
   return null
 }
 

@@ -5,7 +5,6 @@
   "license": "Apache-2.0",
   "type": "module",
   "scripts": {
-    "app:create": "tsx tools/create-app.ts",
     "build": "turbo run build",
     "check": "turbo run lint typecheck db:check model:check format:check deadcode",
     "db:seed": "turbo run db:seed --filter=company-os --",

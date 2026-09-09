@@ -99,10 +99,12 @@ delivery authorizes access to the Asset on every request, completed content is i
 transactional reference index prevents deleting an asset that a record still uses. Attaching a file
 does not change its ownership scope or grant another principal access to it.
 
-## Optional apps
+## Satellite apps
 
-`templates/base` is the starter for a separate interface such as a portal. A copy imports
+Every other workspace app is a satellite over the central one: a hub-and-spoke shape, never a web.
+`apps/client-portal` is the shipped example, a customer-facing interface that imports
 `company-os/model`, `company-os/client`, `company-os/config`, `company-os/ui/*`, and
-`company-os/styles.css` only. Its server functions call the central app through `createClient`,
-pointed at `COMPANY_OS_URL` and forwarding the hosting platform's identity headers. It is not a
-second business authority. See the [base starter](../templates/base/README.md).
+`company-os/styles.css` only, never another satellite. Its server functions call the central app
+through `createClient`, pointed at `COMPANY_OS_URL` and forwarding the hosting platform's identity
+headers. It is not a second business authority. A company deletes the directory when it has no
+portal and copies it to start another satellite. See the [portal](../apps/client-portal/README.md).

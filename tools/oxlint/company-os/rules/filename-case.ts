@@ -18,7 +18,7 @@ const TANSTACK_DYNAMIC_ROUTE =
 const NUMBERED_MIGRATION =
   /[\\/]migrations[\\/]\d+_[a-z0-9]+(?:-[a-z0-9]+)*\.[cm]?tsx?$/
 const RESERVED_START_ENTRYPOINT =
-  /[\\/](?:apps|templates)[\\/][^\\/]+[\\/]src[\\/](?:client|server|start)\.[cm]?[jt]sx?$/
+  /[\\/]apps[\\/][^\\/]+[\\/]src[\\/](?:client|server|start)\.[cm]?[jt]sx?$/
 
 function sourceName(filename: string): string {
   const basename = filename.split(/[\\/]/).at(-1) ?? filename

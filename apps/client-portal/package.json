@@ -1,5 +1,5 @@
 {
-  "name": "@company-template/base",
+  "name": "@company/client-portal",
   "version": "0.0.0",
   "private": true,
   "license": "Apache-2.0",
@@ -8,9 +8,11 @@
     "#/*": "./src/*"
   },
   "scripts": {
-    "build": "vite build --mode template",
+    "build": "vite build",
     "deploy": "continual deploy",
+    "dev": "vite dev --port 3001 --host 0.0.0.0",
     "lint": "oxlint .",
+    "preview": "pnpm build && vite preview --port 3101 --host 0.0.0.0",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -30,7 +32,7 @@
     "vite": "catalog:"
   },
   "continual": {
-    "key": "base",
-    "name": "Base"
+    "key": "client-portal",
+    "name": "Client Portal"
   }
 }

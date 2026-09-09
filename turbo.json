@@ -10,7 +10,7 @@
     "//#format:check": {},
     "build": {
       "dependsOn": ["^build"],
-      "env": ["VITE_CLIENT_PORTAL_URL", "VITE_APP_URL"],
+      "env": ["VITE_APP_URL"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
       "outputs": [".output/**", "dist/**", "!dist/**/.dev.vars"]
     },
@@ -29,7 +29,7 @@
     "test": {},
     "dev": {
       "cache": false,
-      "env": ["VITE_CLIENT_PORTAL_URL", "VITE_APP_URL"],
+      "env": ["VITE_APP_URL"],
       "passThroughEnv": [
         "APP_SECRET",
         "AUTH_*",

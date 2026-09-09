@@ -23,7 +23,7 @@ not depend on the publisher.
 | `APP_SECRET`               | Deployment secret of at least 32 bytes; never the local example value     |
 | `VITE_APP_URL`             | Public origin compiled into the UI and used for canonical URLs            |
 
-An optional app created from `templates/base` sets `COMPANY_OS_URL` to the central app's origin and
+A satellite app such as `apps/client-portal` sets `COMPANY_OS_URL` to the central app's origin and
 forwards the platform's identity headers on every call; development defaults to the central app's
 dev port.
 

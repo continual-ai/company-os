@@ -127,9 +127,9 @@ enabled modules, then build your operation in `apps/company-os/src/modules`. The
 > owners, blockers, and launch dates. Let an agent prepare follow-ups, with a person approving
 > anything sent to a customer. Build one working operation through the UI and API.
 
-Need a separate portal or public site? `pnpm app:create base vendor-portal` copies the
-[base starter](templates/base/README.md), which consumes the central app's model and governed API.
-See [deployment](docs/runbooks/deployment.md) for production builds and identity.
+`apps/client-portal` is a satellite app for customers over the central app's model and governed
+API; delete it if you have no portal, or copy it to start another. See
+[deployment](docs/runbooks/deployment.md) for production builds and identity.
 
 ## Development
 
