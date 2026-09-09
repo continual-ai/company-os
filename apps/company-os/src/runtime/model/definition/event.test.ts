@@ -1,13 +1,11 @@
 import { expect, it } from "vitest"
 
-import { Root } from "#/runtime/access/model/root.ts"
 import { defineEvent } from "#/runtime/model/definition/event.ts"
 import { defineObject } from "#/runtime/model/definition/object.ts"
 import { schema } from "#/runtime/model/definition/schema.ts"
 
 const Ticket = defineObject({
   id: "ticket",
-  parent: Root,
   collection: "tickets",
   name: "Ticket",
   pluralName: "Tickets",

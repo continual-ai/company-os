@@ -1,4 +1,10 @@
+export { Actor } from "#/runtime/model/core/actor.ts"
+export type { ActorId } from "#/runtime/model/core/actor.ts"
+export { AuthorizationScope } from "#/runtime/model/core/authorization-scope.ts"
+export { Root } from "#/runtime/model/core/root.ts"
+export type { RootType } from "#/runtime/model/core/root.ts"
 export { defineEvent } from "#/runtime/model/definition/event.ts"
+export type { EventType } from "#/runtime/model/definition/event.ts"
 
 export type {
   Action,
@@ -52,10 +58,12 @@ export type {
   ModelObjectRef,
   ModelLinkTraversal,
   LinkDirection,
-  ModelObjectCreateInput,
-  ModelObjectUpdateInput,
   RecordIdOf,
 } from "#/runtime/model/definition/model.ts"
+export type {
+  ModelObjectCreateInput,
+  ModelObjectUpdateInput,
+} from "#/runtime/model/definition/model-input.ts"
 export { defineModule } from "#/runtime/model/definition/module.ts"
 export type { ModuleDefinition } from "#/runtime/model/definition/module.ts"
 export {
@@ -86,8 +94,6 @@ export type {
   ObjectUpdateInput,
   ObjectWriterUpdateInput,
 } from "#/runtime/model/definition/object.ts"
-export { defineRoot } from "#/runtime/model/definition/root.ts"
-export type { RootType } from "#/runtime/model/definition/root.ts"
 export {
   queryKey,
   standardQueries,

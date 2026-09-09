@@ -1,12 +1,9 @@
-import { Actor } from "#/runtime/access/model/interfaces/actor.ts"
-import { Root } from "#/runtime/access/model/root.ts"
-import { defineObject, schema } from "#/runtime/model/index.ts"
+import { defineObject, schema, Actor } from "#/runtime/model/index.ts"
 
 export const AnonymousActor = defineObject({
   id: "anonymousActor",
   collection: "anonymousActors",
   name: "Anonymous actor",
-  parent: Root,
   pluralName: "Anonymous actors",
   description: "Identifies activity from visitors who are not signed in.",
   actions: { create: false, delete: false, update: false },

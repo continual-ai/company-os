@@ -18,7 +18,6 @@ import {
   type ObjectUpdateInput,
   type ObjectWriterUpdateInput,
 } from "#/runtime/model/definition/object.ts"
-import { defineRoot } from "#/runtime/model/definition/root.ts"
 import {
   RecordAlias,
   RecordId,
@@ -31,13 +30,11 @@ import {
 } from "#/runtime/model/definition/schema.ts"
 
 const AccountId = RecordId("account")
-const Root = defineRoot({ id: "root", name: "Root" })
 
 const Account = defineObject({
   id: "account",
   collection: "accounts",
   name: "Account",
-  parent: Root,
   pluralName: "Accounts",
   properties: {
     logo: schema.image({ aspectRatio: 1, nullable: true }),

@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router"
 import { ArrowUpRightIcon } from "lucide-react"
 
-import type { NoteObject } from "#/modules/notes/model/index.ts"
+import type { Note } from "#/modules/notes/model/index.ts"
 import { Markdown } from "#/runtime/ui/components/markdown.tsx"
 import type { RecordSummaryProps, RecordUiProps } from "#/runtime/ui/module.ts"
 import { RecordAttribution } from "#/runtime/ui/module.ts"
@@ -12,7 +12,7 @@ export function NoteSummary({
   href,
   variant,
   actions,
-}: RecordSummaryProps<NoteObject>) {
+}: RecordSummaryProps<typeof Note>) {
   return (
     <article className="min-w-0 flex-1 space-y-3">
       <header className="flex items-start justify-between gap-2">
@@ -35,7 +35,7 @@ export function NoteSummary({
   )
 }
 
-export function NoteOverview({ record, author }: RecordUiProps<NoteObject>) {
+export function NoteOverview({ record, author }: RecordUiProps<typeof Note>) {
   return (
     <section className="mb-6 max-w-3xl space-y-4">
       <RecordAttribution record={record} author={author} />

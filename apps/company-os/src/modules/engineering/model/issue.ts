@@ -1,7 +1,11 @@
 import { Project } from "#/modules/engineering/model/project.ts"
 import { NoteSubject } from "#/modules/notes/model/index.ts"
-import { AuthorizationScope, Root, User } from "#/runtime/access/model/index.ts"
-import { defineObject, schema } from "#/runtime/model/index.ts"
+import { User } from "#/runtime/access/model/index.ts"
+import {
+  defineObject,
+  schema,
+  AuthorizationScope,
+} from "#/runtime/model/index.ts"
 
 export const Issue = defineObject({
   id: "issue",
@@ -9,7 +13,6 @@ export const Issue = defineObject({
   name: "Issue",
   pluralName: "Issues",
   description: "A bug, request, or task to investigate and resolve.",
-  parent: Root,
   implements: [{ interface: AuthorizationScope }, { interface: NoteSubject }],
   properties: {
     title: schema.string({ label: "Title", minLength: 1, maxLength: 300 }),

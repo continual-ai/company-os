@@ -7,7 +7,6 @@ import { defineInterface } from "#/runtime/model/definition/interface.ts"
 import { defineModel } from "#/runtime/model/definition/model.ts"
 import { defineModule } from "#/runtime/model/definition/module.ts"
 import { defineObject } from "#/runtime/model/definition/object.ts"
-import { defineRoot } from "#/runtime/model/definition/root.ts"
 import { schema } from "#/runtime/model/definition/schema.ts"
 import { createApiReference } from "#/runtime/server/http.ts"
 
@@ -23,17 +22,11 @@ const Identity = defineInterface({
   name: "Identity",
   pluralName: "Identities",
 })
-const Root = defineRoot({
-  id: "root",
-  implements: [{ interface: Identity }],
-  name: "Root",
-})
 
 const Account = defineObject({
   id: "account",
   collection: "accounts",
   name: "Account",
-  parent: Root,
   pluralName: "Accounts",
   properties: {
     email: schema.email(),
@@ -69,7 +62,6 @@ const Account = defineObject({
 })
 
 const Example = defineModel({
-  actor: Identity,
   modules: [
     defineModule({
       id: "accounts",
@@ -80,7 +72,6 @@ const Example = defineModel({
     }),
   ],
   name: "Example",
-  root: Root,
 })
 
 const httpApi = createModelHttpApi(Example)
@@ -195,13 +186,11 @@ describe("Effect HTTP projection", () => {
       id: "deletable",
       collection: "deletables",
       name: "Deletable",
-      parent: Root,
       pluralName: "Deletables",
       properties: { name: schema.string() },
       display: { title: "name" },
     })
     const model = defineModel({
-      actor: Identity,
       modules: [
         defineModule({
           id: "deletables",
@@ -212,7 +201,6 @@ describe("Effect HTTP projection", () => {
         }),
       ],
       name: "Batch delete example",
-      root: Root,
     })
     const batchDocument = OpenApi.fromApi(createModelHttpApi(model))
 

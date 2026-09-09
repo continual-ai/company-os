@@ -1,6 +1,6 @@
 import { NoteSubject } from "#/modules/notes/model/index.ts"
 import { Company, Contact } from "#/modules/sales/model/index.ts"
-import { Root, User } from "#/runtime/access/model/index.ts"
+import { User } from "#/runtime/access/model/index.ts"
 import { defineObject, schema } from "#/runtime/model/index.ts"
 
 export const Ticket = defineObject({
@@ -9,7 +9,6 @@ export const Ticket = defineObject({
   name: "Ticket",
   pluralName: "Tickets",
   description: "A customer request or problem to investigate and resolve.",
-  parent: Root,
   implements: [{ interface: NoteSubject }],
   properties: {
     subject: schema.string({ label: "Subject", maxLength: 300, minLength: 1 }),

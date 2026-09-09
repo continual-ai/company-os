@@ -2,8 +2,6 @@ import { Context, Effect, Layer } from "effect"
 import { expect, it } from "vitest"
 
 import { AccessModule } from "#/runtime/access/model/index.ts"
-import { Actor } from "#/runtime/access/model/interfaces/actor.ts"
-import { Root } from "#/runtime/access/model/root.ts"
 import {
   defineModel,
   defineModule,
@@ -25,7 +23,6 @@ const Item = defineObject({
   collection: "items",
   name: "Item",
   pluralName: "Items",
-  parent: Root,
   properties: { name: schema.string() },
   actions: {
     greet: {
@@ -73,8 +70,6 @@ it("retains custom operation dependencies without creating another container", a
 })
 
 const model = defineModel({
-  actor: Actor,
-  root: Root,
   name: "Provider test",
   modules: [AccessModule, Module],
 })

@@ -3,10 +3,12 @@
 import type { Effect } from "effect"
 
 import { type Action } from "#/runtime/model/definition/action.ts"
+import type {
+  ModelObjectCreateInput,
+  ModelObjectUpdateInput,
+} from "#/runtime/model/definition/model-input.ts"
 import {
   type ModelCatalog,
-  type ModelObjectCreateInput,
-  type ModelObjectUpdateInput,
   modelObjects,
 } from "#/runtime/model/definition/model.ts"
 import type { ObjectType } from "#/runtime/model/definition/object.ts"

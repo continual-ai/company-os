@@ -1,11 +1,9 @@
-import { Root } from "#/runtime/access/model/root.ts"
 import { defineObject, schema } from "#/runtime/model/index.ts"
 
 export const Role = defineObject({
   id: "role",
   collection: "roles",
   name: "Role",
-  parent: Root,
   pluralName: "Roles",
   description: "The actions someone can perform when given this role.",
   actions: { create: false, delete: false, update: false },

@@ -1,7 +1,7 @@
 import { Campaign } from "#/modules/marketing/model/campaign.ts"
 import { NoteSubject } from "#/modules/notes/model/index.ts"
 import { Contact } from "#/modules/sales/model/index.ts"
-import { Root, User } from "#/runtime/access/model/index.ts"
+import { User } from "#/runtime/access/model/index.ts"
 import { defineObject, schema } from "#/runtime/model/index.ts"
 
 export const Outreach = defineObject({
@@ -11,7 +11,6 @@ export const Outreach = defineObject({
   pluralName: "Outreach",
   description:
     "Track a message and its delivery status. Saving does not send it.",
-  parent: Root,
   implements: [{ interface: NoteSubject }],
   properties: {
     subject: schema.string({ label: "Subject", maxLength: 300, minLength: 1 }),

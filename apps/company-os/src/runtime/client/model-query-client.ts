@@ -105,7 +105,9 @@ const method = (group: object, name: string) => {
 /** Options are derived once; React and Router consume native TanStack Query APIs. */
 export function createModelQueries<M extends ModelCatalog>(
   model: M,
-  client: ModelClient<M>
+  // The model alone fixes M; inferring it back through the client's mapped
+  // types is unbounded work for the compiler.
+  client: NoInfer<ModelClient<M>>
 ): ModelQueries<M> {
   const mutation = (
     fn: (input: unknown) => Effect.Effect<unknown, unknown>,

@@ -151,7 +151,8 @@ than seeding automatically when a module is imported.
 value to optional interfaces. It contains Access and Assets by default. Register business modules
 in source, with their custom implementations in `app.server.ts` and presentation in `app.ui.ts`.
 There are no environment-selected module profiles. Package dependencies make imports available;
-module `requires` declarations check what the composed model actually installs.
+the model derives each module's dependencies from the types and links it references and fails
+when an enabled module depends on one that is not enabled.
 
 Reusable domains belong in `modules/<domain>` packages. Bespoke domains may stay under the app's
 `src/modules/<domain>` with the same surface folders. Extract a package when another app or fork

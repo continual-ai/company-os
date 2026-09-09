@@ -6,9 +6,9 @@ import {
   defineModel,
   defineModule,
   defineObject,
-  defineRoot,
   type RecordId,
   schema,
+  AuthorizationScope,
 } from "#/runtime/model/index.ts"
 import { makePostgresSchema } from "#/runtime/server/postgres/schema.ts"
 import type { TableRow } from "#/runtime/server/postgres/statement.ts"
@@ -22,31 +22,15 @@ const Identity = defineInterface({
   name: "Identity",
   pluralName: "Identities",
 })
-const Root = defineRoot({
-  id: "root",
-  implements: [{ interface: Identity }],
-  name: "Root",
-})
 
 describe("makePostgresSchema", () => {
   it("projects marker memberships for root and object implementers", () => {
-    const AuthorizationScope = defineInterface({
-      id: "authorizationScope",
-      name: "Authorization scope",
-      pluralName: "Authorization scopes",
-    })
-    const ScopedRoot = defineRoot({
-      id: "root",
-      implements: [{ interface: AuthorizationScope }, { interface: Identity }],
-      name: "Root",
-    })
     const Workspace = defineObject({
       id: "workspace",
       collection: "workspaces",
       display: { title: "name" },
       implements: [{ interface: AuthorizationScope }],
       name: "Workspace",
-      parent: ScopedRoot,
       pluralName: "Workspaces",
       properties: { name: schema.string() },
     })
@@ -55,7 +39,6 @@ describe("makePostgresSchema", () => {
       collection: "permissions",
       display: { title: "name" },
       name: "Permission",
-      parent: ScopedRoot,
       pluralName: "Permissions",
       properties: { name: schema.string() },
       uniqueBy: { name: ["name"] },
@@ -80,18 +63,16 @@ describe("makePostgresSchema", () => {
       },
     })
     const model = defineModel({
-      actor: Identity,
       modules: [
         defineModule({
           id: "scopes",
-          interfaces: [AuthorizationScope, Identity],
+          interfaces: [Identity],
           links: [PermissionScope],
           name: "Scopes",
           objects: [Workspace, Permission],
         }),
       ],
       name: "Scopes",
-      root: ScopedRoot,
     })
 
     const storage = makePostgresSchema(model)
@@ -118,7 +99,6 @@ describe("makePostgresSchema", () => {
       id: "person",
       collection: "people",
       name: "Person",
-      parent: Root,
       pluralName: "People",
       properties: { name: schema.string() },
       display: { title: "name" },
@@ -127,7 +107,6 @@ describe("makePostgresSchema", () => {
       id: "team",
       collection: "teams",
       name: "Team",
-      parent: Root,
       pluralName: "Teams",
       properties: { name: schema.string() },
       display: { title: "name" },
@@ -152,7 +131,6 @@ describe("makePostgresSchema", () => {
       },
     })
     const model = defineModel({
-      actor: Identity,
       modules: [
         defineModule({
           id: "teams",
@@ -163,7 +141,6 @@ describe("makePostgresSchema", () => {
         }),
       ],
       name: "Test",
-      root: Root,
     })
 
     const storage = makePostgresSchema(model)
@@ -190,7 +167,6 @@ describe("makePostgresSchema", () => {
       collection: "people",
       display: { title: "name" },
       name: "Person",
-      parent: Root,
       pluralName: "People",
       properties: { name: schema.string() },
     })
@@ -199,7 +175,6 @@ describe("makePostgresSchema", () => {
       collection: "badges",
       display: { title: "name" },
       name: "Badge",
-      parent: Root,
       pluralName: "Badges",
       properties: { name: schema.string() },
     })
@@ -223,7 +198,6 @@ describe("makePostgresSchema", () => {
       },
     })
     const model = defineModel({
-      actor: Identity,
       modules: [
         defineModule({
           id: "badges",
@@ -234,7 +208,6 @@ describe("makePostgresSchema", () => {
         }),
       ],
       name: "Badges",
-      root: Root,
     })
 
     const storage = makePostgresSchema(model)
@@ -250,13 +223,11 @@ describe("makePostgresSchema", () => {
       id: "collision",
       collection: "objects",
       name: "Collision",
-      parent: Root,
       pluralName: "Collisions",
       properties: { name: schema.string() },
       display: { title: "name" },
     })
     const model = defineModel({
-      actor: Identity,
       modules: [
         defineModule({
           id: "collisions",
@@ -267,7 +238,6 @@ describe("makePostgresSchema", () => {
         }),
       ],
       name: "Test",
-      root: Root,
     })
 
     expect(() => makePostgresSchema(model)).toThrow(
@@ -280,7 +250,6 @@ describe("makePostgresSchema", () => {
       id: "validatedRecord",
       collection: "validatedRecords",
       name: "Validated record",
-      parent: Root,
       pluralName: "Validated records",
       properties: {
         count: schema.number({ maximum: 10, minimum: 1 }),
@@ -296,7 +265,6 @@ describe("makePostgresSchema", () => {
       display: { title: "name" },
     })
     const model = defineModel({
-      actor: Identity,
       modules: [
         defineModule({
           id: "validation",
@@ -307,7 +275,6 @@ describe("makePostgresSchema", () => {
         }),
       ],
       name: "Test",
-      root: Root,
     })
 
     const storage = makePostgresSchema(model)

@@ -1,5 +1,9 @@
-import { AuthorizationScope } from "#/runtime/access/model/index.ts"
-import { defineObject, schema, standardErrors } from "#/runtime/model/index.ts"
+import {
+  defineObject,
+  schema,
+  standardErrors,
+  AuthorizationScope,
+} from "#/runtime/model/index.ts"
 
 /** Durable file identity. Storage keys and bytes stay in the server adapter. */
 export const Asset = defineObject({

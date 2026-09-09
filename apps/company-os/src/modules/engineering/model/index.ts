@@ -6,9 +6,7 @@ import { Repository } from "#/modules/engineering/model/repository.ts"
 import { defineModule } from "#/runtime/model/index.ts"
 export const EngineeringModule = defineModule({
   id: "engineering",
-  requires: ["access", "notes"],
   name: "Engineering",
-  interfaces: [],
   links: [IssuePullRequests],
   objects: [Issue, Project, Repository, PullRequest],
 })

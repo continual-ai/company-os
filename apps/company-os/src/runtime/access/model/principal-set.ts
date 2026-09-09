@@ -1,12 +1,10 @@
 import { Principal } from "#/runtime/access/model/interfaces/principal.ts"
-import { Root } from "#/runtime/access/model/root.ts"
 import { defineObject, schema } from "#/runtime/model/index.ts"
 
 export const PrincipalSet = defineObject({
   id: "principalSet",
   collection: "principalSets",
   name: "Principal set",
-  parent: Root,
   pluralName: "Principal sets",
   description: "A built-in audience, such as everyone or signed-in users.",
   actions: { create: false, delete: false, update: false },

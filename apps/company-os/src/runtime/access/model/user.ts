@@ -1,14 +1,11 @@
-import { Actor } from "#/runtime/access/model/interfaces/actor.ts"
 import { Identity } from "#/runtime/access/model/interfaces/identity.ts"
 import { Principal } from "#/runtime/access/model/interfaces/principal.ts"
-import { Root } from "#/runtime/access/model/root.ts"
-import { defineObject, schema } from "#/runtime/model/index.ts"
+import { defineObject, schema, Actor } from "#/runtime/model/index.ts"
 
 export const User = defineObject({
   id: "user",
   collection: "users",
   name: "User",
-  parent: Root,
   pluralName: "Users",
   description: "Someone who can sign in and use this application.",
   actions: {
