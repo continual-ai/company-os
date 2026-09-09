@@ -16,7 +16,7 @@ agents, and external interfaces on the same governed business capabilities.
 ## Orient to the change
 
 1. Inspect `AGENTS.md`, the current checkout, relevant definitions, services, routes, migrations,
-   tests, and package boundaries. Existing code is evidence of current behavior, not proof that its
+   tests, and the import boundaries between `runtime/`, `modules/`, and `app/`. Existing code is evidence of current behavior, not proof that its
    shape is permanent.
    When `.agents/skills/company-context/SKILL.md` exists, read it for durable company language,
    priorities, sources, and known unknowns relevant to the requested change.
@@ -54,17 +54,21 @@ resolved from the requested outcome and repository.
 
 ## Enabling and disabling behavior
 
-The repository does not yet define a general module lifecycle. When asked to enable, disable, or
-opt into functionality:
+Whole modules are enabled by the list in `apps/company-os/src/app.config.ts`. Removing a module id
+hides its screens, endpoints, and MCP tools together while its tables and data stay; the list must
+stay closed under dependencies. For anything finer than a module:
 
-1. Determine whether the user means hide from the interface, deny invocation, stop runtime work,
-   exclude a definition from a deployment, or retire durable data. These are different operations.
-2. Use an existing truthful boundary when one exists, such as model action settings, authorization,
-   route composition, navigation, or provider configuration.
-3. Do not delete durable definitions or migrations as a substitute for deactivation, and do not
-   leave a hidden API callable while describing the feature as disabled.
-4. Avoid adding a one-off flag matrix. If the request exposes a repeated composition need, describe
-   the smallest reusable contract and confirm its scope before creating a module or plugin kernel.
+1. Determine whether the user means hide from the interface, deny invocation, stop runtime work, or
+   retire durable data. These are different operations.
+2. Use an existing truthful boundary: model action settings, authorization, navigation
+   configuration, or provider configuration.
+3. Do not delete definitions or migrations as a substitute for deactivation, and do not leave an
+   API callable while describing the feature as disabled.
+4. Do not add environment switches or per-feature flag matrices; two deployments with different
+   capabilities are two commits.
+
+Follow the customization ladder in `AGENTS.md`: add a module first, edit a shipped module second,
+edit `runtime/` last and say why in the commit.
 
 ## Verify the complete story
 

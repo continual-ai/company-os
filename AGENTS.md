@@ -1,231 +1,151 @@
 # Working in Company OS
 
-This is the canonical standalone Company OS. It should help turn real business processes into
-software that maintains durable state, enforces rules, and gives people, applications,
-integrations, and agents the same safe actions. Keep it useful without the Continual hosted
-platform.
+Company OS is one application a company clones and owns. It turns real business processes into
+software that keeps durable state, enforces rules, and gives people, integrations, and agents the
+same governed actions. Everything lives in this repository: the kernel, every module, and the shell.
+Nothing is installed from a package registry except third-party libraries.
 
 ## Design posture
 
-The product and architecture are still being designed. Treat code and tests as the authority for
-current behavior, not proof that a design should become permanent. Recommend stronger alternatives
-when a concrete slice provides better evidence.
-
-This is a from-scratch template. Do not preserve earlier template APIs, URLs, data shapes, or
-migration history. Update callers directly, remove replaced paths, and regenerate the initial
-database baseline when the model changes. Do not add redirects, compatibility adapters, or data
-backfills for disposable template data. Customized applications with durable data own their later
-migration lifecycle.
-
-Prefer work that makes one real operation run end to end. Identify the incoming work, desired
+The product is still being designed. Treat code and tests as the authority for current behavior,
+not proof that a design should stay. Recommend stronger alternatives when a concrete slice provides
+better evidence. Prefer work that makes one real operation run end to end: incoming work, desired
 outcome, authoritative records, deterministic rules, places where AI may exercise judgment, human
 decisions, failure behavior, and evidence of success. Do not let the repository collapse into a
 generic CRUD scaffold, a page generator, or an agent-only automation layer.
 
-Keep guidance in the narrowest authoritative place:
+Keep guidance in the narrowest authoritative place. This file holds repository-wide constraints.
+`docs/` explains purpose, boundaries, and workflows. Skills under `.agents/skills` carry product and
+ownership context that code cannot express. Code, types, tests, and generated contracts define
+implementation details. Do not copy inventories of exports, routes, or unfinished features into
+prose; do not add roadmap sections.
 
-- `AGENTS.md` contains repository-wide working constraints.
-- READMEs explain purpose, boundaries, setup, and public consumption.
-- Skills provide non-obvious product and ownership context for design decisions.
-- Code, types, manifests, tests, and generated contracts define implementation details.
+## Layout
 
-Do not copy inventories of exports, fields, routes, or unfinished features into skills or
-repository instructions. Avoid roadmap sections in package READMEs; use current code or an explicit
-planning artifact instead.
+```text
+apps/company-os/src/
+  runtime/        kernel: model/ contract/ client/ server/ ui/ testing/, plus the kernel
+                  modules access/ and assets/ (each model/ server/ ui/). Upstream owns it.
+  modules/        one directory per module, same shape: model/ server/ ui/ seeds/
+  app/            the shell: ui/ server/ customization/ styles/ seeds/ and client assembly
+  routes/         TanStack Start file routes, generic over the model
+  app.model.ts    every module, composed and migrated; the storage authority
+  app.config.ts   enabledModules: the modules the UI, API, and MCP expose
+  app.server.ts   custom operation contributions
+  app.ui.ts       presentation contributions
+templates/base/   the one starter for an optional app; it imports company-os/* only
+tools/            create-app, the oxlint plugin
+```
 
-## Documentation and comments
+A package is a deploy unit. `apps/*` and `templates/*` are workspace packages; the kernel and the
+modules are directories. Do not add packages for code that ships inside the app.
 
-- Use app, model, module, runtime, and storage for technical concepts. Company OS is the
-  starter's product name; do not impose company-specific terminology or an OS suffix on an
-  app's configured display name. The `@company/*` namespace and stable deployment keys are separate.
-- Prefer clear names, types, small modules, and tests over comments that narrate the code.
-- Do not add UI copy that merely narrates visible structure or implementation. Supporting text must
-  convey domain meaning, a consequence, or necessary instruction.
-- Add concise TSDoc to deliberate public exports when callers need a non-obvious contract,
-  invariant, default, or ownership boundary. Do not restate the TypeScript signature.
-- Use implementation comments only to explain why something is necessary, especially safety
-  arguments, external constraints, and transaction or failure invariants.
-- Update or remove documentation in the same change that makes it inaccurate.
+Every module is composed in `app.model.ts` and its tables always migrate. `app.config.ts` lists the
+modules that are enabled; `enableModules` derives the exposed model, and every consumer (HTTP API,
+MCP, OpenAPI, UI composition, navigation, routing, search) receives that one derived model. No
+component or route asks whether a module is enabled. Disabling a module hides its operations and
+leaves its data. Access and Assets are kernel modules and are always enabled. Never let an
+environment variable choose the module set; two deployments with different modules are two commits.
 
-## Context skills
+## Customization ladder
 
-- Use `$company-os` when product intent, business semantics, ownership, or architecture tradeoffs
-  are not answerable from the repository alone, including whether a capability belongs in this
-  standalone repository or in an optional hosting platform.
+Customers and the maintainers change the application in this order, and record the reason in the
+commit when they go past the first rung:
 
-The skill is challengeable working context. Read only the relevant reference and keep Current,
-Direction, and Vision distinct. The canonical skills live in `.agents/skills`; `.codex/skills` and
-`.claude/skills` point there.
+1. Add a module under `src/modules/<name>` and register it in the four roots.
+2. Edit a shipped module.
+3. Edit `src/runtime`.
 
-## Ownership
+Upgrades are `git merge` from upstream. Keep upstream commits small, keep a kernel change and its
+module fallout in one commit, and never edit kernel files for a business reason that a module could
+express.
 
-- `@company/*`, `apps/*`, and `templates/*` are vendored, source-owned parts of the standalone
-  Company OS. The project is instantiated by cloning or forking the repository. Templates are
-  executable starters for optional apps; copied apps must never import template source.
-- `@company/runtime` owns the shared foundation. It must not import domain modules or applications.
-  Its `/model` surface is portable and has no Effect, server, client, or UI dependencies. Its
-  `/server` surface owns execution, authorization, transactions, events, and PostgreSQL persistence.
-  `/client` is browser/SSR-safe schema and semantic-client machinery. `/ui` owns design tokens,
-  primitives, forms, and model presentation; it cannot import server code. Base components do not
-  depend on model UI. There is no mixed root export.
-- `company-os/model` is the project's single browser-safe semantic model. It exports the installed Model and composes portable
-  module definitions; it cannot import UI, handlers, persistence, providers, or Effect.
-- Applications own installed-module selection, migration sequencing, credentials, provider layers,
-  and deployment. Domain modules consume shared runtime services directly; the app must not
-  implement forwarding adapters or callbacks for each domain.
-- Other apps may consume only `company-os/model` and `company-os/metadata` from the central app.
-  They must not import its private implementations. The recursive model import check enforces
-  browser safety even though domain definitions and implementations are colocated.
-- `apps/company-os` is the required singleton central product and private server composition
-  boundary. Other apps are optional focused interfaces over its governed capabilities, not
-  independent business authorities.
-- Hosted Continual integration must remain optional. Add a source-owned adapter only for a concrete
-  platform contract; environment injection alone does not justify another package.
+## Import rules
 
-Use explicit imports inside packages. Do not add internal barrel files, `export *` declarations, or
-re-export chains. A package may expose deliberate public facades with explicit named
-re-exports when registered in the Company OS Oxlint rule. Public component directories may use
-package export patterns such as `./ui/*`; domain modules expose deliberate entrypoints.
+All private imports use `#/<path>` with an explicit `.ts` or `.tsx` extension, resolved from
+`apps/company-os/src`. No relative source imports, no `@/`, no barrel files, no `export *`. Named
+re-exports are allowed only from the registered entrypoints: `runtime/model/index.ts`,
+`runtime/server/index.ts`, `runtime/ui/module.ts`, the kernel and module `model/index.ts`,
+`server/index.ts`, `ui/index.ts`, `seeds/index.ts`, and `app.model.ts`. The oxlint plugin in
+`tools/oxlint/company-os` enforces these direction rules:
 
-Import another workspace through its declared package name and public exports, never through a
-relative filesystem path or a TypeScript `paths` shortcut. All private source imports, including
-siblings, use `#/` with an explicit `.ts` or `.tsx` extension, mapped through that package's
-`package.json` imports to its source root. Asset imports retain their actual file extensions.
-Do not use relative source imports, `@/`, or named private shortcuts such as `#root`.
-Relative paths in configuration mappings and asset URLs are unaffected.
-Keep real scoped package imports such as `@company/runtime/ui/button` for public package APIs. Oxlint
-and `turbo boundaries` enforce these conventions.
+- Model code (`runtime/model`, `runtime/contract`, every `*/model/**`, `app.model.ts`) imports no
+  server, UI, client, seeds, React, Node, or PostgreSQL code.
+- `runtime/**` never imports `modules/**`, `app/**`, or `routes/**`. Server code never imports UI.
+- A module imports itself, other modules' `model/`, and `runtime/`. Seeds may compose other
+  modules' `seeds/index.ts`. Nothing in a module imports `app/**` or the composition roots.
+- Browser code (`client`, `ui`, `routes/**/*.tsx`, `app/ui`, `app/customization`) never imports
+  `**/server/**`, `**/seeds/**`, or `runtime/testing/**`. Vite import protection is the transitive
+  check.
 
-## Adding and deploying apps
+Optional apps import `company-os/model`, `company-os/metadata`, `company-os/ui/*`, and
+`company-os/styles.css` only, and forward the hosting platform's identity headers; no app mints
+identity.
 
-Every checkout has one central `apps/company-os` and one composed model; never scaffold a replacement
-or a parallel app for capabilities that belong to them.
-Optional apps are copies of the repository's templates: run `pnpm app:create` to list them and
-`pnpm app:create <template> <app-name>` to add one, using `base` when no closer starter exists.
-The app name becomes the directory under `apps/`, the package name, and the permanent app key on any
-hosting platform, so choose a short kebab-case name and never rename a deployed app's directory.
-Every app carries the same deployment contract: its package manifest declares the stable App key and
-user-visible name under `continual`; `pnpm build` creates conventional `.output`; and its atomic
-`deploy` task publishes that existing output. Root `pnpm deploy` asks Turbo to build before invoking
-each selected App's deployment task. An app that owns migrations runs them in its deployment task
-before publication whenever `DATABASE_URL` is configured, so sequencing lives in this repository
-rather than in any platform. `GET /api/health` stays dependency-free. The current Continual adapter
-is the repository-pinned CLI and standard TanStack Start Vite configuration; do not add Wrangler or
-another provider-specific build path to an App.
-Publishing the artifact is a hosting platform's concern; this repository never encodes a platform's
-release or deployment records.
-An optional app that calls the central app on behalf of the current user forwards the hosting
-platform's runtime identity headers from the incoming request; no app mints identity itself.
+## Modules
 
-## Stack
+A module is a cohesive business capability with its own directory: `model/` holds `defineObject`,
+`defineLink`, `defineInterface`, `defineEvent`, and the `defineModule` entrypoint; `server/` holds
+named `Effect.fn` operations bound with `defineModuleServer`; `ui/<object>/config.ts` registers typed
+extensions composed by `defineModuleUi` in `ui/index.ts`; `seeds/` holds fixture builders. Omit
+surfaces a module does not need. Standard CRUD, storage, HTTP, MCP, and default pages derive from the
+model; write custom code only for additional behavior or invariants. Cross-module dependencies are
+imports of another module's `model/`; a link between two otherwise independent modules lives in a
+small bridge module that depends on both. A module enters this repository only when Continual or a
+customer runs it in production.
 
-- Use TanStack Start for user-facing applications.
-- Use the installed Effect v4 APIs for new Effect code; do not copy Effect v3 patterns. Keep
-  company definitions portable rather than making Effect part of their required public format.
-- Define constructed Effect services with `Context.Service(..., { make })` and expose their primary
-  implementation as static `.layer`. Name alternatives descriptively, such as `.layerTest` or
-  `.layerMemory`; do not use the v3 `.Default` or an ambiguous `Live` suffix. Capabilities supplied
-  by an outer boundary may remain layerless.
-- Use source-owned shadcn components and Tailwind CSS v4 tokens from `@company/runtime/ui`.
-- Use TanStack Form through each application's source-owned form hook and field components. Keep
-  Effect Schema as the authoritative decoder and map canonical API violations into form errors at
-  one application boundary.
-- Use `pnpm` and Turborepo. Do not add another frontend framework or component library, and do not
-  rebuild an existing app on one; a request for another framework is met on the checked-in stack.
-- Preserve an ordinary Fetch-compatible runtime boundary where practical.
-
-## Domain modules
-
-Keep reusable business domains in `modules/<domain>` packages; app-specific domains may live in
-`src/modules/<domain>`. Put portable definitions in `model/`, custom execution in `server/`,
-presentation in `ui/`, and fixture builders and assets in `seeds/`. Public surfaces use
-`<surface>/index.ts` and map to matching package exports (`/model`, `/server`, `/ui`, `/seeds`).
-Omit unused surfaces. A small surface may implement everything directly in its entrypoint; larger
-ones import defining files directly and expose only deliberate named exports. Keep tests beside the
-behavior they exercise. Links and interfaces have one owner within `model/`. Use public model
-entrypoints for cross-domain references; never import seeds from browser or model code.
-
-Compose the complete model in `src/app.model.ts`, custom implementations in `src/app.server.ts`, and
-presentation in `src/app.ui.ts`. `defineModuleServer` binds named Effect functions using shared runtime
-services; standard CRUD is derived. `defineModuleUi` checks local configuration and `composeModelUi`
-checks the complete model. Module components use `useObjectClient(Object)` through the runtime UI
-provider. No object-specific branches belong in shared routes or renderers.
-
-Use named additions/replacements for small UI extensions and ordinary module-owned React pages for
-distinct workflows. Keep migration sequencing central and testing independent of the app. Use
-[the module guide](docs/modules.md) and executable neighboring modules for authoring. Do not add
-code generation, dynamic plugin discovery, automatic merging, or a second schema.
+Objects are durable identities. Use `parent` only for ownership and authorization ancestry, a
+reference property for directional state that belongs on one object, a Link for an association
+without identity (many-to-many by default, `subsetOf` for a primary selection), and an Object when
+a relationship has attributes, lifecycle, or its own permissions. Never encode one fact as both a
+property and a Link. See `docs/modules.md` and `docs/modeling.md`.
 
 ## Server operations
 
-- Implement custom Queries and Actions as named `Effect.fn` functions. Bind only custom methods and
-  deliberate standard-operation overrides; the framework supplies standard CRUD.
-- Use `Context.Service` for dependencies and cohesive capabilities. A feature does not need its own
-  service identity or repository. Keep small operation-specific SQL beside its operation; extract a
-  repository when shared persistence behavior, locking, or a meaningful substitute warrants it.
-- Decode the shared model contract at invocation boundaries. Operations enforce business authorization,
-  invariants, and transaction boundaries for every caller. Transport handlers only adapt protocols.
-- Queries are read-only. SQL aggregates must filter authorized rows before aggregating; permission to
-  invoke a report does not grant access to every underlying record. Keep currencies separate and use
-  PostgreSQL numeric arithmetic for money.
-- Custom Actions use model writers for standard persistence guarantees. Custom SQL writes must preserve
-  concurrency and integrity rules and append a declared event covering affected records inside the transaction.
-  Standard writers record events automatically; custom facts use `EventJournal.append` inside
-  `Database.transaction`. See [durable events](docs/events.md) for replay and visibility contracts.
-- Test pure rules directly, SQL and transactions against PostgreSQL, and provider effects with supplied
-  test services. Do not add forwarding layers just to mock them.
+Implement custom Queries and Actions as named `Effect.fn` functions using the kernel services from
+`runtime/server/index.ts`. Operations enforce authorization, invariants, and the transaction
+boundary for every caller; transports only adapt protocols. `Operations.run` gives every action one
+transaction. Queries are read-only and filter authorized rows before aggregating. Custom writes use
+`Records.writer` and `Links.writer`, which validate and attribute but do not authorize; the calling
+operation establishes that authority. Custom facts use `EventJournal.append` inside the operation's
+transaction. Keep currencies separate and use PostgreSQL numeric arithmetic for money. Use
+`Context.Service(..., { make })` with a static `.layer`; name alternatives `.layerTest` or
+`.layerMemory`. Use the installed Effect v4 APIs, never v3 patterns. PostgreSQL is the storage layer;
+custom SQL uses `Database.sql` with `ModelContext.table(Object)` and the statement helpers, not a
+second schema.
 
-## Application clients and forms
+## Clients, forms, and UI
 
-- Feature code should consume the semantic client derived from the model contract. Keep the native
-  Effect HTTP client inside the application client assembly and expose non-model API groups through
-  purpose-named operations or a deliberate semantic namespace.
-- Generated Queries return TanStack Query options; React uses `useQuery(data.object.list(...))` and Actions use `useMutation(data.object.update())` with the same application cache.
-  Keep only interaction and unsaved draft state in component state. Router loaders preload the same request
-  used by the screen. Render records without waiting for reference labels or advisory IAM checks.
-  Actual server writes determine invalidation; feature code never declares mutation write sets.
-- Keep application services out of TanStack Start's reserved `src/client.*` and `src/server.*`
-  entrypoints. Use names such as `src/app-client.ts`; an accidental `src/client.ts` replaces the
-  framework hydration entrypoint.
-- Forms own interactive state in TanStack Form, decode transformed submission values with Effect
-  Schema, and render server failures from the standard violation paths. Use the regular React Form
-  package when submission already goes through the generated Effect client; TanStack Start server
-  form helpers are for applications that actually use that transport.
+Feature code uses the semantic client from `app/app-client.ts`: `useQuery(data.object.list(...))`
+and `useMutation(data.object.update())` on one application cache. Router loaders preload the same
+requests. Actual server writes drive invalidation. Forms own drafts in TanStack Form through
+`useAppForm`, decode with Effect Schema, and render server violations through the standard paths.
+Use the source-owned shadcn components and Tailwind tokens under `runtime/ui`. Do not add another
+framework or component library. Generic routes under `routes/_app/objects` and
+`routes/_app/settings` serve every object through `navigation.path`; never add object-specific
+branches to shared routes or renderers. Use named UI additions and replacements for light
+customization and ordinary module-owned pages for distinct workflows.
 
-Common mistakes are exporting both semantic and transport clients for feature code to choose
-between, hand-writing endpoint-specific fetch clients, creating one-off pending/error/touched form
-hooks, duplicating schema rules in components, or reducing typed server failures to a generic status
-message. Remove the competing path instead of documenting two supported ways to do the same thing.
+## Storage and migrations
 
-## Boundaries around dependencies
+The composed model projects one PostgreSQL schema. `apps/company-os/schema.sql` is the current
+projection and `src/app/server/database/migrations` is the applied history; `db:check` fails when
+they disagree. While the template is disposable, regenerate the baseline with
+`pnpm --filter company-os db:generate --baseline`. Once a deployment retains data, add numbered
+migrations and never rewrite applied ones. Disabling a module never drops tables.
 
-Do not add a port merely because a dependency is external. Consider a company-owned boundary when
-it isolates provider types, expresses stable company semantics, protects a trust or failure
-boundary, or supports a meaningful alternate implementation. Name capabilities in company terms
-and concrete adapters after their provider. A product-visible installation lifecycle may justify
-a richer connector.
+## Documentation and comments
 
-## Modeling relationships
-
-Use `parent` only for durable ownership and authorization hierarchy. Use a record-reference property
-for directional state that belongs inline on one Object. References and Links project into one relationship catalog with two named directions.
-Use reference `inverse` metadata for intentional reverse names; foreign keys restrict target deletion.
-Use a Link for an association without independent identity. Prefer many-to-many for business
-participation; a primary role may be a singular `subsetOf` selection from that relationship. Use an Object when the relationship has attributes, lifecycle,
-history, or distinct authorization. Do not encode one fact as both a property and a Link, and do not
-declare exact cardinality unless services, storage, deletion behavior, and tests preserve it.
+Use app, model, module, runtime, and storage for technical concepts. Prefer clear names, types, and
+tests over comments. Add TSDoc only for a non-obvious contract, invariant, default, or ownership
+boundary. Use implementation comments to explain why, especially safety arguments and transaction or
+failure invariants. UI copy conveys domain meaning or a consequence, never structure. Update or
+remove documentation in the same change that makes it inaccurate.
 
 ## Verification
 
-Run `pnpm check` for formatting, lint, package boundaries, dead code, and TypeScript. It verifies
-without rewriting. Run `pnpm format` when formatting is needed. Run `pnpm build` after changing
-routing, bundling, or application dependencies.
-
-## Static composition and examples
-
-Keep installed module lists explicit in `app.model.ts`, server contributions in `app.server.ts`,
-and presentation in `app.ui.ts`. The default is the minimal Access and Assets foundation; no business
-module is required. Add business modules in source rather than with environment profiles. Declare
-required module IDs with `requires`. Put fixture code/assets in the owning module; only small
-cross-module scenarios and test compositions belong in `src/examples`. A changed model needs an
-explicit migration or a fresh disposable baseline; never implicitly drop another deployment's tables.
+`pnpm check` runs lint, typecheck, `db:check`, model lint, format check, and dead-code detection
+without rewriting. `pnpm format` formats. `pnpm test` needs PostgreSQL at `DATABASE_URL`
+(default `postgresql://localhost:5432/postgres`) with a role that can create databases. Run
+`pnpm build` after changing routing, bundling, or dependencies. Every change lands with all of them
+green.

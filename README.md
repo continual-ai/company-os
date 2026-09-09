@@ -2,35 +2,36 @@
   <h1>Company OS</h1>
   <p><strong>Build the software your company runs on.</strong></p>
   <p>
-    An editable TypeScript foundation for business operations.<br />
-    Your records, rules, and workflows. One application for people, integrations, and agents.
+    One editable TypeScript application for business operations.<br />
+    Your records, rules, and workflows, governed the same way for people, integrations, and agents.
   </p>
   <p><strong>Early preview</strong> · TypeScript · Effect v4 · React · PostgreSQL</p>
   <p>
     <a href="#quick-start">Quick start</a> ·
-    <a href="#try-a-real-operation">Try it</a> ·
+    <a href="#enable-and-add-modules">Modules</a> ·
     <a href="docs/modules.md">Build a module</a> ·
     <a href="docs/architecture.md">Architecture</a>
   </p>
 </div>
 
-Company OS is a starting point for software that fits how your team works. Fork the repository,
-change its business model, and build the operations you need: customer relationships, engineering
-delivery, or a domain of your own. You own the source and database.
+Company OS is one application you clone and own. It ships with a kernel, a set of proven business
+modules, and a shell. Every module is composed and migrated; a short list in `app.config.ts` decides
+which ones your company exposes. Start with the modules that fit, turn off the rest, and let an agent
+or an engineer build the operations that are yours alone. You own the source and the database.
 
 A module defines its objects and operations in TypeScript. That contract supplies PostgreSQL storage,
-validated APIs, a typed client, MCP tools, and default tables, forms, and record pages. Add business
-rules with Effect functions and customize the interface with ordinary React components. The same
-server-side permissions and transactions apply whether a person clicks a button or an agent calls a tool.
+validated APIs, a typed client, MCP tools, and default tables, forms, and record pages. Business rules
+are Effect functions; custom screens are ordinary React components. The same server-side permissions
+and transactions apply whether a person clicks a button or an agent calls a tool.
 
 The repository runs locally without a Continual account. [Continual](https://continual.ai) maintains
-the project and provides an optional hosting integration. Company OS is **source-available under
-[Elastic License 2.0](LICENSE.md)**. Its APIs are still evolving; expect changes before a stable release.
+the project and offers optional hosting. Company OS is **source-available under
+[Elastic License 2.0](LICENSE.md)**. Its APIs are still evolving.
 
 ## Quick start
 
-Install Node.js 24.14+ (or 25.4+), pnpm 11, and PostgreSQL 18+. PostgreSQL must be running and your local role must
-be able to create a database.
+Install Node.js 24.14+ (or 25.4+), pnpm 11, and PostgreSQL 18+. PostgreSQL must be running and your
+local role must be able to create a database.
 
 ```sh
 git clone https://github.com/continual-ai/company-os.git
@@ -40,77 +41,59 @@ pnpm dev
 ```
 
 Open **[localhost:3002](http://localhost:3002)**. Development signs you in as a local administrator;
-no OAuth setup, API key, bucket, or hosted service is needed.
+no OAuth setup, API key, bucket, or hosted service is needed. `pnpm dev` creates the local database,
+applies the committed migrations, and starts the app. The default connection is
+`postgresql://localhost:5432/company_os`; set `DATABASE_URL` in an ignored `.env.local` for another
+endpoint. See the [database guide](docs/runbooks/database.md).
 
-`pnpm dev` creates the local database when needed, applies committed migrations, and starts the app.
-The default connection is `postgresql://localhost:5432/company_os`. For another PostgreSQL role or
-endpoint, put `DATABASE_URL` in an ignored `.env.local` at the repository root. See the
-[database guide](docs/runbooks/database.md) for connection details, migrations, and test setup.
-The development server is trusted local tooling; its automatic identity is disabled in production.
+The OpenAPI document is at [`/api/openapi`](http://localhost:3002/api/openapi). The Developer Center
+at `/developer` explores the model, the API, and the MCP tools.
 
-## Try a real operation
+## Enable and add modules
 
-The default application contains Access and Assets and no business modules. Start your own domain
-in `src/modules`, or follow the [engineering and support walkthrough](docs/dogfooding.md) to install
-reusable Engineering, Sales and Notes modules plus the app-owned Support–Engineering workflow.
-
-That workflow turns an open support ticket into an engineering issue, links the records, and stores
-a durable escalation receipt in one authorized transaction. Concurrent retries return the same
-issue. Its custom React page and generated HTTP/MCP action call the same implementation.
-
-The OpenAPI document is at [`/api/openapi`](http://localhost:3002/api/openapi). Developer Center
-provides model exploration, API documentation, and source-owned component examples.
-
-## One module, three entrypoints
-
-```text
-modules/sales/src/
-  model/index.ts                 Portable definitions
-  model/lead.ts                  Lead and operation contracts
-  model/links/contact-companies.ts One bidirectional relationship
-  server/index.ts                Custom operation bindings
-  server/convert-lead.ts          Transactional lead conversion
-  server/pipeline-summary.ts      Authorized aggregate SQL
-  ui/index.ts                    Presentation registration
-  ui/lead/conversion-tab.tsx      Ordinary React component
-  seeds/index.ts                 Explicit fixture builders
-```
-
-Only the model entrypoint is required. A standard object gets persistence, governed CRUD, APIs, and
-usable screens without its own service or route files. The application's model, server, and UI
-composition roots each register a module once; further changes stay inside the module.
-
-The included Marketing module follows this same pattern (simplified here):
+`apps/company-os/src/app.model.ts` composes every module. `apps/company-os/src/app.config.ts` lists
+the ones the UI, API, and MCP expose:
 
 ```ts
-import { defineObject, schema } from "@company/runtime/model"
-import { Root, User } from "@company/runtime/model/access"
-
-export const Campaign = defineObject({
-  id: "campaign",
-  collection: "campaigns",
-  name: "Campaign",
-  pluralName: "Campaigns",
-  parent: Root,
-  properties: {
-    name: schema.string({ minLength: 1, maxLength: 200 }),
-    owner: schema.reference(User, { nullable: true }),
-    attachments: schema.array(schema.file(), { default: [] }),
-  },
-  display: { title: "name" },
-})
+export const enabledModules = ["access", "assets", "notes", "sales", "support"] as const
 ```
 
-Put the object in `modules/marketing/src/model/campaign.ts`, include it in the Marketing module’s
-`model/index.ts`, and install that module in `src/app.model.ts`. Regenerate `schema.sql`, write and review the corresponding SQL migration, then assign
-the intended permissions.
-Its default page is `/objects/campaign`. See [Building a module](docs/modules.md) for the complete
-path, custom actions, React extensions, and client data access.
+Remove an id and its screens, endpoints, and tools disappear while its tables and data stay. The
+list must be closed under dependencies; the app tells you which module is missing otherwise. Access
+and Assets are part of the kernel and are always on.
 
-Modules are source you copy, compose, and edit. They are not dynamically loaded plugins. A custom
-page can replace a default screen, and custom operations can enforce rules that a schema cannot express.
+To add your own capability, create a directory under `apps/company-os/src/modules` with the same
+shape as the shipped ones and register it in the four roots:
 
-## How the pieces fit
+```text
+apps/company-os/src/modules/sales/
+  model/index.ts                 defineModule: objects, links, interfaces, events
+  model/lead.ts                  one object and its operation contracts
+  server/index.ts                custom operation bindings
+  server/convert-lead.ts         a transactional business action
+  ui/index.ts                    presentation registration
+  ui/lead/conversion-tab.tsx     an ordinary React component
+  seeds/index.ts                 fixture builders
+```
+
+Only `model/` is required. A standard object gets persistence, governed CRUD, APIs, MCP tools, and
+usable screens without its own service or route files. [Building a module](docs/modules.md) walks
+through custom actions, React extensions, and client data access.
+
+## How it is organized
+
+```text
+apps/company-os/src/
+  runtime/     the kernel: model DSL, execution, storage, authorization, events, UI foundation
+  modules/     the business: one directory per module, all the same shape
+  app/         the shell: layout, settings, sign-in, developer pages, client assembly
+  routes/      TanStack Start routes, generic over the model
+  app.model.ts  app.config.ts  app.server.ts  app.ui.ts
+```
+
+Change things in this order: add a module, then edit a shipped module, then edit the kernel. Upstream
+improvements arrive with `git merge`; keeping kernel edits rare keeps merges clean. The lint rules in
+`tools/oxlint/company-os` enforce the import direction between the three directories.
 
 ```text
 React UI       Typed client       HTTP / OpenAPI       MCP tools
@@ -124,78 +107,37 @@ React UI       Typed client       HTTP / OpenAPI       MCP tools
                  PostgreSQL transactions
 ```
 
-- **Model:** portable, browser-safe TypeScript. Objects have durable identity; references, Links,
-  and association Objects describe different kinds of relationships.
-- **Server:** Effect v4 operations enforce permissions and business rules. PostgreSQL is authoritative;
-  Effect SQL implements persistence and explicit migrations over model-derived PostgreSQL tables.
-- **UI:** TanStack Start, Router, and Form with editable shadcn primitives and Tailwind CSS v4.
-  Standard collection pages share filters, views, forms, relationships, and file fields.
-- **Data access:** a generated semantic client over HTTP. One TanStack Query cache serves
-  SSR, preloading, and React reads; successful transactions invalidate the object types actually changed.
-  `list` supports filtering and pagination; relationship pages return complete target records.
-  `batchGet` hydrates independently known references; custom Queries share the same cache.
-
-A [durable event journal](docs/events.md) records committed changes and typed business facts.
-Open browsers apply authorized record snapshots and refresh affected queries, including after reconnect.
-Use `useQuery(data.contact.list(...))` and `useMutation(data.contact.update())`; [one data path](docs/data.md) handles caching and changes.
-This is cached server state with resumable SSE and pull recovery; offline writes, durable agent scheduling, and
-automation controllers are not included. [Architecture](docs/architecture.md) explains the current guarantees and boundaries.
-
-## Read the code
-
-| Start here                                       | What it owns                                                     |
-| ------------------------------------------------ | ---------------------------------------------------------------- |
-| [Company OS app](apps/company-os/README.md)      | The central UI, API, business policy, and server assembly        |
-| [Modules](apps/company-os/src/modules/README.md) | Editable Sales, Marketing, Support, and Engineering domains      |
-| [Runtime](packages/runtime/README.md)            | Shared model, execution, persistence, clients, and UI foundation |
-| [Notes](modules/notes/README.md)                 | Reusable module package with model, Markdown UI, and seeds       |
-| [Documentation](docs/README.md)                  | Module authoring, modeling, architecture, and operational guides |
-
-Start with the app and a concrete module; read the reusable packages when you need to change a
-shared mechanism. Business code lives in domain modules; the app composes them. Optional interfaces consume its public
-`company-os/model` contract and governed API.
+A [durable event journal](docs/events.md) records committed changes and typed business facts; open
+browsers apply authorized snapshots and refresh affected queries. [Architecture](docs/architecture.md)
+explains the guarantees and boundaries.
 
 ## Make it yours
 
-Change product identity and the entry experience in
-[`src/customization`](apps/company-os/src/customization), then build your operation in
-[`src/modules`](apps/company-os/src/modules). The included agent skills help with company onboarding,
-customization, and upstream upgrades. A useful first prompt is:
+Change product identity and the entry experience in `apps/company-os/src/app/customization`, set the
+enabled modules, then build your operation in `apps/company-os/src/modules`. The agent skills under
+`.agents/skills` help with onboarding, customization, and upstream upgrades. A useful first prompt:
 
 > Use $company-onboard to build our customer onboarding process. Track customers, milestones,
 > owners, blockers, and launch dates. Let an agent prepare follow-ups, with a person approving
 > anything sent to a customer. Build one working operation through the UI and API.
 
-Need a separate portal or public website? Copy an optional app starter:
-
-```sh
-pnpm app:create                         # List templates
-pnpm app:create base vendor-portal
-pnpm turbo run dev --filter=vendor-portal
-```
-
-The [base](templates/base/README.md), [client portal](templates/client-portal/README.md), and
-[marketing site](templates/marketing-site/README.md) are editable starters. The central app remains
-the authority for business records and policy. See [deployment](docs/runbooks/deployment.md) for the
-current production build and identity integration, including the optional Continual publisher.
+Need a separate portal or public site? `pnpm app:create base vendor-portal` copies the
+[base starter](templates/base/README.md), which consumes the central app's model and governed API.
+See [deployment](docs/runbooks/deployment.md) for production builds and identity.
 
 ## Development
 
-Run commands from the repository root:
+| Command                                | Purpose                                                       |
+| -------------------------------------- | ------------------------------------------------------------- |
+| `pnpm dev`                             | Migrate and run the app                                       |
+| `pnpm check`                           | Lint, typecheck, schema check, model lint, format, dead code |
+| `pnpm test`                            | Unit tests and isolated PostgreSQL tests                      |
+| `pnpm build`                           | Build the app and the starter                                 |
+| `pnpm format`                          | Format source and documentation                               |
+| `pnpm --filter company-os db:generate` | Regenerate `schema.sql` from the composed model               |
 
-| Command                                | Purpose                                                                 |
-| -------------------------------------- | ----------------------------------------------------------------------- |
-| `pnpm dev`                             | Migrate and run the apps in `apps/*`                                    |
-| `pnpm check`                           | Verify formatting, lint, package/model boundaries, dead code, and types |
-| `pnpm test`                            | Run unit and isolated PostgreSQL integration tests                      |
-| `pnpm build`                           | Build the application and maintained app starters                       |
-| `pnpm format`                          | Format source and documentation                                         |
-| `pnpm --filter company-os db:generate` | Regenerate the current model-derived `schema.sql`                       |
-
-Tests need a PostgreSQL role with `CREATEDB`; they create and remove isolated databases rather than
-changing your app's records. [Database workflow](docs/runbooks/database.md) covers this lifecycle.
-[AGENTS.md](AGENTS.md) defines repository-wide contributor constraints; package exports and automated
-checks enforce the code boundaries.
+Tests need a PostgreSQL role with `CREATEDB`; they create and remove isolated databases. [AGENTS.md](AGENTS.md)
+holds the repository-wide constraints that contributors and agents follow.
 
 ## License
 

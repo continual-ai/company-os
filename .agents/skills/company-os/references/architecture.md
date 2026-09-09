@@ -10,14 +10,14 @@ implementations. Reusable framework code should remain source-neutral. A hosted 
 operate infrastructure or access, but should not become a second source of business truth merely
 because it hosts or observes the system.
 
-The repository expresses that ownership with vendored `@company/*` packages, source-owned
-`apps/*`, and executable starters for optional apps under `templates/*`. `@company/*` is a stable
-source-ownership namespace, not a configured organization name. Each project has one closed
-model and one `apps/company-os` composition root; cloning or forking the repository
-instantiates both. Focused apps such as a portal or marketing site remain interfaces over the
-central app's governed capabilities. Added apps never import template source. Continual-specific
-code should appear only at a real hosted integration boundary, never as a required foundation for
-standalone operation.
+The repository expresses that ownership as one application the company clones: the kernel under
+`src/runtime`, every module under `src/modules`, and the shell under `src/app`, all owned source.
+A package is a deploy unit, so only apps are packages. Each project has one composed model in
+`app.model.ts` and one enabled list in `app.config.ts`; cloning the repository instantiates both.
+Focused apps such as a portal remain interfaces over the central app's governed capabilities and
+never import its private implementation. Continual-specific code appears only at a real hosted
+integration boundary, never as a required foundation for standalone operation. Upgrades are Git
+merges from upstream, which is why kernel edits are the last rung of the customization ladder.
 
 ## Authority before layering
 
@@ -76,11 +76,11 @@ Do not extract solely to match a diagram, a future platform idea, or a familiar 
 Treat at least these as revisable unless the user explicitly settles them:
 
 - the final semantic API vocabulary and how much behavior it describes;
-- whether modules affect anything beyond organization and navigation;
+- whether module enablement should ever become a governed runtime record rather than code;
 - client grouping, URL conventions, and protocol projection details;
 - persistence mapping and migration ownership;
 - authorization and approval semantics;
-- the long-term split between reusable runtime, company source, and hosted services.
+- whether the kernel should ever be published as a versioned package instead of merged as source.
 
 ## Source-owned starting points
 

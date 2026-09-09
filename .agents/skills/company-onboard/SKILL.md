@@ -47,8 +47,9 @@ after inspecting the repository.
 
 ## Build one governed operation
 
-Start with `apps/company-os/src/customization` for identity, assets, navigation, and the first
-authenticated experience. The overlay is ordinary source code, not a page schema or plugin API.
+Start with `apps/company-os/src/app/customization` for identity, assets, navigation, and the first
+authenticated experience, and set `enabledModules` in `app.config.ts` to the shipped modules the
+company will actually use. The overlay is ordinary source code, not a page schema or plugin API.
 
 For business behavior, model the company's nouns and relationships in the portable contract, add
 migrations for durable changes, and implement one governed path through persistence, service or
