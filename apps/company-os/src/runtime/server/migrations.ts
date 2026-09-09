@@ -64,6 +64,23 @@ function verifyHistory(
   }
 }
 
+/** A database with tables but no ledger predates this baseline; the baseline would collide with it. */
+const assertDatabaseEmpty = Effect.fn("@company/assertDatabaseEmpty")(
+  function* () {
+    const { sql } = yield* Database
+    const [row] = yield* sql<{
+      count: number
+    }>`select count(*)::int as count from pg_tables where schemaname = current_schema()`
+    if ((row?.count ?? 0) > 0)
+      return yield* Effect.fail(
+        new Error(
+          "The database already has tables but no migration ledger, so it was created by an earlier baseline. Point DATABASE_URL at a fresh database, or for a disposable local database run pnpm reset with CONFIRM_DATABASE_RESET set to its name."
+        )
+      )
+    return yield* Effect.void
+  }
+)
+
 /** Applied SQL is immutable; startup also refuses databases missing a required migration. */
 export const verifySchemaMigrations = Effect.fn(
   "@company/verifySchemaMigrations"
@@ -88,6 +105,7 @@ export const applySchemaMigrations = Effect.fn(
   const database = yield* Database
   const history = yield* readMigrations()
   yield* Effect.try(() => verifyHistory(history, migrations))
+  if (history.length === 0) yield* assertDatabaseEmpty()
   const records = Object.fromEntries(
     migrations.map((migration) => [
       `${migration.id}_${migrationName(migration)}`,
