@@ -20,7 +20,7 @@ const { values } = parseArgs({
 })
 if (values.help) {
   console.log(
-    "pnpm db:seed [--scenario all|demo|performance] [--size 1000]\nRun db:migrate first. Defaults to connected demo records plus realistic data across every business module. Size is the number of contacts and leads (1–10000); related records scale with it. Scenarios run once and preserve subsequent edits. Use a fresh development database to change size."
+    "pnpm db:seed [--scenario all|demo|performance] [--size 1000]\nRun db:reset first. Defaults to connected demo records plus realistic data across every business module. Size is the number of contacts and leads (1–10000); related records scale with it. Scenarios run once and preserve subsequent edits. Use a fresh development database to change size."
   )
 } else {
   if (!["all", "demo", "performance"].includes(values.scenario))

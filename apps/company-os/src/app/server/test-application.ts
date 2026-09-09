@@ -1,5 +1,4 @@
-import { PgClient } from "@effect/sql-pg"
-import { ConfigProvider, Effect, Layer, Redacted } from "effect"
+import { ConfigProvider, Effect, Layer } from "effect"
 
 import { Model } from "#/app.model.ts"
 import {
@@ -7,34 +6,10 @@ import {
   type ApplicationInfrastructure,
 } from "#/app/server/application-layer.ts"
 import { makeApplicationServicesLayer } from "#/app/server/application-services.ts"
-import { applyMigrations } from "#/app/server/database/migrations.ts"
-import { schemaSql } from "#/app/server/database/schema.ts"
 import { seedSystem } from "#/app/server/seeds/seed-system.ts"
 import { IdentityProvider } from "#/runtime/server/auth/identity-provider.ts"
-import { schemaHash } from "#/runtime/server/migrations.ts"
-import { ModelContext } from "#/runtime/server/model-context.ts"
 import { PageTokens } from "#/runtime/server/page-tokens.ts"
-import { Database } from "#/runtime/server/storage/database.ts"
-import { pgTypes } from "#/runtime/server/storage/index.ts"
 import { layerTest, testDatabase } from "#/runtime/testing/database.ts"
-
-/** Application tests run the committed migrations rather than the projected schema. */
-async function migrateTemplate(url: string) {
-  await Effect.runPromise(
-    Effect.scoped(
-      applyMigrations().pipe(
-        Effect.provide(
-          Database.layer.pipe(
-            Layer.provideMerge(ModelContext.layer(Model)),
-            Layer.provide(
-              PgClient.layer({ url: Redacted.make(url), types: pgTypes })
-            )
-          )
-        )
-      )
-    )
-  )
-}
 
 /** Requests carry no credentials unless a test supplies its own provider. */
 const anonymousIdentityProvider = Layer.succeed(IdentityProvider, {
@@ -42,7 +17,7 @@ const anonymousIdentityProvider = Layer.succeed(IdentityProvider, {
 })
 
 /**
- * The shipped application over a migrated, isolated database: every module's
+ * The application over the current model in an isolated database: every module's
  * services and transports plus the system seed. Call at test-file top level;
  * `test` runs each case on a fresh clone under the system invocation.
  */
@@ -53,11 +28,7 @@ export function testApplication({
   /** Environment the application layer reads while it is built, such as AUTH_* settings. */
   readonly configuration?: Record<string, string>
 } = {}) {
-  const fixture = testDatabase(
-    Model,
-    migrateTemplate,
-    `migrated:${schemaHash(schemaSql)}`
-  )
+  const fixture = testDatabase(Model)
   const services = makeApplicationServicesLayer({
     database: fixture.database,
     pageTokens: PageTokens.layerTest,

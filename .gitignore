@@ -5,6 +5,7 @@ dist
 dist-ssr
 *.local
 *.log
+schema.actual.sql
 .env*
 !.env.example
 !.env.template

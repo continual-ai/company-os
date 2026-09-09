@@ -1,10 +1,3 @@
-import type { SchemaMigration } from "#/runtime/server/migrations.ts"
-
-/** Adds the hiring records without rewriting the applied initial baseline. */
-export const hiringMigration = {
-  id: 2,
-  name: "hiring",
-  sql: `
 alter table objects drop constraint objects_object_type_check;
 
 alter table objects add constraint objects_object_type_check check (object_type in ('root', 'user', 'serviceAccount', 'anonymousActor', 'group', 'principalSet', 'groupMembership', 'role', 'roleAssignment', 'asset', 'note', 'activity', 'company', 'contact', 'lead', 'deal', 'lineItem', 'campaign', 'content', 'enrollment', 'outreach', 'issue', 'project', 'repository', 'pullRequest', 'jobPosting', 'candidate', 'application', 'ticket', 'reply', 'escalation'));
@@ -82,7 +75,3 @@ alter table "applications" add foreign key ("job_id") references "job_postings"(
 alter table "applications" add foreign key ("candidate_id") references "candidates"(id) on delete restrict;
 alter table "applications" add constraint "applications_parent_root_fk" foreign key(parent_id) references "roots"(id) on delete restrict;
 alter table "applications" add constraint "applications_object_parent_fk" foreign key(id,parent_id) references objects(id,parent_id) on delete cascade;
-`.trim(),
-  schemaHash:
-    "67bca0adb935af22bbdcf7c7c45033b520ce9c9f62a6cd1e0b687c01664a9884",
-} as const satisfies SchemaMigration

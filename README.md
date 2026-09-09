@@ -31,12 +31,13 @@ local role must be able to create a database.
 git clone https://github.com/continual-ai/company-os.git
 cd company-os
 pnpm install --frozen-lockfile
+pnpm db:reset
 pnpm dev
 ```
 
 Open **[localhost:3002](http://localhost:3002)**. Development signs you in as a local administrator;
-no OAuth setup or hosted service is needed. `pnpm dev` creates the local database, applies committed
-migrations, and starts the app. The default database is `postgresql://localhost:5432/company_os`.
+no OAuth setup or hosted service is needed. `pnpm db:reset` creates the local database from the current
+model and initializes system records. It deletes existing local data. `pnpm dev` starts the apps. The default database is `postgresql://localhost:5432/company_os`.
 Put overrides in an ignored `.env.local`; see [`.env.example`](apps/company-os/.env.example) for
 configuration. Injected environment values take precedence.
 
@@ -73,26 +74,52 @@ satellite over the central app's API; delete it if unnecessary or copy it for an
 
 ## Development
 
-| Command                                | Purpose                                                         |
-| -------------------------------------- | --------------------------------------------------------------- |
-| `pnpm dev`                             | Migrate and run the apps                                        |
-| `pnpm check`                           | Lint, typecheck, schema/model checks, formatting, and dead code |
-| `pnpm test`                            | Unit tests and isolated PostgreSQL tests                        |
-| `pnpm build`                           | Build the apps                                                  |
-| `pnpm format`                          | Format the repository                                           |
-| `pnpm --filter company-os db:generate` | Regenerate `schema.sql` after model changes                     |
-| `pnpm --filter company-os db:migrate`  | Apply committed migrations and refresh system records/search    |
-| `pnpm ui:add <component>`              | Add a shadcn primitive to `packages/ui`                         |
-| `pnpm ui:remove <component>`           | Remove an unused primitive                                      |
+Build against the model; write the migration when the feature is ready.
 
-Tests need a PostgreSQL role with `CREATEDB` at `DATABASE_URL` (default
-`postgresql://localhost:5432/postgres`). They create and remove isolated databases. After changing
-the database environment, `pnpm turbo run test --force` bypasses cached results.
+| Command                      | Purpose                                                                               |
+| ---------------------------- | ------------------------------------------------------------------------------------- |
+| `pnpm db:reset`              | Rebuild the disposable local database from the model and refresh `schema.sql`         |
+| `pnpm db:migration <name>`   | Create the next SQL migration draft with structural diff hints                        |
+| `pnpm db:migrate`            | Apply completed migrations to a database with migration history, or an empty database |
+| `pnpm dev`                   | Run the apps                                                                          |
+| `pnpm check`                 | Lint, typecheck, generated schema/model checks, formatting, and dead code             |
+| `pnpm test`                  | Test application behavior against the current model                                   |
+| `pnpm test:migrations`       | Verify migration replay matches the model before delivery                             |
+| `pnpm build`                 | Build the apps                                                                        |
+| `pnpm format`                | Format the repository                                                                 |
+| `pnpm ui:add <component>`    | Add a shadcn primitive to `packages/ui`                                               |
+| `pnpm ui:remove <component>` | Remove an unused primitive                                                            |
 
-Model changes need a matching migration. `db:generate --baseline` rewrites the initial migration
-and is only for disposable data. For retained data, add a numbered migration and test that existing
-records survive; never rewrite applied history. To intentionally rebuild a disposable local database,
-use `CONFIRM_DATABASE_RESET=company_os pnpm reset`, substituting its exact database name.
+**While building:** edit the model and application, run `pnpm db:reset` after storage changes,
+and use the app. Reset discards the configured local schema's data, restores system records and
+search, and leaves all migration files untouched. It refuses remote hosts and PostgreSQL system
+databases. Run `pnpm db:seed --scenario demo` when you want fictional records.
+
+**When ready:** run `pnpm db:migration add_owner`. It replays existing migrations and the current
+model in separate scratch databases, then creates a numbered `.sql` file in
+`apps/company-os/src/app/server/database/migrations/`. The draft contains structural differences
+as comments and a failing placeholder. Have your agent replace the placeholder with reviewed SQL;
+renames, backfills, and other business transformations need your intent. A supplied name creates a
+draft even without structural differences, for data-only changes. Without a name, an unchanged
+schema creates no file. Finish an existing draft before asking for another.
+
+Run `pnpm test:migrations` to verify the upgrade, and add retained-data tests for transformations.
+Ordinary application tests use the current model, so they work before the migration is written.
+CI runs both suites. Commit the model, `schema.sql`, migration, and relevant tests together.
+Migration files run in numbered order; never rewrite applied files. Documentation-only changes
+in generated SQL comments do not require migrations.
+
+**When applying:** point `DATABASE_URL` at an empty database or one with migration history and run
+`pnpm db:migrate`. A development database created by `db:reset` has no migration history and is
+intentionally refused; use the isolated migration tests to verify delivery instead of upgrading
+that disposable database.
+
+Migration drafting and database tests need a PostgreSQL role with `CREATEDB`. Scratch databases
+are removed afterward. Tests default to `postgresql://localhost:5432/postgres`; commands use the
+application's configured connection. After changing the database environment,
+`pnpm turbo run test --force` bypasses cached test results. For inspecting a retained database,
+`pnpm --filter company-os db:dump` writes an ignored `schema.actual.sql` using `pg_dump` (the
+server's major version or newer).
 
 ## Deployment
 

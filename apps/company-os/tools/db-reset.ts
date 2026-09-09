@@ -1,35 +1,38 @@
+import { writeFileSync } from "node:fs"
+import { parseArgs } from "node:util"
+
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
-import { PgClient } from "@effect/sql-pg"
 import { Config, Effect, Redacted } from "effect"
 
 import { localDatabaseTarget } from "#/app/server/database/db-reset-target.ts"
-import { applyMigrations } from "#/app/server/database/migrations.ts"
+import { ensureLocalDatabase } from "#/app/server/database/local-database.ts"
 import * as Postgres from "#/app/server/database/postgres.ts"
-import { withLocalConfig } from "#/app/server/local-config.ts"
-import { seedSystem } from "#/app/server/seeds/seed-system.ts"
+import { resetDevelopmentSchema } from "#/app/server/database/reset.ts"
+import { schemaSql } from "#/app/server/database/schema.ts"
+import { localConfigLayer } from "#/app/server/local-config.ts"
+
+parseArgs({ options: {} })
 
 Effect.gen(function* () {
   const databaseUrl = yield* Config.redacted("DATABASE_URL")
-  const confirmation = yield* Config.string("CONFIRM_DATABASE_RESET")
-  const target = yield* Effect.try(() =>
-    localDatabaseTarget(Redacted.value(databaseUrl), confirmation)
-  )
-  const sql = yield* PgClient.PgClient
-
-  yield* Effect.log(
-    `Resetting local PostgreSQL database '${target.databaseName}' on '${target.host}'.`
-  )
   const schema = yield* Postgres.databaseSchemaConfig
-  yield* sql.unsafe(`drop schema if exists "${schema}" cascade`)
-  yield* sql.unsafe(`create schema "${schema}"`)
-  yield* applyMigrations()
-  yield* seedSystem()
+  const target = yield* Effect.try(() =>
+    localDatabaseTarget(Redacted.value(databaseUrl))
+  )
   yield* Effect.log(
-    "Database reset complete; all committed migrations applied and required records ensured."
+    `Rebuilding local database '${target.databaseName}', schema '${schema}', from the model. Local data will be deleted.`
+  )
+  yield* ensureLocalDatabase(Redacted.value(databaseUrl))
+  yield* resetDevelopmentSchema(schema).pipe(
+    Effect.provide(Postgres.databaseLayer)
+  )
+  yield* Effect.try(() =>
+    writeFileSync(new URL("../schema.sql", import.meta.url), schemaSql)
+  )
+  yield* Effect.log(
+    "Development database ready. Migration files are unchanged. Run pnpm dev; when the feature is ready, run pnpm db:migration <name>."
   )
 }).pipe(
-  Effect.provide(
-    withLocalConfig(Postgres.databaseAndClientLayer, { development: true })
-  ),
+  Effect.provide(localConfigLayer({ development: true })),
   NodeRuntime.runMain
 )

@@ -3,11 +3,9 @@ import { Effect } from "effect"
 
 import { migrations } from "#/app/server/database/migrations/index.ts"
 import { databaseSchemaConfig } from "#/app/server/database/postgres.ts"
-import { schemaSql } from "#/app/server/database/schema.ts"
 import {
   applySchemaMigrations,
   verifySchemaMigrations,
-  schemaHash,
 } from "#/runtime/server/migrations.ts"
 
 /**
@@ -25,7 +23,5 @@ export const ensureDatabaseSchema = Effect.fn("@company/ensureDatabaseSchema")(
 )
 
 /** App-owned immutable migration sequence. */
-export const applyMigrations = () =>
-  applySchemaMigrations(migrations, schemaHash(schemaSql))
-export const verifyDatabaseModel = () =>
-  verifySchemaMigrations(migrations, schemaHash(schemaSql))
+export const applyMigrations = () => applySchemaMigrations(migrations)
+export const verifyDatabaseModel = () => verifySchemaMigrations(migrations)

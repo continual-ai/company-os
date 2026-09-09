@@ -54,4 +54,7 @@ jobs:
       - run: pnpm turbo run test --force
         env:
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+      - run: pnpm test:migrations
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
       - run: pnpm build

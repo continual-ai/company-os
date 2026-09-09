@@ -16,9 +16,6 @@
       ]
     },
     "db:check": {},
-    "db:generate": {
-      "cache": false
-    },
     "db:migrate": {
       "cache": false,
       "passThroughEnv": [
@@ -30,19 +27,6 @@
     "db:reset": {
       "cache": false,
       "passThroughEnv": [
-        "CONFIRM_DATABASE_RESET",
-        "DATABASE_MAX_CONNECTIONS",
-        "DATABASE_SCHEMA",
-        "DATABASE_URL"
-      ]
-    },
-    "dev": {
-      "dependsOn": ["db:migrate"]
-    },
-    "reset": {
-      "cache": false,
-      "passThroughEnv": [
-        "CONFIRM_DATABASE_RESET",
         "DATABASE_MAX_CONNECTIONS",
         "DATABASE_SCHEMA",
         "DATABASE_URL"
@@ -56,6 +40,14 @@
         "DATABASE_URL"
       ]
     },
-    "model:check": {}
+    "model:check": {},
+    "db:migration": {
+      "cache": false,
+      "passThroughEnv": ["DATABASE_URL"]
+    },
+    "test:migrations": {
+      "cache": false,
+      "passThroughEnv": ["DATABASE_URL"]
+    }
   }
 }

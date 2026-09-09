@@ -7,6 +7,10 @@
   "scripts": {
     "build": "turbo run build",
     "check": "turbo run lint typecheck db:check model:check format:check deadcode",
+    "db:check": "pnpm --filter company-os db:check",
+    "db:migrate": "pnpm --filter company-os db:migrate",
+    "db:migration": "pnpm --filter company-os db:migration",
+    "db:reset": "pnpm --filter company-os db:reset",
     "db:seed": "turbo run db:seed --filter=company-os --",
     "deadcode": "knip",
     "deploy": "turbo run deploy --filter=\"./apps/*\"",
@@ -16,8 +20,8 @@
     "kernel:drift": "tsx tools/kernel-drift.ts",
     "lint": "turbo run lint",
     "prepare": "effect-tsgo patch --no-typescript --oxlint",
-    "reset": "turbo run reset --filter=\"./apps/*\"",
     "test": "turbo run test",
+    "test:migrations": "pnpm --filter company-os test:migrations",
     "ui:add": "pnpm --filter @company/ui ui:add --",
     "ui:remove": "pnpm --filter @company/ui ui:remove --",
     "upstream:merge": "git fetch upstream && git merge upstream/main"
@@ -44,6 +48,9 @@
     "pnpm": ">=11.0.0"
   },
   "knip": {
+    "ignoreBinaries": [
+      "pg_dump"
+    ],
     "ignore": [
       "fixtures/**"
     ],

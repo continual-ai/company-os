@@ -45,9 +45,11 @@ reason to preserve a weak design. Prefer simple, idiomatic, editable source.
 
 ## Data and delivery
 
-`schema.sql` projects the model; the app owns migration history. Regenerate the baseline only for
-confirmed disposable data. For retained data, add numbered migrations and never rewrite applied
-ones. Upstream upgrades preserve company changes and applied history.
+`schema.sql` projects the model; the app owns migration history. During development, `pnpm db:reset`
+rebuilds disposable local data from the model without changing migration files. When ready,
+`pnpm db:migration <name>` drafts the next SQL file with diff hints; finish it and run
+`pnpm test:migrations`. `pnpm db:migrate` applies history to empty or previously migrated databases.
+Never rewrite applied migrations. Upstream upgrades preserve company changes and applied history.
 
 Run `pnpm check` and `pnpm test`; also `pnpm build` for routing, bundling, or dependency changes.
 Use meaningful tests for changed behavior. Report unrun checks and environmental blockers honestly.

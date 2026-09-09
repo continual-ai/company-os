@@ -7,13 +7,10 @@ export interface LocalDatabaseTarget {
 }
 
 /**
- * Refuses to identify anything except an explicitly confirmed local PostgreSQL
+ * Refuses to identify anything except a dedicated local PostgreSQL
  * database. The caller may perform destructive work only after this succeeds.
  */
-export function localDatabaseTarget(
-  databaseUrl: string,
-  confirmation: string
-): LocalDatabaseTarget {
+export function localDatabaseTarget(databaseUrl: string): LocalDatabaseTarget {
   let url: URL
   try {
     url = new URL(databaseUrl)
@@ -37,11 +34,6 @@ export function localDatabaseTarget(
   if (systemDatabaseNames.has(databaseName)) {
     throw new Error(
       `db:reset refuses PostgreSQL system database '${databaseName}'. Use a dedicated local database.`
-    )
-  }
-  if (confirmation !== databaseName) {
-    throw new Error(
-      `Set CONFIRM_DATABASE_RESET=${databaseName} to confirm deletion of the local database contents.`
     )
   }
 

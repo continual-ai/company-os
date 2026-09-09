@@ -17,9 +17,10 @@
   },
   "scripts": {
     "build": "vite build",
-    "db:check": "tsx tools/generate-db-schema.ts --check",
-    "db:generate": "tsx tools/generate-db-schema.ts",
+    "db:check": "tsx tools/check-db-schema.ts",
+    "db:dump": "tsx tools/db-dump.ts",
     "db:migrate": "tsx tools/db-migrate.ts",
+    "db:migration": "tsx tools/db-migration.ts",
     "db:reset": "tsx tools/db-reset.ts",
     "db:seed": "tsx tools/db-seed.ts",
     "deploy": "tsx tools/db-migrate.ts --if-configured && continual deploy",
@@ -27,8 +28,8 @@
     "lint": "oxlint .",
     "model:check": "tsx tools/lint-model.ts",
     "preview": "pnpm build && vite preview --port 3102 --host 0.0.0.0",
-    "reset": "pnpm run db:reset",
-    "test": "vitest run",
+    "test": "vitest run --project unit --project database",
+    "test:migrations": "vitest run --project migrations",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

@@ -41,6 +41,35 @@ export const quoteIdentifier = (value: string) =>
 export const quoteLiteral = (value: string) =>
   `'${value.replaceAll("'", "''")}'`
 
+/** Prefix every wrapped line so multiline descriptions always remain SQL comments. */
+function sqlComment(text: string, width = 78): string {
+  return text
+    .split(/\r?\n/)
+    .map((paragraph) => {
+      const lines: string[] = []
+      let line = "--"
+      for (const word of paragraph.split(/\s+/).filter(Boolean)) {
+        if (line.length > 2 && line.length + word.length + 1 > width) {
+          lines.push(line)
+          line = "--"
+        }
+        line += ` ${word}`
+      }
+      return [...lines, line].join("\n")
+    })
+    .join("\n")
+}
+
+export function schemaSection(title: string, description?: string): string {
+  const rule = `-- ${"=".repeat(75)}`
+  return [
+    rule,
+    sqlComment(title),
+    rule,
+    ...(description ? [sqlComment(description)] : []),
+  ].join("\n")
+}
+
 /** One physical declaration supplies SQL identifiers, write codecs, and CREATE TABLE DDL. */
 export function defineTable<Row extends object>(
   name: string,
@@ -68,23 +97,17 @@ export function defineTable<Row extends object>(
       },
     ])
   )
-  const entries = definitions.map(
-    ([key, field]) =>
-      `${quoteIdentifier(snakeCase(key))} ${field.type}${field.nullable ? "" : " not null"}${field.default === undefined ? "" : ` default ${field.default}`}`
-  )
+  const entries = definitions.map(([key, field]) => {
+    const column = `${quoteIdentifier(snakeCase(key))} ${field.type}${field.nullable ? "" : " not null"}${field.default === undefined ? "" : ` default ${field.default}`}`
+    return field.description
+      ? `${sqlComment(field.description, 76).replaceAll("\n", "\n  ")}\n  ${column}`
+      : column
+  })
   entries.push(...(options.constraints ?? []))
   const ddl = [
+    ...(options.description ? [sqlComment(options.description)] : []),
     `create table ${quoteIdentifier(name)} (\n  ${entries.join(",\n  ")}\n)`,
   ]
-  if (options.description)
-    ddl.push(
-      `comment on table ${quoteIdentifier(name)} is ${quoteLiteral(options.description)}`
-    )
-  for (const [key, field] of definitions)
-    if (field.description)
-      ddl.push(
-        `comment on column ${quoteIdentifier(name)}.${quoteIdentifier(snakeCase(key))} is ${quoteLiteral(field.description)}`
-      )
   // Every input field produces one column; the row type is the caller's storage contract.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   return Object.assign(Statement.fragment([Statement.identifier(name)]), {

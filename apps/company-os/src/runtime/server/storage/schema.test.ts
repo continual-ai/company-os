@@ -61,6 +61,7 @@ describe("makePostgresSchema", () => {
     expect(storage.objects.order.columns.expectedCloseDate.type).toBe("date")
     expect(storage.objects.role.columns.permissions.type).toBe("text[]")
     const ddl = makeSchemaSql(fixtureModel)
+    expect(ddl).not.toMatch(/\bcomment on (table|column)\b/i)
     expect(ddl).toContain(
       '"created_at" timestamp with time zone not null default now()'
     )
@@ -70,8 +71,8 @@ describe("makePostgresSchema", () => {
     expect(ddl).toContain(`"etag" text not null default '1'`)
     expect(ddl).not.toContain("users_email_unique")
     expect(ddl).toContain('"order_lines_object_parent_fk"')
-    expect(ddl).toContain("create trigger event_journal_append_only")
-    expect(ddl).toContain("create index record_search_document_idx")
+    expect(ddl).toContain('create trigger "event_journal_append_only"')
+    expect(ddl).toContain('create index "record_search_document_idx"')
   })
 
   it("projects marker memberships for root and object implementers", () => {
@@ -203,12 +204,12 @@ describe("makePostgresSchema", () => {
     ).toEqual(["forwardId", "reverseId"])
     const ddl = storage.ddl.join("\n")
     expect(ddl).toContain(
-      'foreign key(forward_id) references "people"(id) on delete cascade'
+      'foreign key ("forward_id") references "people" ("id") on delete cascade'
     )
     expect(ddl).toContain(
-      'foreign key(reverse_id) references "teams"(id) on delete cascade'
+      'foreign key ("reverse_id") references "teams" ("id") on delete cascade'
     )
-    expect(ddl).toContain("primary key(forward_id,reverse_id)")
+    expect(ddl).toContain('primary key ("forward_id", "reverse_id")')
   })
 
   it("derives one-to-one uniqueness from link cardinality", () => {
@@ -264,7 +265,7 @@ describe("makePostgresSchema", () => {
 
     for (const side of ["forward", "reverse"])
       expect(storage.ddl.join("\n")).toContain(
-        `create unique index "person_badge_${side}_id_unique" on "person_badge"(${side}_id)`
+        `create unique index "person_badge_${side}_id_unique" on "person_badge" ("${side}_id")`
       )
   })
 
@@ -335,8 +336,8 @@ describe("makePostgresSchema", () => {
         statement.startsWith('create table "validated_records"')
       )
     ).not.toContain("check")
-    expect(ddl).toContain("constraint objects_object_type_check check")
-    expect(ddl).toContain("constraint objects_parent_required check")
+    expect(ddl).toContain('constraint "objects_object_type_check" check')
+    expect(ddl).toContain('constraint "objects_parent_required" check')
     expect(
       storage.ddl.find((statement) =>
         statement.startsWith('create table "record_aliases"')

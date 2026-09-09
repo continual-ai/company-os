@@ -8,7 +8,6 @@ export interface SchemaCatalog {
     readonly type: string
     readonly nullable: boolean
     readonly default: string | null
-    readonly comment: string | null
   }>
   readonly constraints: ReadonlyArray<{
     readonly table: string
@@ -26,7 +25,6 @@ export interface SchemaCatalog {
   }>
   readonly tables: ReadonlyArray<{
     readonly name: string
-    readonly comment: string | null
   }>
   readonly triggers: ReadonlyArray<{
     readonly table: string
@@ -36,9 +34,8 @@ export interface SchemaCatalog {
 }
 
 /**
- * Reads tables, columns, constraints, indexes, triggers, functions, and
- * comments of one schema from the system catalogs. Migration bookkeeping is
- * excluded so a migrated database compares equal to the projected schema.
+ * Reads database structure from the system catalogs. Descriptive comments and
+ * migration bookkeeping are excluded; documentation changes do not need migrations.
  */
 export async function readSchemaCatalog(
   url: string,
@@ -61,22 +58,21 @@ export async function readSchemaCatalog(
     ) => (await client.query<T>(sql, [...parameters])).rows
     // One connection runs one query at a time, so the catalog reads are sequential.
     const tables = await rows<SchemaCatalog["tables"][number]>(`
-          select c.relname as name, obj_description(c.oid, 'pg_class') as comment
+          select c.relname as name
           from pg_class c join pg_namespace n on n.oid = c.relnamespace
           where n.nspname = $1 and c.relkind = 'r' and c.relname <> all($2::text[])
           order by c.relname`)
     const columns = await rows<SchemaCatalog["columns"][number]>(`
           select c.relname as table, a.attname as column,
             format_type(a.atttypid, a.atttypmod) as type, not a.attnotnull as nullable,
-            pg_get_expr(d.adbin, d.adrelid) as default,
-            col_description(c.oid, a.attnum) as comment
+            pg_get_expr(d.adbin, d.adrelid) as default
           from pg_attribute a
           join pg_class c on c.oid = a.attrelid
           join pg_namespace n on n.oid = c.relnamespace
           left join pg_attrdef d on d.adrelid = a.attrelid and d.adnum = a.attnum
           where n.nspname = $1 and c.relkind = 'r' and c.relname <> all($2::text[])
             and a.attnum > 0 and not a.attisdropped
-          order by c.relname, a.attnum`)
+          order by c.relname, a.attname`)
     const constraints = await rows<SchemaCatalog["constraints"][number]>(`
           select c.relname as table, k.conname as name, pg_get_constraintdef(k.oid) as definition
           from pg_constraint k

@@ -1,4 +1,5 @@
-import { Effect, Exit } from "effect"
+import { PgClient } from "@effect/sql-pg"
+import { Effect, Exit, Layer, Redacted } from "effect"
 import * as Migrator from "effect/unstable/sql/Migrator"
 import * as SqlClient from "effect/unstable/sql/SqlClient"
 import { expect, it } from "vitest"
@@ -10,16 +11,36 @@ import {
 } from "#/app/server/database/migrations.ts"
 import { migrations } from "#/app/server/database/migrations/index.ts"
 import { schemaSql } from "#/app/server/database/schema.ts"
-import { testApplication } from "#/app/server/test-application.ts"
+import { ModelContext } from "#/runtime/server/model-context.ts"
 import { Database } from "#/runtime/server/storage/database.ts"
+import { pgTypes } from "#/runtime/server/storage/index.ts"
 import { TestDatabase } from "#/runtime/server/storage/testing.ts"
 import { testDatabase } from "#/runtime/testing/database.ts"
 import { readSchemaCatalog } from "#/runtime/testing/schema-catalog.ts"
 
-const application = testApplication()
+const application = testDatabase(
+  Model,
+  async (url) => {
+    await Effect.runPromise(
+      Effect.scoped(
+        applyMigrations().pipe(
+          Effect.provide(
+            Database.layer.pipe(
+              Layer.provideMerge(ModelContext.layer(Model)),
+              Layer.provide(
+                PgClient.layer({ url: Redacted.make(url), types: pgTypes })
+              )
+            )
+          )
+        )
+      )
+    )
+  },
+  `migrations:${JSON.stringify(migrations)}`
+)
 const empty = testDatabase(Model, "")
 
-it("replayed migrations match the declared schema, including indexes, functions, and comments", async () => {
+it("replayed migrations match the declared structure, including indexes, functions, and triggers", async () => {
   const declared = await TestDatabase.createTemplate(schemaSql)
   try {
     const [migrated, expected] = await Promise.all([

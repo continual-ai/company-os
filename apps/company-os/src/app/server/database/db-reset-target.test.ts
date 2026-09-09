@@ -3,11 +3,10 @@ import { describe, expect, it } from "vitest"
 import { localDatabaseTarget } from "#/app/server/database/db-reset-target.ts"
 
 describe("localDatabaseTarget", () => {
-  it("accepts an explicitly confirmed local PostgreSQL database", () => {
+  it("accepts a dedicated local PostgreSQL database", () => {
     expect(
       localDatabaseTarget(
-        "postgresql://postgres:secret@127.0.0.1:5432/company_os",
-        "company_os"
+        "postgresql://postgres:secret@127.0.0.1:5432/company_os"
       )
     ).toEqual({ databaseName: "company_os", host: "127.0.0.1" })
   })
@@ -15,27 +14,21 @@ describe("localDatabaseTarget", () => {
   it("refuses a remote database", () => {
     expect(() =>
       localDatabaseTarget(
-        "postgresql://postgres:secret@database.example.com/company_os",
-        "company_os"
+        "postgresql://postgres:secret@database.example.com/company_os"
       )
     ).toThrow("refuses non-local database host")
   })
 
-  it("requires the database name as confirmation", () => {
-    expect(() =>
-      localDatabaseTarget(
-        "postgresql://postgres:secret@localhost/company_os",
-        "wrong_database"
-      )
-    ).toThrow("CONFIRM_DATABASE_RESET=company_os")
+  it("requires a database name", () => {
+    expect(() => localDatabaseTarget("postgresql://localhost/")).toThrow(
+      "dedicated local database"
+    )
   })
 
-  it("refuses PostgreSQL's default maintenance database", () => {
-    expect(() =>
-      localDatabaseTarget(
-        "postgresql://postgres:secret@localhost/postgres",
-        "postgres"
-      )
-    ).toThrow("refuses PostgreSQL system database 'postgres'")
+  it("refuses PostgreSQL maintenance databases", () => {
+    for (const name of ["postgres", "template0", "template1"])
+      expect(() =>
+        localDatabaseTarget(`postgresql://localhost/${name}`)
+      ).toThrow("system database")
   })
 })

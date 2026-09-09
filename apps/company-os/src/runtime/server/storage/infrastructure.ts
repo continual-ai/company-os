@@ -1,6 +1,6 @@
 import type { ImageRef } from "#/runtime/model/index.ts"
 import type { EventSubject } from "#/runtime/server/events/event-buffer.ts"
-import { defineTable } from "#/runtime/server/storage/table.ts"
+import { defineTable, schemaSection } from "#/runtime/server/storage/table.ts"
 export const identityBindings = defineTable<{
   issuer: string
   subject: string
@@ -12,14 +12,14 @@ export const identityBindings = defineTable<{
     issuer: { type: "text" },
     subject: { type: "text" },
     identityId: { type: "text" },
-    createdAt: { type: "timestamptz", default: "now()" },
+    createdAt: { type: "timestamp with time zone", default: "now()" },
   },
   {
     description:
       "Maps verified provider subjects to local identities. Credentials remain provider-owned.",
     constraints: [
-      "primary key(issuer,subject)",
-      "foreign key(identity_id) references interface_identity(id) on delete cascade",
+      'primary key ("issuer", "subject")',
+      'foreign key ("identity_id") references "interface_identity" ("id") on delete cascade',
     ],
   }
 )
@@ -33,8 +33,8 @@ export const assetBlobs = defineTable<{ assetId: string; bytes: Uint8Array }>(
     description:
       "Local asset payloads; business-facing file metadata lives on the asset record.",
     constraints: [
-      "primary key(asset_id)",
-      "foreign key(asset_id) references assets(id) on delete cascade",
+      'primary key ("asset_id")',
+      'foreign key ("asset_id") references "assets" ("id") on delete cascade',
     ],
   }
 )
@@ -53,9 +53,9 @@ export const assetReferences = defineTable<{
     description:
       "Tracks which record fields retain an asset and prevents deletion while referenced.",
     constraints: [
-      "primary key(record_id,field)",
-      "foreign key(record_id) references objects(id) on delete cascade",
-      "foreign key(asset_id) references assets(id) on delete restrict",
+      'primary key ("record_id", "field")',
+      'foreign key ("record_id") references "objects" ("id") on delete cascade',
+      'foreign key ("asset_id") references "assets" ("id") on delete restrict',
     ],
   }
 )
@@ -68,7 +68,7 @@ export const eventJournalState = defineTable<{ id: number; position: bigint }>(
   {
     description:
       "One row locked at commit to assign journal positions in commit order.",
-    constraints: ["primary key(id)"],
+    constraints: ['primary key ("id")'],
   }
 )
 export const eventJournal = defineTable<{
@@ -97,13 +97,16 @@ export const eventJournal = defineTable<{
     },
     actorId: { type: "text" },
     data: { type: "jsonb" },
-    occurredAt: { type: "timestamptz" },
-    recordedAt: { type: "timestamptz", default: "clock_timestamp()" },
+    occurredAt: { type: "timestamp with time zone" },
+    recordedAt: {
+      type: "timestamp with time zone",
+      default: "clock_timestamp()",
+    },
   },
   {
     description:
       "Append-only business facts recorded atomically with the writes they describe.",
-    constraints: ["primary key(position)", "unique(id)"],
+    constraints: ['primary key ("position")', 'unique ("id")'],
   }
 )
 export const recordSearch = defineTable<{
@@ -127,8 +130,8 @@ export const recordSearch = defineTable<{
     description:
       "Rebuildable search projection. Live records remain authoritative for identity and access.",
     constraints: [
-      "primary key(id)",
-      "foreign key(id) references objects(id) on delete cascade",
+      'primary key ("id")',
+      'foreign key ("id") references "objects" ("id") on delete cascade',
     ],
   }
 )
@@ -141,7 +144,7 @@ export const searchIndexState = defineTable<{ id: number; definition: string }>(
   {
     description:
       "Tracks the search projection definition so changes trigger an atomic rebuild.",
-    constraints: ["primary key(id)"],
+    constraints: ['primary key ("id")'],
   }
 )
 export const seedRuns = defineTable<{
@@ -153,33 +156,33 @@ export const seedRuns = defineTable<{
   {
     name: { type: "text" },
     parameters: { type: "text" },
-    completedAt: { type: "timestamptz", default: "now()" },
+    completedAt: { type: "timestamp with time zone", default: "now()" },
   },
   {
     description:
       "Development scenario receipts, separate from business records and system bootstrap.",
-    constraints: ["primary key(name)"],
+    constraints: ['primary key ("name")'],
   }
 )
 
 /** Desired current DDL. Migration history and required bootstrap data have separate owners. */
 export const infrastructureStatements = [
-  "-- Application infrastructure",
+  schemaSection("Application infrastructure"),
   ...identityBindings.ddl,
   ...assetBlobs.ddl,
   ...assetReferences.ddl,
-  "create index asset_references_asset_id_idx on asset_references(asset_id)",
+  'create index "asset_references_asset_id_idx" on "asset_references" ("asset_id")',
   ...eventJournalState.ddl,
   ...eventJournal.ddl,
-  "create index event_journal_type_position_idx on event_journal(type,position)",
-  `create function reject_event_journal_mutation() returns trigger language plpgsql as $$
+  'create index "event_journal_type_position_idx" on "event_journal" ("type", "position")',
+  `create function "reject_event_journal_mutation"()\nreturns trigger\nlanguage plpgsql as $$
 begin
   raise exception 'The event journal is append-only' using errcode = '55000';
 end;
 $$`,
-  "create trigger event_journal_append_only before update or delete on event_journal for each statement execute function reject_event_journal_mutation()",
+  `create trigger "event_journal_append_only"\n  before update or delete on "event_journal"\n  for each statement execute function "reject_event_journal_mutation"()`,
   ...recordSearch.ddl,
-  "create index record_search_document_idx on record_search using gin(document)",
+  'create index "record_search_document_idx" on "record_search" using gin ("document")',
   ...searchIndexState.ddl,
   ...seedRuns.ddl,
 ]

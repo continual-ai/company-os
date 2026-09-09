@@ -1,5 +1,3 @@
-import { createHash } from "node:crypto"
-
 import { Effect } from "effect"
 import * as Migrator from "effect/unstable/sql/Migrator"
 import * as SqlClient from "effect/unstable/sql/SqlClient"
@@ -10,26 +8,10 @@ export interface SchemaMigration {
   readonly id: number
   readonly name: string
   readonly sql: string
-  /** Hash of the complete projected schema after this migration. */
-  readonly schemaHash: string
 }
 
-export function schemaHash(sql: string): string {
-  return createHash("sha256").update(sql).digest("hex")
-}
-
-function migrationName(migration: SchemaMigration) {
-  return `${migration.name}_${schemaHash(migration.sql)}_${migration.schemaHash}`
-}
-
-function validateMigrations(
-  migrations: ReadonlyArray<SchemaMigration>,
-  expectedHash: string
-) {
-  if (migrations.length === 0 || migrations.at(-1)?.schemaHash !== expectedHash)
-    throw new Error(
-      "The model differs from the migration sequence. Regenerate the disposable baseline or add a migration for retained data."
-    )
+function validateMigrations(migrations: ReadonlyArray<SchemaMigration>) {
+  if (migrations.length === 0) throw new Error("No SQL migrations found.")
   for (const [index, migration] of migrations.entries()) {
     if (migration.id !== index + 1 || !/^[a-z][a-z0-9_]*$/.test(migration.name))
       throw new Error(
@@ -57,9 +39,11 @@ function verifyHistory(
 ) {
   for (const row of history) {
     const expected = migrations.find((migration) => migration.id === row.id)
-    if (!expected || row.name !== migrationName(expected))
+    // Older deployments recorded checksums in the name; retain their applied IDs without replaying SQL.
+    const name = row.name.replace(/_[a-f0-9]{64}_[a-f0-9]{64}$/, "")
+    if (!expected || name !== expected.name)
       throw new Error(
-        `Migration ${row.id} differs from the installed history. Restore the applied migration; add a new migration for subsequent changes.`
+        `Migration ${row.id} is missing or renamed. Restore its numbered file; add a new migration for subsequent changes.`
       )
   }
 }
@@ -74,18 +58,18 @@ const assertDatabaseEmpty = Effect.fn("@company/assertDatabaseEmpty")(
     if ((row?.count ?? 0) > 0)
       return yield* Effect.fail(
         new Error(
-          "The database already has tables but no migration ledger, so it was created by an earlier baseline. Point DATABASE_URL at a fresh database, or for a disposable local database run pnpm reset with CONFIRM_DATABASE_RESET set to its name."
+          "This database has tables but no migration history (for example, after db:reset). Keep using db:reset for development. Apply migrations to a separate empty database or one with existing migration history; run pnpm test:migrations to verify the upgrade."
         )
       )
     return yield* Effect.void
   }
 )
 
-/** Applied SQL is immutable; startup also refuses databases missing a required migration. */
+/** Startup refuses databases missing a committed migration or containing unknown history. */
 export const verifySchemaMigrations = Effect.fn(
   "@company/verifySchemaMigrations"
-)(function* (migrations: ReadonlyArray<SchemaMigration>, expectedHash: string) {
-  yield* Effect.try(() => validateMigrations(migrations, expectedHash))
+)(function* (migrations: ReadonlyArray<SchemaMigration>) {
+  yield* Effect.try(() => validateMigrations(migrations))
   const history = yield* readMigrations()
   yield* Effect.try(() => verifyHistory(history, migrations))
   if (history.length !== migrations.length)
@@ -100,15 +84,15 @@ export const verifySchemaMigrations = Effect.fn(
 /** Runs ordered, committed SQL with Effect SQL's migration lock and transaction semantics. */
 export const applySchemaMigrations = Effect.fn(
   "@company/applySchemaMigrations"
-)(function* (migrations: ReadonlyArray<SchemaMigration>, expectedHash: string) {
-  yield* Effect.try(() => validateMigrations(migrations, expectedHash))
+)(function* (migrations: ReadonlyArray<SchemaMigration>) {
+  yield* Effect.try(() => validateMigrations(migrations))
   const database = yield* Database
   const history = yield* readMigrations()
   yield* Effect.try(() => verifyHistory(history, migrations))
   if (history.length === 0) yield* assertDatabaseEmpty()
   const records = Object.fromEntries(
     migrations.map((migration) => [
-      `${migration.id}_${migrationName(migration)}`,
+      `${migration.id}_${migration.name}`,
       Effect.gen(function* () {
         const sql = yield* SqlClient.SqlClient
         yield* sql.unsafe(migration.sql)
@@ -119,5 +103,5 @@ export const applySchemaMigrations = Effect.fn(
     table: "company_os_migrations",
     loader: Migrator.fromRecord(records),
   }).pipe(Effect.provideService(SqlClient.SqlClient, database.sql))
-  yield* verifySchemaMigrations(migrations, expectedHash)
+  yield* verifySchemaMigrations(migrations)
 })

@@ -54,16 +54,26 @@ shell code uses `app/app-client.ts`. Use the existing forms, error paths, and se
 `defineModuleUi` additions/replacements, then a module-owned page for a distinct workflow. Do not
 create a custom route, transport, or service merely to expose standard CRUD.
 
-For storage changes, run `pnpm --filter company-os db:generate`. Add a numbered migration with the
-new schema hash and register it in `app/server/database/migrations/index.ts` when data is retained.
-Use `--baseline` only for confirmed disposable data. Removing source does not authorize losing
-retained records: establish their migration, archive, or deletion outcome first. Hiding UI, denying
-access, and deleting data are different requests.
+During development, edit the model and run `pnpm db:reset` after storage changes. This regenerates
+`schema.sql`, rebuilds the disposable local database directly from the model, and restores system
+records/search. It deletes local data and leaves migration files untouched. Use it only when the
+local data is disposable; retained data requires a migration. Ordinary application tests use the
+current model and do not require the migration to exist yet.
 
-Apply the migration with `pnpm --filter company-os db:migrate`; it also refreshes system roles and
-search. Reload the app and verify the intended user's access. For a missing object, check model
-registration, enablement, applied migrations, and list permissions before adding UI code. Demo
-seeding is for sample business records, not activation.
+When the feature is ready, run `pnpm db:migration <name>` (for example `add_owner`). It compares
+scratch databases built from existing migrations and the current model, then writes the next SQL
+file with structural diff comments and a failing placeholder. Replace that placeholder with the
+actual migration. Do not infer renames or backfills from structural differences alone. Finish any
+existing draft before generating another. A name allows a data-only migration even with no schema
+differences. Run `pnpm test:migrations` and add retained-data tests for transformations before
+committing the model, schema, migration, and tests together. Never rewrite applied history.
+
+Use `pnpm db:migrate` for an empty or previously migrated database; it also refreshes system records
+and search. A database rebuilt with `db:reset` has no migration history and must not receive pending
+migrations. Reload the app and verify the intended user's access. For a missing object, check model
+registration, enablement, database setup, and list permissions before adding UI code. Demo seeding
+is optional sample data. Removing source does not authorize losing retained records: establish
+their migration, archive, or deletion outcome first.
 
 Test the changed business behavior using `testFoundation(model, { servers })` and `fixture.test`,
 as the operation tests do. The fixture owns database setup/cleanup. Verify relevant denied access,

@@ -58,6 +58,17 @@ export default defineConfig({
               include: ["src/**/*-database.test.ts"],
               hookTimeout: 60_000,
               name: "database",
+              exclude: ["src/app/server/database/migrations-database.test.ts"],
+              testTimeout: 60_000,
+            },
+          },
+          {
+            extends: true,
+            test: {
+              globalSetup: "./src/runtime/testing/global-setup.ts",
+              include: ["src/app/server/database/migrations-database.test.ts"],
+              name: "migrations",
+              hookTimeout: 60_000,
               testTimeout: 60_000,
             },
           },
