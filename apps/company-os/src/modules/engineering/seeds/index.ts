@@ -9,6 +9,8 @@ import type { RecordId } from "#/runtime/model/index.ts"
 import { Records } from "#/runtime/server/index.ts"
 import { linkSeedRecords } from "#/runtime/server/seeds.ts"
 
+export { seedEngineeringPerformance } from "#/modules/engineering/seeds/performance.ts"
+
 export const seedEngineeringDemo = Effect.fn("@company/seedEngineeringDemo")(
   function* ({ owner }: { readonly owner: RecordId<"user"> }) {
     const records = yield* Records

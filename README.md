@@ -46,6 +46,11 @@ applies the committed migrations, and starts the app. The default connection is
 `postgresql://localhost:5432/company_os`; set `DATABASE_URL` in an ignored `.env.local` for another
 endpoint. See the [database guide](docs/runbooks/database.md).
 
+To explore the UI with realistic fictional data, run `pnpm db:seed` after the first startup.
+It adds connected demo records and a larger dataset across every business module. Use
+`pnpm db:seed --scenario demo` for a small walkthrough, or `--scenario performance --size 10000`
+for profiling. Reruns preserve your edits; see [development data](docs/runbooks/database.md#populate-development-data).
+
 The OpenAPI document is at [`/api/openapi`](http://localhost:3002/api/openapi). The Developer Center
 at `/developer` explores the model, the API, and the MCP tools.
 

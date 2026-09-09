@@ -8,13 +8,13 @@ kernel supplies the projection and the migration runner in `runtime/server/stora
 
 Run commands from the repository root with `pnpm --filter company-os <task>`.
 
-| Task          | Purpose                                                                        |
-| ------------- | ------------------------------------------------------------------------------ |
-| `db:generate` | Regenerate `schema.sql` from the model; `--baseline` also rewrites migration 1 |
-| `db:check`    | Fail when `schema.sql` or the last migration's hash disagrees with the model   |
-| `db:migrate`  | Apply committed migrations, ensure system records, refresh the search index    |
-| `db:seed`     | Create required system records in a development database                       |
-| `db:reset`    | Destructively rebuild a local database                                         |
+| Task          | Purpose                                                                             |
+| ------------- | ----------------------------------------------------------------------------------- |
+| `db:generate` | Regenerate `schema.sql` from the model; `--baseline` also rewrites migration 1      |
+| `db:check`    | Fail when `schema.sql` or the last migration's hash disagrees with the model        |
+| `db:migrate`  | Apply committed migrations, ensure system records, refresh the search index         |
+| `db:seed`     | Populate a development database with connected, realistic demo and performance data |
+| `db:reset`    | Destructively rebuild a local database                                              |
 
 ## Local development
 
@@ -24,6 +24,37 @@ defaults in `src/app/server/config.ts` (`postgresql://localhost:5432/company_os`
 `APP_SECRET`, and the local administrator bootstrap). Production and `deploy` never use those
 defaults; `apps/company-os/.env.example` lists every key a deployment sets. Only `VITE_` values
 reach browser code.
+
+## Populate development data
+
+After migrations, run from the repository root:
+
+```sh
+pnpm db:seed
+```
+
+This adds the curated demo and a larger fictional company dataset across every business module:
+1,000 contacts and leads, plus related companies, deals, line items, activities, notes, engineering
+work, campaigns, content, outreach, support conversations, and engineering escalations. It includes
+users and teams, stored portraits and logos, varied statuses and currencies, long text, missing
+optional values, and past and future deadlines. One large account exercises relationship pagination.
+Addresses and external links use reserved example domains; outreach and replies are stored fixtures,
+not messages sent to anyone.
+
+```sh
+pnpm db:seed --scenario demo                       # Small, curated walkthrough
+pnpm db:seed --scenario performance --size 10000   # Larger dataset for profiling
+```
+
+`--size` accepts 1–10,000 and controls contacts and leads; related records scale with it. The default
+is 1,000. Dates are relative to the first run. Each scenario commits its records and completion
+receipt in one transaction. Rerunning the same scenario skips it, preserving manual edits and
+deletions. A failed run rolls back and can be retried. Changing a completed scenario's size or
+version requires a fresh development database; use the explicit reset below only when its data
+is disposable, then seed again. Nothing adds business fixtures during ordinary startup or deployment.
+
+Seeding rejects production mode and PostgreSQL system databases. A remote development database also
+requires `CONFIRM_DEVELOPMENT_DATABASE=hostname/database-name` for that exact disposable target.
 
 ## Tests
 

@@ -1,6 +1,7 @@
 import { Effect, type Layer } from "effect"
 import { expect } from "vitest"
 
+import { Model } from "#/app.model.ts"
 import { demoScenario } from "#/app/seeds/demo.server.ts"
 import { performanceScenario } from "#/app/seeds/performance.server.ts"
 import {
@@ -165,5 +166,33 @@ application.test("supports a paginated, repeatable performance dataset", () =>
     ).toBe(60)
     expect((yield* services.lead.list({})).totalSize).toBe(60)
     expect((yield* services.note.list({})).totalSize).toBe(60)
+    // Every shipped business object must have examples; this catches forgotten modules and new objects.
+    const sql = (yield* Database).sql
+    for (const module of Object.values(Model.modules)) {
+      if (module.id === "access" || module.id === "assets") continue
+      for (const object of module.objects) {
+        const table = Storage.objects[object.id]
+        const [row] = yield* sql<{
+          count: number
+        }>`select count(*)::int as count from ${table}`
+        expect(row?.count, `${module.id}.${object.id}`).toBeGreaterThan(0)
+      }
+    }
+    expect((yield* services.deal.list({})).totalSize).toBe(30)
+    expect((yield* services.lineItem.list({})).totalSize).toBe(90)
+    expect((yield* services.activity.list({})).totalSize).toBe(60)
+    expect((yield* services.reply.list({})).totalSize).toBe(90)
+    const tickets = (yield* services.ticket.list({ pageSize: 50 })).items
+    expect(new Set(tickets.map((ticket) => ticket.status)).size).toBe(6)
+    expect(tickets.some((ticket) => ticket.resolution !== null)).toBe(true)
+    const ticketTable = Storage.objects.ticket
+    const primary = Storage.linkTables.contactPrimaryCompany
+    const [mismatch] = yield* sql<{
+      count: number
+    }>`select count(*)::int as count
+      from ${ticketTable}
+      left join ${primary} on ${primary.columns.forwardId} = ${ticketTable.columns.requesterId}
+      where ${primary.columns.reverseId} is distinct from ${ticketTable.columns.companyId}`
+    expect(mismatch?.count).toBe(0)
   })
 )

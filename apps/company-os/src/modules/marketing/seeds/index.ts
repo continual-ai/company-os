@@ -6,6 +6,8 @@ import { Outreach } from "#/modules/marketing/model/outreach.ts"
 import type { RecordId } from "#/runtime/model/index.ts"
 import { Records } from "#/runtime/server/index.ts"
 
+export { seedMarketingPerformance } from "#/modules/marketing/seeds/performance.ts"
+
 export const seedMarketingDemo = Effect.fn("@company/seedMarketingDemo")(
   function* ({
     owner,
