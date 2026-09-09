@@ -1,96 +1,124 @@
+import { Button } from "@company/ui/button"
 import { cn } from "@company/ui/lib/utils"
-import { CheckIcon } from "lucide-react"
+import { ChevronDownIcon } from "lucide-react"
 
 import { ObjectChoiceBadge } from "#/runtime/ui/model/object-choice-badge.tsx"
 import {
   modelObjectProperty,
   type ObjectRecordPresentation,
 } from "#/runtime/ui/model/object-client.ts"
-import { objectTablePropertySchema } from "#/runtime/ui/model/object-table/object-table-cell-types.ts"
+import { objectFormProperties } from "#/runtime/ui/model/object-form.ts"
 import { objectTableValueText } from "#/runtime/ui/model/object-table/object-table-config.ts"
 
 export function ObjectRecordStatusProgress({
-  className,
   object,
   record,
+  onEdit,
+  disabled,
+  className,
 }: ObjectRecordPresentation & {
+  readonly onEdit?: ((field: string) => void) | undefined
+  readonly disabled?: boolean | undefined
   readonly className?: string | undefined
 }) {
-  const statusPropertyId = object.display.status
-  if (statusPropertyId === undefined) return null
-
-  const property = modelObjectProperty(object, statusPropertyId)
-  if (property === undefined) return null
-
-  const propertySchema = objectTablePropertySchema(property)
-  if (propertySchema.kind !== "enum") return null
+  const field = object.display.status
+  if (field === undefined) return null
+  const property = modelObjectProperty(object, field)
+  if (property?.kind !== "enum") return null
 
   const choices =
-    propertySchema.options ??
-    propertySchema.values.map((value) => ({ label: value, value }))
-  const currentValue = objectTableValueText(record[statusPropertyId])
-  const currentIndex = choices.findIndex(
-    (choice) => choice.value === currentValue
+    property.options ??
+    property.values.map((value) => ({ value, label: value }))
+  const value = objectTableValueText(record[field])
+  const currentChoice = choices.find((choice) => choice.value === value)
+  const editable =
+    onEdit &&
+    objectFormProperties(object, "edit").some((item) => item.id === field)
+  const fieldLabel = property.label ?? field
+  const label =
+    currentChoice?.label ?? (value || `No ${fieldLabel.toLowerCase()}`)
+  const badge = (
+    <ObjectChoiceBadge
+      choice={currentChoice ?? { value, label }}
+      className="max-w-64 rounded-md"
+    />
   )
-  if (currentIndex < 0 || choices.length < 2) return null
 
-  const currentChoice = choices[currentIndex]!
+  const control = editable ? (
+    <Button
+      variant="ghost"
+      size="xs"
+      className="gap-1 px-1"
+      aria-label={`Edit ${fieldLabel}: ${label}`}
+      title={fieldLabel}
+      disabled={disabled}
+      onClick={() => onEdit(field)}
+    >
+      {badge}
+      <ChevronDownIcon className="size-3 text-muted-foreground" />
+    </Button>
+  ) : (
+    <span aria-label={`${fieldLabel}: ${label}`}>{badge}</span>
+  )
+  if (choices.length < 2)
+    return (
+      <span data-record-field={field} className={cn("text-xs", className)}>
+        {control}
+      </span>
+    )
 
+  const currentIndex = choices.findIndex((choice) => choice.value === value)
   return (
     <section
-      aria-label={`${object.name} status progress`}
-      className={cn("max-w-full overflow-x-auto", className)}
-      data-record-status-progress=""
+      aria-label={`${fieldLabel} progress`}
+      data-record-field={field}
+      className={cn("flex w-max min-w-0 items-center gap-4 text-xs", className)}
     >
-      <div className="mb-2 flex items-center gap-2 text-xs">
-        <span className="text-muted-foreground">Status</span>
-        <ObjectChoiceBadge choice={currentChoice} />
-      </div>
-      <ol className="flex min-w-max items-start">
-        {choices.map((choice, index) => {
-          const complete = index < currentIndex
-          const current = index === currentIndex
-
+      {currentIndex < 0 && control}
+      <ol className="flex items-center">
+        {choices.map((step, index) => {
+          const current = step.value === value
+          const preceding = currentIndex > index
           return (
             <li
-              key={choice.value}
+              key={step.value}
               aria-current={current ? "step" : undefined}
-              className="flex items-start"
+              className="flex items-center"
             >
-              <div className="flex min-w-0 items-center gap-1.5">
+              {index > 0 && (
                 <span
                   aria-hidden="true"
                   className={cn(
-                    "flex size-5 shrink-0 items-center justify-center rounded-full border text-[10px] font-semibold",
-                    complete || current
-                      ? "border-foreground bg-foreground text-background"
-                      : "border-border bg-background text-muted-foreground"
-                  )}
-                >
-                  {complete ? <CheckIcon className="size-3" /> : index + 1}
-                </span>
-                <span
-                  className={cn(
-                    "max-w-32 truncate text-xs",
-                    current
-                      ? "font-semibold text-foreground"
-                      : complete
-                        ? "text-foreground"
-                        : "text-muted-foreground"
-                  )}
-                >
-                  {choice.label}
-                </span>
-              </div>
-              {index < choices.length - 1 ? (
-                <span
-                  aria-hidden="true"
-                  className={cn(
-                    "mx-2 mt-2.5 h-px w-8",
-                    index < currentIndex ? "bg-foreground" : "bg-border"
+                    "mx-3 h-px w-6",
+                    currentIndex >= index ? "bg-foreground/30" : "bg-border"
                   )}
                 />
-              ) : null}
+              )}
+              <span
+                aria-hidden="true"
+                className={cn(
+                  "mr-1.5 flex size-5 shrink-0 items-center justify-center rounded-full border text-[10px]",
+                  current
+                    ? "border-foreground bg-foreground font-semibold text-background"
+                    : preceding
+                      ? "border-foreground/30 text-foreground"
+                      : "border-border text-muted-foreground"
+                )}
+              >
+                {index + 1}
+              </span>
+              {current ? (
+                control
+              ) : (
+                <span
+                  className={cn(
+                    "whitespace-nowrap",
+                    preceding ? "text-foreground" : "text-muted-foreground"
+                  )}
+                >
+                  {step.label}
+                </span>
+              )}
             </li>
           )
         })}

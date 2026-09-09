@@ -7,6 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@company/ui/select"
+import { defaultStringifySearch } from "@tanstack/react-router"
 import { functionalUpdate, type OnChangeFn } from "@tanstack/react-table"
 import {
   PencilIcon,
@@ -62,9 +63,11 @@ import { useObjectCreate } from "#/runtime/ui/model/object-create-context.ts"
 import type { ObjectFormInput } from "#/runtime/ui/model/object-form.ts"
 import { ObjectRecordDialog } from "#/runtime/ui/model/object-record-dialog.tsx"
 import { ObjectRecordFeed } from "#/runtime/ui/model/object-record-feed.tsx"
+import { objectHref } from "#/runtime/ui/model/object-routing.ts"
 import { readFilterValue } from "#/runtime/ui/model/object-table/object-table-config.ts"
 import { ObjectTable } from "#/runtime/ui/model/object-table/object-table.tsx"
 import { type CollectionToolbarProps } from "#/runtime/ui/model/object-ui.ts"
+import { useRememberCollection } from "#/runtime/ui/model/record-navigation.tsx"
 import { useModelRuntime } from "#/runtime/ui/model/runtime-context.tsx"
 import {
   useObjectCollection,
@@ -144,6 +147,16 @@ export function ObjectCollection({
     { window }
   )
   const openObjectCreate = useObjectCreate()
+  useRememberCollection(
+    suppliedSource === undefined
+      ? {
+          objectId: object.id,
+          request: collection.request,
+          href:
+            objectHref(runtime, object) + defaultStringifySearch(activeSearch),
+        }
+      : undefined
+  )
   const [editing, setEditing] = useState<ClientRecord>()
   const [mutationError, setMutationError] = useState<string>()
   const source: ObjectCollectionSource = suppliedSource ?? {

@@ -1,5 +1,6 @@
 import {
   BoxIcon,
+  HandshakeIcon,
   Building2Icon,
   UserRoundIcon,
   MegaphoneIcon,
@@ -18,6 +19,7 @@ import {
 
 const icons: Readonly<Record<string, LucideIcon>> = {
   building: Building2Icon,
+  handshake: HandshakeIcon,
   person: UserRoundIcon,
   party: UserRoundIcon,
   megaphone: MegaphoneIcon,

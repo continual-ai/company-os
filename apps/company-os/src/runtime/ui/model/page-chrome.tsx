@@ -7,10 +7,12 @@ import {
   type ReactNode,
 } from "react"
 
+import type { RecordNavigation } from "#/runtime/ui/model/record-navigation.tsx"
+
 interface PageChrome {
-  readonly breadcrumb?: string | undefined
   readonly collectionHref?: string | undefined
   readonly collectionLabel?: string | undefined
+  readonly recordNavigation?: RecordNavigation | undefined
 }
 
 interface PageChromeContextValue {
@@ -52,11 +54,11 @@ export function usePageChromeOverride(chrome: PageChrome): void {
       "usePageChromeOverride must be used within PageChromeProvider."
     )
   }
-  const { breadcrumb, collectionHref, collectionLabel } = chrome
+  const { collectionHref, collectionLabel, recordNavigation } = chrome
   const { setCurrent } = context
 
   useEffect(() => {
-    setCurrent({ breadcrumb, collectionHref, collectionLabel })
+    setCurrent({ collectionHref, collectionLabel, recordNavigation })
     return () => setCurrent({})
-  }, [breadcrumb, collectionHref, collectionLabel, setCurrent])
+  }, [collectionHref, collectionLabel, recordNavigation, setCurrent])
 }

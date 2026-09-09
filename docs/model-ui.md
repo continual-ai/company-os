@@ -14,6 +14,12 @@ anything; the remaining relationships stay reachable through a searchable menu. 
 default when a record has related collections or long text and shows the newest records from each
 featured relationship with authorized counts. Other tabs load when opened.
 
+The header shows the record image or icon and title. When `display.status` names an enum with
+multiple choices, it also shows a stepper. That same field provides the default Kanban grouping;
+both use the enum's declared choice order. There is no extra flag or separate stage list. The
+stepper shows position, not transition enforcement or evidence that earlier stages were visited.
+Status remains an editable field in Details; both surfaces use the same governed field editor.
+
 Field edits open focused dialogs that submit only the selected fields with the revision captured
 when the editor opened. Full-record editing remains available. Command/Ctrl-Enter submits; a dirty
 form asks before discarding; a revision conflict preserves the draft instead of overwriting or
@@ -25,6 +31,10 @@ on the endpoint that owns the association.
 
 Lists default to creation time descending, then id. Back follows browser history through related
 records to the originating collection; relationship tab changes replace the current history entry.
+The record header browses the most recently opened standalone collection for that object, retaining
+its filters and ordering for the session. Previous and next replace the current history entry; next
+loads another page when needed. The counter appears only when the record is in the loaded results.
+A fresh direct link uses the default list, without scanning every page to guess a position.
 The command palette suggests explicitly visited records; prefetches and background refreshes do not
 count as visits.
 

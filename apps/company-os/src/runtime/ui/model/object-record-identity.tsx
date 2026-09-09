@@ -24,6 +24,7 @@ import {
 
 interface ObjectRecordIdentityProps extends ObjectRecordPresentation {
   readonly expanded?: boolean | undefined
+  readonly heading?: boolean | undefined
   readonly className?: string | undefined
   readonly href?: string | undefined
   readonly resolveImageSrc?: ObjectTableImageResolver | undefined
@@ -111,6 +112,7 @@ function ObjectMark({
 export function ObjectRecordIdentity({
   className,
   expanded = false,
+  heading = false,
   href,
   object,
   record,
@@ -127,6 +129,14 @@ export function ObjectRecordIdentity({
       : displayImage(record[object.display.image], resolveImageSrc)
   const status = displayStatus(object, record)
   const resolvedTitle = title.length > 0 ? title : `Untitled ${object.name}`
+
+  if (heading)
+    return (
+      <span className={cn("flex min-w-0 items-center gap-3", className)}>
+        <ObjectMark image={image} object={object} size="lg" />
+        <span className="min-w-0 wrap-break-word">{resolvedTitle}</span>
+      </span>
+    )
 
   return (
     <PreviewCard>

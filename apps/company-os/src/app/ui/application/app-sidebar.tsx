@@ -18,6 +18,8 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
+  SidebarTrigger,
+  useSidebar,
 } from "@company/ui/sidebar"
 import { Link, useMatchRoute } from "@tanstack/react-router"
 import { BracesIcon, ChevronsUpDownIcon, SettingsIcon } from "lucide-react"
@@ -37,32 +39,38 @@ import { useCapabilities } from "#/runtime/ui/model/use-capabilities.ts"
 const navigationChecks = [applicationCapabilities.develop]
 
 export function AppSidebar() {
+  const { open, isMobile } = useSidebar()
   const user = useAuthenticatedUser()
   const capabilities = useCapabilities(navigationChecks)
   const matchRoute = useMatchRoute()
   const canDevelop = capabilities.can(applicationCapabilities.develop)
   return (
     <Sidebar variant="sidebar" collapsible="offcanvas">
-      <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
+      <SidebarHeader className="gap-0 p-0">
+        <SidebarMenu className="gap-0">
+          <SidebarMenuItem className="flex h-(--header-height) shrink-0 items-center gap-1 border-b px-2">
             <SidebarMenuButton
-              size="lg"
+              className="min-w-0 flex-1"
               tooltip={appConfig.identity.name}
               render={<Link to="/" />}
             >
-              <BrandMark className="size-8" />
-              <span className="grid flex-1 text-left leading-tight">
-                <span className="truncate text-sm font-semibold">
-                  {appConfig.identity.name}
-                </span>
-                <span className="truncate text-xs text-sidebar-foreground/70">
-                  {appConfig.identity.descriptor}
-                </span>
+              <BrandMark className="size-6" />
+              <span className="min-w-0 flex-1 truncate text-sm font-semibold">
+                {appConfig.identity.name}
               </span>
             </SidebarMenuButton>
+            <SidebarTrigger
+              className="mr-1 text-sidebar-foreground/60"
+              aria-label={
+                isMobile
+                  ? "Close sidebar"
+                  : open
+                    ? "Collapse sidebar"
+                    : "Expand sidebar"
+              }
+            />
           </SidebarMenuItem>
-          <SidebarMenuItem>
+          <SidebarMenuItem className="p-2">
             <CommandPaletteButton />
           </SidebarMenuItem>
         </SidebarMenu>

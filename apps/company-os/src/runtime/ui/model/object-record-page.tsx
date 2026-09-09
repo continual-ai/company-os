@@ -9,7 +9,6 @@ import {
 } from "#/runtime/ui/model/module-ui.tsx"
 import {
   tableRecord,
-  recordLabel,
   modelObjectProperty,
   type ModelObject,
 } from "#/runtime/ui/model/object-client.ts"
@@ -20,10 +19,10 @@ import { ObjectRecordDialog } from "#/runtime/ui/model/object-record-dialog.tsx"
 import { ObjectRecordIdentity } from "#/runtime/ui/model/object-record-identity.tsx"
 import { ObjectRecordStatusProgress } from "#/runtime/ui/model/object-record-status-progress.tsx"
 import { ObjectRelationshipCollection } from "#/runtime/ui/model/object-relationship-collection.tsx"
-import { objectHref } from "#/runtime/ui/model/object-routing.ts"
 import { objectTablePropertySchema } from "#/runtime/ui/model/object-table/object-table-cell-types.ts"
 import { usePageChromeOverride } from "#/runtime/ui/model/page-chrome.tsx"
 import { RecordIdentifier } from "#/runtime/ui/model/record-identifier.tsx"
+import { useRecordNavigation } from "#/runtime/ui/model/record-navigation.tsx"
 import { RecordRelatedCreateMenu } from "#/runtime/ui/model/record-related-create-menu.tsx"
 import { RecordRelationshipPicker } from "#/runtime/ui/model/record-relationship-picker.tsx"
 import {
@@ -94,10 +93,15 @@ export function ObjectRecordPage({
   }
   const record = state.record
   const title = record ? recordTitle?.({ record, can: state.can }) : undefined
+  const { navigation, collectionHref } = useRecordNavigation(
+    object,
+    recordId,
+    record !== undefined
+  )
   usePageChromeOverride({
-    breadcrumb: title ?? (record ? recordLabel(object, record) : object.name),
-    collectionHref: objectHref(runtime, object),
+    collectionHref,
     collectionLabel: object.pluralName,
+    recordNavigation: navigation,
   })
   if (!record)
     return (
@@ -175,46 +179,52 @@ export function ObjectRecordPage({
       ref={pageElement}
       className="@container flex min-h-0 flex-1 flex-col bg-background"
     >
-      <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b px-5 py-3">
-        <div className="min-w-0 flex-1">
-          <h1 className="min-w-0 text-xl tracking-tight">
-            {title !== undefined ? (
-              title
-            ) : (
-              <ObjectRecordIdentity
-                object={object}
-                record={tableRecord(object, record)}
-                className="max-w-full [&>span:first-child]:size-9 [&>span:last-child]:text-xl"
-              />
+      <header className="shrink-0 border-b px-5 py-4">
+        <div className="flex flex-col gap-3 @3xl:flex-row @3xl:items-center @3xl:justify-between @3xl:gap-6">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-2">
+            <h1 className="min-w-0 text-xl font-semibold tracking-tight wrap-break-word">
+              {title ?? (
+                <ObjectRecordIdentity
+                  heading
+                  object={object}
+                  record={tableRecord(object, record)}
+                />
+              )}
+            </h1>
+          </div>
+          <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+            <ObjectActions
+              actions={actions}
+              record={record}
+              can={state.can}
+              placement="record"
+            />
+            <RecordRelatedCreateMenu relationships={related} totals={totals} />
+            {edit && (
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-label={`Edit ${object.name.toLowerCase()}`}
+                disabled={editing !== undefined}
+                onClick={() => setEditing("all")}
+              >
+                <PencilIcon />
+                Edit
+              </Button>
             )}
-          </h1>
-          <ObjectRecordStatusProgress
-            className="mt-3"
-            object={object}
-            record={tableRecord(object, record)}
-          />
+            <RecordIdentifier value={record.id} />
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <ObjectActions
-            actions={actions}
-            record={record}
-            can={state.can}
-            placement="record"
-          />
-          <RecordRelatedCreateMenu relationships={related} totals={totals} />
-          {edit && (
-            <Button
-              variant="outline"
-              size="sm"
+        {object.display.status && (
+          <div className="mt-4 min-w-0 overflow-x-auto">
+            <ObjectRecordStatusProgress
+              object={object}
+              record={tableRecord(object, record)}
+              onEdit={edit}
               disabled={editing !== undefined}
-              onClick={() => setEditing("all")}
-            >
-              <PencilIcon />
-              Edit record
-            </Button>
-          )}
-          <RecordIdentifier value={record.id} />
-        </div>
+            />
+          </div>
+        )}
       </header>
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto @3xl:flex-row @3xl:overflow-hidden">
         {detailFields.length > 0 && (
