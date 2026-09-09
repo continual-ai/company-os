@@ -25,8 +25,8 @@ are Effect functions; custom screens are ordinary React components. The same ser
 and transactions apply whether a person clicks a button or an agent calls a tool.
 
 The repository runs locally without a Continual account. [Continual](https://continual.ai) maintains
-the project and offers optional hosting. Company OS is **source-available under
-[Elastic License 2.0](LICENSE.md)**. Its APIs are still evolving.
+the project and offers optional hosting. Company OS is open source under the
+[Apache License 2.0](LICENSE).
 
 ## Quick start
 
@@ -149,5 +149,4 @@ holds the repository-wide constraints that contributors and agents follow.
 
 ## License
 
-[Elastic License 2.0](LICENSE.md). Read the license before redistributing Company OS or offering it
-as a hosted service.
+[Apache License 2.0](LICENSE). Read the license before redistributing Company OS.
