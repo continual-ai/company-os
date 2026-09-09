@@ -7,8 +7,9 @@ const CENTRAL_APP_SOURCE = /(?:^|\/)apps\/company-os\/src\/(.+)$/
 const CENTRAL_APP_PACKAGE = "company-os"
 const TEMPLATE_PACKAGE_SCOPE = "@company-template/"
 const TEMPLATE_ALLOWED_CENTRAL_IMPORTS = new Set([
+  "company-os/client",
+  "company-os/config",
   "company-os/model",
-  "company-os/metadata",
   "company-os/styles.css",
 ])
 const TEST_FILE = /\.test\.[cm]?[jt]sx?$/
@@ -237,7 +238,7 @@ function templateReason(specifier: string): string | null {
     !TEMPLATE_ALLOWED_CENTRAL_IMPORTS.has(specifier) &&
     !specifier.startsWith("company-os/ui/")
   )
-    return "Optional apps consume the central app only through company-os/model, company-os/metadata, company-os/ui/*, and company-os/styles.css."
+    return "Optional apps consume the central app only through company-os/model, company-os/client, company-os/config, company-os/ui/*, and company-os/styles.css."
   return null
 }
 

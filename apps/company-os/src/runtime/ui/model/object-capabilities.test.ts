@@ -4,7 +4,7 @@ import {
   allowedCapabilityKeys,
   capabilityKey,
   type CapabilityCheck,
-} from "#/runtime/client/capabilities.ts"
+} from "#/runtime/contract/capabilities.ts"
 import { ROOT_ID } from "#/runtime/model/system-records.ts"
 import {
   Account,

@@ -3,10 +3,10 @@ import { OpenApi } from "effect/unstable/httpapi"
 import { expect } from "vitest"
 
 import { Model } from "#/app.model.ts"
-import { createApplicationHttpApi } from "#/app/http-api.ts"
 import { SalesServer } from "#/modules/sales/server/index.ts"
 import { SupportEngineeringServer } from "#/modules/support-engineering/server/index.ts"
 import { Ticket } from "#/modules/support/model/index.ts"
+import { createApplicationHttpApi } from "#/runtime/contract/application-http-api.ts"
 import {
   enableModules,
   modelObjectLinkTraversals,

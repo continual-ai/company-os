@@ -34,7 +34,6 @@ import type {
   ObjectGetInput,
   ObjectRecord,
   ObjectType,
-  ObjectUpdateInput,
 } from "#/runtime/model/definition/object.ts"
 import type { CustomQuery } from "#/runtime/model/definition/query.ts"
 import type {
@@ -52,146 +51,11 @@ import type {
   LinkMutationInput,
 } from "#/runtime/model/link-input.ts"
 
-type OperationId<
-  TOperation extends string,
-  TObject extends ObjectType,
-  TScope extends "collection" | "object",
-> = `${TOperation}${Capitalize<
-  TScope extends "collection" ? TObject["collection"] : TObject["id"]
->}`
-
-type UpdatePayload<
-  TModel extends ModelCatalog,
-  TObject extends ModelObject<TModel>,
-> = Omit<ModelObjectUpdateInput<TModel, TObject>, "id">
-type DeleteQuery<TObject extends ObjectType> = Pick<
-  ObjectDeleteInput<TObject>,
-  "etag"
->
-
-type NonEmpty<T> = keyof T extends never ? never : T
-
 type CustomOperation = Action | CustomQuery
 type ObjectCustomOperations<TObject extends ObjectType> = TObject["actions"] &
   TObject["queries"]
 type InputOf<T extends CustomOperation> = InferInputSchema<T["input"]>
 type OutputOf<T extends CustomOperation> = InferSchema<T["output"]>
-
-type ClientRequestPart<TKey extends string, TValue> = [TValue] extends [never]
-  ? object
-  : { readonly [TPart in TKey]: TValue }
-
-type ClientMethod<TRequest, TOutput> = (
-  request: TRequest
-) => Effect.Effect<
-  TOutput,
-  ApiError | HttpClientError.HttpClientError | Schema.SchemaError
->
-
-type StandardClient<
-  TModel extends ModelCatalog,
-  TObject extends ModelObject<TModel>,
-> = {
-  readonly [TId in OperationId<"list", TObject, "collection">]: ClientMethod<
-    { readonly query: ListRequest<TObject> },
-    Page<ObjectRecord<TObject>>
-  >
-} & {
-  readonly [
-    TId in OperationId<"batchGet", TObject, "collection">
-  ]: ClientMethod<
-    { readonly payload: ObjectBatchGetInput<TObject> },
-    Batch<ObjectRecord<TObject>>
-  >
-} & ("batchDelete" extends keyof TObject["actions"]
-    ? {
-        readonly [
-          TId in OperationId<"batchDelete", TObject, "collection">
-        ]: ClientMethod<
-          { readonly payload: ObjectBatchDeleteInput<TObject> },
-          void
-        >
-      }
-    : object) &
-  ("create" extends keyof TObject["actions"]
-    ? {
-        readonly [
-          TId in OperationId<"create", TObject, "object">
-        ]: ClientMethod<
-          { readonly payload: ModelObjectCreateInput<TModel, TObject> },
-          ObjectRecord<TObject>
-        >
-      }
-    : object) & {
-    readonly [TId in OperationId<"get", TObject, "object">]: ClientMethod<
-      { readonly params: { readonly id: RecordIdentifier<TObject["id"]> } },
-      ObjectRecord<TObject>
-    >
-  } & ("update" extends keyof TObject["actions"]
-    ? {
-        readonly [
-          TId in OperationId<"update", TObject, "object">
-        ]: ClientMethod<
-          {
-            readonly params: Pick<ObjectUpdateInput<TObject>, "id">
-            readonly payload: UpdatePayload<TModel, TObject>
-          },
-          ObjectRecord<TObject>
-        >
-      }
-    : object) &
-  ("delete" extends keyof TObject["actions"]
-    ? {
-        readonly [
-          TId in OperationId<"delete", TObject, "object">
-        ]: ClientMethod<
-          {
-            readonly params: Pick<ObjectDeleteInput<TObject>, "id">
-            readonly query: DeleteQuery<TObject>
-          },
-          void
-        >
-      }
-    : object)
-
-type ActionClientMethod<
-  TObject extends ObjectType,
-  TAction extends CustomOperation,
-> = ClientMethod<
-  ClientRequestPart<
-    "params",
-    TAction["scope"] extends "object"
-      ? { readonly id: RecordIdentifier<TObject["id"]> }
-      : never
-  > &
-    ClientRequestPart<"payload", NonEmpty<Omit<InputOf<TAction>, "id">>>,
-  OutputOf<TAction>
->
-
-type ActionClient<TObject extends ObjectType> = {
-  readonly [
-    TAction in ObjectCustomOperations<TObject>[keyof ObjectCustomOperations<TObject>] as TAction extends CustomOperation
-      ? TAction["id"] extends StandardActionId
-        ? never
-        : OperationId<TAction["id"], TObject, TAction["scope"]>
-      : never
-  ]: TAction extends CustomOperation
-    ? ActionClientMethod<TObject, TAction>
-    : never
-}
-
-type ObjectHttpClient<
-  TModel extends ModelCatalog,
-  TObject extends ModelObject<TModel>,
-> = StandardClient<TModel, TObject> & ActionClient<TObject>
-
-/** Typed decoded-only view of Effect's native HttpApiClient for a model. */
-export type ModelHttpClient<TModel extends ModelCatalog> = {
-  readonly [TObject in ModelObject<TModel> as TObject["id"]]: ObjectHttpClient<
-    TModel,
-    TObject
-  >
-}
 
 type ClientEndpointMatches<
   TObject extends ObjectType,
@@ -242,7 +106,7 @@ type LinkTraversalClient<TModel extends ModelCatalog, TSide> = TSide extends {
   readonly target: infer TTarget extends LinkTraversal
 }
   ? {
-      readonly list: ClientMethod<
+      readonly list: DirectClientMethod<
         LinkListInput,
         Page<
           RelatedRecord<
@@ -257,12 +121,12 @@ type LinkTraversalClient<TModel extends ModelCatalog, TSide> = TSide extends {
       >
     } & (TLink["writeFrom"] extends TTraversal["key"]
       ? {
-          readonly link: ClientMethod<LinkMutationInput, void>
+          readonly link: DirectClientMethod<LinkMutationInput, void>
         } & (TTraversal["cardinality"] extends "one"
           ? object
           : TTarget["cardinality"] extends "one"
             ? object
-            : { readonly unlink: ClientMethod<LinkMutationInput, void> })
+            : { readonly unlink: DirectClientMethod<LinkMutationInput, void> })
       : object)
   : never
 
@@ -373,7 +237,11 @@ function nativeMethod(group: object, identifier: string): NativeModelMethod {
   return method as NativeModelMethod
 }
 
-/** Projects the native Effect client as direct object, Action, and Link methods. */
+/**
+ * Projects Effect's generated HttpApiClient for an application contract as direct
+ * object, Action, and Link methods. Both sides are generated from the same model, so
+ * the native client is addressed by endpoint id rather than typed a second time.
+ */
 export function createModelClient<TModel extends ModelCatalog>(
   model: TModel,
   nativeClient: object

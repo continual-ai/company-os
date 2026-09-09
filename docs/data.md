@@ -1,8 +1,9 @@
 # Client data
 
-One model, one server authority, one client cache. `app/app-client.ts` derives the semantic client
-from `EnabledModel` and exposes it as `data`; every object gets TanStack Query options for its
-Queries and mutation options for its Actions.
+One model, one server authority, one client cache. `runtime/client/create-client.ts` derives the
+typed client from a model; `app/app-client.ts` builds it for the app's own origin and exposes
+TanStack Query options as `data`: every object gets query options for its Queries and mutation
+options for its Actions, and `data.records.search` covers record search.
 
 ```tsx
 const contacts = useQuery(data.contact.list({ pageSize: 50 }))
@@ -21,13 +22,14 @@ request and hydrates the browser. Module components use `useObjectClient(O)` fro
 
 ## Ownership
 
-| Code                                     | Responsibility                                                          |
-| ---------------------------------------- | ----------------------------------------------------------------------- |
-| `app/app-client.ts`                      | Assemble the private Effect HTTP client; export `data` and the feed API |
-| `runtime/client/model-query-client.ts`   | Derive typed query and mutation options from the model                  |
-| `runtime/client/data-client.ts`          | QueryClient lifetime, identity isolation, and invalidation              |
-| `runtime/client/model-cache.ts`          | Apply canonical records, ordered revisions, tombstones, and resets      |
-| `app/ui/application/use-model-events.ts` | Subscribe to the event feed, apply pages, checkpoint, and reconnect     |
+| Code                                     | Responsibility                                                        |
+| ---------------------------------------- | --------------------------------------------------------------------- |
+| `runtime/client/create-client.ts`        | Derive the Effect and Promise clients from a model and its contract   |
+| `app/app-client.ts`                      | Build the app's client for its own origin; export `client` and `data` |
+| `runtime/client/model-query-client.ts`   | Derive typed query and mutation options from the model                |
+| `runtime/client/data-client.ts`          | QueryClient lifetime, identity isolation, and invalidation            |
+| `runtime/client/model-cache.ts`          | Apply canonical records, ordered revisions, tombstones, and resets    |
+| `app/ui/application/use-model-events.ts` | Subscribe to the event feed, apply pages, checkpoint, and reconnect   |
 
 Queries are fresh for 30 seconds and unused entries are collected after five minutes. Focus returns
 revalidate stale queries. Writes are never retried automatically; retrying a non-idempotent Action

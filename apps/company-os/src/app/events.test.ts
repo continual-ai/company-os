@@ -2,8 +2,8 @@ import { Schema } from "effect"
 import { expect, it } from "vitest"
 
 import { Model } from "#/app.model.ts"
-import { eventPageSchema } from "#/runtime/client/events.ts"
-import { createEventFactSchema } from "#/runtime/client/events.ts"
+import { eventPageSchema } from "#/runtime/contract/events.ts"
+import { createEventFactSchema } from "#/runtime/contract/events.ts"
 const eventFactSchema = createEventFactSchema(Model)
 
 it("validates new facts strictly and replays them inside a stable envelope", () => {

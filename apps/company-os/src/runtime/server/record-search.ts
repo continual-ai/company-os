@@ -1,6 +1,6 @@
 import { Effect, Schema } from "effect"
 
-import { createRecordSearchContract } from "#/runtime/client/record-search.ts"
+import { createRecordSearchContract } from "#/runtime/contract/record-search.ts"
 import type { ModelCatalog } from "#/runtime/model/index.ts"
 import { Authorization } from "#/runtime/server/authorization/authorization-service.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"

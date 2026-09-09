@@ -1,6 +1,6 @@
 import { Effect, Stream } from "effect"
 
-import type { EventPage } from "#/runtime/client/events.ts"
+import type { EventPage } from "#/runtime/contract/events.ts"
 import { EventNotifications } from "#/runtime/server/events/event-notifications.ts"
 
 /** Subscribe before reading; drain pages in order and recheck access even when idle. */

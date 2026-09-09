@@ -1,4 +1,4 @@
-import type { EventPage } from "#/runtime/client/events.ts"
+import type { EventPage } from "#/runtime/contract/events.ts"
 
 /** A resumable pull consumer. Advance only after apply succeeds; restart from the last acknowledged cursor. */
 export function createEventConsumer(options: {

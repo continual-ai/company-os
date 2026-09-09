@@ -1,4 +1,4 @@
-import { appUrl } from "#/app/client-environment.ts"
+import { appUrl } from "#/app/client/environment.ts"
 import { appConfig } from "#/app/customization/config.ts"
 
 export type PageMetadata = {

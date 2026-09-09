@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router"
 
-import { pageOptions } from "#/app/route-metadata.ts"
 import { useAuthenticatedUser } from "#/app/ui/application/authenticated-user.tsx"
+import { pageOptions } from "#/app/ui/route-metadata.ts"
 import {
   SettingsPage,
   SettingsRow,

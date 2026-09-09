@@ -4,7 +4,7 @@ import { HttpApiClient } from "effect/unstable/httpapi"
 import { expect } from "vitest"
 
 import { Model } from "#/app.model.ts"
-import { applicationHttpApi } from "#/app/http-api.ts"
+import { applicationHttpApi } from "#/app/server/http-api.ts"
 import { testApplication } from "#/app/server/test-application.ts"
 import { HttpTransport } from "#/app/server/transport/http-transport.ts"
 import { AssetService } from "#/runtime/assets/server/asset-service.ts"

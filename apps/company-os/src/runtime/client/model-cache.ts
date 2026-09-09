@@ -7,7 +7,7 @@ import {
   resetModelCache,
   invalidateModelQueries,
 } from "#/runtime/client/data-client.ts"
-import type { EventPage } from "#/runtime/client/events.ts"
+import type { EventPage } from "#/runtime/contract/events.ts"
 import { toEffectObjectSchema } from "#/runtime/contract/schema.ts"
 import type { ModelCatalog } from "#/runtime/model/index.ts"
 

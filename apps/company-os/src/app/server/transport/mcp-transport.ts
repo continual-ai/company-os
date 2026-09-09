@@ -1,8 +1,8 @@
 import { Context, Data, Effect, Layer, Option, Schema } from "effect"
 
+import { appMetadata } from "#/app.config.ts"
 import { EnabledModel } from "#/app.model.ts"
-import { appMetadata } from "#/app/app-metadata.ts"
-import { appUrl } from "#/app/client-environment.ts"
+import { appUrl } from "#/app/client/environment.ts"
 import { RecordId } from "#/runtime/model/index.ts"
 import {
   internalApiError,

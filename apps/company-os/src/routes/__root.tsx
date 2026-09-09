@@ -13,7 +13,7 @@ import {
   canonicalMetadata,
   documentHead,
   resolvePageMetadata,
-} from "#/app/route-metadata.ts"
+} from "#/app/ui/route-metadata.ts"
 
 import appCss from "#/app/styles/app.css?url"
 

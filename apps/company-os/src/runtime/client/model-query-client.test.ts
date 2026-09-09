@@ -1,7 +1,6 @@
-import { Effect } from "effect"
 import { expect, expectTypeOf, it } from "vitest"
 
-import { createModelClient } from "#/runtime/client/http-client.ts"
+import { createEffectClient } from "#/runtime/client/create-client.ts"
 import { createModelQueries } from "#/runtime/client/model-query-client.ts"
 import {
   defineLink,
@@ -51,15 +50,17 @@ it("preserves required relationship capabilities when projecting the client", ()
       }),
     ],
   })
-  const client = createModelClient(model, {
-    thing: {
-      listThings: () =>
-        Effect.succeed({ items: [], totalSize: 0, nextPageToken: null }),
-    },
+  const client = createEffectClient(model, {
+    baseUrl: "http://company.test",
+    fetch: () => Promise.reject(new Error("No requests are made here.")),
   })
   const data = createModelQueries(model, client)
   expect(Object.keys(data.thing.parentThing)).toEqual(["list", "link"])
   expect(Object.keys(data.thing.children)).toEqual(["list"])
+  expect(data.records.search({ query: "a" }).meta).toMatchObject({
+    objectTypes: [],
+    operation: "records.search",
+  })
   expectTypeOf<keyof typeof data.thing.parentThing>().toEqualTypeOf<
     "list" | "link"
   >()

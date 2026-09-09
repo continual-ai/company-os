@@ -1,4 +1,4 @@
-import type { CapabilityCheck } from "#/runtime/client/capabilities.ts"
+import type { CapabilityCheck } from "#/runtime/contract/capabilities.ts"
 import {
   modelObjectLinkTraversals,
   modelRelationships,

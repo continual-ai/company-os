@@ -6,23 +6,42 @@ import {
   OpenApi,
 } from "effect/unstable/httpapi"
 
-import { EnabledModel } from "#/app.model.ts"
-import { appMetadata } from "#/app/app-metadata.ts"
-import { documentIdentity } from "#/app/openapi-identity.ts"
-import { createCapabilities } from "#/runtime/client/capabilities.ts"
-import { MAX_CAPABILITY_CHECKS } from "#/runtime/client/capabilities.ts"
-import { eventPageSchema, InvalidEventCursor } from "#/runtime/client/events.ts"
-import { createRecordSearchContract } from "#/runtime/client/record-search.ts"
-import { createModelHttpApi } from "#/runtime/contract/http-api.ts"
+import {
+  createCapabilities,
+  MAX_CAPABILITY_CHECKS,
+} from "#/runtime/contract/capabilities.ts"
+import {
+  eventPageSchema,
+  InvalidEventCursor,
+} from "#/runtime/contract/events.ts"
+import {
+  createModelHttpApi,
+  type HttpApiOptions,
+} from "#/runtime/contract/http-api.ts"
 import {
   customMethodParameter,
   customMethodPath,
 } from "#/runtime/contract/http-custom-method.ts"
+import { createRecordSearchContract } from "#/runtime/contract/record-search.ts"
 import { toEffectErrorSchema } from "#/runtime/contract/schema.ts"
 import type { ModelCatalog } from "#/runtime/model/index.ts"
 import { InternalError, UnauthenticatedError } from "#/runtime/model/index.ts"
 
-export function createApplicationHttpApi(model: ModelCatalog) {
+const standardErrors = [
+  toEffectErrorSchema(UnauthenticatedError).pipe(HttpApiSchema.status(401)),
+  toEffectErrorSchema(InternalError).pipe(HttpApiSchema.status(500)),
+]
+
+/**
+ * The complete HTTP contract of an application: every exposed object's
+ * operations plus the capability, event, and record-search groups that
+ * exist outside the model. Handlers, clients, OpenAPI, and tests derive
+ * from this one value.
+ */
+export function createApplicationHttpApi(
+  model: ModelCatalog,
+  options: HttpApiOptions = {}
+) {
   const { isCapabilityPermission } = createCapabilities(model)
   const { input: recordSearchInput, result: recordSearchResult } =
     createRecordSearchContract(model)
@@ -57,12 +76,7 @@ export function createApplicationHttpApi(model: ModelCatalog) {
           success: Schema.Struct({
             results: Schema.Array(Schema.Struct({ allowed: Schema.Boolean })),
           }),
-          error: [
-            toEffectErrorSchema(UnauthenticatedError).pipe(
-              HttpApiSchema.status(401)
-            ),
-            toEffectErrorSchema(InternalError).pipe(HttpApiSchema.status(500)),
-          ],
+          error: standardErrors,
         }
       ).annotateMerge(
         OpenApi.annotations({
@@ -105,10 +119,7 @@ export function createApplicationHttpApi(model: ModelCatalog) {
         success: eventPageSchema,
         error: [
           InvalidEventCursor.pipe(HttpApiSchema.status(400)),
-          toEffectErrorSchema(UnauthenticatedError).pipe(
-            HttpApiSchema.status(401)
-          ),
-          toEffectErrorSchema(InternalError).pipe(HttpApiSchema.status(500)),
+          ...standardErrors,
         ],
       }).annotateMerge(
         OpenApi.annotations({
@@ -127,12 +138,7 @@ export function createApplicationHttpApi(model: ModelCatalog) {
           params: { stream: customMethodParameter("stream") },
           query: Schema.Struct({ cursor: Schema.optionalKey(Schema.String) }),
           success: eventStreamSchema,
-          error: [
-            toEffectErrorSchema(UnauthenticatedError).pipe(
-              HttpApiSchema.status(401)
-            ),
-            toEffectErrorSchema(InternalError).pipe(HttpApiSchema.status(500)),
-          ],
+          error: standardErrors,
         }
       ).annotateMerge(
         OpenApi.annotations({
@@ -151,12 +157,7 @@ export function createApplicationHttpApi(model: ModelCatalog) {
         params: { search: customMethodParameter("search") },
         payload: recordSearchInput,
         success: recordSearchResult,
-        error: [
-          toEffectErrorSchema(UnauthenticatedError).pipe(
-            HttpApiSchema.status(401)
-          ),
-          toEffectErrorSchema(InternalError).pipe(HttpApiSchema.status(500)),
-        ],
+        error: standardErrors,
       }
     ).annotateMerge(
       OpenApi.annotations({
@@ -168,25 +169,12 @@ export function createApplicationHttpApi(model: ModelCatalog) {
     )
   )
 
-  /** The one HTTP contract used by handlers, clients, OpenAPI, and documentation. */
-  const api = documentIdentity(
-    createModelHttpApi(model, {
-      id: appMetadata.id,
-      version: appMetadata.version,
-    })
-      .add(capabilityGroup)
-      .add(eventGroup)
-      .add(recordGroup)
-  )
+  const api = createModelHttpApi(model, options)
+    .add(capabilityGroup)
+    .add(eventGroup)
+    .add(recordGroup)
 
   return { api, capabilityGroup, eventGroup, recordGroup }
 }
-export const {
-  api: applicationHttpApi,
-  capabilityGroup,
-  eventGroup,
-  recordGroup,
-} = createApplicationHttpApi(EnabledModel)
 
-/** OpenAPI document for the exposed model; served to developers with the `develop` capability. */
-export const openApiDocument = OpenApi.fromApi(applicationHttpApi)
+export type ApplicationHttpApi = ReturnType<typeof createApplicationHttpApi>

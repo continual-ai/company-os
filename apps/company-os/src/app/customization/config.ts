@@ -1,4 +1,4 @@
-import { modelMetadata } from "#/model-metadata.ts"
+import { appMetadata } from "#/app.config.ts"
 
 type BrandAsset = Readonly<{
   alt: string
@@ -43,7 +43,7 @@ type AppConfig = Readonly<{
   }>
 }>
 
-const appName = modelMetadata.name
+const appName = appMetadata.name
 
 /** Shallow application identity and first-launch copy; workflows remain source code. */
 export const appConfig: AppConfig = {

@@ -27,10 +27,11 @@ apps/company-os/src/
   runtime/        kernel: model/ contract/ client/ server/ ui/ testing/, plus the kernel
                   modules access/ and assets/ (each model/ server/ ui/). Upstream owns it.
   modules/        one directory per module, same shape: model/ server/ ui/ seeds/
-  app/            the shell: ui/ server/ customization/ styles/ seeds/ and client assembly
+  app/            the shell: ui/ server/ client/ customization/ styles/ seeds/, plus the
+                  app-client.ts and app-presentation.ts assembly
   routes/         TanStack Start file routes, generic over the model
   app.model.ts    every module, composed and migrated; the storage authority
-  app.config.ts   enabledModules: the modules the UI, API, and MCP expose
+  app.config.ts   appMetadata and enabledModules: deployment identity and exposed modules
   app.server.ts   custom operation contributions
   app.ui.ts       presentation contributions
 templates/base/   the one starter for an optional app; it imports company-os/* only
@@ -79,9 +80,11 @@ re-exports are allowed only from the registered entrypoints: `runtime/model/inde
   `**/server/**`, `**/seeds/**`, or `runtime/testing/**`. Vite import protection is the transitive
   check.
 
-Optional apps import `company-os/model`, `company-os/metadata`, `company-os/ui/*`, and
-`company-os/styles.css` only, and forward the hosting platform's identity headers; no app mints
-identity.
+Optional apps import `company-os/model`, `company-os/client`, `company-os/config`,
+`company-os/ui/*`, and `company-os/styles.css` only. They call the central app from server code
+through `createClient` and forward the hosting platform's identity headers; no app mints identity.
+Those package exports are the public surface of the central app; `runtime/client/create-client.ts`
+must stay free of React, TanStack, and the app shell so that surface remains portable.
 
 ## Modules
 

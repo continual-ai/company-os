@@ -1,14 +1,14 @@
 import { Outlet, createFileRoute, redirect } from "@tanstack/react-router"
 import { useEffect, useState } from "react"
 
-import { listEvents } from "#/app/app-client.ts"
+import { client } from "#/app/app-client.ts"
 import { presentation } from "#/app/app-presentation.ts"
 import { getCurrentUser } from "#/app/current-user.functions.ts"
 import { AppShell } from "#/app/ui/application/app-shell.tsx"
 import { allowedCapabilitiesQuery } from "#/app/ui/application/load-capabilities.ts"
 import { useModelEvents } from "#/app/ui/application/use-model-events.ts"
+import { runClientEffect } from "#/runtime/client/create-client.ts"
 import { modelData } from "#/runtime/client/data-client.ts"
-import { runClientEffect } from "#/runtime/client/model-query-client.ts"
 import {
   createModelNavigation,
   modelNavigationChecks,
@@ -29,7 +29,8 @@ export const Route = createFileRoute("/_app")({
     // Capture the feed head before child loaders read their snapshots.
     const eventCursor =
       typeof window === "undefined"
-        ? (await runClientEffect(listEvents({ cursor: "now" }))).nextCursor
+        ? (await runClientEffect(client.events.list({ cursor: "now" })))
+            .nextCursor
         : undefined
     return { authenticatedUser: currentUser.user, eventCursor }
   },

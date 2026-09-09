@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 
-import { createEventConsumer } from "#/app/event-consumer.ts"
-import type { EventPage } from "#/runtime/client/events.ts"
+import { createEventConsumer } from "#/app/client/event-consumer.ts"
+import type { EventPage } from "#/runtime/contract/events.ts"
 
 const page: EventPage = {
   items: [],

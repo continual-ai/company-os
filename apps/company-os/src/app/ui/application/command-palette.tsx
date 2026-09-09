@@ -12,9 +12,8 @@ import {
 
 import { data } from "#/app/app-client.ts"
 import { presentation } from "#/app/app-presentation.ts"
-import { capabilityPermission } from "#/app/capabilities.ts"
-import type { RecordSummary } from "#/app/records.ts"
 import { RecentRecords } from "#/app/ui/application/recent-records-group.tsx"
+import type { RecordSummary } from "#/runtime/contract/record-search.ts"
 import { Button } from "#/runtime/ui/components/button.tsx"
 import {
   Command,
@@ -46,7 +45,11 @@ function usePaletteCommands() {
       )
       .map((item) => ({
         ...item,
-        check: { permission: capabilityPermission(`${item.object.id}.create`) },
+        check: {
+          permission: presentation.permissions.capabilityPermission(
+            `${item.object.id}.create`
+          ),
+        },
       }))
     return {
       destinations,

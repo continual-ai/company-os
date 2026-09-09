@@ -1,7 +1,7 @@
 import { Effect } from "effect"
 
 import { applicationRuntime } from "#/app/server/application-runtime.ts"
-import type { CapabilityCheck } from "#/runtime/client/capabilities.ts"
+import type { CapabilityCheck } from "#/runtime/contract/capabilities.ts"
 import { Authentication } from "#/runtime/server/auth/authentication.ts"
 import { Authorization } from "#/runtime/server/authorization/authorization-service.ts"
 

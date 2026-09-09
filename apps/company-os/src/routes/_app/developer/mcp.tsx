@@ -1,6 +1,6 @@
 import { Link, createFileRoute } from "@tanstack/react-router"
 
-import { pageOptions } from "#/app/route-metadata.ts"
+import { pageOptions } from "#/app/ui/route-metadata.ts"
 import { CodeBlock } from "#/runtime/ui/components/code-block.tsx"
 
 const page = {

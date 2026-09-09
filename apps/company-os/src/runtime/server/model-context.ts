@@ -1,7 +1,7 @@
 import { Context, Layer } from "effect"
 
-import { createCapabilities } from "#/runtime/client/capabilities.ts"
-import { createEventFactSchema } from "#/runtime/client/events.ts"
+import { createCapabilities } from "#/runtime/contract/capabilities.ts"
+import { createEventFactSchema } from "#/runtime/contract/events.ts"
 import type { ModelCatalog, ObjectType } from "#/runtime/model/index.ts"
 import { createPermissionCatalog } from "#/runtime/server/authorization/permission-catalog.ts"
 import {

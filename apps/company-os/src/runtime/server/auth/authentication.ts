@@ -4,7 +4,7 @@ import type { IdentityId } from "#/runtime/access/model/ids.ts"
 import { RoleAssignmentService } from "#/runtime/access/server/role-assignment-service.ts"
 import { ServiceAccountService } from "#/runtime/access/server/service-account-service.ts"
 import { UserService } from "#/runtime/access/server/user-service.ts"
-import type { AuthenticatedUser } from "#/runtime/client/authentication.ts"
+import type { AuthenticatedUser } from "#/runtime/contract/authenticated-user.ts"
 import { EmailAddress, RecordId } from "#/runtime/model/index.ts"
 import {
   IdentityBindingRepository,

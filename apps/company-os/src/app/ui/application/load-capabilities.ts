@@ -1,14 +1,12 @@
-import { checkCapabilities } from "#/app/app-client.ts"
+import { client } from "#/app/app-client.ts"
+import { runClientEffect } from "#/runtime/client/create-client.ts"
+import { modelQuery } from "#/runtime/client/model-query-client.ts"
 import {
   allowedCapabilityKeys,
   capabilityKey,
   MAX_CAPABILITY_CHECKS,
   type CapabilityCheck,
-} from "#/runtime/client/capabilities.ts"
-import {
-  modelQuery,
-  runClientEffect,
-} from "#/runtime/client/model-query-client.ts"
+} from "#/runtime/contract/capabilities.ts"
 
 function chunks<T>(values: ReadonlyArray<T>, size: number): ReadonlyArray<T[]> {
   const result: T[][] = []
@@ -34,10 +32,7 @@ export function allowedCapabilitiesQuery(
     async (signal) => {
       const responses = await Promise.all(
         chunks(checks, MAX_CAPABILITY_CHECKS).map((batch) =>
-          runClientEffect(
-            checkCapabilities({ payload: { checks: batch } }),
-            signal
-          )
+          runClientEffect(client.capabilities.check({ checks: batch }), signal)
         )
       )
       return [

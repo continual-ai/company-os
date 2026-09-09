@@ -23,6 +23,10 @@ not depend on the publisher.
 | `APP_SECRET`               | Deployment secret of at least 32 bytes; never the local example value     |
 | `VITE_APP_URL`             | Public origin compiled into the UI and used for canonical URLs            |
 
+An optional app created from `templates/base` sets `COMPANY_OS_URL` to the central app's origin and
+forwards the platform's identity headers on every call; development defaults to the central app's
+dev port.
+
 Only `VITE_` values are public. `GET /api/health` is dependency-free liveness; `GET /health` checks
 database readiness. Neither proves identity or authorization works, so also perform an authenticated
 read and write after deploying. Run one migration job per release as the [database

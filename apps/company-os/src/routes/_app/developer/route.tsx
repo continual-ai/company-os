@@ -1,9 +1,9 @@
 import { Outlet, createFileRoute } from "@tanstack/react-router"
 
-import { pageOptions } from "#/app/route-metadata.ts"
 import { CapabilityBoundary } from "#/app/ui/application/capability-boundary.tsx"
 import { allowedCapabilitiesQuery } from "#/app/ui/application/load-capabilities.ts"
-import { applicationCapabilities } from "#/runtime/client/capabilities.ts"
+import { pageOptions } from "#/app/ui/route-metadata.ts"
+import { applicationCapabilities } from "#/runtime/contract/capabilities.ts"
 
 const page = {
   breadcrumb: "Developer Center",

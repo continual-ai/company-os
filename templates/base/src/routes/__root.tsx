@@ -1,6 +1,6 @@
 import { initDesignMode, initTelemetry } from "@continual/sdk/app-preview"
 import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router"
-import { modelMetadata } from "company-os/metadata"
+import { appMetadata } from "company-os/config"
 import { buttonVariants } from "company-os/ui/button"
 import { useEffect } from "react"
 
@@ -11,7 +11,7 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: modelMetadata.name },
+      { title: appMetadata.name },
     ],
     links: [{ rel: "stylesheet", href: appCss }],
   }),

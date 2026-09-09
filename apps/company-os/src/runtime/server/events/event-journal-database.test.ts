@@ -3,7 +3,7 @@ import { expect } from "vitest"
 
 import { Role } from "#/runtime/access/model/index.ts"
 import { UserService } from "#/runtime/access/server/user-service.ts"
-import { InvalidEventCursor } from "#/runtime/client/events.ts"
+import { InvalidEventCursor } from "#/runtime/contract/events.ts"
 import {
   EmailAddress,
   modelObjectLinkTraversals,

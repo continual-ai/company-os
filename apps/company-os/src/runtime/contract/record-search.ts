@@ -45,3 +45,9 @@ export function createRecordSearchContract(Model: ModelCatalog) {
     result: recordSearchResult,
   }
 }
+
+type RecordSearchContract = ReturnType<typeof createRecordSearchContract>
+export type RecordSearchInput = RecordSearchContract["input"]["Type"]
+/** A display projection, never a partial canonical record to merge into the record cache. */
+export type RecordSummary =
+  RecordSearchContract["result"]["Type"]["hits"][number]

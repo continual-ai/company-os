@@ -1,8 +1,8 @@
 import { describe, expect, expectTypeOf, it } from "vitest"
 
+import { appMetadata } from "#/app.config.ts"
 import { type ActorId, type IdentityId, type PrincipalId } from "#/app.model.ts"
 import { Model } from "#/app.model.ts"
-import { modelMetadata } from "#/model-metadata.ts"
 import {
   describeModel,
   type ModelObjectCreateInput,
@@ -23,7 +23,7 @@ describe("model contract", () => {
 
     expect(description).toMatchObject({
       actor: { typeId: "actor" },
-      model: { name: modelMetadata.name },
+      model: { name: appMetadata.name },
       root: { id: "root", kind: "root", name: "Root" },
       version: "0.30",
     })

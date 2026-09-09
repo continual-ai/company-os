@@ -1,7 +1,7 @@
 import { OpenApi } from "effect/unstable/httpapi"
 import { expect, it } from "vitest"
 
-import { applicationHttpApi } from "#/app/http-api.ts"
+import { applicationHttpApi } from "#/app/server/http-api.ts"
 
 it("documents identity without losing generated colon methods or list parameters", () => {
   const spec = OpenApi.fromApi(applicationHttpApi)

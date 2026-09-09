@@ -1,8 +1,8 @@
 import { createContext, useContext, type ReactNode } from "react"
 
-import type { createCapabilities } from "#/runtime/client/capabilities.ts"
-import type { CapabilityCheck } from "#/runtime/client/capabilities.ts"
 import type { ModelQueryOptions } from "#/runtime/client/model-query-client.ts"
+import type { createCapabilities } from "#/runtime/contract/capabilities.ts"
+import type { CapabilityCheck } from "#/runtime/contract/capabilities.ts"
 import type { ModelCatalog } from "#/runtime/model/index.ts"
 import type { ResolvedObjectUi } from "#/runtime/ui/model/module-ui.tsx"
 

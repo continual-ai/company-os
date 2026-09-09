@@ -1,7 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query"
 
 import { presentation } from "#/app/app-presentation.ts"
-import { documentHead, type PageMetadata } from "#/app/route-metadata.ts"
+import { documentHead, type PageMetadata } from "#/app/ui/route-metadata.ts"
 import type { ObjectCollectionSearch } from "#/runtime/ui/model/collection-view.ts"
 import type { ModelObject } from "#/runtime/ui/model/object-client.ts"
 import { validateObjectCollectionSearch } from "#/runtime/ui/model/object-collection-view.ts"

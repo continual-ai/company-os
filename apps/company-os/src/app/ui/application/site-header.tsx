@@ -7,7 +7,7 @@ import {
 import { ArrowLeftIcon } from "lucide-react"
 import { Fragment } from "react"
 
-import { pageMetadataForMatch } from "#/app/route-metadata.ts"
+import { pageMetadataForMatch } from "#/app/ui/route-metadata.ts"
 import {
   Breadcrumb,
   BreadcrumbItem,

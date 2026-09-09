@@ -12,7 +12,8 @@
   },
   "exports": {
     "./model": "./src/app.model.ts",
-    "./metadata": "./src/model-metadata.ts",
+    "./client": "./src/runtime/client/create-client.ts",
+    "./config": "./src/app.config.ts",
     "./ui/*": "./src/runtime/ui/components/*.tsx",
     "./styles.css": "./src/runtime/ui/styles/globals.css"
   },

@@ -9,9 +9,9 @@ import {
 import { HttpApiBuilder } from "effect/unstable/httpapi"
 
 import { EnabledModel } from "#/app.model.ts"
-import { createApplicationHttpApi } from "#/app/http-api.ts"
-import { createCapabilities } from "#/runtime/client/capabilities.ts"
-import { InvalidEventCursor } from "#/runtime/client/events.ts"
+import { applicationHttpApi } from "#/app/server/http-api.ts"
+import { createCapabilities } from "#/runtime/contract/capabilities.ts"
+import { InvalidEventCursor } from "#/runtime/contract/events.ts"
 import { HttpValidationMiddleware } from "#/runtime/contract/http-api.ts"
 import type { ExecutableModelOperation } from "#/runtime/model/operations.ts"
 import {
@@ -49,7 +49,6 @@ const make = Effect.gen(function* () {
   // Transports expose EnabledModel; services behind them run on the complete model.
   const searchRecords = createRecordSearch(EnabledModel)
   const { capabilityPermission } = createCapabilities(EnabledModel)
-  const { api: applicationHttpApi } = createApplicationHttpApi(EnabledModel)
   const operations = yield* Operations
   const database = yield* Database
   const authentication = yield* Authentication

@@ -2,7 +2,10 @@ import { createHash } from "node:crypto"
 
 import { Context, Effect, Layer, Schema } from "effect"
 
-import { eventPageSchema, InvalidEventCursor } from "#/runtime/client/events.ts"
+import {
+  eventPageSchema,
+  InvalidEventCursor,
+} from "#/runtime/contract/events.ts"
 import { PageToken } from "#/runtime/model/index.ts"
 import { Authorization } from "#/runtime/server/authorization/authorization-service.ts"
 import { makeEventWriter } from "#/runtime/server/events/event-writer.ts"

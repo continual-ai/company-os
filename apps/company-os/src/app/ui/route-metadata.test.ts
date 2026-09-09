@@ -6,9 +6,9 @@ import {
   pageMetadataForMatch,
   pageOptions,
   resolvePageMetadata,
-} from "#/app/route-metadata.ts"
-import type { PageMetadata } from "#/app/route-metadata.ts"
-import { appName } from "#/app/route-metadata.ts"
+} from "#/app/ui/route-metadata.ts"
+import type { PageMetadata } from "#/app/ui/route-metadata.ts"
+import { appName } from "#/app/ui/route-metadata.ts"
 
 const overview = {
   breadcrumb: "Overview",

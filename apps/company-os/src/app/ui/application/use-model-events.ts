@@ -2,12 +2,12 @@ import { Effect, Stream } from "effect"
 import { useEffect } from "react"
 
 import { EnabledModel } from "#/app.model.ts"
-import { listEvents, subscribeEvents } from "#/app/app-client.ts"
-import { createEventConsumer } from "#/app/event-consumer.ts"
+import { client } from "#/app/app-client.ts"
+import { createEventConsumer } from "#/app/client/event-consumer.ts"
+import { runClientEffect } from "#/runtime/client/create-client.ts"
 import { modelData } from "#/runtime/client/data-client.ts"
-import { InvalidEventCursor } from "#/runtime/client/events.ts"
 import { applyEventPage } from "#/runtime/client/model-cache.ts"
-import { runClientEffect } from "#/runtime/client/model-query-client.ts"
+import { InvalidEventCursor } from "#/runtime/contract/events.ts"
 
 /** A single resumable feed per authenticated shell. Hidden tabs catch up on return. */
 export function useModelEvents(identity: string, initialCursor?: string) {
@@ -19,7 +19,7 @@ export function useModelEvents(identity: string, initialCursor?: string) {
     const consumer = createEventConsumer({
       initialCursor,
       read: (cursor, signal) =>
-        runClientEffect(listEvents({ cursor, pageSize: 200 }), signal),
+        runClientEffect(client.events.list({ cursor, pageSize: 200 }), signal),
       isInvalidCursor: (error) => error instanceof InvalidEventCursor,
       apply: (page) =>
         applyEventPage(modelData().queryClient, page, EnabledModel),
@@ -40,7 +40,7 @@ export function useModelEvents(identity: string, initialCursor?: string) {
           if (current.signal.aborted) return
         }
         await runClientEffect(
-          subscribeEvents(consumer.cursor).pipe(
+          client.events.stream(consumer.cursor).pipe(
             Effect.flatMap((stream) =>
               stream.pipe(
                 Stream.runForEach((message) =>

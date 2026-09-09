@@ -2,8 +2,8 @@ import { createFileRoute } from "@tanstack/react-router"
 import { Schema } from "effect"
 
 import { EnabledModel } from "#/app.model.ts"
-import { pageOptions } from "#/app/route-metadata.ts"
 import { ModelExplorer } from "#/app/ui/developer/model-explorer.tsx"
+import { pageOptions } from "#/app/ui/route-metadata.ts"
 
 const page = {
   breadcrumb: "Domain model",

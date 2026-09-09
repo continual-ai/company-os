@@ -1,5 +1,5 @@
-import { createCapabilities } from "#/runtime/client/capabilities.ts"
 import { modelQuery } from "#/runtime/client/model-query-client.ts"
+import { createCapabilities } from "#/runtime/contract/capabilities.ts"
 import type { ModelCatalog } from "#/runtime/model/index.ts"
 import {
   composeModelUi,

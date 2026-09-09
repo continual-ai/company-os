@@ -1,6 +1,6 @@
 import { Link, createFileRoute } from "@tanstack/react-router"
 
-import { pageOptions } from "#/app/route-metadata.ts"
+import { pageOptions } from "#/app/ui/route-metadata.ts"
 import { CodeBlock } from "#/runtime/ui/components/code-block.tsx"
 
 const queryExample = `import { useQuery } from "@tanstack/react-query"
@@ -55,9 +55,9 @@ function SdkPage() {
           Build with the model.
         </h1>
         <p className="mt-3 leading-7 text-muted-foreground">
-          Import <code>data</code> from <code>@/app-client</code>. Reads return
-          TanStack Query options; writes return mutation options. React and
-          Router share one cache and the same typed contracts as the API.
+          Import <code>data</code> from <code>#/app/app-client.ts</code>. Reads
+          return TanStack Query options; writes return mutation options. React
+          and Router share one cache and the same typed contracts as the API.
         </p>
       </header>
       <section className="grid gap-6 xl:grid-cols-2">

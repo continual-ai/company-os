@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   capabilityKey,
   type CapabilityCheck,
-} from "#/runtime/client/capabilities.ts"
+} from "#/runtime/contract/capabilities.ts"
 import { useModelRuntime } from "#/runtime/ui/model/runtime-context.tsx"
 
 /** Fail-closed advisory checks share the same observable cache as business queries. */

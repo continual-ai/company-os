@@ -7,7 +7,7 @@ import { CommandPalette } from "#/app/ui/application/command-palette.tsx"
 import { SiteHeader } from "#/app/ui/application/site-header.tsx"
 import { DeveloperSidebar } from "#/app/ui/developer/developer-sidebar.tsx"
 import { SettingsSidebar } from "#/app/ui/settings/settings-sidebar.tsx"
-import type { AuthenticatedUser } from "#/runtime/client/authentication.ts"
+import type { AuthenticatedUser } from "#/runtime/contract/authenticated-user.ts"
 import {
   SidebarInset,
   SidebarProvider,

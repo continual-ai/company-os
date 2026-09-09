@@ -5,14 +5,20 @@ import {
   type DataTag,
   type UseMutationOptions,
 } from "@tanstack/react-query"
-import { Cause, Context, Effect, Exit } from "effect"
+import { Effect } from "effect"
 
+import {
+  ClientChanges,
+  type EffectClient,
+  runClientEffect,
+} from "#/runtime/client/create-client.ts"
 import { cacheGeneration } from "#/runtime/client/data-client.ts"
 import type {
   ModelClient,
   ModelObjectClient,
 } from "#/runtime/client/http-client.ts"
 import { applyMutationResult } from "#/runtime/client/model-cache.ts"
+import type { RecordSearchInput } from "#/runtime/contract/record-search.ts"
 import {
   modelObjectLinkTraversals,
   modelObjects,
@@ -21,21 +27,6 @@ import {
   type ModelObject,
   type ObjectType,
 } from "#/runtime/model/index.ts"
-
-/** HTTP change headers belong to the invocation, including imperative mutations. */
-export const ClientChanges = Context.Reference<Set<string> | undefined>(
-  "@company/ClientChanges",
-  { defaultValue: () => undefined }
-)
-
-export async function runClientEffect<A, E>(
-  effect: Effect.Effect<A, E>,
-  signal?: AbortSignal
-): Promise<A> {
-  const exit = await Effect.runPromiseExit(effect, { signal })
-  if (Exit.isFailure(exit)) throw Cause.squash(exit.cause)
-  return exit.value
-}
 
 export function modelQuery<A, E>(
   objectTypes: ReadonlyArray<string>,
@@ -91,6 +82,10 @@ type ModelQueries<M extends ModelCatalog> = {
     O,
     ModelClient<M>[O["id"]]
   >
+} & {
+  readonly records: {
+    readonly search: QueryMethod<EffectClient<M>["records"]["search"]>
+  }
 }
 
 const method = (group: object, name: string) => {
@@ -102,28 +97,30 @@ const method = (group: object, name: string) => {
   return fn as (input: unknown) => Effect.Effect<unknown, unknown>
 }
 
+/** Mutations record the server-reported change set and apply it to the cache that ran them. */
+const mutation = (
+  fn: (input: unknown) => Effect.Effect<unknown, unknown>,
+  operation: string
+): UseMutationOptions<unknown, unknown, unknown> => ({
+  mutationFn: async (input, { client: cache }) => {
+    const generation = cacheGeneration(cache)
+    const changes = new Set<string>()
+    const result = await runClientEffect(
+      fn(input).pipe(Effect.provideService(ClientChanges, changes))
+    )
+    if (generation === cacheGeneration(cache))
+      await applyMutationResult(cache, operation, result, [...changes])
+    return result
+  },
+})
+
 /** Options are derived once; React and Router consume native TanStack Query APIs. */
 export function createModelQueries<M extends ModelCatalog>(
   model: M,
   // The model alone fixes M; inferring it back through the client's mapped
   // types is unbounded work for the compiler.
-  client: NoInfer<ModelClient<M>>
+  client: NoInfer<EffectClient<M>>
 ): ModelQueries<M> {
-  const mutation = (
-    fn: (input: unknown) => Effect.Effect<unknown, unknown>,
-    operation: string
-  ): UseMutationOptions<unknown, unknown, unknown> => ({
-    mutationFn: async (input, { client: cache }) => {
-      const generation = cacheGeneration(cache)
-      const changes = new Set<string>()
-      const result = await runClientEffect(
-        fn(input).pipe(Effect.provideService(ClientChanges, changes))
-      )
-      if (generation === cacheGeneration(cache))
-        await applyMutationResult(cache, operation, result, [...changes])
-      return result
-    },
-  })
   const result = Object.fromEntries(
     modelObjects(model).map((object) => {
       const group: unknown = Reflect.get(client, object.id)
@@ -174,6 +171,18 @@ export function createModelQueries<M extends ModelCatalog>(
       return [object.id, operations]
     })
   )
+  const searchableTypes = modelObjects(model)
+    .filter((object) => object.search !== undefined)
+    .map((object) => object.id)
+  result.records = {
+    search: (input: RecordSearchInput) =>
+      modelQuery(
+        input.objectTypes ?? searchableTypes,
+        "records.search",
+        input,
+        (signal) => runClientEffect(client.records.search(input), signal)
+      ),
+  }
   // SAFETY: every query, action and traversal is projected above from the same model.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   return result as ModelQueries<M>

@@ -4,7 +4,7 @@ import type { PrincipalId } from "#/runtime/access/model/ids.ts"
 import {
   type CapabilityCheck,
   type CapabilityPermission,
-} from "#/runtime/client/capabilities.ts"
+} from "#/runtime/contract/capabilities.ts"
 import { modelTypeAccepts } from "#/runtime/model/index.ts"
 import {
   ALL_AUTHENTICATED_CALLERS_PRINCIPAL_SET_ID,

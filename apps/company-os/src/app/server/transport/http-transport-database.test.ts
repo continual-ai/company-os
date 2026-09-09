@@ -6,30 +6,27 @@ import {
   Schema,
   Stream,
 } from "effect"
-import { FetchHttpClient } from "effect/unstable/http"
-import { HttpApiClient, OpenApi } from "effect/unstable/httpapi"
+import { OpenApi } from "effect/unstable/httpapi"
 import { describe, expect, vi } from "vitest"
 
 import { Model } from "#/app.model.ts"
-import { createEventConsumer } from "#/app/event-consumer.ts"
-import { applicationHttpApi } from "#/app/http-api.ts"
-import type { capabilityGroup } from "#/app/http-api.ts"
+import { createEventConsumer } from "#/app/client/event-consumer.ts"
 import { makeApplicationLayer } from "#/app/server/application-layer.ts"
 import { Storage } from "#/app/server/database/schema.ts"
+import { applicationHttpApi } from "#/app/server/http-api.ts"
 import { testApplication } from "#/app/server/test-application.ts"
 import { HttpTransport } from "#/app/server/transport/http-transport.ts"
 import { McpTransport } from "#/app/server/transport/mcp-transport.ts"
-import { createModelDataClient } from "#/runtime/client/data-client.ts"
-import { eventPageSchema, InvalidEventCursor } from "#/runtime/client/events.ts"
 import {
-  createModelClient,
-  type ModelHttpClient,
-} from "#/runtime/client/http-client.ts"
-import {
-  modelQuery,
+  createEffectClient,
   runClientEffect,
-} from "#/runtime/client/model-query-client.ts"
-import { customMethodParams } from "#/runtime/contract/http-custom-method.ts"
+} from "#/runtime/client/create-client.ts"
+import { createModelDataClient } from "#/runtime/client/data-client.ts"
+import { modelQuery } from "#/runtime/client/model-query-client.ts"
+import {
+  eventPageSchema,
+  InvalidEventCursor,
+} from "#/runtime/contract/events.ts"
 import {
   httpEndpointId,
   linkHttpEndpointId,
@@ -53,9 +50,6 @@ import {
 } from "#/runtime/server/storage/index.ts"
 import { makeLinkRepository } from "#/runtime/server/storage/index.ts"
 import { identityBindings } from "#/runtime/server/storage/infrastructure.ts"
-
-type ApplicationHttpClient = ModelHttpClient<typeof Model> &
-  HttpApiClient.Client<typeof capabilityGroup>
 
 const application = testApplication()
 const { objects } = Storage.core
@@ -288,24 +282,20 @@ describe("application HTTP server", () => {
             api.handle(new Request(url, { ...init, headers }))
           )
         }
-        const nativeClient = yield* HttpApiClient.make(applicationHttpApi, {
+        // The complete Model is enabled here, so its contract matches the served one.
+        const model = createEffectClient(Model, {
           baseUrl: "http://company.test",
-        }).pipe(Effect.provide(FetchHttpClient.layer))
-        // SAFETY: applicationHttpApi is projected from the same closed Model
-        // represented by ApplicationHttpClient.
-        // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-        const client = nativeClient as unknown as ApplicationHttpClient
-        // SAFETY: the native Effect client is generated from this same Model.
-        const model = createModelClient(Model, nativeClient)
-        const useTestFetch = <A, E>(effect: Effect.Effect<A, E>) =>
-          effect.pipe(Effect.provideService(FetchHttpClient.Fetch, fetchApi))
+          fetch: fetchApi,
+        })
 
-        const ticket = yield* useTestFetch(
-          model.ticket.create({ subject: "HTTP to MCP escalation" })
-        )
-        const escalation = yield* useTestFetch(
-          model.escalation.createIssue({ ticket: ticket.id })
-        )
+        const ticket = yield* model.ticket.create({
+          subject: "HTTP to MCP escalation",
+        })
+
+        const escalation = yield* model.escalation.createIssue({
+          ticket: ticket.id,
+        })
+
         const repeated = yield* Effect.promise(() =>
           runtime.runPromise(
             mcp.handle(
@@ -356,89 +346,70 @@ describe("application HTTP server", () => {
             item.text?.includes(escalation.issue)
           )
         ).toBe(true)
-        expect((yield* useTestFetch(model.escalation.list({}))).totalSize).toBe(
-          1
-        )
-        expect((yield* useTestFetch(model.issue.list({}))).totalSize).toBe(1)
+        expect((yield* model.escalation.list({})).totalSize).toBe(1)
+        expect((yield* model.issue.list({})).totalSize).toBe(1)
 
-        const streamed = yield* useTestFetch(
-          nativeClient.events
-            .streamEvents({
-              params: customMethodParams("stream"),
-              query: { cursor: "now" },
-            })
-            .pipe(
-              Effect.flatMap((stream) =>
-                Stream.runCollect(stream.pipe(Stream.take(1)))
-              ),
-              Effect.timeout("5 seconds")
-            )
+        const streamed = yield* model.events.stream("now").pipe(
+          Effect.flatMap((stream) =>
+            Stream.runCollect(stream.pipe(Stream.take(1)))
+          ),
+          Effect.timeout("5 seconds")
         )
+
         expect(streamed).toHaveLength(1)
         expect(streamed[0]?.data.reset).toBe(true)
         expect(streamed[0]?.id).toBe(streamed[0]?.data.nextCursor)
 
-        const capabilities = yield* useTestFetch(
-          client.capabilities.checkCapabilities({
-            params: { check: "check" },
-            payload: {
-              checks: [
-                { permission: "company.create", target: ROOT_ID },
-                { permission: "lead.convert", target: "missing-lead" },
-              ],
-            },
-          })
-        )
+        const capabilities = yield* model.capabilities.check({
+          checks: [
+            { permission: "company.create", target: ROOT_ID },
+            { permission: "lead.convert", target: "missing-lead" },
+          ],
+        })
+
         expect(capabilities.results).toEqual([
           { allowed: true },
           { allowed: false },
         ])
 
-        const initial = yield* useTestFetch(
-          model.company.list({ pageSize: 10 })
-        )
+        const initial = yield* model.company.list({ pageSize: 10 })
+
         expect(initial).toEqual({
           items: [],
           nextPageToken: null,
           totalSize: 0,
         })
 
-        const created = yield* useTestFetch(
-          model.company.create({ name: "Northstar" })
-        )
+        const created = yield* model.company.create({ name: "Northstar" })
+
         expect(created).toMatchObject({
           lifecycleStage: "prospect",
           name: "Northstar",
         })
-        const search = yield* useTestFetch(
-          nativeClient.records.searchRecords({
-            params: customMethodParams("search"),
-            payload: { query: "north", objectTypes: ["company"] },
-          })
-        )
+        const search = yield* model.records.search({
+          query: "north",
+          objectTypes: ["company"],
+        })
+
         expect(search.hits).toMatchObject([
           { id: created.id, objectType: "company", title: "Northstar" },
         ])
         expect(search.hasMore).toBe(false)
-        const note = yield* useTestFetch(
-          model.note.create({
-            content: "Introductory call",
-            links: { subjects: [created.id] },
-          })
-        )
-        expect(
-          yield* useTestFetch(model.note.subjects.list({ id: note.id }))
-        ).toMatchObject({
+        const note = yield* model.note.create({
+          content: "Introductory call",
+          links: { subjects: [created.id] },
+        })
+
+        expect(yield* model.note.subjects.list({ id: note.id })).toMatchObject({
           items: [{ id: created.id, objectType: "company" }],
           nextPageToken: null,
           totalSize: 1,
         })
-        const contact = yield* useTestFetch(
-          model.contact.create({
-            links: { primaryCompany: created.id },
-            name: "Ada Lovelace",
-          })
-        )
+        const contact = yield* model.contact.create({
+          links: { primaryCompany: created.id },
+          name: "Ada Lovelace",
+        })
+
         expect(
           yield* makeLinkRepository(Storage, database, testPageTokens).list({
             direction: "reverse",
@@ -451,31 +422,32 @@ describe("application HTTP server", () => {
           nextPageToken: null,
           totalSize: 1,
         })
-        const linkedContacts = yield* useTestFetch(
-          model.company.contacts.list({ id: created.id })
-        )
+        const linkedContacts = yield* model.company.contacts.list({
+          id: created.id,
+        })
+
         expect(linkedContacts.items).toMatchObject([
           { id: contact.id, objectType: "contact" },
         ])
-        const secondContact = yield* useTestFetch(
-          model.contact.create({ name: "Grace Hopper" })
-        )
-        const updated = yield* useTestFetch(
-          model.company.update({
-            etag: created.etag,
-            id: created.id,
-            links: {
-              contacts: {
-                add: [secondContact.id],
-                remove: [contact.id],
-              },
+        const secondContact = yield* model.contact.create({
+          name: "Grace Hopper",
+        })
+
+        const updated = yield* model.company.update({
+          etag: created.etag,
+          id: created.id,
+          links: {
+            contacts: {
+              add: [secondContact.id],
+              remove: [contact.id],
             },
-            name: "Northstar Systems",
-          })
-        )
+          },
+          name: "Northstar Systems",
+        })
+
         expect(updated.name).toBe("Northstar Systems")
         expect(
-          yield* useTestFetch(model.company.contacts.list({ id: created.id }))
+          yield* model.company.contacts.list({ id: created.id })
         ).toMatchObject({
           items: [{ id: secondContact.id, objectType: "contact" }],
           nextPageToken: null,
@@ -483,54 +455,45 @@ describe("application HTTP server", () => {
         })
         expect(
           yield* Effect.flip(
-            useTestFetch(
-              model.company.update({
-                etag: updated.etag,
-                id: created.id,
-                links: {
-                  contacts: {
-                    add: [RecordAlias("test:contact:missing")],
-                  },
+            model.company.update({
+              etag: updated.etag,
+              id: created.id,
+              links: {
+                contacts: {
+                  add: [RecordAlias("test:contact:missing")],
                 },
-                name: "This must roll back",
-              })
-            )
+              },
+              name: "This must roll back",
+            })
           )
         ).toMatchObject({ reason: "NOT_FOUND" })
-        expect(
-          yield* useTestFetch(model.company.list({ pageSize: 10 }))
-        ).toMatchObject({
+        expect(yield* model.company.list({ pageSize: 10 })).toMatchObject({
           items: [expect.objectContaining({ name: "Northstar Systems" })],
         })
-        yield* useTestFetch(
-          model.company.contacts.unlink({
-            id: created.id,
-            target: contact.id,
-          })
-        )
+        yield* model.company.contacts.unlink({
+          id: created.id,
+          target: contact.id,
+        })
+
         expect(
-          yield* useTestFetch(model.company.contacts.list({ id: created.id }))
+          yield* model.company.contacts.list({ id: created.id })
         ).toMatchObject({
           items: [{ id: secondContact.id, objectType: "contact" }],
           nextPageToken: null,
           totalSize: 1,
         })
-        yield* useTestFetch(
-          model.company.contacts.link({
-            id: created.id,
-            target: contact.id,
-          })
-        )
-        yield* useTestFetch(
-          model.contact.primaryCompany.link({
-            id: contact.id,
-            target: created.id,
-          })
-        )
+        yield* model.company.contacts.link({
+          id: created.id,
+          target: contact.id,
+        })
+
+        yield* model.contact.primaryCompany.link({
+          id: contact.id,
+          target: created.id,
+        })
+
         expect(
-          yield* useTestFetch(
-            model.contact.primaryCompany.list({ id: contact.id })
-          )
+          yield* model.contact.primaryCompany.list({ id: contact.id })
         ).toMatchObject({
           items: [{ id: created.id, objectType: "company" }],
           nextPageToken: null,
@@ -541,9 +504,11 @@ describe("application HTTP server", () => {
           where ${objects.columns.id} = ${contact.id}`
         yield* sql`update ${objects} set ${assignments(sql, objects, { createdAt: "2001-01-01T00:00:00.000456Z" })}
           where ${objects.columns.id} = ${secondContact.id}`
-        const firstContactPage = yield* useTestFetch(
-          model.company.contacts.list({ id: created.id, pageSize: 1 })
-        )
+        const firstContactPage = yield* model.company.contacts.list({
+          id: created.id,
+          pageSize: 1,
+        })
+
         expect(firstContactPage.items.map(({ id }) => id)).toEqual([
           secondContact.id,
         ])
@@ -570,13 +535,12 @@ describe("application HTTP server", () => {
         expect(mismatchedLinkCursor).toMatchObject({
           _tag: "InvalidLinkListRequest",
         })
-        const secondContactPage = yield* useTestFetch(
-          model.company.contacts.list({
-            id: created.id,
-            pageSize: 1,
-            pageToken: nextContactPageToken,
-          })
-        )
+        const secondContactPage = yield* model.company.contacts.list({
+          id: created.id,
+          pageSize: 1,
+          pageToken: nextContactPageToken,
+        })
+
         expect(secondContactPage.items.map(({ id }) => id)).toEqual([
           contact.id,
         ])
@@ -584,9 +548,11 @@ describe("application HTTP server", () => {
         expect(secondContactPage.totalSize).toBe(2)
         yield* sql`update ${objects} set ${assignments(sql, objects, { createdAt: "2001-01-01T00:00:00.000123Z" })}
           where ${objects.columns.id} = ${secondContact.id}`
-        const tiedFirst = yield* useTestFetch(
-          model.company.contacts.list({ id: created.id, pageSize: 1 })
-        )
+        const tiedFirst = yield* model.company.contacts.list({
+          id: created.id,
+          pageSize: 1,
+        })
+
         const tiedIds = [contact.id, secondContact.id].sort((left, right) =>
           left < right ? 1 : left > right ? -1 : 0
         )
@@ -594,13 +560,12 @@ describe("application HTTP server", () => {
         const tiedToken =
           tiedFirst.nextPageToken ??
           (yield* Effect.die("Expected tied timestamp page"))
-        const tiedSecond = yield* useTestFetch(
-          model.company.contacts.list({
-            id: created.id,
-            pageSize: 1,
-            pageToken: tiedToken,
-          })
-        )
+        const tiedSecond = yield* model.company.contacts.list({
+          id: created.id,
+          pageSize: 1,
+          pageToken: tiedToken,
+        })
+
         expect(tiedSecond.items.map(({ id }) => id)).toEqual(tiedIds.slice(1))
         expect(
           yield* makeLinkRepository(Storage, database, testPageTokens).list(
@@ -625,38 +590,34 @@ describe("application HTTP server", () => {
           totalSize: 1,
         })
 
-        const destination = yield* useTestFetch(
-          model.company.create({ name: "Analytical Engine" })
-        )
-        yield* useTestFetch(
-          model.company.contacts.link({
-            id: destination.id,
-            target: contact.id,
-          })
-        )
-        yield* useTestFetch(
-          model.company.contacts.link({
-            id: destination.id,
-            target: contact.id,
-          })
-        )
-        yield* useTestFetch(
-          model.contact.primaryCompany.link({
-            id: contact.id,
-            target: destination.id,
-          })
-        )
+        const destination = yield* model.company.create({
+          name: "Analytical Engine",
+        })
+
+        yield* model.company.contacts.link({
+          id: destination.id,
+          target: contact.id,
+        })
+
+        yield* model.company.contacts.link({
+          id: destination.id,
+          target: contact.id,
+        })
+
+        yield* model.contact.primaryCompany.link({
+          id: contact.id,
+          target: destination.id,
+        })
+
         expect(
-          yield* useTestFetch(
-            model.contact.primaryCompany.list({ id: contact.id })
-          )
+          yield* model.contact.primaryCompany.list({ id: contact.id })
         ).toMatchObject({
           items: [{ id: destination.id, objectType: "company" }],
           nextPageToken: null,
           totalSize: 1,
         })
         expect(
-          yield* useTestFetch(model.company.contacts.list({ id: created.id }))
+          yield* model.company.contacts.list({ id: created.id })
         ).toMatchObject({
           items: expect.arrayContaining([
             expect.objectContaining({
@@ -669,12 +630,9 @@ describe("application HTTP server", () => {
           totalSize: 2,
         })
 
-        yield* useTestFetch(
-          model.company.delete({ etag: updated.etag, id: created.id })
-        )
-        expect(
-          yield* useTestFetch(model.note.subjects.list({ id: note.id }))
-        ).toEqual({
+        yield* model.company.delete({ etag: updated.etag, id: created.id })
+
+        expect(yield* model.note.subjects.list({ id: note.id })).toEqual({
           items: [],
           nextPageToken: null,
           totalSize: 0,
@@ -745,10 +703,7 @@ describe("application HTTP server", () => {
           "get",
           { id: destination.id },
           (signal) =>
-            runClientEffect(
-              useTestFetch(model.company.get({ id: destination.id })),
-              signal
-            )
+            runClientEffect(model.company.get({ id: destination.id }), signal)
         )
         const readCached = () =>
           Effect.promise(() => secondBrowser.queryClient.fetchQuery(observed))
@@ -757,12 +712,7 @@ describe("application HTTP server", () => {
           read: (cursor, signal) =>
             offline
               ? Promise.reject(new Error("offline"))
-              : Effect.runPromise(
-                  useTestFetch(
-                    nativeClient.events.listEvents({ query: { cursor } })
-                  ),
-                  { signal }
-                ),
+              : Effect.runPromise(model.events.list({ cursor }), { signal }),
           apply: (page) =>
             page.reset
               ? secondBrowser.reset()
@@ -777,12 +727,11 @@ describe("application HTTP server", () => {
         yield* Effect.promise(() => consumer.poll(signal))
         expect((yield* readCached()).name).toBe("Analytical Engine")
         offline = true
-        yield* useTestFetch(
-          model.company.update({
-            id: destination.id,
-            name: "Changed in the first browser",
-          })
-        )
+        yield* model.company.update({
+          id: destination.id,
+          name: "Changed in the first browser",
+        })
+
         expect((yield* readCached()).name).toBe("Analytical Engine")
         yield* Effect.promise(() =>
           expect(consumer.poll(signal)).rejects.toThrow("offline")

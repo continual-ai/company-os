@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router"
 import { ArrowLeftIcon } from "lucide-react"
 
 import { appConfig } from "#/app/customization/config.ts"
-import { pageOptions } from "#/app/route-metadata.ts"
+import { pageOptions } from "#/app/ui/route-metadata.ts"
 import { Button } from "#/runtime/ui/components/button.tsx"
 import {
   Card,

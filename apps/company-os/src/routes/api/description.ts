@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router"
 
 import { EnabledModel } from "#/app.model.ts"
 import { checkCapability } from "#/app/server/authorization/check-capability.ts"
-import { applicationCapabilities } from "#/runtime/client/capabilities.ts"
+import { applicationCapabilities } from "#/runtime/contract/capabilities.ts"
 import { describeModel } from "#/runtime/model/index.ts"
 
 /** Describes the exposed model, not every composed module. */

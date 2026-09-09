@@ -40,6 +40,6 @@ rebuilds only when indexed fields, display configuration, or the projection vers
 rebuild locks source tables and swaps the index in one transaction; readers keep the old index
 while writers wait. After an out-of-band import, `db:migrate --rebuild-search` repairs it.
 
-The pieces are `runtime/client/record-search.ts` (contract), `runtime/server/record-search.ts`
+The pieces are `runtime/contract/record-search.ts` (contract), `runtime/server/record-search.ts`
 (authorized query), `runtime/server/storage/search-index.ts` (projection and rebuild), and
 `app/ui/application/command-palette.tsx` (interaction).

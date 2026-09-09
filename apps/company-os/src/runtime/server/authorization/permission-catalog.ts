@@ -1,7 +1,7 @@
 import {
   createCapabilities,
   type CapabilityPermission,
-} from "#/runtime/client/capabilities.ts"
+} from "#/runtime/contract/capabilities.ts"
 import { modelObjects } from "#/runtime/model/index.ts"
 import type { ModelCatalog } from "#/runtime/model/index.ts"
 

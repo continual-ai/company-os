@@ -11,7 +11,7 @@ HTTP and OpenAPI, and MCP.
 | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `runtime/` | The kernel: portable model DSL, shared contracts, browser client, server execution and storage, UI foundation, test helpers, and the kernel modules `access/` and `assets/` |
 | `modules/` | The business: one directory per capability, each shaped `model/ server/ ui/ seeds/`                                                                                         |
-| `app/`     | The shell: layout, settings, sign-in, developer pages, client assembly, host adapters, migrations                                                                           |
+| `app/`     | The shell: layout, settings, sign-in, developer pages, the assembled client and presentation runtime, host adapters, migrations                                             |
 | `routes/`  | TanStack Start file routes, generic over the model                                                                                                                          |
 
 Dependencies point one way. `runtime/` imports nothing from `modules/`, `app/`, or `routes/`. A
@@ -28,7 +28,8 @@ an ordinary Git merge.
 
 - `app.model.ts` composes every module with `defineModel` into `Model`. This is the storage
   authority: `schema.sql` and the migrations project this model, whether or not a module is enabled.
-- `app.config.ts` exports `enabledModules`. `enableModules(Model, enabledModules)` derives
+- `app.config.ts` exports `appMetadata`, the deployment's name, version, and default currency, and
+  `enabledModules`. `enableModules(Model, enabledModules)` derives
   `EnabledModel`, failing at startup when the list is not closed under the dependencies the model
   graph implies (references, links, interface implementations) and naming the missing module.
 - `app.server.ts` lists the custom operation contributions bound with `defineModuleServer`.
@@ -62,14 +63,20 @@ filter authorized rows before aggregating.
 
 Custom HTTP methods use colon suffixes such as `POST /api/v1/leads/{id}:convert`; lists accept
 JSON-encoded filter and sort parameters on `GET /api/v1/<collection>`. Application-level
-capabilities outside the model, such as event replay and record search, are separate groups on the
-same HTTP contract in `app/http-api.ts`.
+capabilities outside the model, such as capability checks, event replay, and record search, are
+separate groups on the same contract; `createApplicationHttpApi` in
+`runtime/contract/application-http-api.ts` derives the whole contract from a model, and
+`app/server/http-api.ts` instantiates it once for `EnabledModel` with the deployment's identity.
 
 ## Reads and changes
 
-`app/app-client.ts` derives the semantic client and TanStack Query options from `EnabledModel`.
-Feature code uses `useQuery(data.contact.list(...))` and `useMutation(data.contact.update())`;
-router loaders preload the same options. Committed writes report affected object types in
+`createEffectClient` and `createClient` in `runtime/client/create-client.ts` derive a typed client
+from any model and the same contract the server serves: every object's operations and Links, plus
+capability checks, events, and record search. `createClient` returns Promises and is exported as
+`company-os/client` for optional apps, scripts, and tests. `app/app-client.ts` builds the Effect
+client for the app's own origin and wraps it in TanStack Query options as `data`. Feature code uses
+`useQuery(data.contact.list(...))` and `useMutation(data.contact.update())`; router loaders preload
+the same options. Committed writes report affected object types in
 `x-model-changes`; the shared cache applies canonical records by ordered etag and revalidates
 affected lists, counts, and reports. Other browsers receive the same facts through the authorized
 event feed. Details are in [client data](data.md) and [durable events](events.md).
@@ -95,6 +102,7 @@ does not change its ownership scope or grant another principal access to it.
 ## Optional apps
 
 `templates/base` is the starter for a separate interface such as a portal. A copy imports
-`company-os/model`, `company-os/metadata`, `company-os/ui/*`, and `company-os/styles.css` only and
-calls the central app's governed API, forwarding the hosting platform's identity headers. It is not
-a second business authority. See the [base starter](../templates/base/README.md).
+`company-os/model`, `company-os/client`, `company-os/config`, `company-os/ui/*`, and
+`company-os/styles.css` only. Its server functions call the central app through `createClient`,
+pointed at `COMPANY_OS_URL` and forwarding the hosting platform's identity headers. It is not a
+second business authority. See the [base starter](../templates/base/README.md).

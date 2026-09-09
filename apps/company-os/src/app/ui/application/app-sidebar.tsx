@@ -9,7 +9,7 @@ import {
   useAuthenticatedUser,
 } from "#/app/ui/application/authenticated-user.tsx"
 import { CommandPaletteButton } from "#/app/ui/application/command-palette.tsx"
-import { applicationCapabilities } from "#/runtime/client/capabilities.ts"
+import { applicationCapabilities } from "#/runtime/contract/capabilities.ts"
 import {
   DropdownMenu,
   DropdownMenuContent,
