@@ -32,17 +32,38 @@ const readModuleCatalog = Effect.fn("platform.readModuleCatalog")(function* () {
   const enabled = new Map(
     states.map((state) => [state.moduleId, state.enabled])
   )
-  return Object.values(model.modules).map((module) => ({
-    id: module.id,
-    name: module.name,
-    description: module.description ?? "",
-    enabled: enabled.get(module.id) ?? false,
-    required: requiredModuleIds.some((id) => id === module.id),
-    dependencies: moduleDependencies(module, Object.values(model.modules)).map(
-      ({ moduleId }) => moduleId
-    ),
-    objects: module.objects.map((object) => object.pluralName),
-  }))
+  return Object.values(model.modules).map((module) => {
+    const maintainer = module.maintainer ?? model.maintainer
+    return {
+      id: module.id,
+      name: module.name,
+      description: module.description ?? "",
+      ...(module.maturity ? { maturity: module.maturity } : {}),
+      ...(maintainer
+        ? {
+            maintainer: {
+              name: maintainer.name,
+              ...(maintainer.email ? { email: maintainer.email } : {}),
+            },
+          }
+        : {}),
+      ...(module.origin
+        ? {
+            origin: {
+              name: module.origin.name,
+              ...(module.origin.url ? { url: module.origin.url } : {}),
+            },
+          }
+        : {}),
+      enabled: enabled.get(module.id) ?? false,
+      required: requiredModuleIds.some((id) => id === module.id),
+      dependencies: moduleDependencies(
+        module,
+        Object.values(model.modules)
+      ).map(({ moduleId }) => moduleId),
+      objects: module.objects.map((object) => object.pluralName),
+    }
+  })
 })
 
 const activeModels = new WeakMap<
@@ -61,6 +82,7 @@ export const activeModuleModel = Effect.fn("platform.activeModuleModel")(
     if (cached?.key === key) return cached
     const active = defineModel({
       name: model.name,
+      maintainer: model.maintainer,
       modules: Object.values(model.modules).filter((module) =>
         ids.includes(module.id)
       ),

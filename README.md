@@ -74,7 +74,7 @@ used by sales and the engineering issue that resolves it.
 
 <p align="center"><sub>The sales pipeline, using the same records available in tables and through the API. Fictional demo data.</sub></p>
 
-Enable the modules you need in **Platform → Modules**. Add your own alongside them.
+Enable the modules you need in **Settings → Platform → Modules**. Add your own alongside them.
 Disabling a module hides its operations and screens while retaining its data.
 
 ## One model, every interface

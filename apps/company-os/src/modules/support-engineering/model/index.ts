@@ -60,6 +60,11 @@ export const TicketEscalated = defineEvent({
   }),
 })
 export const SupportEngineeringModule = defineModule({
+  maturity: "alpha",
+  origin: {
+    name: "Company OS",
+    url: "https://github.com/continual-ai/company-os",
+  },
   description: "Connect customer support tickets with engineering issues.",
   id: "supportEngineering",
   name: "Support engineering",

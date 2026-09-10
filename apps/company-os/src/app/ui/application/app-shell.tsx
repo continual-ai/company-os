@@ -89,7 +89,7 @@ export function AppShell({
                           <AppSidebar />
                         )}
                         <SidebarInset className="h-svh min-h-0 min-w-0 overflow-hidden">
-                          {secondaryShell ? (
+                          {isDeveloper ? (
                             <header className="flex h-(--header-height) shrink-0 items-center gap-3 border-b bg-background px-page-gutter md:hidden">
                               <SidebarTrigger className="-ml-1" />
                               <span className="text-sm font-medium">

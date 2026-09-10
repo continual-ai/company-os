@@ -7,8 +7,28 @@ import type { InterfaceType } from "#/runtime/model/definition/interface.ts"
 import type { LinkType } from "#/runtime/model/definition/link.ts"
 import type { ObjectType } from "#/runtime/model/definition/object.ts"
 
+export const moduleMaturities = [
+  "alpha",
+  "beta",
+  "stable",
+  "deprecated",
+] as const
+
+export interface ModuleMaintainer {
+  readonly name: string
+  readonly email?: string | undefined
+}
+
+export interface ModuleMetadata {
+  readonly maturity?: (typeof moduleMaturities)[number] | undefined
+  readonly maintainer?: ModuleMaintainer | undefined
+  readonly origin?:
+    | { readonly name: string; readonly url?: string | undefined }
+    | undefined
+}
+
 /** What `defineModule` accepts. */
-export interface ModuleDefinitionInput {
+export interface ModuleDefinitionInput extends ModuleMetadata {
   readonly events?: ReadonlyArray<EventType>
   readonly id: string
   readonly interfaces?: ReadonlyArray<InterfaceType>
@@ -36,7 +56,7 @@ type ModuleLinks<D extends ModuleDefinitionInput> = D extends {
  */
 export interface ModuleDefinition<
   D extends ModuleDefinitionInput = ModuleDefinitionInput,
-> {
+> extends ModuleMetadata {
   readonly events: ReadonlyArray<EventType>
   readonly id: D["id"]
   readonly interfaces: OpenOr<
@@ -67,6 +87,9 @@ export function defineModule<const D extends ModuleDefinitionInput>(
     kind: "module",
     links: input.links ?? [],
     name: input.name,
+    maturity: input.maturity,
+    maintainer: input.maintainer,
+    origin: input.origin,
     description: input.description,
     objects: input.objects,
   }

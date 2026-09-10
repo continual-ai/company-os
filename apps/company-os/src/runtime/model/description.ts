@@ -12,6 +12,7 @@ import {
   modelObjects,
   modelQueries,
 } from "#/runtime/model/definition/model.ts"
+import type { ModuleMetadata } from "#/runtime/model/definition/module.ts"
 import type { ObjectType } from "#/runtime/model/definition/object.ts"
 import type { Query, CustomQuery } from "#/runtime/model/definition/query.ts"
 import {
@@ -32,7 +33,7 @@ type ObjectDescription = Omit<
 }
 
 /** Serializable membership metadata for one declared model module. */
-export interface ModuleDescription {
+export interface ModuleDescription extends ModuleMetadata {
   readonly id: string
   readonly interfaceIds: ReadonlyArray<string>
   readonly linkIds: ReadonlyArray<string>
@@ -111,6 +112,9 @@ export function describeModel(model: ModelCatalog): ModelDescription {
       interfaceIds: module.interfaces.map((item) => item.id),
       linkIds: module.links.map((link) => link.id),
       name: module.name,
+      maturity: module.maturity,
+      maintainer: module.maintainer ?? model.maintainer,
+      origin: module.origin,
       objectIds: module.objects.map((object) => object.id),
     })),
     relationships: modelRelationships(model),

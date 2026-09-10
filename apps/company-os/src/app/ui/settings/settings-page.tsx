@@ -2,22 +2,17 @@ import { cn } from "@company/ui/lib/utils"
 import { PageContent } from "@company/ui/page"
 
 export function SettingsPage({
-  title,
   description,
   children,
 }: {
-  title: string
   description: string
   children: React.ReactNode
 }) {
   return (
     <PageContent className="mx-auto w-full max-w-3xl">
-      <header className="max-w-2xl">
-        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-        <p className="mt-2 text-sm leading-6 text-muted-foreground">
-          {description}
-        </p>
-      </header>
+      <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+        {description}
+      </p>
       <div className="space-y-6">{children}</div>
     </PageContent>
   )

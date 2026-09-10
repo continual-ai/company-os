@@ -1131,3 +1131,31 @@ describe("object properties", () => {
     })
   })
 })
+
+it("keeps module provenance and maintainer defaults when selecting enabled modules", () => {
+  const maintainer = {
+    name: "Company engineering",
+    email: "engineering@example.test",
+  }
+  const module = defineModule({
+    id: "owned",
+    name: "Owned",
+    objects: [],
+    maturity: "beta",
+    maintainer: { name: "Operations", email: "ops@example.test" },
+    origin: { name: "Upstream", url: "https://example.test/source" },
+  })
+  const model = defineModel({
+    name: "Example",
+    maintainer,
+    modules: [
+      module,
+      defineModule({ id: "extra", name: "Extra", objects: [] }),
+    ],
+  })
+  const active = enableModules(model, ["owned"])
+  expect(active.maintainer).toEqual(maintainer)
+  expect(active.modules.owned.maintainer).toEqual(module.maintainer)
+  expect(active.modules.owned.maturity).toBe("beta")
+  expect(active.modules.owned.origin).toEqual(module.origin)
+})

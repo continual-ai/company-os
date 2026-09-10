@@ -14,10 +14,11 @@ export type { IdentityId } from "#/runtime/access/model/ids.ts"
 
 /**
  * Every module is composed and migrated; this is the storage authority. Add a
- * module here, then its server and UI contributions, then enable it in Platform > Modules.
+ * module here, then its server and UI contributions, then enable it in Settings > Platform > Modules.
  */
 export const Model = defineModel({
   name: appMetadata.name,
+  maintainer: appMetadata.maintainer,
   modules: [
     PlatformModule,
     NotesModule,

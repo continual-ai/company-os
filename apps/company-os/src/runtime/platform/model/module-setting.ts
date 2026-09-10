@@ -1,3 +1,4 @@
+import { moduleMaturities } from "#/runtime/model/definition/module.ts"
 import { defineObject, schema, standardErrors } from "#/runtime/model/index.ts"
 
 export const ModuleSetting = defineObject({
@@ -44,6 +45,19 @@ export const ModuleSetting = defineObject({
             id: schema.string(),
             name: schema.string(),
             description: schema.string(),
+            maturity: schema.optional(schema.enumeration(moduleMaturities)),
+            maintainer: schema.optional(
+              schema.object({
+                name: schema.string(),
+                email: schema.optional(schema.string()),
+              })
+            ),
+            origin: schema.optional(
+              schema.object({
+                name: schema.string(),
+                url: schema.optional(schema.string()),
+              })
+            ),
             enabled: schema.boolean(),
             required: schema.boolean(),
             dependencies: schema.array(schema.string()),

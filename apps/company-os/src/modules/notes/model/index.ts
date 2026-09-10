@@ -50,6 +50,11 @@ export const NoteSubjects = defineLink({
 })
 
 export const NotesModule = defineModule({
+  maturity: "alpha",
+  origin: {
+    name: "Company OS",
+    url: "https://github.com/continual-ai/company-os",
+  },
   description: "Attach shared notes and activity to business records.",
   id: "notes",
   name: "Notes",

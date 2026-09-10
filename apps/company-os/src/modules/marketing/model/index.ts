@@ -5,6 +5,11 @@ import { Outreach } from "#/modules/marketing/model/outreach.ts"
 import { defineModule } from "#/runtime/model/index.ts"
 
 export const MarketingModule = defineModule({
+  maturity: "alpha",
+  origin: {
+    name: "Company OS",
+    url: "https://github.com/continual-ai/company-os",
+  },
   description: "Plan campaigns, content, audiences, and outreach.",
   id: "marketing",
   name: "Marketing",

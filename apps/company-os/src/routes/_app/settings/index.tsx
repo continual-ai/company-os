@@ -21,10 +21,7 @@ export const Route = createFileRoute("/_app/settings/")({
 
 function GeneralSettings() {
   return (
-    <SettingsPage
-      title="General"
-      description="Manage the settings that apply to this interface."
-    >
+    <SettingsPage description="Manage the settings that apply to this interface.">
       <SettingsSection title="Account">
         <SettingsRow
           title="Profile"

@@ -53,7 +53,7 @@ server's major version or newer).
 
 Business code lives in `apps/company-os/src/modules`; the kernel is in `src/runtime` and the shell
 in `src/app`. `app.model.ts` composes every module. Administrators explore and enable modules in
-Platform > Modules. Activation is stored in the database and controls UI, HTTP, and MCP,
+Settings > Platform > Modules. Activation is stored in the database and controls UI, HTTP, and MCP,
 leaving disabled modules' data intact. Platform is always enabled. Enabling a
 module also enables its dependencies; turning one off asks you to confirm any dependent modules. Newly added optional modules
 start disabled on existing installations; an initial setup enables all installed modules.

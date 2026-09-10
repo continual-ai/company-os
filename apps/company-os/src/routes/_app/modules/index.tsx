@@ -1,13 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router"
-
-import { pageOptions } from "#/app/ui/route-metadata.ts"
-import { ModulesSettings } from "#/app/ui/settings/modules-settings.tsx"
+import { createFileRoute, redirect } from "@tanstack/react-router"
 
 export const Route = createFileRoute("/_app/modules/")({
-  ...pageOptions({
-    title: "Modules",
-    breadcrumb: "Modules",
-    description: "Discover and enable capabilities for your company.",
-  }),
-  component: ModulesSettings,
+  beforeLoad: () => {
+    throw redirect({ to: "/settings/modules", replace: true })
+  },
 })

@@ -28,7 +28,6 @@ import { Route as AppDeveloperIndexRouteImport } from './routes/_app/developer/i
 import { Route as ApiV1SplatRouteImport } from './routes/api/v1/$'
 import { Route as AppToolsToolIdRouteImport } from './routes/_app/tools/$toolId'
 import { Route as AppSettingsProfileRouteImport } from './routes/_app/settings/profile'
-import { Route as AppSettingsModulesRouteImport } from './routes/_app/settings/modules'
 import { Route as AppSettingsAppearanceRouteImport } from './routes/_app/settings/appearance'
 import { Route as AppReportsReportIdRouteImport } from './routes/_app/reports/$reportId'
 import { Route as AppModulesRecordIdRouteImport } from './routes/_app/modules/$recordId'
@@ -37,8 +36,10 @@ import { Route as AppDeveloperModelRouteImport } from './routes/_app/developer/m
 import { Route as AppDeveloperMcpRouteImport } from './routes/_app/developer/mcp'
 import { Route as AppDeveloperDesignSystemRouteImport } from './routes/_app/developer/design-system'
 import { Route as AppDeveloperApiRouteImport } from './routes/_app/developer/api'
+import { Route as AppSettingsModulesIndexRouteImport } from './routes/_app/settings/modules/index'
 import { Route as AppSettingsCollectionIndexRouteImport } from './routes/_app/settings/$collection/index'
 import { Route as AppObjectsObjectTypeIndexRouteImport } from './routes/_app/objects/$objectType/index'
+import { Route as AppSettingsModulesRecordIdRouteImport } from './routes/_app/settings/modules/$recordId'
 import { Route as AppSettingsCollectionRecordIdRouteImport } from './routes/_app/settings/$collection/$recordId'
 import { Route as AppObjectsObjectTypeRecordIdRouteImport } from './routes/_app/objects/$objectType/$recordId'
 import { Route as ApiV1AssetsAssetIdContentRouteImport } from './routes/api/v1/assets/$assetId/content'
@@ -137,11 +138,6 @@ const AppSettingsProfileRoute = AppSettingsProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => AppSettingsRouteRoute,
 } as any)
-const AppSettingsModulesRoute = AppSettingsModulesRouteImport.update({
-  id: '/modules',
-  path: '/modules',
-  getParentRoute: () => AppSettingsRouteRoute,
-} as any)
 const AppSettingsAppearanceRoute = AppSettingsAppearanceRouteImport.update({
   id: '/appearance',
   path: '/appearance',
@@ -183,6 +179,11 @@ const AppDeveloperApiRoute = AppDeveloperApiRouteImport.update({
   path: '/api',
   getParentRoute: () => AppDeveloperRouteRoute,
 } as any)
+const AppSettingsModulesIndexRoute = AppSettingsModulesIndexRouteImport.update({
+  id: '/modules/',
+  path: '/modules/',
+  getParentRoute: () => AppSettingsRouteRoute,
+} as any)
 const AppSettingsCollectionIndexRoute =
   AppSettingsCollectionIndexRouteImport.update({
     id: '/$collection/',
@@ -194,6 +195,12 @@ const AppObjectsObjectTypeIndexRoute =
     id: '/objects/$objectType/',
     path: '/objects/$objectType/',
     getParentRoute: () => AppRouteRoute,
+  } as any)
+const AppSettingsModulesRecordIdRoute =
+  AppSettingsModulesRecordIdRouteImport.update({
+    id: '/modules/$recordId',
+    path: '/modules/$recordId',
+    getParentRoute: () => AppSettingsRouteRoute,
   } as any)
 const AppSettingsCollectionRecordIdRoute =
   AppSettingsCollectionRecordIdRouteImport.update({
@@ -233,7 +240,6 @@ export interface FileRoutesByFullPath {
   '/modules/$recordId': typeof AppModulesRecordIdRoute
   '/reports/$reportId': typeof AppReportsReportIdRoute
   '/settings/appearance': typeof AppSettingsAppearanceRoute
-  '/settings/modules': typeof AppSettingsModulesRoute
   '/settings/profile': typeof AppSettingsProfileRoute
   '/tools/$toolId': typeof AppToolsToolIdRoute
   '/api/v1/$': typeof ApiV1SplatRoute
@@ -244,8 +250,10 @@ export interface FileRoutesByFullPath {
   '/tools/': typeof AppToolsIndexRoute
   '/objects/$objectType/$recordId': typeof AppObjectsObjectTypeRecordIdRoute
   '/settings/$collection/$recordId': typeof AppSettingsCollectionRecordIdRoute
+  '/settings/modules/$recordId': typeof AppSettingsModulesRecordIdRoute
   '/objects/$objectType/': typeof AppObjectsObjectTypeIndexRoute
   '/settings/$collection/': typeof AppSettingsCollectionIndexRoute
+  '/settings/modules/': typeof AppSettingsModulesIndexRoute
   '/api/v1/assets/$assetId/content': typeof ApiV1AssetsAssetIdContentRoute
 }
 export interface FileRoutesByTo {
@@ -265,7 +273,6 @@ export interface FileRoutesByTo {
   '/modules/$recordId': typeof AppModulesRecordIdRoute
   '/reports/$reportId': typeof AppReportsReportIdRoute
   '/settings/appearance': typeof AppSettingsAppearanceRoute
-  '/settings/modules': typeof AppSettingsModulesRoute
   '/settings/profile': typeof AppSettingsProfileRoute
   '/tools/$toolId': typeof AppToolsToolIdRoute
   '/api/v1/$': typeof ApiV1SplatRoute
@@ -276,8 +283,10 @@ export interface FileRoutesByTo {
   '/tools': typeof AppToolsIndexRoute
   '/objects/$objectType/$recordId': typeof AppObjectsObjectTypeRecordIdRoute
   '/settings/$collection/$recordId': typeof AppSettingsCollectionRecordIdRoute
+  '/settings/modules/$recordId': typeof AppSettingsModulesRecordIdRoute
   '/objects/$objectType': typeof AppObjectsObjectTypeIndexRoute
   '/settings/$collection': typeof AppSettingsCollectionIndexRoute
+  '/settings/modules': typeof AppSettingsModulesIndexRoute
   '/api/v1/assets/$assetId/content': typeof ApiV1AssetsAssetIdContentRoute
 }
 export interface FileRoutesById {
@@ -301,7 +310,6 @@ export interface FileRoutesById {
   '/_app/modules/$recordId': typeof AppModulesRecordIdRoute
   '/_app/reports/$reportId': typeof AppReportsReportIdRoute
   '/_app/settings/appearance': typeof AppSettingsAppearanceRoute
-  '/_app/settings/modules': typeof AppSettingsModulesRoute
   '/_app/settings/profile': typeof AppSettingsProfileRoute
   '/_app/tools/$toolId': typeof AppToolsToolIdRoute
   '/api/v1/$': typeof ApiV1SplatRoute
@@ -312,8 +320,10 @@ export interface FileRoutesById {
   '/_app/tools/': typeof AppToolsIndexRoute
   '/_app/objects/$objectType/$recordId': typeof AppObjectsObjectTypeRecordIdRoute
   '/_app/settings/$collection/$recordId': typeof AppSettingsCollectionRecordIdRoute
+  '/_app/settings/modules/$recordId': typeof AppSettingsModulesRecordIdRoute
   '/_app/objects/$objectType/': typeof AppObjectsObjectTypeIndexRoute
   '/_app/settings/$collection/': typeof AppSettingsCollectionIndexRoute
+  '/_app/settings/modules/': typeof AppSettingsModulesIndexRoute
   '/api/v1/assets/$assetId/content': typeof ApiV1AssetsAssetIdContentRoute
 }
 export interface FileRouteTypes {
@@ -337,7 +347,6 @@ export interface FileRouteTypes {
     | '/modules/$recordId'
     | '/reports/$reportId'
     | '/settings/appearance'
-    | '/settings/modules'
     | '/settings/profile'
     | '/tools/$toolId'
     | '/api/v1/$'
@@ -348,8 +357,10 @@ export interface FileRouteTypes {
     | '/tools/'
     | '/objects/$objectType/$recordId'
     | '/settings/$collection/$recordId'
+    | '/settings/modules/$recordId'
     | '/objects/$objectType/'
     | '/settings/$collection/'
+    | '/settings/modules/'
     | '/api/v1/assets/$assetId/content'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -369,7 +380,6 @@ export interface FileRouteTypes {
     | '/modules/$recordId'
     | '/reports/$reportId'
     | '/settings/appearance'
-    | '/settings/modules'
     | '/settings/profile'
     | '/tools/$toolId'
     | '/api/v1/$'
@@ -380,8 +390,10 @@ export interface FileRouteTypes {
     | '/tools'
     | '/objects/$objectType/$recordId'
     | '/settings/$collection/$recordId'
+    | '/settings/modules/$recordId'
     | '/objects/$objectType'
     | '/settings/$collection'
+    | '/settings/modules'
     | '/api/v1/assets/$assetId/content'
   id:
     | '__root__'
@@ -404,7 +416,6 @@ export interface FileRouteTypes {
     | '/_app/modules/$recordId'
     | '/_app/reports/$reportId'
     | '/_app/settings/appearance'
-    | '/_app/settings/modules'
     | '/_app/settings/profile'
     | '/_app/tools/$toolId'
     | '/api/v1/$'
@@ -415,8 +426,10 @@ export interface FileRouteTypes {
     | '/_app/tools/'
     | '/_app/objects/$objectType/$recordId'
     | '/_app/settings/$collection/$recordId'
+    | '/_app/settings/modules/$recordId'
     | '/_app/objects/$objectType/'
     | '/_app/settings/$collection/'
+    | '/_app/settings/modules/'
     | '/api/v1/assets/$assetId/content'
   fileRoutesById: FileRoutesById
 }
@@ -567,13 +580,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsProfileRouteImport
       parentRoute: typeof AppSettingsRouteRoute
     }
-    '/_app/settings/modules': {
-      id: '/_app/settings/modules'
-      path: '/modules'
-      fullPath: '/settings/modules'
-      preLoaderRoute: typeof AppSettingsModulesRouteImport
-      parentRoute: typeof AppSettingsRouteRoute
-    }
     '/_app/settings/appearance': {
       id: '/_app/settings/appearance'
       path: '/appearance'
@@ -630,6 +636,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDeveloperApiRouteImport
       parentRoute: typeof AppDeveloperRouteRoute
     }
+    '/_app/settings/modules/': {
+      id: '/_app/settings/modules/'
+      path: '/modules'
+      fullPath: '/settings/modules/'
+      preLoaderRoute: typeof AppSettingsModulesIndexRouteImport
+      parentRoute: typeof AppSettingsRouteRoute
+    }
     '/_app/settings/$collection/': {
       id: '/_app/settings/$collection/'
       path: '/$collection'
@@ -643,6 +656,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/objects/$objectType/'
       preLoaderRoute: typeof AppObjectsObjectTypeIndexRouteImport
       parentRoute: typeof AppRouteRoute
+    }
+    '/_app/settings/modules/$recordId': {
+      id: '/_app/settings/modules/$recordId'
+      path: '/modules/$recordId'
+      fullPath: '/settings/modules/$recordId'
+      preLoaderRoute: typeof AppSettingsModulesRecordIdRouteImport
+      parentRoute: typeof AppSettingsRouteRoute
     }
     '/_app/settings/$collection/$recordId': {
       id: '/_app/settings/$collection/$recordId'
@@ -691,20 +711,22 @@ const AppDeveloperRouteRouteWithChildren =
 
 interface AppSettingsRouteRouteChildren {
   AppSettingsAppearanceRoute: typeof AppSettingsAppearanceRoute
-  AppSettingsModulesRoute: typeof AppSettingsModulesRoute
   AppSettingsProfileRoute: typeof AppSettingsProfileRoute
   AppSettingsIndexRoute: typeof AppSettingsIndexRoute
   AppSettingsCollectionRecordIdRoute: typeof AppSettingsCollectionRecordIdRoute
+  AppSettingsModulesRecordIdRoute: typeof AppSettingsModulesRecordIdRoute
   AppSettingsCollectionIndexRoute: typeof AppSettingsCollectionIndexRoute
+  AppSettingsModulesIndexRoute: typeof AppSettingsModulesIndexRoute
 }
 
 const AppSettingsRouteRouteChildren: AppSettingsRouteRouteChildren = {
   AppSettingsAppearanceRoute: AppSettingsAppearanceRoute,
-  AppSettingsModulesRoute: AppSettingsModulesRoute,
   AppSettingsProfileRoute: AppSettingsProfileRoute,
   AppSettingsIndexRoute: AppSettingsIndexRoute,
   AppSettingsCollectionRecordIdRoute: AppSettingsCollectionRecordIdRoute,
+  AppSettingsModulesRecordIdRoute: AppSettingsModulesRecordIdRoute,
   AppSettingsCollectionIndexRoute: AppSettingsCollectionIndexRoute,
+  AppSettingsModulesIndexRoute: AppSettingsModulesIndexRoute,
 }
 
 const AppSettingsRouteRouteWithChildren =

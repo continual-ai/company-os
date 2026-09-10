@@ -45,9 +45,18 @@ application.test(
         fetch,
         headers: { "x-test-user": "operator" },
       })
-      expect((yield* operator.moduleSetting.catalog({})).modules).toHaveLength(
-        Object.keys(Model.modules).length
-      )
+      const catalog = yield* operator.moduleSetting.catalog({})
+      expect(catalog.modules).toHaveLength(Object.keys(Model.modules).length)
+      expect(
+        catalog.modules.find((module) => module.id === "notes")
+      ).toMatchObject({
+        maturity: "alpha",
+        maintainer: Model.maintainer,
+        origin: {
+          name: "Company OS",
+          url: "https://github.com/continual-ai/company-os",
+        },
+      })
       yield* operator.moduleSetting.setEnabled({
         moduleId: "hiring",
         enabled: false,

@@ -45,10 +45,7 @@ function AppearanceSettings() {
   }, [])
 
   return (
-    <SettingsPage
-      title="Appearance"
-      description="Choose how this app appears in this browser."
-    >
+    <SettingsPage description="Choose how this app appears in this browser.">
       <SettingsSection title="Interface">
         <SettingsRow
           title="Theme"

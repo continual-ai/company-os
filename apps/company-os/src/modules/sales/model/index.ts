@@ -11,6 +11,11 @@ import { DealCompanies } from "#/modules/sales/model/links/deal-companies.ts"
 import { defineModule } from "#/runtime/model/index.ts"
 
 export const SalesModule = defineModule({
+  maturity: "alpha",
+  origin: {
+    name: "Company OS",
+    url: "https://github.com/continual-ai/company-os",
+  },
   description: "Track companies, contacts, leads, and deals.",
   id: "sales",
   name: "Sales",

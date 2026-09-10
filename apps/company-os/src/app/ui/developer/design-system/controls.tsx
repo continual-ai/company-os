@@ -18,6 +18,7 @@ import {
   InputGroupText,
 } from "@company/ui/input-group"
 import { Label } from "@company/ui/label"
+import { MaturityBadge } from "@company/ui/maturity-badge"
 import { PhoneInput } from "@company/ui/phone-input"
 import {
   Select,
@@ -59,6 +60,15 @@ export const controlSections: ReadonlyArray<ComponentSection> = [
     component: BadgeExamples,
     usage:
       'import { Badge } from "@company/ui/badge"\n\n<Badge variant="secondary">In review</Badge>',
+  },
+  {
+    id: "maturity-badge",
+    title: "Maturity badge",
+    description:
+      "Readiness labels with restrained color: violet for experimental work, blue for preview, green for stable, and amber for deprecated. Keep surrounding surfaces neutral and activation controls separate.",
+    component: MaturityBadgeExamples,
+    usage:
+      'import { MaturityBadge } from "@company/ui/maturity-badge"\n\n<MaturityBadge value="beta" />',
   },
   {
     id: "input",
@@ -203,6 +213,10 @@ function BadgeExamples() {
         <Badge variant="destructive">Failed</Badge>
         <Badge variant="ghost">Ghost</Badge>
         <Badge variant="link">Link</Badge>
+        <Badge variant="discovery">Experimental</Badge>
+        <Badge variant="info">Information</Badge>
+        <Badge variant="success">Success</Badge>
+        <Badge variant="warning">Caution</Badge>
       </div>
     </Example>
   )
@@ -455,6 +469,19 @@ function DateTimeExamples() {
           onValueChange={setValue}
         />
       </Field>
+    </Example>
+  )
+}
+
+function MaturityBadgeExamples() {
+  return (
+    <Example title="Readiness" source="@company/ui/maturity-badge">
+      <div className="flex flex-wrap gap-3">
+        <MaturityBadge value="alpha" />
+        <MaturityBadge value="beta" />
+        <MaturityBadge value="stable" />
+        <MaturityBadge value="deprecated" />
+      </div>
     </Example>
   )
 }

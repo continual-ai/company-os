@@ -5,6 +5,11 @@ import { PullRequest } from "#/modules/engineering/model/pull-request.ts"
 import { Repository } from "#/modules/engineering/model/repository.ts"
 import { defineModule } from "#/runtime/model/index.ts"
 export const EngineeringModule = defineModule({
+  maturity: "alpha",
+  origin: {
+    name: "Company OS",
+    url: "https://github.com/continual-ai/company-os",
+  },
   description: "Organize projects, issues, repositories, and pull requests.",
   id: "engineering",
   name: "Engineering",

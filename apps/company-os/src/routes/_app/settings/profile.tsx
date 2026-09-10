@@ -23,10 +23,7 @@ function ProfileSettings() {
   const user = useAuthenticatedUser()
 
   return (
-    <SettingsPage
-      title="Profile"
-      description="Your profile information for this workspace."
-    >
+    <SettingsPage description="Your profile information for this workspace.">
       <SettingsSection
         title="Personal information"
         description="Managed by your sign-in provider."

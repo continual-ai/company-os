@@ -10,17 +10,17 @@ import {
 } from "@company/ui/alert-dialog"
 import { Button } from "@company/ui/button"
 import { Input } from "@company/ui/input"
+import { MaturityBadge } from "@company/ui/maturity-badge"
 import { Switch } from "@company/ui/switch"
 import { toast } from "@company/ui/toast"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { LoaderCircleIcon, LockKeyholeIcon, SearchIcon } from "lucide-react"
+import { ArrowUpRightIcon, LockKeyholeIcon, SearchIcon } from "lucide-react"
 import { useState } from "react"
 
 import { data } from "#/app/app-client.ts"
 import { moduleCatalogQuery } from "#/app/ui/application/active-presentation.ts"
 import {
   SettingsPage,
-  SettingsRow,
   SettingsSection,
 } from "#/app/ui/settings/settings-page.tsx"
 import { moduleActivationPlan } from "#/runtime/platform/model/index.ts"
@@ -89,7 +89,7 @@ export function ModulesSettings() {
   })
   const modules = catalog.data?.modules ?? []
   const matching = modules.filter((module) =>
-    `${module.name} ${module.description} ${module.objects.join(" ")}`
+    `${module.name} ${module.description} ${module.maturity ?? ""} ${module.maintainer?.name ?? ""} ${module.maintainer?.email ?? ""} ${module.origin?.name ?? ""} ${module.objects.join(" ")}`
       .toLowerCase()
       .includes(search.toLowerCase().trim())
   )
@@ -112,10 +112,7 @@ export function ModulesSettings() {
   }
 
   return (
-    <SettingsPage
-      title="Modules"
-      description="Choose what your company uses. Turning a module off hides its features and keeps its records."
-    >
+    <SettingsPage description="Choose what your company uses. Turning a module off hides its features and keeps its records.">
       <div className="space-y-6">
         <div className="relative">
           <SearchIcon className="pointer-events-none absolute left-3 top-2.5 size-4 text-muted-foreground" />
@@ -146,41 +143,86 @@ export function ModulesSettings() {
                   {items.map((module) => {
                     const saving = pending.some((item) => item.id === module.id)
                     return (
-                      <SettingsRow
+                      <div
                         key={module.id}
-                        title={module.name}
-                        description={module.description}
-                        className="flex-row items-center gap-6"
+                        className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1 border-b border-border/50 py-3.5 last:border-b-0"
                       >
-                        {required ? (
-                          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                            <LockKeyholeIcon className="size-3" />
-                            Always on
-                          </span>
-                        ) : (
-                          <div className="flex items-center gap-3">
-                            <span className="size-3.5" aria-hidden="true">
-                              {saving ? (
-                                <LoaderCircleIcon className="size-3.5 animate-spin text-muted-foreground" />
-                              ) : null}
+                        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                          <h3 className="text-sm font-medium">{module.name}</h3>
+                          {module.maturity && (
+                            <MaturityBadge value={module.maturity} />
+                          )}
+                        </div>
+                        <div className="flex items-center">
+                          {required ? (
+                            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                              <LockKeyholeIcon className="size-3" />
+                              Always on
                             </span>
-                            <Switch
-                              aria-label={module.name}
-                              aria-busy={saving}
-                              checked={
-                                saving
-                                  ? change.variables!.enabled
-                                  : module.enabled
-                              }
-                              disabled={!true}
-                              readOnly={change.isPending}
-                              onCheckedChange={(enabled) =>
-                                toggle(module.id, enabled)
-                              }
-                            />
-                          </div>
-                        )}
-                      </SettingsRow>
+                          ) : (
+                            <div className="relative flex items-center">
+                              <Switch
+                                aria-label={module.name}
+                                aria-busy={saving}
+                                checked={
+                                  saving
+                                    ? change.variables!.enabled
+                                    : module.enabled
+                                }
+                                readOnly={change.isPending}
+                                onCheckedChange={(enabled) =>
+                                  toggle(module.id, enabled)
+                                }
+                              />
+                            </div>
+                          )}
+                        </div>
+                        <p className="col-span-2 text-xs leading-5 text-muted-foreground">
+                          {module.description}
+                        </p>
+                        <div className="col-span-2">
+                          {(module.maintainer || module.origin) && (
+                            <div className="mt-0.5 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                              {module.maintainer && (
+                                <span>
+                                  Maintainer:{" "}
+                                  {module.maintainer.email ? (
+                                    <a
+                                      className="rounded-sm hover:text-foreground underline decoration-border underline-offset-2 hover:decoration-foreground focus-visible:outline-2 focus-visible:outline-ring"
+                                      href={`mailto:${module.maintainer.email}`}
+                                    >
+                                      {module.maintainer.name}
+                                    </a>
+                                  ) : (
+                                    <span>{module.maintainer.name}</span>
+                                  )}
+                                </span>
+                              )}
+                              {module.origin && (
+                                <span className="inline-flex items-center gap-1">
+                                  Origin:{" "}
+                                  {module.origin.url ? (
+                                    <a
+                                      className="inline-flex items-center gap-0.5 rounded-sm hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+                                      href={module.origin.url}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                    >
+                                      {module.origin.name}
+                                      <ArrowUpRightIcon
+                                        aria-hidden="true"
+                                        className="size-3"
+                                      />
+                                    </a>
+                                  ) : (
+                                    module.origin.name
+                                  )}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     )
                   })}
                 </SettingsSection>

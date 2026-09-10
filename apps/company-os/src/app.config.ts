@@ -8,4 +8,6 @@ export const appMetadata = {
   name: "Company OS",
   version: "0.0.0",
   defaultCurrency: "USD",
+  // Set your team here when adopting the app; modules may override this contact.
+  maintainer: { name: "Company OS contributors" },
 } as const

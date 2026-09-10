@@ -11,7 +11,7 @@ export const PlatformUi = defineModuleUi(PlatformModule, {
   serviceAccount: serviceAccountUi,
   asset: { navigation: { order: 30, icon: FilesIcon } },
   moduleSetting: {
-    navigation: { path: "/modules", order: 40, icon: BlocksIcon },
+    navigation: { path: "/settings/modules", hidden: true, icon: BlocksIcon },
   },
   anonymousActor: anonymousActorUi,
 })

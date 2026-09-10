@@ -39,7 +39,6 @@ describe("object routes", () => {
       "user",
       "serviceAccount",
       "asset",
-      "moduleSetting",
     ])
   })
 
@@ -55,7 +54,9 @@ describe("object routes", () => {
     expect(
       notFoundThrownBy(() => routeObject(presentation, "moduleSetting"))
     ).toBe(true)
-    expect(routeObjectAtPath(presentation, "/modules")).toBe(ModuleSetting)
+    expect(routeObjectAtPath(presentation, "/settings/modules")).toBe(
+      ModuleSetting
+    )
     expect(
       notFoundThrownBy(() => routeObject(presentation, "anonymousActor"))
     ).toBe(true)
@@ -64,6 +65,13 @@ describe("object routes", () => {
     ).toBe(true)
     expect(notFoundThrownBy(() => routeObject(presentation, "missing"))).toBe(
       true
+    )
+  })
+
+  it("keeps settings records linkable while hiding them from the workspace navigation", () => {
+    expect(objectHref(presentation, ModuleSetting)).toBe("/settings/modules")
+    expect(objectRecordHref(presentation, ModuleSetting, "module_sales")).toBe(
+      "/settings/modules/module_sales"
     )
   })
 

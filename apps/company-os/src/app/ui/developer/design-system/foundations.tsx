@@ -17,6 +17,10 @@ export function Foundations() {
             ["Popover", "bg-popover text-popover-foreground"],
             ["Sidebar", "bg-sidebar text-sidebar-foreground"],
             ["Destructive", "bg-destructive text-white"],
+            ["Information", "bg-info/10 text-info"],
+            ["Success", "bg-success/10 text-success"],
+            ["Caution", "bg-warning/10 text-warning"],
+            ["Experimental", "bg-discovery/10 text-discovery"],
           ].map(([name, color]) => (
             <div
               key={name}
@@ -26,6 +30,11 @@ export function Foundations() {
             </div>
           ))}
         </div>
+        <p className="mt-4 text-sm text-muted-foreground">
+          Reserve status color for small badges and meaningful feedback. Pair
+          soft tinted surfaces with readable text and an explicit label; keep
+          page surfaces neutral so the accents stay useful.
+        </p>
         <div className="mt-5 flex gap-3" aria-label="Chart palette">
           {[1, 2, 3, 4, 5].map((index) => (
             <div key={index} className="flex-1 space-y-2">

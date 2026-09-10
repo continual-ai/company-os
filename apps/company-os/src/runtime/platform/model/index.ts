@@ -9,6 +9,11 @@ import { defineModule } from "#/runtime/model/index.ts"
 import { ModuleSetting } from "#/runtime/platform/model/module-setting.ts"
 
 export const PlatformModule = defineModule({
+  maturity: "alpha",
+  origin: {
+    name: "Company OS",
+    url: "https://github.com/continual-ai/company-os",
+  },
   id: "platform",
   name: "Platform",
   interfaces: [Identity],

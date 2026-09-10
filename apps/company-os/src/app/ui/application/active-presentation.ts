@@ -27,6 +27,7 @@ export function activePresentation(key: string) {
   const ids = new Set(key.split(","))
   const model = defineModel({
     name: Model.name,
+    maintainer: Model.maintainer,
     modules: Object.values(Model.modules).filter((module) =>
       ids.has(module.id)
     ),

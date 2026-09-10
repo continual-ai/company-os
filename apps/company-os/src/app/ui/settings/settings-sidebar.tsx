@@ -1,5 +1,10 @@
 import { Link, useMatchRoute } from "@tanstack/react-router"
-import { PaletteIcon, SettingsIcon, UserRoundIcon } from "lucide-react"
+import {
+  BlocksIcon,
+  PaletteIcon,
+  SettingsIcon,
+  UserRoundIcon,
+} from "lucide-react"
 
 import {
   SecondarySidebar,
@@ -28,6 +33,16 @@ export function SettingsSidebar() {
             link={<Link to={item.to} />}
           />
         ))}
+      </SecondarySidebarSection>
+      <SecondarySidebarSection label="Platform">
+        <SecondarySidebarItem
+          icon={BlocksIcon}
+          isActive={Boolean(
+            matchRoute({ to: "/settings/modules", fuzzy: true })
+          )}
+          label="Modules"
+          link={<Link to="/settings/modules" />}
+        />
       </SecondarySidebarSection>
     </SecondarySidebar>
   )

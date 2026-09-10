@@ -3,7 +3,10 @@ import { Root, type RootType } from "#/runtime/model/core/root.ts"
 import type { Action } from "#/runtime/model/definition/action.ts"
 import type { InterfaceType } from "#/runtime/model/definition/interface.ts"
 import type { LinkType } from "#/runtime/model/definition/link.ts"
-import type { ModuleDefinition } from "#/runtime/model/definition/module.ts"
+import type {
+  ModuleDefinition,
+  ModuleMaintainer,
+} from "#/runtime/model/definition/module.ts"
 import type {
   ObjectDefinition,
   ObjectRef,
@@ -149,6 +152,7 @@ export interface ModelCatalog {
   links: Readonly<Record<string, LinkType>>
   modules: Readonly<Record<string, ModuleDefinition>>
   name: string
+  readonly maintainer?: ModuleMaintainer | undefined
   objects: Readonly<Record<string, ObjectType>>
   queries: Readonly<
     Record<string, Readonly<Record<string, Query | CustomQuery>>>
@@ -175,6 +179,7 @@ export interface Model<
   links: LinkRegistry<ModuleLinks<TModules>>
   modules: ModuleRegistry<TModules>
   name: string
+  readonly maintainer?: ModuleMaintainer | undefined
   objects: ObjectRegistry<ModuleObjects<TModules>>
   queries: QueryRegistry<ModuleObjects<TModules>>
   root: RootType
@@ -287,15 +292,21 @@ export function enableModules<
   // SAFETY: the enabled module list is a subset of the composed tuple, so the
   // narrowed registries are exactly the ones defineModel derives from that subset.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  return defineModel({ modules, name: model.name }) as unknown as Model<
-    SelectModules<TModules, TIds[number]>
-  >
+  return defineModel({
+    modules,
+    name: model.name,
+    maintainer: model.maintainer,
+  }) as unknown as Model<SelectModules<TModules, TIds[number]>>
 }
 
 /** Closes, validates, and indexes a portable model over the kernel Root and Actor. */
 export function defineModel<
   const TModules extends ReadonlyArray<ModuleDefinition>,
->(definition: { modules: TModules; name: string }): Model<TModules> {
+>(definition: {
+  modules: TModules
+  name: string
+  maintainer?: ModuleMaintainer | undefined
+}): Model<TModules> {
   const moduleInterfaces: ReadonlyArray<InterfaceType> = [
     ...coreInterfaces,
     ...definition.modules.flatMap((module) => module.interfaces),
@@ -337,6 +348,7 @@ export function defineModel<
     links,
     modules,
     name: definition.name,
+    maintainer: definition.maintainer,
     objects,
     queries,
     root: Root,
