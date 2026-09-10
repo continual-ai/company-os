@@ -1,28 +1,15 @@
-import { Button } from "@company/ui/button"
-import { Skeleton } from "@company/ui/skeleton"
 import { Link } from "@tanstack/react-router"
 import { ArrowRightIcon } from "lucide-react"
 
 import { appConfig } from "#/app/customization/config.ts"
-import { applicationCapabilities } from "#/runtime/contract/capabilities.ts"
 import { useModelNavigation } from "#/runtime/ui/model/module-navigation.tsx"
 import { ObjectRecordSummary } from "#/runtime/ui/model/object-record-summary.tsx"
 import { useRecentRecords } from "#/runtime/ui/model/recent-records.tsx"
-import { useCapabilities } from "#/runtime/ui/model/use-capabilities.ts"
 
 /** Source-owned workspace entry; destinations come from the installed modules. */
 export function Home() {
   const recent = useRecentRecords()
-  const { modules: modelNavigation, checks } = useModelNavigation()
-  const capabilities = useCapabilities(checks)
-  const modules = modelNavigation
-    .map((module) => ({
-      ...module,
-      items: module.items.filter((item) => capabilities.can(item.check)),
-    }))
-    .filter((module) => module.items.length > 0)
-  const developer = useCapabilities([applicationCapabilities.develop])
-  const canDevelop = developer.can(applicationCapabilities.develop)
+  const { modules } = useModelNavigation()
 
   return (
     <div className="@container/main flex flex-1 flex-col">
@@ -68,39 +55,11 @@ export function Home() {
           )}
         </section>
 
-        {capabilities.error !== undefined ? (
-          <div
-            role="alert"
-            className="flex items-center justify-between gap-4 rounded-lg border p-4"
-          >
-            <p className="text-sm">Could not load your workspace access.</p>
-            <Button variant="outline" size="sm" onClick={capabilities.refresh}>
-              Retry
-            </Button>
-          </div>
-        ) : capabilities.loading && modules.length === 0 ? (
-          <section aria-label="Loading workspace">
-            <output className="sr-only">Loading workspace…</output>
-            <div
-              aria-hidden="true"
-              className="grid gap-1 sm:grid-cols-2 lg:grid-cols-3"
-            >
-              {[0, 1, 2].map((index) => (
-                <Skeleton key={index} className="h-28 rounded-lg" />
-              ))}
-            </div>
-          </section>
-        ) : modules.length === 0 ? (
+        {modules.length === 0 ? (
           <div className="rounded-lg border p-5">
-            <h2 className="text-sm font-medium">
-              {modelNavigation.length === 0
-                ? "Your workspace is ready"
-                : "No workspace access yet"}
-            </h2>
+            <h2 className="text-sm font-medium">Your workspace is ready</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              {modelNavigation.length === 0
-                ? "Collections will appear here when they’re added."
-                : "Ask an administrator to assign a role for the work you need to do."}
+              Collections will appear here when they’re added.
             </p>
           </div>
         ) : (
@@ -139,17 +98,15 @@ export function Home() {
           ))
         )}
 
-        {canDevelop && (
-          <footer className="border-t pt-5">
-            <Link
-              to="/developer"
-              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-            >
-              Developer Center
-              <ArrowRightIcon aria-hidden="true" className="size-3.5" />
-            </Link>
-          </footer>
-        )}
+        <footer className="border-t pt-5">
+          <Link
+            to="/developer"
+            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+          >
+            Developer Center
+            <ArrowRightIcon aria-hidden="true" className="size-3.5" />
+          </Link>
+        </footer>
       </div>
     </div>
   )

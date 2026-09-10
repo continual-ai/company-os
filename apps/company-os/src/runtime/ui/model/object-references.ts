@@ -26,7 +26,7 @@ function chunks<T>(values: ReadonlyArray<T>, size: number): ReadonlyArray<T[]> {
   return result
 }
 
-/** Batch authorized references once for labels and rich identity displays; unavailable records stay unresolved. */
+/** Batch references once for labels and rich identity displays; unavailable records stay unresolved. */
 export function useObjectReferences(
   object: ModelObject,
   records: ReadonlyArray<ClientRecord>

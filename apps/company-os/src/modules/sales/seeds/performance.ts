@@ -9,17 +9,16 @@ import { Deal } from "#/modules/sales/model/deal.ts"
 import { Lead } from "#/modules/sales/model/lead.ts"
 import { LineItem } from "#/modules/sales/model/line-item.ts"
 import { importSeedAsset } from "#/runtime/assets/server/seed-asset.ts"
+import type { RecordId } from "#/runtime/model/index.ts"
 import {
   CalendarDate,
   CurrencyCode,
   Decimal,
   DomainName,
-  RecordId,
   EmailAddress,
   PhoneNumber,
   Timestamp,
 } from "#/runtime/model/index.ts"
-import { ROOT_ID } from "#/runtime/model/system-records.ts"
 import { Records } from "#/runtime/server/index.ts"
 import { linkSeedRecords } from "#/runtime/server/seeds.ts"
 
@@ -143,7 +142,6 @@ export const seedSalesPerformance = Effect.fn("@company/seedSalesPerformance")(
       (name) =>
         importSeedAsset(
           new URL(`./assets/${name}.png`, import.meta.url),
-          RecordId("authorizationScope")(ROOT_ID),
           "image/png"
         )
     )
@@ -152,7 +150,6 @@ export const seedSalesPerformance = Effect.fn("@company/seedSalesPerformance")(
       (name) =>
         importSeedAsset(
           new URL(`./assets/${name}.png`, import.meta.url),
-          RecordId("authorizationScope")(ROOT_ID),
           "image/png"
         )
     )
@@ -274,7 +271,6 @@ export const seedSalesPerformance = Effect.fn("@company/seedSalesPerformance")(
         )
         const monthlyPrice = 1250 + (dealIndex % 20) * 250
         const deal = yield* records.writer(Deal).create({
-          parent: ROOT_ID,
           name: `${company.name} — ${initiatives[dealIndex % initiatives.length]}`,
           owner,
           stage: (

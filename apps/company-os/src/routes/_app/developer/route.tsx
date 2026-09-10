@@ -1,9 +1,6 @@
 import { Outlet, createFileRoute } from "@tanstack/react-router"
 
-import { CapabilityBoundary } from "#/app/ui/application/capability-boundary.tsx"
-import { allowedCapabilitiesQuery } from "#/app/ui/application/load-capabilities.ts"
 import { pageOptions } from "#/app/ui/route-metadata.ts"
-import { applicationCapabilities } from "#/runtime/contract/capabilities.ts"
 
 const page = {
   breadcrumb: "Developer Center",
@@ -14,22 +11,5 @@ const page = {
 
 export const Route = createFileRoute("/_app/developer")({
   ...pageOptions(page),
-  loader: async ({ context }) => {
-    await context.queryClient.ensureQueryData(
-      allowedCapabilitiesQuery([applicationCapabilities.develop])
-    )
-  },
-  component: DeveloperCenterLayout,
+  component: Outlet,
 })
-
-function DeveloperCenterLayout() {
-  return (
-    <CapabilityBoundary
-      permission={applicationCapabilities.develop.permission}
-      title="Development tools are not available"
-      description="This identity can use only the operating capabilities assigned to it. Ask an administrator for access to the model and interface development tools."
-    >
-      <Outlet />
-    </CapabilityBoundary>
-  )
-}

@@ -2,6 +2,8 @@ import { Context, Effect, Layer } from "effect"
 
 import { ServiceAccount } from "#/runtime/access/model/index.ts"
 import type { ObjectCreateInput, ObjectRecord } from "#/runtime/model/index.ts"
+import { ROOT_ID } from "#/runtime/model/system-records.ts"
+import { currentActorId } from "#/runtime/server/invocation-context.ts"
 import { ObjectRepositories } from "#/runtime/server/model/object-repositories.ts"
 import { makeObjectService } from "#/runtime/server/model/object-service.ts"
 
@@ -17,8 +19,22 @@ const make = Effect.gen(function* () {
   const provision = Effect.fn("@company/ServiceAccountService.provision")(
     function* (
       input: Pick<ServiceAccountRecord, "name"> &
-        Partial<Pick<ServiceAccountRecord, "description">>
+        Partial<Pick<ServiceAccountRecord, "description" | "id">>
     ) {
+      if (input.id !== undefined) {
+        const actorId = yield* currentActorId
+        return yield* repository.upsert({
+          aliases: [],
+          metadata: {},
+          createdBy: actorId,
+          updatedBy: actorId,
+          parent: ROOT_ID,
+          systemManaged: false,
+          description: input.description ?? null,
+          name: input.name,
+          id: input.id,
+        })
+      }
       const createInput: ServiceAccountCreateInput =
         input.description === undefined
           ? { name: input.name }

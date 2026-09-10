@@ -16,13 +16,10 @@ const operator = {
   email: "recruiter@example.test",
 }
 const application = testApplication({
-  configuration: { AUTH_DEFAULT_ROLE: "operator" },
   identityProvider: Layer.succeed(IdentityProvider, {
     identify: (headers) =>
       Effect.succeed(
-        headers.get("x-test-recruiter") === "yes"
-          ? { actor: operator, authorizationSubject: operator }
-          : null
+        headers.get("x-test-recruiter") === "yes" ? operator : null
       ),
   }),
 })
@@ -43,21 +40,10 @@ application.test(
         baseUrl: "http://company.test",
         fetch,
       })
-      const checks = [
-        { permission: "jobPosting.list" },
-        { permission: "candidate.list" },
-        { permission: "application.list" },
-      ] as const
+      expect((yield* client.jobPosting.list({})).items).toEqual([])
       expect(
-        (yield* client.capabilities.check({ checks })).results.map(
-          (result) => result.allowed
-        )
-      ).toEqual([true, true, true])
-      expect(
-        (yield* anonymous.capabilities.check({ checks })).results.map(
-          (result) => result.allowed
-        )
-      ).toEqual([false, false, false])
+        yield* anonymous.jobPosting.list({}).pipe(Effect.flip)
+      ).toMatchObject({ status: "UNAUTHENTICATED" })
 
       const publishedAt = Timestamp("2026-09-09T12:00:00.000Z")
       const job = yield* client.jobPosting.create({
@@ -101,7 +87,7 @@ application.test(
             stage: "hired",
           })
           .pipe(Effect.flip)
-      ).toMatchObject({ status: "NOT_FOUND" })
+      ).toMatchObject({ status: "UNAUTHENTICATED" })
       expect((yield* client.application.get({ id: moved.id })).stage).toBe(
         "reviewing"
       )

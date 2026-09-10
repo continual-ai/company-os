@@ -3,14 +3,13 @@ import { expect } from "vitest"
 
 import { Note, NoteSubject, NotesModule } from "#/modules/notes/model/index.ts"
 import { noteSeed } from "#/modules/notes/seeds/index.ts"
-import { AccessModule } from "#/runtime/access/model/index.ts"
-import { AssetsModule } from "#/runtime/assets/model/index.ts"
 import {
   defineModel,
   defineModule,
   defineObject,
   schema,
 } from "#/runtime/model/index.ts"
+import { PlatformModule } from "#/runtime/platform/model/index.ts"
 import { Database, Records } from "#/runtime/server/index.ts"
 import { tableName } from "#/runtime/server/storage/index.ts"
 import { testFoundation } from "#/runtime/testing/foundation.ts"
@@ -29,8 +28,7 @@ const fixture = testFoundation(
   defineModel({
     name: "Notebook",
     modules: [
-      AccessModule,
-      AssetsModule,
+      PlatformModule,
       NotesModule,
       defineModule({ id: "topics", name: "Topics", objects: [Topic] }),
     ],

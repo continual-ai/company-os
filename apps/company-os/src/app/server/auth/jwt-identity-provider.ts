@@ -11,6 +11,7 @@ import {
 export function makeJwtIdentityProvider(config: {
   issuer: string
   audience: string
+  projectId: string
   resolveKey: JWTVerifyGetKey
 }) {
   return {
@@ -46,14 +47,26 @@ export function makeJwtIdentityProvider(config: {
             reason: "The token subject is missing.",
           })
         )
+      if (
+        payload.project_id !== config.projectId ||
+        payload.project_access !== true ||
+        !config.projectId ||
+        (payload.kind !== "user" && payload.kind !== "serviceAccount")
+      ) {
+        return yield* Effect.fail(
+          new InvalidIdentityAssertion({
+            reason: "The token does not grant access to this project.",
+          })
+        )
+      }
       const subject: AuthenticatedSubject = {
         issuer: config.issuer,
         subject: payload.sub,
-        kind: "user",
+        kind: payload.kind,
         name: typeof payload.name === "string" ? payload.name : undefined,
         email: typeof payload.email === "string" ? payload.email : undefined,
       }
-      return { actor: subject, authorizationSubject: subject }
+      return subject
     }),
   }
 }
@@ -63,6 +76,7 @@ export const jwtIdentityProviderLayer = Layer.effect(
   Effect.gen(function* () {
     const issuer = yield* Config.string("AUTH_JWT_ISSUER")
     const audience = yield* Config.string("AUTH_JWT_AUDIENCE")
+    const projectId = yield* Config.string("AUTH_PROJECT_ID")
     const jwksUrl = yield* Config.string("AUTH_JWT_JWKS_URL")
     const url = yield* Effect.try(() => new URL(jwksUrl))
     if (url.protocol !== "https:" || !issuer.trim() || !audience.trim())
@@ -74,6 +88,7 @@ export const jwtIdentityProviderLayer = Layer.effect(
     return makeJwtIdentityProvider({
       issuer,
       audience,
+      projectId,
       resolveKey: createRemoteJWKSet(url, { timeoutDuration: 5000 }),
     })
   })

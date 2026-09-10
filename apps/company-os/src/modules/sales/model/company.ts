@@ -1,10 +1,6 @@
 import { NoteSubject } from "#/modules/notes/model/index.ts"
 import { Party } from "#/modules/sales/model/interfaces/party.ts"
-import {
-  defineObject,
-  schema,
-  AuthorizationScope,
-} from "#/runtime/model/index.ts"
+import { defineObject, schema } from "#/runtime/model/index.ts"
 
 export const Company = defineObject({
   id: "company",
@@ -13,7 +9,6 @@ export const Company = defineObject({
   pluralName: "Companies",
   description: "A customer, prospect, or partner organization.",
   implements: [
-    { interface: AuthorizationScope },
     { interface: NoteSubject },
     {
       interface: Party,

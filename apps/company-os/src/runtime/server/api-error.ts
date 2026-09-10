@@ -183,17 +183,6 @@ function alreadyExists(error: TaggedFailure): StandardApiError {
 
 function preconditionViolation(error: TaggedFailure): Violation {
   switch (error._tag) {
-    case "RoleScopeMismatch":
-      return {
-        message: "The role cannot be assigned at this scope.",
-        path: ["role"],
-        reason: "ROLE_SCOPE_MISMATCH",
-      }
-    case "LastAdministrator":
-      return {
-        message: "Another administrator is required.",
-        reason: "LAST_ADMINISTRATOR",
-      }
     case "AssetPrecondition":
       return {
         message: stringProperty(error, "message") ?? "The asset is not ready.",
@@ -246,12 +235,6 @@ function validationViolation(error: TaggedFailure): Violation {
         path: [stringProperty(error, "property") ?? "unknown"],
         reason: "IMMUTABLE_PROPERTY",
       }
-    case "InvalidRolePermission":
-      return {
-        message: "The selected role contains an invalid permission.",
-        path: ["role"],
-        reason: "INVALID_ROLE_PERMISSION",
-      }
     case "ObjectParentTypeMismatch":
       return {
         message: "Select a valid parent.",
@@ -284,16 +267,13 @@ function validation(error: TaggedFailure): StandardApiError {
 }
 
 const notFoundTags = new Set([
-  "AuthorizationTargetNotFound",
   "ObjectNotFound",
   "ObjectParentNotFound",
   "RecordAliasNotFound",
 ])
 const failedPreconditionTags = new Set([
-  "LastAdministrator",
   "AssetPrecondition",
   "ObjectDeleteRestricted",
-  "RoleScopeMismatch",
   "RequiredLinkUnlink",
 ])
 const validationTags = new Set([
@@ -302,7 +282,6 @@ const validationTags = new Set([
   "ImmutablePropertyError",
   "InvalidBatchRequest",
   "InvalidListRequest",
-  "InvalidRolePermission",
   "ObjectParentTypeMismatch",
   "LinkMutationNotAllowed",
   "RequiredLinkMissing",
@@ -321,9 +300,9 @@ function translateApiError(error: unknown): ApiError | undefined {
     )
   }
   if (
-    error._tag === "IdentityInactive" ||
     error._tag === "UserInterfaceRequired" ||
-    error._tag === "PermissionDenied"
+    error._tag === "SystemRecordReadOnly" ||
+    error._tag === "ProjectAccessRequired"
   ) {
     return permissionDenied("The caller cannot perform this operation.")
   }

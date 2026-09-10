@@ -2,11 +2,11 @@ import { Context, Data, Effect, Layer, Option, Schema } from "effect"
 
 import { appMetadata } from "#/app.config.ts"
 import { appUrl } from "#/app/client/environment.ts"
+import type { ActorId } from "#/runtime/model/core/actor.ts"
 import {
   activeModuleModel,
   requireModuleOperation,
-} from "#/modules/platform/server/index.ts"
-import { RecordId } from "#/runtime/model/index.ts"
+} from "#/runtime/platform/server/index.ts"
 import {
   internalApiError,
   withApiErrors,
@@ -36,12 +36,11 @@ function allowedMcpHostnames(): ReadonlyArray<string> {
   ]
 }
 
-const actorIdSchema = Schema.String.pipe(
-  Schema.fromBrand("ActorId", RecordId("actor"))
+const actorIdSchema = Schema.declare(
+  (input): input is ActorId => typeof input === "string"
 )
 const invocationContextSchema = Schema.Struct({
   actorId: actorIdSchema,
-  authorizationActorId: actorIdSchema,
 })
 
 const make = Effect.gen(function* () {
@@ -116,7 +115,7 @@ const make = Effect.gen(function* () {
         try: () =>
           handler.fetch(request, {
             authInfo: {
-              clientId: invocation.authorizationActorId,
+              clientId: invocation.actorId,
               extra: { invocation },
               scopes: [],
               token: "validated-by-application",

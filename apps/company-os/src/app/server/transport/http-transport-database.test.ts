@@ -33,10 +33,7 @@ import {
 } from "#/runtime/contract/http-endpoint.ts"
 import { isStandardActionId, RecordAlias } from "#/runtime/model/index.ts"
 import { executableModelOperations } from "#/runtime/model/operations.ts"
-import {
-  ADMINISTRATOR_ROLE_ID,
-  ROOT_ID,
-} from "#/runtime/model/system-records.ts"
+import { ROOT_ID } from "#/runtime/model/system-records.ts"
 import { makeApplicationKeys } from "#/runtime/server/application-keys.ts"
 import {
   makeEncryptedPageTokenCodec,
@@ -53,11 +50,7 @@ import { identityBindings } from "#/runtime/server/storage/infrastructure.ts"
 
 const application = testApplication()
 const { objects } = Storage.core
-const {
-  note: notes,
-  roleAssignment: roleAssignments,
-  user: users,
-} = Storage.objects
+const { note: notes, user: users } = Storage.objects
 
 const testPageTokens = makeEncryptedPageTokenCodec(
   makeApplicationKeys(
@@ -119,6 +112,9 @@ describe("application HTTP server", () => {
           vi.fn(async () =>
             Response.json({
               actorId: "us_test",
+              kind: "user",
+              projectId: "project_test",
+              projectAccess: true,
               email: "owner@example.com",
               name: "Owner",
             })
@@ -138,7 +134,7 @@ describe("application HTTP server", () => {
                   ConfigProvider.layer(
                     ConfigProvider.fromEnvRecord({
                       CONTINUAL_URL: "https://continual.example",
-                      AUTH_BOOTSTRAP_SUBJECT: "us_test",
+                      CONTINUAL_PROJECT_ID: "project_test",
                     })
                   )
                 )
@@ -189,6 +185,7 @@ describe("application HTTP server", () => {
                   accept: "application/json, text/event-stream",
                   "content-type": "application/json",
                   host: "localhost",
+                  "x-continual-app-runtime-assertion": "member",
                 },
                 method: "POST",
               })
@@ -222,26 +219,6 @@ describe("application HTTP server", () => {
             ({ httpOperationId }) => !httpOperationIds.has(httpOperationId)
           )
         ).toEqual([])
-        const anonymousCapabilities = yield* Effect.promise(() =>
-          runtime.runPromise(
-            api.handle(
-              new Request("http://company.test/api/v1/capabilities:check", {
-                body: JSON.stringify({
-                  checks: [{ permission: "company.create", target: ROOT_ID }],
-                }),
-                headers: {
-                  "content-type": "application/json",
-                },
-                method: "POST",
-              })
-            )
-          )
-        )
-        expect(anonymousCapabilities.status).toBe(200)
-        expect(
-          yield* Effect.promise(() => anonymousCapabilities.json())
-        ).toEqual({ results: [{ allowed: false }] })
-
         const invalidCompany = yield* Effect.promise(() =>
           runtime.runPromise(
             api.handle(
@@ -359,18 +336,6 @@ describe("application HTTP server", () => {
         expect(streamed).toHaveLength(1)
         expect(streamed[0]?.data.reset).toBe(true)
         expect(streamed[0]?.id).toBe(streamed[0]?.data.nextCursor)
-
-        const capabilities = yield* model.capabilities.check({
-          checks: [
-            { permission: "company.create", target: ROOT_ID },
-            { permission: "lead.convert", target: "missing-lead" },
-          ],
-        })
-
-        expect(capabilities.results).toEqual([
-          { allowed: true },
-          { allowed: false },
-        ])
 
         const initial = yield* model.company.list({ pageSize: 10 })
 
@@ -567,29 +532,6 @@ describe("application HTTP server", () => {
         })
 
         expect(tiedSecond.items.map(({ id }) => id)).toEqual(tiedIds.slice(1))
-        expect(
-          yield* makeLinkRepository(Storage, database, testPageTokens).list(
-            {
-              direction: "reverse",
-              linkId: "contactCompanies",
-              pageSize: 1,
-              sourceId: created.id,
-            },
-            {
-              targets: [
-                {
-                  objectType: "contact",
-                  visibleWithin: [secondContact.id],
-                },
-              ],
-            }
-          )
-        ).toMatchObject({
-          items: [{ id: secondContact.id, objectType: "contact" }],
-          nextPageToken: null,
-          totalSize: 1,
-        })
-
         const destination = yield* model.company.create({
           name: "Analytical Engine",
         })
@@ -678,11 +620,8 @@ describe("application HTTP server", () => {
             api.handle(new Request("http://company.test/api/v1/events"))
           )
         )
-        expect(
-          Schema.decodeUnknownSync(eventPageSchema)(
-            yield* Effect.promise(() => anonymousEvents.json())
-          ).items
-        ).toEqual([])
+        expect(anonymousEvents.status).toBe(401)
+
         const invalidCursor = yield* Effect.promise(() =>
           runtime.runPromise(
             api.handle(
@@ -768,19 +707,6 @@ describe("application HTTP server", () => {
           from ${identityBindings}
           where ${identityBindings.columns.subject} = ${"us_test"}`
         expect(binding).toEqual({ identityId: "us_test" })
-        const rowFields5 = {
-          principalId: roleAssignments.columns.principalId,
-          roleId: roleAssignments.columns.roleId,
-        }
-        const [assignment] = yield* sql<
-          SelectionRow<typeof rowFields5>
-        >`select ${projection(rowFields5)}
-          from ${roleAssignments}
-          where ${roleAssignments.columns.principalId} = ${"us_test"}`
-        expect(assignment).toEqual({
-          principalId: "us_test",
-          roleId: ADMINISTRATOR_ROLE_ID,
-        })
       }),
     10_000
   )

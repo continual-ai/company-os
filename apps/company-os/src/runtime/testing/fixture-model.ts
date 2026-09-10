@@ -1,7 +1,5 @@
-import { AccessModule, User } from "#/runtime/access/model/index.ts"
-import { AssetsModule } from "#/runtime/assets/model/index.ts"
+import { User } from "#/runtime/access/model/index.ts"
 import {
-  AuthorizationScope,
   defineEvent,
   defineInterface,
   defineLink,
@@ -11,6 +9,7 @@ import {
   schema,
   standardErrors,
 } from "#/runtime/model/index.ts"
+import { PlatformModule } from "#/runtime/platform/model/index.ts"
 
 /** Polymorphic role shared by accounts and people. */
 export const Participant = defineInterface({
@@ -38,7 +37,6 @@ export const Account = defineObject({
   pluralName: "Accounts",
   description: "An organization the company works with.",
   implements: [
-    { interface: AuthorizationScope },
     { interface: Topic },
     {
       interface: Participant,
@@ -243,7 +241,7 @@ export const Order = defineObject({
   collection: "orders",
   name: "Order",
   pluralName: "Orders",
-  parent: AuthorizationScope,
+  parent: Account,
   implements: [{ interface: Topic }],
   properties: {
     name: schema.string({ label: "Name", minLength: 1, maxLength: 200 }),
@@ -362,11 +360,11 @@ export const FixtureModule = defineModule({
 /** Only the kernel modules. */
 export const kernelModel = defineModel({
   name: "Kernel",
-  modules: [AccessModule, AssetsModule],
+  modules: [PlatformModule],
 })
 
 /** The kernel modules plus the fixture domain. */
 export const fixtureModel = defineModel({
   name: "Fixture",
-  modules: [AccessModule, AssetsModule, FixtureModule],
+  modules: [PlatformModule, FixtureModule],
 })

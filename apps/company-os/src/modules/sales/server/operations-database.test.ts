@@ -8,9 +8,8 @@ import { Lead } from "#/modules/sales/model/lead.ts"
 import { convertLead } from "#/modules/sales/server/convert-lead.ts"
 import { SalesServer } from "#/modules/sales/server/index.ts"
 import { pipelineSummary } from "#/modules/sales/server/pipeline-summary.ts"
-import { AccessModule } from "#/runtime/access/model/index.ts"
-import { AssetsModule } from "#/runtime/assets/model/index.ts"
 import { defineModel, Decimal, CurrencyCode } from "#/runtime/model/index.ts"
+import { PlatformModule } from "#/runtime/platform/model/index.ts"
 import { Database, Records } from "#/runtime/server/index.ts"
 import { anonymousInvocation } from "#/runtime/server/invocation-context.ts"
 import { CurrentInvocation } from "#/runtime/server/invocation.ts"
@@ -19,7 +18,7 @@ import { testFoundation } from "#/runtime/testing/foundation.ts"
 const fixture = testFoundation(
   defineModel({
     name: "Sales test",
-    modules: [AccessModule, AssetsModule, NotesModule, SalesModule],
+    modules: [PlatformModule, NotesModule, SalesModule],
   }),
   { servers: [SalesServer] }
 )
@@ -73,7 +72,6 @@ fixture.test(
         ["EUR", "12.30"],
       ] as const) {
         yield* records.writer(Deal).create({
-          parent: result.company,
           name: "Opportunity",
           amount: {
             currency: CurrencyCode(currency),

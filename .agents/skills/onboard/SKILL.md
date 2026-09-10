@@ -18,11 +18,11 @@ facts needed for this work. Branding is optional; when requested, use verified a
 tokens, preserve provenance, and inspect the rendered result.
 
 Use [customize](../customize/SKILL.md) to build the operation from the closest source
-example. Reuse identity and role assignment mechanisms. Make deterministic rules, agent judgment,
+example. Use the host project admission provider and local attribution identities. Make deterministic rules, agent judgment,
 and human decisions explicit where the workflow needs them.
 
 Demonstrate incoming work becoming a saved result through the requested interface. Verify relevant
-permission and failure states; for UI work, also check keyboard use and narrow screens. Report what
+admission and failure states; for UI work, also check keyboard use and narrow screens. Report what
 works, how the intended person or agent uses it, and remaining setup.
 
 Preserve non-obvious company policy or vocabulary in `.agents/skills/company-context/SKILL.md` only

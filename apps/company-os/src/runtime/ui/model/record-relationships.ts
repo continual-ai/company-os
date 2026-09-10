@@ -1,10 +1,8 @@
-import type { CapabilityCheck } from "#/runtime/contract/capabilities.ts"
 import {
   modelObjectLinkTraversals,
   modelRelationships,
   modelTypeAccepts,
 } from "#/runtime/model/index.ts"
-import { objectCapabilityCheck } from "#/runtime/ui/model/object-capabilities.ts"
 import {
   clientFor,
   linkClientFor,
@@ -21,7 +19,6 @@ import type { ObjectCollectionList } from "#/runtime/ui/model/use-object-collect
 interface RelatedCreate {
   readonly target: ModelObject
   readonly options: ObjectCreateOptions
-  readonly checks: ReadonlyArray<CapabilityCheck>
 }
 
 /** A record-bound projection of the model relationship; consumers never interpret storage kinds. */
@@ -39,18 +36,8 @@ export interface RecordRelationship {
     | ((id: string, objectType: string) => Promise<void>)
     | undefined
   readonly disconnect?: ((record: ClientRecord) => Promise<void>) | undefined
-  readonly checks: ReadonlyArray<CapabilityCheck>
 }
 
-const check = (
-  runtime: ModelUiRuntime,
-  target: ModelObject,
-  action: string,
-  id?: string
-) => {
-  const value = objectCapabilityCheck(runtime, target, action, id)
-  return value ? [value] : []
-}
 /** Bind navigation, queries and supported writes once, from the model's named endpoints. */
 export function recordRelationships(
   runtime: ModelUiRuntime,
@@ -120,12 +107,6 @@ export function recordRelationships(
                         initialValues: { [field]: record.id },
                         referenceLabels: labels,
                       },
-                      checks: check(
-                        runtime,
-                        target,
-                        "create",
-                        field === "parent" ? record.id : undefined
-                      ),
                     },
                   ]
                 : [],
@@ -136,7 +117,6 @@ export function recordRelationships(
               setReference && relationship.forward.cardinality === "zeroOrOne"
                 ? (item) => setReference(item.id, null)
                 : undefined,
-            checks: check(runtime, target, "update"),
           },
         ]
       }
@@ -207,12 +187,6 @@ export function recordRelationships(
                     },
                     referenceLabels: labels,
                   },
-                  checks: [
-                    ...check(runtime, item, "create"),
-                    ...(!inverse.writable
-                      ? check(runtime, object, "update", record.id)
-                      : []),
-                  ],
                 },
               ]
             }),
@@ -233,9 +207,6 @@ export function recordRelationships(
                       "unlink"
                     )
                 : undefined,
-            checks: traversal.writable
-              ? check(runtime, object, "update", record.id)
-              : targets.flatMap((item) => check(runtime, item, "update")),
           }
         })
     }

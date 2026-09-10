@@ -66,7 +66,7 @@ function SdkPage() {
           <p className="text-sm leading-6 text-muted-foreground">
             Preload the screen’s exact request in its loader. Components observe
             that same query, keep cached data during revalidation, and receive
-            committed changes from the authorized event feed.
+            committed changes from the project event feed.
           </p>
           <CodeBlock
             language="tsx"

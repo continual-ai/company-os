@@ -6,7 +6,6 @@ import {
   IdentityProvider,
   InvalidIdentityAssertion,
   type AuthenticatedSubject,
-  type VerifiedIdentityInvocation,
 } from "#/runtime/server/auth/identity-provider.ts"
 
 const APP_RUNTIME_ASSERTION_HEADER = "x-continual-app-runtime-assertion"
@@ -14,6 +13,9 @@ const APP_RUNTIME_ORIGIN_HEADER = "x-continual-app-runtime-origin"
 
 const ContinualActorSchema = z.object({
   actorId: z.string().min(1),
+  kind: z.enum(["user", "serviceAccount"]),
+  projectId: z.string().min(1),
+  projectAccess: z.literal(true),
   email: z.string().email().nullable(),
   name: z.string().min(1),
 })
@@ -21,18 +23,11 @@ const ContinualActorSchema = z.object({
 function runtimeCredential(
   headers: Headers,
   config: { readonly executionToken: string; readonly origin: string }
-):
-  | {
-      readonly kind: "published"
-      readonly origin: string
-      readonly token: string
-    }
-  | {
-      readonly kind: "preview"
-      readonly origin: string
-      readonly token: string
-    }
-  | null {
+): {
+  readonly kind: "published" | "preview"
+  readonly origin: string
+  readonly token: string
+} | null {
   const assertion = headers.get(APP_RUNTIME_ASSERTION_HEADER)?.trim()
   const forwardedOrigin = headers.get(APP_RUNTIME_ORIGIN_HEADER)?.trim()
   const configuredOrigin = config.origin.trim()
@@ -50,9 +45,8 @@ function runtimeCredential(
       reason: "The forwarded identity origin is not trusted.",
     })
   }
-  const publishedOrigin = configuredOrigin
-  if (assertion && publishedOrigin) {
-    return { kind: "published", origin: publishedOrigin, token: assertion }
+  if (assertion && configuredOrigin) {
+    return { kind: "published", origin: configuredOrigin, token: assertion }
   }
 
   const executionToken = config.executionToken.trim()
@@ -68,7 +62,7 @@ function continualIdentityId(actorId: string): IdentityId {
   return actorId as IdentityId
 }
 
-function localDevelopmentIdentity(): VerifiedIdentityInvocation | null {
+function localDevelopmentIdentity(): AuthenticatedSubject | null {
   if (import.meta.env.MODE !== "development") return null
   // The development server is the trust boundary. Do not accept a
   // caller-supplied identity header that could be mistaken for provider proof.
@@ -79,12 +73,15 @@ function localDevelopmentIdentity(): VerifiedIdentityInvocation | null {
     name: "Local Developer",
     subject: "default",
   } satisfies AuthenticatedSubject
-  return { actor: subject, authorizationSubject: subject }
+  return subject
 }
 
 export const makeContinualIdentityProvider = Effect.gen(function* () {
   const config = {
     executionToken: yield* Config.string("CONTINUAL_EXECUTION_TOKEN").pipe(
+      Config.withDefault("")
+    ),
+    projectId: yield* Config.string("CONTINUAL_PROJECT_ID").pipe(
       Config.withDefault("")
     ),
     origin: yield* Config.string("CONTINUAL_URL").pipe(Config.withDefault("")),
@@ -116,7 +113,10 @@ export const makeContinualIdentityProvider = Effect.gen(function* () {
         })
         if (!response.ok)
           throw new Error(`Continual returned ${response.status}.`)
-        return ContinualActorSchema.parse(await response.json())
+        const identity = ContinualActorSchema.parse(await response.json())
+        if (!config.projectId || identity.projectId !== config.projectId)
+          throw new Error("Identity is not admitted to this project.")
+        return identity
       },
       catch: (cause) =>
         new InvalidIdentityAssertion({
@@ -126,12 +126,12 @@ export const makeContinualIdentityProvider = Effect.gen(function* () {
     const subject = {
       email: actor.email ?? undefined,
       issuer: "continual",
-      kind: "user" as const,
+      kind: actor.kind,
       name: actor.name,
       preferredIdentityId: continualIdentityId(actor.actorId),
       subject: actor.actorId,
     } satisfies AuthenticatedSubject
-    return { actor: subject, authorizationSubject: subject }
+    return subject
   })
 
   return { identify }

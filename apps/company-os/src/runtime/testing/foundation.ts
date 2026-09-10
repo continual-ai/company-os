@@ -1,10 +1,9 @@
 import { Effect, Layer } from "effect"
 
 import { bootstrapSystemActor } from "#/runtime/access/server/bootstrap.ts"
-import { AccessServer } from "#/runtime/access/server/index.ts"
-import { seedAuthorization } from "#/runtime/access/server/seed.ts"
-import { AssetsServer } from "#/runtime/assets/server/index.ts"
+import { seedIdentities } from "#/runtime/access/server/seed.ts"
 import type { ModelCatalog, ModuleDefinition } from "#/runtime/model/index.ts"
+import { PlatformServer } from "#/runtime/platform/server/index.ts"
 import { systemInvocation } from "#/runtime/server/invocation-context.ts"
 import { CurrentInvocation } from "#/runtime/server/invocation.ts"
 import type { ModelContext } from "#/runtime/server/model-context.ts"
@@ -25,14 +24,14 @@ type ServerContributions = ReadonlyArray<{
 type Servers<C extends ServerContributions> = Parameters<
   typeof makeServicesLayer<C>
 >[1]
-type KernelServers = readonly [typeof AccessServer, typeof AssetsServer]
+type KernelServers = readonly [typeof PlatformServer]
 type Services<C extends ServerContributions> = Layer.Success<
   ReturnType<typeof makeServicesLayer<readonly [...KernelServers, ...C]>>
 >
 
-/** The system actor and built-in roles; operators are granted nothing. */
-const bootstrapAuthorization = bootstrapSystemActor().pipe(
-  Effect.andThen(seedAuthorization())
+/** The system actor and anonymous attribution record. */
+const bootstrapIdentities = bootstrapSystemActor().pipe(
+  Effect.andThen(seedIdentities())
 )
 
 /** Runs `seed` once per built `services` under the system invocation, alongside the services themselves. */
@@ -42,7 +41,7 @@ export function seededLayer<R, E>(
     unknown,
     unknown,
     R | Database | ModelContext | CurrentInvocation
-  > = bootstrapAuthorization
+  > = bootstrapIdentities
 ) {
   return Layer.merge(
     services,
@@ -80,8 +79,7 @@ export function testFoundation<
   // unmet operation services.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const contributions = [
-    AccessServer,
-    AssetsServer,
+    PlatformServer,
     ...(options.servers ?? []),
   ] as unknown as Servers<readonly [...KernelServers, ...C]>
   const services = makeServicesLayer(model, contributions, {

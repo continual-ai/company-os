@@ -61,7 +61,6 @@ export interface PostgresStorage<M extends ModelCatalog> {
       id: string
       objectType: string
       parentId: string | null
-      ancestorIds: ReadonlyArray<string>
       metadata: Readonly<Record<string, string>>
       systemManaged: boolean
       etag: string
@@ -166,12 +165,6 @@ export function makePostgresSchema<const M extends ModelCatalog>(
           nullable: true,
           description: "Ownership parent. Only the root has no parent.",
         },
-        ancestorIds: {
-          type: "text[]",
-          default: "'{}'",
-          description:
-            "Ownership ancestry used when filtering records by access scope.",
-        },
         metadata: { type: "jsonb", default: "'{}'" },
         systemManaged: { type: "boolean", default: "false" },
         etag: {
@@ -241,7 +234,6 @@ export function makePostgresSchema<const M extends ModelCatalog>(
     ...core.objects.ddl,
     'create index "objects_object_type_idx" on "objects" ("object_type")',
     'create index "objects_parent_id_idx" on "objects" ("parent_id")',
-    'create index "objects_ancestor_ids_idx" on "objects" using gin ("ancestor_ids")',
     ...core.roots.ddl,
     ...core.recordAliases.ddl,
     'create index "record_aliases_object_id_idx" on "record_aliases" ("object_id")',

@@ -1,6 +1,6 @@
 import { DateTime } from "@company/ui/date-time"
 
-/** Audit actors resolve through authorized reads; unavailable actors never block the record body. */
+/** Audit actors resolve through project reads; unavailable actors never block the record body. */
 export function RecordAttribution({
   record,
   author,

@@ -1,12 +1,10 @@
 import { Context } from "effect"
 
-import type { RecordId } from "#/runtime/model/definition/schema.ts"
+import type { ActorId } from "#/runtime/model/core/actor.ts"
 
 export interface InvocationContext {
   /** Actor durably attributed to writes performed by this invocation. */
-  readonly actorId: RecordId
-  /** Actor whose business authority is evaluated for this invocation. */
-  readonly authorizationActorId: RecordId
+  readonly actorId: ActorId
 }
 
 /** Actor selected by a trusted invocation boundary. */

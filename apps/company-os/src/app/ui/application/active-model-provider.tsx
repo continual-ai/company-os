@@ -32,7 +32,6 @@ export function ActiveModelProvider({ children }: { children: ReactNode }) {
           Array.isArray(query.meta?.objectTypes) &&
           query.meta.objectTypes.some((type: string) => disabled.has(type)),
       })
-    void cache.invalidateQueries({ queryKey: ["model", "@iam"] })
   }, [cache, runtime])
   return <ModelUiProvider value={runtime}>{children}</ModelUiProvider>
 }

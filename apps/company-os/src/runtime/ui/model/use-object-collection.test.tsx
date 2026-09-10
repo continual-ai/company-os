@@ -8,7 +8,6 @@ import { expect, it } from "vitest"
 
 import { modelCollectionQuery } from "#/runtime/client/model-collection-query.ts"
 import { modelQuery } from "#/runtime/client/model-query-client.ts"
-import { capabilityKey } from "#/runtime/contract/capabilities.ts"
 import type { ListRequest, Page } from "#/runtime/model/index.ts"
 import { Account, fixtureModel } from "#/runtime/testing/fixture-model.ts"
 import { testPresentation } from "#/runtime/testing/presentation.ts"
@@ -46,7 +45,7 @@ function Preview() {
   )
 }
 
-it("retains existing actions and reference labels while appended pages resolve, then clears decisions on an access reset", async () => {
+it("retains actions and reference labels as pages append, and disables editing when a record becomes system managed", async () => {
   const cache = new QueryClient({
     defaultOptions: { queries: { staleTime: Infinity, retry: false } },
   })
@@ -91,14 +90,6 @@ it("retains existing actions and reference labels while appended pages resolve, 
           ),
       },
     },
-    capabilities: (
-      checks: Parameters<ReturnType<typeof testPresentation>["capabilities"]>[0]
-    ) =>
-      remember(
-        modelQuery(["@iam"], "check", checks, async () =>
-          checks.map(capabilityKey)
-        )
-      ),
   }
   const query = modelCollectionQuery(list, objectListRequest(Account, [], []))
   const first = {
@@ -124,7 +115,7 @@ it("retains existing actions and reference labels while appended pages resolve, 
       pages: [first],
       pageParams: [undefined],
     })
-    expect(render()).toContain("&quot;create&quot;:false")
+    expect(render()).toContain("&quot;create&quot;:true")
     await preloadCollection(runtime, cache, Account, {})
     expect(render()).toContain("&quot;create&quot;:true")
     expect(render()).toContain("&quot;edit&quot;:true")
@@ -141,8 +132,19 @@ it("retains existing actions and reference labels while appended pages resolve, 
     expect(appending).toContain("&quot;count&quot;:2")
     await Promise.all([...pending.values()].map((load) => load()))
     expect(render()).toContain("&quot;nextActor&quot;:&quot;Ada&quot;")
-    await cache.resetQueries({ queryKey: ["model", "@iam"] })
-    expect(render()).toContain("&quot;create&quot;:false")
+    cache.setQueryData(query.queryKey, {
+      pages: [
+        {
+          ...first,
+          items: first.items.map((record) => ({
+            ...record,
+            systemManaged: true,
+          })),
+        },
+      ],
+      pageParams: [undefined],
+    })
+    expect(render()).toContain("&quot;create&quot;:true")
     expect(render()).toContain("&quot;edit&quot;:false")
   } finally {
     cache.clear()

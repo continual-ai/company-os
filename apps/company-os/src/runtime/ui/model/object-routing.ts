@@ -11,7 +11,6 @@ import {
   type ObjectCollectionSearch,
   type ObjectCollectionView,
 } from "#/runtime/ui/model/collection-view.ts"
-import { collectionCapabilityBatches } from "#/runtime/ui/model/object-capabilities.ts"
 import {
   clientFor,
   type ModelObject,
@@ -117,17 +116,14 @@ export async function preloadCollection(
     )
   )
   const pages = result.pages.map((page) => page.items)
-  await Promise.all([
-    ...collectionCapabilityBatches(runtime, object, pages)
-      .filter((checks) => checks.length > 0)
-      .map((checks) => cache.prefetchQuery(runtime.capabilities(checks))),
-    ...pages
+  await Promise.all(
+    pages
       .flatMap((records) =>
         recordReferenceRequests(
           runtime,
           records.map((record) => ({ object, record }))
         )
       )
-      .map(({ query }) => cache.prefetchQuery(query)),
-  ])
+      .map(({ query }) => cache.prefetchQuery(query))
+  )
 }

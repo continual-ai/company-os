@@ -30,35 +30,22 @@ import { useObjectCreate } from "#/runtime/ui/model/object-create-context.ts"
 import { ObjectRecordIdentity } from "#/runtime/ui/model/object-record-identity.tsx"
 import { objectHref } from "#/runtime/ui/model/object-routing.ts"
 import type { ObjectTableRecord } from "#/runtime/ui/model/object-table/object-table-config.ts"
-import { useCapabilities } from "#/runtime/ui/model/use-capabilities.ts"
 
-/** Collections and root-level create commands, with the checks that gate them. */
+/** Collections and root-level create commands, from the active model. */
 function usePaletteCommands() {
   const navigation = useModelNavigation()
   return useMemo(() => {
     const destinations = navigation.modules.flatMap((module) =>
       module.items.map((item) => ({ ...item, module: module.name }))
     )
-    const createCommands = destinations
-      .filter(
-        ({ object }) =>
-          "create" in object.actions && object.parent.kind === "root"
-      )
-      .map((item) => ({
-        ...item,
-        check: {
-          permission: presentation.permissions.capabilityPermission(
-            `${item.object.id}.create`
-          ),
-        },
-      }))
+    const createCommands = destinations.filter(
+      ({ object }) =>
+        "create" in object.actions && object.parent.kind === "root"
+    )
+
     return {
       destinations,
       createCommands,
-      checks: [
-        ...navigation.checks,
-        ...createCommands.map((item) => item.check),
-      ],
     }
   }, [navigation])
 }
@@ -93,8 +80,7 @@ function PaletteContent({ close }: { readonly close: () => void }) {
   const [query, setQuery] = useState("")
   const navigate = useNavigate()
   const create = useObjectCreate()
-  const { destinations, createCommands, checks } = usePaletteCommands()
-  const capabilities = useCapabilities(checks)
+  const { destinations, createCommands } = usePaletteCommands()
   const trimmed = input.trim()
   useEffect(() => {
     const timer = setTimeout(() => setQuery(trimmed), 150)
@@ -113,13 +99,11 @@ function PaletteContent({ close }: { readonly close: () => void }) {
       .toLowerCase()
       .split(/\s+/)
       .every((term) => text.toLowerCase().includes(term))
-  const collections = destinations.filter(
-    (item) =>
-      capabilities.can(item.check) && matches(`${item.label} ${item.module}`)
+  const collections = destinations.filter((item) =>
+    matches(`${item.label} ${item.module}`)
   )
-  const commands = createCommands.filter(
-    (item) =>
-      capabilities.can(item.check) && matches(`Create new ${item.object.name}`)
+  const commands = createCommands.filter((item) =>
+    matches(`Create new ${item.object.name}`)
   )
   const utilities = utilityCommands.filter((item) => matches(item.label))
   const empty =

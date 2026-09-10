@@ -1,5 +1,4 @@
 import { Identity } from "#/runtime/access/model/interfaces/identity.ts"
-import { Principal } from "#/runtime/access/model/interfaces/principal.ts"
 import { defineObject, schema, Actor } from "#/runtime/model/index.ts"
 
 export const ServiceAccount = defineObject({
@@ -14,11 +13,7 @@ export const ServiceAccount = defineObject({
     batchDelete: false,
     update: false,
   },
-  implements: [
-    { interface: Actor },
-    { interface: Identity },
-    { interface: Principal },
-  ],
+  implements: [{ interface: Actor }, { interface: Identity }],
   properties: {
     name: schema.string({ label: "Name", minLength: 1, maxLength: 200 }),
     description: schema.string({
@@ -26,19 +21,9 @@ export const ServiceAccount = defineObject({
       maxLength: 2_000,
       nullable: true,
     }),
-    status: schema.select({
-      label: "Status",
-      default: "active",
-      immutable: true,
-      options: [
-        { value: "active", label: "Active", color: "green" },
-        { value: "disabled", label: "Disabled", color: "gray" },
-      ],
-    }),
   },
   display: {
     icon: "bot",
-    status: "status",
     subtitle: "description",
     title: "name",
   },

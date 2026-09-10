@@ -11,8 +11,6 @@ import {
   EmailAddress,
   modelObjectLinkTraversals,
 } from "#/runtime/model/index.ts"
-import { ROOT_ID } from "#/runtime/model/system-records.ts"
-import { Records } from "#/runtime/server/index.ts"
 import { anonymousInvocation } from "#/runtime/server/invocation-context.ts"
 import { CurrentInvocation } from "#/runtime/server/invocation.ts"
 import { Links } from "#/runtime/server/model/link-service.ts"
@@ -30,58 +28,34 @@ application.test(
       const { services } = yield* ModelImplementation
       const users = yield* UserService
       const links = yield* Links
-      const roles = (yield* Records).writer(Model.objects.role)
       const reader = yield* users.provision({
         name: "Scoped reader",
         email: EmailAddress("reader@example.test"),
       })
       const readerInvocation = {
         actorId: reader.id,
-        authorizationActorId: reader.id,
       }
       const first = yield* services.company.create({ name: "Readable company" })
       const second = yield* services.company.create({ name: "Other company" })
-      for (const [parent, currency, amount] of [
+      for (const [_parent, currency, amount] of [
         [first.id, "USD", "0.10"],
         [first.id, "USD", "0.20"],
         [first.id, "EUR", "12.30"],
         [second.id, "USD", "9999.00"],
       ] as const) {
         yield* services.deal.create({
-          parent,
           name: "Opportunity",
           amount: { currency: CurrencyCode(currency), amount: Decimal(amount) },
         })
       }
-      const queryRole = yield* roles.create({
-        name: "Pipeline reports",
-        scopeType: "root",
-        permissions: ["deal.pipelineSummary"],
-      })
-      yield* services.roleAssignment.create({
-        parent: ROOT_ID,
-        principal: reader.id,
-        role: queryRole.id,
-      })
       const summary = () =>
         services.deal
           .pipelineSummary({})
           .pipe(Effect.provideService(CurrentInvocation, readerInvocation))
-      expect(yield* summary()).toEqual({ groups: [] })
-      const readRole = yield* roles.create({
-        name: "Company deals",
-        scopeType: "company",
-        permissions: ["deal.get"],
-      })
-      yield* services.roleAssignment.create({
-        parent: first.id,
-        principal: reader.id,
-        role: readRole.id,
-      })
       expect(yield* summary()).toEqual({
         groups: [
           { stage: "discovery", currency: "EUR", count: 1, amount: "12.30" },
-          { stage: "discovery", currency: "USD", count: 2, amount: "0.30" },
+          { stage: "discovery", currency: "USD", count: 3, amount: "9999.30" },
         ],
       })
       expect(
@@ -91,7 +65,7 @@ application.test(
             Effect.provideService(CurrentInvocation, anonymousInvocation),
             Effect.flip
           )
-      ).toMatchObject({ _tag: "PermissionDenied" })
+      ).toMatchObject({ _tag: "ProjectAccessRequired" })
 
       const lead = yield* services.lead.create({
         name: "Ada",
@@ -138,44 +112,6 @@ application.test(
       ).toMatchObject([
         { id: first.id, objectType: "company", name: first.name },
       ])
-
-      const conversionRole = yield* roles.create({
-        name: "Lead conversion",
-        scopeType: "root",
-        permissions: ["lead.get", "lead.convert", "contact.create"],
-      })
-      yield* services.roleAssignment.create({
-        parent: ROOT_ID,
-        principal: reader.id,
-        role: conversionRole.id,
-      })
-      const restrictedLead = yield* services.lead.create({
-        name: "Restricted company contact",
-        company: second.id,
-      })
-      expect(
-        yield* services.lead
-          .convert({ id: restrictedLead.id })
-          .pipe(
-            Effect.provideService(CurrentInvocation, readerInvocation),
-            Effect.flip
-          )
-      ).toMatchObject({
-        _tag: "AuthorizationTargetNotFound",
-        objectType: "company",
-      })
-      expect(
-        (yield* services.lead.get({ id: restrictedLead.id })).convertedAt
-      ).toBeNull()
-      expect(
-        (yield* services.contact.list({
-          filter: {
-            field: "name",
-            operator: "eq",
-            value: "Restricted company contact",
-          },
-        })).totalSize
-      ).toBe(0)
 
       const unassignedLead = yield* services.lead.create({
         name: "Unassigned contact",
@@ -296,7 +232,6 @@ application.test(
 
       // Adding a commercial party cannot change the deal's inherited authorization.
       const privateDeal = yield* services.deal.create({
-        parent: second.id,
         name: "Private agreement",
       })
       const dealCompanies = modelObjectLinkTraversals(
@@ -304,12 +239,12 @@ application.test(
         Model.objects.deal
       ).find(({ traversal }) => traversal.key === "companies")!
       yield* links.link(dealCompanies, { id: privateDeal.id, target: first.id })
-      expect(privateDeal.parent).toBe(second.id)
+      expect(privateDeal.parent).toBe("platform_system")
       expect(
         (yield* summary()).groups.reduce(
           (total, group) => total + group.count,
           0
         )
-      ).toBe(3)
+      ).toBe(5)
     })
 )

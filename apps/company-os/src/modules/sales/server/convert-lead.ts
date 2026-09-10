@@ -10,10 +10,10 @@ import {
   type Violation,
   type ObjectGetInput,
 } from "#/runtime/model/index.ts"
+import { requireProjectAccess } from "#/runtime/server/auth/project-access.ts"
 import {
   Database,
   Records,
-  Authorization,
   EventJournal,
   Links,
   RecordIdentifierResolver,
@@ -34,7 +34,6 @@ export const convertLead = Effect.fn("sales.convertLead")(function* (
   input: ObjectGetInput<typeof Lead>
 ) {
   const events = yield* EventJournal
-  const authorization = yield* Authorization
   const database = yield* Database
   const records = yield* Records
   const repository = records.get(Lead)
@@ -45,16 +44,7 @@ export const convertLead = Effect.fn("sales.convertLead")(function* (
   const id = yield* (yield* RecordIdentifierResolver).resolve("lead", input.id)
   return yield* database.transaction(() =>
     Effect.gen(function* () {
-      yield* authorization.require({
-        operationId: "convert",
-        objectType: "lead",
-        recordIds: [id],
-      })
-      yield* authorization.require({
-        objectType: "lead",
-        operationId: "get",
-        recordIds: [id],
-      })
+      yield* requireProjectAccess
       const lead = yield* repository.get(id)
       if (lead.convertedCompany !== null && lead.convertedContact !== null) {
         return {
@@ -77,11 +67,7 @@ export const convertLead = Effect.fn("sales.convertLead")(function* (
 
       let companyId = lead.company
       if (companyId !== null) {
-        yield* authorization.require({
-          objectType: "company",
-          operationId: "get",
-          recordIds: [companyId],
-        })
+        yield* requireProjectAccess
       } else {
         if (lead.companyName === null || lead.companyName.trim() === "") {
           return yield* Effect.fail(

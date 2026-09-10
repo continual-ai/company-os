@@ -17,8 +17,6 @@ create table "objects" (
   "object_type" text not null,
   -- Ownership parent. Only the root has no parent.
   "parent_id" text,
-  -- Ownership ancestry used when filtering records by access scope.
-  "ancestor_ids" text[] not null default '{}',
   "metadata" jsonb not null default '{}',
   "system_managed" boolean not null default false,
   -- Version precondition for optimistic writes.
@@ -34,11 +32,6 @@ create table "objects" (
     'user',
     'serviceAccount',
     'anonymousActor',
-    'group',
-    'principalSet',
-    'groupMembership',
-    'role',
-    'roleAssignment',
     'asset',
     'moduleSetting',
     'note',
@@ -72,7 +65,6 @@ create table "objects" (
 
 create index "objects_object_type_idx" on "objects" ("object_type");
 create index "objects_parent_id_idx" on "objects" ("parent_id");
-create index "objects_ancestor_ids_idx" on "objects" using gin ("ancestor_ids");
 
 -- Root membership for the company ownership tree.
 create table "roots" (
@@ -105,25 +97,9 @@ create table "interface_actor" (
   foreign key ("id") references "objects" ("id") on delete cascade
 );
 
--- Authorization scope membership (authorizationScope)
--- A resource where roles can be granted and inherited by records it owns.
-create table "interface_authorization_scope" (
-  "id" text not null,
-  primary key ("id"),
-  foreign key ("id") references "objects" ("id") on delete cascade
-);
-
 -- Identity membership (identity)
 -- A signed-in user or authenticated service account.
 create table "interface_identity" (
-  "id" text not null,
-  primary key ("id"),
-  foreign key ("id") references "objects" ("id") on delete cascade
-);
-
--- Principal membership (principal)
--- A user, service account, group, or audience that can receive access.
-create table "interface_principal" (
   "id" text not null,
   primary key ("id"),
   foreign key ("id") references "objects" ("id") on delete cascade
@@ -146,7 +122,7 @@ create table "interface_party" (
 );
 
 -- ===========================================================================
--- Domain objects: Access
+-- Domain objects: Platform
 -- ===========================================================================
 
 -- User (user)
@@ -158,7 +134,6 @@ create table "users" (
   "name" text not null,
   "email" text not null,
   "image" jsonb,
-  "status" text not null default 'active',
   primary key ("id"),
   foreign key ("id") references "objects" ("id") on delete cascade
 );
@@ -173,7 +148,6 @@ create table "service_accounts" (
   "parent_id" text not null,
   "name" text not null,
   "description" text,
-  "status" text not null default 'active',
   primary key ("id"),
   foreign key ("id") references "objects" ("id") on delete cascade
 );
@@ -193,96 +167,11 @@ create table "anonymous_actors" (
 
 create index "anonymous_actors_parent_id_idx" on "anonymous_actors" ("parent_id");
 
--- Group (group)
--- Manage access for a group of users and service accounts.
-create table "groups" (
-  "id" text not null,
-  -- Ownership parent. References roots.id.
-  "parent_id" text not null,
-  "name" text not null,
-  "description" text,
-  primary key ("id"),
-  foreign key ("id") references "objects" ("id") on delete cascade
-);
-
-create index "groups_parent_id_idx" on "groups" ("parent_id");
-
--- Principal set (principalSet)
--- A built-in audience, such as everyone or signed-in users.
-create table "principal_sets" (
-  "id" text not null,
-  -- Ownership parent. References roots.id.
-  "parent_id" text not null,
-  "kind" text not null,
-  "name" text not null,
-  "description" text,
-  primary key ("id"),
-  foreign key ("id") references "objects" ("id") on delete cascade
-);
-
-create index "principal_sets_parent_id_idx" on "principal_sets" ("parent_id");
-create unique index "principal_sets_kind_unique" on "principal_sets" ("kind");
-
--- Group membership (groupMembership)
--- Add a user or service account to a group.
-create table "group_memberships" (
-  "id" text not null,
-  -- Ownership parent. References groups.id.
-  "parent_id" text not null,
-  -- References interface_identity.id.
-  "member_id" text not null,
-  primary key ("id"),
-  foreign key ("id") references "objects" ("id") on delete cascade
-);
-
-create index "group_memberships_parent_id_idx" on "group_memberships" ("parent_id");
-create index "group_memberships_member_id_idx" on "group_memberships" ("member_id");
-create unique index "group_memberships_membership_unique" on "group_memberships" ("parent_id", "member_id");
-
--- Role (role)
--- The actions someone can perform when given this role.
-create table "roles" (
-  "id" text not null,
-  -- Ownership parent. References roots.id.
-  "parent_id" text not null,
-  "name" text not null,
-  "description" text,
-  "scope_type" text not null,
-  "permissions" text[] not null,
-  primary key ("id"),
-  foreign key ("id") references "objects" ("id") on delete cascade
-);
-
-create index "roles_parent_id_idx" on "roles" ("parent_id");
-
--- Role assignment (roleAssignment)
--- Give a user, group, or service account a role on a resource.
-create table "role_assignments" (
-  "id" text not null,
-  -- Ownership parent. References interface_authorization_scope.id.
-  "parent_id" text not null,
-  -- References interface_principal.id.
-  "principal_id" text not null,
-  -- References roles.id.
-  "role_id" text not null,
-  primary key ("id"),
-  foreign key ("id") references "objects" ("id") on delete cascade
-);
-
-create index "role_assignments_parent_id_idx" on "role_assignments" ("parent_id");
-create index "role_assignments_principal_id_idx" on "role_assignments" ("principal_id");
-create index "role_assignments_role_id_idx" on "role_assignments" ("role_id");
-create unique index "role_assignments_assignment_unique" on "role_assignments" ("parent_id", "principal_id", "role_id");
-
--- ===========================================================================
--- Domain objects: Assets
--- ===========================================================================
-
 -- Asset (asset)
 -- A file or image attached to your work.
 create table "assets" (
   "id" text not null,
-  -- Ownership parent. References interface_authorization_scope.id.
+  -- Ownership parent. References roots.id.
   "parent_id" text not null,
   "name" text not null,
   "content_type" text not null,
@@ -296,10 +185,6 @@ create table "assets" (
 );
 
 create index "assets_parent_id_idx" on "assets" ("parent_id");
-
--- ===========================================================================
--- Domain objects: Platform
--- ===========================================================================
 
 -- Module (moduleSetting)
 -- Activation of a capability installed in this application. Disabling
@@ -440,7 +325,7 @@ create index "leads_converted_contact_id_idx" on "leads" ("converted_contact_id"
 -- A sales opportunity with its value, stage, and next steps.
 create table "deals" (
   "id" text not null,
-  -- Ownership parent. References interface_authorization_scope.id.
+  -- Ownership parent. References roots.id.
   "parent_id" text not null,
   "name" text not null,
   "stage" text not null default 'discovery',
@@ -955,71 +840,9 @@ alter table "anonymous_actors"
   foreign key ("id", "parent_id") references "objects" ("id", "parent_id")
   on delete cascade;
 
-alter table "groups"
-  add constraint "groups_parent_root_fk"
-  foreign key ("parent_id") references "roots" ("id")
-  on delete restrict;
-
-alter table "groups"
-  add constraint "groups_object_parent_fk"
-  foreign key ("id", "parent_id") references "objects" ("id", "parent_id")
-  on delete cascade;
-
-alter table "principal_sets"
-  add constraint "principal_sets_parent_root_fk"
-  foreign key ("parent_id") references "roots" ("id")
-  on delete restrict;
-
-alter table "principal_sets"
-  add constraint "principal_sets_object_parent_fk"
-  foreign key ("id", "parent_id") references "objects" ("id", "parent_id")
-  on delete cascade;
-
-alter table "group_memberships"
-  add foreign key ("member_id") references "interface_identity" ("id")
-  on delete restrict;
-
-alter table "group_memberships"
-  add constraint "group_memberships_parent_group_fk"
-  foreign key ("parent_id") references "groups" ("id")
-  on delete restrict;
-
-alter table "group_memberships"
-  add constraint "group_memberships_object_parent_fk"
-  foreign key ("id", "parent_id") references "objects" ("id", "parent_id")
-  on delete cascade;
-
-alter table "roles"
-  add constraint "roles_parent_root_fk"
-  foreign key ("parent_id") references "roots" ("id")
-  on delete restrict;
-
-alter table "roles"
-  add constraint "roles_object_parent_fk"
-  foreign key ("id", "parent_id") references "objects" ("id", "parent_id")
-  on delete cascade;
-
-alter table "role_assignments"
-  add foreign key ("principal_id") references "interface_principal" ("id")
-  on delete restrict;
-
-alter table "role_assignments"
-  add foreign key ("role_id") references "roles" ("id")
-  on delete restrict;
-
-alter table "role_assignments"
-  add constraint "role_assignments_parent_authorization_scope_fk"
-  foreign key ("parent_id") references "interface_authorization_scope" ("id")
-  on delete restrict;
-
-alter table "role_assignments"
-  add constraint "role_assignments_object_parent_fk"
-  foreign key ("id", "parent_id") references "objects" ("id", "parent_id")
-  on delete cascade;
-
 alter table "assets"
-  add constraint "assets_parent_authorization_scope_fk"
-  foreign key ("parent_id") references "interface_authorization_scope" ("id")
+  add constraint "assets_parent_root_fk"
+  foreign key ("parent_id") references "roots" ("id")
   on delete restrict;
 
 alter table "assets"
@@ -1120,8 +943,8 @@ alter table "deals"
   on delete restrict;
 
 alter table "deals"
-  add constraint "deals_parent_authorization_scope_fk"
-  foreign key ("parent_id") references "interface_authorization_scope" ("id")
+  add constraint "deals_parent_root_fk"
+  foreign key ("parent_id") references "roots" ("id")
   on delete restrict;
 
 alter table "deals"

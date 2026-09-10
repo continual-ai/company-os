@@ -404,7 +404,7 @@ const reservedPropertyIds = new Set([
 
 /**
  * Defines a portable model object and derives its enabled standard actions.
- * `parent` is the ownership and authorization hierarchy and defaults to Root;
+ * `parent` is the ownership hierarchy and defaults to Root;
  * ordinary business relationships belong in links.
  */
 export function defineObject<const D extends ObjectDefinition>(

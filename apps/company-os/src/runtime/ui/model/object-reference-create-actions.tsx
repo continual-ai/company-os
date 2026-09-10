@@ -6,9 +6,7 @@ import {
   DropdownMenuItem,
 } from "@company/ui/dropdown-menu"
 import { PlusIcon } from "lucide-react"
-import { useMemo } from "react"
 
-import { objectCapabilityCheck } from "#/runtime/ui/model/object-capabilities.ts"
 import {
   recordObjectTypes,
   type ModelObject,
@@ -18,7 +16,6 @@ import {
   type ModelUiRuntime,
   useModelRuntime,
 } from "#/runtime/ui/model/runtime-context.tsx"
-import { useCapabilities } from "#/runtime/ui/model/use-capabilities.ts"
 
 export function creatableReferenceObjects(
   runtime: ModelUiRuntime,
@@ -38,19 +35,8 @@ export function ObjectReferenceCreateActions({
 }) {
   const runtime = useModelRuntime()
 
-  const entries = useMemo(
-    () =>
-      creatableReferenceObjects(runtime, typeId).flatMap((object) => {
-        const check = objectCapabilityCheck(runtime, object, "create")
-        return check === undefined ? [] : [{ check, object }]
-      }),
-    [runtime, typeId]
-  )
-  const checks = useMemo(() => entries.map(({ check }) => check), [entries])
-  const capabilities = useCapabilities(checks)
-  const available = entries.filter(({ check }) => capabilities.can(check))
-
-  if (capabilities.loading || available.length === 0) return null
+  const available = creatableReferenceObjects(runtime, typeId)
+  if (available.length === 0) return null
 
   return (
     <div className="grid border-t p-1">
@@ -59,10 +45,10 @@ export function ObjectReferenceCreateActions({
           type="button"
           variant="ghost"
           className="justify-start"
-          onClick={() => onCreate(available[0]!.object)}
+          onClick={() => onCreate(available[0]!)}
         >
           <PlusIcon />
-          Create new {available[0]!.object.name.toLowerCase()}
+          Create new {available[0]!.name.toLowerCase()}
         </Button>
       ) : (
         <DropdownMenu>
@@ -78,7 +64,7 @@ export function ObjectReferenceCreateActions({
             <PlusIcon /> Create new record
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="max-h-64 w-64">
-            {available.map(({ object }) => (
+            {available.map((object) => (
               <DropdownMenuItem
                 key={object.id}
                 onClick={() => onCreate(object)}

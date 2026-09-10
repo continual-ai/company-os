@@ -10,8 +10,9 @@ import type {
   ObjectRef,
 } from "#/runtime/model/definition/object.ts"
 import {
-  modelTypeAccepts,
   normalizePageSize,
+  modelTypeAccepts,
+  RecordId,
   type ObjectType,
   type RecordIdentifier,
 } from "#/runtime/model/index.ts"
@@ -19,7 +20,7 @@ import type {
   LinkListInput,
   LinkMutationInput,
 } from "#/runtime/model/link-input.ts"
-import { Authorization } from "#/runtime/server/authorization/authorization-service.ts"
+import { requireProjectAccess } from "#/runtime/server/auth/project-access.ts"
 import { makeEventWriter } from "#/runtime/server/events/event-writer.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
 import { ObjectRepositories } from "#/runtime/server/model/object-repositories.ts"
@@ -75,8 +76,6 @@ interface LinkChanges {
 /** Added and removed targets per traversal key supplied when a record is updated. */
 type LinkUpdates = Readonly<Record<string, LinkChanges | undefined>>
 
-type LinkOperation = "initialize" | "link" | "list" | "unlink"
-
 function withType(
   object: ObjectType,
   page: ReadonlyArray<ObjectRecord<ObjectType>>
@@ -100,7 +99,6 @@ function targets(
 const make = Effect.gen(function* () {
   const context = yield* ModelContext
   const { model: Model, storage: Storage } = context
-  const authorization = yield* Authorization
   const database = yield* Database
   const sql = database.sql
   const identifiers = yield* RecordIdentifierResolver
@@ -111,17 +109,39 @@ const make = Effect.gen(function* () {
   const objects = Storage.core.objects
 
   /** Locks both endpoints, mutates the edge set, and journals exactly the edges that changed. */
-  const mutate = (pair: LinkPair, operation: "link" | "unlink") =>
+  const mutate = (
+    traversal: ModelLinkTraversal,
+    pair: LinkPair,
+    operation: "link" | "unlink"
+  ) =>
     database.transaction(() =>
       Effect.gen(function* () {
         const ids = [pair.sourceId, pair.targetId].sort()
-        const selection = { id: objects.columns.id }
-        yield* sql<
+        const selection = {
+          id: objects.columns.id,
+          objectType: objects.columns.objectType,
+        }
+        const locked = yield* sql<
           SelectionRow<typeof selection>
         >`select ${projection(selection)}
           from ${objects}
           where ${inValues(sql, objects.columns.id, ids)}
           order by ${sql.csv([objects.columns.id])} for update`
+        for (const [id, objectType] of [
+          [pair.sourceId, traversal.source.id],
+          [pair.targetId, traversal.target.from.typeId],
+        ] as const) {
+          if (
+            !locked.some(
+              (record) =>
+                record.id === id &&
+                modelTypeAccepts(Model, record.objectType, objectType)
+            )
+          )
+            return yield* Effect.fail(
+              new ObjectNotFound({ objectType, recordId: id })
+            )
+        }
         const changes = yield* repository[operation](pair)
         for (const change of changes)
           yield* events.record({
@@ -132,54 +152,9 @@ const make = Effect.gen(function* () {
             ]),
             data: { link: change.linkId },
           })
+        return undefined
       })
     )
-
-  /** Capability checks for governed traversals; internal writers skip this and own their authority. */
-  const authorize = Effect.fn("@company/Links.authorize")(function* (request: {
-    readonly operation: LinkOperation
-    readonly traversal: ModelLinkTraversal
-    readonly sourceId: string
-    readonly targetId?: string
-  }) {
-    if (request.operation !== "initialize") {
-      yield* authorization.require({
-        operationId: request.operation === "list" ? "get" : "update",
-        objectType: request.traversal.source.id,
-        recordIds: [request.sourceId],
-      })
-    }
-    if (request.targetId === undefined) return undefined
-    const rowFields = { objectType: objects.columns.objectType }
-    const [target] = yield* sql<
-      SelectionRow<typeof rowFields>
-    >`select ${projection(rowFields)}
-          from ${objects}
-          where ${objects.columns.id} = ${request.targetId}
-          limit ${1}`
-    if (target === undefined) {
-      return yield* Effect.fail(
-        new ObjectNotFound({
-          objectType: request.traversal.target.from.typeId,
-          recordId: request.targetId,
-        })
-      )
-    }
-    // Initializing from the non-writable end changes the owner's relationship.
-    if (request.operation === "initialize" && !request.traversal.writable) {
-      yield* authorization.require({
-        operationId: "update",
-        objectType: target.objectType,
-        recordIds: [request.targetId],
-      })
-    }
-    yield* authorization.require({
-      operationId: "get",
-      objectType: target.objectType,
-      recordIds: [request.targetId],
-    })
-    return undefined
-  })
 
   const resolvePair = Effect.fn("@company/Links.resolvePair")(function* (
     traversal: ModelLinkTraversal,
@@ -198,71 +173,53 @@ const make = Effect.gen(function* () {
     } satisfies LinkPair
   })
 
-  function makeWrites(governed: boolean) {
-    const check = governed ? authorize : () => Effect.void
+  const link = Effect.fn("@company/Links.link")(function* (
+    traversal: ModelLinkTraversal,
+    input: LinkMutationInput
+  ) {
+    if (!traversal.writable) {
+      return yield* Effect.fail(
+        new LinkMutationNotAllowed({
+          linkId: traversal.link.id,
+          traversal: traversal.traversal.key,
+        })
+      )
+    }
+    const pair = yield* resolvePair(traversal, input)
+    yield* mutate(traversal, pair, "link")
+    return undefined
+  })
 
-    const link = Effect.fn("@company/Links.link")(function* (
-      traversal: ModelLinkTraversal,
-      input: LinkMutationInput
+  const unlink = Effect.fn("@company/Links.unlink")(function* (
+    traversal: ModelLinkTraversal,
+    input: LinkMutationInput
+  ) {
+    if (!traversal.writable) {
+      return yield* Effect.fail(
+        new LinkMutationNotAllowed({
+          linkId: traversal.link.id,
+          traversal: traversal.traversal.key,
+        })
+      )
+    }
+    if (
+      traversal.traversal.cardinality === "one" ||
+      traversal.target.cardinality === "one"
     ) {
-      if (!traversal.writable) {
-        return yield* Effect.fail(
-          new LinkMutationNotAllowed({
-            linkId: traversal.link.id,
-            traversal: traversal.traversal.key,
-          })
-        )
-      }
-      const pair = yield* resolvePair(traversal, input)
-      yield* check({
-        operation: "link",
-        traversal,
-        sourceId: pair.sourceId,
-        targetId: pair.targetId,
-      })
-      yield* mutate(pair, "link")
-      return undefined
-    })
+      return yield* Effect.fail(
+        new RequiredLinkUnlink({
+          linkId: traversal.link.id,
+          traversal: traversal.traversal.key,
+        })
+      )
+    }
+    const pair = yield* resolvePair(traversal, input)
+    yield* mutate(traversal, pair, "unlink")
+    return undefined
+  })
 
-    const unlink = Effect.fn("@company/Links.unlink")(function* (
-      traversal: ModelLinkTraversal,
-      input: LinkMutationInput
-    ) {
-      if (!traversal.writable) {
-        return yield* Effect.fail(
-          new LinkMutationNotAllowed({
-            linkId: traversal.link.id,
-            traversal: traversal.traversal.key,
-          })
-        )
-      }
-      if (
-        traversal.traversal.cardinality === "one" ||
-        traversal.target.cardinality === "one"
-      ) {
-        return yield* Effect.fail(
-          new RequiredLinkUnlink({
-            linkId: traversal.link.id,
-            traversal: traversal.traversal.key,
-          })
-        )
-      }
-      const pair = yield* resolvePair(traversal, input)
-      yield* check({
-        operation: "unlink",
-        traversal,
-        sourceId: pair.sourceId,
-        targetId: pair.targetId,
-      })
-      yield* mutate(pair, "unlink")
-      return undefined
-    })
-
-    const initialize = Effect.fn("@company/Links.initialize")(function* (
-      object: ObjectType,
-      sourceId: string,
-      initial: InitialLinks
-    ) {
+  const initialize = Effect.fn("@company/Links.initialize")(
+    function* (object: ObjectType, sourceId: string, initial: InitialLinks) {
       const traversals = modelObjectLinkTraversals(Model, object)
       const known = new Set(traversals.map(({ traversal }) => traversal.key))
       const unknown = Object.keys(initial).find((key) => !known.has(key))
@@ -303,13 +260,8 @@ const make = Effect.gen(function* () {
             traversal.target.from.typeId,
             target
           )
-          yield* check({
-            operation: "initialize",
-            traversal,
-            sourceId,
-            targetId,
-          })
           yield* mutate(
+            traversal,
             {
               direction: traversal.direction,
               linkId: traversal.link.id,
@@ -321,9 +273,12 @@ const make = Effect.gen(function* () {
         }
       }
       return undefined
-    })
+    },
+    (effect) => database.transaction(() => effect)
+  )
 
-    const update = Effect.fn("@company/Links.update")(function* (
+  const update = Effect.fn("@company/Links.update")(
+    function* (
       object: ObjectType,
       sourceId: RecordIdentifier,
       changes: LinkUpdates
@@ -383,18 +338,15 @@ const make = Effect.gen(function* () {
           yield* link(traversal, { id: sourceId, target })
       }
       return undefined
-    })
-
-    return { initialize, link, unlink, update }
-  }
-
-  const governed = makeWrites(true)
-  const trusted = makeWrites(false)
+    },
+    (effect) => database.transaction(() => effect)
+  )
 
   const list = Effect.fn("@company/Links.list")(function* (
     traversal: ModelLinkTraversal,
     input: LinkListInput
   ) {
+    yield* requireProjectAccess
     const pageSize = yield* Effect.try({
       try: () => normalizePageSize(input.pageSize),
       catch: () =>
@@ -404,7 +356,9 @@ const make = Effect.gen(function* () {
         }),
     })
     const sourceId = yield* identifiers.resolve(traversal.source.id, input.id)
-    yield* authorize({ operation: "list", traversal, sourceId })
+    yield* records
+      .get(traversal.source)
+      .get(RecordId(traversal.source.id)(sourceId))
     const target = Object.values(Model.objects).find(
       (object) => object.id === traversal.target.from.typeId
     )
@@ -420,38 +374,22 @@ const make = Effect.gen(function* () {
       : input.pageToken === undefined
         ? {}
         : { pageToken: input.pageToken }
-    const readable = yield* authorization.readableScopes()
-    const visibility = Object.entries(readable)
-      .filter(([typeId]) =>
-        modelTypeAccepts(Model, typeId, traversal.target.from.typeId)
-      )
-      .map(([objectType, visibleWithin]) => ({ objectType, visibleWithin }))
     const relatedTo = {
       direction: traversal.direction,
       linkId: traversal.link.id,
       sourceId,
     }
-    const scopes = (objectType: string) => ({
-      visibleWithin:
-        visibility.find((item) => item.objectType === objectType)
-          ?.visibleWithin ?? [],
-    })
     if (target) {
       const page = yield* records
         .get(target)
-        .list({ ...query, pageSize, relatedTo }, scopes(target.id))
+        .list({ ...query, pageSize, relatedTo })
       return { ...page, items: withType(target, page.items) }
     }
-    const page = yield* repository.list(
-      {
-        ...relatedTo,
-        pageSize,
-        ...(input.pageToken === undefined
-          ? {}
-          : { pageToken: input.pageToken }),
-      },
-      { targets: visibility }
-    )
+    const page = yield* repository.list({
+      ...relatedTo,
+      pageSize,
+      ...(input.pageToken === undefined ? {} : { pageToken: input.pageToken }),
+    })
     const batches = yield* Effect.forEach(
       [...new Set(page.items.map((item) => item.objectType))],
       (typeId) =>
@@ -462,13 +400,10 @@ const make = Effect.gen(function* () {
           const ids = page.items
             .filter((item) => item.objectType === typeId)
             .map((item) => item.id)
-          const related = yield* records.get(object).list(
-            {
-              pageSize: ids.length,
-              filter: { field: "id", operator: "in", value: ids },
-            },
-            scopes(typeId)
-          )
+          const related = yield* records.get(object).list({
+            pageSize: ids.length,
+            filter: { field: "id", operator: "in", value: ids },
+          })
           return withType(object, related.items)
         }),
       { concurrency: "unbounded" }
@@ -484,17 +419,24 @@ const make = Effect.gen(function* () {
   })
 
   return {
-    ...governed,
+    link: (...args: Parameters<typeof link>) =>
+      requireProjectAccess.pipe(Effect.andThen(link(...args))),
+    unlink: (...args: Parameters<typeof unlink>) =>
+      requireProjectAccess.pipe(Effect.andThen(unlink(...args))),
+    initialize: (...args: Parameters<typeof initialize>) =>
+      requireProjectAccess.pipe(Effect.andThen(initialize(...args))),
+    update: (...args: Parameters<typeof update>) =>
+      requireProjectAccess.pipe(Effect.andThen(update(...args))),
     list,
     /**
      * Validated Link writes for custom Actions that already established authority.
-     * They journal `linked`/`unlinked` facts like governed traversals but check no capability.
+     * They use the same endpoint validation, locking, and event journal as public traversals.
      */
     writer: (object: ObjectType) => ({
       initialize: (sourceId: string, initial: InitialLinks) =>
-        trusted.initialize(object, sourceId, initial),
+        initialize(object, sourceId, initial),
       update: (sourceId: RecordIdentifier, changes: LinkUpdates) =>
-        trusted.update(object, sourceId, changes),
+        update(object, sourceId, changes),
     }),
   }
 })

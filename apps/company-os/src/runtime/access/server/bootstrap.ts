@@ -19,7 +19,6 @@ class SystemActorBootstrapConflict extends Data.TaggedError(
 )<{ readonly recordId: string }> {}
 
 function objectRow(input: {
-  readonly ancestorIds: Array<string>
   readonly id: string
   readonly objectType: string
   readonly parentId: string | null
@@ -38,12 +37,8 @@ export const bootstrapSystemActor = Effect.fn("@company/bootstrapSystemActor")(
   function* () {
     const { storage } = yield* ModelContext
     const { objects, roots } = storage.core
-    const {
-      actor: actors,
-      authorizationScope: authorizationScopes,
-      identity: identities,
-    } = storage.interfaces
-    if (!actors || !authorizationScopes || !identities)
+    const { actor: actors, identity: identities } = storage.interfaces
+    if (!actors || !identities)
       return yield* Effect.die(
         "Access interfaces are required for system bootstrap."
       )
@@ -52,7 +47,6 @@ export const bootstrapSystemActor = Effect.fn("@company/bootstrapSystemActor")(
     return yield* database.transaction(() =>
       Effect.gen(function* () {
         const root = objectRow({
-          ancestorIds: [],
           id: ROOT_ID,
           objectType: "root",
           parentId: null,
@@ -67,11 +61,8 @@ export const bootstrapSystemActor = Effect.fn("@company/bootstrapSystemActor")(
           })}`
         yield* sql`insert into ${roots} ${insertValues(sql, roots, { id: ROOT_ID })}
           on conflict do nothing`
-        yield* sql`insert into ${authorizationScopes} ${insertValues(sql, authorizationScopes, { id: ROOT_ID })}
-          on conflict do nothing`
 
         const systemAccount = objectRow({
-          ancestorIds: [ROOT_ID],
           id: SYSTEM_SERVICE_ACCOUNT_ID,
           objectType: "serviceAccount",
           parentId: ROOT_ID,
@@ -91,20 +82,17 @@ export const bootstrapSystemActor = Effect.fn("@company/bootstrapSystemActor")(
 
         const expectedObjects = [
           {
-            ancestorIds: [],
             id: ROOT_ID,
             objectType: "root",
             parentId: null,
           },
           {
-            ancestorIds: [ROOT_ID],
             id: SYSTEM_SERVICE_ACCOUNT_ID,
             objectType: "serviceAccount",
             parentId: ROOT_ID,
           },
         ] as const
         const storedObjectsFields = {
-          ancestorIds: objects.columns.ancestorIds,
           id: objects.columns.id,
           objectType: objects.columns.objectType,
           parentId: objects.columns.parentId,
@@ -126,11 +114,7 @@ export const bootstrapSystemActor = Effect.fn("@company/bootstrapSystemActor")(
           if (
             stored === undefined ||
             stored.objectType !== expected.objectType ||
-            stored.parentId !== expected.parentId ||
-            stored.ancestorIds.length !== expected.ancestorIds.length ||
-            stored.ancestorIds.some(
-              (ancestorId, index) => ancestorId !== expected.ancestorIds[index]
-            )
+            stored.parentId !== expected.parentId
           ) {
             return yield* Effect.fail(
               new SystemActorBootstrapConflict({ recordId: expected.id })

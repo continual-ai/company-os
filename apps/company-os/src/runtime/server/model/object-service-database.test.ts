@@ -1,21 +1,15 @@
 import { Effect } from "effect"
 import { expect } from "vitest"
 
-import { Role } from "#/runtime/access/model/index.ts"
 import { UserService } from "#/runtime/access/server/user-service.ts"
 import {
   EmailAddress,
   RecordId,
   modelObjectLinkTraversals,
 } from "#/runtime/model/index.ts"
-import { ROOT_ID } from "#/runtime/model/system-records.ts"
 import { CurrentInvocation } from "#/runtime/server/invocation.ts"
 import { modelImplementation } from "#/runtime/server/model/implementation.ts"
 import { Links } from "#/runtime/server/model/link-service.ts"
-import { ObjectRepositories } from "#/runtime/server/model/object-repositories.ts"
-import { PageTokens } from "#/runtime/server/page-tokens.ts"
-import { Database } from "#/runtime/server/storage/database.ts"
-import { makeLinkRepository } from "#/runtime/server/storage/index.ts"
 import {
   Account,
   fixtureModel,
@@ -37,7 +31,6 @@ fixture.test(
   "coordinates Link updates even when ordinary creation is disabled",
   () =>
     Effect.gen(function* () {
-      const database = yield* Database
       const { services } = yield* implementation
       const links = yield* Links
       const account = yield* services.account.create({
@@ -69,19 +62,7 @@ fixture.test(
         name: "Person creator",
         email: EmailAddress("creator@example.test"),
       })
-      const roleWriter = (yield* ObjectRepositories).writer(Role)
-      const role = yield* roleWriter.create({
-        name: "Create people",
-        scopeType: "root",
-        permissions: ["person.create", "account.get"],
-      })
-      yield* services.roleAssignment.create({
-        parent: ROOT_ID,
-        principal: user.id,
-        role: role.id,
-      })
-      const userInvocation = { actorId: user.id, authorizationActorId: user.id }
-      const personCount = (yield* services.person.list({})).totalSize
+      const userInvocation = { actorId: user.id }
       const createFromPerson = () =>
         services.person
           .create({
@@ -89,15 +70,6 @@ fixture.test(
             links: { accounts: [account.id] },
           })
           .pipe(Effect.provideService(CurrentInvocation, userInvocation))
-      expect(yield* createFromPerson().pipe(Effect.flip)).toMatchObject({
-        _tag: "PermissionDenied",
-        permission: "account.update",
-      })
-      expect((yield* services.person.list({})).totalSize).toBe(personCount)
-      yield* roleWriter.update({
-        id: role.id,
-        permissions: ["person.create", "account.get", "account.update"],
-      })
       const linkedPerson = yield* createFromPerson()
       expect(
         (yield* links.list(accountsOfPerson, { id: linkedPerson.id })).items
@@ -165,25 +137,5 @@ fixture.test(
           })
           .pipe(Effect.flip)
       ).toMatchObject({ _tag: "InvalidListRequest" })
-      // The exact count and pagination must use only visible linked targets.
-      const edgeRepository = makeLinkRepository(
-        fixture.storage,
-        database,
-        yield* PageTokens
-      )
-      const visible = yield* edgeRepository.list(
-        {
-          linkId: peopleOfAccount.link.id,
-          direction: peopleOfAccount.direction,
-          sourceId: account.id,
-          pageSize: 1,
-        },
-        { targets: [{ objectType: "person", visibleWithin: [person.id] }] }
-      )
-      expect(visible).toMatchObject({
-        items: [{ id: person.id }],
-        totalSize: 1,
-        nextPageToken: null,
-      })
     })
 )

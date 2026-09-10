@@ -3,7 +3,7 @@ import { useQueries } from "@tanstack/react-query"
 import type { RecordRelationship } from "#/runtime/ui/model/record-relationships.ts"
 import { useModelRuntime } from "#/runtime/ui/model/runtime-context.tsx"
 
-/** Preview rows and counts share each relationship's authorized, invalidated query. */
+/** Preview rows and counts share each relationship's cached query. */
 export function useRecordRelationshipPreviews(
   relationships: ReadonlyArray<RecordRelationship>,
   enabled: boolean

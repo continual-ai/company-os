@@ -1,8 +1,6 @@
 import { Layer } from "effect"
 
 import type { ModelCatalog } from "#/runtime/model/index.ts"
-import { AuthorizationRepository } from "#/runtime/server/authorization/authorization-repository.ts"
-import { Authorization } from "#/runtime/server/authorization/authorization-service.ts"
 import { EventJournal } from "#/runtime/server/events/event-journal.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
 import { Links } from "#/runtime/server/model/link-service.ts"
@@ -26,19 +24,10 @@ export function foundationLayer<E>(
   const identifiers = RecordIdentifierResolver.layer.pipe(
     Layer.provide(persistence)
   )
-  const repositories = Layer.mergeAll(
-    ObjectRepositories.layer,
-    AuthorizationRepository.layer
-  ).pipe(Layer.provide(Layer.merge(persistence, identifiers)))
-  const authorization = Authorization.layer.pipe(
-    Layer.provide(Layer.merge(persistence, repositories))
+  const repositories = ObjectRepositories.layer.pipe(
+    Layer.provide(Layer.merge(persistence, identifiers))
   )
-  const base = Layer.mergeAll(
-    persistence,
-    identifiers,
-    repositories,
-    authorization
-  )
+  const base = Layer.mergeAll(persistence, identifiers, repositories)
   const journal = EventJournal.layer.pipe(Layer.provide(base))
   const links = Links.layer.pipe(Layer.provide(base))
   return Layer.mergeAll(base, journal, links)

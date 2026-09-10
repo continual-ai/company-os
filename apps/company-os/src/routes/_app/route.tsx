@@ -4,21 +4,11 @@ import { useEffect, useState } from "react"
 import { client } from "#/app/app-client.ts"
 import { getCurrentUser } from "#/app/current-user.functions.ts"
 import { ActiveModelProvider } from "#/app/ui/application/active-model-provider.tsx"
-import {
-  activeModuleKey,
-  activePresentation,
-  moduleCatalogQuery,
-} from "#/app/ui/application/active-presentation.ts"
+import { moduleCatalogQuery } from "#/app/ui/application/active-presentation.ts"
 import { AppShell } from "#/app/ui/application/app-shell.tsx"
-import { allowedCapabilitiesQuery } from "#/app/ui/application/load-capabilities.ts"
 import { useModelEvents } from "#/app/ui/application/use-model-events.ts"
 import { runClientEffect } from "#/runtime/client/create-client.ts"
 import { modelData } from "#/runtime/client/data-client.ts"
-import { applicationCapabilities } from "#/runtime/contract/capabilities.ts"
-import {
-  createModelNavigation,
-  modelNavigationChecks,
-} from "#/runtime/ui/model/model-navigation.ts"
 
 export const Route = createFileRoute("/_app")({
   beforeLoad: async ({ location }) => {
@@ -41,21 +31,6 @@ export const Route = createFileRoute("/_app")({
   },
   loader: async ({ context }) => {
     await context.queryClient.prefetchQuery(moduleCatalogQuery)
-    const catalog = context.queryClient.getQueryData(
-      moduleCatalogQuery.queryKey
-    )
-    const presentation = activePresentation(activeModuleKey(catalog))
-    // Advisory navigation checks must not fail the route when their observer unmounts or a check fails.
-    await Promise.all([
-      context.queryClient.prefetchQuery(
-        allowedCapabilitiesQuery([applicationCapabilities.develop])
-      ),
-      context.queryClient.prefetchQuery(
-        allowedCapabilitiesQuery(
-          modelNavigationChecks(createModelNavigation(presentation))
-        )
-      ),
-    ])
   },
   component: CompanyAppLayout,
 })

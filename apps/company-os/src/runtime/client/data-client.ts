@@ -46,18 +46,6 @@ export function invalidateModelQueries(
   types: ReadonlyArray<string>
 ) {
   if (types.length === 0) return
-  const changed = new Set(types)
-  const permissions = [
-    "role",
-    "roleAssignment",
-    "groupMembership",
-    "user",
-    "serviceAccount",
-  ].some((type) => changed.has(type))
-  if (permissions) {
-    resetModelCache(queryClient)
-    return
-  }
   void queryClient.invalidateQueries(changedModelQueries(types))
 }
 

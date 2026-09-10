@@ -2,6 +2,7 @@ import { Context, Effect, Layer } from "effect"
 
 import type { ExecutableModelOperation } from "#/runtime/model/operations.ts"
 import { withApiErrors } from "#/runtime/server/api-error.ts"
+import { requireProjectAccess } from "#/runtime/server/auth/project-access.ts"
 import {
   CurrentInvocation,
   type InvocationContext,
@@ -19,7 +20,8 @@ const make = Effect.gen(function* () {
       operation: Effect.Effect<A, E, CurrentInvocation>
     ) {
       const changes = new Set<string>()
-      const run = operation.pipe(
+      const run = requireProjectAccess.pipe(
+        Effect.andThen(operation),
         Effect.provideService(CurrentInvocation, invocation)
       )
       const value = yield* (

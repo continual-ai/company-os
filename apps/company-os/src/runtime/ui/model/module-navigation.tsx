@@ -9,32 +9,25 @@ import {
 import { Link, useLocation } from "@tanstack/react-router"
 import { useMemo } from "react"
 
-import {
-  createModelNavigation,
-  modelNavigationChecks,
-} from "#/runtime/ui/model/model-navigation.ts"
+import { createModelNavigation } from "#/runtime/ui/model/model-navigation.ts"
 import { useModelRuntime } from "#/runtime/ui/model/runtime-context.tsx"
-import { useCapabilities } from "#/runtime/ui/model/use-capabilities.ts"
 
-/** Module destinations and their list checks, computed once per runtime. */
+/** Module destinations, computed once per runtime. */
 export function useModelNavigation() {
   const runtime = useModelRuntime()
   return useMemo(() => {
     const modules = createModelNavigation(runtime)
-    return { modules, checks: modelNavigationChecks(modules) }
+    return { modules }
   }, [runtime])
 }
 
 export function ModuleNavigation() {
-  const { modules: modelNavigation, checks } = useModelNavigation()
-  const capabilities = useCapabilities(checks)
+  const { modules: modelNavigation } = useModelNavigation()
   const pathname = useLocation({ select: (location) => location.pathname })
   return (
     <>
       {modelNavigation.map((module) => {
-        const items = module.items.filter((item) =>
-          capabilities.can(item.check)
-        )
+        const items = module.items
         if (items.length === 0) return null
         return (
           <SidebarGroup key={module.id}>

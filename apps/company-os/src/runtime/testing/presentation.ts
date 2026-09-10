@@ -1,5 +1,3 @@
-import { modelQuery } from "#/runtime/client/model-query-client.ts"
-import { createCapabilities } from "#/runtime/contract/capabilities.ts"
 import type { ModelCatalog } from "#/runtime/model/index.ts"
 import {
   composeModelUi,
@@ -7,7 +5,7 @@ import {
 } from "#/runtime/ui/model/module-ui.tsx"
 import type { ModelUiRuntime } from "#/runtime/ui/model/runtime-context.tsx"
 
-/** Presentation runtime for rendering tests: no transport, no granted capabilities, no uploads. */
+/** Presentation runtime for rendering tests: no transport, no uploads. */
 export function testPresentation(
   model: ModelCatalog,
   ...ui: ReadonlyArray<ReturnType<typeof defineModuleUi>>
@@ -17,9 +15,6 @@ export function testPresentation(
     data: {},
     ui: composeModelUi(model, ...ui),
     defaultCurrency: "USD",
-    permissions: createCapabilities(model),
-    capabilities: (checks) =>
-      modelQuery(["@iam"], "check", checks, async () => []),
     uploadAsset: () =>
       Promise.reject(new Error("Uploads are not available in tests.")),
   }

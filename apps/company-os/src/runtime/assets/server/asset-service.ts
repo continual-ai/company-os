@@ -9,7 +9,7 @@ import {
   type ActionInput,
   type ObjectGetInput,
 } from "#/runtime/model/index.ts"
-import { Authorization } from "#/runtime/server/authorization/authorization-service.ts"
+import { requireProjectAccess } from "#/runtime/server/auth/project-access.ts"
 import { currentActorId } from "#/runtime/server/invocation-context.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
 import { ObjectRepositories } from "#/runtime/server/model/object-repositories.ts"
@@ -25,7 +25,6 @@ const make = Effect.gen(function* () {
   const assets = (yield* ModelContext).table(Asset)
   const database = yield* Database
   const sql = database.sql
-  const authorization = yield* Authorization
   const blobs = yield* BlobStorage
   const identifiers = yield* RecordIdentifierResolver
   const records = yield* ObjectRepositories
@@ -36,15 +35,8 @@ const make = Effect.gen(function* () {
   const beginUpload = Effect.fn("@company/Assets.beginUpload")(function* (
     input: ActionInput<typeof Asset.actions.beginUpload>
   ) {
-    const scope = yield* identifiers.resolve("authorizationScope", input.scope)
-    yield* authorization.require({
-      objectType: "asset",
-      operationId: "beginUpload",
-      parentId: scope,
-    })
-    const parent = scope
+    yield* requireProjectAccess
     const record = yield* writer.create({
-      parent,
       name: input.name,
       contentType: input.contentType,
       size: input.size,
@@ -62,11 +54,7 @@ const make = Effect.gen(function* () {
           where ${assets.columns.id} = ${id} for update`
   const requireUploader = Effect.fn("@company/Assets.requireUploader")(
     function* (id: string) {
-      yield* authorization.require({
-        objectType: "asset",
-        operationId: "completeUpload",
-        recordIds: [id],
-      })
+      yield* requireProjectAccess
       const record = yield* repository.get(RecordId("asset")(id))
       if (record.createdBy !== (yield* currentActorId))
         return yield* Effect.fail(

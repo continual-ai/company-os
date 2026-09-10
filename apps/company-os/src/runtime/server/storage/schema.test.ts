@@ -8,7 +8,6 @@ import {
   defineObject,
   type RecordId,
   schema,
-  AuthorizationScope,
 } from "#/runtime/model/index.ts"
 import { makeSchemaSql } from "#/runtime/server/schema.ts"
 import { makePostgresSchema } from "#/runtime/server/storage/schema.ts"
@@ -25,6 +24,11 @@ const Identity = defineInterface({
   pluralName: "Identities",
 })
 
+const WorkspaceMarker = defineInterface({
+  id: "workspaceMarker",
+  name: "Workspace",
+  pluralName: "Workspaces",
+})
 describe("makePostgresSchema", () => {
   it("projects model fields, relationships, and infrastructure constraints", () => {
     const storage = makePostgresSchema(fixtureModel)
@@ -42,7 +46,7 @@ describe("makePostgresSchema", () => {
     ).toEqual(["forwardId", "reverseId"])
     expectTypeOf<
       TableRow<typeof storage.objects.order>["parentId"]
-    >().toEqualTypeOf<RecordId<"authorizationScope">>()
+    >().toEqualTypeOf<RecordId<"account">>()
     expectTypeOf<
       TableRow<typeof storage.objects.orderLine>["parentId"]
     >().toEqualTypeOf<RecordId<"order">>()
@@ -59,7 +63,6 @@ describe("makePostgresSchema", () => {
       "timestamp with time zone"
     )
     expect(storage.objects.order.columns.expectedCloseDate.type).toBe("date")
-    expect(storage.objects.role.columns.permissions.type).toBe("text[]")
     const ddl = makeSchemaSql(fixtureModel)
     expect(ddl).not.toMatch(/\bcomment on (table|column)\b/i)
     expect(ddl).toContain(
@@ -78,9 +81,10 @@ describe("makePostgresSchema", () => {
   it("projects marker memberships for root and object implementers", () => {
     const Workspace = defineObject({
       id: "workspace",
+      implements: [{ interface: WorkspaceMarker }],
       collection: "workspaces",
       display: { title: "name" },
-      implements: [{ interface: AuthorizationScope }],
+
       name: "Workspace",
       pluralName: "Workspaces",
       properties: { name: schema.string() },
@@ -102,12 +106,12 @@ describe("makePostgresSchema", () => {
         from: Permission,
         key: "scope",
         label: "Scope",
-        to: AuthorizationScope,
+        to: WorkspaceMarker,
       },
       name: "Permission scope",
       reverse: {
         cardinality: "many",
-        from: AuthorizationScope,
+        from: WorkspaceMarker,
         key: "permissions",
         label: "Permissions",
         to: Permission,
@@ -117,7 +121,7 @@ describe("makePostgresSchema", () => {
       modules: [
         defineModule({
           id: "scopes",
-          interfaces: [Identity],
+          interfaces: [Identity, WorkspaceMarker],
           links: [PermissionScope],
           name: "Scopes",
           objects: [Workspace, Permission],
@@ -128,15 +132,15 @@ describe("makePostgresSchema", () => {
 
     const storage = makePostgresSchema(model)
 
-    expect(getTableName(storage.interfaces.authorizationScope)).toBe(
-      "interface_authorization_scope"
+    expect(getTableName(storage.interfaces.workspaceMarker)).toBe(
+      "interface_workspace_marker"
     )
     expectTypeOf<
-      TableRow<typeof storage.interfaces.authorizationScope>["id"]
-    >().toEqualTypeOf<RecordId<"root"> | RecordId<"workspace">>()
+      TableRow<typeof storage.interfaces.workspaceMarker>["id"]
+    >().toEqualTypeOf<RecordId<"workspace">>()
     expectTypeOf<
       TableRow<typeof storage.linkTables.permissionScope>["reverseId"]
-    >().toEqualTypeOf<RecordId<"root"> | RecordId<"workspace">>()
+    >().toEqualTypeOf<RecordId<"workspace">>()
     expectTypeOf<
       TableRow<typeof storage.objects.workspace>["parentId"]
     >().toEqualTypeOf<RecordId<"root">>()

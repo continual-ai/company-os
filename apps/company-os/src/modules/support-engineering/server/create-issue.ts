@@ -12,9 +12,8 @@ import type {
   ApiError,
   FailedPreconditionError,
 } from "#/runtime/model/index.ts"
-import { ROOT_ID } from "#/runtime/model/system-records.ts"
+import { requireProjectAccess } from "#/runtime/server/auth/project-access.ts"
 import {
-  Authorization,
   Database,
   EventJournal,
   Links,
@@ -28,7 +27,6 @@ const Input = toEffectSchema(Escalation.actions.createIssue.input)
 export const createIssue = Effect.fn("supportEngineering.createIssue")(
   function* (input: ActionInput<typeof Escalation.actions.createIssue>) {
     yield* Schema.decodeUnknownEffect(Input)(input)
-    const authorization = yield* Authorization
     const database = yield* Database
     const records = yield* Records
     const events = yield* EventJournal
@@ -39,26 +37,14 @@ export const createIssue = Effect.fn("supportEngineering.createIssue")(
     )
     return yield* database.transaction(() =>
       Effect.gen(function* () {
-        yield* authorization.require({
-          objectType: "escalation",
-          operationId: "createIssue",
-        })
-        yield* authorization.require({
-          objectType: "ticket",
-          operationId: "get",
-          recordIds: [ticketId],
-        })
+        yield* requireProjectAccess
         // Serialize retries before looking for a receipt; the unique constraint is a second integrity guard.
         yield* database.sql`select pg_advisory_xact_lock(hashtextextended(${`support-escalation:${ticketId}`}, 0))`
         const existing = (yield* records.get(Escalation).list({
           filter: { field: "ticket", operator: "eq", value: ticketId },
         })).items[0]
         if (existing) {
-          yield* authorization.require({
-            objectType: "issue",
-            operationId: "get",
-            recordIds: [existing.issue],
-          })
+          yield* requireProjectAccess
           return { issue: existing.issue }
         }
         const ticket = yield* records.get(Ticket).get(ticketId)
@@ -78,11 +64,7 @@ export const createIssue = Effect.fn("supportEngineering.createIssue")(
             },
           } satisfies ApiError<typeof FailedPreconditionError>)
         }
-        yield* authorization.require({
-          objectType: "issue",
-          operationId: "create",
-          parentId: ROOT_ID,
-        })
+        yield* requireProjectAccess
         const issue = yield* records.writer(Issue).create({
           title: ticket.subject,
           description: ticket.description,

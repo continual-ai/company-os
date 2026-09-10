@@ -10,6 +10,7 @@ it("verifies signature, issuer, audience and expiry while keeping local permissi
   const provider = makeJwtIdentityProvider({
     issuer: "https://identity.example",
     audience: "company",
+    projectId: "project_test",
     resolveKey: createLocalJWKSet({ keys: [key] }),
   })
   const token = (
@@ -20,7 +21,9 @@ it("verifies signature, issuer, audience and expiry while keeping local permissi
     new SignJWT({
       name: "Ada",
       email: "ada@example.test",
-      roles: ["administrator"],
+      kind: "user",
+      project_id: "project_test",
+      project_access: true,
     })
       .setProtectedHeader({ alg: "RS256" })
       .setSubject("ada")
@@ -35,20 +38,11 @@ it("verifies signature, issuer, audience and expiry while keeping local permissi
     )
   expect(await Effect.runPromise(provider.identify(new Headers()))).toBeNull()
   expect(await identify(await token())).toEqual({
-    actor: {
-      issuer: "https://identity.example",
-      subject: "ada",
-      name: "Ada",
-      email: "ada@example.test",
-      kind: "user",
-    },
-    authorizationSubject: {
-      issuer: "https://identity.example",
-      subject: "ada",
-      name: "Ada",
-      email: "ada@example.test",
-      kind: "user",
-    },
+    issuer: "https://identity.example",
+    subject: "ada",
+    name: "Ada",
+    email: "ada@example.test",
+    kind: "user",
   })
   for (const invalid of [
     await token("https://wrong.example"),

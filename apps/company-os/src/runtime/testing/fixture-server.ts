@@ -6,7 +6,7 @@ import {
   type FailedPreconditionError,
   type ObjectGetInput,
 } from "#/runtime/model/index.ts"
-import { Authorization } from "#/runtime/server/authorization/authorization-service.ts"
+import { requireProjectAccess } from "#/runtime/server/auth/project-access.ts"
 import { EventJournal } from "#/runtime/server/events/event-journal.ts"
 import { Links } from "#/runtime/server/model/link-service.ts"
 import { defineModuleServer } from "#/runtime/server/model/module-server.ts"
@@ -41,7 +41,6 @@ const convertProspect = Effect.fn("fixture.convertProspect")(function* (
   input: ObjectGetInput<typeof Prospect>
 ) {
   const events = yield* EventJournal
-  const authorization = yield* Authorization
   const database = yield* Database
   const records = yield* ObjectRepositories
   const accounts = records.writer(Account)
@@ -54,11 +53,7 @@ const convertProspect = Effect.fn("fixture.convertProspect")(function* (
   )
   return yield* database.transaction(() =>
     Effect.gen(function* () {
-      yield* authorization.require({
-        operationId: "convert",
-        objectType: "prospect",
-        recordIds: [id],
-      })
+      yield* requireProjectAccess
       const prospect = yield* records.get(Prospect).get(id)
       if (
         prospect.convertedAccount !== null &&

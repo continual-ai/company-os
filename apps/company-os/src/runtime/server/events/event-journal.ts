@@ -7,7 +7,7 @@ import {
   InvalidEventCursor,
 } from "#/runtime/contract/events.ts"
 import { PageToken } from "#/runtime/model/index.ts"
-import { Authorization } from "#/runtime/server/authorization/authorization-service.ts"
+import { requireProjectAccess } from "#/runtime/server/auth/project-access.ts"
 import { makeEventWriter } from "#/runtime/server/events/event-writer.ts"
 import { CurrentInvocation } from "#/runtime/server/invocation.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
@@ -16,9 +16,6 @@ import { Database } from "#/runtime/server/storage/database.ts"
 import {
   tableProjection,
   type TableRow,
-  projection,
-  type SelectionRow,
-  inValues,
 } from "#/runtime/server/storage/index.ts"
 import {
   eventJournal,
@@ -26,20 +23,18 @@ import {
 } from "#/runtime/server/storage/infrastructure.ts"
 
 const cursorSchema = Schema.Struct({
-  kind: Schema.Literal("events.v1"),
+  kind: Schema.Literal("events.v2"),
   position: Schema.String.check(Schema.isPattern(/^\d+$/)),
   actor: Schema.String,
-  authorization: Schema.String,
+  model: Schema.String,
   type: Schema.NullOr(Schema.String),
 })
 
 const make = Effect.gen(function* () {
   const context = yield* ModelContext
-  const objects = context.storage.core.objects
 
   const database = yield* Database
   const sql = database.sql
-  const authorization = yield* Authorization
   const tokens = yield* PageTokens
   const writer = makeEventWriter(database, context)
 
@@ -50,6 +45,7 @@ const make = Effect.gen(function* () {
       readonly pageSize?: number | undefined
     } = {}
   ) {
+    yield* requireProjectAccess
     const invocation = yield* CurrentInvocation
     const size = input.pageSize ?? 100
     if (!Number.isInteger(size) || size < 1 || size > 500)
@@ -61,14 +57,11 @@ const make = Effect.gen(function* () {
     return yield* database.transaction(
       () =>
         Effect.gen(function* () {
-          const scopes = yield* authorization.readableScopes()
+          const types = new Set(Object.keys(context.model.objects))
           const fingerprint = createHash("sha256")
-            .update(JSON.stringify(scopes))
+            .update(JSON.stringify([...types].sort()))
             .digest("hex")
-          const actor = JSON.stringify([
-            invocation.actorId,
-            invocation.authorizationActorId,
-          ])
+          const actor = invocation.actorId
           const [state] = yield* sql<
             TableRow<typeof eventJournalState>
           >`select ${tableProjection(eventJournalState)}
@@ -108,7 +101,7 @@ const make = Effect.gen(function* () {
                 })
               )
             position = BigInt(cursor.position)
-            reset = cursor.authorization !== fingerprint
+            reset = cursor.model !== fingerprint
           }
           // Bound scanned rows, not just visible rows. Empty pages can still advance the cursor.
           const rows = yield* sql<
@@ -128,49 +121,18 @@ const make = Effect.gen(function* () {
           limit ${size + 1}`
           const hasMore = rows.length > size
           const page = rows.slice(0, size)
-          const ids = [
-            ...new Set(
-              page.flatMap((event) => event.subjects.map((target) => target.id))
-            ),
-          ]
-          const currentFields = {
-            id: objects.columns.id,
-            ancestorIds: objects.columns.ancestorIds,
-            objectType: objects.columns.objectType,
-          }
-          const current =
-            ids.length === 0
-              ? []
-              : yield* sql<
-                  SelectionRow<typeof currentFields>
-                >`select ${projection(currentFields)}
-          from ${objects}
-          where ${inValues(sql, objects.columns.id, ids)}`
-          const byId = new Map(current.map((target) => [target.id, target]))
           const items = page
             .filter(
               (event) =>
                 event.subjects.length > 0 &&
-                event.subjects.every((historical) => {
-                  const live = byId.get(historical.id)
-                  if (
-                    live !== undefined &&
-                    live.objectType !== historical.objectType
-                  )
-                    return false
-                  const target = live ?? historical
-                  const allowed = scopes[target.objectType] ?? []
-                  return (
-                    allowed.includes(target.id) ||
-                    target.ancestorIds.some((id) => allowed.includes(id))
-                  )
-                })
+                event.subjects.every((subject) => types.has(subject.objectType))
             )
             .map(({ position: _position, subjects, ...event }) => ({
               ...event,
-              subjects: subjects.map(
-                ({ ancestorIds: _ancestors, ...target }) => target
-              ),
+              subjects: subjects.map(({ id, objectType }) => ({
+                id,
+                objectType,
+              })),
             }))
           const nextPosition = hasMore ? page.at(-1)!.position : state.position
           return yield* Schema.decodeUnknownEffect(eventPageSchema)({
@@ -179,10 +141,10 @@ const make = Effect.gen(function* () {
             reset,
             nextCursor: tokens.encode(
               JSON.stringify({
-                kind: "events.v1",
+                kind: "events.v2",
                 position: String(nextPosition),
                 actor,
-                authorization: fingerprint,
+                model: fingerprint,
                 type: input.type ?? null,
               })
             ),

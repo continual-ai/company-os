@@ -23,16 +23,13 @@ import {
   SettingsRow,
   SettingsSection,
 } from "#/app/ui/settings/settings-page.tsx"
-import { moduleActivationPlan } from "#/modules/platform/model/index.ts"
-import { useCapabilities } from "#/runtime/ui/model/use-capabilities.ts"
+import { moduleActivationPlan } from "#/runtime/platform/model/index.ts"
 
-const manage = { permission: "moduleSetting.setEnabled" } as const
 const catalogQuery = moduleCatalogQuery
 
 export function ModulesSettings() {
   const catalog = useQuery(catalogQuery)
   const cache = useQueryClient()
-  const capabilities = useCapabilities([manage])
   const [search, setSearch] = useState("")
   const [confirmationOpen, setConfirmationOpen] = useState(false)
   const [confirmation, setConfirmation] = useState<{
@@ -175,7 +172,7 @@ export function ModulesSettings() {
                                   ? change.variables!.enabled
                                   : module.enabled
                               }
-                              disabled={!capabilities.can(manage)}
+                              disabled={!true}
                               readOnly={change.isPending}
                               onCheckedChange={(enabled) =>
                                 toggle(module.id, enabled)
@@ -192,11 +189,6 @@ export function ModulesSettings() {
             {matching.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 No modules match “{search}”.
-              </p>
-            ) : null}
-            {!capabilities.loading && !capabilities.can(manage) ? (
-              <p className="text-xs text-muted-foreground">
-                An administrator can change module availability.
               </p>
             ) : null}
           </div>

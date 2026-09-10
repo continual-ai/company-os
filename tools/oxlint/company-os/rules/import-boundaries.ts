@@ -51,6 +51,7 @@ function sourceRole(sourcePath: string): SourceRole {
     modelWithEffect ||
     sourcePath.startsWith("runtime/access/model/") ||
     sourcePath.startsWith("runtime/assets/model/") ||
+    sourcePath.startsWith("runtime/platform/model/") ||
     module?.surface === "model" ||
     sourcePath === "app.model.ts"
   const runtime = sourcePath.startsWith("runtime/")

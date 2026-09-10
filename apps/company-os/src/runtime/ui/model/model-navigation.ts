@@ -23,22 +23,10 @@ export function createModelNavigation(runtime: ModelUiRuntime) {
               icon: navigation?.icon ?? objectIcon(object.display.icon),
               order: navigation?.order ?? 100,
               to: objectHref(runtime, object),
-              check: {
-                permission: runtime.permissions.capabilityPermission(
-                  `${object.id}.list`
-                ),
-              },
             },
           ]
         })
         .sort((a, b) => a.order - b.order),
     }))
     .filter((module) => module.items.length > 0)
-}
-
-/** The advisory list checks behind every navigation destination, preloadable outside React. */
-export function modelNavigationChecks(
-  navigation: ReturnType<typeof createModelNavigation>
-) {
-  return navigation.flatMap((module) => module.items.map((item) => item.check))
 }

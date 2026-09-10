@@ -1,6 +1,5 @@
 export { Actor } from "#/runtime/model/core/actor.ts"
 export type { ActorId } from "#/runtime/model/core/actor.ts"
-export { AuthorizationScope } from "#/runtime/model/core/authorization-scope.ts"
 export { Root } from "#/runtime/model/core/root.ts"
 export type { RootType } from "#/runtime/model/core/root.ts"
 export { defineEvent } from "#/runtime/model/definition/event.ts"

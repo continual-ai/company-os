@@ -66,8 +66,8 @@ function McpPage() {
           <p className="text-sm leading-6 text-muted-foreground">
             Tool names follow <code>object.operation</code> and
             <code> object.relationship.operation</code>. Discoverability does
-            not grant access: each call checks the agent’s effective
-            permissions.
+            not grant access: each call verifies project admission and enforces
+            business rules.
           </p>
           <CodeBlock
             language="json"

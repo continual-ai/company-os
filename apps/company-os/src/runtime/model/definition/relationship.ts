@@ -89,7 +89,7 @@ export function modelRelationships(
           from,
           to,
           key: "parent",
-          label: "Authorization parent",
+          label: "Parent",
           cardinality: "one",
         },
         reverse: {

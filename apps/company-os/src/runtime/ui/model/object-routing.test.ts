@@ -3,13 +3,15 @@ import { describe, expect, it } from "vitest"
 
 import {
   AnonymousActor,
-  RoleAssignment,
+  ServiceAccount,
   User,
 } from "#/runtime/access/model/index.ts"
-import { AccessUi } from "#/runtime/access/ui/index.ts"
-import { AssetsUi } from "#/runtime/assets/ui/index.ts"
+import { Asset } from "#/runtime/assets/model/asset.ts"
+import { ModuleSetting } from "#/runtime/platform/model/index.ts"
+import { PlatformUi } from "#/runtime/platform/ui/index.ts"
 import { fixtureModel } from "#/runtime/testing/fixture-model.ts"
 import { testPresentation } from "#/runtime/testing/presentation.ts"
+import { createModelNavigation } from "#/runtime/ui/model/model-navigation.ts"
 import {
   objectHref,
   objectRecordHref,
@@ -17,7 +19,7 @@ import {
   routeObjectAtPath,
 } from "#/runtime/ui/model/object-routing.ts"
 
-const presentation = testPresentation(fixtureModel, AccessUi, AssetsUi)
+const presentation = testPresentation(fixtureModel, PlatformUi)
 
 function notFoundThrownBy(resolve: () => unknown) {
   try {
@@ -29,19 +31,34 @@ function notFoundThrownBy(resolve: () => unknown) {
 }
 
 describe("object routes", () => {
-  it("serves access collections and records under their settings path", () => {
-    expect(objectHref(presentation, User)).toBe("/settings/users")
-    expect(objectHref(presentation, User, "u 1")).toBe("/settings/users/u%201")
-    expect(routeObjectAtPath(presentation, "/settings/role-assignments")).toBe(
-      RoleAssignment
+  it("groups visible core destinations under Platform and keeps anonymous actors hidden", () => {
+    const platform = createModelNavigation(presentation).find(
+      ({ id }) => id === "platform"
     )
+    expect(platform?.items.map(({ object }) => object.id)).toEqual([
+      "user",
+      "serviceAccount",
+      "asset",
+      "moduleSetting",
+    ])
+  })
+
+  it("serves platform identities and assets in the main object routes", () => {
+    expect(objectHref(presentation, User)).toBe("/objects/user")
+    expect(objectHref(presentation, User, "u 1")).toBe("/objects/user/u%201")
+    expect(routeObject(presentation, "serviceAccount")).toBe(ServiceAccount)
   })
 
   it("does not serve objects under /objects when they live elsewhere or have no pages", () => {
-    expect(notFoundThrownBy(() => routeObject(presentation, "user"))).toBe(true)
-    expect(notFoundThrownBy(() => routeObject(presentation, "asset"))).toBe(
-      true
-    )
+    expect(routeObject(presentation, "user")).toBe(User)
+    expect(routeObject(presentation, "asset")).toBe(Asset)
+    expect(
+      notFoundThrownBy(() => routeObject(presentation, "moduleSetting"))
+    ).toBe(true)
+    expect(routeObjectAtPath(presentation, "/modules")).toBe(ModuleSetting)
+    expect(
+      notFoundThrownBy(() => routeObject(presentation, "anonymousActor"))
+    ).toBe(true)
     expect(
       notFoundThrownBy(() => routeObjectAtPath(presentation, "/settings/asset"))
     ).toBe(true)
@@ -51,9 +68,7 @@ describe("object routes", () => {
   })
 
   it("links references only to objects that have pages", () => {
-    expect(objectRecordHref(presentation, User, "u1")).toBe(
-      "/settings/users/u1"
-    )
+    expect(objectRecordHref(presentation, User, "u1")).toBe("/objects/user/u1")
     expect(objectRecordHref(presentation, AnonymousActor, "a1")).toBeUndefined()
   })
 })

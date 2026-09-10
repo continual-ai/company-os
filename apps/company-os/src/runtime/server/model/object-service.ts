@@ -1,6 +1,5 @@
 import { Data, Effect } from "effect"
 
-import { compileAssetReferences } from "#/runtime/assets/server/references.ts"
 import {
   resolveIdentifier,
   resolveIdentifiers,
@@ -18,21 +17,23 @@ import {
   type ObjectBatchDeleteInput,
   type ObjectBatchGetInput,
   type ObjectCreateInput,
+  type ObjectDeleteInput,
   type ObjectGetInput,
   type ObjectType,
   type ObjectWriterUpdateInput,
   RecordId,
 } from "#/runtime/model/index.ts"
-import { Authorization } from "#/runtime/server/authorization/authorization-service.ts"
+import { requireProjectAccess } from "#/runtime/server/auth/project-access.ts"
 import { Links } from "#/runtime/server/model/link-service.ts"
 import {
   makeObjectWrites,
   ObjectRepositories,
   type ObjectRepository,
-  type WriteTarget,
+  assertRecordWritable,
 } from "#/runtime/server/model/object-repositories.ts"
 import { RecordIdentifierResolver } from "#/runtime/server/model/record-identifier-resolver.ts"
 import { Database } from "#/runtime/server/storage/database.ts"
+import { ObjectNotFound } from "#/runtime/server/storage/object-repository.ts"
 
 export class InvalidBatchRequest extends Data.TaggedError(
   "InvalidBatchRequest"
@@ -41,15 +42,6 @@ export class InvalidBatchRequest extends Data.TaggedError(
   readonly objectType: string
   readonly operation: "batchDelete" | "batchGet"
 }> {}
-
-type StandardOperation =
-  | "batchDelete"
-  | "batchGet"
-  | "create"
-  | "delete"
-  | "get"
-  | "list"
-  | "update"
 
 function validateBatchSize(
   objectType: string,
@@ -79,7 +71,6 @@ function validateBatchSize(
 }
 
 interface Dependencies<O extends ObjectType> {
-  readonly authorization: typeof Authorization.Service
   readonly database: typeof Database.Service
   readonly identifiers: typeof RecordIdentifierResolver.Service
   readonly links: typeof Links.Service
@@ -88,66 +79,36 @@ interface Dependencies<O extends ObjectType> {
 
 function makeOperations<const O extends ObjectType>(
   object: O,
-  { authorization, database, identifiers, links, repository }: Dependencies<O>
+  { database, identifiers, links, repository }: Dependencies<O>
 ) {
   const resolveAliases = identifiers.resolveAliases
-  const authorize = (
-    operationId: StandardOperation,
-    target: Pick<WriteTarget, "parentId" | "recordIds"> = {}
-  ) => authorization.require({ objectType: object.id, operationId, ...target })
-  const collectAssets = compileAssetReferences(object)
   const writes = makeObjectWrites(object, repository, resolveAliases, {
     trusted: false,
-    guard: (operation, target) =>
-      Effect.gen(function* () {
-        yield* authorize(operation, {
-          ...(target.parentId === undefined
-            ? {}
-            : { parentId: target.parentId }),
-          ...(target.recordIds === undefined
-            ? {}
-            : { recordIds: target.recordIds }),
-        })
-        // Referencing a file requires reading it; the reference index later enforces its state.
-        const assetIds =
-          collectAssets?.(target.values).map(
-            (reference) => reference.assetId
-          ) ?? []
-        if (assetIds.length > 0)
-          yield* authorization.require({
-            objectType: "asset",
-            operationId: "get",
-            recordIds: assetIds,
-          })
-      }),
   })
 
   const get = Effect.fn(`${object.id}.get`)(function* ({
     id,
   }: ObjectGetInput<O>) {
+    yield* requireProjectAccess
     const recordId = yield* resolveIdentifier(object.id, id, resolveAliases)
-    yield* authorize("get", { recordIds: [recordId] })
     return yield* repository.get(RecordId(object.id)(recordId))
   })
 
   const list = Effect.fn(`${object.id}.list`)(function* (
     request?: ListRequest<O>
   ) {
-    yield* authorize("list")
-    const visibleWithin = yield* authorization.visibleWithin({
-      objectType: object.id,
-      operationId: "get",
-    })
+    yield* requireProjectAccess
     const resolved =
       request === undefined
         ? undefined
         : yield* resolveListRequest(object, request, resolveAliases)
-    return yield* repository.list(resolved, { visibleWithin })
+    return yield* repository.list(resolved)
   })
 
   const batchGet = Effect.fn(`${object.id}.batchGet`)(function* ({
     ids,
   }: ObjectBatchGetInput<O>) {
+    yield* requireProjectAccess
     yield* validateBatchSize(
       object.id,
       "batchGet",
@@ -155,13 +116,13 @@ function makeOperations<const O extends ObjectType>(
       MAX_BATCH_GET_SIZE
     )
     const recordIds = yield* resolveIdentifiers(object.id, ids, resolveAliases)
-    yield* authorize("batchGet", { recordIds })
     return { items: yield* repository.batchGet(recordIds) }
   })
 
   const batchDelete = Effect.fn(`${object.id}.batchDelete`)(function* ({
     ids,
   }: ObjectBatchDeleteInput<O>) {
+    yield* requireProjectAccess
     yield* validateBatchSize(
       object.id,
       "batchDelete",
@@ -178,8 +139,14 @@ function makeOperations<const O extends ObjectType>(
         })
       )
     }
-    yield* authorize("batchDelete", { recordIds })
     const records = yield* repository.batchGet(recordIds)
+    const found = new Set(records.map(({ id }) => id))
+    const missing = recordIds.find((id) => !found.has(id))
+    if (missing !== undefined)
+      return yield* Effect.fail(
+        new ObjectNotFound({ objectType: object.id, recordId: missing })
+      )
+    for (const record of records) yield* assertRecordWritable(object, record)
     yield* repository.batchDelete(records.map(({ etag, id }) => ({ etag, id })))
     return undefined
   })
@@ -188,6 +155,7 @@ function makeOperations<const O extends ObjectType>(
   const create = Effect.fn(`${object.id}.create`)(function* (
     input: ModelObjectCreateInput<ModelCatalog, O>
   ) {
+    yield* requireProjectAccess
     const { links: initialLinks = {}, ...values } = input
     return yield* database.transaction(() =>
       Effect.gen(function* () {
@@ -204,6 +172,7 @@ function makeOperations<const O extends ObjectType>(
   const update = Effect.fn(`${object.id}.update`)(function* (
     input: ModelObjectUpdateInput<ModelCatalog, O>
   ) {
+    yield* requireProjectAccess
     const { links: deltas = {}, ...values } = input
     return yield* database.transaction(() =>
       Effect.gen(function* () {
@@ -218,11 +187,18 @@ function makeOperations<const O extends ObjectType>(
     )
   })
 
+  const remove = Effect.fn(`${object.id}.delete`)(function* (
+    input: ObjectDeleteInput<O>
+  ) {
+    yield* requireProjectAccess
+    return yield* writes.delete(input)
+  })
+
   return {
     batchDelete,
     batchGet,
     create,
-    delete: writes.delete,
+    delete: remove,
     get,
     list,
     update,
@@ -249,13 +225,12 @@ export type ObjectService<O extends ObjectType> = Pick<
 
 /**
  * Derives the governed standard operations for one installed object: identifier
- * resolution, authorization, contract validation, attribution, and atomic Link
+ * resolution, project admission, contract validation, attribution, and atomic Link
  * coordination over `Records`. Every transport and custom override calls this.
  */
 export function makeObjectService<const O extends ObjectType>(object: O) {
   return Effect.gen(function* () {
     const operations = makeOperations(object, {
-      authorization: yield* Authorization,
       database: yield* Database,
       identifiers: yield* RecordIdentifierResolver,
       links: yield* Links,

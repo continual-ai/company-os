@@ -7,16 +7,12 @@ import { seedSystem } from "#/app/server/seeds/seed-system.ts"
 import { testApplication } from "#/app/server/test-application.ts"
 import { HttpTransport } from "#/app/server/transport/http-transport.ts"
 import { McpTransport } from "#/app/server/transport/mcp-transport.ts"
-import { activeModuleModel } from "#/modules/platform/server/index.ts"
 import { createEffectClient } from "#/runtime/client/create-client.ts"
+import { activeModuleModel } from "#/runtime/platform/server/index.ts"
 import { IdentityProvider } from "#/runtime/server/auth/identity-provider.ts"
 
 const application = testApplication({
-  configuration: {
-    AUTH_BOOTSTRAP_ISSUER: "test",
-    AUTH_BOOTSTRAP_SUBJECT: "owner",
-    AUTH_DEFAULT_ROLE: "operator",
-  },
+  configuration: {},
   identityProvider: Layer.succeed(IdentityProvider, {
     identify: (headers) => {
       const subject = headers.get("x-test-user")
@@ -27,9 +23,7 @@ const application = testApplication({
         kind: "user" as const,
         name: subject ?? "",
       }
-      return Effect.succeed(
-        subject ? { actor, authorizationSubject: actor } : null
-      )
+      return Effect.succeed(subject ? actor : null)
     },
   }),
 })
@@ -54,11 +48,14 @@ application.test(
       expect((yield* operator.moduleSetting.catalog({})).modules).toHaveLength(
         Object.keys(Model.modules).length
       )
-      expect(
-        yield* operator.moduleSetting
-          .setEnabled({ moduleId: "hiring", enabled: false })
-          .pipe(Effect.flip)
-      ).toMatchObject({ status: "PERMISSION_DENIED" })
+      yield* operator.moduleSetting.setEnabled({
+        moduleId: "hiring",
+        enabled: false,
+      })
+      yield* operator.moduleSetting.setEnabled({
+        moduleId: "hiring",
+        enabled: true,
+      })
       const checkpoint = yield* client.events.list({ cursor: "now" })
       const job = yield* client.jobPosting.create({
         title: "Retained role",
@@ -71,11 +68,6 @@ application.test(
       expect(
         yield* client.jobPosting.get({ id: job.id }).pipe(Effect.flip)
       ).toMatchObject({ status: "PERMISSION_DENIED" })
-      expect(
-        (yield* client.capabilities.check({
-          checks: [{ permission: "jobPosting.list" }],
-        })).results
-      ).toEqual([{ allowed: false }])
       expect(
         (yield* client.records.search({ query: "Retained" })).hits.some(
           (hit) => hit.id === job.id
@@ -154,13 +146,7 @@ application.test("required modules and dependency closure are enforced", () =>
       fetch,
       headers: { "x-test-user": "owner" },
     })
-    for (const moduleId of [
-      "access",
-      "assets",
-      "platform",
-      "notes",
-      "missing",
-    ]) {
+    for (const moduleId of ["platform", "notes", "missing"]) {
       expect(
         yield* client.moduleSetting
           .setEnabled({ moduleId, enabled: false })
@@ -220,7 +206,7 @@ application.test(
           "supportEngineering",
         ],
       })
-      expect(result.enabledModules).toEqual(["access", "assets", "platform"])
+      expect(result.enabledModules).toEqual(["platform"])
       yield* client.moduleSetting.setEnabled({
         moduleId: "support",
         enabled: true,
@@ -228,13 +214,6 @@ application.test(
       const enabled = (yield* client.moduleSetting.catalog({})).modules
         .filter((module) => module.enabled)
         .map((module) => module.id)
-      expect(enabled).toEqual([
-        "access",
-        "assets",
-        "platform",
-        "notes",
-        "sales",
-        "support",
-      ])
+      expect(enabled).toEqual(["platform", "notes", "sales", "support"])
     })
 )

@@ -1,8 +1,5 @@
 import { createContext, useContext, type ReactNode } from "react"
 
-import type { ModelQueryOptions } from "#/runtime/client/model-query-client.ts"
-import type { createCapabilities } from "#/runtime/contract/capabilities.ts"
-import type { CapabilityCheck } from "#/runtime/contract/capabilities.ts"
 import type { ModelCatalog } from "#/runtime/model/index.ts"
 import type { ResolvedObjectUi } from "#/runtime/ui/model/module-ui.tsx"
 
@@ -12,13 +9,8 @@ export interface ModelUiRuntime {
   readonly data: object
   readonly ui: Readonly<Record<string, ResolvedObjectUi>>
   readonly defaultCurrency: string
-  readonly permissions: ReturnType<typeof createCapabilities>
-  readonly capabilities: (
-    checks: ReadonlyArray<CapabilityCheck>
-  ) => ModelQueryOptions<ReadonlyArray<string>>
   readonly uploadAsset: (
     file: File,
-    scope: string,
     signal: AbortSignal,
     progress: (value: number) => void
   ) => Promise<{ assetId: string }>

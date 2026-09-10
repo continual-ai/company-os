@@ -18,7 +18,6 @@ import { insertValues } from "#/runtime/server/storage/statement.ts"
 import {
   projection,
   type SelectionRow,
-  inValues,
   sqlValue,
 } from "#/runtime/server/storage/statement.ts"
 import {
@@ -55,13 +54,6 @@ export interface LinkListRequest {
   readonly pageSize: number
   readonly pageToken?: PageToken
   readonly sourceId: string
-}
-
-export interface LinkListVisibility {
-  readonly targets: ReadonlyArray<{
-    readonly objectType: string
-    readonly visibleWithin: ReadonlyArray<string>
-  }>
 }
 
 /** One edge a mutation inserted or removed, including edges removed from subset Links. */
@@ -351,7 +343,7 @@ export function makeLinkRepository<const TModel extends ModelCatalog>(
   )
 
   const list = Effect.fn("@company/runtime/storage/LinkRepository.list")(
-    function* (request: LinkListRequest, visibility?: LinkListVisibility) {
+    function* (request: LinkListRequest) {
       const { table } = definition(request.linkId)
       const sourceColumn = linkColumn(
         table,
@@ -371,34 +363,7 @@ export function makeLinkRepository<const TModel extends ModelCatalog>(
               request.pageToken,
               fingerprint
             )
-      const targetVisibility =
-        visibility === undefined
-          ? undefined
-          : visibility.targets.length === 0
-            ? sql`false`
-            : sql.join(
-                " OR ",
-                true,
-                "false"
-              )(
-                visibility.targets
-                  .map(({ objectType, visibleWithin }) =>
-                    sql.and(
-                      [
-                        sql`${storage.core.objects.columns.objectType} = ${objectType}`,
-                        visibleWithin.length === 0
-                          ? sql`false`
-                          : sql`(${inValues(sql, targetColumn, visibleWithin)} or ${storage.core.objects.columns.ancestorIds} && array[${sql.join(", ", false)(visibleWithin.map((scopeId) => sql`${scopeId}`))}]::text[])`,
-                      ].filter((part) => part !== undefined)
-                    )
-                  )
-                  .filter((part) => part !== undefined)
-              )
-      const matching = sql.and(
-        [sql`${sourceColumn} = ${request.sourceId}`, targetVisibility].filter(
-          (part) => part !== undefined
-        )
-      )
+      const matching = sql`${sourceColumn} = ${request.sourceId}`
       const rowsFields = {
         id: targetColumn,
         objectType: storage.core.objects.columns.objectType,
@@ -432,18 +397,10 @@ export function makeLinkRepository<const TModel extends ModelCatalog>(
       const totalSize =
         request.pageToken === undefined && !hasMore
           ? pageRows.length
-          : ((visibility === undefined
-              ? yield* sql<
-                  SelectionRow<typeof totalSizeFields>
-                >`select ${projection(totalSizeFields)}
-          from ${table}
-          where ${sourceColumn} = ${request.sourceId}`
-              : yield* sql<
-                  SelectionRow<typeof totalSizeFields>
-                >`select ${projection(totalSizeFields)}
-          from ${table}
-          inner join ${storage.core.objects} on ${targetColumn} = ${storage.core.objects.columns.id}
-          where ${matching}`)[0]?.totalSize ?? 0)
+          : ((yield* sql<
+              SelectionRow<typeof totalSizeFields>
+            >`select ${projection(totalSizeFields)} from ${table} where ${matching}`)[0]
+              ?.totalSize ?? 0)
       return {
         items: pageRows.map(({ id, objectType }): ObjectRef => ({
           // SAFETY: the target column is a foreign key to the same core row

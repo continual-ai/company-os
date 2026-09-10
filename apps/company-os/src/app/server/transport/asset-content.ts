@@ -85,10 +85,9 @@ export function handleAssetContent(
             ? 409
             : tag === "InvalidIdentityAssertion"
               ? 401
-              : tag === "PermissionDenied"
+              : tag === "ProjectAccessRequired"
                 ? 403
-                : tag === "AuthorizationTargetNotFound" ||
-                    tag === "ObjectNotFound"
+                : tag === "ObjectNotFound"
                   ? 404
                   : 500
         return Effect.succeed(

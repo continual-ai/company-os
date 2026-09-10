@@ -1,5 +1,4 @@
 import { Identity } from "#/runtime/access/model/interfaces/identity.ts"
-import { Principal } from "#/runtime/access/model/interfaces/principal.ts"
 import { defineObject, schema, Actor } from "#/runtime/model/index.ts"
 
 export const User = defineObject({
@@ -14,29 +13,15 @@ export const User = defineObject({
     batchDelete: false,
     update: false,
   },
-  implements: [
-    { interface: Actor },
-    { interface: Identity },
-    { interface: Principal },
-  ],
+  implements: [{ interface: Actor }, { interface: Identity }],
   properties: {
     name: schema.string({ label: "Name", minLength: 1, maxLength: 200 }),
     email: schema.email({ label: "Email", maxLength: 320 }),
     image: schema.image({ label: "Image", aspectRatio: 1, nullable: true }),
-    status: schema.select({
-      label: "Status",
-      default: "active",
-      immutable: true,
-      options: [
-        { value: "active", label: "Active", color: "green" },
-        { value: "suspended", label: "Suspended", color: "gray" },
-      ],
-    }),
   },
   display: {
     icon: "person",
     image: "image",
-    status: "status",
     subtitle: "email",
     title: "name",
   },

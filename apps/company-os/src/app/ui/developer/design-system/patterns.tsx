@@ -18,7 +18,6 @@ import {
   exampleRecords,
 } from "#/app/ui/developer/design-system/example-model.ts"
 import { Example } from "#/app/ui/developer/design-system/example.tsx"
-import { createCapabilities } from "#/runtime/contract/capabilities.ts"
 import type { CollectionLayout } from "#/runtime/ui/model/collection-layout.ts"
 import { CollectionVisual } from "#/runtime/ui/model/collection-visual.tsx"
 import { ObjectChoiceBadge } from "#/runtime/ui/model/object-choice-badge.tsx"
@@ -50,7 +49,6 @@ export function Patterns({
       model: exampleModel,
       ui: {},
       data: {},
-      permissions: createCapabilities(exampleModel),
     }),
     [runtime]
   )

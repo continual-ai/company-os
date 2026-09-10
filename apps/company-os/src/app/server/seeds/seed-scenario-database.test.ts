@@ -169,7 +169,7 @@ application.test("supports a paginated, repeatable performance dataset", () =>
     // Every shipped business object must have examples; this catches forgotten modules and new objects.
     const sql = (yield* Database).sql
     for (const module of Object.values(Model.modules)) {
-      if (module.id === "access" || module.id === "assets") continue
+      if (module.id === "platform") continue
       for (const object of module.objects) {
         const table = Storage.objects[object.id]
         const [row] = yield* sql<{

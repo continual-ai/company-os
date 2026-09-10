@@ -1,5 +1,4 @@
 import { Actor } from "#/runtime/model/core/actor.ts"
-import { AuthorizationScope } from "#/runtime/model/core/authorization-scope.ts"
 import { Root, type RootType } from "#/runtime/model/core/root.ts"
 import type { Action } from "#/runtime/model/definition/action.ts"
 import type { InterfaceType } from "#/runtime/model/definition/interface.ts"
@@ -28,7 +27,7 @@ import {
 } from "#/runtime/model/definition/validate-model.ts"
 
 /** Interfaces the kernel defines; every model registers them before its modules. */
-const coreInterfaces = [Actor, AuthorizationScope] as const
+const coreInterfaces = [Actor] as const
 type CoreInterface = (typeof coreInterfaces)[number]
 
 type RecordIds<TTypeId extends string> = TTypeId extends string

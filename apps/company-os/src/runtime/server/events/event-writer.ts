@@ -38,7 +38,6 @@ export function makeEventWriter(
       const rowsFields = {
         id: objects.columns.id,
         objectType: objects.columns.objectType,
-        ancestorIds: objects.columns.ancestorIds,
       }
       const rows =
         ids.length === 0

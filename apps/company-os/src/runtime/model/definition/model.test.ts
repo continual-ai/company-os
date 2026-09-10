@@ -1,6 +1,5 @@
 import { describe, expect, expectTypeOf, it } from "vitest"
 
-import { AuthorizationScope } from "#/runtime/model/core/authorization-scope.ts"
 import { Root } from "#/runtime/model/core/root.ts"
 import type {
   ActionInput,
@@ -86,6 +85,11 @@ function defineTestModel<
   return defineModel({ modules: [testModule], name: definition.name })
 }
 
+const WorkspaceMarker = defineInterface({
+  id: "workspaceMarker",
+  name: "Workspace",
+  pluralName: "Workspaces",
+})
 describe("definition inference", () => {
   it("derives every typed member from the one definition without annotations", () => {
     expectTypeOf(Contact.id).toEqualTypeOf<"contact">()
@@ -431,10 +435,7 @@ describe("model definitions", () => {
       name: "Kernel",
       objects: [Contact],
     })
-    expect(Object.keys(model.interfaces)).toEqual([
-      "actor",
-      "authorizationScope",
-    ])
+    expect(Object.keys(model.interfaces)).toEqual(["actor"])
     expect(model.actor.id).toBe("actor")
     expect(() =>
       defineTestModel({
@@ -998,9 +999,10 @@ describe("root definitions", () => {
   it("supports marker interfaces without property or display boilerplate", () => {
     const Workspace = defineObject({
       id: "workspace",
+      implements: [{ interface: WorkspaceMarker }],
       collection: "workspaces",
       display: { title: "name" },
-      implements: [{ interface: AuthorizationScope }],
+
       name: "Workspace",
       pluralName: "Workspaces",
       properties: { name: schema.string() },
@@ -1021,42 +1023,35 @@ describe("root definitions", () => {
         from: Permission,
         key: "scope",
         label: "Scope",
-        to: AuthorizationScope,
+        to: WorkspaceMarker,
       },
       name: "Permission scope",
       reverse: {
         cardinality: "many",
-        from: AuthorizationScope,
+        from: WorkspaceMarker,
         key: "permissions",
         label: "Permissions",
         to: Permission,
       },
     })
     const model = defineTestModel({
-      interfaces: [TestActor],
+      interfaces: [TestActor, WorkspaceMarker],
       links: [PermissionScope],
       name: "Scoped model",
       objects: [Workspace, Permission],
     })
 
-    expect(model.interfaces.authorizationScope.properties).toEqual({})
-    expect(model.interfaces.authorizationScope.display).toBeUndefined()
-    expect(model.root.interfaces.authorizationScope).toEqual({
-      interfaceId: "authorizationScope",
-      propertyMapping: {},
-    })
+    expect(model.interfaces.workspaceMarker.properties).toEqual({})
+    expect(model.interfaces.workspaceMarker.display).toBeUndefined()
+    expect(model.root.interfaces).toEqual({})
     expect(model.objects.permission.properties).not.toHaveProperty("scope")
     expect(
       modelObjectLinkTraversals(model, model.objects.permission)[0]?.target.from
         .typeId
-    ).toBe("authorizationScope")
-    expect(modelTypeAccepts(model, "root", "authorizationScope")).toBe(true)
-    expect(modelTypeAccepts(model, "workspace", "authorizationScope")).toBe(
-      true
-    )
-    expect(modelTypeAccepts(model, "permission", "authorizationScope")).toBe(
-      false
-    )
+    ).toBe("workspaceMarker")
+    expect(modelTypeAccepts(model, "root", "workspaceMarker")).toBe(false)
+    expect(modelTypeAccepts(model, "workspace", "workspaceMarker")).toBe(true)
+    expect(modelTypeAccepts(model, "permission", "workspaceMarker")).toBe(false)
   })
 
   it("reserves the model-defined root ID within its type registry", () => {

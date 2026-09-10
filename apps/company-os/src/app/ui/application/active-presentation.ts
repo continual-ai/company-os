@@ -1,8 +1,8 @@
 import { Model } from "#/app.model.ts"
 import { data } from "#/app/app-client.ts"
 import { presentation } from "#/app/app-presentation.ts"
-import { requiredModuleIds } from "#/modules/platform/model/index.ts"
 import { defineModel } from "#/runtime/model/index.ts"
+import { requiredModuleIds } from "#/runtime/platform/model/index.ts"
 
 const query = data.moduleSetting.catalog({})
 /** This query reads only activation rows, so unrelated business writes do not affect it. */

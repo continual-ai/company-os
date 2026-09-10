@@ -1,16 +1,11 @@
 import { NoteSubject } from "#/modules/notes/model/index.ts"
 import { User } from "#/runtime/access/model/index.ts"
-import {
-  defineObject,
-  schema,
-  AuthorizationScope,
-} from "#/runtime/model/index.ts"
+import { defineObject, schema } from "#/runtime/model/index.ts"
 
 export const Deal = defineObject({
   id: "deal",
   collection: "deals",
   name: "Deal",
-  parent: AuthorizationScope,
   pluralName: "Deals",
   description: "A sales opportunity with its value, stage, and next steps.",
   implements: [{ interface: NoteSubject }],

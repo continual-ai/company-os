@@ -26,7 +26,7 @@ describe("model query cache", () => {
           data.queryClient.fetchQuery(contact),
         ])
       ).toEqual([2, 1])
-      data.invalidate(["roleAssignment"])
+      data.invalidate(["*"])
       expect(await data.queryClient.fetchQuery(contact)).toBe(2)
     } finally {
       data.dispose()

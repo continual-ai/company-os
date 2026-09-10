@@ -1,10 +1,7 @@
 import { useQuery } from "@tanstack/react-query"
 import { useMemo } from "react"
 
-import {
-  objectCapabilityCheck,
-  objectCapabilityChecks,
-} from "#/runtime/ui/model/object-capabilities.ts"
+import { objectActionAvailable } from "#/runtime/ui/model/object-actions.ts"
 import {
   clientFor,
   type ModelObject,
@@ -12,7 +9,6 @@ import {
 import type { ObjectFormInput } from "#/runtime/ui/model/object-form.ts"
 import { useObjectReferences } from "#/runtime/ui/model/object-references.ts"
 import { useModelRuntime } from "#/runtime/ui/model/runtime-context.tsx"
-import { useCapabilities } from "#/runtime/ui/model/use-capabilities.ts"
 
 export function useObjectRecord(object: ModelObject, recordId: string) {
   const runtime = useModelRuntime()
@@ -24,16 +20,9 @@ export function useObjectRecord(object: ModelObject, recordId: string) {
     object,
     record.data === undefined ? [] : [record.data]
   )
-  const checks = useMemo(
-    () => objectCapabilityChecks(runtime, object, [recordId]),
-    [runtime, object, recordId]
-  )
-  const capabilities = useCapabilities(checks)
   return {
-    can: (actionId: string) => {
-      const check = objectCapabilityCheck(runtime, object, actionId, recordId)
-      return check !== undefined && capabilities.can(check)
-    },
+    can: (actionId: string) =>
+      objectActionAvailable(object, actionId, record.data),
     error:
       record.error === null
         ? undefined

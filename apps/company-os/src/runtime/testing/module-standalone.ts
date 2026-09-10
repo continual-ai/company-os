@@ -1,9 +1,8 @@
 import { Effect, type Layer } from "effect"
 import { expect } from "vitest"
 
-import { AccessModule } from "#/runtime/access/model/index.ts"
-import { AssetsModule } from "#/runtime/assets/model/index.ts"
 import { defineModel, type ModuleDefinition } from "#/runtime/model/index.ts"
+import { PlatformModule } from "#/runtime/platform/model/index.ts"
 import { foundationLayer } from "#/runtime/server/foundation.ts"
 import type { CurrentInvocation } from "#/runtime/server/invocation.ts"
 import { ObjectRepositories } from "#/runtime/server/model/object-repositories.ts"
@@ -35,7 +34,7 @@ export function expectModuleStandsAlone(
   const fixture = testDatabase(
     defineModel({
       name: `${module.name} standalone`,
-      modules: [AccessModule, AssetsModule, ...dependencies, module],
+      modules: [PlatformModule, ...dependencies, module],
     })
   )
   const layer = seededLayer(

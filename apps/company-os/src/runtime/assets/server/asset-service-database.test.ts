@@ -2,8 +2,6 @@ import { Effect } from "effect"
 import { expect } from "vitest"
 
 import { AssetService } from "#/runtime/assets/server/asset-service.ts"
-import { RecordId } from "#/runtime/model/index.ts"
-import { ROOT_ID } from "#/runtime/model/system-records.ts"
 import { anonymousInvocation } from "#/runtime/server/invocation-context.ts"
 import { CurrentInvocation } from "#/runtime/server/invocation.ts"
 import { modelImplementation } from "#/runtime/server/model/implementation.ts"
@@ -27,7 +25,6 @@ fixture.test(
         )
       )
       const upload = yield* assets.beginUpload({
-        scope: RecordId("authorizationScope")(ROOT_ID),
         name: "logo.png",
         contentType: "image/png",
         size: png.length,

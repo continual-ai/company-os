@@ -10,10 +10,7 @@ import type {
   ObjectCollectionFilter,
   ObjectCollectionSort,
 } from "#/runtime/ui/model/collection-view.ts"
-import {
-  objectCapabilityCheck,
-  collectionCapabilityBatches,
-} from "#/runtime/ui/model/object-capabilities.ts"
+import { objectActionAvailable } from "#/runtime/ui/model/object-actions.ts"
 import {
   clientFor,
   type ClientRecord,
@@ -24,7 +21,6 @@ import type { ObjectFormInput } from "#/runtime/ui/model/object-form.ts"
 import { useObjectReferencePages } from "#/runtime/ui/model/object-references.ts"
 import type { ObjectTableValue } from "#/runtime/ui/model/object-table/object-table-config.ts"
 import { useModelRuntime } from "#/runtime/ui/model/runtime-context.tsx"
-import { useCapabilityBatches } from "#/runtime/ui/model/use-capabilities.ts"
 
 export type ObjectCollectionList = (
   request: ListRequest
@@ -67,11 +63,6 @@ export function useObjectCollection(
     [page.data]
   )
   const references = useObjectReferencePages(object, recordPages)
-  const checks = useMemo(
-    () => collectionCapabilityBatches(runtime, object, recordPages),
-    [runtime, object, recordPages]
-  )
-  const capabilities = useCapabilityBatches(checks)
   const totalSize = page.data?.pages[0]?.totalSize ?? 0
   const loading = page.isFetching
   const error =
@@ -105,12 +96,12 @@ export function useObjectCollection(
       void page.fetchNextPage({ cancelRefetch: false })
   }
 
-  const can = (actionId: string, target?: string) => {
-    const check = objectCapabilityCheck(runtime, object, actionId, target)
-    if (target !== undefined && actionId === "get")
-      return records.some((record) => record.id === target)
-    return check !== undefined && capabilities.can(check)
-  }
+  const can = (actionId: string, target?: string) =>
+    objectActionAvailable(
+      object,
+      actionId,
+      records.find((record) => record.id === target)
+    )
 
   return {
     can,

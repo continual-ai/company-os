@@ -5,13 +5,11 @@ import { NotesModule } from "#/modules/notes/model/index.ts"
 import { SalesModule } from "#/modules/sales/model/index.ts"
 import { SupportEngineeringModule } from "#/modules/support-engineering/model/index.ts"
 import { SupportModule } from "#/modules/support/model/index.ts"
-import { AccessModule } from "#/runtime/access/model/index.ts"
-import { AssetsModule } from "#/runtime/assets/model/index.ts"
 import { defineModel } from "#/runtime/model/index.ts"
+import { PlatformModule } from "#/runtime/platform/model/index.ts"
 
 const support = [
-  AccessModule,
-  AssetsModule,
+  PlatformModule,
   NotesModule,
   SalesModule,
   SupportModule,
@@ -19,9 +17,9 @@ const support = [
 it("keeps a business-free starter and allows Support without Engineering", () => {
   const minimal = defineModel({
     name: "Minimal",
-    modules: [AccessModule, AssetsModule],
+    modules: [PlatformModule],
   })
-  expect(Object.keys(minimal.modules)).toEqual(["access", "assets"])
+  expect(Object.keys(minimal.modules)).toEqual(["platform"])
   const standalone = defineModel({
     name: "Support",
     modules: support,

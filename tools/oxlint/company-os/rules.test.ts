@@ -39,6 +39,9 @@ const expectedDiagnostics: Record<string, Record<string, number>> = {
     [NO_INTERNAL_REEXPORTS]: 1,
   },
   "apps/company-os/src/imports-satellite.ts": { [IMPORT_BOUNDARIES]: 2 },
+  "apps/company-os/src/runtime/platform/model/imports-server.ts": {
+    [IMPORT_BOUNDARIES]: 1,
+  },
   "apps/company-os/src/runtime/model/imports-server.ts": {
     [IMPORT_BOUNDARIES]: 3,
   },

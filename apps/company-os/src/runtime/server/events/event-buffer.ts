@@ -3,7 +3,6 @@ import { Context, Effect } from "effect"
 export interface EventSubject {
   readonly id: string
   readonly objectType: string
-  readonly ancestorIds: ReadonlyArray<string>
 }
 
 export interface PendingEvent {

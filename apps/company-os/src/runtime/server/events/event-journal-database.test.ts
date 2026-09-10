@@ -1,21 +1,12 @@
 import { Deferred, Effect, Fiber } from "effect"
 import { expect } from "vitest"
 
-import { Role } from "#/runtime/access/model/index.ts"
-import { UserService } from "#/runtime/access/server/user-service.ts"
-import { InvalidEventCursor } from "#/runtime/contract/events.ts"
-import {
-  EmailAddress,
-  modelObjectLinkTraversals,
-} from "#/runtime/model/index.ts"
-import { ROOT_ID } from "#/runtime/model/system-records.ts"
+import { modelObjectLinkTraversals } from "#/runtime/model/index.ts"
 import { EventJournal } from "#/runtime/server/events/event-journal.ts"
 import { flushEvents } from "#/runtime/server/events/flush-events.ts"
 import { systemInvocation } from "#/runtime/server/invocation-context.ts"
-import { CurrentInvocation } from "#/runtime/server/invocation.ts"
 import { modelImplementation } from "#/runtime/server/model/implementation.ts"
 import { Links } from "#/runtime/server/model/link-service.ts"
-import { ObjectRepositories } from "#/runtime/server/model/object-repositories.ts"
 import { CommittedChanges } from "#/runtime/server/storage/committed-changes.ts"
 import { Database } from "#/runtime/server/storage/database.ts"
 import {
@@ -203,98 +194,6 @@ fixture.test(
       >`select ${tableProjection(eventJournalState)}
           from ${eventJournalState}`
       expect(rows.at(-1)?.position).toBe(state?.position)
-    })
-)
-
-fixture.test(
-  "filters every subject, preserves deleted history, and signals permission changes without exposing hidden events",
-  () =>
-    Effect.gen(function* () {
-      const database = yield* Database
-      const sql = database.sql
-      const journal = yield* EventJournal
-      const { services } = yield* implementation
-      const user = yield* (yield* UserService).provision({
-        name: "Reader",
-        email: EmailAddress("events@example.test"),
-      })
-      const reader = { actorId: user.id, authorizationActorId: user.id }
-      const roles = (yield* ObjectRepositories).writer(Role)
-      const role = yield* roles.create({
-        name: "Account history",
-        scopeType: "account",
-        permissions: ["account.get"],
-      })
-      const visible = yield* services.account.create({ name: "Visible" })
-      const hidden = yield* services.account.create({ name: "Hidden" })
-      const assignment = yield* services.roleAssignment.create({
-        parent: visible.id,
-        role: role.id,
-        principal: user.id,
-      })
-      const read = (input: Parameters<typeof journal.list>[0] = {}) =>
-        journal
-          .list(input)
-          .pipe(Effect.provideService(CurrentInvocation, reader))
-      const before = yield* read({ cursor: "now" })
-      yield* services.account.update({ id: hidden.id, name: "Still hidden" })
-      yield* services.account.update({
-        id: visible.id,
-        name: "Still visible",
-      })
-      const first = yield* read({ cursor: before.nextCursor, pageSize: 1 })
-      expect(first.items).toEqual([])
-      expect(first.hasMore).toBe(true)
-      const second = yield* read({ cursor: first.nextCursor, pageSize: 1 })
-      expect(second.items.map((event) => event.subjects[0]?.id)).toEqual([
-        visible.id,
-      ])
-      const person = yield* services.person.create({ name: "Hidden person" })
-      yield* (yield* Links).link(linkTraversal(Account, "people"), {
-        id: visible.id,
-        target: person.id,
-      })
-      expect((yield* read({ cursor: second.nextCursor })).items).toEqual([])
-      yield* services.roleAssignment.delete({ id: assignment.id })
-      const revoked = yield* read({ cursor: second.nextCursor })
-      expect(revoked.reset).toBe(true)
-      expect(revoked.items).toEqual([])
-      expect(
-        yield* read({
-          cursor: (yield* journal.list({ cursor: "now" })).nextCursor,
-        }).pipe(Effect.flip)
-      ).toBeInstanceOf(InvalidEventCursor)
-      expect(
-        yield* read({ cursor: "tampered" }).pipe(Effect.flip)
-      ).toBeInstanceOf(InvalidEventCursor)
-
-      // Grant at the root survives subject deletion; direct grants on a deleted object do not.
-      const historyRole = yield* roles.create({
-        name: "Account reader",
-        scopeType: "root",
-        permissions: ["account.get"],
-      })
-      yield* services.roleAssignment.create({
-        parent: ROOT_ID,
-        role: historyRole.id,
-        principal: user.id,
-      })
-      const deleting = yield* read({ cursor: "now" })
-      const disposable = yield* services.account.create({ name: "History" })
-      yield* services.account.delete({ id: disposable.id })
-      expect(
-        (yield* read({
-          cursor: deleting.nextCursor,
-          type: undefined,
-        })).items.map((event) => event.type)
-      ).toEqual(["account.created", "account.deleted"])
-      expect(
-        (yield* sql<
-          TableRow<typeof eventJournal>
-        >`select ${tableProjection(eventJournal)}
-          from ${eventJournal}
-          where ${eventJournal.columns.type} = ${"account.deleted"}`).length
-      ).toBe(1)
     })
 )
 

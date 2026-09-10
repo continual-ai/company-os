@@ -34,7 +34,7 @@ const extension = defineModuleUi(FixtureModule, {
 })
 
 describe("module UI composition", () => {
-  it("shares typed actions across row and record surfaces and hides unauthorized actions", () => {
+  it("shares typed actions across row and record surfaces and hides unavailable actions", () => {
     const render = (allowed: boolean, placement: "row" | "record") =>
       renderToStaticMarkup(
         <ObjectActions

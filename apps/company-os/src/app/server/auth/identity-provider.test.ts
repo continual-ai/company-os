@@ -13,6 +13,9 @@ describe("IdentityProvider", () => {
     const fetch = vi.fn().mockResolvedValue(
       Response.json({
         actorId: "us_123",
+        kind: "user",
+        projectId: "project_test",
+        projectAccess: true,
         email: "person@example.com",
         name: "Person",
       })
@@ -24,6 +27,7 @@ describe("IdentityProvider", () => {
           ConfigProvider.layer(
             ConfigProvider.fromEnvRecord({
               CONTINUAL_URL: "https://continual.example",
+              CONTINUAL_PROJECT_ID: "project_test",
             })
           )
         )
@@ -38,7 +42,7 @@ describe("IdentityProvider", () => {
       )
     )
 
-    expect(identified?.authorizationSubject).toMatchObject({
+    expect(identified).toMatchObject({
       email: "person@example.com",
       issuer: "continual",
       kind: "user",
@@ -66,6 +70,7 @@ describe("IdentityProvider", () => {
           ConfigProvider.layer(
             ConfigProvider.fromEnvRecord({
               CONTINUAL_URL: "https://continual.example",
+              CONTINUAL_PROJECT_ID: "project_test",
             })
           )
         )
@@ -85,11 +90,16 @@ describe("IdentityProvider", () => {
   })
 
   it("uses the managed preview credential in a Continual sandbox", async () => {
-    const fetch = vi
-      .fn()
-      .mockResolvedValue(
-        Response.json({ actorId: "us_123", email: null, name: "Person" })
-      )
+    const fetch = vi.fn().mockResolvedValue(
+      Response.json({
+        actorId: "us_123",
+        kind: "user",
+        projectId: "project_test",
+        projectAccess: true,
+        email: null,
+        name: "Person",
+      })
+    )
     vi.stubGlobal("fetch", fetch)
     const provider = Effect.runSync(
       makeContinualIdentityProvider.pipe(
@@ -98,6 +108,7 @@ describe("IdentityProvider", () => {
             ConfigProvider.fromEnvRecord({
               CONTINUAL_EXECUTION_TOKEN: "execution-token",
               CONTINUAL_URL: "https://continual.example",
+              CONTINUAL_PROJECT_ID: "project_test",
             })
           )
         )
@@ -125,6 +136,7 @@ describe("IdentityProvider", () => {
           ConfigProvider.layer(
             ConfigProvider.fromEnvRecord({
               CONTINUAL_URL: "https://continual.example",
+              CONTINUAL_PROJECT_ID: "project_test",
             })
           )
         )
@@ -133,20 +145,11 @@ describe("IdentityProvider", () => {
     await expect(
       Effect.runPromise(provider.identify(new Headers()))
     ).resolves.toEqual({
-      actor: {
-        email: "developer@company.test",
-        issuer: "local-development",
-        kind: "user",
-        name: "Local Developer",
-        subject: "default",
-      },
-      authorizationSubject: {
-        email: "developer@company.test",
-        issuer: "local-development",
-        kind: "user",
-        name: "Local Developer",
-        subject: "default",
-      },
+      email: "developer@company.test",
+      issuer: "local-development",
+      kind: "user",
+      name: "Local Developer",
+      subject: "default",
     })
   })
 
@@ -158,6 +161,7 @@ describe("IdentityProvider", () => {
           ConfigProvider.layer(
             ConfigProvider.fromEnvRecord({
               CONTINUAL_URL: "https://continual.example",
+              CONTINUAL_PROJECT_ID: "project_test",
             })
           )
         )
@@ -167,4 +171,80 @@ describe("IdentityProvider", () => {
       Effect.runPromise(provider.identify(new Headers()))
     ).resolves.toBeNull()
   })
+})
+
+it.each([
+  { projectId: "other-project", projectAccess: true, kind: "user" },
+  { projectId: "project_test", projectAccess: false, kind: "user" },
+  { projectId: "project_test", kind: "serviceAccount" },
+  {},
+])(
+  "rejects identities without explicit admission to this project: %j",
+  async (claims) => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        Response.json({
+          actorId: "us_123",
+          name: "Person",
+          email: "person@example.test",
+          ...claims,
+        })
+      )
+    )
+    const provider = Effect.runSync(
+      makeContinualIdentityProvider.pipe(
+        Effect.provide(
+          ConfigProvider.layer(
+            ConfigProvider.fromEnvRecord({
+              CONTINUAL_URL: "https://continual.example",
+              CONTINUAL_PROJECT_ID: "project_test",
+            })
+          )
+        )
+      )
+    )
+    await expect(
+      Effect.runPromise(
+        provider.identify(
+          new Headers({ "x-continual-app-runtime-assertion": "assertion" })
+        )
+      )
+    ).rejects.toThrow()
+  }
+)
+
+it("preserves an explicitly admitted service account without inventing a user", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue(
+      Response.json({
+        actorId: "sa_123",
+        kind: "serviceAccount",
+        name: "Agent",
+        email: null,
+        projectId: "project_test",
+        projectAccess: true,
+      })
+    )
+  )
+  const provider = Effect.runSync(
+    makeContinualIdentityProvider.pipe(
+      Effect.provide(
+        ConfigProvider.layer(
+          ConfigProvider.fromEnvRecord({
+            CONTINUAL_URL: "https://continual.example",
+            CONTINUAL_PROJECT_ID: "project_test",
+          })
+        )
+      )
+    )
+  )
+  expect(
+    await Effect.runPromise(
+      provider.identify(
+        new Headers({ "x-continual-app-runtime-assertion": "assertion" })
+      )
+    )
+  ).toMatchObject({ kind: "serviceAccount", preferredIdentityId: "sa_123" })
 })

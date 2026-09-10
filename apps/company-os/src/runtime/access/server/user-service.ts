@@ -36,7 +36,6 @@ const make = Effect.gen(function* () {
         metadata: {},
         name: input.name,
         parent: ROOT_ID,
-        status: "active",
         systemManaged: false,
         updatedBy: actorId,
       } satisfies ObjectInsert<typeof User>)

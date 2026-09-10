@@ -7,10 +7,6 @@ import {
 } from "effect/unstable/httpapi"
 
 import {
-  createCapabilities,
-  MAX_CAPABILITY_CHECKS,
-} from "#/runtime/contract/capabilities.ts"
-import {
   eventPageSchema,
   InvalidEventCursor,
 } from "#/runtime/contract/events.ts"
@@ -34,7 +30,7 @@ const standardErrors = [
 
 /**
  * The complete HTTP contract of an application: every exposed object's
- * operations plus the capability, event, and record-search groups that
+ * operations plus the event and record-search groups that
  * exist outside the model. Handlers, clients, OpenAPI, and tests derive
  * from this one value.
  */
@@ -42,58 +38,8 @@ export function createApplicationHttpApi(
   model: ModelCatalog,
   options: HttpApiOptions = {}
 ) {
-  const { isCapabilityPermission } = createCapabilities(model)
   const { input: recordSearchInput, result: recordSearchResult } =
     createRecordSearchContract(model)
-  const permissionSchema = Schema.String.check(
-    Schema.makeFilter(isCapabilityPermission, {
-      title: "Company OS permission",
-    })
-  )
-
-  const capabilityGroup = HttpApiGroup.make("capabilities")
-    .add(
-      HttpApiEndpoint.post(
-        "checkCapabilities",
-        customMethodPath("/api/v1/capabilities", "check"),
-        {
-          params: {
-            check: customMethodParameter("check"),
-          },
-          payload: Schema.Struct({
-            checks: Schema.Array(
-              Schema.Struct({
-                permission: permissionSchema,
-                target: Schema.optionalKey(
-                  Schema.String.check(Schema.isMinLength(1))
-                ),
-              })
-            ).check(
-              Schema.isMinLength(1),
-              Schema.isMaxLength(MAX_CAPABILITY_CHECKS)
-            ),
-          }),
-          success: Schema.Struct({
-            results: Schema.Array(Schema.Struct({ allowed: Schema.Boolean })),
-          }),
-          error: standardErrors,
-        }
-      ).annotateMerge(
-        OpenApi.annotations({
-          description:
-            "Evaluates application permissions for the caller. Results are advisory; every operation enforces authorization again.",
-          identifier: "checkCapabilities",
-          summary: "Check capabilities",
-        })
-      )
-    )
-    .annotateMerge(
-      OpenApi.annotations({
-        description: "Authorization decisions for conditional client behavior.",
-        title: "Capabilities",
-      })
-    )
-
   const eventStreamSchema = HttpApiSchema.StreamSse({
     events: Schema.Struct({
       id: Schema.UndefinedOr(Schema.String),
@@ -126,7 +72,7 @@ export function createApplicationHttpApi(
           identifier: "listEvents",
           summary: "Read committed events",
           description:
-            "Returns authorized facts in commit order. Continue with nextCursor even after an empty page. cursor=now starts at the current head; reset requires reloading cached data. Events are retained indefinitely in this release.",
+            "Returns project facts in commit order. Continue with nextCursor even after an empty page. cursor=now starts at the current head; reset requires reloading cached data. Events are retained indefinitely in this release.",
         })
       )
     )
@@ -164,17 +110,16 @@ export function createApplicationHttpApi(
         identifier: "searchRecords",
         summary: "Search records across objects",
         description:
-          "Searches explicitly indexed model fields using word prefixes, with all terms required. Returns ranked display summaries, filtered by current read permissions. Optional objectTypes narrows the search. hasMore means narrow the query or increase limit (maximum 50); use object list APIs for exhaustive traversal.",
+          "Searches explicitly indexed model fields using word prefixes, with all terms required. Returns ranked display summaries, limited to active object types. Optional objectTypes narrows the search. hasMore means narrow the query or increase limit (maximum 50); use object list APIs for exhaustive traversal.",
       })
     )
   )
 
   const api = createModelHttpApi(model, options)
-    .add(capabilityGroup)
     .add(eventGroup)
     .add(recordGroup)
 
-  return { api, capabilityGroup, eventGroup, recordGroup }
+  return { api, eventGroup, recordGroup }
 }
 
 export type ApplicationHttpApi = ReturnType<typeof createApplicationHttpApi>

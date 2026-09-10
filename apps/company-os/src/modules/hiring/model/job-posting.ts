@@ -1,10 +1,6 @@
 import { NoteSubject } from "#/modules/notes/model/index.ts"
 import { User } from "#/runtime/access/model/index.ts"
-import {
-  AuthorizationScope,
-  defineObject,
-  schema,
-} from "#/runtime/model/index.ts"
+import { defineObject, schema } from "#/runtime/model/index.ts"
 
 export const JobPosting = defineObject({
   id: "jobPosting",
@@ -12,7 +8,7 @@ export const JobPosting = defineObject({
   name: "Job posting",
   pluralName: "Job postings",
   description: "A role your company is hiring for.",
-  implements: [{ interface: AuthorizationScope }, { interface: NoteSubject }],
+  implements: [{ interface: NoteSubject }],
   properties: {
     title: schema.string({ label: "Title", minLength: 1, maxLength: 300 }),
     description: schema.string({

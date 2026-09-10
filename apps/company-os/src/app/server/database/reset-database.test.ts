@@ -23,7 +23,9 @@ fixture.test(
       expect(yield* sql`select id from event_journal_state`).toEqual([
         { id: 1 },
       ])
-      expect((yield* sql`select id from roles`).length).toBeGreaterThan(0)
+      expect(
+        (yield* sql`select id from service_accounts`).length
+      ).toBeGreaterThan(0)
       expect((yield* sql`select id from search_index_state`).length).toBe(1)
       yield* Effect.flip(applyMigrations())
       expect(

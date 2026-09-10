@@ -1,9 +1,4 @@
-import {
-  defineObject,
-  schema,
-  standardErrors,
-  AuthorizationScope,
-} from "#/runtime/model/index.ts"
+import { defineObject, schema, standardErrors } from "#/runtime/model/index.ts"
 
 /** Durable file identity. Storage keys and bytes stay in the server adapter. */
 export const Asset = defineObject({
@@ -12,7 +7,6 @@ export const Asset = defineObject({
   name: "Asset",
   pluralName: "Assets",
   description: "A file or image attached to your work.",
-  parent: AuthorizationScope,
   actions: {
     create: false,
     update: false,
@@ -23,7 +17,6 @@ export const Asset = defineObject({
       scope: "collection",
       idempotent: false,
       input: {
-        scope: schema.reference(AuthorizationScope),
         name: schema.string({ minLength: 1, maxLength: 255 }),
         contentType: schema.string({ minLength: 1, maxLength: 120 }),
         size: schema.number({ integer: true, minimum: 1, maximum: 25_000_000 }),

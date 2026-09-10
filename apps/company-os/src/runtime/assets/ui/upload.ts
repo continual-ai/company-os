@@ -2,7 +2,6 @@ import type { Asset } from "#/runtime/assets/model/asset.ts"
 import { modelData } from "#/runtime/client/data-client.ts"
 import { executeMutation } from "#/runtime/client/model-query-client.ts"
 import type { ObjectQueryClient } from "#/runtime/client/model-query-client.ts"
-import { RecordId } from "#/runtime/model/index.ts"
 
 function putUpload(
   url: string,
@@ -54,13 +53,11 @@ export function createAssetUploader(
 ) {
   return async function uploadAsset(
     file: File,
-    scope: string,
     signal: AbortSignal,
     progress: (percent: number) => void
   ) {
     const cache = modelData().queryClient
     const reserved = await executeMutation(cache, asset.beginUpload(), {
-      scope: RecordId("authorizationScope")(scope),
       name: file.name,
       contentType: file.type || "application/octet-stream",
       size: file.size,

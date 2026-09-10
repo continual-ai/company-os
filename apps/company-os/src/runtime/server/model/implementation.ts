@@ -5,7 +5,6 @@ import type {
   ModuleDefinition,
   ObjectType,
 } from "#/runtime/model/index.ts"
-import type { Authorization } from "#/runtime/server/authorization/authorization-service.ts"
 import type { CurrentInvocation } from "#/runtime/server/invocation.ts"
 import type { ModelContext } from "#/runtime/server/model-context.ts"
 import {
@@ -37,7 +36,6 @@ type Foundation =
   | ModelContext
   | ObjectRepositories
   | Links
-  | Authorization
   | Database
   | RecordIdentifierResolver
 

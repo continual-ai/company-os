@@ -32,18 +32,12 @@ import {
   useAuthenticatedUser,
 } from "#/app/ui/application/authenticated-user.tsx"
 import { CommandPaletteButton } from "#/app/ui/application/command-palette.tsx"
-import { applicationCapabilities } from "#/runtime/contract/capabilities.ts"
 import { ModuleNavigation } from "#/runtime/ui/model/module-navigation.tsx"
-import { useCapabilities } from "#/runtime/ui/model/use-capabilities.ts"
-
-const navigationChecks = [applicationCapabilities.develop]
 
 export function AppSidebar() {
   const { open, isMobile } = useSidebar()
   const user = useAuthenticatedUser()
-  const capabilities = useCapabilities(navigationChecks)
   const matchRoute = useMatchRoute()
-  const canDevelop = capabilities.can(applicationCapabilities.develop)
   return (
     <Sidebar variant="sidebar" collapsible="offcanvas">
       <SidebarHeader className="gap-0 p-0">
@@ -140,12 +134,10 @@ export function AppSidebar() {
                   </DropdownMenuLabel>
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
-                {canDevelop ? (
-                  <DropdownMenuItem render={<Link to="/developer" />}>
-                    <BracesIcon />
-                    Developer Center
-                  </DropdownMenuItem>
-                ) : null}
+                <DropdownMenuItem render={<Link to="/developer" />}>
+                  <BracesIcon />
+                  Developer Center
+                </DropdownMenuItem>
                 <DropdownMenuItem render={<Link to="/settings" />}>
                   <SettingsIcon />
                   Settings

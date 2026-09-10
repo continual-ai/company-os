@@ -1,6 +1,6 @@
 import { expect, it } from "vitest"
 
-import { Role } from "#/runtime/access/model/index.ts"
+import { ServiceAccount } from "#/runtime/access/model/index.ts"
 import { compileAssetReferences } from "#/runtime/assets/server/references.ts"
 import { defineObject, Root, schema } from "#/runtime/model/index.ts"
 
@@ -36,5 +36,5 @@ it("discovers nested file usages and selects only the matching union branch", ()
 })
 
 it("does not install asset behavior for objects without file fields", () => {
-  expect(compileAssetReferences(Role)).toBeUndefined()
+  expect(compileAssetReferences(ServiceAccount)).toBeUndefined()
 })

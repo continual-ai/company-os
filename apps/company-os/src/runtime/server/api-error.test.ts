@@ -38,10 +38,9 @@ function translate(
 describe("API error translation", () => {
   it.each([
     ["InvalidIdentityAssertion", "UNAUTHENTICATED"],
-    ["PermissionDenied", "PERMISSION_DENIED"],
+    ["ProjectAccessRequired", "PERMISSION_DENIED"],
     ["ObjectWriteConflict", "ABORTED"],
     ["RecordAliasConflict", "ALREADY_EXISTS"],
-    ["LastAdministrator", "FAILED_PRECONDITION"],
     ["ObjectDeleteRestricted", "FAILED_PRECONDITION"],
   ])("maps %s to canonical status %s", async (_tag, status) => {
     await expect(translate({ _tag })).resolves.toMatchObject({ status })

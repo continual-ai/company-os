@@ -1,13 +1,13 @@
 import { Context, Effect, Layer } from "effect"
 import { expect, it } from "vitest"
 
-import { AccessModule } from "#/runtime/access/model/index.ts"
 import {
   defineModel,
   defineModule,
   defineObject,
   schema,
 } from "#/runtime/model/index.ts"
+import { PlatformModule } from "#/runtime/platform/model/index.ts"
 import {
   defineModuleServer,
   type OperationRequirements,
@@ -71,7 +71,7 @@ it("retains custom operation dependencies without creating another container", a
 
 const model = defineModel({
   name: "Provider test",
-  modules: [AccessModule, Module],
+  modules: [PlatformModule, Module],
 })
 const infrastructure = {
   database: Layer.effect(Database, Effect.die("Compile-only provider test")),

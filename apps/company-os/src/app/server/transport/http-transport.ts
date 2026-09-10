@@ -11,23 +11,21 @@ import { HttpApiBuilder } from "effect/unstable/httpapi"
 import { Model } from "#/app.model.ts"
 import { applicationHttpApi } from "#/app/server/http-api.ts"
 import {
-  activeModuleModel,
-  requireModuleOperation,
-} from "#/modules/platform/server/index.ts"
-import { createCapabilities } from "#/runtime/contract/capabilities.ts"
-import {
   InvalidEventCursor,
   type EventPage,
 } from "#/runtime/contract/events.ts"
 import { HttpValidationMiddleware } from "#/runtime/contract/http-api.ts"
 import type { ExecutableModelOperation } from "#/runtime/model/operations.ts"
 import {
+  activeModuleModel,
+  requireModuleOperation,
+} from "#/runtime/platform/server/index.ts"
+import {
   internalApiError,
   unauthenticatedApiError,
   withApiErrors,
 } from "#/runtime/server/api-error.ts"
 import { Authentication } from "#/runtime/server/auth/authentication.ts"
-import { Authorization } from "#/runtime/server/authorization/authorization-service.ts"
 import { EventJournal } from "#/runtime/server/events/event-journal.ts"
 import { EventNotifications } from "#/runtime/server/events/event-notifications.ts"
 import { streamEvents } from "#/runtime/server/events/event-stream.ts"
@@ -54,11 +52,9 @@ function requestHeaders(request: ModelHttpRequest): Headers {
 const make = Effect.gen(function* () {
   const modelContext = yield* ModelContext
   // Register the installed contract once; each request checks database activation.
-  const { capabilityPermission } = createCapabilities(Model)
   const operations = yield* Operations
   const database = yield* Database
   const authentication = yield* Authentication
-  const authorization = yield* Authorization
   const notifications = yield* EventNotifications
   const events = yield* EventJournal
   const implementation = yield* ModelImplementation
@@ -126,54 +122,6 @@ const make = Effect.gen(function* () {
     implementation,
     invoke,
     Model
-  )
-  const capabilityGroupLayer = HttpApiBuilder.group(
-    applicationHttpApi,
-    "capabilities",
-    (handlers) =>
-      handlers.handle("checkCapabilities", (request) =>
-        authentication.identify(requestHeaders(request)).pipe(
-          Effect.mapError(() =>
-            unauthenticatedApiError("Authentication credentials are invalid.")
-          ),
-          Effect.flatMap((caller) =>
-            authorization
-              .checkCapabilitiesFor(
-                caller,
-                request.payload.checks.map((check) => ({
-                  ...check,
-                  permission: capabilityPermission(check.permission),
-                }))
-              )
-              .pipe(
-                Effect.flatMap((result) =>
-                  active.pipe(
-                    Effect.map(({ model }) => ({
-                      results: result.results.map((entry, index) => ({
-                        allowed:
-                          entry.allowed &&
-                          (request.payload.checks[index]!.permission.startsWith(
-                            "application."
-                          ) ||
-                            Object.hasOwn(
-                              model.objects,
-                              request.payload.checks[index]!.permission.split(
-                                "."
-                              )[0]!
-                            )),
-                      })),
-                    }))
-                  )
-                ),
-                Effect.catch((error) =>
-                  Effect.logError("Capability evaluation failed", error).pipe(
-                    Effect.andThen(Effect.fail(internalApiError()))
-                  )
-                )
-              )
-          )
-        )
-      )
   )
   const eventGroupLayer = HttpApiBuilder.group(
     applicationHttpApi,
@@ -259,7 +207,6 @@ const make = Effect.gen(function* () {
               Effect.provideService(CurrentInvocation, invocation),
               Effect.provideService(Database, database),
               Effect.provideService(ModelContext, modelContext),
-              Effect.provideService(Authorization, authorization),
               Effect.catch((error) =>
                 Effect.logError("Record search failed", error).pipe(
                   Effect.andThen(Effect.fail(internalApiError()))
@@ -272,12 +219,7 @@ const make = Effect.gen(function* () {
   )
   const apiLayer = HttpApiBuilder.layer(applicationHttpApi).pipe(
     Layer.provide(
-      Layer.mergeAll(
-        objectGroupsLayer,
-        capabilityGroupLayer,
-        eventGroupLayer,
-        recordGroupLayer
-      )
+      Layer.mergeAll(objectGroupsLayer, eventGroupLayer, recordGroupLayer)
     ),
     Layer.provide(HttpValidationMiddleware.layer),
     Layer.provide(HttpServer.layerServices)

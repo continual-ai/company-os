@@ -14,6 +14,7 @@ import { defineObject } from "#/runtime/model/definition/object.ts"
 import { PageToken } from "#/runtime/model/definition/request.ts"
 import { schema } from "#/runtime/model/definition/schema.ts"
 import { NotFoundError } from "#/runtime/model/definition/standard-error.ts"
+import { RecordId } from "#/runtime/model/index.ts"
 import { CurrentInvocation } from "#/runtime/server/invocation.ts"
 import {
   createModelMcpServer,
@@ -172,8 +173,7 @@ describe("model MCP projection", () => {
           : Effect.runPromise(
               operation.pipe(
                 Effect.provideService(CurrentInvocation, {
-                  actorId: "root",
-                  authorizationActorId: "root",
+                  actorId: RecordId("user")("test-user"),
                 }),
                 Effect.map((value) => ({ success: true as const, value }))
               )

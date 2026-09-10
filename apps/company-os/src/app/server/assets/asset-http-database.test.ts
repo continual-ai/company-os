@@ -9,7 +9,6 @@ import { testApplication } from "#/app/server/test-application.ts"
 import { HttpTransport } from "#/app/server/transport/http-transport.ts"
 import { AssetService } from "#/runtime/assets/server/asset-service.ts"
 import { createModelClient } from "#/runtime/client/http-client.ts"
-import { ROOT_ID } from "#/runtime/model/system-records.ts"
 import { Authentication } from "#/runtime/server/auth/authentication.ts"
 import { IdentityProvider } from "#/runtime/server/auth/identity-provider.ts"
 import { CurrentInvocation } from "#/runtime/server/invocation.ts"
@@ -22,13 +21,9 @@ const subject = {
   email: "owner@example.test",
 }
 const application = testApplication({
-  configuration: {
-    AUTH_BOOTSTRAP_ISSUER: "test",
-    AUTH_BOOTSTRAP_SUBJECT: "owner",
-  },
+  configuration: {},
   identityProvider: Layer.succeed(IdentityProvider, {
-    identify: () =>
-      Effect.succeed({ actor: subject, authorizationSubject: subject }),
+    identify: () => Effect.succeed(subject),
   }),
 })
 
@@ -48,7 +43,6 @@ application.test(
           })
         )
       const reserve = yield* send("assets:beginUpload", {
-        scope: ROOT_ID,
         name: "review.txt",
         contentType: "text/plain",
         size: 3,

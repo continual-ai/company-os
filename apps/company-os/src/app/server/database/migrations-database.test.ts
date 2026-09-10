@@ -113,3 +113,171 @@ empty.test("refuses to start before the committed baseline is applied", () =>
     )
   })
 )
+
+it("archives retired grants while preserving business data, files, identities and historical events", async () => {
+  const template = await TestDatabase.createTemplate(
+    migrations
+      .slice(0, 3)
+      .map(({ sql }) => sql)
+      .join("\n")
+  )
+  const { Client } = await import("pg")
+  const client = new Client({ connectionString: TestDatabase.url(template) })
+  try {
+    await client.connect()
+    await client.query("begin")
+    await client.query(`
+      insert into objects (id, object_type, parent_id, ancestor_ids, created_by_id, updated_by_id) values
+        ('platform_system', 'root', null, '{}', 'service_account_system', 'service_account_system'),
+        ('service_account_system', 'serviceAccount', 'platform_system', '{platform_system}', 'service_account_system', 'service_account_system'),
+        ('company_retained', 'company', 'platform_system', '{platform_system}', 'service_account_system', 'service_account_system'),
+        ('deal_retained', 'deal', 'company_retained', '{company_retained,platform_system}', 'service_account_system', 'service_account_system'),
+        ('item_retained', 'lineItem', 'deal_retained', '{deal_retained,company_retained,platform_system}', 'service_account_system', 'service_account_system'),
+        ('asset_retained', 'asset', 'company_retained', '{company_retained,platform_system}', 'service_account_system', 'service_account_system'),
+        ('role_retained', 'role', 'platform_system', '{platform_system}', 'service_account_system', 'service_account_system'),
+        ('grant_retained', 'roleAssignment', 'company_retained', '{company_retained,platform_system}', 'service_account_system', 'service_account_system');
+      insert into roots (id) values ('platform_system');
+      insert into interface_actor (id) values ('service_account_system');
+      insert into interface_identity (id) values ('service_account_system');
+      insert into interface_principal (id) values ('service_account_system');
+      insert into interface_authorization_scope (id) values ('platform_system'), ('company_retained');
+      insert into service_accounts (id, parent_id, name) values ('service_account_system', 'platform_system', 'System');
+      insert into companies (id, parent_id, name) values ('company_retained', 'platform_system', 'Retained company');
+      insert into deals (id, parent_id, name, amount) values ('deal_retained', 'company_retained', 'Retained deal', '{"currency":"USD","amount":"123.45"}');
+      insert into line_items (id, parent_id, name) values ('item_retained', 'deal_retained', 'Retained line');
+      insert into assets (id, parent_id, name, content_type, size) values ('asset_retained', 'company_retained', 'retained.txt', 'text/plain', 4);
+      insert into asset_blobs (asset_id, bytes) values ('asset_retained', decode('74657374', 'hex'));
+      insert into deal_companies (forward_id, reverse_id) values ('deal_retained', 'company_retained');
+      insert into roles (id, parent_id, name, scope_type, permissions) values ('role_retained', 'platform_system', 'Old role', 'company', '{deal.get}');
+      insert into role_assignments (id, parent_id, principal_id, role_id) values ('grant_retained', 'company_retained', 'service_account_system', 'role_retained');
+      insert into identity_bindings (issuer, subject, identity_id) values ('test', 'system', 'service_account_system');
+      insert into record_aliases (alias, object_id) values ('old-role', 'role_retained');
+      insert into event_journal (position, id, transaction_id, type, version, subjects, actor_id, data, occurred_at) values (1, 'event_retained', 'transaction_retained', 'deal.created', 1, '[{"id":"deal_retained","objectType":"deal","ancestorIds":["company_retained","platform_system"]}]', 'service_account_system', '{}', now());
+    `)
+    await client.query(`
+      insert into objects (id, object_type, parent_id, created_by_id, updated_by_id)
+        select 'module_' || module_id, 'moduleSetting', 'platform_system', 'service_account_system', 'service_account_system'
+        from unnest(array['access', 'assets', 'platform', 'notes']) as module_id;
+      insert into module_settings (id, parent_id, module_id, enabled)
+        select 'module_' || module_id, 'platform_system', module_id, module_id <> 'notes'
+        from unnest(array['access', 'assets', 'platform', 'notes']) as module_id;
+    `)
+    await client.query("commit")
+    const before = await client.query(
+      "select * from event_journal order by position"
+    )
+    await client.query("begin")
+    for (const migration of migrations.slice(3))
+      await client.query(migration.sql)
+    await client.query("commit")
+    expect(
+      (
+        await client.query(
+          "select module_id, enabled from module_settings order by module_id"
+        )
+      ).rows
+    ).toEqual([
+      { module_id: "notes", enabled: false },
+      { module_id: "platform", enabled: true },
+    ])
+    expect(
+      (
+        await client.query(
+          "select id from objects where id in ('module_access', 'module_assets')"
+        )
+      ).rows
+    ).toEqual([])
+    expect(
+      (await client.query("select id, name from service_accounts")).rows
+    ).toEqual([{ id: "service_account_system", name: "System" }])
+    expect(
+      (await client.query("select name, parent_id, amount from deals")).rows
+    ).toEqual([
+      {
+        name: "Retained deal",
+        parent_id: "platform_system",
+        amount: { currency: "USD", amount: "123.45" },
+      },
+    ])
+    expect(
+      (
+        await client.query(
+          "select parent_id from objects where id = 'item_retained'"
+        )
+      ).rows
+    ).toEqual([{ parent_id: "deal_retained" }])
+    expect(
+      (await client.query("select * from deal_companies")).rows
+    ).toHaveLength(1)
+    expect(
+      (
+        await client.query(
+          "select encode(bytes, 'hex') as bytes from asset_blobs"
+        )
+      ).rows
+    ).toEqual([{ bytes: "74657374" }])
+    expect(
+      (await client.query("select * from identity_bindings")).rows
+    ).toHaveLength(1)
+    expect(
+      (
+        await client.query(
+          "select data->>'name' as name, aliases from company_os_archive.access_v1 where object->>'id' = 'role_retained'"
+        )
+      ).rows
+    ).toMatchObject([
+      {
+        name: "Old role",
+        aliases: [{ alias: "old-role", object_id: "role_retained" }],
+      },
+    ])
+    expect(
+      (await client.query("select * from event_journal order by position")).rows
+    ).toEqual(before.rows)
+    expect(
+      (
+        await client.query(
+          "select id from objects where object_type in ('role', 'roleAssignment')"
+        )
+      ).rows
+    ).toEqual([])
+  } finally {
+    await client.end()
+    await TestDatabase.drop(template)
+  }
+})
+
+it("isolates retired configuration archives for applications sharing a database", async () => {
+  const template = await TestDatabase.createTemplate("")
+  const { Client } = await import("pg")
+  const client = new Client({ connectionString: TestDatabase.url(template) })
+  try {
+    await client.connect()
+    for (const schema of ["first_project", "second_project"]) {
+      await client.query(`create schema ${schema}`)
+      await client.query(`set search_path to ${schema}, public`)
+      await client.query("begin")
+      for (const migration of migrations) await client.query(migration.sql)
+      await client.query("commit")
+      expect(
+        (await client.query("select count(*)::integer as count from objects"))
+          .rows
+      ).toEqual([{ count: 0 }])
+      expect(
+        (await client.query("select to_regclass('roles') as retired")).rows
+      ).toEqual([{ retired: null }])
+      expect(
+        (
+          await client.query(`
+        select count(*)::integer as count from information_schema.tables
+        where table_schema = 'company_os_archive_' || md5(current_schema())
+          and table_name in ('access_v1', 'scope_placement_v1', 'identity_state_v1')
+      `)
+        ).rows
+      ).toEqual([{ count: 3 }])
+    }
+  } finally {
+    await client.end()
+    await TestDatabase.drop(template)
+  }
+})

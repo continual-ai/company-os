@@ -59,7 +59,6 @@ export function ObjectFormPropertyField({
   mode,
   referenceLabels,
   fieldEditors,
-  record,
 }: {
   readonly entry: ObjectFormProperty
   readonly record?: ClientRecord | undefined
@@ -295,41 +294,31 @@ export function ObjectFormPropertyField({
                 }
               )
               return (
-                <form.Subscribe selector={(state) => state.values.parent}>
-                  {(parent) => (
-                    <FileField
-                      id={fieldId}
-                      value={values}
-                      image={assetSchema.kind === "image"}
-                      multiple={schema.kind === "array"}
-                      maxBytes={assetSchema.maxBytes}
-                      accept={assetSchema.accept}
-                      scope={
-                        record?.parent ??
-                        (typeof parent === "string" && parent !== ""
-                          ? parent
-                          : undefined)
-                      }
-                      onPendingChange={(pending) =>
-                        field.setMeta((meta) => ({
-                          ...meta,
-                          isValidating: pending,
-                          isTouched: true,
-                        }))
-                      }
-                      onChange={(next) => {
-                        const nextValues = next.map((reference) => ({
-                          ...reference,
-                        }))
-                        onValueChange(
-                          schema.kind === "array"
-                            ? nextValues
-                            : (nextValues[0] ?? null)
-                        )
-                      }}
-                    />
-                  )}
-                </form.Subscribe>
+                <FileField
+                  id={fieldId}
+                  value={values}
+                  image={assetSchema.kind === "image"}
+                  multiple={schema.kind === "array"}
+                  maxBytes={assetSchema.maxBytes}
+                  accept={assetSchema.accept}
+                  onPendingChange={(pending) =>
+                    field.setMeta((meta) => ({
+                      ...meta,
+                      isValidating: pending,
+                      isTouched: true,
+                    }))
+                  }
+                  onChange={(next) => {
+                    const nextValues = next.map((reference) => ({
+                      ...reference,
+                    }))
+                    onValueChange(
+                      schema.kind === "array"
+                        ? nextValues
+                        : (nextValues[0] ?? null)
+                    )
+                  }}
+                />
               )
             }}
           </field.FormField>

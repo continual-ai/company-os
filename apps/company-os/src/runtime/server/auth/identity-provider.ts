@@ -2,37 +2,27 @@ import { Context, Data, type Effect } from "effect"
 
 import type { IdentityId } from "#/runtime/access/model/ids.ts"
 
-type IdentityKind = "serviceAccount" | "user"
-
-/** Provider-neutral identity after credentials have been verified. */
+/** Provider-neutral identity after credentials AND admission to this project have been verified. */
 export interface AuthenticatedSubject {
   readonly email: string | undefined
   readonly issuer: string
-  readonly kind: IdentityKind
+  readonly kind: "serviceAccount" | "user"
   readonly name: string | undefined
   /** Optional canonical App ID. Continual supplies its existing `us_…` ID. */
   readonly preferredIdentityId?: IdentityId | undefined
   readonly subject: string
 }
 
-export interface VerifiedIdentityInvocation {
-  readonly actor: AuthenticatedSubject
-  readonly authorizationSubject: AuthenticatedSubject
-}
-
 export class InvalidIdentityAssertion extends Data.TaggedError(
   "InvalidIdentityAssertion"
 )<{ readonly reason: string }> {}
 
-/** Verifies external credentials; the host supplies its concrete provider layer. */
+/** Verifies credentials and access to this specific project; a valid login alone is insufficient. */
 export class IdentityProvider extends Context.Service<
   IdentityProvider,
   {
     readonly identify: (
       headers: Headers
-    ) => Effect.Effect<
-      VerifiedIdentityInvocation | null,
-      InvalidIdentityAssertion
-    >
+    ) => Effect.Effect<AuthenticatedSubject | null, InvalidIdentityAssertion>
   }
 >()("@company/IdentityProvider") {}

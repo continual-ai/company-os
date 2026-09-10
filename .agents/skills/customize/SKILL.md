@@ -25,9 +25,9 @@ relevant row below; do not survey every definition or trace the runtime before s
 | Add a Link | `modules/sales/model/links/contact-companies.ts`; use `contact-primary-company.ts` beside it for a subset selection. Register Links in the owning module’s `model/index.ts`. |
 | Add a module | Its `model/index.ts`, then `app.model.ts`; add server/UI roots only for contributions that exist. |
 | Remove an object | Find its references, Links, operation contracts, UI contributions, seeds, and tests with `rg`. Remove those dependencies and the object from its module's `objects` list together; follow the data rules below. |
-| Hide a module | Turn it off in Settings > Platform > Modules and confirm any dependent modules. Keep the complete storage model. |
+| Hide a module | Turn it off in Platform > Modules and confirm any dependent modules. Keep the complete storage model. |
 | Add a business Action | `modules/sales/model/lead.ts`, `modules/sales/server/convert-lead.ts`, and the adjacent `operations-database.test.ts`. |
-| Aggregate records | `modules/sales/server/pipeline-summary.ts` filters authorized rows before aggregation. |
+| Aggregate records | `modules/sales/server/pipeline-summary.ts` aggregates the project records after admission. |
 | Customize UI | `modules/support/ui/ticket/config.ts` for views; `modules/sales/ui/lead/config.ts` for record extensions. Identity and shell changes belong in `app/customization`. |
 
 Once the owning code, relevant pattern, and expected behavior are clear, implement. Open kernel
@@ -40,14 +40,14 @@ implementation choices. Honor backend-only and other scope constraints.
 Apply the CRUD-first rule in `AGENTS.md`: a business verb or status change alone does not justify
 a custom Action wrapping create/update/delete. When standard CRUD and model constraints cannot
 express the behavior, implement it as a named `Effect.fn` bound by `defineModuleServer`. Require
-authority before `Records.writer` or `Links.writer`; use `EventJournal.append` for custom facts in
+project admission before `Records.writer` or `Links.writer`; use `EventJournal.append` for custom facts in
 the transaction.
 Use installed Effect v4 APIs; services use `Context.Service(..., { make })` with a static `.layer`.
 Public intake gets an explicit contract separate from private records. External effects need a
 commit/failure boundary and retries that avoid duplicating the effect.
 
-Enabled objects automatically get internal collection/record pages, forms, and navigation, subject
-to permissions. `app.ui.ts` is optional presentation customization, not an activation requirement.
+Enabled objects automatically get internal collection/record pages, forms, and navigation, after
+project admission. `app.ui.ts` is optional presentation customization, not an activation requirement.
 Public intake is a separate surface; a request for Company OS without a public site still includes
 its standard internal pages. Module UI uses `useObjectClient(Object)` from `runtime/ui/module.ts`;
 shell code uses `app/app-client.ts`. Use the existing forms, error paths, and server-driven invalidation. Prefer
@@ -71,21 +71,21 @@ committing the model, schema, migration, and tests together. Never rewrite appli
 Use `pnpm db:migrate` for an empty or previously migrated database; it also refreshes system records
 and search. A database rebuilt with `db:reset` has no migration history and must not receive pending
 migrations. Reload the app and verify the intended user's access. For a missing object, check model
-registration, enablement, database setup, and list permissions before adding UI code. Demo seeding
+registration, enablement, database setup, and project admission before adding UI code. Demo seeding
 is optional sample data. Removing source does not authorize losing retained records: establish
 their migration, archive, or deletion outcome first.
 
 Test the changed business behavior using `testFoundation(model, { servers })` and `fixture.test`,
 as the operation tests do. The fixture owns database setup/cleanup. Verify relevant denied access,
 rollback, retries, and retained-data migration. Run the repository checks, inspect the diff, and
-report delivered behavior, validation, and remaining activation steps. App activation and role
+report delivered behavior, validation, and remaining activation steps. App activation and admission
 coverage belong in `app/server/integration` using `testApplication` and the governed client;
 writer-only tests do not establish user access.
 
 ## Review or rethink
 
 A review request stays read-only unless fixes are requested. Start from the specified diff or design
-question. For a deep review, follow an actual operation across model, permissions, persistence,
+question. For a deep review, follow an actual operation across model, admission, persistence,
 transports, and UI where relevant; challenge the boundaries and propose simpler alternatives.
 Depth means better evidence, not more findings or an automatic rewrite.
 

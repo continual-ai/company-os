@@ -20,11 +20,13 @@ import { Route as ApiDescriptionRouteImport } from './routes/api/description'
 import { Route as AppSettingsRouteRouteImport } from './routes/_app/settings/route'
 import { Route as AppDeveloperRouteRouteImport } from './routes/_app/developer/route'
 import { Route as AppSettingsIndexRouteImport } from './routes/_app/settings/index'
+import { Route as AppModulesIndexRouteImport } from './routes/_app/modules/index'
 import { Route as AppDeveloperIndexRouteImport } from './routes/_app/developer/index'
 import { Route as ApiV1SplatRouteImport } from './routes/api/v1/$'
 import { Route as AppSettingsProfileRouteImport } from './routes/_app/settings/profile'
 import { Route as AppSettingsModulesRouteImport } from './routes/_app/settings/modules'
 import { Route as AppSettingsAppearanceRouteImport } from './routes/_app/settings/appearance'
+import { Route as AppModulesRecordIdRouteImport } from './routes/_app/modules/$recordId'
 import { Route as AppDeveloperSdkRouteImport } from './routes/_app/developer/sdk'
 import { Route as AppDeveloperModelRouteImport } from './routes/_app/developer/model'
 import { Route as AppDeveloperMcpRouteImport } from './routes/_app/developer/mcp'
@@ -90,6 +92,11 @@ const AppSettingsIndexRoute = AppSettingsIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppSettingsRouteRoute,
 } as any)
+const AppModulesIndexRoute = AppModulesIndexRouteImport.update({
+  id: '/modules/',
+  path: '/modules/',
+  getParentRoute: () => AppRouteRoute,
+} as any)
 const AppDeveloperIndexRoute = AppDeveloperIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -114,6 +121,11 @@ const AppSettingsAppearanceRoute = AppSettingsAppearanceRouteImport.update({
   id: '/appearance',
   path: '/appearance',
   getParentRoute: () => AppSettingsRouteRoute,
+} as any)
+const AppModulesRecordIdRoute = AppModulesRecordIdRouteImport.update({
+  id: '/modules/$recordId',
+  path: '/modules/$recordId',
+  getParentRoute: () => AppRouteRoute,
 } as any)
 const AppDeveloperSdkRoute = AppDeveloperSdkRouteImport.update({
   id: '/sdk',
@@ -187,11 +199,13 @@ export interface FileRoutesByFullPath {
   '/developer/mcp': typeof AppDeveloperMcpRoute
   '/developer/model': typeof AppDeveloperModelRoute
   '/developer/sdk': typeof AppDeveloperSdkRoute
+  '/modules/$recordId': typeof AppModulesRecordIdRoute
   '/settings/appearance': typeof AppSettingsAppearanceRoute
   '/settings/modules': typeof AppSettingsModulesRoute
   '/settings/profile': typeof AppSettingsProfileRoute
   '/api/v1/$': typeof ApiV1SplatRoute
   '/developer/': typeof AppDeveloperIndexRoute
+  '/modules/': typeof AppModulesIndexRoute
   '/settings/': typeof AppSettingsIndexRoute
   '/objects/$objectType/$recordId': typeof AppObjectsObjectTypeRecordIdRoute
   '/settings/$collection/$recordId': typeof AppSettingsCollectionRecordIdRoute
@@ -212,11 +226,13 @@ export interface FileRoutesByTo {
   '/developer/mcp': typeof AppDeveloperMcpRoute
   '/developer/model': typeof AppDeveloperModelRoute
   '/developer/sdk': typeof AppDeveloperSdkRoute
+  '/modules/$recordId': typeof AppModulesRecordIdRoute
   '/settings/appearance': typeof AppSettingsAppearanceRoute
   '/settings/modules': typeof AppSettingsModulesRoute
   '/settings/profile': typeof AppSettingsProfileRoute
   '/api/v1/$': typeof ApiV1SplatRoute
   '/developer': typeof AppDeveloperIndexRoute
+  '/modules': typeof AppModulesIndexRoute
   '/settings': typeof AppSettingsIndexRoute
   '/objects/$objectType/$recordId': typeof AppObjectsObjectTypeRecordIdRoute
   '/settings/$collection/$recordId': typeof AppSettingsCollectionRecordIdRoute
@@ -241,11 +257,13 @@ export interface FileRoutesById {
   '/_app/developer/mcp': typeof AppDeveloperMcpRoute
   '/_app/developer/model': typeof AppDeveloperModelRoute
   '/_app/developer/sdk': typeof AppDeveloperSdkRoute
+  '/_app/modules/$recordId': typeof AppModulesRecordIdRoute
   '/_app/settings/appearance': typeof AppSettingsAppearanceRoute
   '/_app/settings/modules': typeof AppSettingsModulesRoute
   '/_app/settings/profile': typeof AppSettingsProfileRoute
   '/api/v1/$': typeof ApiV1SplatRoute
   '/_app/developer/': typeof AppDeveloperIndexRoute
+  '/_app/modules/': typeof AppModulesIndexRoute
   '/_app/settings/': typeof AppSettingsIndexRoute
   '/_app/objects/$objectType/$recordId': typeof AppObjectsObjectTypeRecordIdRoute
   '/_app/settings/$collection/$recordId': typeof AppSettingsCollectionRecordIdRoute
@@ -270,11 +288,13 @@ export interface FileRouteTypes {
     | '/developer/mcp'
     | '/developer/model'
     | '/developer/sdk'
+    | '/modules/$recordId'
     | '/settings/appearance'
     | '/settings/modules'
     | '/settings/profile'
     | '/api/v1/$'
     | '/developer/'
+    | '/modules/'
     | '/settings/'
     | '/objects/$objectType/$recordId'
     | '/settings/$collection/$recordId'
@@ -295,11 +315,13 @@ export interface FileRouteTypes {
     | '/developer/mcp'
     | '/developer/model'
     | '/developer/sdk'
+    | '/modules/$recordId'
     | '/settings/appearance'
     | '/settings/modules'
     | '/settings/profile'
     | '/api/v1/$'
     | '/developer'
+    | '/modules'
     | '/settings'
     | '/objects/$objectType/$recordId'
     | '/settings/$collection/$recordId'
@@ -323,11 +345,13 @@ export interface FileRouteTypes {
     | '/_app/developer/mcp'
     | '/_app/developer/model'
     | '/_app/developer/sdk'
+    | '/_app/modules/$recordId'
     | '/_app/settings/appearance'
     | '/_app/settings/modules'
     | '/_app/settings/profile'
     | '/api/v1/$'
     | '/_app/developer/'
+    | '/_app/modules/'
     | '/_app/settings/'
     | '/_app/objects/$objectType/$recordId'
     | '/_app/settings/$collection/$recordId'
@@ -427,6 +451,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsIndexRouteImport
       parentRoute: typeof AppSettingsRouteRoute
     }
+    '/_app/modules/': {
+      id: '/_app/modules/'
+      path: '/modules'
+      fullPath: '/modules/'
+      preLoaderRoute: typeof AppModulesIndexRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
     '/_app/developer/': {
       id: '/_app/developer/'
       path: '/'
@@ -461,6 +492,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/settings/appearance'
       preLoaderRoute: typeof AppSettingsAppearanceRouteImport
       parentRoute: typeof AppSettingsRouteRoute
+    }
+    '/_app/modules/$recordId': {
+      id: '/_app/modules/$recordId'
+      path: '/modules/$recordId'
+      fullPath: '/modules/$recordId'
+      preLoaderRoute: typeof AppModulesRecordIdRouteImport
+      parentRoute: typeof AppRouteRoute
     }
     '/_app/developer/sdk': {
       id: '/_app/developer/sdk'
@@ -581,6 +619,8 @@ interface AppRouteRouteChildren {
   AppDeveloperRouteRoute: typeof AppDeveloperRouteRouteWithChildren
   AppSettingsRouteRoute: typeof AppSettingsRouteRouteWithChildren
   AppIndexRoute: typeof AppIndexRoute
+  AppModulesRecordIdRoute: typeof AppModulesRecordIdRoute
+  AppModulesIndexRoute: typeof AppModulesIndexRoute
   AppObjectsObjectTypeRecordIdRoute: typeof AppObjectsObjectTypeRecordIdRoute
   AppObjectsObjectTypeIndexRoute: typeof AppObjectsObjectTypeIndexRoute
 }
@@ -589,6 +629,8 @@ const AppRouteRouteChildren: AppRouteRouteChildren = {
   AppDeveloperRouteRoute: AppDeveloperRouteRouteWithChildren,
   AppSettingsRouteRoute: AppSettingsRouteRouteWithChildren,
   AppIndexRoute: AppIndexRoute,
+  AppModulesRecordIdRoute: AppModulesRecordIdRoute,
+  AppModulesIndexRoute: AppModulesIndexRoute,
   AppObjectsObjectTypeRecordIdRoute: AppObjectsObjectTypeRecordIdRoute,
   AppObjectsObjectTypeIndexRoute: AppObjectsObjectTypeIndexRoute,
 }

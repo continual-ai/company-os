@@ -65,8 +65,8 @@ Tell your coding agent the outcome, who uses it, and the scope. Two skills guide
 
 Business code lives in `apps/company-os/src/modules`; the kernel is in `src/runtime` and the shell
 in `src/app`. `app.model.ts` composes every module. Administrators explore and enable modules in
-Settings > Platform > Modules. Activation is stored in the database and controls UI, HTTP, and MCP,
-leaving disabled modules' data intact. Access, Assets, and Platform are always enabled. Enabling a
+Platform > Modules. Activation is stored in the database and controls UI, HTTP, and MCP,
+leaving disabled modules' data intact. Platform is always enabled. Enabling a
 module also enables its dependencies; turning one off asks you to confirm any dependent modules. Newly added optional modules
 start disabled on existing installations; an initial setup enables all installed modules.
 Change product identity and the entry experience in `src/app/customization`.
@@ -127,10 +127,28 @@ server's major version or newer).
 ## Deployment
 
 Configure the server and identity values in [`.env.example`](apps/company-os/.env.example).
-Production requires an explicit database connection, deployment secret, and trusted identity provider;
-the local administrator fallback is disabled. Configure the first administrator's verified issuer
-and subject before their first sign-in. Other verified identities receive no role unless configured
-or granted one. Only `VITE_` values are public.
+Production requires an explicit database connection, deployment secret, and trusted project admission
+provider; the local development identity is disabled. Every admitted user and service account has
+full access to the project's active business model. Membership and credentials are managed by the
+host, while local identity records preserve attribution. Separate projects when their data needs
+different audiences. Only `VITE_` values are public.
+
+The Continual adapter requires `CONTINUAL_PROJECT_ID` and an identity response containing
+`actorId`, `kind` (`user` or `serviceAccount`), `projectId`, and `projectAccess: true`, in addition to
+name and email. The verifier must check membership in that project, including revocation, and must
+never issue admission merely because a public app has a runtime service account. Older identity
+responses fail closed. Deploy the Continual runtime identity endpoint with this contract before
+deploying Company OS; public-app fallback identities carry `projectAccess: false`.
+
+The standalone JWT adapter requires a dedicated issuer/audience plus `AUTH_PROJECT_ID`. Its signed
+claims must include matching `project_id`, `project_access: true`, and `kind`. The issuer owns
+membership checks and revocation; short token lifetimes bound the delay before revoked access expires.
+UI, HTTP, MCP discovery and execution, assets, search, and events require project admission. A local
+user record or a valid token for another project never grants access.
+
+Migration `0004-project_access` archives retired access records and former scope placement in
+`company_os_archive`; it preserves identities, business records, company Links, files, and the event
+journal. The archive is outside the generated app model and is accessible to database administrators.
 
 For Continual hosting:
 

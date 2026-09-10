@@ -179,11 +179,6 @@ export type RepositoryListRequest<TObject extends ObjectType> =
 export type RepositoryFilter<TObject extends ObjectType> =
   CanonicalObjectFilter<TObject>
 
-/** Internal hierarchy constraint supplied by governed services, never callers. */
-export interface RepositoryListVisibility {
-  readonly visibleWithin: ReadonlyArray<string>
-}
-
 /** Record version that must still exist when an atomic batch delete commits. */
 export interface ObjectDeleteTarget<TObject extends ObjectType> {
   readonly etag: Etag
@@ -450,8 +445,7 @@ function makeRepository<
 
     const makeList = (pageTokens: PageTokenCodec) =>
       Effect.fn(`${object.id}.repository.list`)(function* (
-        request: RepositoryListRequest<TObject> = {},
-        visibility?: RepositoryListVisibility
+        request: RepositoryListRequest<TObject> = {}
       ): Effect.fn.Return<
         Page<ObjectRecord<TObject>>,
         PostgresRepositoryError
@@ -506,12 +500,6 @@ function makeRepository<
           cursor === undefined
             ? undefined
             : cursorCondition(sql, resolvedSort, cursor.values)
-        const visible =
-          visibility === undefined
-            ? undefined
-            : visibility.visibleWithin.length === 0
-              ? sql`false`
-              : sql`(${inValues(sql, idColumn, visibility.visibleWithin)} or ${objects.columns.ancestorIds} && array[${sql.join(", ", false)(visibility.visibleWithin.map((scopeId) => sql`${scopeId}`))}]::text[])`
         let related
         if (request.relatedTo !== undefined) {
           const { linkId, direction, sourceId } = request.relatedTo
@@ -530,7 +518,7 @@ function makeRepository<
           where ${source} = ${sourceId} and ${target} = ${idColumn})`
         }
         const matching = sql.and(
-          [filter, visible, related].filter((part) => part !== undefined)
+          [filter, related].filter((part) => part !== undefined)
         )
         const rows = yield* select(
           sql.and([matching, after].filter((part) => part !== undefined)),
@@ -546,9 +534,7 @@ function makeRepository<
             ? items.length
             : ((yield* countMatching(
                 matching,
-                filter !== undefined ||
-                  visible !== undefined ||
-                  related !== undefined
+                filter !== undefined || related !== undefined
               ))[0]?.totalSize ?? 0)
         return {
           items,
@@ -587,7 +573,6 @@ function makeRepository<
 
       yield* Effect.gen(function* () {
         const parentRowsFields = {
-          ancestorIds: objects.columns.ancestorIds,
           objectType: objects.columns.objectType,
         }
         const parentRows = yield* sql<
@@ -626,7 +611,6 @@ function makeRepository<
         }
 
         yield* sql`insert into ${objects} ${insertValues(sql, objects, {
-          ancestorIds: [parentId, ...parent.ancestorIds],
           metadata,
           createdById: createdBy,
           id,
@@ -695,7 +679,6 @@ function makeRepository<
 
       yield* Effect.gen(function* () {
         const parentRowsFields2 = {
-          ancestorIds: objects.columns.ancestorIds,
           objectType: objects.columns.objectType,
         }
         const parentRows = yield* sql<
@@ -749,7 +732,6 @@ function makeRepository<
         }
 
         yield* sql`insert into ${objects} ${insertValues(sql, objects, {
-          ancestorIds: [parentId, ...parent.ancestorIds],
           metadata,
           createdById: createdBy,
           id,

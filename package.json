@@ -61,7 +61,7 @@
           "src/runtime/server/index.ts",
           "src/runtime/ui/module.ts",
           "src/runtime/access/model/index.ts",
-          "src/runtime/assets/model/index.ts",
+          "src/runtime/platform/model/index.ts",
           "src/modules/*/{model,server,ui,seeds}/index.ts"
         ]
       }

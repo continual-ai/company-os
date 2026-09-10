@@ -1,14 +1,10 @@
 import { Effect } from "effect"
 import { expect } from "vitest"
 
-import { Role } from "#/runtime/access/model/index.ts"
-import { UserService } from "#/runtime/access/server/user-service.ts"
 import { EmailAddress } from "#/runtime/model/index.ts"
 import { makeEventWriter } from "#/runtime/server/events/event-writer.ts"
-import { CurrentInvocation } from "#/runtime/server/invocation.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
 import { modelImplementation } from "#/runtime/server/model/implementation.ts"
-import { ObjectRepositories } from "#/runtime/server/model/object-repositories.ts"
 import { createRecordSearch } from "#/runtime/server/record-search.ts"
 import { Database } from "#/runtime/server/storage/database.ts"
 import { assignments } from "#/runtime/server/storage/index.ts"
@@ -118,45 +114,5 @@ fixture.test(
         })
       )
       expect(JSON.stringify(plan)).toContain("record_search_document_idx")
-    })
-)
-
-fixture.test(
-  "filters search before top-k and hasMore, and reflects grant revocation immediately",
-  () =>
-    Effect.gen(function* () {
-      const { services } = yield* implementation
-      const user = yield* (yield* UserService).provision({
-        name: "Search reader",
-        email: EmailAddress("search-reader@example.test"),
-      })
-      const roles = (yield* ObjectRepositories).writer(Role)
-      const role = yield* roles.create({
-        name: "Read one account",
-        scopeType: "account",
-        permissions: ["account.get"],
-      })
-      const hidden = yield* services.account.create({ name: "Needle" })
-      const visible = yield* services.account.create({
-        name: "Needle visible account",
-      })
-      yield* services.person.create({ name: "Needle private person" })
-      const reader = { actorId: user.id, authorizationActorId: user.id }
-      const read = () =>
-        searchRecords({ query: "needle", limit: 1 }).pipe(
-          Effect.provideService(CurrentInvocation, reader)
-        )
-      expect(yield* read()).toEqual({ hits: [], hasMore: false })
-      const grant = yield* services.roleAssignment.create({
-        parent: visible.id,
-        role: role.id,
-        principal: user.id,
-      })
-      const result = yield* read()
-      expect(result.hits.map((hit) => hit.id)).toEqual([visible.id])
-      expect(result.hasMore).toBe(false)
-      expect(JSON.stringify(result)).not.toContain(hidden.id)
-      yield* services.roleAssignment.delete({ id: grant.id })
-      expect(yield* read()).toEqual({ hits: [], hasMore: false })
     })
 )

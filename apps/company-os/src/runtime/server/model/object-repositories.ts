@@ -28,8 +28,12 @@ import {
   type ObjectWriterUpdateInput,
   type Page,
 } from "#/runtime/model/index.ts"
-import { ROOT_ID } from "#/runtime/model/system-records.ts"
+import {
+  ROOT_ID,
+  SYSTEM_SERVICE_ACCOUNT_ID,
+} from "#/runtime/model/system-records.ts"
 import { makeEventWriter } from "#/runtime/server/events/event-writer.ts"
+import { currentActorId } from "#/runtime/server/invocation-context.ts"
 import { CurrentInvocation } from "#/runtime/server/invocation.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
 import { RecordIdentifierResolver } from "#/runtime/server/model/record-identifier-resolver.ts"
@@ -45,7 +49,6 @@ import {
   type PostgresRepositoryError,
   type RecordAliasNotFound,
   type RepositoryListRequest,
-  type RepositoryListVisibility,
 } from "#/runtime/server/storage/object-repository.ts"
 import { updateSearchIndex } from "#/runtime/server/storage/search-index.ts"
 import {
@@ -78,8 +81,7 @@ export interface ObjectRepository<O extends ObjectType> {
     ids: ReadonlyArray<RecordId<O["id"]>>
   ) => Effect.Effect<ReadonlyArray<ObjectRecord<O>>, PostgresRepositoryError>
   readonly list: (
-    request?: RepositoryListRequest<O>,
-    visibility?: RepositoryListVisibility
+    request?: RepositoryListRequest<O>
   ) => Effect.Effect<Page<ObjectRecord<O>>, PostgresRepositoryError>
   readonly insert: (
     record: ObjectInsert<O>
@@ -156,7 +158,6 @@ function trackRepository<const O extends ObjectType>(
           const targetsFields = {
             id: core.columns.id,
             objectType: core.columns.objectType,
-            ancestorIds: core.columns.ancestorIds,
             etag: core.columns.etag,
           }
           // Lock before reading so the tombstone etag reflects the version actually removed.
@@ -183,7 +184,6 @@ function trackRepository<const O extends ObjectType>(
                 {
                   id: target.id,
                   objectType: target.objectType,
-                  ancestorIds: target.ancestorIds,
                 },
               ],
             })
@@ -261,54 +261,62 @@ function assertImmutableFields<O extends ObjectType>(
   return Effect.void
 }
 
-export interface WriteTarget {
-  readonly parentId?: string
-  readonly parentTypeId?: string
-  readonly recordIds?: ReadonlyArray<string>
-  /** Decoded property values the write will persist, for reference-level checks. */
-  readonly values: Readonly<Record<string, unknown>>
-}
+class SystemRecordReadOnly extends Data.TaggedError("SystemRecordReadOnly")<{
+  readonly objectType: string
+  readonly recordId: string
+}> {}
 
-/** Runs before a validated write touches storage; the governed service authorizes here. */
-export type WriteGuard<E, R> = (
-  operation: "create" | "delete" | "update",
-  target: WriteTarget
-) => Effect.Effect<void, E, R>
+/** System records remain immutable through public writes, including batch deletion. */
+export const assertRecordWritable = Effect.fn("@company/assertRecordWritable")(
+  function* (
+    object: ObjectType,
+    record: { readonly id: string; readonly systemManaged: boolean }
+  ) {
+    if (
+      record.systemManaged &&
+      (yield* currentActorId) !== SYSTEM_SERVICE_ACCOUNT_ID
+    )
+      return yield* Effect.fail(
+        new SystemRecordReadOnly({ objectType: object.id, recordId: record.id })
+      )
+    return undefined
+  }
+)
 
 type ObjectWriteError = WriteError | RecordAliasNotFound
 
-/** Validated writes for one object; `E` and `R` come from the guard that runs before storage. */
-export interface ObjectWrites<O extends ObjectType, E = never, R = never> {
+/** Validated writes for one object; public writes enforce field and system-record immutability. */
+export interface ObjectWrites<O extends ObjectType> {
   readonly create: (
     input: ObjectCreateInput<O>
-  ) => Effect.Effect<
-    ObjectRecord<O>,
-    ObjectWriteError | E,
-    CurrentInvocation | R
-  >
+  ) => Effect.Effect<ObjectRecord<O>, ObjectWriteError, CurrentInvocation>
   readonly update: (
     input: ObjectWriterUpdateInput<O>
   ) => Effect.Effect<
     ObjectRecord<O>,
-    ObjectWriteError | ImmutablePropertyError | E,
-    CurrentInvocation | R
+    ObjectWriteError | ImmutablePropertyError | SystemRecordReadOnly,
+    CurrentInvocation
   >
   readonly delete: (
     input: ObjectDeleteInput<O>
-  ) => Effect.Effect<void, ObjectWriteError | E, CurrentInvocation | R>
+  ) => Effect.Effect<
+    void,
+    ObjectWriteError | SystemRecordReadOnly,
+    CurrentInvocation
+  >
 }
 
 /**
  * Validated, attributed writes for one object. `trusted` writers accept
  * action-owned output fields and skip immutability checks; governed writes
- * decode the public contract. Neither authorizes a capability.
+ * decode the public contract. Callers establish project admission.
  */
-export function makeObjectWrites<const O extends ObjectType, E, R>(
+export function makeObjectWrites<const O extends ObjectType>(
   object: O,
   repository: ObjectRepository<O>,
   resolveAliases: (typeof RecordIdentifierResolver.Service)["resolveAliases"],
-  options: { readonly trusted: boolean; readonly guard: WriteGuard<E, R> }
-): ObjectWrites<O, E, R> {
+  options: { readonly trusted: boolean }
+): ObjectWrites<O> {
   const decodeCreateUnknown = Schema.decodeUnknownEffect(
     toEffectObjectCreateSchema(object)
   )
@@ -342,11 +350,6 @@ export function makeObjectWrites<const O extends ObjectType, E, R>(
     const parent = RecordId(object.parent.typeId)(
       requestedParentId ?? ROOT_ID
     ) as unknown as ObjectRecord<O>["parent"]
-    yield* options.guard("create", {
-      parentId: parent,
-      parentTypeId: object.parent.typeId,
-      values: validated,
-    })
     const canonical = yield* resolveCreateIdentifiers(
       object,
       validated,
@@ -387,8 +390,8 @@ export function makeObjectWrites<const O extends ObjectType, E, R>(
     // SAFETY: see the corresponding create boundary above.
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
     const actorId = invocation.actorId as ObjectRecord<O>["updatedBy"]
-    yield* options.guard("update", { recordIds: [id], values })
     const current = yield* repository.get(id)
+    if (!options.trusted) yield* assertRecordWritable(object, current)
     const canonical = yield* resolveUpdateIdentifiers(
       object,
       values,
@@ -413,8 +416,8 @@ export function makeObjectWrites<const O extends ObjectType, E, R>(
       identifier,
       resolveAliases
     ).pipe(Effect.map(RecordId(object.id)))
-    yield* options.guard("delete", { recordIds: [id], values: {} })
     const current = yield* repository.get(id)
+    if (!options.trusted) yield* assertRecordWritable(object, current)
     yield* repository.delete({ etag: etag ?? current.etag, id })
   })
 
@@ -444,13 +447,12 @@ const make = Effect.gen(function* () {
     get,
     /**
      * Server-internal writes for custom Actions and trusted adapters. They validate,
-     * attribute, and journal like standard operations but never check a capability;
+     * attribute, and journal like standard operations;
      * callers establish authority and, for multi-record work, the transaction.
      */
     writer: <O extends ObjectType>(object: O) =>
       makeObjectWrites(object, get(object), identifiers.resolveAliases, {
         trusted: true,
-        guard: () => Effect.void,
       }),
   }
 })

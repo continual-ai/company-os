@@ -1,7 +1,7 @@
 import { describe, expect, expectTypeOf, it } from "vitest"
 
 import { appMetadata } from "#/app.config.ts"
-import { type ActorId, type IdentityId, type PrincipalId } from "#/app.model.ts"
+import { type ActorId, type IdentityId } from "#/app.model.ts"
 import { Model } from "#/app.model.ts"
 import {
   describeModel,
@@ -83,7 +83,7 @@ describe("model contract", () => {
       Object.keys(Model.modules)
     )
     expect(description.modules.map((module) => module.id)).toEqual(
-      expect.arrayContaining(["access", "assets", "notes", "sales"])
+      expect.arrayContaining(["platform", "notes", "sales"])
     )
     expect(
       description.modules.flatMap((module) => module.objectIds).sort()
@@ -92,14 +92,7 @@ describe("model contract", () => {
       Object.keys(Model.interfaces)
     )
     expect(description.interfaces.map((item) => item.id)).toEqual(
-      expect.arrayContaining([
-        "actor",
-        "authorizationScope",
-        "identity",
-        "principal",
-        "noteSubject",
-        "party",
-      ])
+      expect.arrayContaining(["actor", "identity", "noteSubject", "party"])
     )
     expect(description.interfaces).toContainEqual(
       expect.objectContaining({
@@ -190,10 +183,6 @@ describe("model contract", () => {
     expect(
       description.objects.find((object) => object.id === "company")?.interfaces
     ).toEqual({
-      authorizationScope: {
-        interfaceId: "authorizationScope",
-        propertyMapping: {},
-      },
       party: {
         interfaceId: "party",
         propertyMapping: { image: "logo", name: "name" },
@@ -217,15 +206,11 @@ describe("model contract", () => {
         }),
         expect.objectContaining({
           id: "deal",
-          parent: { kind: "interface", typeId: "authorizationScope" },
+          parent: { kind: "root", typeId: "root" },
         }),
         expect.objectContaining({
           id: "lineItem",
           parent: { kind: "object", typeId: "deal" },
-        }),
-        expect.objectContaining({
-          id: "roleAssignment",
-          parent: { kind: "interface", typeId: "authorizationScope" },
         }),
       ])
     )
@@ -244,9 +229,7 @@ describe("model contract", () => {
     expect(Model.objects.contact.properties).not.toHaveProperty(
       "primaryCompany"
     )
-    expectTypeOf(
-      Model.objects.deal.parent.typeId
-    ).toEqualTypeOf<"authorizationScope">()
+    expectTypeOf(Model.objects.deal.parent.typeId).toEqualTypeOf<"root">()
     // Note subjects are exactly the NoteSubject implementers, whichever modules supply them.
     type NoteSubjectId = RecordIdOf<
       typeof Model,
@@ -284,49 +267,9 @@ describe("model contract", () => {
     expectTypeOf<ActorId>().toEqualTypeOf<
       RecordId<"anonymousActor"> | RecordId<"serviceAccount"> | RecordId<"user">
     >()
-    expectTypeOf<PrincipalId>().toEqualTypeOf<
-      | RecordId<"group">
-      | RecordId<"principalSet">
-      | RecordId<"serviceAccount">
-      | RecordId<"user">
-    >()
     expectTypeOf<
       ObjectRecord<typeof Model.objects.company>["createdBy"]
     >().toEqualTypeOf<ActorId>()
-    // Role assignments attach to any AuthorizationScope implementer plus the root.
-    type RoleAssignmentParent = ModelObjectCreateInput<
-      typeof Model,
-      typeof Model.objects.roleAssignment
-    >["parent"]
-    expectTypeOf<RoleAssignmentParent>().toEqualTypeOf<
-      | RecordAlias
-      | RecordIdOf<
-          typeof Model,
-          (typeof Model.interfaces)["authorizationScope"]
-        >
-    >()
-    expectTypeOf<
-      RecordAlias | RecordId<"company"> | RecordId<"root">
-    >().toExtend<RoleAssignmentParent>()
-    expectTypeOf<RecordId<"contact">>().not.toExtend<RoleAssignmentParent>()
-    expectTypeOf<
-      ModelObjectCreateInput<
-        typeof Model,
-        typeof Model.objects.roleAssignment
-      >["principal"]
-    >().toEqualTypeOf<
-      | RecordAlias
-      | RecordId<"group">
-      | RecordId<"principalSet">
-      | RecordId<"serviceAccount">
-      | RecordId<"user">
-    >()
-    expectTypeOf<
-      ModelObjectCreateInput<
-        typeof Model,
-        typeof Model.objects.roleAssignment
-      >["role"]
-    >().toEqualTypeOf<RecordAlias | RecordId<"role">>()
   })
 
   it("keeps heterogeneous object references discriminated", () => {

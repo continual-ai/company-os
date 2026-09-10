@@ -45,28 +45,17 @@ export interface ClientOptions {
     | (() => Readonly<Record<string, string>>)
 }
 
-type NativeGroups = HttpApiClient.Client<
-  ApplicationHttpApi["capabilityGroup"]
-> &
-  HttpApiClient.Client<ApplicationHttpApi["eventGroup"]> &
+type NativeGroups = HttpApiClient.Client<ApplicationHttpApi["eventGroup"]> &
   HttpApiClient.Client<ApplicationHttpApi["recordGroup"]>
 
 type Request<T> = T extends (request: infer R) => unknown ? R : never
 
-export type CapabilityCheckInput = Request<
-  NativeGroups["capabilities"]["checkCapabilities"]
->["payload"]
 export type EventListQuery = Request<
   NativeGroups["events"]["listEvents"]
 >["query"]
 
 /** Application capabilities outside the model, exposed beside the object client. */
 export interface ApplicationEffectClient {
-  readonly capabilities: {
-    readonly check: (
-      input: CapabilityCheckInput
-    ) => ReturnType<NativeGroups["capabilities"]["checkCapabilities"]>
-  }
   readonly events: {
     readonly list: (
       query?: EventListQuery
@@ -97,14 +86,13 @@ type Promisified<T> = T extends (
 
 /** The Promise projection of an EffectClient. Event streaming stays on the Effect client. */
 export type Client<M extends ModelCatalog> = Promisified<ModelClient<M>> & {
-  readonly capabilities: Promisified<ApplicationEffectClient["capabilities"]>
   readonly events: {
     readonly list: Promisified<ApplicationEffectClient["events"]["list"]>
   }
   readonly records: Promisified<ApplicationEffectClient["records"]>
 }
 
-const APPLICATION_GROUPS = ["capabilities", "events", "records"] as const
+const APPLICATION_GROUPS = ["events", "records"] as const
 
 function resolveHeaders(
   headers: ClientOptions["headers"]
@@ -167,18 +155,11 @@ export function createEffectClient<M extends ModelCatalog>(
         : Effect.provideService(FetchHttpClient.Fetch, options.fetch)
     )
   )
-  // SAFETY: the contract adds exactly these three groups beside the model groups
+  // SAFETY: the contract adds exactly these two groups beside the model groups
   // that createModelClient addresses by generated endpoint id.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const groups = nativeClient as unknown as NativeGroups
   const application: ApplicationEffectClient = {
-    capabilities: {
-      check: (input) =>
-        groups.capabilities.checkCapabilities({
-          params: customMethodParams("check"),
-          payload: input,
-        }),
-    },
     events: {
       list: (query = {}) => groups.events.listEvents({ query }),
       stream: (cursor) =>

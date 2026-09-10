@@ -2,7 +2,7 @@ import { Effect, Schema } from "effect"
 
 import { createRecordSearchContract } from "#/runtime/contract/record-search.ts"
 import type { ModelCatalog } from "#/runtime/model/index.ts"
-import { Authorization } from "#/runtime/server/authorization/authorization-service.ts"
+import { requireProjectAccess } from "#/runtime/server/auth/project-access.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
 import { Database } from "#/runtime/server/storage/database.ts"
 import { recordSearch } from "#/runtime/server/storage/infrastructure.ts"
@@ -14,29 +14,23 @@ export function createRecordSearch(model: ModelCatalog) {
     result: recordSearchResult,
     searchableObjects,
   } = createRecordSearchContract(model)
-  /** One search index, with current row visibility applied before ranking and limits. */
+  /** One search index, with active object types selected before ranking and limits. */
   return Effect.fn("@company/records.search")(function* (
     input: typeof recordSearchInput.Type
   ) {
+    yield* requireProjectAccess
     const request = yield* Schema.decodeUnknownEffect(recordSearchInput)(input)
     if (request.query.trim().length === 0) return { hits: [], hasMore: false }
     const objects = (yield* ModelContext).storage.core.objects
     const database = yield* Database
     const sql = database.sql
-    const authorization = yield* Authorization
-    const scopes = yield* authorization.readableScopes()
-    const visible = Object.entries(scopes)
+    const visible = searchableObjects
       .filter(
-        ([type, ids]) =>
-          ids.length > 0 &&
-          searchableObjects.some((object) => object.id === type) &&
-          (request.objectTypes === undefined ||
-            request.objectTypes.some((id) => id === type))
+        (object) =>
+          request.objectTypes === undefined ||
+          request.objectTypes.some((id) => id === object.id)
       )
-      .map(([type, ids]) => {
-        const scopeIds = sql`array[${sql.join(", ", false)(ids.map((id) => sql`${id}`))}]::text[]`
-        return sql`(${objects.columns.objectType} = ${type} and (${objects.columns.id} = any(${scopeIds}) or ${objects.columns.ancestorIds} && ${scopeIds}))`
-      })
+      .map((object) => sql`${objects.columns.objectType} = ${object.id}`)
     if (visible.length === 0) return { hits: [], hasMore: false }
     const limit = request.limit ?? 20
     // The same PostgreSQL parser handles indexed text and user input. Escaping lexemes

@@ -6,7 +6,6 @@ import { useEffect, useRef, useState } from "react"
 import { assetContentUrl } from "#/runtime/assets/ui/content-url.ts"
 import { useAssetNames } from "#/runtime/assets/ui/use-asset-names.ts"
 import { type FileRef, type ImageRef } from "#/runtime/model/index.ts"
-import { ROOT_ID } from "#/runtime/model/system-records.ts"
 import { formErrorFromCause } from "#/runtime/ui/forms/form-errors.ts"
 import { useModelRuntime } from "#/runtime/ui/model/runtime-context.tsx"
 
@@ -17,7 +16,6 @@ export function FileField({
   multiple = false,
   maxBytes = 25_000_000,
   accept,
-  scope = ROOT_ID,
   onChange,
   onPendingChange,
 }: {
@@ -27,7 +25,6 @@ export function FileField({
   readonly multiple?: boolean
   readonly maxBytes?: number | undefined
   readonly accept?: ReadonlyArray<string> | undefined
-  readonly scope?: string | undefined
   readonly onChange: (value: ReadonlyArray<ImageRef>) => void
   readonly onPendingChange: (pending: boolean) => void
 }) {
@@ -66,7 +63,6 @@ export function FileField({
         setProgress(0)
         const reference: FileRef = await runtime.uploadAsset(
           file,
-          scope,
           abort.signal,
           setProgress
         )

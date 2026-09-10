@@ -13,11 +13,9 @@ import {
   CurrencyCode,
   Decimal,
   DomainName,
-  RecordId,
   EmailAddress,
   Timestamp,
 } from "#/runtime/model/index.ts"
-import { ROOT_ID } from "#/runtime/model/system-records.ts"
 import { Records } from "#/runtime/server/index.ts"
 import { linkSeedRecords } from "#/runtime/server/seeds.ts"
 
@@ -37,7 +35,6 @@ export const seedSalesDemo = Effect.fn("@company/seedSalesDemo")(function* () {
     (name) =>
       importSeedAsset(
         new URL(`./assets/${name}.png`, import.meta.url),
-        RecordId("authorizationScope")(ROOT_ID),
         "image/png"
       )
   )
@@ -46,7 +43,6 @@ export const seedSalesDemo = Effect.fn("@company/seedSalesDemo")(function* () {
     (name) =>
       importSeedAsset(
         new URL(`./assets/${name}.png`, import.meta.url),
-        RecordId("authorizationScope")(ROOT_ID),
         "image/png"
       )
   )
@@ -116,7 +112,6 @@ export const seedSalesDemo = Effect.fn("@company/seedSalesDemo")(function* () {
     )
   yield* linkSeedRecords(Company, "contacts", companies[0].id, contacts[2]!.id)
   const deal = yield* services.deal.create({
-    parent: ROOT_ID,
     name: "Northstar — service operations rollout",
     stage: "proposal",
     owner: owner.id,
@@ -129,7 +124,6 @@ export const seedSalesDemo = Effect.fn("@company/seedSalesDemo")(function* () {
     ["discovery", "negotiation", "won", "lost"] as const
   ).entries()) {
     const other = yield* services.deal.create({
-      parent: ROOT_ID,
       name: `${companies[index % 3]!.name} — expansion ${index + 1}`,
       stage,
       amount: {

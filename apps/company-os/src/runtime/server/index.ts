@@ -1,7 +1,6 @@
 export { Database } from "#/runtime/server/storage/database.ts"
 export { ObjectRepositories as Records } from "#/runtime/server/model/object-repositories.ts"
 export { Links } from "#/runtime/server/model/link-service.ts"
-export { Authorization } from "#/runtime/server/authorization/authorization-service.ts"
 export { EventJournal } from "#/runtime/server/events/event-journal.ts"
 export { ModelContext } from "#/runtime/server/model-context.ts"
 export { RecordIdentifierResolver } from "#/runtime/server/model/record-identifier-resolver.ts"

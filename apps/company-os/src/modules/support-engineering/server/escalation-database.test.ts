@@ -8,9 +8,8 @@ import { SalesServer } from "#/modules/sales/server/index.ts"
 import { SupportEngineeringModule } from "#/modules/support-engineering/model/index.ts"
 import { SupportEngineeringServer } from "#/modules/support-engineering/server/index.ts"
 import { SupportModule } from "#/modules/support/model/index.ts"
-import { AccessModule } from "#/runtime/access/model/index.ts"
-import { AssetsModule } from "#/runtime/assets/model/index.ts"
 import { defineModel } from "#/runtime/model/index.ts"
+import { PlatformModule } from "#/runtime/platform/model/index.ts"
 import { anonymousInvocation } from "#/runtime/server/invocation-context.ts"
 import { CurrentInvocation } from "#/runtime/server/invocation.ts"
 import { modelImplementation } from "#/runtime/server/model/implementation.ts"
@@ -21,8 +20,7 @@ import { testFoundation } from "#/runtime/testing/foundation.ts"
 const model = defineModel({
   name: "Support engineering test",
   modules: [
-    AccessModule,
-    AssetsModule,
+    PlatformModule,
     NotesModule,
     SalesModule,
     SupportModule,
@@ -83,7 +81,7 @@ fixture.test(
             Effect.provideService(CurrentInvocation, anonymousInvocation),
             Effect.flip
           )
-      ).toMatchObject({ _tag: "PermissionDenied" })
+      ).toMatchObject({ _tag: "ProjectAccessRequired" })
 
       const closed = yield* services.ticket.create({
         subject: "Already resolved",

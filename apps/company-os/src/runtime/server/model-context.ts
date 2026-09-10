@@ -1,9 +1,7 @@
 import { Context, Layer } from "effect"
 
-import { createCapabilities } from "#/runtime/contract/capabilities.ts"
 import { createEventFactSchema } from "#/runtime/contract/events.ts"
 import type { ModelCatalog, ObjectType } from "#/runtime/model/index.ts"
-import { createPermissionCatalog } from "#/runtime/server/authorization/permission-catalog.ts"
 import {
   makePostgresSchema,
   type ObjectTable,
@@ -19,8 +17,6 @@ function createModelContext(model: ModelCatalog) {
   return {
     model,
     storage,
-    capabilities: createCapabilities(model),
-    permissions: createPermissionCatalog(model),
     eventFactSchema: createEventFactSchema(model),
     /** Whether this exact definition is part of the composed model, not merely an object with the same id. */
     installed,

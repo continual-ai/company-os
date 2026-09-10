@@ -10,7 +10,6 @@ import { ChevronDownIcon, PlusIcon } from "lucide-react"
 import { useObjectCreate } from "#/runtime/ui/model/object-create-context.ts"
 import { ObjectIcon } from "#/runtime/ui/model/object-record-identity.tsx"
 import type { RecordRelationship } from "#/runtime/ui/model/record-relationships.ts"
-import { useCapabilities } from "#/runtime/ui/model/use-capabilities.ts"
 
 /** Creation defaults and authority come from the same relationship projection as its collection. */
 export function RecordRelatedCreateMenu({
@@ -34,10 +33,7 @@ export function RecordRelatedCreateMenu({
         label: item.label,
       }))
     )
-  const capabilities = useCapabilities(entries.flatMap((entry) => entry.checks))
-  const available = entries.filter((entry) =>
-    entry.checks.every(capabilities.can)
-  )
+  const available = entries
   if (available.length === 0) return null
   return (
     <DropdownMenu>

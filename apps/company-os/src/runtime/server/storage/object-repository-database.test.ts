@@ -251,7 +251,6 @@ describe("Effect SQL object repository", () => {
           metadata: {},
           name: "First User",
           parent: ROOT_ID,
-          status: "active" as const,
           systemManaged: false,
           updatedBy: SYSTEM_SERVICE_ACCOUNT_ID,
         }
@@ -307,7 +306,7 @@ describe("Effect SQL object repository", () => {
           from ${orders}`
         type StoredOrder = (typeof storedOrders)[number]
         expectTypeOf<StoredOrder["parentId"]>().toEqualTypeOf<
-          RecordId<"authorizationScope">
+          RecordId<"account">
         >()
         const orderLine = yield* orderLineService.create({
           name: "Implementation",
@@ -472,7 +471,7 @@ describe("Effect SQL object repository", () => {
           expect.objectContaining({ parentId: order.id, id: orderLine.id }),
         ])
         expect(objectRows.find(({ id }) => id === orderLine.id)).toMatchObject({
-          ancestorIds: [order.id, first.id, ROOT_ID],
+          parentId: order.id,
         })
         for (const object of Object.values(fixture.model.objects)) {
           expect(

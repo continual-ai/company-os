@@ -6,8 +6,6 @@ import { ConfigProvider, Effect, Option } from "effect"
  */
 export const developmentDefaults = ConfigProvider.fromUnknown({
   APP_SECRET: "company-os-application-secret-local-development-only",
-  AUTH_BOOTSTRAP_ISSUER: "local-development",
-  AUTH_BOOTSTRAP_SUBJECT: "default",
   DATABASE_URL: "postgresql://localhost:5432/company_os",
 })
 

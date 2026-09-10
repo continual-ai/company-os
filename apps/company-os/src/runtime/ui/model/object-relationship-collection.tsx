@@ -17,7 +17,6 @@ import { objectHref } from "#/runtime/ui/model/object-routing.ts"
 import { RecordRelatedCreateMenu } from "#/runtime/ui/model/record-related-create-menu.tsx"
 import type { RecordRelationship } from "#/runtime/ui/model/record-relationships.ts"
 import { useModelRuntime } from "#/runtime/ui/model/runtime-context.tsx"
-import { useCapabilities } from "#/runtime/ui/model/use-capabilities.ts"
 
 /** A relationship supplies context and actions; collection rendering stays object-owned. */
 export function ObjectRelationshipCollection({
@@ -26,10 +25,6 @@ export function ObjectRelationshipCollection({
   readonly relationship: RecordRelationship
 }) {
   const total = useQuery(relationship.list({ pageSize: 3 }))
-  const capabilities = useCapabilities([
-    ...relationship.checks,
-    ...relationship.creates.flatMap((entry) => entry.checks),
-  ])
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string>()
   const mutate = async (operation: () => Promise<void>) => {
@@ -50,12 +45,8 @@ export function ObjectRelationshipCollection({
   const hasRoom =
     total.data !== undefined &&
     (relationship.cardinality === "many" || total.data.totalSize === 0)
-  const canConnect = !pending && relationship.checks.some(capabilities.can)
-  const creates = hasRoom
-    ? relationship.creates.filter((entry) =>
-        entry.checks.every(capabilities.can)
-      )
-    : []
+  const canConnect = !pending
+  const creates = hasRoom ? relationship.creates : []
   const renderAdd = (records: ReadonlyArray<ClientRecord>) =>
     hasRoom && canConnect && relationship.connect ? (
       <ObjectReferenceSelect
