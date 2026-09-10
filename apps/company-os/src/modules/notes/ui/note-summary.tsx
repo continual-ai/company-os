@@ -1,3 +1,4 @@
+import { IconButton } from "@company/ui/icon-button"
 import { Markdown } from "@company/ui/markdown"
 import { Link } from "@tanstack/react-router"
 import { ArrowUpRightIcon } from "lucide-react"
@@ -15,17 +16,17 @@ export function NoteSummary({
 }: RecordSummaryProps<typeof Note>) {
   return (
     <article className="min-w-0 flex-1 space-y-3">
-      <header className="flex items-start justify-between gap-2">
+      <header className="flex items-center justify-between gap-2">
         <RecordAttribution record={record} author={author} />
         <div className="flex shrink-0 items-center gap-1">
           {actions}
-          <Link
-            to={href}
-            aria-label="Open note"
-            className="rounded-sm p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+          <IconButton
+            label="Open note"
+            nativeButton={false}
+            render={<Link to={href} />}
           >
-            <ArrowUpRightIcon className="size-3.5" />
-          </Link>
+            <ArrowUpRightIcon />
+          </IconButton>
         </div>
       </header>
       <Markdown className={variant === "preview" ? "line-clamp-4" : undefined}>

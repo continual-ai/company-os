@@ -1,13 +1,6 @@
 import { Button } from "@company/ui/button"
 import { cn } from "@company/ui/lib/utils"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@company/ui/select"
-import { useLayoutEffect, useRef, useState } from "react"
+import { useLayoutEffect, useRef } from "react"
 
 import {
   modelObjectProperty,
@@ -31,11 +24,16 @@ export function ObjectRecordStatusProgress({
   readonly error?: string | undefined
   readonly className?: string | undefined
 }) {
-  const containerRef = useRef<HTMLElement>(null)
-  const [compact, setCompact] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const trackRef = useRef<HTMLDivElement>(null)
+  const statusValue =
+    object.display.status === undefined
+      ? undefined
+      : record[object.display.status]
   useLayoutEffect(() => {
     const container = containerRef.current
-    if (!container) return undefined
+    const track = trackRef.current
+    if (!container || !track) return undefined
     const labels = Array.from(
       container.querySelectorAll<HTMLElement>("[data-status-label]")
     )
@@ -61,14 +59,25 @@ export function ObjectRecordStatusProgress({
         widths.length < 2
           ? Math.max(24, widths[0] ?? 0)
           : 24 + minimumGap * (widths.length - 1)
-      setCompact(container.clientWidth < minimumWidth)
+      track.style.minWidth = `${minimumWidth}px`
+      const current = track.querySelector<HTMLElement>('[aria-current="step"]')
+      if (current) {
+        const marker = current.getBoundingClientRect()
+        const viewport = container.getBoundingClientRect()
+        // Scroll only this strip; do not move the record page or its other pane.
+        container.scrollLeft +=
+          marker.left +
+          marker.width / 2 -
+          viewport.left -
+          container.clientWidth / 2
+      }
     }
     const observer = new ResizeObserver(measure)
     observer.observe(container)
     labels.forEach((label) => observer.observe(label))
     measure()
     return () => observer.disconnect()
-  }, [object])
+  }, [object, record.id, statusValue])
 
   const field = object.display.status
   if (field === undefined) return null
@@ -87,155 +96,115 @@ export function ObjectRecordStatusProgress({
 
   return (
     <section
-      ref={containerRef}
       aria-label={`${fieldLabel} progress`}
       aria-busy={pendingValue !== undefined}
       data-record-field={field}
       className={cn("min-w-0 text-xs", className)}
     >
-      {currentIndex < 0 && !compact && (
+      {currentIndex < 0 && (
         <p className="mb-2 text-muted-foreground">
           {fieldLabel}: {value || "Not set"}
         </p>
       )}
-      {compact && (
-        <div className="flex min-w-0 items-center justify-between gap-3">
-          <span className="shrink-0 font-medium text-muted-foreground">
-            {fieldLabel}
-          </span>
-          {editable ? (
-            <Select
-              value={currentIndex < 0 ? null : value}
-              disabled={disabled || pendingValue !== undefined}
-              onValueChange={(next) => {
-                if (
-                  next !== null &&
-                  next !== value &&
-                  !disabled &&
-                  pendingValue === undefined
-                )
-                  onChange?.(field, next)
-              }}
-            >
-              <SelectTrigger
-                aria-label={fieldLabel}
-                className="min-w-0 max-w-full"
-              >
-                <SelectValue placeholder={value || "Not set"}>
-                  {choices[currentIndex]?.label}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent align="end">
-                {choices.map((choice) => (
-                  <SelectItem key={choice.value} value={choice.value}>
-                    {choice.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : (
-            <span
-              className="min-w-0 truncate font-medium"
-              title={choices[currentIndex]?.label ?? value}
-            >
-              {choices[currentIndex]?.label ?? (value || "Not set")}
-            </span>
-          )}
-        </div>
-      )}
       <div
-        aria-hidden={compact || undefined}
-        className={cn(
-          "relative w-full",
-          compact && "invisible h-0 overflow-hidden"
-        )}
+        ref={containerRef}
+        className="no-scrollbar overflow-x-auto overscroll-x-contain p-1"
       >
-        {choices.length > 1 && (
-          <div
-            aria-hidden="true"
-            className="absolute top-4 inset-x-3 h-0.5 -translate-y-1/2 bg-border"
-          >
+        <div ref={trackRef} className="relative w-full">
+          {choices.length > 1 && (
             <div
-              className="h-full bg-primary/50"
-              style={{
-                width: `${(Math.max(0, currentIndex) / (choices.length - 1)) * 100}%`,
-              }}
-            />
-          </div>
-        )}
-        <ol className="flex justify-between">
-          {choices.map((step, index) => {
-            const current = index === currentIndex
-            const stepClassName = cn(
-              "relative z-10 flex h-14 w-6 flex-col items-center justify-start rounded-md border-0 p-0 pt-1 text-xs whitespace-nowrap",
-              current
-                ? "font-semibold text-primary"
-                : index < currentIndex
-                  ? "font-medium text-foreground"
-                  : "font-medium text-muted-foreground"
-            )
-            const content = (
-              <>
+              aria-hidden="true"
+              className="pointer-events-none absolute top-4 inset-x-3 h-px -translate-y-1/2"
+            >
+              {choices.slice(1).map((step, index) => (
                 <span
-                  aria-hidden="true"
+                  key={step.value}
                   className={cn(
-                    "flex size-6 shrink-0 items-center justify-center rounded-full border text-[10px] font-semibold tabular-nums",
-                    current
-                      ? "border-primary bg-primary text-primary-foreground ring-4 ring-primary/15"
-                      : currentIndex > index
-                        ? "border-primary/40 bg-background text-primary"
-                        : "border-border bg-background text-muted-foreground"
+                    "absolute h-px rounded-full",
+                    index < currentIndex ? "bg-primary/20" : "bg-border"
                   )}
-                >
-                  {index + 1}
-                </span>
-                <span
-                  data-status-label=""
-                  title={step.label}
-                  className={cn(
-                    "absolute top-9 w-max max-w-32 truncate",
-                    index === 0
-                      ? "left-0"
-                      : index === choices.length - 1
-                        ? "right-0"
-                        : "left-1/2 -translate-x-1/2"
-                  )}
-                >
-                  {step.label}
-                </span>
-              </>
-            )
-            return (
-              <li
-                key={step.value}
-                aria-current={current ? "step" : undefined}
-                className="relative w-6 shrink-0"
-              >
-                {editable ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
+                  style={{
+                    left: `calc(${(index / (choices.length - 1)) * 100}% + 18px)`,
+                    width: `max(0px, calc(${100 / (choices.length - 1)}% - 36px))`,
+                  }}
+                />
+              ))}
+            </div>
+          )}
+          <ol className="flex justify-between">
+            {choices.map((step, index) => {
+              const current = index === currentIndex
+              const stepClassName = cn(
+                "relative z-10 flex h-14 w-6 flex-col items-center justify-start rounded-md border-0 p-0 pt-1 text-xs whitespace-nowrap",
+                current
+                  ? "font-semibold text-primary"
+                  : index < currentIndex
+                    ? "font-medium text-foreground"
+                    : "font-medium text-muted-foreground"
+              )
+              const content = (
+                <>
+                  <span
+                    aria-hidden="true"
                     className={cn(
-                      stepClassName,
-                      "hover:bg-transparent hover:text-primary disabled:opacity-100 active:not-aria-[haspopup]:translate-y-0"
+                      "flex size-6 shrink-0 items-center justify-center rounded-full border text-[10px] font-semibold tabular-nums",
+                      current
+                        ? "border-primary bg-primary text-primary-foreground ring-2 ring-primary/10"
+                        : currentIndex > index
+                          ? "border-primary/25 bg-background text-foreground"
+                          : "border-border/60 bg-background text-muted-foreground"
                     )}
-                    aria-label={`Set ${fieldLabel.toLowerCase()} to ${step.label}`}
-                    aria-pressed={current}
-                    disabled={disabled || pendingValue !== undefined}
-                    onClick={() => {
-                      if (!current && !disabled && pendingValue === undefined)
-                        onChange?.(field, step.value)
-                    }}
                   >
-                    {content}
-                  </Button>
-                ) : (
-                  <span className={stepClassName}>{content}</span>
-                )}
-              </li>
-            )
-          })}
-        </ol>
+                    {index + 1}
+                  </span>
+                  <span
+                    data-status-label=""
+                    title={step.label}
+                    className={cn(
+                      "absolute top-9 w-max max-w-32 truncate",
+                      index === 0
+                        ? "left-0"
+                        : index === choices.length - 1
+                          ? "right-0"
+                          : "left-1/2 -translate-x-1/2"
+                    )}
+                  >
+                    {step.label}
+                  </span>
+                </>
+              )
+              return (
+                <li
+                  key={step.value}
+                  aria-current={current ? "step" : undefined}
+                  className="relative w-6 shrink-0"
+                >
+                  {editable ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={cn(
+                        stepClassName,
+                        "hover:bg-transparent hover:text-primary disabled:opacity-100 active:not-aria-[haspopup]:translate-y-0"
+                      )}
+                      aria-label={`Set ${fieldLabel.toLowerCase()} to ${step.label}`}
+                      aria-pressed={current}
+                      disabled={disabled || pendingValue !== undefined}
+                      onClick={() => {
+                        if (!current && !disabled && pendingValue === undefined)
+                          onChange?.(field, step.value)
+                      }}
+                    >
+                      {content}
+                    </Button>
+                  ) : (
+                    <span className={stepClassName}>{content}</span>
+                  )}
+                </li>
+              )
+            })}
+          </ol>
+        </div>
       </div>
       <output className="sr-only">
         {pendingValue !== undefined

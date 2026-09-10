@@ -1,5 +1,6 @@
 import { Button } from "@company/ui/button"
 import { ConfirmActionButton } from "@company/ui/confirm-action-button"
+import { IconButton } from "@company/ui/icon-button"
 import { PageToolbar } from "@company/ui/page"
 import {
   Select,
@@ -12,6 +13,7 @@ import { defaultStringifySearch } from "@tanstack/react-router"
 import { functionalUpdate, type OnChangeFn } from "@tanstack/react-table"
 import {
   PencilIcon,
+  Trash2Icon,
   PlusIcon,
   RotateCcwIcon,
   UnlinkIcon,
@@ -32,7 +34,7 @@ import {
 } from "#/runtime/ui/model/collection-dates.ts"
 import { CollectionLayoutControl } from "#/runtime/ui/model/collection-layout-control.tsx"
 import { CollectionPagination } from "#/runtime/ui/model/collection-pagination.tsx"
-import { CollectionSearch } from "#/runtime/ui/model/collection-search.tsx"
+import { CollectionQueryToolbar } from "#/runtime/ui/model/collection-query-toolbar.tsx"
 import {
   type ObjectCollectionSearch,
   type ObjectCollectionView,
@@ -45,7 +47,6 @@ import {
 import {
   clientFor,
   parentName,
-  modelObjectProperty,
   tableRecord,
   type ClientRecord,
   type ModelObject,
@@ -86,7 +87,7 @@ const CollectionVisual = lazy(() =>
 interface ObjectCollectionSource {
   readonly list: ObjectCollectionList
   readonly create?: ObjectCreateOptions | undefined
-  readonly renderAdd?:
+  readonly renderLink?:
     | ((records: ReadonlyArray<ClientRecord>) => ReactNode)
     | undefined
   readonly unlink?: ((record: ClientRecord) => Promise<void>) | undefined
@@ -202,45 +203,65 @@ export function ObjectCollection({
             initialValues: { ...source.create?.initialValues, ...values },
           })
       : undefined
+  const unlink = (record: ClientRecord) => {
+    setMutationError(undefined)
+    void source
+      .unlink?.(record)
+      .catch((cause: unknown) =>
+        setMutationError(
+          cause instanceof Error
+            ? cause.message
+            : "Could not unlink the record."
+        )
+      )
+  }
   const renderActions = (record: ClientRecord, selected = false) => (
     <>
       {collection.canUpdate(record.id) ? (
-        <Button
-          type="button"
-          variant="ghost"
-          size={selected ? "sm" : "icon-xs"}
-          aria-label={`Edit ${object.name.toLowerCase()}`}
-          onClick={() => setEditing(record)}
-        >
-          <PencilIcon />
-          {selected && "Edit"}
-        </Button>
+        selected ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            aria-label={`Edit ${object.name.toLowerCase()}`}
+            onClick={() => setEditing(record)}
+          >
+            <PencilIcon />
+            Edit
+          </Button>
+        ) : (
+          <IconButton
+            label={`Edit ${object.name.toLowerCase()}`}
+            onClick={() => setEditing(record)}
+          >
+            <PencilIcon />
+          </IconButton>
+        )
       ) : null}
-      {source.unlink && (
-        <Button
-          variant="ghost"
-          size={selected ? "sm" : "icon-xs"}
-          aria-label={`Unlink ${object.name.toLowerCase()}`}
-          onClick={() => {
-            setMutationError(undefined)
-            void source.unlink!(record).catch((cause: unknown) =>
-              setMutationError(
-                cause instanceof Error
-                  ? cause.message
-                  : "Could not unlink the record."
-              )
-            )
-          }}
-        >
-          <UnlinkIcon />
-          {selected && "Unlink"}
-        </Button>
-      )}
+      {source.unlink &&
+        (selected ? (
+          <Button variant="ghost" size="sm" onClick={() => unlink(record)}>
+            <UnlinkIcon />
+            Unlink
+          </Button>
+        ) : (
+          <IconButton
+            label={`Unlink ${object.name.toLowerCase()}`}
+            onClick={() => unlink(record)}
+          >
+            <UnlinkIcon />
+          </IconButton>
+        ))}
       {!selected &&
       source.deleteRecords !== undefined &&
       collection.canDelete(record.id) ? (
         <ConfirmActionButton
           actionLabel="Delete"
+          trigger={
+            <IconButton label={`Delete ${object.name.toLowerCase()}`}>
+              <Trash2Icon />
+            </IconButton>
+          }
           title={`Delete ${object.name.toLowerCase()}?`}
           description="This permanently deletes the record and its links."
           onConfirm={() => source.deleteRecords!([record.id])}
@@ -285,16 +306,6 @@ export function ObjectCollection({
     ) : null
   const layoutControls = (
     <>
-      {activeSearch.state !== undefined && (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => selectView(resolved.view.id)}
-        >
-          <RotateCcwIcon />
-          Reset view
-        </Button>
-      )}
       <CollectionLayoutControl
         object={object}
         layout={layout}
@@ -311,6 +322,12 @@ export function ObjectCollection({
         }
         onChange={(next) => updateState({ ...viewState, layout: next })}
       />
+      {activeSearch.state !== undefined && (
+        <Button variant="ghost" onClick={() => selectView(resolved.view.id)}>
+          <RotateCcwIcon />
+          Reset view
+        </Button>
+      )}
       {Toolbar && (
         <Toolbar
           object={object}
@@ -384,7 +401,7 @@ export function ObjectCollection({
               : undefined
           }
           canDeleteRecord={collection.canDelete}
-          toolbarActions={source.renderAdd?.(collection.records)}
+          toolbarActions={source.renderLink?.(collection.records)}
           pagination={{
             hasNextPage: collection.hasNextPage,
             error: collection.error,
@@ -420,64 +437,35 @@ export function ObjectCollection({
                   New {object.name.toLowerCase()}
                 </Button>
               )}
-              {source.renderAdd?.(collection.records)}
+              {source.renderLink?.(collection.records)}
             </div>
           </PageToolbar>
-          <div className="border-b px-page-gutter py-2">
-            <CollectionSearch
-              label={object.pluralName}
-              value={
-                viewState.filters.find(
-                  (filter) =>
-                    filter.id === object.display.title &&
-                    filter.value.operator === "contains"
-                )?.value.values[0] ?? ""
-              }
-              onChange={(value) =>
-                updateState({
-                  ...viewState,
-                  filters: [
-                    ...viewState.filters.filter(
-                      (filter) =>
-                        filter.id !== object.display.title ||
-                        filter.value.operator !== "contains"
-                    ),
-                    ...(value
-                      ? [
-                          {
-                            id: object.display.title,
-                            value: {
-                              operator: "contains" as const,
-                              values: [value],
-                            },
-                          },
-                        ]
-                      : []),
-                  ],
-                })
-              }
-            />
-          </div>
-          {viewState.filters.length > 0 && (
-            <div className="flex flex-wrap gap-2 border-b px-page-gutter py-2">
-              {viewState.filters.map((filter, index) => (
-                <Button
-                  key={`${filter.id}:${index}`}
-                  variant="secondary"
-                  size="xs"
-                  onClick={() =>
-                    updateState({
-                      ...viewState,
-                      filters: viewState.filters.filter((_, i) => i !== index),
-                    })
-                  }
-                >
-                  {modelObjectProperty(object, filter.id)?.label ?? filter.id}:{" "}
-                  {filter.value.values.join(", ") || filter.value.operator} ×
-                </Button>
-              ))}
-            </div>
-          )}
+          <CollectionQueryToolbar
+            object={object}
+            parentLabel={parentName(runtime, object)}
+            records={collection.records.map((record) =>
+              tableRecord(object, record)
+            )}
+            columnFilters={[...viewState.filters]}
+            sorting={[...collection.sorting]}
+            onColumnFiltersChange={(update) =>
+              updateState({
+                ...viewState,
+                filters: functionalUpdate(update, [...viewState.filters]).map(
+                  (filter) => ({
+                    id: filter.id,
+                    value: readFilterValue(filter.value),
+                  })
+                ),
+              })
+            }
+            onSortingChange={(update) =>
+              updateState({
+                ...viewState,
+                sorting: functionalUpdate(update, [...viewState.sorting]),
+              })
+            }
+          />
           {layout.type === "feed" ? (
             <ObjectRecordFeed
               items={collection.records.map((record) => ({ object, record }))}

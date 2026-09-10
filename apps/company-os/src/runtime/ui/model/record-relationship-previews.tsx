@@ -85,7 +85,7 @@ export function RecordRelationshipPreviews({
                   <ObjectRecordSummary
                     object={target}
                     record={record}
-                    author={references.labels.get(
+                    author={references.records.get(
                       typeof record.createdBy === "string"
                         ? record.createdBy
                         : ""

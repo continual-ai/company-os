@@ -3,6 +3,7 @@ import { Input } from "@company/ui/input"
 import { FileIcon, UploadIcon, XIcon } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 
+import { AssetPreviewButton } from "#/runtime/assets/ui/asset-viewer.tsx"
 import { assetContentUrl } from "#/runtime/assets/ui/content-url.ts"
 import { useAssetNames } from "#/runtime/assets/ui/use-asset-names.ts"
 import { type FileRef, type ImageRef } from "#/runtime/model/index.ts"
@@ -106,11 +107,9 @@ export function FileField({
               key={`${reference.assetId}-${index}`}
               className="flex items-start gap-2 rounded-md border p-2"
             >
-              <a
-                href={assetContentUrl(reference.assetId)}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center gap-2 text-sm"
+              <AssetPreviewButton
+                reference={reference}
+                name={names.get(reference.assetId) ?? "file"}
               >
                 {image ? (
                   <img
@@ -123,8 +122,8 @@ export function FileField({
                 ) : (
                   <FileIcon className="size-4" />
                 )}
-                {!image && (names.get(reference.assetId) ?? "Download file")}
-              </a>
+                {!image && (names.get(reference.assetId) ?? "View file")}
+              </AssetPreviewButton>
               {image && (
                 <Input
                   aria-label="Alternative text"

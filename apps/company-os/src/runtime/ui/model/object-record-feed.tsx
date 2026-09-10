@@ -41,7 +41,7 @@ export function ObjectRecordFeed({
               <ObjectRecordSummary
                 object={object}
                 record={record}
-                author={references.labels.get(
+                author={references.records.get(
                   typeof record.createdBy === "string" ? record.createdBy : ""
                 )}
                 href={recordHref?.(record.id)}

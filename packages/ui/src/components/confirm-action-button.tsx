@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, type ReactElement } from "react"
 
 import {
   AlertDialog,
@@ -19,11 +19,13 @@ export function ConfirmActionButton({
   destructive = true,
   onConfirm,
   title,
+  trigger,
 }: {
   readonly actionLabel: string
   readonly description: string
   readonly destructive?: boolean
   readonly onConfirm: () => Promise<void>
+  readonly trigger?: ReactElement
   readonly title: string
 }) {
   const [error, setError] = useState<string>()
@@ -31,8 +33,10 @@ export function ConfirmActionButton({
   const [pending, setPending] = useState(false)
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
-      <AlertDialogTrigger render={<Button size="xs" variant="ghost" />}>
-        {actionLabel}
+      <AlertDialogTrigger
+        render={trigger ?? <Button size="xs" variant="ghost" />}
+      >
+        {trigger ? undefined : actionLabel}
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>

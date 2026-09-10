@@ -40,13 +40,16 @@ export function FileCell({
     objectTablePropertySchema(schema.items).kind === "image"
   return (
     <ObjectTableCellSurface active={active} expandActive={expandActive}>
-      {references.length === 0 ? (
-        <span className="text-muted-foreground/60">Empty</span>
-      ) : (
+      {references.length === 0 ? null : (
         <Popover>
           <PopoverTrigger
             render={
-              <Button size="sm" variant="ghost" className="h-6 px-1 text-xs" />
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 px-1 text-xs"
+                onClick={(event) => event.stopPropagation()}
+              />
             }
           >
             <PaperclipIcon />

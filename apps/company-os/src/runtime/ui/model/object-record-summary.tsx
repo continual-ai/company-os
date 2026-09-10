@@ -1,6 +1,7 @@
 import type { ReactNode } from "react"
 
 import { useObjectUi } from "#/runtime/ui/model/module-ui.tsx"
+import type { ObjectRecordPresentation } from "#/runtime/ui/model/object-client.ts"
 import {
   tableRecord,
   type ClientRecord,
@@ -23,7 +24,7 @@ export function ObjectRecordSummary({
   readonly record: ClientRecord
   readonly href?: string | undefined
   readonly variant: "feed" | "preview"
-  readonly author?: string | undefined
+  readonly author?: ObjectRecordPresentation | undefined
   readonly actions?: ReactNode
 }) {
   const runtime = useModelRuntime()

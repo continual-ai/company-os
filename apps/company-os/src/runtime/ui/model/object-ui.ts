@@ -7,18 +7,19 @@ import type {
   ObjectCollectionView,
   ObjectCollectionViewState,
 } from "#/runtime/ui/model/collection-view.ts"
+import type { ObjectRecordPresentation } from "#/runtime/ui/model/object-client.ts"
 
 type ActionId<O extends ObjectType> = keyof O["actions"] & string
 export interface RecordUiProps<O extends ObjectType> {
   readonly record: ObjectRecord<O>
-  readonly author?: string | undefined
+  readonly author?: ObjectRecordPresentation | undefined
   readonly can: (action: ActionId<O>) => boolean
 }
 
 /** One object's reusable presentation in collection feeds and related-record previews. */
 export interface RecordSummaryProps<O extends ObjectType> {
   readonly record: ObjectRecord<O>
-  readonly author?: string | undefined
+  readonly author?: ObjectRecordPresentation | undefined
   readonly href: string
   readonly variant: "feed" | "preview"
   readonly actions?: ReactNode

@@ -7,6 +7,7 @@ import {
   type ModelCatalog,
 } from "#/runtime/model/index.ts"
 import { collectionLayoutError } from "#/runtime/ui/model/collection-layout.ts"
+import type { ObjectRecordPresentation } from "#/runtime/ui/model/object-client.ts"
 import type {
   ClientRecord,
   ModelObject,
@@ -26,7 +27,7 @@ type ModuleUi<M extends ModuleDefinition> = {
 }
 
 interface DynamicRecordProps {
-  readonly author?: string | undefined
+  readonly author?: ObjectRecordPresentation | undefined
   readonly record: ClientRecord
   readonly can: (action: string) => boolean
 }

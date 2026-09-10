@@ -87,7 +87,8 @@ function ObjectTableSortMenu({ table }: { table: ObjectTableInstance }) {
           {objectTablePropertyColumns(table).map((column) => {
             const meta = objectTableColumnMeta(column)
             const direction = column.getIsSorted()
-            if (meta?.property === undefined) return null
+            if (meta?.property === undefined || !column.getCanSort())
+              return null
 
             return (
               <DropdownMenuItem
@@ -339,21 +340,39 @@ export function ObjectTableToolbar({
         </div>
       </PageToolbar>
       {hasQueryControls && (
-        <PageToolbar>
-          <div className="no-scrollbar flex min-w-0 flex-1 basis-full items-center gap-1.5 overflow-x-auto sm:basis-auto">
-            {canSort ? <ObjectTableSortMenu table={table} /> : null}
-            {canFilter ? <ObjectTableFilters table={table} /> : null}
-          </div>
-          <ObjectTableSearch
-            table={table}
-            property={object.display.title}
-            label={object.pluralName}
-          />
-          <div className="shrink-0">
-            <ObjectTableColumnMenu table={table} />
-          </div>
-        </PageToolbar>
+        <ObjectTableQueryToolbar object={object} table={table}>
+          <ObjectTableColumnMenu table={table} />
+        </ObjectTableQueryToolbar>
       )}
     </>
+  )
+}
+
+export function ObjectTableQueryToolbar({
+  object,
+  table,
+  children,
+}: {
+  object: ObjectType
+  table: ObjectTableInstance
+  children?: ReactNode
+}) {
+  const columns = table.getAllLeafColumns()
+  const canSort = columns.some((column) => column.getCanSort())
+  const canFilter = columns.some((column) => column.getCanFilter())
+  if (!canSort && !canFilter) return null
+  return (
+    <PageToolbar>
+      <div className="no-scrollbar flex min-w-0 flex-1 basis-full items-center gap-1.5 overflow-x-auto sm:basis-auto">
+        {canSort ? <ObjectTableSortMenu table={table} /> : null}
+        {canFilter ? <ObjectTableFilters table={table} /> : null}
+      </div>
+      <ObjectTableSearch
+        table={table}
+        property={object.display.title}
+        label={object.pluralName}
+      />
+      {children ? <div className="shrink-0">{children}</div> : null}
+    </PageToolbar>
   )
 }

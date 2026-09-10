@@ -66,7 +66,7 @@ export function ObjectReferenceMultiSelect({
         includeHiddenInput={false}
         invalid={invalid}
         name={name}
-        placeholder="Add a record"
+        placeholder="Link a record"
         selectedValues={value}
         typeId={typeId}
         value=""

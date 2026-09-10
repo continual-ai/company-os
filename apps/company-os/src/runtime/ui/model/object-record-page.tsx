@@ -224,7 +224,7 @@ export function ObjectRecordPage({
         <ObjectRecordLayout sidebar={relatedPanel}>
           <PageContent className="min-h-0 flex-1 overflow-y-auto">
             {hasStatusControl && (
-              <div className="min-w-0 rounded-lg border bg-muted/40 p-page-gutter">
+              <div className="min-w-0 rounded-lg bg-muted/40 p-page-gutter">
                 <ObjectRecordStatusProgress
                   object={object}
                   record={tableRecord(object, record)}
@@ -286,7 +286,7 @@ export function ObjectRecordPage({
               ))}
             {Overview && (
               <Overview
-                author={state.referenceLabels.get(
+                author={state.references.get(
                   typeof record.createdBy === "string" ? record.createdBy : ""
                 )}
                 record={record}

@@ -166,7 +166,6 @@ function ObjectRecordEditor({
           <Button
             type="button"
             variant="ghost"
-            size="sm"
             onClick={() => requestClose(false)}
           >
             Cancel

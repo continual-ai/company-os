@@ -47,14 +47,14 @@ export function ObjectRelationshipCollection({
     (relationship.cardinality === "many" || total.data.totalSize === 0)
   const canConnect = !pending
   const creates = hasRoom ? relationship.creates : []
-  const renderAdd = (records: ReadonlyArray<ClientRecord>) =>
+  const renderLink = (records: ReadonlyArray<ClientRecord>) =>
     hasRoom && canConnect && relationship.connect ? (
       <ObjectReferenceSelect
         allowCreate={false}
-        id={`${relationship.key}-add`}
+        id={`${relationship.key}-link`}
         name="relationship"
         appearance="action"
-        placeholder={`Add ${relationship.target?.name.toLowerCase() ?? "record"}`}
+        placeholder={`Link ${relationship.target?.name.toLowerCase() ?? "record"}`}
         typeId={relationship.targetType}
         value=""
         required
@@ -87,14 +87,14 @@ export function ObjectRelationshipCollection({
           object={relationship.target}
           relationship={relationship}
           create={creates[0]?.options}
-          renderAdd={renderAdd}
+          renderLink={renderLink}
           unlink={unlink}
         />
       ) : (
         <RelatedRecordFeed
           relationship={relationship}
           creates={creates}
-          renderAdd={renderAdd}
+          renderLink={renderLink}
           unlink={unlink}
         />
       )}
@@ -106,13 +106,13 @@ function RelatedObjectCollection({
   object,
   relationship,
   create,
-  renderAdd,
+  renderLink,
   unlink,
 }: {
   readonly object: ModelObject
   readonly relationship: RecordRelationship
   readonly create: RecordRelationship["creates"][number]["options"] | undefined
-  readonly renderAdd: (records: ReadonlyArray<ClientRecord>) => ReactNode
+  readonly renderLink: (records: ReadonlyArray<ClientRecord>) => ReactNode
   readonly unlink: ((record: ClientRecord) => Promise<void>) | undefined
 }) {
   const runtime = useModelRuntime()
@@ -125,7 +125,7 @@ function RelatedObjectCollection({
       actions={ui?.actions}
       toolbarComponent={ui?.collection?.toolbarComponent}
       recordHref={(id) => objectHref(runtime, object, id)}
-      source={{ list: relationship.list, create, renderAdd, unlink }}
+      source={{ list: relationship.list, create, renderLink, unlink }}
     />
   )
 }
@@ -134,12 +134,12 @@ function RelatedObjectCollection({
 function RelatedRecordFeed({
   relationship,
   creates,
-  renderAdd,
+  renderLink,
   unlink,
 }: {
   readonly relationship: RecordRelationship
   readonly creates: RecordRelationship["creates"]
-  readonly renderAdd: (records: ReadonlyArray<ClientRecord>) => ReactNode
+  readonly renderLink: (records: ReadonlyArray<ClientRecord>) => ReactNode
   readonly unlink: ((record: ClientRecord) => Promise<void>) | undefined
 }) {
   const runtime = useModelRuntime()
@@ -161,7 +161,7 @@ function RelatedRecordFeed({
           relationships={[{ ...relationship, creates }]}
           totals={new Map([[relationship.key, page.data?.pages[0]?.totalSize]])}
         />
-        {renderAdd(records)}
+        {renderLink(records)}
       </div>
       {page.isError && (
         <div

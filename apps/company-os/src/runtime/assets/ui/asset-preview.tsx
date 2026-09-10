@@ -1,3 +1,4 @@
+import { AssetPreviewButton } from "#/runtime/assets/ui/asset-viewer.tsx"
 import { assetContentUrl } from "#/runtime/assets/ui/content-url.ts"
 import { useAssetNames } from "#/runtime/assets/ui/use-asset-names.ts"
 import { type ImageRef } from "#/runtime/model/index.ts"
@@ -15,12 +16,10 @@ export function AssetPreviews({
   return (
     <div className="flex flex-wrap gap-3">
       {references.map((reference, index) => (
-        <a
+        <AssetPreviewButton
           key={`${reference.assetId}-${index}`}
-          href={assetContentUrl(reference.assetId)}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center gap-2 text-interactive hover:underline"
+          reference={reference}
+          name={names.get(reference.assetId) ?? "file"}
         >
           {image && (
             <img
@@ -31,8 +30,8 @@ export function AssetPreviews({
               className="size-16 rounded-sm object-cover"
             />
           )}
-          {names.get(reference.assetId) ?? "Download file"}
-        </a>
+          {names.get(reference.assetId) ?? "View file"}
+        </AssetPreviewButton>
       ))}
     </div>
   )

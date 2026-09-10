@@ -220,7 +220,7 @@ export function ObjectLinkEditField({
         includeHiddenInput={false}
         invalid={invalid}
         name={name}
-        placeholder="Add a record"
+        placeholder="Link a record"
         selectedValues={visible.map(({ id: target }) => target)}
         typeId={traversal.target.from.typeId}
         value=""

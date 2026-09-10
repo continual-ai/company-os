@@ -211,7 +211,7 @@ function ObjectTableFilterPicker({
   const [selectedColumnId, setSelectedColumnId] = useState<string | null>(null)
   const availableColumns = objectTablePropertyColumns(table, {
     includeReadonly: false,
-  }).filter((column) => !column.getIsFiltered())
+  }).filter((column) => column.getCanFilter() && !column.getIsFiltered())
   const selectedColumn =
     selectedColumnId === null ? undefined : table.getColumn(selectedColumnId)
 

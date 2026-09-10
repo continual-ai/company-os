@@ -47,7 +47,6 @@ import {
 import type { ReactNode } from "react"
 
 import {
-  schema,
   type ObjectType,
   type PropertyDefinition,
 } from "#/runtime/model/index.ts"
@@ -62,7 +61,11 @@ import {
   objectTableCellShouldExpand,
 } from "#/runtime/ui/model/object-table/object-table-cell-types.ts"
 import { ObjectTableCell } from "#/runtime/ui/model/object-table/object-table-cell.tsx"
-import type { ObjectTableColumn } from "#/runtime/ui/model/object-table/object-table-columns.ts"
+import {
+  objectTableProperties,
+  objectTablePropertyColumnDefs,
+  type ObjectTableColumn,
+} from "#/runtime/ui/model/object-table/object-table-columns.ts"
 import {
   objectTableFeatures,
   objectTableValueText,
@@ -134,7 +137,6 @@ const columnHelper = createColumnHelper<
 >()
 
 const selectionControlWidth = 56
-const titleColumnWidth = 276
 const addColumnWidth = 136
 
 function ObjectTableViewportState({
@@ -251,17 +253,6 @@ function SelectionCell({
   )
 }
 
-function propertyColumnSize(
-  propertyId: string,
-  propertyKind: string,
-  titlePropertyId: string
-): number {
-  if (propertyId === titlePropertyId) return titleColumnWidth
-  if (propertyKind === "enum") return 168
-  if (propertyKind === "image") return 88
-  return 200
-}
-
 export function ObjectTable({
   canDeleteRecord,
   canFilterProperty,
@@ -314,82 +305,16 @@ export function ObjectTable({
     },
   ])
   const [isHorizontallyScrolled, setIsHorizontallyScrolled] = useState(false)
-  const properties = useMemo(() => {
-    const entries = [
-      ...(object.display.title === "id"
-        ? [
-            [
-              "id",
-              {
-                ...schema.string({ label: "Record ID" }),
-                immutable: true,
-                nullable: false,
-                outputOnly: true,
-                requiredOnCreate: false,
-              } satisfies PropertyDefinition,
-            ] as const,
-          ]
-        : []),
-      ...(object.parent.kind === "root"
-        ? []
-        : [
-            [
-              "parent",
-              {
-                ...schema.reference(
-                  { id: object.parent.typeId },
-                  { label: parentLabel ?? "Parent" }
-                ),
-                immutable: true,
-                nullable: false,
-                outputOnly: false,
-                requiredOnCreate: true,
-              } satisfies PropertyDefinition,
-            ] as const,
-          ]),
-      ...Object.entries(object.properties),
-    ]
-    const titleEntry = entries.find(
-      ([propertyId]) => propertyId === object.display.title
-    )
-    return titleEntry === undefined
-      ? entries
-      : [
-          titleEntry,
-          ...entries.filter(
-            ([propertyId]) => propertyId !== object.display.title
-          ),
-        ]
-  }, [object.display.title, object.parent, object.properties, parentLabel])
+  const properties = useMemo(
+    () => objectTableProperties(object, parentLabel),
+    [object, parentLabel]
+  )
   const columns = useMemo(() => {
-    const propertyColumns = properties.map(([propertyId, property]) => {
-      const isIdentity = propertyId === object.display.title
-      const label = isIdentity ? object.name : (property.label ?? propertyId)
-
-      return columnHelper.accessor((record) => record[propertyId], {
-        id: propertyId,
-        enableColumnFilter: canFilterProperty?.(property) ?? true,
-        enableHiding: propertyId !== object.display.title,
-        enableResizing: true,
-        enableSorting: canSortProperty?.(property) ?? true,
-        filterFn: "objectProperty",
-        sortFn: "objectProperty",
-        sortUndefined: "last",
-        size: propertyColumnSize(
-          propertyId,
-          property.kind,
-          object.display.title
-        ),
-        minSize: propertyId === object.display.title ? 176 : 120,
-        maxSize: 560,
-        header: label,
-        meta: {
-          essential: isIdentity,
-          label,
-          property,
-          propertyId,
-        },
-      })
+    const propertyColumns = objectTablePropertyColumnDefs({
+      object,
+      properties,
+      canFilterProperty,
+      canSortProperty,
     })
     const selectionColumns = enableRowSelection
       ? [
