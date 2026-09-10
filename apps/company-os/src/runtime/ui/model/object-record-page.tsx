@@ -55,6 +55,7 @@ export function ObjectRecordPage({
   recordId,
   actions,
   overviewComponent: Overview,
+  overviewRelationships,
   title: recordTitle,
   additionalTabs: customTabs = [],
   properties,
@@ -67,6 +68,7 @@ export function ObjectRecordPage({
   readonly actions?: ResolvedObjectUi["actions"]
   readonly title?: RecordUi["title"]
   readonly overviewComponent?: RecordUi["overviewComponent"]
+  readonly overviewRelationships?: RecordUi["overviewRelationships"]
   readonly additionalTabs?: RecordUi["additionalTabs"]
   readonly properties?: RecordUi["properties"]
   readonly relationships?: RecordUi["relationships"]
@@ -88,10 +90,16 @@ export function ObjectRecordPage({
   )
   const [localTab, setLocalTab] = useState("overview")
   const [editing, setEditing] = useState<ReadonlyArray<string> | "all">()
-  const related = useMemo(
+  const allRelated = useMemo(
     () =>
       state.record ? recordRelationships(runtime, object, state.record) : [],
     [runtime, object, state.record]
+  )
+  const inlineRelationships = allRelated.filter(
+    (item) => overviewRelationships?.[item.key]
+  )
+  const related = allRelated.filter(
+    (item) => !overviewRelationships?.[item.key]
   )
   const preferred =
     relationships === undefined
@@ -293,9 +301,19 @@ export function ObjectRecordPage({
                 can={state.can}
               />
             )}
+            {inlineRelationships.map((relationship) => {
+              const Component = overviewRelationships![relationship.key]!
+              return (
+                <Component
+                  key={`${record.id}:${relationship.key}`}
+                  relationship={relationship}
+                />
+              )
+            })}
             {detailFields.length === 0 &&
               narrative.length === 0 &&
-              !Overview && (
+              !Overview &&
+              inlineRelationships.length === 0 && (
                 <p className="text-sm text-muted-foreground">
                   No additional details.
                 </p>
@@ -417,7 +435,7 @@ export function ObjectRecordPage({
                 placement="record"
               />
               <RecordRelatedCreateMenu
-                relationships={related}
+                relationships={allRelated}
                 totals={totals}
               />
               {edit && (

@@ -18,12 +18,23 @@ import type {
   RecordSummaryProps,
   RecordPageUiProps,
 } from "#/runtime/ui/model/object-ui.ts"
+import type { RecordRelationship } from "#/runtime/ui/model/record-relationships.ts"
 import { useModelRuntime } from "#/runtime/ui/model/runtime-context.tsx"
 
 type ModuleUi<M extends ModuleDefinition> = {
   readonly [Id in M["objects"][number]["id"]]?: ObjectUi<
     Extract<M["objects"][number], { readonly id: Id }>
   >
+}
+
+export interface RelationshipOverviewProps {
+  readonly relationship: RecordRelationship
+}
+
+interface RelationshipOverview {
+  readonly link: { readonly id: string }
+  readonly side: "forward" | "reverse"
+  readonly component: ComponentType<RelationshipOverviewProps>
 }
 
 interface DynamicRecordProps {
@@ -48,6 +59,10 @@ export interface ResolvedObjectUi {
     >
   >
   readonly record?: {
+    readonly overviewRelationships?: Readonly<
+      Record<string, ComponentType<RelationshipOverviewProps>>
+    >
+
     readonly title?: (props: DynamicRecordProps) => string
     readonly summaryComponent?: ComponentType<
       Omit<RecordSummaryProps<ModelObject>, "record"> & {
@@ -69,7 +84,8 @@ export interface ResolvedObjectUi {
 /** Object keys, action names, and component records are checked against this module's model. */
 export function defineModuleUi<M extends ModuleDefinition>(
   module: M,
-  objects: ModuleUi<NoInfer<M>>
+  objects: ModuleUi<NoInfer<M>>,
+  relationshipOverviews: ReadonlyArray<RelationshipOverview> = []
 ) {
   // SAFETY: module keys and component props are checked at the authoring boundary.
   // Renderers dispatch only decoded records belonging to that same object.
@@ -106,7 +122,13 @@ export function defineModuleUi<M extends ModuleDefinition>(
         throw new Error(`Unknown overview property '${id}.${field}'.`)
     }
   }
-  return { module, objects: configurations }
+  for (const contribution of relationshipOverviews) {
+    if (!module.links.some((link) => link.id === contribution.link.id))
+      throw new Error(
+        `Module '${module.id}' cannot extend link '${contribution.link.id}'.`
+      )
+  }
+  return { module, objects: configurations, relationshipOverviews }
 }
 
 export function composeModelUi(
@@ -153,6 +175,35 @@ export function composeModelUi(
         tabs.add(tab.id)
       }
       objects[id] = config
+    }
+  }
+  // Relationship owners can place an endpoint in every accepting record's overview.
+  for (const contribution of modules) {
+    if (!Object.values(Model.modules).includes(contribution.module)) continue
+    for (const overview of contribution.relationshipOverviews) {
+      const link = contribution.module.links.find(
+        (candidate) => candidate.id === overview.link.id
+      )!
+      const side = link[overview.side]
+      for (const object of Object.values(Model.objects)) {
+        if (!modelTypeAccepts(Model, object.id, side.from.typeId)) continue
+        const config = objects[object.id] ?? {}
+        const existing = config.record?.overviewRelationships ?? {}
+        if (Object.hasOwn(existing, side.key))
+          throw new Error(
+            `Duplicate relationship overview '${object.id}.${side.key}'.`
+          )
+        objects[object.id] = {
+          ...config,
+          record: {
+            ...config.record,
+            overviewRelationships: {
+              ...existing,
+              [side.key]: overview.component,
+            },
+          },
+        }
+      }
     }
   }
   return objects

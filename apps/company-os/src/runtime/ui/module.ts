@@ -19,3 +19,5 @@ export {
   decodeObjectForm,
   objectFormDefaultValues,
 } from "#/runtime/ui/model/object-form.ts"
+
+export type { RelationshipOverviewProps } from "#/runtime/ui/model/module-ui.tsx"

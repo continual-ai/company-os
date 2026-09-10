@@ -40,6 +40,7 @@ export function ModelRecordPage(props: RecordPageUiProps) {
       properties={ui?.record?.properties}
       relationships={ui?.record?.relationships}
       overviewComponent={ui?.record?.overviewComponent}
+      overviewRelationships={ui?.record?.overviewRelationships}
       title={ui?.record?.title}
       additionalTabs={ui?.record?.additionalTabs}
       actions={ui?.actions}

@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest"
 import {
   FixtureModule,
   fixtureModel,
+  kernelModel,
   Prospect,
 } from "#/runtime/testing/fixture-model.ts"
 import { testPresentation } from "#/runtime/testing/presentation.ts"
@@ -34,7 +35,30 @@ const extension = defineModuleUi(FixtureModule, {
   },
 })
 
+const component = () => <div>Memo feed</div>
+
 describe("module UI composition", () => {
+  it("places relationship contributions on accepting records without replacing their UI", () => {
+    const overview = defineModuleUi(
+      FixtureModule,
+      {
+        account: { record: { properties: ["domain"] } },
+      },
+      [{ link: { id: "memoTopics" }, side: "reverse", component }]
+    )
+    const ui = composeModelUi(fixtureModel, overview)
+    expect(ui.account?.record?.overviewRelationships?.memos).toBe(component)
+    expect(ui.person?.record?.overviewRelationships?.memos).toBe(component)
+    expect(ui.account?.record?.properties).toEqual(["domain"])
+    expect(ui.memo?.record?.overviewRelationships).toBeUndefined()
+    expect(composeModelUi(kernelModel, overview)).toEqual({})
+    expect(() =>
+      defineModuleUi(FixtureModule, {}, [
+        { link: { id: "foreignLink" }, side: "reverse", component },
+      ])
+    ).toThrow("cannot extend link")
+  })
+
   it("shares typed actions across row and record surfaces and hides unavailable actions", () => {
     const render = (allowed: boolean, placement: "row" | "record") =>
       renderToStaticMarkup(
