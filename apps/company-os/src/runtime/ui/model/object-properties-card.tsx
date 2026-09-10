@@ -51,7 +51,7 @@ export function ObjectPropertiesCard({
 
   return (
     <section className="min-w-0">
-      <dl>
+      <dl className="-mx-2">
         {properties.map(([propertyId, property]) => {
           const definition = modelObjectProperty(object, propertyId)
           const schema = definition

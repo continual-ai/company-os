@@ -1,5 +1,6 @@
 import { Button } from "@company/ui/button"
 import { ConfirmActionButton } from "@company/ui/confirm-action-button"
+import { PageToolbar } from "@company/ui/page"
 import {
   Select,
   SelectContent,
@@ -325,7 +326,7 @@ export function ObjectCollection({
       {collection.error === undefined && mutationError === undefined ? null : (
         <div
           role="alert"
-          className="flex items-center justify-between border-b border-destructive/30 bg-destructive/5 px-5 py-2 text-xs text-destructive"
+          className="flex items-center justify-between border-b border-destructive/30 bg-destructive/5 px-page-gutter py-2 text-xs text-destructive"
         >
           <span>{collection.error ?? mutationError}</span>
           <Button
@@ -407,7 +408,7 @@ export function ObjectCollection({
         />
       ) : (
         <>
-          <header className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-2">
+          <PageToolbar className="justify-between">
             <div className="flex flex-wrap items-center gap-2">
               {viewSelector}
               {layoutControls}
@@ -421,8 +422,8 @@ export function ObjectCollection({
               )}
               {source.renderAdd?.(collection.records)}
             </div>
-          </header>
-          <div className="border-b px-4 py-2">
+          </PageToolbar>
+          <div className="border-b px-page-gutter py-2">
             <CollectionSearch
               label={object.pluralName}
               value={
@@ -458,7 +459,7 @@ export function ObjectCollection({
             />
           </div>
           {viewState.filters.length > 0 && (
-            <div className="flex flex-wrap gap-2 border-b px-4 py-2">
+            <div className="flex flex-wrap gap-2 border-b px-page-gutter py-2">
               {viewState.filters.map((filter, index) => (
                 <Button
                   key={`${filter.id}:${index}`}

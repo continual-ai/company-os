@@ -39,7 +39,7 @@ export function DeveloperBrowser({
       sidebar={sidebar}
       sidebarLabel={sidebarLabel}
       header={
-        <header className="shrink-0 border-b px-5 py-5 lg:px-7">
+        <header className="shrink-0 border-b p-page-gutter">
           <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
             <div className="max-w-3xl">
               <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground [&>svg]:size-4">

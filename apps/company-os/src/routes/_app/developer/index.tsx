@@ -6,7 +6,7 @@ export const Route = createFileRoute("/_app/developer/")({
 
 function DeveloperCenterOverview() {
   return (
-    <div className="mx-auto w-full max-w-[90rem] px-5 py-10 lg:px-8 lg:py-14">
+    <div className="mx-auto w-full max-w-[90rem] p-page-gutter">
       <section className="max-w-3xl">
         <h1 className="text-3xl font-semibold tracking-tight">
           Understand and extend the app.

@@ -21,6 +21,7 @@ import {
   DropdownMenuTrigger,
 } from "@company/ui/dropdown-menu"
 import { Input } from "@company/ui/input"
+import { PageToolbar } from "@company/ui/page"
 import { Popover, PopoverContent, PopoverTrigger } from "@company/ui/popover"
 import {
   ArrowDownAZIcon,
@@ -228,9 +229,9 @@ export function ObjectTableToolbar({
 
   return (
     <>
-      <div className="flex min-h-10 shrink-0 flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b px-3 py-2 sm:px-5 sm:py-0">
+      <PageToolbar className="justify-between">
         {tableTitle !== null && (
-          <div className="flex h-7 min-w-0 items-center text-xs font-medium">
+          <div className="flex min-w-0 items-center text-xs font-medium">
             {tableTitle ?? `All ${object.pluralName}`}
           </div>
         )}
@@ -336,9 +337,9 @@ export function ObjectTableToolbar({
           )}
           {toolbarActions}
         </div>
-      </div>
+      </PageToolbar>
       {hasQueryControls && (
-        <div className="flex min-h-10 shrink-0 flex-wrap items-center gap-1.5 border-b px-3 py-1 sm:px-5">
+        <PageToolbar>
           <div className="no-scrollbar flex min-w-0 flex-1 basis-full items-center gap-1.5 overflow-x-auto sm:basis-auto">
             {canSort ? <ObjectTableSortMenu table={table} /> : null}
             {canFilter ? <ObjectTableFilters table={table} /> : null}
@@ -351,7 +352,7 @@ export function ObjectTableToolbar({
           <div className="shrink-0">
             <ObjectTableColumnMenu table={table} />
           </div>
-        </div>
+        </PageToolbar>
       )}
     </>
   )

@@ -3,6 +3,29 @@
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
 
+/* Keep the same cursor across the entire page while either resize control is dragged. */
+.resize-handle[aria-orientation="vertical"],
+html:has(
+    .resize-handle[aria-orientation="vertical"]:is(
+        [data-separator="active"],
+        [data-resizing="true"]
+      )
+  )
+  * {
+  cursor: ew-resize !important;
+}
+
+.resize-handle[aria-orientation="horizontal"],
+html:has(
+    .resize-handle[aria-orientation="horizontal"]:is(
+        [data-separator="active"],
+        [data-resizing="true"]
+      )
+  )
+  * {
+  cursor: ns-resize !important;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 [data-slot="code-block"] code span {
@@ -21,6 +44,8 @@
 @source "./components/**/*.tsx";
 
 @theme inline {
+  /* Page and panel edges share one gutter; nested content must not add it again. */
+  --spacing-page-gutter: 1rem;
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);

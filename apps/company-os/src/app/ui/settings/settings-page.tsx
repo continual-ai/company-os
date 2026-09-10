@@ -1,4 +1,5 @@
 import { cn } from "@company/ui/lib/utils"
+import { PageContent } from "@company/ui/page"
 
 export function SettingsPage({
   title,
@@ -10,15 +11,15 @@ export function SettingsPage({
   children: React.ReactNode
 }) {
   return (
-    <div className="mx-auto w-full max-w-3xl px-5 py-8 md:px-8 lg:py-10">
+    <PageContent className="mx-auto w-full max-w-3xl">
       <header className="max-w-2xl">
         <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">
           {description}
         </p>
       </header>
-      <div className="mt-10 space-y-10">{children}</div>
-    </div>
+      <div className="space-y-6">{children}</div>
+    </PageContent>
   )
 }
 

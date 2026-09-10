@@ -14,6 +14,7 @@ import {
   CommandList,
 } from "@company/ui/command"
 import { useAvailableShortcuts } from "@company/ui/keyboard-shortcuts"
+import { PageContent, PageHeader } from "@company/ui/page"
 import {
   Sidebar,
   SidebarContent,
@@ -74,10 +75,10 @@ export const navigationSections: ReadonlyArray<ComponentSection> = [
     id: "tabs",
     title: "Tabs",
     description:
-      "Switch between related views within one context. Use the line variant for page-level navigation.",
+      "Switch between related views within one context. Use the header variant inside PageHeader.navigation for aligned page tabs.",
     component: TabsExamples,
     usage:
-      'import { Tabs, TabsList, TabsTrigger, TabsContent } from "@company/ui/tabs"\n\n<Tabs defaultValue="overview">\n  <TabsList variant="line">\n    <TabsTrigger value="overview">Overview</TabsTrigger>\n    <TabsTrigger value="activity">Activity</TabsTrigger>\n  </TabsList>\n  <TabsContent value="overview">Record overview</TabsContent>\n  <TabsContent value="activity">Recent activity</TabsContent>\n</Tabs>',
+      'import { PageHeader, PageContent } from "@company/ui/page"\nimport { Tabs, TabsList, TabsTrigger, TabsContent } from "@company/ui/tabs"\n\n<Tabs defaultValue="overview" className="gap-0">\n  <PageHeader navigation={\n    <TabsList variant="header">\n      <TabsTrigger value="overview">Overview</TabsTrigger>\n      <TabsTrigger value="activity">Activity</TabsTrigger>\n    </TabsList>\n  }>\n    <h1>Record title</h1>\n  </PageHeader>\n  <TabsContent value="overview"><PageContent>Record overview</PageContent></TabsContent>\n  <TabsContent value="activity"><PageContent>Recent activity</PageContent></TabsContent>\n</Tabs>',
   },
 ]
 
@@ -136,6 +137,29 @@ function BreadcrumbExamples() {
 function TabsExamples() {
   return (
     <>
+      <Example title="Page header" source="@company/ui/page">
+        <Tabs
+          defaultValue="overview"
+          className="gap-0 overflow-hidden rounded-lg border"
+        >
+          <PageHeader
+            navigation={
+              <TabsList variant="header">
+                <TabsTrigger value="overview">Overview</TabsTrigger>
+                <TabsTrigger value="activity">Activity</TabsTrigger>
+              </TabsList>
+            }
+          >
+            <h3 className="font-semibold">Northstar Studio</h3>
+          </PageHeader>
+          <TabsContent value="overview">
+            <PageContent>Record properties and related records.</PageContent>
+          </TabsContent>
+          <TabsContent value="activity">
+            <PageContent>A history of the work completed.</PageContent>
+          </TabsContent>
+        </Tabs>
+      </Example>
       {(["default", "line"] as const).map((variant) => (
         <Example
           key={variant}

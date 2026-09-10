@@ -49,7 +49,7 @@ export const Route = createFileRoute("/_app/developer/sdk")({
 
 function SdkPage() {
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-8 px-5 py-8 lg:px-8 lg:py-12">
+    <div className="mx-auto w-full max-w-6xl space-y-8 p-page-gutter">
       <header className="max-w-3xl">
         <h1 className="text-3xl font-semibold tracking-tight">
           Build with the model.

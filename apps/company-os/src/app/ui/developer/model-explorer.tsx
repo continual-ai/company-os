@@ -378,7 +378,7 @@ function ObjectDetail({
   const implementations = Object.values(object.interfaces)
 
   return (
-    <article className="mx-auto w-full max-w-6xl px-5 py-7 lg:px-8 lg:py-9">
+    <article className="mx-auto w-full max-w-6xl p-page-gutter">
       <header className="border-b pb-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
@@ -541,7 +541,7 @@ function InterfaceDetail({
   )
 
   return (
-    <article className="mx-auto w-full max-w-6xl px-5 py-7 lg:px-8 lg:py-9">
+    <article className="mx-auto w-full max-w-6xl p-page-gutter">
       <header className="border-b pb-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>

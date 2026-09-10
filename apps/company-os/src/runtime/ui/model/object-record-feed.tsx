@@ -26,7 +26,7 @@ export function ObjectRecordFeed({
 }) {
   const references = useRecordReferences(items)
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto p-4">
+    <div className="min-h-0 flex-1 overflow-y-auto p-page-gutter">
       {items.length === 0 ? (
         <p className="py-8 text-center text-sm text-muted-foreground">
           {loading ? "Loading…" : `No ${label.toLowerCase()} yet.`}

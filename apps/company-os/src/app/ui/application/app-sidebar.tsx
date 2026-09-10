@@ -54,7 +54,7 @@ export function AppSidebar() {
               </span>
             </SidebarMenuButton>
             <SidebarTrigger
-              className="mr-1 text-sidebar-foreground/60"
+              className="text-sidebar-foreground/60"
               aria-label={
                 isMobile
                   ? "Close sidebar"

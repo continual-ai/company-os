@@ -8,6 +8,7 @@ import * as React from "react"
 
 import { Button } from "#/components/button.tsx"
 import { Input } from "#/components/input.tsx"
+import { useLocalPreference } from "#/components/local-preferences.tsx"
 import { Separator } from "#/components/separator.tsx"
 import {
   Sheet,
@@ -23,7 +24,15 @@ import {
   TooltipTrigger,
 } from "#/components/tooltip.tsx"
 import { useIsMobile } from "#/hooks/use-mobile.ts"
+import {
+  resizeHandleClassName,
+  resizeHandleTitle,
+} from "#/lib/resize-handle.ts"
 import { cn } from "#/lib/utils.ts"
+
+function isSidebarWidth(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value > 0
+}
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
@@ -58,7 +67,7 @@ type SidebarContextProps = {
   minWidth: number
   maxWidth: number
   resizable: boolean
-  setWidth: (width: number) => void
+  setWidth: (width: number, commit?: boolean) => void
   isResizing: boolean
   setIsResizing: (isResizing: boolean) => void
   hoverOpen: boolean
@@ -91,6 +100,7 @@ function SidebarProvider({
   width: widthProp,
   onWidthChange: setWidthProp,
   resizable = false,
+  widthPreference,
   revealOnHover = false,
   className,
   style,
@@ -105,6 +115,7 @@ function SidebarProvider({
   onOpenChange?: (open: boolean) => void
   width?: number
   onWidthChange?: (width: number) => void
+  widthPreference?: string | undefined
   resizable?: boolean
   revealOnHover?: boolean
 }) {
@@ -124,18 +135,24 @@ function SidebarProvider({
     (nextWidth: number) => Math.min(maxWidth, Math.max(minWidth, nextWidth)),
     [maxWidth, minWidth]
   )
-  const [_width, _setWidth] = React.useState(() => clampWidth(defaultWidth))
-  const width = clampWidth(widthProp ?? _width)
+  const [savedWidth, saveWidth] = useLocalPreference(
+    widthPreference,
+    defaultWidth,
+    isSidebarWidth
+  )
+  const [_width, _setWidth] = React.useState<number>()
+  const width = clampWidth(widthProp ?? _width ?? savedWidth)
   const setWidth = React.useCallback(
-    (nextWidth: number) => {
+    (nextWidth: number, commit = false) => {
       const constrainedWidth = clampWidth(nextWidth)
+      const saved = commit && saveWidth(constrainedWidth)
       if (setWidthProp) {
         setWidthProp(constrainedWidth)
       } else {
-        _setWidth(constrainedWidth)
+        _setWidth(saved ? undefined : constrainedWidth)
       }
     },
-    [clampWidth, setWidthProp]
+    [clampWidth, setWidthProp, saveWidth]
   )
 
   // This is the internal state of the sidebar.
@@ -480,6 +497,7 @@ function SidebarRail({
   const {
     defaultWidth,
     isMobile,
+    isResizing,
     maxWidth,
     minWidth,
     resizable,
@@ -495,6 +513,7 @@ function SidebarRail({
     side: "left" | "right"
     startWidth: number
     startX: number
+    width: number
   } | null>(null)
   const previousBodyStyle = React.useRef<{
     cursor: string
@@ -502,24 +521,29 @@ function SidebarRail({
   } | null>(null)
   const removeWindowListeners = React.useRef<(() => void) | null>(null)
 
-  const stopResizing = React.useCallback(() => {
-    removeWindowListeners.current?.()
-    removeWindowListeners.current = null
-    dragState.current = null
-    setIsResizing(false)
-    if (previousBodyStyle.current) {
-      document.body.style.cursor = previousBodyStyle.current.cursor
-      document.body.style.userSelect = previousBodyStyle.current.userSelect
-      previousBodyStyle.current = null
-    }
-  }, [setIsResizing])
+  const stopResizing = React.useCallback(
+    (commit = false) => {
+      if (commit && dragState.current) setWidth(dragState.current.width, true)
+      removeWindowListeners.current?.()
+      removeWindowListeners.current = null
+      dragState.current = null
+      setIsResizing(false)
+      if (previousBodyStyle.current) {
+        document.body.style.cursor = previousBodyStyle.current.cursor
+        document.body.style.userSelect = previousBodyStyle.current.userSelect
+        previousBodyStyle.current = null
+      }
+    },
+    [setIsResizing, setWidth]
+  )
 
-  React.useEffect(() => stopResizing, [stopResizing])
+  React.useEffect(() => () => stopResizing(), [stopResizing])
 
   return (
     <button
       data-sidebar="rail"
       data-slot="sidebar-rail"
+      data-resizing={isResizing || undefined}
       aria-label={
         resizable && state === "expanded" ? "Resize Sidebar" : "Toggle Sidebar"
       }
@@ -540,7 +564,7 @@ function SidebarRail({
       onDoubleClick={(event) => {
         onDoubleClick?.(event)
         if (!event.defaultPrevented && resizable && state === "expanded") {
-          setWidth(defaultWidth)
+          setWidth(defaultWidth, true)
         }
       }}
       onKeyDown={(event) => {
@@ -551,18 +575,22 @@ function SidebarRail({
 
         const side = getSidebarSide(event.currentTarget)
         const direction = side === "left" ? 1 : -1
+        const container = event.currentTarget.closest<HTMLElement>(
+          '[data-slot="sidebar-wrapper"]'
+        )
+        const step = (container?.clientWidth ?? window.innerWidth) * 0.05
         if (event.key === "ArrowLeft") {
           event.preventDefault()
-          setWidth(width - 8 * direction)
+          setWidth(width - step * direction, true)
         } else if (event.key === "ArrowRight") {
           event.preventDefault()
-          setWidth(width + 8 * direction)
+          setWidth(width + step * direction, true)
         } else if (event.key === "Home") {
           event.preventDefault()
-          setWidth(minWidth)
+          setWidth(minWidth, true)
         } else if (event.key === "End") {
           event.preventDefault()
-          setWidth(maxWidth)
+          setWidth(maxWidth, true)
         }
       }}
       onPointerDown={(event) => {
@@ -583,24 +611,25 @@ function SidebarRail({
           side: getSidebarSide(event.currentTarget),
           startWidth: width,
           startX: event.clientX,
+          width,
         }
         previousBodyStyle.current = {
           cursor: document.body.style.cursor,
           userSelect: document.body.style.userSelect,
         }
-        document.body.style.cursor = "col-resize"
+        document.body.style.cursor = "ew-resize"
         document.body.style.userSelect = "none"
         const handlePointerMove = (pointerEvent: PointerEvent) => {
           const drag = dragState.current
           if (drag?.pointerId !== pointerEvent.pointerId) return
           const direction = drag.side === "left" ? 1 : -1
-          setWidth(
+          drag.width =
             drag.startWidth + (pointerEvent.clientX - drag.startX) * direction
-          )
+          setWidth(drag.width)
         }
         const handlePointerEnd = (pointerEvent: PointerEvent) => {
           if (dragState.current?.pointerId === pointerEvent.pointerId) {
-            stopResizing()
+            stopResizing(true)
           }
         }
         window.addEventListener("pointermove", handlePointerMove)
@@ -621,15 +650,16 @@ function SidebarRail({
         onPointerLeave?.(event)
       }}
       title={
-        resizable && state === "expanded"
-          ? "Drag to resize; double-click to reset"
-          : "Toggle Sidebar"
+        resizable && state === "expanded" ? resizeHandleTitle : "Toggle Sidebar"
       }
       className={cn(
-        "absolute inset-y-0 z-20 hidden w-4 touch-none transition-all ease-linear group-data-[side=left]:-right-4 group-data-[side=right]:left-0 after:absolute after:inset-y-0 after:start-1/2 after:w-[2px] hover:after:bg-sidebar-border sm:flex ltr:-translate-x-1/2 rtl:-translate-x-1/2",
+        "absolute inset-y-0 z-20 hidden w-4 sm:flex",
         resizable && state === "expanded"
-          ? "cursor-col-resize"
-          : "cursor-pointer",
+          ? cn(
+              resizeHandleClassName,
+              "group-data-[side=left]:right-0 group-data-[side=left]:translate-x-1/2 group-data-[side=right]:left-0 group-data-[side=right]:-translate-x-1/2 pointer-coarse:w-6"
+            )
+          : "cursor-pointer touch-none group-data-[side=left]:-right-4 group-data-[side=right]:left-0 after:absolute after:inset-y-0 after:start-1/2 after:w-0.5 hover:after:bg-sidebar-border ltr:-translate-x-1/2 rtl:-translate-x-1/2",
         "group-data-[collapsible=offcanvas]:translate-x-0 group-data-[collapsible=offcanvas]:after:left-full hover:group-data-[collapsible=offcanvas]:bg-sidebar",
         "[[data-side=left][data-collapsible=offcanvas]_&]:-right-2",
         "[[data-side=right][data-collapsible=offcanvas]_&]:-left-2",

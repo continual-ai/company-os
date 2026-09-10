@@ -301,7 +301,7 @@ function OperationDetail({
   const schemas = document.components?.schemas ?? {}
 
   return (
-    <article className="mx-auto w-full max-w-5xl px-5 py-7 lg:px-8 lg:py-9">
+    <article className="mx-auto w-full max-w-5xl p-page-gutter">
       <header className="border-b pb-6">
         <div className="flex flex-wrap items-center gap-2">
           <MethodBadge method={operation.method} />

@@ -531,7 +531,7 @@ export function ObjectTable({
         toolbarActions={toolbarActions}
       />
 
-      <div className="flex h-7 shrink-0 items-center gap-1.5 border-b px-5 text-[11px] text-muted-foreground sm:hidden">
+      <div className="flex h-7 shrink-0 items-center gap-1.5 border-b px-page-gutter text-[11px] text-muted-foreground sm:hidden">
         <ArrowRightIcon className="size-3" />
         Swipe horizontally to see all columns
       </div>

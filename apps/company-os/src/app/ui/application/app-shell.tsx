@@ -1,4 +1,5 @@
 import { KeyboardShortcutsProvider } from "@company/ui/keyboard-shortcuts"
+import { LocalPreferencesProvider } from "@company/ui/local-preferences"
 import {
   SidebarInset,
   SidebarProvider,
@@ -53,56 +54,67 @@ export function AppShell({
   const secondaryShell = utilityTitle !== undefined
 
   return (
-    <AuthenticatedUserProvider user={user}>
-      <TooltipProvider>
-        <KeyboardShortcutsProvider>
-          <KeyboardShortcutHelp />
-          <ObjectCreateProvider>
-            <CommandPalette>
-              <RecentRecordsProvider>
-                <CollectionNavigationProvider>
-                  <PageChromeProvider>
-                    <SidebarProvider
-                      key={secondaryShell ? utilityTitle : "app"}
-                      className="h-svh min-h-0 overflow-hidden"
-                      defaultWidth={secondaryShell ? 240 : 256}
-                      minWidth={224}
-                      maxWidth={384}
-                      resizable={!secondaryShell}
-                      revealOnHover={!secondaryShell}
-                      style={sidebarStyle}
-                    >
-                      <SidebarNavigation />
-                      {isSettings ? (
-                        <SettingsSidebar />
-                      ) : isDeveloper ? (
-                        <DeveloperSidebar />
-                      ) : (
-                        <AppSidebar />
-                      )}
-                      <SidebarInset className="h-svh min-h-0 min-w-0 overflow-hidden">
-                        {secondaryShell ? (
-                          <header className="flex h-(--header-height) shrink-0 items-center gap-3 border-b bg-background px-4 md:hidden">
-                            <SidebarTrigger className="-ml-1" />
-                            <span className="text-sm font-medium">
-                              {utilityTitle}
-                            </span>
-                          </header>
+    <LocalPreferencesProvider
+      key={user.id}
+      scope={`company-os:preferences:${user.id}`}
+    >
+      <AuthenticatedUserProvider user={user}>
+        <TooltipProvider>
+          <KeyboardShortcutsProvider>
+            <KeyboardShortcutHelp />
+            <ObjectCreateProvider>
+              <CommandPalette>
+                <RecentRecordsProvider>
+                  <CollectionNavigationProvider>
+                    <PageChromeProvider>
+                      <SidebarProvider
+                        key={secondaryShell ? utilityTitle : "app"}
+                        className="h-svh min-h-0 overflow-hidden"
+                        defaultWidth={secondaryShell ? 240 : 256}
+                        minWidth={224}
+                        maxWidth={384}
+                        resizable={!secondaryShell}
+                        widthPreference={
+                          secondaryShell ? undefined : "sidebar-width"
+                        }
+                        revealOnHover={!secondaryShell}
+                        style={sidebarStyle}
+                      >
+                        <SidebarNavigation />
+                        {isSettings ? (
+                          <SettingsSidebar />
+                        ) : isDeveloper ? (
+                          <DeveloperSidebar />
                         ) : (
-                          <SiteHeader />
+                          <AppSidebar />
                         )}
-                        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-                          {children}
-                        </div>
-                      </SidebarInset>
-                    </SidebarProvider>
-                  </PageChromeProvider>
-                </CollectionNavigationProvider>
-              </RecentRecordsProvider>
-            </CommandPalette>
-          </ObjectCreateProvider>
-        </KeyboardShortcutsProvider>
-      </TooltipProvider>
-    </AuthenticatedUserProvider>
+                        <SidebarInset className="h-svh min-h-0 min-w-0 overflow-hidden">
+                          {secondaryShell ? (
+                            <header className="flex h-(--header-height) shrink-0 items-center gap-3 border-b bg-background px-page-gutter md:hidden">
+                              <SidebarTrigger className="-ml-1" />
+                              <span className="text-sm font-medium">
+                                {utilityTitle}
+                              </span>
+                            </header>
+                          ) : (
+                            <SiteHeader />
+                          )}
+                          <div
+                            data-page-content
+                            className="flex min-h-0 flex-1 flex-col overflow-y-auto"
+                          >
+                            {children}
+                          </div>
+                        </SidebarInset>
+                      </SidebarProvider>
+                    </PageChromeProvider>
+                  </CollectionNavigationProvider>
+                </RecentRecordsProvider>
+              </CommandPalette>
+            </ObjectCreateProvider>
+          </KeyboardShortcutsProvider>
+        </TooltipProvider>
+      </AuthenticatedUserProvider>
+    </LocalPreferencesProvider>
   )
 }

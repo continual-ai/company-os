@@ -75,7 +75,10 @@ export function ObjectRelationshipCollection({
   return (
     <div className="flex h-full min-h-0 flex-col">
       {error && (
-        <p role="alert" className="border-b px-4 py-2 text-xs text-destructive">
+        <p
+          role="alert"
+          className="border-b px-page-gutter py-2 text-xs text-destructive"
+        >
           {error}
         </p>
       )}
@@ -153,7 +156,7 @@ function RelatedRecordFeed({
   })
   return (
     <>
-      <div className="flex min-h-10 flex-wrap items-center justify-end gap-2 border-b px-4 py-1">
+      <div className="flex min-h-10 flex-wrap items-center justify-end gap-2 border-b px-page-gutter py-1">
         <RecordRelatedCreateMenu
           relationships={[{ ...relationship, creates }]}
           totals={new Map([[relationship.key, page.data?.pages[0]?.totalSize]])}
@@ -163,7 +166,7 @@ function RelatedRecordFeed({
       {page.isError && (
         <div
           role="alert"
-          className="flex items-center justify-between px-4 py-2 text-xs"
+          className="flex items-center justify-between px-page-gutter py-2 text-xs"
         >
           Could not load related records.
           <Button size="sm" variant="ghost" onClick={() => void page.refetch()}>

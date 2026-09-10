@@ -164,3 +164,24 @@ that order and configure a trusted identity boundary. Keep a restore point befor
 migrations and use changes compatible with overlapping app revisions; an app rollback does not undo
 a migration. Verify `/health` and an authenticated read and write after deployment. Satellites set
 `COMPANY_OS_URL` to the central app and forward verified identity headers.
+
+### Page spacing
+
+Compose layouts with `PageHeader`, `PageToolbar`, `PageContent`, and `PageSectionHeader` from
+`@company/ui/page`. Headers and content share a 16px gutter; toolbar rows are at least 48px and
+grow when controls wrap. Content sections are separated by 24px. `PageHeader.navigation` owns the
+bottom divider alignment; use `TabsList variant="header"` there without tab spacing overrides.
+The containing page or panel owns padding once, so custom tab content must not add another outer
+gutter. Tables remain edge-to-edge. Sidebar rows use 8px outer plus 8px inner padding, aligning their
+content at 16px; their compact row rhythm is independent of page toolbars. Cards and controls own
+their internal spacing. Use `p-page-gutter` directly only when a layout cannot use these components.
+
+### Browser preferences
+
+Use `useLocalPreference` from `@company/ui/local-preferences` for browser-local presentation
+preferences. The app shell supplies `LocalPreferencesProvider` with an app and user namespace.
+Each preference has a stable key, default value, and validator; change the key when its stored shape
+changes incompatibly. Reads are SSR-safe, invalid values use the default, and blocked storage falls
+back to the current session. Resize controls keep live interaction state and save only on completion,
+keyboard adjustment, or explicit reset. Viewport constraints must not overwrite the saved preference.
+Keep credentials and authoritative business data out of this store.

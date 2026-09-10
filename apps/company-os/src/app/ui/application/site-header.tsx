@@ -8,6 +8,7 @@ import {
 } from "@company/ui/breadcrumb"
 import { Button } from "@company/ui/button"
 import { useKeyboardShortcuts } from "@company/ui/keyboard-shortcuts"
+import { PageToolbar } from "@company/ui/page"
 import { SidebarTrigger, useSidebar } from "@company/ui/sidebar"
 import {
   Link,
@@ -69,11 +70,9 @@ export function SiteHeader() {
       ]
     : breadcrumbs
   return (
-    <header className="flex h-(--header-height) shrink-0 items-center border-b bg-background">
-      <div className="flex w-full items-center gap-3 px-5">
-        {(isMobile || !open) && (
-          <SidebarTrigger className="-ml-1.5" aria-label="Open sidebar" />
-        )}
+    <header className="shrink-0 bg-background">
+      <PageToolbar className="flex-nowrap gap-3">
+        {(isMobile || !open) && <SidebarTrigger aria-label="Open sidebar" />}
         {pageChrome.collectionHref && (
           <Button
             variant="ghost"
@@ -118,7 +117,7 @@ export function SiteHeader() {
         {pageChrome.recordNavigation && (
           <RecordPager navigation={pageChrome.recordNavigation} />
         )}
-      </div>
+      </PageToolbar>
     </header>
   )
 }

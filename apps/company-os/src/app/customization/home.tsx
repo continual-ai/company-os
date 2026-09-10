@@ -13,7 +13,7 @@ export function Home() {
 
   return (
     <div className="@container/main flex flex-1 flex-col">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-8 lg:px-8">
+      <div className="flex w-full flex-col gap-8 p-page-gutter">
         <header>
           <p className="text-sm font-medium text-muted-foreground">
             {appConfig.home.eyebrow}

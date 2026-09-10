@@ -149,7 +149,10 @@ export function DesignSystemGallery() {
         </>
       }
     >
-      <div ref={containerRef} className="mx-auto w-full max-w-5xl px-5 lg:px-8">
+      <div
+        ref={containerRef}
+        className="mx-auto w-full max-w-5xl px-page-gutter"
+      >
         <header className="py-8 lg:py-10">
           <h1 className="text-2xl font-semibold tracking-tight">
             Design system

@@ -32,7 +32,7 @@ export function CollectionKanban({
   ]
   if (field.nullable) choices.push({ value: null, label: "Unassigned" })
   return (
-    <div className="flex min-h-[28rem] flex-1 items-stretch gap-4 overflow-x-auto bg-muted/20 p-4 sm:p-5">
+    <div className="flex min-h-[28rem] flex-1 items-stretch gap-4 overflow-x-auto bg-muted/20 p-page-gutter">
       {choices.map((choice, index) => {
         const items = records.filter(
           (record) => (record[layout.groupBy] ?? null) === choice.value

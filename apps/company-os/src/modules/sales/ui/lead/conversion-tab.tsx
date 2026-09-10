@@ -6,7 +6,7 @@ import type { RecordUiProps } from "#/runtime/ui/module.ts"
 
 export function LeadConversion({ record }: RecordUiProps<typeof Lead>) {
   return (
-    <section className="mx-auto grid w-full max-w-3xl gap-4 p-5">
+    <section className="grid w-full gap-4">
       {record.convertedCompany && record.convertedContact ? (
         <>
           <h2 className="font-medium">Customer records created</h2>

@@ -140,7 +140,7 @@ function PatternExamples({
             </div>
           </Example>
           <Example
-            title="Status progress"
+            title="Record status"
             source="runtime/ui/model/object-record-status-progress.tsx"
           >
             <ObjectRecordStatusProgress

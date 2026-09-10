@@ -1,5 +1,6 @@
 import { Badge } from "@company/ui/badge"
 import { Input } from "@company/ui/input"
+import { PageContent } from "@company/ui/page"
 import { Link } from "@tanstack/react-router"
 import { ArrowRightIcon, SearchIcon } from "lucide-react"
 import { useState, type ReactNode } from "react"
@@ -17,7 +18,7 @@ function Directory({
   children: ReactNode
 }) {
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 py-10 lg:px-10">
+    <PageContent className="w-full">
       <header>
         <p className="mb-2 text-xs font-medium text-muted-foreground">
           Workspace
@@ -28,7 +29,7 @@ function Directory({
         </p>
       </header>
       {children}
-    </div>
+    </PageContent>
   )
 }
 
@@ -192,7 +193,7 @@ export function ReportPreview({
   report: (typeof reportPreviews)[number]
 }) {
   return (
-    <section aria-label={report.label} className="mx-auto w-full max-w-6xl p-6">
+    <section aria-label={report.label} className="w-full p-page-gutter">
       <h1 className="sr-only">{report.label}</h1>
       <div className="flex items-center gap-3 rounded-xl border border-dashed px-5 py-4 text-xs text-muted-foreground">
         <Badge variant="outline">Preview</Badge>
@@ -204,7 +205,7 @@ export function ReportPreview({
 
 export function ToolPreview({ tool }: { tool: (typeof toolPreviews)[number] }) {
   return (
-    <section aria-label={tool.label} className="mx-auto w-full max-w-6xl p-6">
+    <section aria-label={tool.label} className="w-full p-page-gutter">
       <h1 className="sr-only">{tool.label}</h1>
       <div className="overflow-hidden rounded-xl border">
         <div className="grid gap-6 p-5 sm:grid-cols-2">
