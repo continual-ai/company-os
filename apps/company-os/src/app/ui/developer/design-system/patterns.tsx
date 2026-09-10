@@ -196,22 +196,24 @@ function PatternExamples({
               />
             </div>
             <dl className="grid gap-4 sm:grid-cols-2">
-              {["status", "budget", "email", "description"].map((id) => (
-                <div key={id}>
-                  <dt className="mb-1 text-xs text-muted-foreground">
-                    {modelObjectProperty(ExampleProject, id)?.label}
-                  </dt>
-                  <dd className="text-sm">
-                    {objectPropertyValue(
-                      runtime,
-                      ExampleProject,
-                      id,
-                      projected[id],
-                      references
-                    )}
-                  </dd>
-                </div>
-              ))}
+              {["status", "score", "budget", "email", "description"].map(
+                (id) => (
+                  <div key={id}>
+                    <dt className="mb-1 text-xs text-muted-foreground">
+                      {modelObjectProperty(ExampleProject, id)?.label}
+                    </dt>
+                    <dd className="text-sm">
+                      {objectPropertyValue(
+                        runtime,
+                        ExampleProject,
+                        id,
+                        projected[id],
+                        references
+                      )}
+                    </dd>
+                  </div>
+                )
+              )}
               <div>
                 <dt className="mb-1 text-xs text-muted-foreground">
                   Missing value
@@ -284,6 +286,7 @@ function PatternExamples({
               visiblePropertyIds={[
                 "name",
                 "status",
+                "score",
                 "budget",
                 "startsOn",
                 "email",

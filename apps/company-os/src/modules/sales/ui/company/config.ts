@@ -12,7 +12,7 @@ export const companyUi = {
   },
   collection: { views: companyViews },
   record: {
-    properties: ["domain", "industry", "lifecycleStage", "website"],
+    properties: ["domain", "industry", "fitScore", "lifecycleStage", "website"],
     relationships: ["contacts", "deals", "notes"],
   },
 } satisfies ObjectUi<typeof Company>

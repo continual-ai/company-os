@@ -18,6 +18,7 @@ import {
   PreviewCardContent,
   PreviewCardTrigger,
 } from "@company/ui/preview-card"
+import { Score, ScoreInput } from "@company/ui/score"
 import {
   Select,
   SelectContent,
@@ -265,11 +266,7 @@ function TextCell({
                 : "truncate"
           )}
         >
-          {formattedValue.length > 0 ? (
-            formattedValue
-          ) : (
-            <span className="text-muted-foreground/60">Empty</span>
-          )}
+          {formattedValue}
         </span>
       )}
     </ObjectTableCellSurface>
@@ -338,9 +335,7 @@ function MarkdownCell({
         >
           {source ? (
             <MarkdownText className="flex-1">{source}</MarkdownText>
-          ) : (
-            <span className="text-muted-foreground/60">Empty</span>
-          )}
+          ) : null}
           {identity?.href && (
             <Link
               to={identity.href}
@@ -410,6 +405,145 @@ function MarkdownCell({
   )
 }
 
+function ScoreCell({
+  active,
+  editing,
+  initialEditValue,
+  identity,
+  onCommit,
+  onCancelEditing,
+  onEditingChange,
+  property,
+  value,
+}: ObjectTableCellProps) {
+  const { clearStatus, commit, renderedValue, status } =
+    useObjectTableCellCommit(value, onCommit, onEditingChange)
+  const editorRef = useRef<HTMLDivElement>(null)
+  const [draft, setDraft] = useState(objectTableCellInputValue(value))
+  const [error, setError] = useState<string | null>(null)
+  const schema = objectTablePropertySchema(property)
+
+  useEffect(() => {
+    if (editing) {
+      setDraft(
+        initialEditValue !== undefined && /^[0-9+\-.]$/.test(initialEditValue)
+          ? initialEditValue
+          : objectTableCellInputValue(value)
+      )
+      setError(null)
+    }
+  }, [editing, initialEditValue, value])
+
+  useEffect(() => {
+    if (editing && status === "saved") {
+      clearStatus()
+      onEditingChange(false)
+    }
+  }, [editing, status, onEditingChange, clearStatus])
+
+  const save = () => {
+    const result = parseObjectTableCellInput(property, draft)
+    if ("error" in result) {
+      setError(result.error)
+      return
+    }
+    void commit(result.value, false)
+  }
+
+  return (
+    <Popover
+      open={editing}
+      onOpenChange={(open, details) => {
+        if (details.reason === "trigger-press") return
+        if (!open && status !== "saving") onCancelEditing()
+      }}
+    >
+      <PopoverTrigger
+        nativeButton={false}
+        render={<div className="h-full w-full" />}
+      >
+        <ObjectTableCellSurface
+          active={active}
+          expandActive={false}
+          status={status}
+          className="gap-2"
+        >
+          {typeof renderedValue === "number" &&
+            Number.isFinite(renderedValue) && (
+              <Score
+                value={renderedValue}
+                min={schema.kind === "number" ? schema.minimum : undefined}
+                max={schema.kind === "number" ? schema.maximum : undefined}
+                label={property.label ?? "Score"}
+              />
+            )}
+          {identity?.href && (
+            <Link
+              to={identity.href}
+              aria-label={`Open ${identity.object.name.toLowerCase()}`}
+              className="shrink-0 text-muted-foreground hover:text-foreground"
+              onClick={(event) => event.stopPropagation()}
+              onDoubleClick={(event) => event.stopPropagation()}
+            >
+              <ArrowUpRightIcon className="size-3.5" />
+            </Link>
+          )}
+        </ObjectTableCellSurface>
+      </PopoverTrigger>
+      <PopoverContent
+        ref={editorRef}
+        initialFocus={() =>
+          editorRef.current?.querySelector("input[type=number]") ?? false
+        }
+        align="start"
+        sideOffset={0}
+        className="w-[min(18rem,calc(100vw-2rem))] gap-3 p-3"
+        onKeyDown={(event) => {
+          event.stopPropagation()
+          if (event.key === "Enter" && status !== "saving") {
+            event.preventDefault()
+            save()
+          }
+        }}
+      >
+        <p className="text-sm font-medium">{property.label ?? "Score"}</p>
+        <ScoreInput
+          label={property.label ?? "Score"}
+          value={draft}
+          min={schema.kind === "number" ? schema.minimum : undefined}
+          max={schema.kind === "number" ? schema.maximum : undefined}
+          required={!property.nullable}
+          disabled={status === "saving"}
+          aria-invalid={error !== null}
+          onValueChange={(next) => {
+            clearStatus()
+            setError(null)
+            setDraft(next)
+          }}
+        />
+        {(error || status === "error") && (
+          <p role="alert" className="text-xs text-destructive">
+            {error ?? "Could not save. Your changes are still here; try again."}
+          </p>
+        )}
+        <div className="flex justify-end gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={status === "saving"}
+            onClick={onCancelEditing}
+          >
+            Cancel
+          </Button>
+          <Button size="sm" disabled={status === "saving"} onClick={save}>
+            Save
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
+  )
+}
+
 function ImageCell({
   active,
   expandActive,
@@ -430,9 +564,7 @@ function ImageCell({
       expandActive={expandActive}
       className="gap-1.5"
     >
-      {image === null ? (
-        <span className="text-muted-foreground/60">Empty</span>
-      ) : src === null ? (
+      {image === null ? null : src === null ? (
         <>
           <span className="flex size-5 shrink-0 items-center justify-center border bg-muted/40">
             <ImageIcon className="size-3 text-muted-foreground" />
@@ -504,9 +636,7 @@ function EnumSelectCell({
           }
         }
       />
-    ) : (
-      <span className="text-muted-foreground/60">Empty</span>
-    )
+    ) : null
 
   if (!editing) {
     return (
@@ -685,21 +815,19 @@ function TagsCell({
             : "w-full flex-nowrap overflow-hidden"
         )}
       >
-        {displayedValues.length > 0 ? (
-          displayedValues.map((item) => (
-            <ObjectChoiceBadge
-              key={item}
-              choice={
-                choices.find((choice) => choice.value === item) ?? {
-                  label: item,
-                  value: item,
+        {displayedValues.length > 0
+          ? displayedValues.map((item) => (
+              <ObjectChoiceBadge
+                key={item}
+                choice={
+                  choices.find((choice) => choice.value === item) ?? {
+                    label: item,
+                    value: item,
+                  }
                 }
-              }
-            />
-          ))
-        ) : (
-          <span className="text-muted-foreground/60">Empty</span>
-        )}
+              />
+            ))
+          : null}
       </div>
     </ObjectTableCellSurface>
   )
@@ -770,6 +898,7 @@ const objectTableCellRenderers = {
   files: FileCell,
   markdown: MarkdownCell,
   number: TextLikeCell,
+  score: ScoreCell,
   phone: TextLikeCell,
   readonly: TextLikeCell,
   recordId: TextLikeCell,

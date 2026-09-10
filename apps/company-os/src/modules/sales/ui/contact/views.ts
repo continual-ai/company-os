@@ -2,7 +2,7 @@ import { defineCollectionView } from "#/runtime/ui/module.ts"
 
 export const contactViews = [
   defineCollectionView("all", "All contacts", {
-    columns: ["name", "jobTitle", "email", "phone"],
+    columns: ["name", "jobTitle", "relationshipStrength", "email", "phone"],
   }),
   defineCollectionView("marketing", "Marketing contacts", {
     columns: ["name", "email", "marketingStatus", "emailPermission"],

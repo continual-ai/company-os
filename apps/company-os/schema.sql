@@ -263,6 +263,9 @@ create table "companies" (
   "domain" text,
   "website" text,
   "industry" text,
+  -- Manual assessment of how closely this company matches your ideal
+  -- customer, from 0 (poor fit) to 100 (strong fit).
+  "fit_score" integer,
   "lifecycle_stage" text not null default 'prospect',
   primary key ("id"),
   foreign key ("id") references "objects" ("id") on delete cascade
@@ -278,6 +281,9 @@ create table "contacts" (
   "parent_id" text not null,
   "photo" jsonb,
   "name" text not null,
+  -- Manual assessment of your team’s relationship with this person, from 0
+  -- (no established relationship) to 100 (strong, active relationship).
+  "relationship_strength" integer,
   "job_title" text,
   "email" text,
   -- Choose whether to include this person in marketing audiences.
@@ -329,6 +335,9 @@ create table "deals" (
   "parent_id" text not null,
   "name" text not null,
   "stage" text not null default 'discovery',
+  -- Manual assessment of opportunity health, from 0 (at risk) to 100
+  -- (strong), based on engagement, next steps, timing, and blockers.
+  "health_score" integer,
   -- Expected or agreed deal value.
   "amount" jsonb,
   "expected_close_date" date,

@@ -35,9 +35,11 @@ import {
   Example,
   type ComponentSection,
 } from "#/app/ui/developer/design-system/example.tsx"
+import { scorePage } from "#/app/ui/developer/design-system/score-examples.tsx"
 import { switchPage } from "#/app/ui/developer/design-system/switch-examples.tsx"
 
 export const controlSections: ReadonlyArray<ComponentSection> = [
+  scorePage,
   switchPage,
   dateTimePage,
   {

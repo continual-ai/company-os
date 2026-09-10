@@ -211,6 +211,7 @@ export interface EnumSchema<
 }
 
 export interface NumberSchema extends SchemaDefinition<number> {
+  format?: "score"
   integer?: boolean
   kind: "number"
   maximum?: number
@@ -611,6 +612,31 @@ function number<const TOptions extends NumberSchemaOptions = {}>(
   return { kind: "number", ...values }
 }
 
+/** A whole-number score; presentation is derived from its numeric range. */
+function score<
+  const TOptions extends Omit<NumberSchemaOptions, "integer"> = {},
+>(options?: TOptions): NumberSchema & TOptions & { format: "score" } {
+  const values = configured(options)
+  const minimum = values.minimum ?? 0
+  const maximum = values.maximum ?? 100
+  if (
+    !Number.isSafeInteger(minimum) ||
+    !Number.isSafeInteger(maximum) ||
+    minimum >= maximum
+  ) {
+    throw new Error(
+      "Score bounds must be whole numbers with minimum below maximum."
+    )
+  }
+  if (values.default !== undefined && !Number.isSafeInteger(values.default)) {
+    throw new Error("A score default must be a whole number.")
+  }
+  return {
+    ...number({ ...values, minimum, maximum, integer: true }),
+    format: "score",
+  }
+}
+
 function object<
   const TProperties extends SchemaProperties,
   const TOptions extends SchemaAnnotations<InferStruct<TProperties>> = {},
@@ -749,6 +775,7 @@ export const schema = {
   optional,
   phone,
   reference,
+  score,
   select,
   string,
   timestamp,

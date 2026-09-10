@@ -22,6 +22,12 @@ export const Contact = defineObject({
       minLength: 1,
       maxLength: 200,
     }),
+    relationshipStrength: schema.score({
+      label: "Relationship strength",
+      nullable: true,
+      description:
+        "Manual assessment of your team’s relationship with this person, from 0 (no established relationship) to 100 (strong, active relationship).",
+    }),
     jobTitle: schema.string({
       label: "Job title",
       maxLength: 150,

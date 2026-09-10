@@ -4,6 +4,7 @@ import { FieldError } from "@company/ui/field"
 import { Input } from "@company/ui/input"
 import { MarkdownEditor } from "@company/ui/markdown-editor"
 import { PhoneInput } from "@company/ui/phone-input"
+import { ScoreInput } from "@company/ui/score"
 import {
   Select,
   SelectContent,
@@ -413,6 +414,20 @@ export function ObjectFormPropertyField({
                 value={stringValue(value)}
                 maxLength={schema.maxLength}
                 minLength={schema.minLength}
+                aria-invalid={invalid}
+                aria-describedby={ariaDescribedBy}
+                onBlur={onBlur}
+                onValueChange={onValueChange}
+              />
+            ) : schema.kind === "number" && schema.format === "score" ? (
+              <ScoreInput
+                id={fieldId}
+                name={id}
+                required={required}
+                label={label}
+                min={schema.minimum}
+                max={schema.maximum}
+                value={stringValue(value)}
                 aria-invalid={invalid}
                 aria-describedby={ariaDescribedBy}
                 onBlur={onBlur}

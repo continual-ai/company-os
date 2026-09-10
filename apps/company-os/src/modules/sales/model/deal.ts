@@ -45,6 +45,12 @@ export const Deal = defineObject({
         { value: "lost", label: "Lost" },
       ],
     }),
+    healthScore: schema.score({
+      label: "Health score",
+      nullable: true,
+      description:
+        "Manual assessment of opportunity health, from 0 (at risk) to 100 (strong), based on engagement, next steps, timing, and blockers.",
+    }),
     amount: schema.money({
       label: "Amount",
       nullable: true,

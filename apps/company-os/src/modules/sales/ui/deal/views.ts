@@ -2,11 +2,25 @@ import { defineCollectionView } from "#/runtime/ui/module.ts"
 
 export const dealViews = [
   defineCollectionView("all", "All deals", {
-    columns: ["name", "parent", "stage", "amount", "expectedCloseDate"],
+    columns: [
+      "name",
+      "parent",
+      "stage",
+      "healthScore",
+      "amount",
+      "expectedCloseDate",
+    ],
     sorting: [{ id: "expectedCloseDate", desc: false }],
   }),
   defineCollectionView("open", "Open deals", {
-    columns: ["name", "parent", "stage", "amount", "expectedCloseDate"],
+    columns: [
+      "name",
+      "parent",
+      "stage",
+      "healthScore",
+      "amount",
+      "expectedCloseDate",
+    ],
     filters: [
       {
         id: "stage",
@@ -25,7 +39,7 @@ export const dealViews = [
   }),
   defineCollectionView("pipeline", "Pipeline", {
     layout: { type: "kanban", groupBy: "stage" },
-    columns: ["name", "amount", "expectedCloseDate"],
+    columns: ["name", "amount", "healthScore", "expectedCloseDate"],
   }),
   defineCollectionView("closing-calendar", "Closing calendar", {
     layout: { type: "calendar", start: "expectedCloseDate" },

@@ -52,6 +52,12 @@ export const Company = defineObject({
         { value: "Other", label: "Other" },
       ],
     }),
+    fitScore: schema.score({
+      label: "Fit score",
+      nullable: true,
+      description:
+        "Manual assessment of how closely this company matches your ideal customer, from 0 (poor fit) to 100 (strong fit).",
+    }),
     lifecycleStage: schema.select({
       label: "Lifecycle stage",
       default: "prospect",

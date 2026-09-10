@@ -1,5 +1,6 @@
 import { DateTime } from "@company/ui/date-time"
 import { Markdown } from "@company/ui/markdown"
+import { Score } from "@company/ui/score"
 import type { ReactNode } from "react"
 
 import { AssetPreviews } from "#/runtime/assets/ui/asset-preview.tsx"
@@ -58,6 +59,20 @@ export function objectPropertyValue(
     typeof value === "string"
   ) {
     return <Markdown>{value}</Markdown>
+  }
+  if (
+    schema.kind === "number" &&
+    schema.format === "score" &&
+    typeof value === "number"
+  ) {
+    return (
+      <Score
+        value={value}
+        min={schema.minimum}
+        max={schema.maximum}
+        label={property?.label ?? "Score"}
+      />
+    )
   }
   const fileSchema =
     schema.kind === "array" ? objectTablePropertySchema(schema.items) : schema

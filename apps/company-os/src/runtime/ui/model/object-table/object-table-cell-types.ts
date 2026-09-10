@@ -14,6 +14,7 @@ export type ObjectTableCellType =
   | "image"
   | "markdown"
   | "number"
+  | "score"
   | "phone"
   | "recordId"
   | "tags"
@@ -76,6 +77,12 @@ const objectTableCellBehaviors = {
     editable: true,
     filterFamily: "text",
     inputType: "text",
+    overflow: "clip",
+  },
+  score: {
+    editable: true,
+    filterFamily: "number",
+    inputType: "number",
     overflow: "clip",
   },
   number: {
@@ -141,9 +148,10 @@ function resolveSchemaCellType(schema: AnySchema): ObjectTableCellType {
     case "boolean":
     case "enum":
     case "image":
-    case "number":
     case "recordId":
       return resolvedSchema.kind
+    case "number":
+      return resolvedSchema.format ?? "number"
     case "file":
     case "media":
       return "files"
@@ -233,7 +241,7 @@ export function parseObjectTableCellInput(
       : { error: "A value is required." }
   }
 
-  if (type === "number") {
+  if (type === "number" || type === "score") {
     const value = Number(trimmed)
     if (!Number.isFinite(value)) return { error: "Enter a valid number." }
     const schema = objectTablePropertySchema(property)

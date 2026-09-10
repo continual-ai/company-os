@@ -281,3 +281,61 @@ it("isolates retired configuration archives for applications sharing a database"
     await TestDatabase.drop(template)
   }
 })
+
+it("adds sales scores without changing existing records or assigning an assessment", async () => {
+  const template = await TestDatabase.createTemplate(
+    migrations
+      .slice(0, 6)
+      .map(({ sql }) => sql)
+      .join("\n")
+  )
+  const { Client } = await import("pg")
+  const client = new Client({ connectionString: TestDatabase.url(template) })
+  try {
+    await client.connect()
+    await client.query("begin")
+    await client.query(`
+      insert into objects (id, object_type, parent_id, created_by_id, updated_by_id) values
+        ('platform_system', 'root', null, 'service_account_system', 'service_account_system'),
+        ('service_account_system', 'serviceAccount', 'platform_system', 'service_account_system', 'service_account_system'),
+        ('company_scoring', 'company', 'platform_system', 'service_account_system', 'service_account_system'),
+        ('contact_scoring', 'contact', 'platform_system', 'service_account_system', 'service_account_system'),
+        ('deal_scoring', 'deal', 'platform_system', 'service_account_system', 'service_account_system');
+      insert into roots (id) values ('platform_system');
+      insert into interface_actor (id) values ('service_account_system');
+      insert into companies (id, parent_id, name) values ('company_scoring', 'platform_system', 'Existing company');
+      insert into contacts (id, parent_id, name) values ('contact_scoring', 'platform_system', 'Existing contact');
+      insert into deals (id, parent_id, name) values ('deal_scoring', 'platform_system', 'Existing deal');
+    `)
+    await client.query("commit")
+    const objectsBefore = (
+      await client.query("select * from objects order by id")
+    ).rows
+    const tables = [
+      ["companies", "fit_score"],
+      ["contacts", "relationship_strength"],
+      ["deals", "health_score"],
+    ] as const
+    const before = []
+    for (const [table] of tables)
+      before.push(await client.query(`select * from ${table}`))
+    await client.query(migrations[6]!.sql)
+    for (const [index, [table, column]] of tables.entries()) {
+      expect((await client.query(`select * from ${table}`)).rows).toEqual(
+        before[index]!.rows.map((row) => ({ ...row, [column]: null }))
+      )
+      for (const value of [0, 100, null]) {
+        await client.query(`update ${table} set ${column} = $1`, [value])
+        expect(
+          (await client.query(`select ${column} as score from ${table}`)).rows
+        ).toEqual([{ score: value }])
+      }
+    }
+    expect(
+      (await client.query("select * from objects order by id")).rows
+    ).toEqual(objectsBefore)
+  } finally {
+    await client.end()
+    await TestDatabase.drop(template)
+  }
+})

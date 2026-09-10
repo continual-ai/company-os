@@ -54,6 +54,40 @@ const Account = defineObject({
 })
 
 describe("Effect Schema projection", () => {
+  it("projects scores as bounded integers with format metadata and validates every caller", () => {
+    const field = schema.score({ nullable: true })
+    const input = toEffectInputSchema(field)
+    const decode = Schema.decodeUnknownSync(input)
+    for (const value of [0, 78, 100, null]) expect(decode(value)).toBe(value)
+    for (const value of [-1, 101, 2.5, Infinity, NaN, "78"]) {
+      expect(() => decode(value)).toThrow()
+    }
+    const json = Schema.toStandardJSONSchemaV1(
+      toEffectInputSchema(schema.score())
+    )["~standard"].jsonSchema.input({ target: "draft-2020-12" })
+    expect(JSON.stringify(json)).toContain('"format":"score"')
+    expect(JSON.stringify(json)).toContain('"minimum":0')
+    expect(JSON.stringify(json)).toContain('"maximum":100')
+    expectTypeOf<
+      InferSchema<ReturnType<typeof schema.score>>
+    >().toEqualTypeOf<number>()
+    const rating = Schema.decodeUnknownSync(
+      toEffectInputSchema(schema.score({ minimum: 1, maximum: 5 }))
+    )
+    expect(rating(3)).toBe(3)
+    expect(() => rating(0)).toThrow()
+    expect(() => rating(6)).toThrow()
+    for (const options of [
+      { minimum: 5, maximum: 5 },
+      { minimum: 6, maximum: 5 },
+      { minimum: 0.5 },
+      { maximum: Infinity },
+      { default: 101 },
+      { default: 2.5 },
+    ])
+      expect(() => schema.score(options)).toThrow()
+  })
+
   it("preserves Markdown source, enforces string constraints, and exposes its format to clients", () => {
     const field = schema.markdown({
       minLength: 1,

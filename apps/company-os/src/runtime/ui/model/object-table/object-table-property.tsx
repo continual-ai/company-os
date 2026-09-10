@@ -8,6 +8,7 @@ import {
   FileTextIcon,
   Globe2Icon,
   HashIcon,
+  GaugeIcon,
   ImageIcon,
   LinkIcon,
   ListIcon,
@@ -32,7 +33,12 @@ function ObjectTablePropertyIcon({
   } as const
 
   if (schema.kind === "enum") return <TagsIcon {...iconProps} />
-  if (schema.kind === "number") return <HashIcon {...iconProps} />
+  if (schema.kind === "number")
+    return schema.format === "score" ? (
+      <GaugeIcon {...iconProps} />
+    ) : (
+      <HashIcon {...iconProps} />
+    )
   if (schema.kind === "boolean") return <CheckSquareIcon {...iconProps} />
   if (schema.kind === "money") return <CircleDollarSignIcon {...iconProps} />
   if (schema.kind === "image") return <ImageIcon {...iconProps} />

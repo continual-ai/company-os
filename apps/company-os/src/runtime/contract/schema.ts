@@ -223,7 +223,9 @@ function compileNumber(definition: NumberSchema): Schema.Codec<number> {
     value = value.check(Schema.isLessThanOrEqualTo(definition.maximum))
   }
 
-  return value
+  return definition.format === "score"
+    ? value.annotate({ format: "score" })
+    : value
 }
 
 function compileDecimal(definition: DecimalSchema): Schema.Codec<string> {
