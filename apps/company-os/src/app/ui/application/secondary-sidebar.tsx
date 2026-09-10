@@ -18,15 +18,15 @@ import { CommandPaletteButton } from "#/app/ui/application/command-palette.tsx"
 export function SecondarySidebar({ children }: { children: ReactNode }) {
   return (
     <Sidebar variant="sidebar" collapsible="offcanvas">
-      <SidebarHeader>
+      <SidebarHeader className="gap-0 p-0">
         <SidebarMenu>
-          <SidebarMenuItem>
+          <SidebarMenuItem className="flex h-(--header-height) items-center border-b px-2">
             <SidebarMenuButton render={<Link to="/" />} tooltip="Back to app">
               <ArrowLeftIcon />
               <span>Back to app</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
-          <SidebarMenuItem>
+          <SidebarMenuItem className="px-2 pt-2">
             <CommandPaletteButton />
           </SidebarMenuItem>
         </SidebarMenu>

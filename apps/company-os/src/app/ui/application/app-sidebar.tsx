@@ -64,7 +64,7 @@ export function AppSidebar() {
               }
             />
           </SidebarMenuItem>
-          <SidebarMenuItem className="p-2">
+          <SidebarMenuItem className="px-2 pt-2">
             <CommandPaletteButton />
           </SidebarMenuItem>
         </SidebarMenu>
