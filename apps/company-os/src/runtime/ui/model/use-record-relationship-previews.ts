@@ -19,6 +19,7 @@ export function useRecordRelationshipPreviews(
   return relationships.map((relationship, index) => {
     const result = results[index]!
     return {
+      relationship,
       key: relationship.key,
       label: relationship.label,
       total: result.data?.totalSize,

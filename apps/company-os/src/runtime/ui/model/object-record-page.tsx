@@ -1,7 +1,14 @@
 import { Button } from "@company/ui/button"
+import { useLocalPreference } from "@company/ui/local-preferences"
+import { PageContent, PageHeader, PageSectionHeader } from "@company/ui/page"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@company/ui/tabs"
 import { useMutation } from "@tanstack/react-query"
-import { PencilIcon } from "lucide-react"
+import { useNavigate } from "@tanstack/react-router"
+import {
+  PanelRightCloseIcon,
+  PanelRightOpenIcon,
+  PencilIcon,
+} from "lucide-react"
 import { useMemo, useRef, useState } from "react"
 
 import {
@@ -18,12 +25,14 @@ import { ObjectPropertiesCard } from "#/runtime/ui/model/object-properties-card.
 import { objectPropertyValue } from "#/runtime/ui/model/object-property-value.tsx"
 import { ObjectRecordDialog } from "#/runtime/ui/model/object-record-dialog.tsx"
 import { ObjectRecordIdentity } from "#/runtime/ui/model/object-record-identity.tsx"
+import { ObjectRecordLayout } from "#/runtime/ui/model/object-record-layout.tsx"
 import { ObjectRecordStatusProgress } from "#/runtime/ui/model/object-record-status-progress.tsx"
 import { ObjectRelationshipCollection } from "#/runtime/ui/model/object-relationship-collection.tsx"
 import { objectTablePropertySchema } from "#/runtime/ui/model/object-table/object-table-cell-types.ts"
+import { objectTableValueText } from "#/runtime/ui/model/object-table/object-table-config.ts"
 import { usePageChromeOverride } from "#/runtime/ui/model/page-chrome.tsx"
-import { RecordIdentifier } from "#/runtime/ui/model/record-identifier.tsx"
 import { useRecordNavigation } from "#/runtime/ui/model/record-navigation.tsx"
+import { RecordOptions } from "#/runtime/ui/model/record-options.tsx"
 import { RecordRelatedCreateMenu } from "#/runtime/ui/model/record-related-create-menu.tsx"
 import { RecordRelationshipPicker } from "#/runtime/ui/model/record-relationship-picker.tsx"
 import {
@@ -34,6 +43,9 @@ import { recordRelationships } from "#/runtime/ui/model/record-relationships.ts"
 import { useModelRuntime } from "#/runtime/ui/model/runtime-context.tsx"
 import { useObjectRecord } from "#/runtime/ui/model/use-object-record.ts"
 import { useRecordRelationshipPreviews } from "#/runtime/ui/model/use-record-relationship-previews.ts"
+
+const isBoolean = (value: unknown): value is boolean =>
+  typeof value === "boolean"
 
 type RecordUi = NonNullable<ResolvedObjectUi["record"]>
 
@@ -61,6 +73,7 @@ export function ObjectRecordPage({
   readonly tab?: string | undefined
 }) {
   const runtime = useModelRuntime()
+  const navigate = useNavigate()
 
   const pageElement = useRef<HTMLDivElement>(null)
   const state = useObjectRecord(object, recordId)
@@ -68,6 +81,11 @@ export function ObjectRecordPage({
     mutationFn: ({ field, value }: { field: string; value: string }) =>
       state.update({ [field]: value }),
   })
+  const [showRelated, setShowRelated] = useLocalPreference(
+    "record-related-visible",
+    true,
+    isBoolean
+  )
   const [localTab, setLocalTab] = useState("overview")
   const [editing, setEditing] = useState<ReadonlyArray<string> | "all">()
   const related = useMemo(
@@ -93,8 +111,9 @@ export function ObjectRecordPage({
   )
   const totals = new Map(previews.map(({ key, total }) => [key, total]))
   const select = (value: string) => {
-    setLocalTab(value)
-    onTabChange?.(value)
+    // Let the router commit routed tabs inside its view transition.
+    if (onTabChange) onTabChange(value)
+    else setLocalTab(value)
   }
   const record = state.record
   const title = record ? recordTitle?.({ record, can: state.can }) : undefined
@@ -147,6 +166,10 @@ export function ObjectRecordPage({
       (schema.maxLength === undefined || schema.maxLength > 300)
     )
   })
+  const statusField = object.display.status
+  const hasStatusControl =
+    statusField !== undefined &&
+    modelObjectProperty(object, statusField)?.kind === "enum"
   const detailFields = [
     ...new Set([
       ...(properties ?? []),
@@ -159,35 +182,224 @@ export function ObjectRecordPage({
       id !== undefined &&
       id !== object.display.title &&
       id !== object.display.image &&
+      !(hasStatusControl && id === statusField) &&
       !narrative.includes(id)
   )
-  const hasOverview =
-    Overview !== undefined || narrative.length > 0 || related.length > 0
-  const hasWorkspace =
-    hasOverview || related.length > 0 || customTabs.length > 0
-  const defaultTab = hasOverview
-    ? "overview"
-    : (visibleRelationships[0]?.key ?? customTabs[0]?.id ?? "overview")
   const requested = tab ?? localTab
   const active =
-    (requested === "overview" && hasOverview) ||
     related.some(({ key }) => key === requested) ||
     customTabs.some(({ id }) => id === requested)
       ? requested
-      : defaultTab
+      : "overview"
+  const activeRelationship = related.find(({ key }) => key === active)
+  const relationshipTabs =
+    activeRelationship &&
+    !visibleRelationships.some(({ key }) => key === active)
+      ? [...visibleRelationships, activeRelationship]
+      : visibleRelationships
   const edit = state.can("update")
     ? (id: string) => setEditing([id])
     : undefined
+
+  const relatedPanel =
+    related.length > 0 && showRelated ? (
+      <aside
+        id="record-related"
+        aria-label="Related records"
+        className="min-h-0 flex-1 overflow-y-auto text-xs/relaxed"
+      >
+        <PageContent>
+          <RecordRelationshipPreviews previews={previews} onSelect={select} />
+        </PageContent>
+      </aside>
+    ) : null
+
+  const content = (
+    <>
+      <TabsContent
+        value="overview"
+        className="m-0 flex min-h-0 flex-1 flex-col overflow-hidden"
+      >
+        <ObjectRecordLayout sidebar={relatedPanel}>
+          <PageContent className="min-h-0 flex-1 overflow-y-auto">
+            {hasStatusControl && (
+              <div className="min-w-0 rounded-lg border bg-muted/40 p-page-gutter">
+                <ObjectRecordStatusProgress
+                  object={object}
+                  record={tableRecord(object, record)}
+                  onChange={
+                    state.can("update")
+                      ? (field, value) => statusUpdate.mutate({ field, value })
+                      : undefined
+                  }
+                  pendingValue={
+                    statusUpdate.isPending
+                      ? statusUpdate.variables.value
+                      : undefined
+                  }
+                  error={statusUpdate.error?.message}
+                  disabled={editing !== undefined}
+                />
+              </div>
+            )}
+            {detailFields.length > 0 && (
+              <section id="record-details" aria-label="Record properties">
+                <ObjectPropertiesCard
+                  object={object}
+                  record={record}
+                  references={state.references}
+                  fields={detailFields}
+                  onEdit={edit}
+                />
+              </section>
+            )}
+            {!Overview &&
+              narrative.map((id) => (
+                <section key={id} data-record-field={id}>
+                  <PageSectionHeader>
+                    <h2 className="text-sm font-semibold">
+                      {modelObjectProperty(object, id)?.label ?? id}
+                    </h2>
+                    {edit && writableFields.has(id) && (
+                      <Button
+                        size="icon-xs"
+                        variant="ghost"
+                        aria-label={`Edit ${modelObjectProperty(object, id)?.label ?? id}`}
+                        disabled={editing !== undefined}
+                        onClick={() => edit(id)}
+                      >
+                        <PencilIcon />
+                      </Button>
+                    )}
+                  </PageSectionHeader>
+                  <div className="text-sm leading-relaxed whitespace-pre-wrap">
+                    {objectPropertyValue(
+                      runtime,
+                      object,
+                      id,
+                      tableRecord(object, record)[id],
+                      state.references
+                    )}
+                  </div>
+                </section>
+              ))}
+            {Overview && (
+              <Overview
+                author={state.referenceLabels.get(
+                  typeof record.createdBy === "string" ? record.createdBy : ""
+                )}
+                record={record}
+                can={state.can}
+              />
+            )}
+            {detailFields.length === 0 &&
+              narrative.length === 0 &&
+              !Overview && (
+                <p className="text-sm text-muted-foreground">
+                  No additional details.
+                </p>
+              )}
+          </PageContent>
+        </ObjectRecordLayout>
+      </TabsContent>
+      {related.map((relationship) => (
+        <TabsContent
+          key={relationship.key}
+          value={relationship.key}
+          className="m-0 flex min-h-80 flex-1 flex-col overflow-hidden @3xl:min-h-0"
+        >
+          {active === relationship.key && (
+            <ObjectRelationshipCollection
+              key={`${record.id}:${relationship.key}`}
+              relationship={relationship}
+            />
+          )}
+        </TabsContent>
+      ))}
+      {customTabs.map(({ id, component: Component }) => (
+        <TabsContent
+          key={id}
+          value={id}
+          className="m-0 min-h-0 flex-1 overflow-y-auto"
+        >
+          <PageContent>
+            <Component record={record} can={state.can} />
+          </PageContent>
+        </TabsContent>
+      ))}
+    </>
+  )
 
   return (
     <div
       ref={pageElement}
       className="@container flex min-h-0 flex-1 flex-col bg-background"
     >
-      <header className="shrink-0 border-b px-5 py-4">
-        <div className="flex flex-col gap-3 @3xl:flex-row @3xl:items-center @3xl:justify-between @3xl:gap-6">
-          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-2">
-            <h1 className="min-w-0 text-xl font-semibold tracking-tight wrap-break-word">
+      <Tabs
+        value={active}
+        onValueChange={select}
+        className="min-h-0 min-w-0 flex-1 gap-0"
+      >
+        <PageHeader
+          navigation={
+            <>
+              <div className="min-w-0 flex-1 overflow-x-auto">
+                <TabsList variant="header">
+                  <TabsTrigger value="overview">Overview</TabsTrigger>
+                  {relationshipTabs.map(({ key, label }) => (
+                    <TabsTrigger key={key} value={key}>
+                      {label}
+                      <RelationshipCount count={totals.get(key)} />
+                    </TabsTrigger>
+                  ))}
+                  {customTabs.map(({ id, label }) => (
+                    <TabsTrigger key={id} value={id}>
+                      {label}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </div>
+              {related.length > 0 && (
+                <>
+                  {otherRelationships.length > 0 && (
+                    <RecordRelationshipPicker
+                      relationships={otherRelationships}
+                      selected={active}
+                      onSelect={select}
+                    />
+                  )}
+                  {active === "overview" && (
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label={
+                        showRelated
+                          ? "Hide related records"
+                          : "Show related records"
+                      }
+                      title={
+                        showRelated
+                          ? "Hide related records"
+                          : "Show related records"
+                      }
+                      aria-expanded={showRelated}
+                      aria-controls="record-related"
+                      onClick={() => setShowRelated(!showRelated)}
+                    >
+                      {showRelated ? (
+                        <PanelRightCloseIcon />
+                      ) : (
+                        <PanelRightOpenIcon />
+                      )}
+                    </Button>
+                  )}
+                </>
+              )}
+            </>
+          }
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h1 className="min-w-0 text-lg font-semibold tracking-tight wrap-break-word">
               {title ?? (
                 <ObjectRecordIdentity
                   heading
@@ -196,184 +408,54 @@ export function ObjectRecordPage({
                 />
               )}
             </h1>
-          </div>
-          <div className="flex shrink-0 flex-wrap items-center gap-1.5">
-            <ObjectActions
-              actions={actions}
-              record={record}
-              can={state.can}
-              placement="record"
-            />
-            <RecordRelatedCreateMenu relationships={related} totals={totals} />
-            {edit && (
-              <Button
-                variant="ghost"
-                size="sm"
-                aria-label={`Edit ${object.name.toLowerCase()}`}
-                disabled={editing !== undefined}
-                onClick={() => setEditing("all")}
-              >
-                <PencilIcon />
-                Edit
-              </Button>
-            )}
-            <RecordIdentifier value={record.id} />
-          </div>
-        </div>
-        {object.display.status && (
-          <div className="mt-4 min-w-0 overflow-x-auto">
-            <ObjectRecordStatusProgress
-              object={object}
-              record={tableRecord(object, record)}
-              onChange={
-                state.can("update")
-                  ? (field, value) => statusUpdate.mutate({ field, value })
-                  : undefined
-              }
-              pendingValue={
-                statusUpdate.isPending
-                  ? statusUpdate.variables.value
-                  : undefined
-              }
-              error={statusUpdate.error?.message}
-              disabled={editing !== undefined}
-            />
-          </div>
-        )}
-      </header>
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto @3xl:flex-row @3xl:overflow-hidden">
-        {detailFields.length > 0 && (
-          <aside
-            id="record-details"
-            className={
-              hasWorkspace
-                ? "shrink-0 border-b px-3 py-3 @3xl:w-88 @3xl:overflow-y-auto @3xl:border-r @3xl:border-b-0"
-                : "w-full max-w-3xl p-4"
-            }
-          >
-            <h2 className="mb-2 px-2 text-xs font-semibold text-muted-foreground">
-              Details
-            </h2>
-            <ObjectPropertiesCard
-              object={object}
-              record={record}
-              references={state.references}
-              fields={detailFields}
-              onEdit={edit}
-            />
-          </aside>
-        )}
-        {hasWorkspace && (
-          <Tabs
-            value={active}
-            onValueChange={select}
-            className="min-h-80 min-w-0 flex-1 gap-0 @3xl:min-h-0"
-          >
-            <div className="flex shrink-0 items-center gap-2 border-b px-4">
-              <div className="min-w-0 flex-1 overflow-x-auto">
-                <TabsList variant="line" className="h-10 gap-4 p-0">
-                  {hasOverview && (
-                    <TabsTrigger value="overview" className="h-10 px-0">
-                      Overview
-                    </TabsTrigger>
-                  )}
-                  {visibleRelationships.map(({ key, label }) => (
-                    <TabsTrigger key={key} value={key} className="h-10 px-0">
-                      {label}
-                      <RelationshipCount
-                        count={previews.find((item) => item.key === key)?.total}
-                      />
-                    </TabsTrigger>
-                  ))}
-                  {customTabs.map(({ id, label }) => (
-                    <TabsTrigger key={id} value={id} className="h-10 px-0">
-                      {label}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-              </div>
-              {otherRelationships.length > 0 && (
-                <RecordRelationshipPicker
-                  relationships={otherRelationships}
-                  selected={active}
-                  onSelect={select}
-                />
-              )}
-            </div>
-            <TabsContent value="overview" className="m-0 overflow-y-auto p-5">
-              {!Overview &&
-                narrative.map((id) => (
-                  <section key={id} data-record-field={id} className="mb-6">
-                    <div className="mb-2 flex items-center justify-between gap-2">
-                      <h2 className="text-sm font-semibold">
-                        {modelObjectProperty(object, id)?.label ?? id}
-                      </h2>
-                      {edit && writableFields.has(id) && (
-                        <Button
-                          size="icon-xs"
-                          variant="ghost"
-                          aria-label={`Edit ${modelObjectProperty(object, id)?.label ?? id}`}
-                          disabled={editing !== undefined}
-                          onClick={() => edit(id)}
-                        >
-                          <PencilIcon />
-                        </Button>
-                      )}
-                    </div>
-                    <div className="text-sm leading-relaxed whitespace-pre-wrap">
-                      {objectPropertyValue(
-                        runtime,
-                        object,
-                        id,
-                        tableRecord(object, record)[id],
-                        state.references
-                      )}
-                    </div>
-                  </section>
-                ))}
-              {Overview && (
-                <Overview
-                  author={state.referenceLabels.get(
-                    typeof record.createdBy === "string" ? record.createdBy : ""
-                  )}
-                  record={record}
-                  can={state.can}
-                />
-              )}
-              <RecordRelationshipPreviews
-                previews={previews}
-                onSelect={select}
+            <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+              <ObjectActions
+                actions={actions}
+                record={record}
+                can={state.can}
+                placement="record"
               />
-            </TabsContent>
-            {related.map((relationship) => {
-              const { key } = relationship
-              return (
-                <TabsContent
-                  key={key}
-                  value={key}
-                  className="m-0 flex min-h-80 flex-col overflow-hidden @3xl:min-h-0"
+              <RecordRelatedCreateMenu
+                relationships={related}
+                totals={totals}
+              />
+              {edit && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  aria-label={`Edit ${object.name.toLowerCase()}`}
+                  disabled={editing !== undefined}
+                  onClick={() => setEditing("all")}
                 >
-                  {active === key && (
-                    <ObjectRelationshipCollection
-                      key={`${record.id}:${key}`}
-                      relationship={relationship}
-                    />
-                  )}
-                </TabsContent>
-              )
-            })}
-            {customTabs.map(({ id, component: Component }) => (
-              <TabsContent
-                key={id}
-                value={id}
-                className="m-0 overflow-y-auto p-5"
-              >
-                <Component record={record} can={state.can} />
-              </TabsContent>
-            ))}
-          </Tabs>
-        )}
-      </div>
+                  <PencilIcon />
+                  Edit
+                </Button>
+              )}
+              <RecordOptions
+                key={record.id}
+                value={record.id}
+                label={
+                  objectTableValueText(
+                    tableRecord(object, record)[object.display.title]
+                  ) || record.id
+                }
+                objectName={object.name}
+                onDelete={
+                  state.canDelete
+                    ? async () => {
+                        await state.deleteRecord()
+                        await navigate({ to: collectionHref, replace: true })
+                      }
+                    : undefined
+                }
+              />
+            </div>
+          </div>
+        </PageHeader>
+        <div data-tab-content className="flex min-h-0 flex-1 flex-col">
+          {content}
+        </div>
+      </Tabs>
       {editing !== undefined && (
         <ObjectRecordDialog
           mode="edit"

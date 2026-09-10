@@ -1,8 +1,10 @@
 import { Button } from "@company/ui/button"
+import { PageSectionHeader } from "@company/ui/page"
 
 import { ObjectRecordSummary } from "#/runtime/ui/model/object-record-summary.tsx"
 import { useRecordReferences } from "#/runtime/ui/model/object-references.ts"
 import { objectHref } from "#/runtime/ui/model/object-routing.ts"
+import { RecordRelatedCreateMenu } from "#/runtime/ui/model/record-related-create-menu.tsx"
 import { useModelRuntime } from "#/runtime/ui/model/runtime-context.tsx"
 import type { useRecordRelationshipPreviews } from "#/runtime/ui/model/use-record-relationship-previews.ts"
 
@@ -37,19 +39,26 @@ export function RecordRelationshipPreviews({
           key={preview.key}
           aria-label={`Recent ${preview.label.toLowerCase()}`}
         >
-          <div className="mb-2 flex items-center justify-between gap-2">
+          <PageSectionHeader className="flex-wrap">
             <h2 className="flex items-center gap-2 text-sm font-semibold">
               {preview.label}
               <RelationshipCount count={preview.total} />
             </h2>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onSelect(preview.key)}
-            >
-              View all
-            </Button>
-          </div>
+            <div className="ml-auto flex shrink-0 items-center gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onSelect(preview.key)}
+              >
+                View all
+              </Button>
+              <RecordRelatedCreateMenu
+                compact
+                relationships={[preview.relationship]}
+                totals={new Map([[preview.key, preview.total]])}
+              />
+            </div>
+          </PageSectionHeader>
           {preview.error ? (
             <div
               role="alert"

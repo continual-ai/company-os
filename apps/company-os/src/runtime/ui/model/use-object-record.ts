@@ -21,6 +21,9 @@ export function useObjectRecord(object: ModelObject, recordId: string) {
     record.data === undefined ? [] : [record.data]
   )
   return {
+    canDelete:
+      client.batchDelete !== undefined &&
+      objectActionAvailable(object, "delete", record.data),
     can: (actionId: string) =>
       objectActionAvailable(object, actionId, record.data),
     error:
@@ -34,6 +37,15 @@ export function useObjectRecord(object: ModelObject, recordId: string) {
     record: record.data,
     referenceLabels: references.labels,
     references: references.records,
+    deleteRecord: async () => {
+      if (
+        record.data === undefined ||
+        client.batchDelete === undefined ||
+        !objectActionAvailable(object, "delete", record.data)
+      )
+        throw new Error("Deletion is not available.")
+      await client.batchDelete({ ids: [record.data.id] })
+    },
     update: async (changes: ObjectFormInput) => {
       if (record.data === undefined || client.update === undefined)
         throw new Error("Updates are not available.")

@@ -17,6 +17,7 @@ import {
   defineModuleUi,
   ObjectActions,
 } from "#/runtime/ui/model/module-ui.tsx"
+import { ObjectCreateContext } from "#/runtime/ui/model/object-create-context.ts"
 import { ObjectRecordFeed } from "#/runtime/ui/model/object-record-feed.tsx"
 import { RecordRelationshipPreviews } from "#/runtime/ui/model/record-relationship-previews.tsx"
 import { ModelUiProvider } from "#/runtime/ui/model/runtime-context.tsx"
@@ -78,20 +79,34 @@ describe("module UI composition", () => {
             loading={false}
             renderActions={() => <button>Edit prospect</button>}
           />
-          <RecordRelationshipPreviews
-            previews={[
-              {
-                key: "prospects",
-                label: "Prospects",
-                total: 12,
-                pending: false,
-                error: false,
-                retry: () => undefined,
-                items: [{ object: Prospect, record }],
-              },
-            ]}
-            onSelect={() => undefined}
-          />
+          <ObjectCreateContext value={() => undefined}>
+            <RecordRelationshipPreviews
+              previews={[
+                {
+                  key: "prospects",
+                  label: "Prospects",
+                  relationship: {
+                    key: "prospects",
+                    label: "Prospects",
+                    targetType: Prospect.id,
+                    target: Prospect,
+                    featured: true,
+                    cardinality: "many",
+                    creates: [{ target: Prospect, options: {} }],
+                    list: () => {
+                      throw new Error("Previews must not load collections")
+                    },
+                  },
+                  total: 12,
+                  pending: false,
+                  error: false,
+                  retry: () => undefined,
+                  items: [{ object: Prospect, record }],
+                },
+              ]}
+              onSelect={() => undefined}
+            />
+          </ObjectCreateContext>
         </ModelUiProvider>
       </QueryClientProvider>
     )
@@ -100,6 +115,7 @@ describe("module UI composition", () => {
     expect(html).toContain('data-variant="preview"')
     expect(html).toContain('href="/objects/prospect/prospect-example"')
     expect(html).toContain("Edit prospect")
+    expect(html).toContain('aria-label="New prospect"')
     expect(html).toContain(">12</span>")
   })
 

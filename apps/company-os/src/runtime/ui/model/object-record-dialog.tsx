@@ -28,7 +28,6 @@ import {
 import { useObjectUi } from "#/runtime/ui/model/module-ui.tsx"
 import {
   modelObjectProperty,
-  recordLabel,
   type ClientRecord,
   type ModelObject,
 } from "#/runtime/ui/model/object-client.ts"
@@ -143,14 +142,14 @@ function ObjectRecordEditor({
             {mode === "create"
               ? `New ${object.name.toLowerCase()}`
               : fields?.length === 1
-                ? `Edit ${modelObjectProperty(object, fields[0]!)?.label ?? fields[0]}`
+                ? `Edit ${(modelObjectProperty(object, fields[0]!)?.label ?? fields[0]!).replace(/^[A-Z](?=[a-z])/, (letter) => letter.toLowerCase())}`
                 : `Edit ${object.name.toLowerCase()}`}
           </DialogTitle>
-          <DialogDescription className="line-clamp-2">
-            {fields !== undefined && initialRecord !== undefined
-              ? recordLabel(object, initialRecord)
-              : object.description}
-          </DialogDescription>
+          {mode === "create" && object.description && (
+            <DialogDescription className="line-clamp-2">
+              {object.description}
+            </DialogDescription>
+          )}
         </DialogHeader>
         <ObjectFormFields
           fields={fields}

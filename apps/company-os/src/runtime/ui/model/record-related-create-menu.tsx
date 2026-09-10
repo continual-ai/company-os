@@ -15,9 +15,11 @@ import type { RecordRelationship } from "#/runtime/ui/model/record-relationships
 export function RecordRelatedCreateMenu({
   relationships,
   totals,
+  compact = false,
 }: {
   readonly relationships: ReadonlyArray<RecordRelationship>
   readonly totals: ReadonlyMap<string, number | undefined>
+  readonly compact?: boolean
 }) {
   const openCreate = useObjectCreate()
   const entries = relationships
@@ -35,11 +37,36 @@ export function RecordRelatedCreateMenu({
     )
   const available = entries
   if (available.length === 0) return null
+  const single = compact && available.length === 1 ? available[0] : undefined
+  if (single)
+    return (
+      <Button
+        variant="ghost"
+        size="sm"
+        aria-label={`New ${single.target.name.toLowerCase()}`}
+        onClick={() => openCreate(single.target, single.options)}
+      >
+        <PlusIcon />
+        New
+      </Button>
+    )
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger render={<Button variant="outline" size="sm" />}>
+      <DropdownMenuTrigger
+        render={
+          <Button
+            variant={compact ? "ghost" : "outline"}
+            size="sm"
+            aria-label={
+              compact
+                ? `New ${relationships[0]?.label.toLowerCase()}`
+                : undefined
+            }
+          />
+        }
+      >
         <PlusIcon />
-        New related
+        {compact ? "New" : "New related"}
         <ChevronDownIcon />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="max-h-80 min-w-60">
