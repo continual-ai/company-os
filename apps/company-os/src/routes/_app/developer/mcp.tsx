@@ -1,6 +1,8 @@
 import { CodeBlock } from "@company/ui/code-block"
 import { Link, createFileRoute } from "@tanstack/react-router"
 
+import { appUrl } from "#/app/client/environment.ts"
+import { modelOrigin } from "#/app/client/model-fetch.ts"
 import { pageOptions } from "#/app/ui/route-metadata.ts"
 
 const page = {
@@ -12,10 +14,15 @@ const page = {
 
 export const Route = createFileRoute("/_app/developer/mcp")({
   ...pageOptions(page),
+  loader: async () => ({
+    page,
+    endpoint: new URL("/api/mcp", appUrl() ?? (await modelOrigin())).href,
+  }),
   component: McpPage,
 })
 
 function McpPage() {
+  const { endpoint } = Route.useLoaderData()
   return (
     <div className="mx-auto w-full max-w-5xl space-y-8 px-5 py-8 lg:px-8 lg:py-12">
       <header className="max-w-3xl">
@@ -31,16 +38,12 @@ function McpPage() {
       <section className="space-y-4">
         <h2 className="text-lg font-medium">Connect over Streamable HTTP</h2>
         <p className="text-sm leading-6 text-muted-foreground">
-          Add your deployment’s origin followed by <code>/api/mcp</code> to a
-          compatible MCP client. Configure credentials accepted by that
-          deployment’s identity provider. A browser login alone does not
-          authenticate an external agent; the app does not issue a separate MCP
-          credential.
+          Add this endpoint to a compatible MCP client. Configure credentials
+          accepted by that deployment’s identity provider. A browser login alone
+          does not authenticate an external agent; the app does not issue a
+          separate MCP credential.
         </p>
-        <CodeBlock
-          label="Endpoint path · prepend your deployment origin"
-          code="/api/mcp"
-        />
+        <CodeBlock label="MCP endpoint" code={endpoint} />
       </section>
       <section className="grid gap-6 md:grid-cols-2">
         <article className="min-w-0 space-y-4">
