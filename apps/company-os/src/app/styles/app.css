@@ -1,3 +1,34 @@
 @import "@company/ui/styles.css";
 
 @source "../../**/*.{ts,tsx}";
+
+/* Only the changing content participates; navigation chrome stays live. */
+:root {
+  view-transition-name: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :root:active-view-transition-type(page) [data-page-content],
+  :root:active-view-transition-type(tab) [data-tab-content] {
+    view-transition-name: navigation-content;
+  }
+}
+
+::view-transition {
+  pointer-events: none;
+}
+
+::view-transition-group(navigation-content),
+::view-transition-old(navigation-content),
+::view-transition-new(navigation-content) {
+  animation-duration: 100ms;
+  animation-timing-function: ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none;
+  }
+}

@@ -29,7 +29,6 @@ function RecordPage() {
       tab={search.tab}
       onTabChange={(tab) =>
         void navigate({
-          replace: true,
           resetScroll: false,
           search: objectRecordTabSearch(tab),
         })

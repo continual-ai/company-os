@@ -1,6 +1,7 @@
 import { createRouter as createTanStackRouter } from "@tanstack/react-router"
 import { setupRouterSsrQueryIntegration } from "@tanstack/react-router-ssr-query"
 
+import { navigationTransitionTypes } from "#/app/ui/application/navigation-transitions.ts"
 import { routeTree } from "#/routeTree.gen.ts"
 import {
   createModelDataClient,
@@ -16,7 +17,10 @@ export function getRouter() {
     context: { queryClient },
     routeTree,
     scrollRestoration: true,
+    defaultViewTransition: { types: navigationTransitionTypes },
     defaultPreload: "intent",
+    defaultPreloadDelay: 50,
+    // Query owns freshness; each preload should consult the shared data cache.
     defaultPreloadStaleTime: 0,
   })
   setupRouterSsrQueryIntegration({ router, queryClient })
