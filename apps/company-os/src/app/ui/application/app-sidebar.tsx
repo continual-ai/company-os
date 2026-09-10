@@ -32,10 +32,10 @@ import {
   useAuthenticatedUser,
 } from "#/app/ui/application/authenticated-user.tsx"
 import { CommandPaletteButton } from "#/app/ui/application/command-palette.tsx"
-import { ModuleNavigation } from "#/runtime/ui/model/module-navigation.tsx"
+import { WorkspaceNavigation } from "#/app/ui/application/workspace-navigation.tsx"
 
 export function AppSidebar() {
-  const { open, isMobile } = useSidebar()
+  const { open, isMobile, setOpenMobile } = useSidebar()
   const user = useAuthenticatedUser()
   const matchRoute = useMatchRoute()
   return (
@@ -70,7 +70,16 @@ export function AppSidebar() {
         </SidebarMenu>
       </SidebarHeader>
 
-      <SidebarContent>
+      <SidebarContent
+        onClick={(event) => {
+          if (
+            isMobile &&
+            event.target instanceof Element &&
+            event.target.closest("a[href]")
+          )
+            setOpenMobile(false)
+        }}
+      >
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -90,7 +99,7 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <ModuleNavigation />
+        <WorkspaceNavigation />
       </SidebarContent>
 
       <SidebarFooter>

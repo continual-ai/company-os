@@ -17,15 +17,20 @@ import { Route as ApiOpenapiRouteImport } from './routes/api/openapi'
 import { Route as ApiMcpRouteImport } from './routes/api/mcp'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApiDescriptionRouteImport } from './routes/api/description'
+import { Route as AppDataRouteImport } from './routes/_app/data'
 import { Route as AppSettingsRouteRouteImport } from './routes/_app/settings/route'
 import { Route as AppDeveloperRouteRouteImport } from './routes/_app/developer/route'
+import { Route as AppToolsIndexRouteImport } from './routes/_app/tools/index'
 import { Route as AppSettingsIndexRouteImport } from './routes/_app/settings/index'
+import { Route as AppReportsIndexRouteImport } from './routes/_app/reports/index'
 import { Route as AppModulesIndexRouteImport } from './routes/_app/modules/index'
 import { Route as AppDeveloperIndexRouteImport } from './routes/_app/developer/index'
 import { Route as ApiV1SplatRouteImport } from './routes/api/v1/$'
+import { Route as AppToolsToolIdRouteImport } from './routes/_app/tools/$toolId'
 import { Route as AppSettingsProfileRouteImport } from './routes/_app/settings/profile'
 import { Route as AppSettingsModulesRouteImport } from './routes/_app/settings/modules'
 import { Route as AppSettingsAppearanceRouteImport } from './routes/_app/settings/appearance'
+import { Route as AppReportsReportIdRouteImport } from './routes/_app/reports/$reportId'
 import { Route as AppModulesRecordIdRouteImport } from './routes/_app/modules/$recordId'
 import { Route as AppDeveloperSdkRouteImport } from './routes/_app/developer/sdk'
 import { Route as AppDeveloperModelRouteImport } from './routes/_app/developer/model'
@@ -77,6 +82,11 @@ const ApiDescriptionRoute = ApiDescriptionRouteImport.update({
   path: '/api/description',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppDataRoute = AppDataRouteImport.update({
+  id: '/data',
+  path: '/data',
+  getParentRoute: () => AppRouteRoute,
+} as any)
 const AppSettingsRouteRoute = AppSettingsRouteRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -87,10 +97,20 @@ const AppDeveloperRouteRoute = AppDeveloperRouteRouteImport.update({
   path: '/developer',
   getParentRoute: () => AppRouteRoute,
 } as any)
+const AppToolsIndexRoute = AppToolsIndexRouteImport.update({
+  id: '/tools/',
+  path: '/tools/',
+  getParentRoute: () => AppRouteRoute,
+} as any)
 const AppSettingsIndexRoute = AppSettingsIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AppSettingsRouteRoute,
+} as any)
+const AppReportsIndexRoute = AppReportsIndexRouteImport.update({
+  id: '/reports/',
+  path: '/reports/',
+  getParentRoute: () => AppRouteRoute,
 } as any)
 const AppModulesIndexRoute = AppModulesIndexRouteImport.update({
   id: '/modules/',
@@ -107,6 +127,11 @@ const ApiV1SplatRoute = ApiV1SplatRouteImport.update({
   path: '/api/v1/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppToolsToolIdRoute = AppToolsToolIdRouteImport.update({
+  id: '/tools/$toolId',
+  path: '/tools/$toolId',
+  getParentRoute: () => AppRouteRoute,
+} as any)
 const AppSettingsProfileRoute = AppSettingsProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
@@ -121,6 +146,11 @@ const AppSettingsAppearanceRoute = AppSettingsAppearanceRouteImport.update({
   id: '/appearance',
   path: '/appearance',
   getParentRoute: () => AppSettingsRouteRoute,
+} as any)
+const AppReportsReportIdRoute = AppReportsReportIdRouteImport.update({
+  id: '/reports/$reportId',
+  path: '/reports/$reportId',
+  getParentRoute: () => AppRouteRoute,
 } as any)
 const AppModulesRecordIdRoute = AppModulesRecordIdRouteImport.update({
   id: '/modules/$recordId',
@@ -190,6 +220,7 @@ export interface FileRoutesByFullPath {
   '/sign-in': typeof SignInRoute
   '/developer': typeof AppDeveloperRouteRouteWithChildren
   '/settings': typeof AppSettingsRouteRouteWithChildren
+  '/data': typeof AppDataRoute
   '/api/description': typeof ApiDescriptionRoute
   '/api/health': typeof ApiHealthRoute
   '/api/mcp': typeof ApiMcpRoute
@@ -200,13 +231,17 @@ export interface FileRoutesByFullPath {
   '/developer/model': typeof AppDeveloperModelRoute
   '/developer/sdk': typeof AppDeveloperSdkRoute
   '/modules/$recordId': typeof AppModulesRecordIdRoute
+  '/reports/$reportId': typeof AppReportsReportIdRoute
   '/settings/appearance': typeof AppSettingsAppearanceRoute
   '/settings/modules': typeof AppSettingsModulesRoute
   '/settings/profile': typeof AppSettingsProfileRoute
+  '/tools/$toolId': typeof AppToolsToolIdRoute
   '/api/v1/$': typeof ApiV1SplatRoute
   '/developer/': typeof AppDeveloperIndexRoute
   '/modules/': typeof AppModulesIndexRoute
+  '/reports/': typeof AppReportsIndexRoute
   '/settings/': typeof AppSettingsIndexRoute
+  '/tools/': typeof AppToolsIndexRoute
   '/objects/$objectType/$recordId': typeof AppObjectsObjectTypeRecordIdRoute
   '/settings/$collection/$recordId': typeof AppSettingsCollectionRecordIdRoute
   '/objects/$objectType/': typeof AppObjectsObjectTypeIndexRoute
@@ -216,6 +251,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/health': typeof HealthRoute
   '/sign-in': typeof SignInRoute
+  '/data': typeof AppDataRoute
   '/api/description': typeof ApiDescriptionRoute
   '/api/health': typeof ApiHealthRoute
   '/api/mcp': typeof ApiMcpRoute
@@ -227,13 +263,17 @@ export interface FileRoutesByTo {
   '/developer/model': typeof AppDeveloperModelRoute
   '/developer/sdk': typeof AppDeveloperSdkRoute
   '/modules/$recordId': typeof AppModulesRecordIdRoute
+  '/reports/$reportId': typeof AppReportsReportIdRoute
   '/settings/appearance': typeof AppSettingsAppearanceRoute
   '/settings/modules': typeof AppSettingsModulesRoute
   '/settings/profile': typeof AppSettingsProfileRoute
+  '/tools/$toolId': typeof AppToolsToolIdRoute
   '/api/v1/$': typeof ApiV1SplatRoute
   '/developer': typeof AppDeveloperIndexRoute
   '/modules': typeof AppModulesIndexRoute
+  '/reports': typeof AppReportsIndexRoute
   '/settings': typeof AppSettingsIndexRoute
+  '/tools': typeof AppToolsIndexRoute
   '/objects/$objectType/$recordId': typeof AppObjectsObjectTypeRecordIdRoute
   '/settings/$collection/$recordId': typeof AppSettingsCollectionRecordIdRoute
   '/objects/$objectType': typeof AppObjectsObjectTypeIndexRoute
@@ -247,6 +287,7 @@ export interface FileRoutesById {
   '/sign-in': typeof SignInRoute
   '/_app/developer': typeof AppDeveloperRouteRouteWithChildren
   '/_app/settings': typeof AppSettingsRouteRouteWithChildren
+  '/_app/data': typeof AppDataRoute
   '/api/description': typeof ApiDescriptionRoute
   '/api/health': typeof ApiHealthRoute
   '/api/mcp': typeof ApiMcpRoute
@@ -258,13 +299,17 @@ export interface FileRoutesById {
   '/_app/developer/model': typeof AppDeveloperModelRoute
   '/_app/developer/sdk': typeof AppDeveloperSdkRoute
   '/_app/modules/$recordId': typeof AppModulesRecordIdRoute
+  '/_app/reports/$reportId': typeof AppReportsReportIdRoute
   '/_app/settings/appearance': typeof AppSettingsAppearanceRoute
   '/_app/settings/modules': typeof AppSettingsModulesRoute
   '/_app/settings/profile': typeof AppSettingsProfileRoute
+  '/_app/tools/$toolId': typeof AppToolsToolIdRoute
   '/api/v1/$': typeof ApiV1SplatRoute
   '/_app/developer/': typeof AppDeveloperIndexRoute
   '/_app/modules/': typeof AppModulesIndexRoute
+  '/_app/reports/': typeof AppReportsIndexRoute
   '/_app/settings/': typeof AppSettingsIndexRoute
+  '/_app/tools/': typeof AppToolsIndexRoute
   '/_app/objects/$objectType/$recordId': typeof AppObjectsObjectTypeRecordIdRoute
   '/_app/settings/$collection/$recordId': typeof AppSettingsCollectionRecordIdRoute
   '/_app/objects/$objectType/': typeof AppObjectsObjectTypeIndexRoute
@@ -279,6 +324,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/developer'
     | '/settings'
+    | '/data'
     | '/api/description'
     | '/api/health'
     | '/api/mcp'
@@ -289,13 +335,17 @@ export interface FileRouteTypes {
     | '/developer/model'
     | '/developer/sdk'
     | '/modules/$recordId'
+    | '/reports/$reportId'
     | '/settings/appearance'
     | '/settings/modules'
     | '/settings/profile'
+    | '/tools/$toolId'
     | '/api/v1/$'
     | '/developer/'
     | '/modules/'
+    | '/reports/'
     | '/settings/'
+    | '/tools/'
     | '/objects/$objectType/$recordId'
     | '/settings/$collection/$recordId'
     | '/objects/$objectType/'
@@ -305,6 +355,7 @@ export interface FileRouteTypes {
   to:
     | '/health'
     | '/sign-in'
+    | '/data'
     | '/api/description'
     | '/api/health'
     | '/api/mcp'
@@ -316,13 +367,17 @@ export interface FileRouteTypes {
     | '/developer/model'
     | '/developer/sdk'
     | '/modules/$recordId'
+    | '/reports/$reportId'
     | '/settings/appearance'
     | '/settings/modules'
     | '/settings/profile'
+    | '/tools/$toolId'
     | '/api/v1/$'
     | '/developer'
     | '/modules'
+    | '/reports'
     | '/settings'
+    | '/tools'
     | '/objects/$objectType/$recordId'
     | '/settings/$collection/$recordId'
     | '/objects/$objectType'
@@ -335,6 +390,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/_app/developer'
     | '/_app/settings'
+    | '/_app/data'
     | '/api/description'
     | '/api/health'
     | '/api/mcp'
@@ -346,13 +402,17 @@ export interface FileRouteTypes {
     | '/_app/developer/model'
     | '/_app/developer/sdk'
     | '/_app/modules/$recordId'
+    | '/_app/reports/$reportId'
     | '/_app/settings/appearance'
     | '/_app/settings/modules'
     | '/_app/settings/profile'
+    | '/_app/tools/$toolId'
     | '/api/v1/$'
     | '/_app/developer/'
     | '/_app/modules/'
+    | '/_app/reports/'
     | '/_app/settings/'
+    | '/_app/tools/'
     | '/_app/objects/$objectType/$recordId'
     | '/_app/settings/$collection/$recordId'
     | '/_app/objects/$objectType/'
@@ -430,6 +490,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiDescriptionRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/data': {
+      id: '/_app/data'
+      path: '/data'
+      fullPath: '/data'
+      preLoaderRoute: typeof AppDataRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
     '/_app/settings': {
       id: '/_app/settings'
       path: '/settings'
@@ -444,12 +511,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDeveloperRouteRouteImport
       parentRoute: typeof AppRouteRoute
     }
+    '/_app/tools/': {
+      id: '/_app/tools/'
+      path: '/tools'
+      fullPath: '/tools/'
+      preLoaderRoute: typeof AppToolsIndexRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
     '/_app/settings/': {
       id: '/_app/settings/'
       path: '/'
       fullPath: '/settings/'
       preLoaderRoute: typeof AppSettingsIndexRouteImport
       parentRoute: typeof AppSettingsRouteRoute
+    }
+    '/_app/reports/': {
+      id: '/_app/reports/'
+      path: '/reports'
+      fullPath: '/reports/'
+      preLoaderRoute: typeof AppReportsIndexRouteImport
+      parentRoute: typeof AppRouteRoute
     }
     '/_app/modules/': {
       id: '/_app/modules/'
@@ -472,6 +553,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiV1SplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/tools/$toolId': {
+      id: '/_app/tools/$toolId'
+      path: '/tools/$toolId'
+      fullPath: '/tools/$toolId'
+      preLoaderRoute: typeof AppToolsToolIdRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
     '/_app/settings/profile': {
       id: '/_app/settings/profile'
       path: '/profile'
@@ -492,6 +580,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/settings/appearance'
       preLoaderRoute: typeof AppSettingsAppearanceRouteImport
       parentRoute: typeof AppSettingsRouteRoute
+    }
+    '/_app/reports/$reportId': {
+      id: '/_app/reports/$reportId'
+      path: '/reports/$reportId'
+      fullPath: '/reports/$reportId'
+      preLoaderRoute: typeof AppReportsReportIdRouteImport
+      parentRoute: typeof AppRouteRoute
     }
     '/_app/modules/$recordId': {
       id: '/_app/modules/$recordId'
@@ -618,9 +713,14 @@ const AppSettingsRouteRouteWithChildren =
 interface AppRouteRouteChildren {
   AppDeveloperRouteRoute: typeof AppDeveloperRouteRouteWithChildren
   AppSettingsRouteRoute: typeof AppSettingsRouteRouteWithChildren
+  AppDataRoute: typeof AppDataRoute
   AppIndexRoute: typeof AppIndexRoute
   AppModulesRecordIdRoute: typeof AppModulesRecordIdRoute
+  AppReportsReportIdRoute: typeof AppReportsReportIdRoute
+  AppToolsToolIdRoute: typeof AppToolsToolIdRoute
   AppModulesIndexRoute: typeof AppModulesIndexRoute
+  AppReportsIndexRoute: typeof AppReportsIndexRoute
+  AppToolsIndexRoute: typeof AppToolsIndexRoute
   AppObjectsObjectTypeRecordIdRoute: typeof AppObjectsObjectTypeRecordIdRoute
   AppObjectsObjectTypeIndexRoute: typeof AppObjectsObjectTypeIndexRoute
 }
@@ -628,9 +728,14 @@ interface AppRouteRouteChildren {
 const AppRouteRouteChildren: AppRouteRouteChildren = {
   AppDeveloperRouteRoute: AppDeveloperRouteRouteWithChildren,
   AppSettingsRouteRoute: AppSettingsRouteRouteWithChildren,
+  AppDataRoute: AppDataRoute,
   AppIndexRoute: AppIndexRoute,
   AppModulesRecordIdRoute: AppModulesRecordIdRoute,
+  AppReportsReportIdRoute: AppReportsReportIdRoute,
+  AppToolsToolIdRoute: AppToolsToolIdRoute,
   AppModulesIndexRoute: AppModulesIndexRoute,
+  AppReportsIndexRoute: AppReportsIndexRoute,
+  AppToolsIndexRoute: AppToolsIndexRoute,
   AppObjectsObjectTypeRecordIdRoute: AppObjectsObjectTypeRecordIdRoute,
   AppObjectsObjectTypeIndexRoute: AppObjectsObjectTypeIndexRoute,
 }

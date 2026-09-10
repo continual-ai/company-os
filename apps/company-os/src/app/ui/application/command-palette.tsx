@@ -23,6 +23,11 @@ import {
 
 import { data } from "#/app/app-client.ts"
 import { presentation } from "#/app/app-presentation.ts"
+import {
+  reportPreviews,
+  toolPreviews,
+  workspaceSections,
+} from "#/app/customization/workspace.ts"
 import { RecentRecords } from "#/app/ui/application/recent-records-group.tsx"
 import type { RecordSummary } from "#/runtime/contract/record-search.ts"
 import { useModelNavigation } from "#/runtime/ui/model/module-navigation.tsx"
@@ -51,6 +56,7 @@ function usePaletteCommands() {
 }
 const utilityCommands = [
   { label: "Home", to: "/", icon: HomeIcon },
+  ...workspaceSections,
   { label: "Developer Center", to: "/developer", icon: CodeIcon },
 ]
 
@@ -106,8 +112,18 @@ function PaletteContent({ close }: { readonly close: () => void }) {
     matches(`Create new ${item.object.name}`)
   )
   const utilities = utilityCommands.filter((item) => matches(item.label))
+  const tools = toolPreviews.filter((item) =>
+    matches(`${item.label} ${item.category}`)
+  )
+  const reports = reportPreviews.filter((item) => matches(item.label))
   const empty =
-    hits.length + collections.length + commands.length + utilities.length === 0
+    hits.length +
+      collections.length +
+      commands.length +
+      utilities.length +
+      tools.length +
+      reports.length ===
+    0
   const go = (to: string) => {
     close()
     void navigate({ to })
@@ -118,8 +134,8 @@ function PaletteContent({ close }: { readonly close: () => void }) {
       <CommandInput
         value={input}
         onValueChange={setInput}
-        placeholder="Search records, collections, and commands…"
-        aria-label="Search records, collections, and commands"
+        placeholder="Search records, tools, and commands…"
+        aria-label="Search records, tools, and commands"
         maxLength={200}
         className="text-sm"
       />
@@ -186,6 +202,38 @@ function PaletteContent({ close }: { readonly close: () => void }) {
           <p className="px-3 py-2 text-xs text-muted-foreground">
             More records match. Keep typing to narrow your search.
           </p>
+        )}
+        {tools.length > 0 && (
+          <CommandGroup heading="Tools">
+            {tools.map((tool) => (
+              <CommandItem
+                key={tool.id}
+                value={`tool:${tool.id}`}
+                onSelect={() => go(`/tools/${tool.id}`)}
+                className="px-3"
+              >
+                <tool.icon />
+                <span className="flex-1">{tool.label}</span>
+                <span className="text-muted-foreground">Preview</span>
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        )}
+        {reports.length > 0 && (
+          <CommandGroup heading="Reports">
+            {reports.map((report) => (
+              <CommandItem
+                key={report.id}
+                value={`report:${report.id}`}
+                onSelect={() => go(`/reports/${report.id}`)}
+                className="px-3"
+              >
+                <report.icon />
+                <span className="flex-1">{report.label}</span>
+                <span className="text-muted-foreground">Preview</span>
+              </CommandItem>
+            ))}
+          </CommandGroup>
         )}
         {collections.length > 0 && (
           <CommandGroup heading="Collections">
@@ -282,7 +330,7 @@ export function CommandPalette({ children }: { readonly children: ReactNode }) {
         open={open}
         onOpenChange={setOpen}
         title="Search and commands"
-        description="Search records and collections, or create a record."
+        description="Find records, tools, and destinations, or create a record."
         className="top-[12dvh] sm:max-w-xl"
       >
         {open && <PaletteContent close={() => setOpen(false)} />}
