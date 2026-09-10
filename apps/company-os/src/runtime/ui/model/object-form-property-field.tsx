@@ -2,6 +2,7 @@ import { Checkbox } from "@company/ui/checkbox"
 import { DateTimePicker } from "@company/ui/date-time-picker"
 import { FieldError } from "@company/ui/field"
 import { Input } from "@company/ui/input"
+import { MarkdownEditor } from "@company/ui/markdown-editor"
 import { PhoneInput } from "@company/ui/phone-input"
 import {
   Select,
@@ -401,6 +402,19 @@ export function ObjectFormPropertyField({
                 aria-describedby={ariaDescribedBy}
                 autoComplete="tel"
                 placeholder="Enter phone number"
+                onBlur={onBlur}
+                onValueChange={onValueChange}
+              />
+            ) : schema.kind === "string" && schema.format === "markdown" ? (
+              <MarkdownEditor
+                id={fieldId}
+                name={id}
+                required={required}
+                value={stringValue(value)}
+                maxLength={schema.maxLength}
+                minLength={schema.minLength}
+                aria-invalid={invalid}
+                aria-describedby={ariaDescribedBy}
                 onBlur={onBlur}
                 onValueChange={onValueChange}
               />

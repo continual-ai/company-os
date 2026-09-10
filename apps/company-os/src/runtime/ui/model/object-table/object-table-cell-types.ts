@@ -12,6 +12,7 @@ export type ObjectTableCellType =
   | "enum"
   | "files"
   | "image"
+  | "markdown"
   | "number"
   | "phone"
   | "recordId"
@@ -67,6 +68,12 @@ const objectTableCellBehaviors = {
   },
   image: {
     editable: false,
+    filterFamily: "text",
+    inputType: "text",
+    overflow: "clip",
+  },
+  markdown: {
+    editable: true,
     filterFamily: "text",
     inputType: "text",
     overflow: "clip",

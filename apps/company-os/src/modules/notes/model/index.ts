@@ -13,7 +13,7 @@ export const Note = defineObject({
   pluralName: "Notes",
   description: "Notes on conversations, decisions, or next steps.",
   properties: {
-    content: schema.string({
+    content: schema.markdown({
       label: "Content",
       minLength: 1,
       maxLength: 10_000,

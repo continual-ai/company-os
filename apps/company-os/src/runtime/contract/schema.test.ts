@@ -54,6 +54,29 @@ const Account = defineObject({
 })
 
 describe("Effect Schema projection", () => {
+  it("preserves Markdown source, enforces string constraints, and exposes its format to clients", () => {
+    const field = schema.markdown({
+      minLength: 1,
+      maxLength: 100,
+      nullable: true,
+    })
+    const input = toEffectInputSchema(field)
+    const decode = Schema.decodeUnknownSync(input)
+    const source = "  **Decision**\n\n- [x] Reviewed\n"
+    expect(decode(source)).toBe(source)
+    expect(decode(null)).toBeNull()
+    expect(() => decode(42)).toThrow()
+    expect(() => decode("")).toThrow()
+    expect(() => decode("x".repeat(101))).toThrow()
+    const json = Schema.toStandardJSONSchemaV1(input)[
+      "~standard"
+    ].jsonSchema.input({ target: "draft-2020-12" })
+    expect(JSON.stringify(json)).toContain('"format":"markdown"')
+    expectTypeOf<
+      InferSchema<ReturnType<typeof schema.markdown>>
+    >().toEqualTypeOf<string>()
+  })
+
   it("canonicalizes semantic string inputs before validation", () => {
     const decodeEmail = Schema.decodeUnknownSync(
       toEffectInputSchema(schema.email())

@@ -264,7 +264,14 @@ export interface RecordIdSchema<
 export interface StringSchema<
   TValue extends string = string,
 > extends SchemaDefinition<TValue> {
-  format?: "date" | "domain" | "email" | "phone" | "timestamp" | "url"
+  format?:
+    | "date"
+    | "domain"
+    | "email"
+    | "markdown"
+    | "phone"
+    | "timestamp"
+    | "url"
   /** Advisory initial value for new input surfaces; it does not make the value optional. */
   initialValue?: "now"
   kind: "string"
@@ -672,6 +679,12 @@ function semanticString<
   return { kind: "string", format, ...values }
 }
 
+function markdown<const TOptions extends SemanticStringOptions<string> = {}>(
+  options?: TOptions
+): StringSchema & TOptions {
+  return semanticString("markdown", options)
+}
+
 function date<const TOptions extends SemanticStringOptions<CalendarDate> = {}>(
   options?: TOptions
 ): StringSchema<CalendarDate> & TOptions {
@@ -728,6 +741,7 @@ export const schema = {
   image,
   literal,
   map,
+  markdown,
   media,
   money,
   number,

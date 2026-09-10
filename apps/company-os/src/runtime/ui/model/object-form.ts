@@ -153,7 +153,11 @@ function semanticFormViolation(
       reason: "INVALID_OPTION",
     }
   }
-  if (schema.kind !== "string" || schema.format === undefined) {
+  if (
+    schema.kind !== "string" ||
+    schema.format === undefined ||
+    schema.format === "markdown"
+  ) {
     return { ...violation, message: `${label} is invalid.` }
   }
 

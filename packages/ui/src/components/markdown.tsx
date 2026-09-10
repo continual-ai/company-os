@@ -1,3 +1,4 @@
+import type { ReactNode } from "react"
 import ReactMarkdown, { type Components } from "react-markdown"
 import remarkGfm from "remark-gfm"
 
@@ -25,12 +26,7 @@ export function Markdown({
   className?: string | undefined
 }) {
   return (
-    <div
-      className={cn(
-        "min-w-0 text-sm leading-relaxed wrap-break-word [&_.contains-task-list]:list-none [&_.contains-task-list]:pl-0 [&_.task-list-item_input]:mr-1.5 [&_a]:text-primary [&_a]:underline [&_blockquote]:border-l-2 [&_blockquote]:pl-3 [&_blockquote]:text-muted-foreground [&_code]:font-mono [&_code]:text-xs [&_h1]:my-3 [&_h1]:text-xl [&_h2]:my-3 [&_h2]:text-lg [&_h3]:my-2 [&_h3]:font-semibold [&_hr]:my-4 [&_li]:my-1 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0 [&_pre]:my-3 [&_pre]:overflow-x-auto [&_pre]:rounded-md [&_pre]:bg-muted [&_pre]:p-3 [&_table]:block [&_table]:overflow-x-auto [&_td]:border [&_td]:px-2 [&_th]:border [&_th]:px-2 [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5",
-        className
-      )}
-    >
+    <div data-slot="markdown" className={cn("markdown-prose", className)}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         skipHtml
@@ -39,5 +35,67 @@ export function Markdown({
         {children}
       </ReactMarkdown>
     </div>
+  )
+}
+
+function TextBlock({ children }: { children?: ReactNode }) {
+  return <>{children} </>
+}
+
+function TextInline({ children }: { children?: ReactNode }) {
+  return <>{children}</>
+}
+
+const textComponents: Components = {
+  h1: TextBlock,
+  h2: TextBlock,
+  h3: TextBlock,
+  h4: TextBlock,
+  h5: TextBlock,
+  h6: TextBlock,
+  p: TextBlock,
+  ul: TextBlock,
+  ol: TextBlock,
+  li: TextBlock,
+  blockquote: TextBlock,
+  pre: TextBlock,
+  table: TextBlock,
+  thead: TextBlock,
+  tbody: TextBlock,
+  tr: TextBlock,
+  th: TextBlock,
+  td: TextBlock,
+  strong: TextInline,
+  em: TextInline,
+  del: TextInline,
+  code: TextInline,
+  a: TextInline,
+  br: () => " ",
+  hr: () => " ",
+  img: ({ alt }) => alt ?? "",
+  input: () => null,
+}
+
+/** A single text line parsed with the same Markdown rules, without prose layout or interactive elements. */
+export function MarkdownText({
+  children,
+  className,
+}: {
+  children: string
+  className?: string | undefined
+}) {
+  return (
+    <span
+      data-slot="markdown-text"
+      className={cn("block min-w-0 truncate", className)}
+    >
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        skipHtml
+        components={textComponents}
+      >
+        {children}
+      </ReactMarkdown>
+    </span>
   )
 }

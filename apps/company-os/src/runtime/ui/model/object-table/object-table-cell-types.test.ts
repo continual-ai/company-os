@@ -12,6 +12,26 @@ import {
 } from "#/runtime/ui/model/object-table/object-table-cell-types.ts"
 
 describe("objectTableLinkHref", () => {
+  it("uses the Markdown editor while preserving whitespace and normal string validation", () => {
+    const property = {
+      ...schema.markdown({ maxLength: 100, nullable: true }),
+      immutable: false,
+      outputOnly: false,
+      requiredOnCreate: false,
+    }
+    expect(objectTableCellType(property)).toBe("markdown")
+    expect(isObjectTableCellEditable(property)).toBe(true)
+    expect(objectTableCellBehavior(property).filterFamily).toBe("text")
+    const source = "  **Bold**\n\n- Item\n"
+    expect(parseObjectTableCellInput(property, source)).toEqual({
+      value: source,
+    })
+    expect(parseObjectTableCellInput(property, "")).toEqual({ value: null })
+    expect(parseObjectTableCellInput(property, "x".repeat(101))).toHaveProperty(
+      "error"
+    )
+  })
+
   it("builds links only for URL values", () => {
     expect(objectTableLinkHref("url", "https://northwind.example/about")).toBe(
       "https://northwind.example/about"

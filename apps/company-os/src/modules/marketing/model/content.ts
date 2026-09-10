@@ -46,7 +46,7 @@ export const Content = defineObject({
       inverse: { key: "content", label: "Content" },
     }),
     brief: schema.string({ label: "Brief", maxLength: 20000, nullable: true }),
-    body: schema.string({ label: "Body", maxLength: 100000, nullable: true }),
+    body: schema.markdown({ label: "Body", maxLength: 100000, nullable: true }),
     scheduledAt: schema.timestamp({ label: "Scheduled for", nullable: true }),
     publishedUrl: schema.url({ label: "Published URL", nullable: true }),
     attachments: schema.array(schema.file({ maxBytes: 25_000_000 }), {

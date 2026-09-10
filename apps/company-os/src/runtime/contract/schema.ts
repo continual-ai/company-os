@@ -179,6 +179,8 @@ function compileString(
   }
 
   switch (definition.format) {
+    case "markdown":
+      return value.annotate({ format: "markdown" })
     case "date":
       return value
         .annotate({ format: "date" })

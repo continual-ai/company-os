@@ -126,7 +126,7 @@ export function MarkdownEditor({
         onChange={(event) => onValueChange(event.currentTarget.value)}
         hidden={preview}
         className={cn(
-          "min-h-40 resize-y rounded-none border-0 p-3 shadow-none focus-visible:ring-0",
+          "max-h-80 min-h-40 resize-y rounded-none border-0 p-3 shadow-none focus-visible:ring-0",
           preview && "hidden",
           className
         )}
@@ -144,7 +144,10 @@ export function MarkdownEditor({
         }}
       />
       {preview && (
-        <section className="min-h-40 p-3" aria-label="Markdown preview">
+        <section
+          className="max-h-80 min-h-40 overflow-y-auto p-3"
+          aria-label="Markdown preview"
+        >
           {value.trim() ? (
             <Markdown>{value}</Markdown>
           ) : (

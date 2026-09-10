@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server"
 import { expect, it } from "vitest"
 
-import { Markdown } from "#/components/markdown.tsx"
+import { Markdown, MarkdownText } from "#/components/markdown.tsx"
 
 it("renders Markdown while keeping executable HTML and image fetching out of the document", () => {
   const html = renderToStaticMarkup(
@@ -25,4 +25,25 @@ it("renders Markdown while keeping executable HTML and image fetching out of the
   expect(html).toContain('rel="noopener noreferrer"')
   expect(html).toContain('href="https://example.com/image.png"')
   expect(html).not.toMatch(/<script|<img|onerror|javascript:/)
+})
+
+it("flattens headings, lists, tables, and links into a noninteractive text preview", () => {
+  const html = renderToStaticMarkup(
+    <MarkdownText>{`# Summary
+
+**Decision** and [reference](https://example.com).
+
+- [x] Reviewed
+- Next step
+
+| Owner | Status |
+| --- | --- |
+| Ana | Ready |`}</MarkdownText>
+  )
+  expect(html).toContain("Summary")
+  expect(html).toContain("Decision")
+  expect(html).toContain("reference")
+  expect(html).toContain("Reviewed")
+  expect(html).toContain("Ana")
+  expect(html).not.toMatch(/<(h1|p|ul|li|table|a|input|strong)\b/)
 })

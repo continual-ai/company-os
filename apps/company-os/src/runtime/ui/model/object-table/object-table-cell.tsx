@@ -1,3 +1,4 @@
+import { Button } from "@company/ui/button"
 import { Checkbox } from "@company/ui/checkbox"
 import {
   Command,
@@ -9,6 +10,8 @@ import {
 import { DateTime } from "@company/ui/date-time"
 import { Input } from "@company/ui/input"
 import { cn } from "@company/ui/lib/utils"
+import { MarkdownText } from "@company/ui/markdown"
+import { MarkdownEditor } from "@company/ui/markdown-editor"
 import { Popover, PopoverContent, PopoverTrigger } from "@company/ui/popover"
 import {
   PreviewCard,
@@ -22,7 +25,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@company/ui/select"
-import { ImageIcon } from "lucide-react"
+import { Link } from "@tanstack/react-router"
+import { ArrowUpRightIcon, ImageIcon } from "lucide-react"
 import { type ComponentType, useEffect, useRef, useState } from "react"
 
 import { assetContentUrl } from "#/runtime/assets/ui/content-url.ts"
@@ -269,6 +273,140 @@ function TextCell({
         </span>
       )}
     </ObjectTableCellSurface>
+  )
+}
+
+function MarkdownCell({
+  active,
+  editing,
+  initialEditValue,
+  identity,
+  onCommit,
+  onCancelEditing,
+  onEditingChange,
+  property,
+  value,
+}: ObjectTableCellProps) {
+  const { clearStatus, commit, renderedValue, status } =
+    useObjectTableCellCommit(value, onCommit, onEditingChange)
+  const editorRef = useRef<HTMLDivElement>(null)
+  const source = objectTableCellInputValue(renderedValue)
+  const [draft, setDraft] = useState(source)
+  const [error, setError] = useState<string | null>(null)
+  const schema = objectTablePropertySchema(property)
+
+  useEffect(() => {
+    if (editing) {
+      setDraft(initialEditValue ?? objectTableCellInputValue(value))
+      setError(null)
+    }
+  }, [editing, initialEditValue, value])
+
+  useEffect(() => {
+    if (editing && status === "saved") {
+      clearStatus()
+      onEditingChange(false)
+    }
+  }, [editing, status, onEditingChange, clearStatus])
+
+  const save = () => {
+    const result = parseObjectTableCellInput(property, draft)
+    if ("error" in result) {
+      setError(result.error)
+      return
+    }
+    void commit(result.value, false)
+  }
+
+  return (
+    <Popover
+      open={editing}
+      onOpenChange={(open, details) => {
+        if (details.reason === "trigger-press") return
+        if (!open && status !== "saving") onCancelEditing()
+      }}
+    >
+      <PopoverTrigger
+        nativeButton={false}
+        render={<div className="h-full w-full" />}
+      >
+        <ObjectTableCellSurface
+          active={active}
+          expandActive={false}
+          status={status}
+          className="gap-2"
+        >
+          {source ? (
+            <MarkdownText className="flex-1">{source}</MarkdownText>
+          ) : (
+            <span className="text-muted-foreground/60">Empty</span>
+          )}
+          {identity?.href && (
+            <Link
+              to={identity.href}
+              aria-label={`Open ${identity.object.name.toLowerCase()}`}
+              className="shrink-0 text-muted-foreground hover:text-foreground"
+              onClick={(event) => event.stopPropagation()}
+              onDoubleClick={(event) => event.stopPropagation()}
+            >
+              <ArrowUpRightIcon className="size-3.5" />
+            </Link>
+          )}
+        </ObjectTableCellSurface>
+      </PopoverTrigger>
+      <PopoverContent
+        ref={editorRef}
+        initialFocus={() =>
+          editorRef.current?.querySelector("textarea") ?? false
+        }
+        align="start"
+        sideOffset={0}
+        className="w-[min(32rem,calc(100vw-2rem))] gap-3 p-3"
+        onKeyDown={(event) => {
+          event.stopPropagation()
+          if (
+            (event.metaKey || event.ctrlKey) &&
+            event.key === "Enter" &&
+            status !== "saving"
+          ) {
+            event.preventDefault()
+            save()
+          }
+        }}
+      >
+        <MarkdownEditor
+          aria-label={property.label ?? "Markdown"}
+          value={draft}
+          maxLength={schema.kind === "string" ? schema.maxLength : undefined}
+          disabled={status === "saving"}
+          aria-invalid={error !== null}
+          className="max-h-80"
+          onValueChange={(next) => {
+            clearStatus()
+            setError(null)
+            setDraft(next)
+          }}
+        />
+        {(error || status === "error") && (
+          <p role="alert" className="text-xs text-destructive">
+            {error ?? "Could not save. Your changes are still here; try again."}
+          </p>
+        )}
+        <div className="flex justify-end gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={status === "saving"}
+            onClick={onCancelEditing}
+          >
+            Cancel
+          </Button>
+          <Button size="sm" disabled={status === "saving"} onClick={save}>
+            Save
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
   )
 }
 
@@ -630,6 +768,7 @@ const objectTableCellRenderers = {
   enum: SelectCell,
   image: ImageCell,
   files: FileCell,
+  markdown: MarkdownCell,
   number: TextLikeCell,
   phone: TextLikeCell,
   readonly: TextLikeCell,

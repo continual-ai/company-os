@@ -162,8 +162,9 @@ export function ObjectRecordPage({
     const schema = objectTablePropertySchema(property)
     return (
       schema.kind === "string" &&
-      schema.format === undefined &&
-      (schema.maxLength === undefined || schema.maxLength > 300)
+      (schema.format === "markdown" ||
+        (schema.format === undefined &&
+          (schema.maxLength === undefined || schema.maxLength > 300)))
     )
   })
   const statusField = object.display.status

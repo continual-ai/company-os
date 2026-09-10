@@ -5,6 +5,7 @@ import {
   CheckSquareIcon,
   CircleDollarSignIcon,
   FileIcon,
+  FileTextIcon,
   Globe2Icon,
   HashIcon,
   ImageIcon,
@@ -40,6 +41,7 @@ function ObjectTablePropertyIcon({
   if (schema.kind === "array") return <ListIcon {...iconProps} />
 
   if (schema.kind === "string") {
+    if (schema.format === "markdown") return <FileTextIcon {...iconProps} />
     if (schema.format === "domain" || schema.format === "url") {
       return <Globe2Icon {...iconProps} />
     }
