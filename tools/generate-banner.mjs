@@ -32,10 +32,9 @@ const overlay = Buffer.from(`
     </style>
     <rect width="1200" height="320" fill="#fbfaf7" fill-opacity="0.16" />
     <text x="54" y="60" fill="#101114" font-size="26" font-weight="600" letter-spacing="-0.5">Company OS</text>
-    <text x="1146" y="59" text-anchor="end" fill="#101114" fill-opacity="0.68" font-size="20">Open source</text>
-    <g fill="#101114" font-size="70" font-weight="600" letter-spacing="-2">
-      <text x="51" y="143">Build your company’s</text>
-      <text x="51" y="225">AI-native operating system.</text>
+    <g fill="#101114" font-size="64" font-weight="600" letter-spacing="-1.8">
+      <text x="51" y="143">The agent-first operating system</text>
+      <text x="51" y="215">for your business.</text>
     </g>
     <text x="54" y="286" fill="#101114" fill-opacity="0.68" font-size="16">By</text>
     <g transform="translate(80 267)">${logo}</g>
@@ -43,12 +42,18 @@ const overlay = Buffer.from(`
 `)
 
 const output = fileURLToPath(
-  new URL("../docs/images/continual-banner.jpg", import.meta.url)
+  new URL("../docs/images/continual-banner.png", import.meta.url)
 )
+// Bake transparent corners into the asset so they survive GitHub's HTML sanitization.
+const roundedMask = Buffer.from(`
+  <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="320">
+    <rect width="1200" height="320" rx="16" fill="white" />
+  </svg>
+`)
 await sharp(path.join(brandApp, "public/brand/spectrum/prism.webp"))
   .resize(1200, 320, { fit: "cover", position: "centre" })
-  .composite([{ input: overlay }])
-  .jpeg({ chromaSubsampling: "4:4:4", mozjpeg: true, quality: 94 })
+  .composite([{ input: overlay }, { input: roundedMask, blend: "dest-in" }])
+  .png({ compressionLevel: 9 })
   .toFile(output)
 
 console.log(`Generated ${output}`)

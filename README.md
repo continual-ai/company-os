@@ -1,5 +1,5 @@
 <h1 align="center">
-  <img src="docs/images/continual-banner.jpg" alt="Company OS — Build your company’s AI-native operating system. Open source by Continual." width="100%" />
+  <img src="docs/images/continual-banner.png" alt="Company OS — The agent-first operating system for your business. By Continual." width="100%" />
 </h1>
 
 <p align="center">
