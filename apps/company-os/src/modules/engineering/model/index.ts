@@ -1,8 +1,19 @@
-import { Issue } from "#/modules/engineering/model/issue.ts"
+import {
+  Issue,
+  IssueAssignee,
+  IssueProject,
+} from "#/modules/engineering/model/issue.ts"
 import { IssuePullRequests } from "#/modules/engineering/model/links/issue-pull-requests.ts"
-import { Project } from "#/modules/engineering/model/project.ts"
-import { PullRequest } from "#/modules/engineering/model/pull-request.ts"
-import { Repository } from "#/modules/engineering/model/repository.ts"
+import { Project, ProjectOwner } from "#/modules/engineering/model/project.ts"
+import {
+  PullRequest,
+  PullRequestRepository,
+} from "#/modules/engineering/model/pull-request.ts"
+import {
+  Repository,
+  RepositoryOwner,
+  RepositoryProject,
+} from "#/modules/engineering/model/repository.ts"
 import { defineModule } from "#/runtime/model/index.ts"
 export const EngineeringModule = defineModule({
   maturity: "alpha",
@@ -13,8 +24,16 @@ export const EngineeringModule = defineModule({
   description: "Organize projects, issues, repositories, and pull requests.",
   id: "engineering",
   name: "Engineering",
-  links: [IssuePullRequests],
+  links: [
+    IssuePullRequests,
+    IssueProject,
+    IssueAssignee,
+    ProjectOwner,
+    PullRequestRepository,
+    RepositoryProject,
+    RepositoryOwner,
+  ],
   objects: [Issue, Project, Repository, PullRequest],
 })
 
-export { Repository, PullRequest, Project, Issue }
+export { Issue, Project, PullRequest, Repository }

@@ -22,20 +22,18 @@ it("preserves required relationship capabilities when projecting the client", ()
   const hierarchy = defineLink({
     id: "hierarchy",
     name: "Hierarchy",
-    writeFrom: "parentThing",
+    from: Thing,
+    to: Thing,
     forward: {
-      from: Thing,
-      to: Thing,
       key: "parentThing",
       label: "Parent thing",
-      cardinality: "one",
+      min: 1,
+      max: 1,
     },
     reverse: {
-      from: Thing,
-      to: Thing,
       key: "children",
       label: "Children",
-      cardinality: "many",
+      min: 0,
     },
   })
   const model = defineModel({
@@ -55,13 +53,17 @@ it("preserves required relationship capabilities when projecting the client", ()
     fetch: () => Promise.reject(new Error("No requests are made here.")),
   })
   const data = createModelQueries(model, client)
-  expect(Object.keys(data.thing.parentThing)).toEqual(["list", "link"])
-  expect(Object.keys(data.thing.children)).toEqual(["list"])
+  expect(Object.keys(data.thing.parentThing)).toEqual([
+    "list",
+    "link",
+    "unlink",
+  ])
+  expect(Object.keys(data.thing.children)).toEqual(["list", "link", "unlink"])
   expect(data.records.search({ query: "a" }).meta).toMatchObject({
     objectTypes: [],
     operation: "records.search",
   })
   expectTypeOf<keyof typeof data.thing.parentThing>().toEqualTypeOf<
-    "list" | "link"
+    "list" | "link" | "unlink"
   >()
 })

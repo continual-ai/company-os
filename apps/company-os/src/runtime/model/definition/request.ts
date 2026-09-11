@@ -150,11 +150,16 @@ type CanonicalObjectPropertyFilter<TObject extends ObjectType> = {
 type BaseObjectFilter<TObject extends ObjectType> =
   | EqualityFilter<"createdBy" | "updatedBy", string>
   | EqualityFilter<"id", RecordIdentifier<TObject["id"]>>
-  | EqualityFilter<"parent", RecordIdentifier<TObject["parent"]["typeId"]>>
   | EqualityFilter<"systemManaged", boolean>
   | OrderedFilter<"createdAt" | "updatedAt", ObjectRecord<TObject>["createdAt"]>
 
+export type LinkFilter = { readonly link: string } & (
+  | { readonly contains: string }
+  | { readonly isEmpty: true }
+)
+
 export type ObjectFilter<TObject extends ObjectType = ObjectType> =
+  | LinkFilter
   | BaseObjectFilter<TObject>
   | ObjectPropertyFilter<TObject>
   | {
@@ -170,11 +175,11 @@ export type ObjectFilter<TObject extends ObjectType = ObjectType> =
 type CanonicalBaseObjectFilter<TObject extends ObjectType> =
   | EqualityFilter<"createdBy" | "updatedBy", string>
   | EqualityFilter<"id", ObjectRecord<TObject>["id"]>
-  | EqualityFilter<"parent", ObjectRecord<TObject>["parent"]>
   | EqualityFilter<"systemManaged", boolean>
   | OrderedFilter<"createdAt" | "updatedAt", ObjectRecord<TObject>["createdAt"]>
 
 export type CanonicalObjectFilter<TObject extends ObjectType> =
+  | LinkFilter
   | CanonicalBaseObjectFilter<TObject>
   | CanonicalObjectPropertyFilter<TObject>
   | { readonly and: ReadonlyArray<CanonicalObjectFilter<TObject>> }
@@ -203,7 +208,6 @@ export interface ObjectSort<TObject extends ObjectType = ObjectType> {
     | "createdAt"
     | "createdBy"
     | "id"
-    | "parent"
     | "systemManaged"
     | "updatedAt"
     | "updatedBy"

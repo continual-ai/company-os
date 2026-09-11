@@ -4,19 +4,16 @@ import { defineLink } from "#/runtime/model/index.ts"
 export const IssuePullRequests = defineLink({
   id: "issuePullRequests",
   name: "Pull requests",
-  writeFrom: "pullRequests",
+  from: Issue,
+  to: PullRequest,
   forward: {
-    from: Issue,
-    to: PullRequest,
     key: "pullRequests",
     label: "Pull requests",
-    cardinality: "many",
+    min: 0,
   },
   reverse: {
-    from: PullRequest,
-    to: Issue,
     key: "issues",
     label: "Issues",
-    cardinality: "many",
+    min: 0,
   },
 })

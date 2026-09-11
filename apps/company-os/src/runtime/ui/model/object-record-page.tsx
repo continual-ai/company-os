@@ -16,8 +16,8 @@ import {
   type ResolvedObjectUi,
 } from "#/runtime/ui/model/module-ui.tsx"
 import {
-  tableRecord,
   modelObjectProperty,
+  tableRecord,
   type ModelObject,
 } from "#/runtime/ui/model/object-client.ts"
 import { objectFormProperties } from "#/runtime/ui/model/object-form.ts"
@@ -99,7 +99,7 @@ export function ObjectRecordPage({
     (item) => overviewRelationships?.[item.key]
   )
   const related = allRelated.filter(
-    (item) => !overviewRelationships?.[item.key]
+    (item) => item.max !== 1 && !overviewRelationships?.[item.key]
   )
   const preferred =
     relationships === undefined
@@ -115,7 +115,8 @@ export function ObjectRecordPage({
   )
   const previews = useRecordRelationshipPreviews(
     visibleRelationships,
-    state.record !== undefined
+    state.record,
+    state.references
   )
   const totals = new Map(previews.map(({ key, total }) => [key, total]))
   const select = (value: string) => {
@@ -159,10 +160,7 @@ export function ObjectRecordPage({
   const writableFields = new Set(
     objectFormProperties(object, "edit").map(({ id }) => id)
   )
-  const allFields = [
-    ...(object.parent.kind === "root" ? [] : ["parent"]),
-    ...Object.keys(object.properties),
-  ]
+  const allFields = Object.keys(object.properties)
   const narrative = allFields.filter((id) => {
     const property = modelObjectProperty(object, id)
     if (!property || id === object.display.title || properties?.includes(id))
@@ -185,6 +183,9 @@ export function ObjectRecordPage({
       object.display.status,
       object.display.subtitle,
       ...allFields,
+      ...allRelated
+        .filter((relationship) => relationship.max === 1)
+        .map((relationship) => relationship.key),
     ]),
   ].filter(
     (id): id is string =>

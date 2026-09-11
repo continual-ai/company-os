@@ -6,13 +6,17 @@ import {
 } from "@tanstack/react-table"
 import { useMemo } from "react"
 
-import type { ObjectType } from "#/runtime/model/index.ts"
+import {
+  modelObjectLinkTraversals,
+  type ObjectType,
+} from "#/runtime/model/index.ts"
 import {
   canFilterProperty,
   canSortProperty,
 } from "#/runtime/ui/model/object-collection-query.ts"
 import {
   objectTableProperties,
+  objectTableLinkColumnDef,
   objectTablePropertyColumnDefs,
 } from "#/runtime/ui/model/object-table/object-table-columns.ts"
 import {
@@ -20,10 +24,10 @@ import {
   type ObjectTableRecord,
 } from "#/runtime/ui/model/object-table/object-table-config.ts"
 import { ObjectTableQueryToolbar } from "#/runtime/ui/model/object-table/object-table-toolbar.tsx"
+import { useModelRuntime } from "#/runtime/ui/model/runtime-context.tsx"
 
 export function CollectionQueryToolbar({
   object,
-  parentLabel,
   records,
   columnFilters,
   sorting,
@@ -31,22 +35,26 @@ export function CollectionQueryToolbar({
   onSortingChange,
 }: {
   object: ObjectType
-  parentLabel: string | undefined
   records: ObjectTableRecord[]
   columnFilters: ColumnFiltersState
   sorting: SortingState
   onColumnFiltersChange: OnChangeFn<ColumnFiltersState>
   onSortingChange: OnChangeFn<SortingState>
 }) {
+  const runtime = useModelRuntime()
   const columns = useMemo(
-    () =>
-      objectTablePropertyColumnDefs({
+    () => [
+      ...objectTablePropertyColumnDefs({
         object,
-        properties: objectTableProperties(object, parentLabel),
+        properties: objectTableProperties(object),
         canFilterProperty,
         canSortProperty,
       }),
-    [object, parentLabel]
+      ...modelObjectLinkTraversals(runtime.model, object).map(
+        objectTableLinkColumnDef
+      ),
+    ],
+    [object, runtime.model]
   )
   // Share the table's query model and controls without rendering a table.
   const table = useTable({

@@ -1,8 +1,8 @@
 import { describe, expect, expectTypeOf, it } from "vitest"
 
 import {
-  defineLink,
   defineInterface,
+  defineLink,
   defineModel,
   defineModule,
   defineObject,
@@ -34,7 +34,6 @@ describe("makePostgresSchema", () => {
     const storage = makePostgresSchema(fixtureModel)
     expect(Object.keys(getTableColumns(storage.objects.person))).toEqual([
       "id",
-      "parentId",
       "photo",
       "name",
       "email",
@@ -44,19 +43,12 @@ describe("makePostgresSchema", () => {
     expect(
       Object.keys(getTableColumns(storage.linkTables.personPrimaryAccount))
     ).toEqual(["forwardId", "reverseId"])
-    expectTypeOf<
-      TableRow<typeof storage.objects.order>["parentId"]
-    >().toEqualTypeOf<RecordId<"account">>()
-    expectTypeOf<
-      TableRow<typeof storage.objects.orderLine>["parentId"]
-    >().toEqualTypeOf<RecordId<"order">>()
     expect(getTableName(storage.interfaces.participant)).toBe(
       "interface_participant"
     )
     expect(getTableName(storage.interfaces.topic)).toBe("interface_topic")
     expect(Object.keys(getTableColumns(storage.objects.memo))).toEqual([
       "id",
-      "parentId",
       "content",
     ])
     expect(storage.core.objects.columns.createdAt.type).toBe(
@@ -73,7 +65,7 @@ describe("makePostgresSchema", () => {
     )
     expect(ddl).toContain(`"etag" text not null default '1'`)
     expect(ddl).not.toContain("users_email_unique")
-    expect(ddl).toContain('"order_lines_object_parent_fk"')
+    expect(ddl).toContain('create table "link_order_lines"')
     expect(ddl).toContain('create trigger "event_journal_append_only"')
     expect(ddl).toContain('create index "record_search_document_idx"')
   })
@@ -100,21 +92,19 @@ describe("makePostgresSchema", () => {
     })
     const PermissionScope = defineLink({
       id: "permissionScope",
-      writeFrom: "scope",
+      from: Permission,
+      to: WorkspaceMarker,
       forward: {
-        cardinality: "one",
-        from: Permission,
+        min: 1,
+        max: 1,
         key: "scope",
         label: "Scope",
-        to: WorkspaceMarker,
       },
       name: "Permission scope",
       reverse: {
-        cardinality: "many",
-        from: WorkspaceMarker,
+        min: 0,
         key: "permissions",
         label: "Permissions",
-        to: Permission,
       },
     })
     const model = defineModel({
@@ -141,9 +131,6 @@ describe("makePostgresSchema", () => {
     expectTypeOf<
       TableRow<typeof storage.linkTables.permissionScope>["reverseId"]
     >().toEqualTypeOf<RecordId<"workspace">>()
-    expectTypeOf<
-      TableRow<typeof storage.objects.workspace>["parentId"]
-    >().toEqualTypeOf<RecordId<"root">>()
     expect(storage.ddl.join("\n")).toContain(
       'create unique index "permissions_name_unique" on "permissions" ("name")'
     )
@@ -167,21 +154,18 @@ describe("makePostgresSchema", () => {
       display: { title: "name" },
     })
     const TeamMembership = defineLink({
+      from: Person,
+      to: Team,
       id: "teamMembership",
-      writeFrom: "teams",
       name: "Team membership",
       forward: {
-        from: Person,
-        to: Team,
         key: "teams",
-        cardinality: "many",
+        min: 0,
         label: "Teams",
       },
       reverse: {
-        from: Team,
-        to: Person,
         key: "members",
-        cardinality: "many",
+        min: 0,
         label: "Members",
       },
     })
@@ -201,7 +185,7 @@ describe("makePostgresSchema", () => {
     const storage = makePostgresSchema(model)
 
     expect(getTableName(storage.linkTables.teamMembership)).toBe(
-      "team_membership"
+      "link_team_membership"
     )
     expect(
       Object.keys(getTableColumns(storage.linkTables.teamMembership))
@@ -234,22 +218,21 @@ describe("makePostgresSchema", () => {
       properties: { name: schema.string() },
     })
     const PersonBadge = defineLink({
+      from: Person,
+      to: Badge,
       id: "personBadge",
-      writeFrom: "badge",
       forward: {
-        cardinality: "zeroOrOne",
-        from: Person,
+        min: 0,
+        max: 1,
         key: "badge",
         label: "Badge",
-        to: Badge,
       },
       name: "Person badge",
       reverse: {
-        cardinality: "zeroOrOne",
-        from: Badge,
+        min: 0,
+        max: 1,
         key: "holder",
         label: "Holder",
-        to: Person,
       },
     })
     const model = defineModel({
@@ -269,7 +252,7 @@ describe("makePostgresSchema", () => {
 
     for (const side of ["forward", "reverse"])
       expect(storage.ddl.join("\n")).toContain(
-        `create unique index "person_badge_${side}_id_unique" on "person_badge" ("${side}_id")`
+        `create unique index "link_person_badge_${side}_id_unique" on "link_person_badge" ("${side}_id")`
       )
   })
 
@@ -341,7 +324,7 @@ describe("makePostgresSchema", () => {
       )
     ).not.toContain("check")
     expect(ddl).toContain('constraint "objects_object_type_check" check')
-    expect(ddl).toContain('constraint "objects_parent_required" check')
+    expect(ddl).not.toContain("parent_id")
     expect(
       storage.ddl.find((statement) =>
         statement.startsWith('create table "record_aliases"')

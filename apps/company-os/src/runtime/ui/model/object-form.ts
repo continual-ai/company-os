@@ -57,11 +57,10 @@ export interface ObjectFormProperty {
 
 export function objectFormLinks(
   runtime: ModelUiRuntime,
-  object: ModelObject,
-  mode: ObjectFormMode
+  object: ModelObject
 ): ReadonlyArray<ModelLinkTraversal> {
   return modelObjectLinkTraversals(runtime.model, object).filter(
-    (traversal) => mode === "create" || traversal.writable
+    (traversal) => traversal.writable
   )
 }
 
@@ -272,20 +271,6 @@ export function decodeObjectForm(
   fields?: ReadonlyArray<string>
 ): ObjectFormInput {
   const input: Record<string, FormValue> = {}
-  if (mode === "create" && object.parent.kind !== "root") {
-    const parent = stringValue(values.parent).trim()
-    if (parent === "") {
-      throw new FormValidationError([
-        {
-          message: "Parent is required.",
-          path: ["parent"],
-          reason: "REQUIRED",
-        },
-      ])
-    }
-    input.parent = parent
-  }
-
   for (const { id, property, schema } of objectFormProperties(object, mode)) {
     if (mode === "edit" && fields !== undefined && !fields.includes(id))
       continue
@@ -304,14 +289,15 @@ export function decodeObjectForm(
   if (mode === "create") {
     const links: Record<string, string | ReadonlyArray<string>> = {}
     const linkValues = values.links
-    for (const { traversal } of objectFormLinks(runtime, object, mode)) {
+    for (const { traversal } of objectFormLinks(runtime, object)) {
+      if (fields !== undefined && !fields.includes(traversal.key)) continue
       const rawValue = nestedFormValue(linkValues, traversal.key)
       const targets =
-        traversal.cardinality === "many"
+        traversal.max !== 1
           ? stringArrayValue(rawValue)
           : [stringValue(rawValue).trim()].filter((value) => value !== "")
       if (targets.length === 0) {
-        if (traversal.cardinality === "one") {
+        if (traversal.min > 0) {
           throw new FormValidationError([
             {
               message: `${traversal.label} is required.`,
@@ -322,14 +308,14 @@ export function decodeObjectForm(
         }
         continue
       }
-      links[traversal.key] =
-        traversal.cardinality === "many" ? targets : targets[0]!
+      links[traversal.key] = targets
     }
     if (Object.keys(links).length > 0) input.links = links
-  } else if (fields === undefined) {
+  } else {
     const links: Record<string, LinkDeltaInput> = {}
     const linkValues = values.links
-    for (const { traversal } of objectFormLinks(runtime, object, mode)) {
+    for (const { traversal } of objectFormLinks(runtime, object)) {
+      if (fields !== undefined && !fields.includes(traversal.key)) continue
       const rawValue = nestedFormValue(linkValues, traversal.key)
       const add = stringArrayValue(nestedFormValue(rawValue, "add"))
       const remove = stringArrayValue(nestedFormValue(rawValue, "remove"))
@@ -436,8 +422,6 @@ export function objectFormDefaultValues(
   initialValues?: ObjectFormInput
 ): ObjectFormValues {
   const values: Record<string, FormValue> = {}
-  if (mode === "create" && object.parent.kind !== "root")
-    values.parent = stringValue(initialValues?.parent)
 
   for (const { id, property, schema } of objectFormProperties(object, mode)) {
     const value =
@@ -505,7 +489,7 @@ export function objectFormDefaultValues(
 
   {
     const links: Record<string, FormValue> = {}
-    for (const { traversal } of objectFormLinks(runtime, object, mode)) {
+    for (const { traversal } of objectFormLinks(runtime, object)) {
       const initialLinks = initialValues?.links
       const initial =
         typeof initialLinks === "object" &&
@@ -515,14 +499,14 @@ export function objectFormDefaultValues(
           : undefined
       links[traversal.key] =
         mode === "create"
-          ? traversal.cardinality === "many"
+          ? traversal.max !== 1
             ? Array.isArray(initial)
               ? initial.filter(
                   (value): value is string => typeof value === "string"
                 )
               : []
-            : typeof initial === "string"
-              ? initial
+            : Array.isArray(initial) && typeof initial[0] === "string"
+              ? initial[0]
               : ""
           : { add: [], remove: [] }
     }

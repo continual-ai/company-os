@@ -143,7 +143,7 @@ application.test(
       )(yield* Effect.promise(() => companyResponse.json()))
       const contactResponse = yield* send("contacts", {
         name: "Linked contact",
-        links: { primaryCompany: company.id },
+        links: { companies: [company.id], primaryCompany: [company.id] },
       })
       const contact = Schema.decodeUnknownSync(
         Schema.Struct({ id: Schema.String })

@@ -48,7 +48,6 @@ export const seedMarketingPerformance = Effect.fn(
         status: (
           ["draft", "planned", "active", "paused", "completed"] as const
         )[Math.floor(index / 2) % 5]!,
-        owner: owners[index % owners.length]!,
         budget:
           index % 7 === 0
             ? null
@@ -60,6 +59,7 @@ export const seedMarketingPerformance = Effect.fn(
         endDate: CalendarDate(
           DateTime.formatIso(DateTime.add(start, { days: 30 })).slice(0, 10)
         ),
+        links: { owner: [owners[index % owners.length]!] },
       })
     )
   }
@@ -80,12 +80,10 @@ export const seedMarketingPerformance = Effect.fn(
       )[contentIndex % 6]!
       yield* records.writer(Content).create({
         title: `${topics[contentIndex % topics.length]}: lessons from ${customer.companyName}`,
-        campaign: campaign.id,
         format: (["article", "social", "email", "ad", "landingPage"] as const)[
           contentIndex % 5
         ]!,
         status: contentStatus,
-        owner: customer.owner,
         brief:
           "Share a practical example of reducing manual follow-up. Include the original problem, the workflow change, and what the team learned.",
         body: `# A clearer customer handoff\n\nThe team at **${customer.companyName}** needed a reliable way to keep customers informed.\n\n## What changed\n\n- Each request has one accountable owner.\n- Customers can see progress and provide missing details.\n- Exceptions reach the right team with their original context.\n\n${"Start with one operation, review the results with the team, and adapt the next step.\n\n".repeat(contentIndex % 9 === 0 ? 30 : 3)}`,
@@ -103,6 +101,7 @@ export const seedMarketingPerformance = Effect.fn(
                 `https://stories.example.test/customer-handoff-${contentIndex}`
               )
             : null,
+        links: { campaign: [campaign.id], owner: [customer.owner] },
       })
     }
     const sequence = customer.eligible ? eligibleIndex++ : 0
@@ -119,8 +118,6 @@ export const seedMarketingPerformance = Effect.fn(
     const sent = outreachStatus === "sent" || outreachStatus === "replied"
     yield* records.writer(Enrollment).create({
       name: `${customer.name} — ${campaign.name}`,
-      campaign: campaign.id,
-      contact: customer.contact,
       status,
       step: status === "completed" ? 3 : index % 3,
       nextTouchAt:
@@ -132,12 +129,10 @@ export const seedMarketingPerformance = Effect.fn(
       context: customer.eligible
         ? `Interested in practical examples for ${customer.companyName}. Follow up with the session recording and implementation checklist.`
         : "No eligible email permission; no further outreach is scheduled.",
+      links: { campaign: [campaign.id], contact: [customer.contact] },
     })
     yield* records.writer(Outreach).create({
       subject: `${campaign.name}: next steps for ${customer.companyName}`,
-      campaign: campaign.id,
-      contact: customer.contact,
-      owner: customer.owner,
       status: outreachStatus,
       body: `Hi ${customer.name},\n\nWe are bringing together operations teams to share what worked during their first rollout. Would a practical session on customer onboarding be useful for ${customer.companyName}?\n\nWe can walk through approval steps, customer communication, and the handoff to engineering.\n\nBest,\nThe customer team`,
       scheduledAt:
@@ -159,6 +154,11 @@ export const seedMarketingPerformance = Effect.fn(
         outreachStatus === "failed"
           ? "The recipient mail server temporarily rejected delivery. Review before retrying."
           : null,
+      links: {
+        campaign: [campaign.id],
+        contact: [customer.contact],
+        owner: [customer.owner],
+      },
     })
   }
   yield* Effect.log("Prepared campaigns, enrollments, and outreach history.")

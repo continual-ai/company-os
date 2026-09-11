@@ -103,21 +103,28 @@ export const seedSalesDemo = Effect.fn("@company/seedSalesDemo")(function* () {
         photo: portraits[index] ?? null,
       })
   )
-  for (const [index, contact] of contacts.entries())
+  for (const [index, contact] of contacts.entries()) {
+    yield* linkSeedRecords(
+      Contact,
+      "companies",
+      contact.id,
+      companies[index % 3]!.id
+    )
     yield* linkSeedRecords(
       Contact,
       "primaryCompany",
       contact.id,
       companies[index % 3]!.id
     )
+  }
   yield* linkSeedRecords(Company, "contacts", companies[0].id, contacts[2]!.id)
   const deal = yield* services.deal.create({
     name: "Northstar — service operations rollout",
     stage: "proposal",
-    owner: owner.id,
     amount: { currency: CurrencyCode("USD"), amount: Decimal("48000") },
     nextStep:
       "Review the pilot results with Maya and agree on the rollout schedule.",
+    links: { owner: [owner.id] },
   })
   yield* linkSeedRecords(Deal, "companies", deal.id, companies[0].id)
   for (const [index, stage] of (
@@ -130,7 +137,7 @@ export const seedSalesDemo = Effect.fn("@company/seedSalesDemo")(function* () {
         currency: CurrencyCode(index === 1 ? "EUR" : "USD"),
         amount: Decimal(String(12000 + index * 8000)),
       },
-      owner: owner.id,
+      links: { owner: [owner.id] },
     })
     yield* linkSeedRecords(
       Deal,
@@ -153,13 +160,13 @@ export const seedSalesDemo = Effect.fn("@company/seedSalesDemo")(function* () {
   ).entries())
     yield* services.lead.create({
       name,
-      company: index % 2 === 0 ? companies[index % 3]!.id : null,
       companyName: index % 2 === 0 ? null : "Westbridge Labs",
       email: EmailAddress(`lead-${index}@demo.example.test`),
       source: (["inbound", "referral", "outbound"] as const)[index % 3]!,
       status: (["new", "working", "qualified", "disqualified"] as const)[
         index % 4
       ]!,
+      links: { company: index % 2 === 0 ? [companies[index % 3]!.id] : [] },
     })
   for (let index = 0; index < 8; index++) {
     const note = yield* services.note.create(
@@ -177,15 +184,17 @@ export const seedSalesDemo = Effect.fn("@company/seedSalesDemo")(function* () {
   ).entries())
     yield* services.activity.create({
       title,
-      company: companies[0].id,
-      contact: contacts[0].id,
-      deal: deal.id,
-      owner: owner.id,
       kind: index === 1 ? "task" : "meeting",
       status: index === 0 ? "done" : "planned",
       dueAt: Timestamp(
         DateTime.formatIso(DateTime.add(now, { days: index - 1 }))
       ),
+      links: {
+        company: [companies[0].id],
+        contact: [contacts[0].id],
+        deal: [deal.id],
+        owner: [owner.id],
+      },
     })
   return {
     company: companies[0].id,

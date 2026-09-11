@@ -26,8 +26,8 @@ import {
   Decimal,
   DomainName,
   EmailAddress,
-  RecordAlias,
   PhoneNumber,
+  RecordAlias,
   RecordId,
   Timestamp,
   WebUrl,
@@ -517,20 +517,28 @@ export function toEffectObjectFields(object: ObjectType) {
   )
   const fields: CompiledSchemaFields = Object.fromEntries([
     entry("id", id),
+    entry("objectType", Schema.Literal(object.id)),
+    entry(
+      "links",
+      Schema.Record(
+        Schema.String,
+        Schema.Struct({
+          ids: Schema.Array(
+            Schema.String.pipe(Schema.fromBrand("RecordId", RecordId("object")))
+          ),
+          totalSize: Schema.Number.check(
+            Schema.isInt(),
+            Schema.isGreaterThanOrEqualTo(0)
+          ),
+        }).annotate({ identifier: "LinkPreview" })
+      ).annotate({ identifier: "RecordLinks" })
+    ),
     entry("aliases", recordAliasesSchema),
     entry("metadata", metadataSchema),
     entry("createdAt", createdAt),
     entry("createdBy", actorId),
     entry("etag", etagSchema.annotate({ readOnly: true })),
-    entry(
-      "parent",
-      Schema.String.annotate({ title: "Parent" }).pipe(
-        Schema.fromBrand(
-          `RecordId:${object.parent.typeId}`,
-          RecordId(object.parent.typeId)
-        )
-      )
-    ),
+
     entry(
       "systemManaged",
       Schema.Boolean.annotate({
@@ -555,11 +563,6 @@ export function toEffectObjectCreateSchema(
     metadata: Schema.optionalKey(metadataSchema),
     ...compileCreateProperties(object),
   }
-  if (object.parent.kind !== "root") {
-    fields.parent = toEffectRecordIdentifierSchema(
-      object.parent.typeId
-    ).annotate({ title: "Parent" })
-  }
   return annotateObjectSchema(
     object,
     Schema.Struct(fields),
@@ -573,17 +576,23 @@ export function toEffectModelObjectCreateSchema(
   model: ModelCatalog,
   object: ObjectType
 ): Schema.Codec<unknown, unknown> {
-  const traversals = modelObjectLinkTraversals(model, object)
+  const traversals = modelObjectLinkTraversals(model, object).filter(
+    ({ writable }) => writable
+  )
   const linkFields: CompiledSchemaFields = Object.fromEntries(
     traversals.map(({ target, traversal }) => {
       const identifier = toEffectRecordIdentifierSchema(
         target.from.typeId
       ).annotate({ title: target.label })
-      const value =
-        traversal.cardinality === "many" ? Schema.Array(identifier) : identifier
+      const value = Schema.Array(identifier).check(
+        Schema.isMinLength(traversal.min),
+        ...(traversal.max === undefined
+          ? []
+          : [Schema.isMaxLength(traversal.max)])
+      )
       return [
         traversal.key,
-        traversal.cardinality === "one" ? value : Schema.optionalKey(value),
+        traversal.min > 0 ? value : Schema.optionalKey(value),
       ]
     })
   )
@@ -592,19 +601,12 @@ export function toEffectModelObjectCreateSchema(
     metadata: Schema.optionalKey(metadataSchema),
     ...compileCreateProperties(object),
   }
-  if (object.parent.kind !== "root") {
-    fields.parent = toEffectRecordIdentifierSchema(
-      object.parent.typeId
-    ).annotate({ title: "Parent" })
-  }
   if (traversals.length > 0) {
     const links = Schema.Struct(linkFields).annotate({
       description: "Links established atomically with the new object.",
       title: "Initial links",
     })
-    fields.links = traversals.some(
-      ({ traversal }) => traversal.cardinality === "one"
-    )
+    fields.links = traversals.some(({ traversal }) => traversal.min > 0)
       ? links
       : Schema.optionalKey(links)
   }
@@ -673,15 +675,14 @@ export function toEffectModelObjectUpdateSchema(
     traversals.map(({ target, traversal }) => {
       const identifier = toEffectRecordIdentifierSchema(target.from.typeId)
       let identifiers = Schema.Array(identifier).check(Schema.isUnique())
-      if (traversal.cardinality !== "many") {
-        identifiers = identifiers.check(Schema.isMaxLength(1))
+      if (traversal.max !== undefined) {
+        identifiers = identifiers.check(Schema.isMaxLength(traversal.max))
       }
       const changes: CompiledSchemaFields = {
         add: Schema.optionalKey(identifiers),
       }
-      if (traversal.cardinality !== "one" && target.cardinality !== "one") {
-        changes.remove = Schema.optionalKey(identifiers)
-      }
+      changes.remove = Schema.optionalKey(Schema.Array(identifier))
+      changes.replace = Schema.optionalKey(identifiers)
       return [
         traversal.key,
         Schema.optionalKey(

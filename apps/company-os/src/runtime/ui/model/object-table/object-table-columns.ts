@@ -2,15 +2,16 @@ import { createColumnHelper } from "@tanstack/react-table"
 
 import {
   schema,
+  type modelObjectLinkTraversals,
   type ObjectType,
   type PropertyDefinition,
 } from "#/runtime/model/index.ts"
 import { objectTableCellType } from "#/runtime/ui/model/object-table/object-table-cell-types.ts"
 import {
-  type objectTableFeatures,
-  type ObjectTableRecord,
   type ObjectTableColumnMeta,
+  type objectTableFeatures,
   type ObjectTableInstance,
+  type ObjectTableRecord,
 } from "#/runtime/ui/model/object-table/object-table-config.ts"
 
 export type ObjectTableColumn = ReturnType<
@@ -52,10 +53,7 @@ function propertyColumnSize(
   return 200
 }
 
-export function objectTableProperties(
-  object: ObjectType,
-  parentLabel?: string
-) {
+export function objectTableProperties(object: ObjectType) {
   const entries = [
     ...(object.display.title === "id"
       ? [
@@ -71,23 +69,6 @@ export function objectTableProperties(
           ] as const,
         ]
       : []),
-    ...(object.parent.kind === "root"
-      ? []
-      : [
-          [
-            "parent",
-            {
-              ...schema.reference(
-                { id: object.parent.typeId },
-                { label: parentLabel ?? "Parent" }
-              ),
-              immutable: true,
-              nullable: false,
-              outputOnly: false,
-              requiredOnCreate: true,
-            } satisfies PropertyDefinition,
-          ] as const,
-        ]),
     ...Object.entries(object.properties),
   ]
   const titleEntry = entries.find(
@@ -144,5 +125,37 @@ export function objectTablePropertyColumnDefs({
         },
       })
     })
+  )
+}
+
+export function objectTableLinkColumnDef(
+  link: ReturnType<typeof modelObjectLinkTraversals>[number]
+) {
+  return columnHelper.accessor(
+    (record): unknown => record[link.traversal.key],
+    {
+      id: link.traversal.key,
+      header: link.traversal.label,
+      enableColumnFilter: true,
+      enableSorting: false,
+      enableHiding: true,
+      enableResizing: true,
+      size: 200,
+      minSize: 120,
+      maxSize: 560,
+      meta: {
+        label: link.traversal.label,
+        property: {
+          ...schema.recordId({
+            id: link.traversal.to.typeId,
+            label: link.traversal.label,
+          }),
+          nullable: true,
+          immutable: false,
+          outputOnly: false,
+          requiredOnCreate: false,
+        },
+      },
+    }
   )
 }

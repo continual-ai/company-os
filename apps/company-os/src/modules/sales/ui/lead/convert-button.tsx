@@ -14,7 +14,7 @@ export function ConvertLeadAction({ record }: RecordUiProps<typeof Lead>) {
       destructive={false}
       title="Convert this lead?"
       description={
-        record.company
+        record.links.company?.ids[0]
           ? "Creates a contact at the linked company."
           : "Creates a company and contact linked to this lead."
       }

@@ -15,9 +15,14 @@ import {
   type HttpApiOptions,
 } from "#/runtime/contract/http-api.ts"
 import {
+  customMethodApi,
   customMethodParameter,
   customMethodPath,
 } from "#/runtime/contract/http-custom-method.ts"
+import {
+  recordBatchInput,
+  recordBatchResult,
+} from "#/runtime/contract/record-batch.ts"
 import { createRecordSearchContract } from "#/runtime/contract/record-search.ts"
 import { toEffectErrorSchema } from "#/runtime/contract/schema.ts"
 import type { ModelCatalog } from "#/runtime/model/index.ts"
@@ -95,29 +100,49 @@ export function createApplicationHttpApi(
       )
     )
 
-  const recordGroup = HttpApiGroup.make("records").add(
-    HttpApiEndpoint.post(
-      "searchRecords",
-      customMethodPath("/api/v1/records", "search"),
-      {
-        params: { search: customMethodParameter("search") },
-        payload: recordSearchInput,
-        success: recordSearchResult,
-        error: standardErrors,
-      }
-    ).annotateMerge(
-      OpenApi.annotations({
-        identifier: "searchRecords",
-        summary: "Search records across objects",
-        description:
-          "Searches explicitly indexed model fields using word prefixes, with all terms required. Returns ranked display summaries, limited to active object types. Optional objectTypes narrows the search. hasMore means narrow the query or increase limit (maximum 50); use object list APIs for exhaustive traversal.",
-      })
+  const recordGroup = HttpApiGroup.make("records")
+    .add(
+      HttpApiEndpoint.post(
+        "batchGetRecords",
+        customMethodPath("/api/v1/records", "batchGet"),
+        {
+          params: { batchGet: customMethodParameter("batchGet") },
+          payload: recordBatchInput,
+          success: recordBatchResult(model),
+          error: standardErrors,
+        }
+      ).annotateMerge(
+        OpenApi.annotations({
+          identifier: "batchGetRecords",
+          summary: "Get records of any object type",
+          description:
+            "Returns complete records, including bounded link IDs and total sizes, in input order. Duplicate IDs are collapsed. Missing or inactive records are listed in missingIds.",
+        })
+      )
     )
-  )
+    .add(
+      HttpApiEndpoint.post(
+        "searchRecords",
+        customMethodPath("/api/v1/records", "search"),
+        {
+          params: { search: customMethodParameter("search") },
+          payload: recordSearchInput,
+          success: recordSearchResult,
+          error: standardErrors,
+        }
+      ).annotateMerge(
+        OpenApi.annotations({
+          identifier: "searchRecords",
+          summary: "Search records across objects",
+          description:
+            "Searches explicitly indexed model fields using word prefixes, with all terms required. Returns ranked display summaries, limited to active object types. Optional objectTypes narrows the search. hasMore means narrow the query or increase limit (maximum 50); use object list APIs for exhaustive traversal.",
+        })
+      )
+    )
 
-  const api = createModelHttpApi(model, options)
-    .add(eventGroup)
-    .add(recordGroup)
+  const api = customMethodApi(
+    createModelHttpApi(model, options).add(eventGroup).add(recordGroup)
+  )
 
   return { api, eventGroup, recordGroup }
 }

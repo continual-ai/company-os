@@ -76,9 +76,9 @@ application.test(
         .convert({ id: lead.id })
         .pipe(Effect.provideService(CommittedChanges, changes))
       expect(changes).toEqual(new Set(["company", "contact", "lead"]))
-      expect((yield* services.lead.get({ id: lead.id })).company).toBe(
-        converted.company
-      )
+      expect(
+        (yield* services.lead.get({ id: lead.id })).links.company?.ids[0]
+      ).toBe(converted.company)
       changes.clear()
       expect(
         yield* services.lead
@@ -92,7 +92,7 @@ application.test(
 
       const linkedLead = yield* services.lead.create({
         name: "Existing company contact",
-        company: first.id,
+        links: { company: [first.id] },
       })
       const companyCount = (yield* services.company.list({})).totalSize
       const linkedConversion = yield* services.lead.convert({
@@ -150,8 +150,10 @@ application.test(
       expect(changes.size).toBe(0)
       expect(yield* services.lead.get({ id: rolledBackLead.id })).toMatchObject(
         {
-          convertedCompany: null,
-          convertedContact: null,
+          links: {
+            convertedCompany: { ids: [], totalSize: 0 },
+            convertedContact: { ids: [], totalSize: 0 },
+          },
           convertedAt: null,
         }
       )
@@ -213,7 +215,13 @@ application.test(
         Model,
         Model.objects.company
       ).find(({ traversal }) => traversal.key === "contacts")!
-      yield* links.link(primary, { id: converted.contact, target: first.id })
+      yield* services.contact.update({
+        id: converted.contact,
+        links: {
+          companies: { add: [first.id] },
+          primaryCompany: { replace: [first.id] },
+        },
+      })
       expect(
         (yield* links.list(memberships, { id: converted.contact })).totalSize
       ).toBe(2)
@@ -222,6 +230,7 @@ application.test(
       ).toMatchObject([
         { id: first.id, objectType: "company", name: first.name },
       ])
+      yield* links.unlink(primary, { id: converted.contact, target: first.id })
       yield* links.unlink(contacts, { id: first.id, target: converted.contact })
       expect(
         (yield* links.list(primary, { id: converted.contact })).items
@@ -239,7 +248,6 @@ application.test(
         Model.objects.deal
       ).find(({ traversal }) => traversal.key === "companies")!
       yield* links.link(dealCompanies, { id: privateDeal.id, target: first.id })
-      expect(privateDeal.parent).toBe("platform_system")
       expect(
         (yield* summary()).groups.reduce(
           (total, group) => total + group.count,

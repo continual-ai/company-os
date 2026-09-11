@@ -20,17 +20,17 @@ import {
   DeveloperNavigationGroup,
   DeveloperNavigationItem,
 } from "#/app/ui/developer/developer-layout.tsx"
-import { modelRelationships, modelTypeAccepts } from "#/runtime/model/index.ts"
 import type {
   Action,
   AnySchema,
   Choice,
   InterfaceType,
+  ModelCatalog,
   ModelRelationship,
   ObjectType,
   PropertyDefinition,
 } from "#/runtime/model/index.ts"
-import type { ModelCatalog } from "#/runtime/model/index.ts"
+import { modelRelationships, modelTypeAccepts } from "#/runtime/model/index.ts"
 
 type ModelDefinition = ModelCatalog
 type ModelObject = ObjectType
@@ -40,12 +40,6 @@ type ModelAction = Action
 type ModelItem = ModelObject | ModelInterface
 
 const allModules = "all"
-
-const cardinalityLabels = {
-  many: "many",
-  one: "one",
-  zeroOrOne: "zero or one",
-} as const
 
 function modelActions(model: ModelDefinition) {
   return Object.values(model.actions).flatMap((group) => Object.values(group))
@@ -297,10 +291,10 @@ function RelationshipList({
               <div>
                 <p className="text-xs font-medium">{current.label}</p>
                 <p className="mt-1 text-[10px] text-muted-foreground">
-                  {cardinalityLabels[current.cardinality]} ·{" "}
-                  {relationship.storage.kind === "parent"
-                    ? "ownership"
-                    : relationship.storage.kind}
+                  {current.min}–{current.max ?? "many"} targets
+                  {current.onDelete === "cascade"
+                    ? " · Cascades on deletion"
+                    : ""}
                 </p>
               </div>
               <Badge variant="outline">{related.kind}</Badge>
@@ -399,11 +393,6 @@ function ObjectDetail({
         </div>
         <dl className="mt-5 grid gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-4">
           <DefinitionFact label="Collection" value={object.collection} code />
-          <DefinitionFact
-            label="Parent"
-            value={`${object.parent.kind}:${object.parent.typeId}`}
-            code
-          />
           <DefinitionFact
             label="Properties"
             value={Object.keys(object.properties).length}

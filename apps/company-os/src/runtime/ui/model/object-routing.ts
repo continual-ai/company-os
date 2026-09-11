@@ -111,7 +111,8 @@ export async function preloadCollection(
         collectionDateWindow(
           state.layout,
           calendarDay(state.date) ?? new Date().toISOString().slice(0, 10)
-        )
+        ),
+        runtime.model
       )
     )
   )

@@ -4,15 +4,15 @@ import type {
   Properties,
   PropertyDefinition,
 } from "#/runtime/model/definition/property.ts"
-import {
-  MAX_RECORD_ALIAS_LENGTH,
-  schema,
-} from "#/runtime/model/definition/schema.ts"
 import type {
   InferInputSchema,
   InferSchema,
   SchemaProperties,
   StructSchema,
+} from "#/runtime/model/definition/schema.ts"
+import {
+  MAX_RECORD_ALIAS_LENGTH,
+  schema,
 } from "#/runtime/model/definition/schema.ts"
 
 const standardActionIds = ["create", "update", "delete", "batchDelete"] as const
@@ -94,7 +94,7 @@ type InputProperties<
 > = TDefinition["scope"] extends "object"
   ? {
       readonly id: ReturnType<
-        typeof schema.reference<{ readonly id: TObjectType }>
+        typeof schema.recordId<{ readonly id: TObjectType }>
       >
     } & NonNullable<TDefinition["input"]>
   : NonNullable<TDefinition["input"]>
@@ -257,17 +257,22 @@ function aliasUpdateSchema() {
 
 function objectRecordSchema(object: {
   readonly id: string
-  readonly parent: { readonly typeId: string }
   readonly properties: Properties
 }) {
   return schema.object({
-    id: schema.reference(object),
+    id: schema.recordId(object),
+    objectType: schema.literal(object.id),
+    links: schema.map(
+      schema.object({
+        ids: schema.array(schema.string()),
+        totalSize: schema.number({ integer: true, minimum: 0 }),
+      })
+    ),
     aliases: aliasesSchema(),
     metadata: schema.map(schema.string()),
     createdAt: schema.timestamp({ outputOnly: true }),
     createdBy: schema.string({ outputOnly: true }),
     etag: schema.string({ outputOnly: true }),
-    parent: schema.reference({ id: object.parent.typeId }),
     systemManaged: schema.boolean({ outputOnly: true }),
     updatedAt: schema.timestamp({ outputOnly: true }),
     updatedBy: schema.string({ outputOnly: true }),
@@ -280,10 +285,6 @@ export function standardActions(
     readonly collection: string
     readonly id: string
     readonly name: string
-    readonly parent: {
-      readonly kind: "interface" | "object" | "root"
-      readonly typeId: string
-    }
     readonly pluralName: string
     readonly properties: Properties
   },
@@ -302,10 +303,6 @@ export function standardActions(
       .map(([id, property]) => [id, schema.optional(property)])
   )
   if (settings.create) {
-    const parentInput =
-      object.parent.kind === "root"
-        ? {}
-        : { parent: schema.reference({ id: object.parent.typeId }) }
     actions.push({
       kind: "action",
       id: "create",
@@ -318,7 +315,6 @@ export function standardActions(
       input: schema.object({
         aliases: schema.optional(aliasesSchema()),
         metadata: schema.optional(schema.map(schema.string())),
-        ...parentInput,
         ...writableProperties,
       }),
       output: record,
@@ -336,7 +332,14 @@ export function standardActions(
       destructive: false,
       idempotent: true,
       input: schema.object({
-        id: schema.reference(object),
+        id: schema.recordId(object),
+        objectType: schema.literal(object.id),
+        links: schema.map(
+          schema.object({
+            ids: schema.array(schema.string()),
+            totalSize: schema.number({ integer: true, minimum: 0 }),
+          })
+        ),
         aliases: schema.optional(aliasUpdateSchema()),
         etag: schema.optional(schema.string()),
         metadata: schema.optional(schema.map(schema.string())),
@@ -357,7 +360,14 @@ export function standardActions(
       destructive: true,
       idempotent: true,
       input: schema.object({
-        id: schema.reference(object),
+        id: schema.recordId(object),
+        objectType: schema.literal(object.id),
+        links: schema.map(
+          schema.object({
+            ids: schema.array(schema.string()),
+            totalSize: schema.number({ integer: true, minimum: 0 }),
+          })
+        ),
         etag: schema.optional(schema.string()),
       }),
       output: schema.object({}),
@@ -374,7 +384,7 @@ export function standardActions(
       description: `Deletes multiple ${object.pluralName.toLowerCase()} atomically.`,
       destructive: true,
       idempotent: true,
-      input: schema.object({ ids: schema.array(schema.reference(object)) }),
+      input: schema.object({ ids: schema.array(schema.recordId(object)) }),
       output: schema.object({}),
       errors: [],
     })

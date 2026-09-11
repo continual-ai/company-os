@@ -38,6 +38,8 @@ import { CurrentInvocation } from "#/runtime/server/invocation.ts"
 import { Operations } from "#/runtime/server/invoke.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
 import { ModelImplementation } from "#/runtime/server/model/implementation.ts"
+import { ObjectRepositories } from "#/runtime/server/model/object-repositories.ts"
+import { createRecordBatchGet } from "#/runtime/server/record-batch.ts"
 import { createRecordSearch } from "#/runtime/server/record-search.ts"
 import { Database } from "#/runtime/server/storage/database.ts"
 
@@ -54,6 +56,7 @@ const make = Effect.gen(function* () {
   // Register the installed contract once; each request checks database activation.
   const operations = yield* Operations
   const database = yield* Database
+  const repositories = yield* ObjectRepositories
   const authentication = yield* Authentication
   const notifications = yield* EventNotifications
   const events = yield* EventJournal
@@ -194,28 +197,52 @@ const make = Effect.gen(function* () {
     applicationHttpApi,
     "records",
     (handlers) =>
-      handlers.handle("searchRecords", (request) =>
-        authentication.invocation(requestHeaders(request)).pipe(
-          Effect.mapError(() =>
-            unauthenticatedApiError("Authentication credentials are invalid.")
-          ),
-          Effect.flatMap((invocation) =>
-            active.pipe(
-              Effect.flatMap(({ model }) =>
-                createRecordSearch(model)(request.payload)
-              ),
-              Effect.provideService(CurrentInvocation, invocation),
-              Effect.provideService(Database, database),
-              Effect.provideService(ModelContext, modelContext),
-              Effect.catch((error) =>
-                Effect.logError("Record search failed", error).pipe(
-                  Effect.andThen(Effect.fail(internalApiError()))
+      handlers
+        .handle("batchGetRecords", (request) =>
+          authentication.invocation(requestHeaders(request)).pipe(
+            Effect.mapError(() =>
+              unauthenticatedApiError("Authentication credentials are invalid.")
+            ),
+            Effect.flatMap((invocation) =>
+              active.pipe(
+                Effect.flatMap(({ model }) =>
+                  createRecordBatchGet(model)(request.payload)
+                ),
+                Effect.provideService(CurrentInvocation, invocation),
+                Effect.provideService(Database, database),
+                Effect.provideService(ModelContext, modelContext),
+                Effect.provideService(ObjectRepositories, repositories),
+                Effect.catch((error) =>
+                  Effect.logError("Record batch failed", error).pipe(
+                    Effect.andThen(Effect.fail(internalApiError()))
+                  )
                 )
               )
             )
           )
         )
-      )
+        .handle("searchRecords", (request) =>
+          authentication.invocation(requestHeaders(request)).pipe(
+            Effect.mapError(() =>
+              unauthenticatedApiError("Authentication credentials are invalid.")
+            ),
+            Effect.flatMap((invocation) =>
+              active.pipe(
+                Effect.flatMap(({ model }) =>
+                  createRecordSearch(model)(request.payload)
+                ),
+                Effect.provideService(CurrentInvocation, invocation),
+                Effect.provideService(Database, database),
+                Effect.provideService(ModelContext, modelContext),
+                Effect.catch((error) =>
+                  Effect.logError("Record search failed", error).pipe(
+                    Effect.andThen(Effect.fail(internalApiError()))
+                  )
+                )
+              )
+            )
+          )
+        )
   )
   const apiLayer = HttpApiBuilder.layer(applicationHttpApi).pipe(
     Layer.provide(

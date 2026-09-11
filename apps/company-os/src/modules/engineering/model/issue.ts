@@ -1,7 +1,7 @@
 import { Project } from "#/modules/engineering/model/project.ts"
 import { NoteSubject } from "#/modules/notes/model/index.ts"
 import { User } from "#/runtime/access/model/index.ts"
-import { defineObject, schema } from "#/runtime/model/index.ts"
+import { defineLink, defineObject, schema } from "#/runtime/model/index.ts"
 
 export const Issue = defineObject({
   id: "issue",
@@ -17,11 +17,6 @@ export const Issue = defineObject({
       nullable: true,
       maxLength: 50_000,
     }),
-    project: schema.reference(Project, {
-      label: "Project",
-      nullable: true,
-      inverse: { key: "issues", label: "Issues" },
-    }),
     priority: schema.select({
       label: "Priority",
       default: "normal",
@@ -33,7 +28,6 @@ export const Issue = defineObject({
       ],
     }),
     dueDate: schema.date({ label: "Due date", nullable: true }),
-    assignee: schema.reference(User, { label: "Assignee", nullable: true }),
     status: schema.select({
       label: "Status",
       default: "backlog",
@@ -51,4 +45,22 @@ export const Issue = defineObject({
   },
   search: { fields: ["title", "description"] },
   display: { icon: "circleDot", title: "title", status: "status" },
+})
+
+export const IssueProject = defineLink({
+  id: "issueProject",
+  name: "Issue Project",
+  from: Issue,
+  to: Project,
+  forward: { key: "project", label: "Project", max: 1 },
+  reverse: { key: "issues", label: "Issues" },
+})
+
+export const IssueAssignee = defineLink({
+  id: "issueAssignee",
+  name: "Issue Assignee",
+  from: Issue,
+  to: User,
+  forward: { key: "assignee", label: "Assignee", max: 1 },
+  reverse: { key: "issuesByAssignee", label: "Issues (Assignee)" },
 })

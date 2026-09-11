@@ -1,9 +1,8 @@
 import { Effect } from "effect"
 
-import { ServiceAccount, AnonymousActor } from "#/runtime/access/model/index.ts"
+import { AnonymousActor, ServiceAccount } from "#/runtime/access/model/index.ts"
 import {
   ANONYMOUS_ACTOR_ID,
-  ROOT_ID,
   SYSTEM_SERVICE_ACCOUNT_ID,
 } from "#/runtime/model/system-records.ts"
 import { currentActorId } from "#/runtime/server/invocation-context.ts"
@@ -26,7 +25,6 @@ export const seedIdentities = Effect.fn("@company/seedIdentities")(
       description: `Built-in system identity for ${model.name}.`,
       id: SYSTEM_SERVICE_ACCOUNT_ID,
       name: "System",
-      parent: ROOT_ID,
       systemManaged: true,
       updatedBy: actorId,
     } satisfies ObjectInsert<typeof ServiceAccount>
@@ -38,7 +36,6 @@ export const seedIdentities = Effect.fn("@company/seedIdentities")(
       createdBy: actorId,
       id: ANONYMOUS_ACTOR_ID,
       name: "Anonymous",
-      parent: ROOT_ID,
       systemManaged: true,
       updatedBy: actorId,
     })

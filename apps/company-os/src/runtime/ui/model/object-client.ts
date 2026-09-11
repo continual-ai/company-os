@@ -6,17 +6,17 @@ import {
   type ModelQueryOptions,
 } from "#/runtime/client/model-query-client.ts"
 import {
-  type Batch,
-  type ModelLinkTraversal,
   modelTypeAccepts,
+  type Batch,
   type ListRequest,
+  type ModelLinkTraversal,
   type ObjectRef,
   type ObjectType,
   type Page,
   type PropertyDefinition,
 } from "#/runtime/model/index.ts"
-import { objectTableValueText } from "#/runtime/ui/model/object-table/object-table-config.ts"
 import type { ObjectTableRecord } from "#/runtime/ui/model/object-table/object-table-config.ts"
+import { objectTableValueText } from "#/runtime/ui/model/object-table/object-table-config.ts"
 import { type ModelUiRuntime } from "#/runtime/ui/model/runtime-context.tsx"
 
 export type ModelObject = ObjectType
@@ -30,13 +30,21 @@ export type ClientValue =
   | { readonly [property: string]: ClientValue | undefined }
 
 export interface ClientRecord {
+  readonly objectType?: string
+  readonly links?: Readonly<
+    Record<
+      string,
+      { readonly ids: ReadonlyArray<string>; readonly totalSize: number }
+    >
+  >
   readonly etag: string
   readonly id: string
-  readonly parent?: string
   readonly [property: string]: ClientValue | undefined
 }
 
 export interface ObjectRecordPresentation {
+  readonly source?: ClientRecord
+
   readonly object: ObjectType
   readonly record: ObjectTableRecord
 }
@@ -206,9 +214,16 @@ export function tableRecord(
 ): ObjectTableRecord {
   // SAFETY: the server validates responses from the same model projected by
   // the table; only declared presentation properties cross this adapter.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const projected = {
     id: record.id,
     systemManaged: record.systemManaged === true,
+    ...Object.fromEntries(
+      Object.entries(record.links ?? {}).flatMap(([key, value]) => [
+        [key, value.ids],
+        [`${key}TotalSize`, value.totalSize],
+      ])
+    ),
     ...Object.fromEntries(
       Object.keys(object.properties).map((property) => [
         property,
@@ -216,7 +231,6 @@ export function tableRecord(
       ])
     ),
   } as ObjectTableRecord
-  if (object.parent.kind !== "root") projected.parent = record.parent ?? null
   return projected
 }
 
@@ -254,22 +268,15 @@ export function describeReferences(
   })
 }
 
-export function parentName(
+/** Polymorphic hydration shares the generated semantic query/cache boundary. */
+export function recordBatchFor(
   runtime: ModelUiRuntime,
-  object: ModelObject
-): string {
-  const parent = object.parent
-  if (parent.kind === "root") return runtime.model.root.name
-  const definition =
-    parent.kind === "object"
-      ? Object.values(runtime.model.objects).find(
-          ({ id }) => id === parent.typeId
-        )
-      : Object.values(runtime.model.interfaces).find(
-          ({ id }) => id === parent.typeId
-        )
-  if (definition === undefined) {
-    throw new Error(`Unknown parent type '${parent.typeId}'.`)
-  }
-  return definition.name
+  ids: ReadonlyArray<string>
+): ModelQueryOptions<{
+  readonly items: ReadonlyArray<ClientRecord>
+  readonly missingIds: ReadonlyArray<string>
+}> {
+  return queryMethod(
+    operation(Reflect.get(runtime.data, "records"), "batchGet")({ ids })
+  )
 }

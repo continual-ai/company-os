@@ -1,15 +1,12 @@
 import {
   definitionId,
   type NoExtraKeys,
+  type OpenOr,
 } from "#/runtime/model/definition/identity.ts"
 import type { InterfaceType } from "#/runtime/model/definition/interface.ts"
 import type { ObjectType } from "#/runtime/model/definition/object.ts"
 
 type LinkTarget = InterfaceType | ObjectType
-
-export const linkCardinalities = ["one", "zeroOrOne", "many"] as const
-
-export type LinkCardinality = (typeof linkCardinalities)[number]
 
 export interface LinkEndpoint<
   TTypeId extends string = string,
@@ -19,155 +16,142 @@ export interface LinkEndpoint<
   typeId: TTypeId
 }
 
+interface LinkEndDefinition {
+  readonly key: string
+  readonly label: string
+  readonly description?: string
+  readonly min?: number
+  readonly max?: number
+  /** Deleting the source deletes these targets. Ordinary unlinking never deletes records. */
+  readonly onDelete?: "unlink" | "cascade"
+}
+
 export interface LinkTraversal<
   TFrom extends LinkEndpoint = LinkEndpoint,
   TTo extends LinkEndpoint = LinkEndpoint,
   TKey extends string = string,
-  TCardinality extends LinkCardinality = LinkCardinality,
+  TMin extends number = number,
+  TMax extends number | undefined = number | undefined,
 > {
-  cardinality: TCardinality
-  description?: string
   from: TFrom
+  to: TTo
   key: TKey
   label: string
-  to: TTo
+  description?: string
+  min: TMin
+  max: TMax
+  onDelete: "unlink" | "cascade"
 }
 
-interface LinkTraversalDefinition {
-  readonly cardinality: LinkCardinality
-  readonly description?: string
-  readonly from: LinkTarget
-  readonly key: string
-  readonly label: string
-  readonly to: LinkTarget
-}
-
-/**
- * What `defineLink` accepts. The parameter additionally requires `reverse` to
- * mirror the forward endpoints and `writeFrom` to name one traversal key.
- */
 export interface LinkDefinition {
-  readonly description?: string
-  readonly forward: LinkTraversalDefinition
   readonly id: string
   readonly name: string
-  readonly reverse: LinkTraversalDefinition
+  readonly description?: string
+  readonly from: LinkTarget
+  readonly to: LinkTarget
+  readonly forward: LinkEndDefinition
+  readonly reverse: LinkEndDefinition
+  readonly outputOnly?: boolean
   readonly subsetOf?: LinkType
-  readonly writeFrom: string | false
 }
 
-type LinkDefinitionConstraints<D extends LinkDefinition> = NoExtraKeys<
-  D,
-  LinkDefinition
-> & {
-  readonly reverse: {
-    readonly from: D["forward"]["to"]
-    readonly to: D["forward"]["from"]
-  }
-  readonly writeFrom: D["forward"]["key"] | D["reverse"]["key"] | false
-}
-
-type LinkEndpointOf<TTarget extends LinkTarget> = LinkEndpoint<
-  TTarget["id"],
-  TTarget["kind"]
+type EndpointOf<T extends LinkTarget> = LinkEndpoint<T["id"], T["kind"]>
+type EndOf<
+  E extends LinkEndDefinition,
+  F extends LinkTarget,
+  T extends LinkTarget,
+> = LinkTraversal<
+  EndpointOf<F>,
+  EndpointOf<T>,
+  E["key"],
+  E extends { readonly min: infer N extends number } ? N : 0,
+  E extends { readonly max: infer N extends number } ? N : undefined
 >
 
-type LinkTraversalOf<TTraversal extends LinkTraversalDefinition> =
-  LinkTraversal<
-    LinkEndpointOf<TTraversal["from"]>,
-    LinkEndpointOf<TTraversal["to"]>,
-    TTraversal["key"],
-    TTraversal["cardinality"]
-  >
-
-/** A defined link; the bare `LinkType` is the open form every defined link is assignable to. */
 export interface LinkType<D extends LinkDefinition = LinkDefinition> {
-  description?: string
-  /** A role selection within another relationship, with identical endpoint orientation. */
-  subsetOf?: string
-  forward: LinkTraversalOf<D["forward"]>
-  id: D["id"]
   kind: "link"
+  id: D["id"]
   name: string
-  reverse: LinkTraversalOf<D["reverse"]>
-  /** Key of the one traversal that owns public mutations, or false when immutable. */
-  writeFrom: D["writeFrom"]
+  description?: string
+  outputOnly: OpenOr<
+    D,
+    boolean,
+    D extends { readonly outputOnly: true } ? true : false
+  >
+  subsetOf?: string
+  forward: OpenOr<D, LinkTraversal, EndOf<D["forward"], D["from"], D["to"]>>
+  reverse: OpenOr<D, LinkTraversal, EndOf<D["reverse"], D["to"], D["from"]>>
 }
 
-/**
- * Defines both named traversals of a portable business relationship. The
- * contract leaves storage and protocol projection unspecified.
- */
+function traversal(
+  end: LinkEndDefinition,
+  from: LinkTarget,
+  to: LinkTarget
+): LinkTraversal {
+  const min = end.min ?? 0
+  const max = end.max
+  if (
+    !Number.isSafeInteger(min) ||
+    min < 0 ||
+    (max !== undefined && (!Number.isSafeInteger(max) || max < min))
+  )
+    throw new Error(
+      `Link traversal '${end.key}' requires integer bounds with 0 <= min <= max.`
+    )
+  return {
+    ...end,
+    key: definitionId(end.key),
+    from: { kind: from.kind, typeId: from.id },
+    to: { kind: to.kind, typeId: to.id },
+    min,
+    max,
+    onDelete: end.onDelete ?? "unlink",
+  }
+}
+
+/** One stored relationship, with two named traversals and constraints on both ends. */
 export function defineLink<const D extends LinkDefinition>(
-  definition: D & LinkDefinitionConstraints<D>
+  definition: D &
+    NoExtraKeys<D, LinkDefinition> & {
+      readonly forward: D["forward"] &
+        NoExtraKeys<D["forward"], LinkEndDefinition>
+      readonly reverse: D["reverse"] &
+        NoExtraKeys<D["reverse"], LinkEndDefinition>
+    }
 ): LinkType<D> {
   const input: LinkDefinition = definition
-  const { forward, reverse } = input
+  const forward = traversal(input.forward, input.from, input.to)
+  const reverse = traversal(input.reverse, input.to, input.from)
   if (
     input.subsetOf !== undefined &&
-    (input.subsetOf.forward.from.typeId !== forward.from.id ||
-      input.subsetOf.reverse.from.typeId !== reverse.from.id ||
-      input.subsetOf.forward.cardinality !== "many" ||
-      input.subsetOf.reverse.cardinality !== "many" ||
+    (input.subsetOf.forward.from.typeId !== input.from.id ||
+      input.subsetOf.reverse.from.typeId !== input.to.id ||
       input.subsetOf.subsetOf !== undefined)
   )
     throw new Error(
-      `Link '${input.id}' must select from a many-to-many relationship with identical endpoints.`
+      `Link '${input.id}' must select from a relationship with identical endpoints.`
     )
-
-  definitionId(forward.key)
-  definitionId(reverse.key)
   if (
-    forward.from.id !== reverse.to.id ||
-    forward.from.kind !== reverse.to.kind ||
-    forward.to.id !== reverse.from.id ||
-    forward.to.kind !== reverse.from.kind
-  ) {
+    (forward.onDelete === "cascade" && reverse.max !== 1) ||
+    (reverse.onDelete === "cascade" && forward.max !== 1) ||
+    (forward.onDelete === "cascade" && reverse.onDelete === "cascade")
+  )
     throw new Error(
-      `Link '${input.id}' reverse traversal must mirror its forward endpoints.`
+      `Link '${input.id}' cascade targets must have at most one owner and cannot cascade back.`
     )
-  }
-  if (
-    input.writeFrom !== false &&
-    input.writeFrom !== forward.key &&
-    input.writeFrom !== reverse.key
-  ) {
-    throw new Error(
-      `Link '${input.id}' writeFrom must name one of its traversal keys.`
-    )
-  }
-
   const link: LinkType = {
     kind: "link",
-    ...(input.subsetOf === undefined ? {} : { subsetOf: input.subsetOf.id }),
     id: definitionId(input.id),
     name: input.name,
-    forward: {
-      cardinality: forward.cardinality,
-      from: { kind: forward.from.kind, typeId: forward.from.id },
-      key: forward.key,
-      label: forward.label,
-      to: { kind: forward.to.kind, typeId: forward.to.id },
-    },
-    reverse: {
-      cardinality: reverse.cardinality,
-      from: { kind: reverse.from.kind, typeId: reverse.from.id },
-      key: reverse.key,
-      label: reverse.label,
-      to: { kind: reverse.to.kind, typeId: reverse.to.id },
-    },
-    writeFrom: input.writeFrom,
+    outputOnly: input.outputOnly ?? false,
+    forward,
+    reverse,
+    ...(input.description === undefined
+      ? {}
+      : { description: input.description }),
+    ...(input.subsetOf === undefined ? {} : { subsetOf: input.subsetOf.id }),
   }
-  if (forward.description !== undefined) {
-    link.forward.description = forward.description
-  }
-  if (reverse.description !== undefined) {
-    link.reverse.description = reverse.description
-  }
-  if (input.description !== undefined) {
-    link.description = input.description
-  }
-  // SAFETY: every member was built from the same definition the return type derives from.
+  // SAFETY: normalized traversals preserve the literal keys, endpoint types, and supplied bounds.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   return link as LinkType<D>
 }

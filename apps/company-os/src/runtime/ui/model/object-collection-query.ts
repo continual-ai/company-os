@@ -1,5 +1,6 @@
 import {
-  schema,
+  modelObjectLinkTraversals,
+  type ModelCatalog,
   type ListRequest,
   type PropertyDefinition,
 } from "#/runtime/model/index.ts"
@@ -17,6 +18,8 @@ import { objectTablePropertySchema } from "#/runtime/ui/model/object-table/objec
 import { readFilterValue } from "#/runtime/ui/model/object-table/object-table-config.ts"
 
 type RuntimeFilter =
+  | { readonly link: string; readonly contains: string }
+  | { readonly link: string; readonly isEmpty: true }
   | {
       readonly field: string
       readonly operator:
@@ -52,18 +55,7 @@ function objectProperty(
   object: ModelObject,
   propertyId: string
 ): PropertyDefinition | undefined {
-  if (propertyId !== "parent") return modelObjectProperty(object, propertyId)
-  if (object.parent.kind === "root") return undefined
-  return {
-    ...schema.reference(
-      { id: object.parent.typeId },
-      { label: "Parent", immutable: true }
-    ),
-    immutable: true,
-    nullable: false,
-    outputOnly: false,
-    requiredOnCreate: true,
-  }
+  return modelObjectProperty(object, propertyId)
 }
 
 export function canFilterProperty(property: PropertyDefinition): boolean {
@@ -156,10 +148,39 @@ export function objectListRequest(
   columnFilters: ReadonlyArray<ObjectCollectionFilter>,
   sorting: ReadonlyArray<ObjectCollectionSort>,
   pageToken?: ListRequest["pageToken"],
-  window?: CollectionDateWindow
+  window?: CollectionDateWindow,
+  model?: ModelCatalog
 ): ListRequest {
   const filters = columnFilters.flatMap((columnFilter) => {
     const property = objectProperty(object, columnFilter.id)
+    if (
+      property === undefined &&
+      model &&
+      modelObjectLinkTraversals(model, object).some(
+        ({ traversal }) => traversal.key === columnFilter.id
+      )
+    ) {
+      const { operator, values } = readFilterValue(columnFilter.value)
+      if (operator === "empty")
+        return [
+          { link: columnFilter.id, isEmpty: true } satisfies RuntimeFilter,
+        ]
+      if (operator === "notEmpty")
+        return [
+          {
+            not: { link: columnFilter.id, isEmpty: true },
+          } satisfies RuntimeFilter,
+        ]
+      if (
+        values.length === 0 ||
+        (operator !== "equals" && operator !== "notEquals")
+      )
+        return []
+      const matches: RuntimeFilter = {
+        or: values.map((contains) => ({ link: columnFilter.id, contains })),
+      }
+      return [operator === "notEquals" ? { not: matches } : matches]
+    }
     if (property === undefined || !canFilterProperty(property)) return []
     const filter = propertyFilter(
       columnFilter.id,

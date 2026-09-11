@@ -3,7 +3,7 @@ import { Company } from "#/modules/sales/model/company.ts"
 import { Contact } from "#/modules/sales/model/contact.ts"
 import { Deal } from "#/modules/sales/model/deal.ts"
 import { User } from "#/runtime/access/model/index.ts"
-import { defineObject, schema } from "#/runtime/model/index.ts"
+import { defineLink, defineObject, schema } from "#/runtime/model/index.ts"
 
 export const Activity = defineObject({
   id: "activity",
@@ -14,26 +14,6 @@ export const Activity = defineObject({
   implements: [{ interface: NoteSubject }],
   properties: {
     title: schema.string({ label: "Title", maxLength: 300, minLength: 1 }),
-    company: schema.reference(Company, {
-      label: "Company",
-      nullable: true,
-      inverse: { key: "activities", label: "Activities" },
-    }),
-    contact: schema.reference(Contact, {
-      label: "Contact",
-      nullable: true,
-      inverse: { key: "activities", label: "Activities" },
-    }),
-    deal: schema.reference(Deal, {
-      label: "Deal",
-      nullable: true,
-      inverse: { key: "activities", label: "Activities" },
-    }),
-    owner: schema.reference(User, {
-      label: "Owner",
-      nullable: true,
-      inverse: { key: "activities", label: "Activities" },
-    }),
     kind: schema.select({
       label: "Kind",
       default: "task",
@@ -61,4 +41,40 @@ export const Activity = defineObject({
   },
   search: { fields: ["title", "outcome"] },
   display: { title: "title", icon: "checkSquare", status: "status" },
+})
+
+export const ActivityCompany = defineLink({
+  id: "activityCompany",
+  name: "Activity Company",
+  from: Activity,
+  to: Company,
+  forward: { key: "company", label: "Company", max: 1 },
+  reverse: { key: "activities", label: "Activities" },
+})
+
+export const ActivityContact = defineLink({
+  id: "activityContact",
+  name: "Activity Contact",
+  from: Activity,
+  to: Contact,
+  forward: { key: "contact", label: "Contact", max: 1 },
+  reverse: { key: "activities", label: "Activities" },
+})
+
+export const ActivityDeal = defineLink({
+  id: "activityDeal",
+  name: "Activity Deal",
+  from: Activity,
+  to: Deal,
+  forward: { key: "deal", label: "Deal", max: 1 },
+  reverse: { key: "activities", label: "Activities" },
+})
+
+export const ActivityOwner = defineLink({
+  id: "activityOwner",
+  name: "Activity Owner",
+  from: Activity,
+  to: User,
+  forward: { key: "owner", label: "Owner", max: 1 },
+  reverse: { key: "activities", label: "Activities" },
 })

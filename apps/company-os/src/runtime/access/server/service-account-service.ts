@@ -2,7 +2,6 @@ import { Context, Effect, Layer } from "effect"
 
 import { ServiceAccount } from "#/runtime/access/model/index.ts"
 import type { ObjectCreateInput, ObjectRecord } from "#/runtime/model/index.ts"
-import { ROOT_ID } from "#/runtime/model/system-records.ts"
 import { currentActorId } from "#/runtime/server/invocation-context.ts"
 import { ObjectRepositories } from "#/runtime/server/model/object-repositories.ts"
 import { makeObjectService } from "#/runtime/server/model/object-service.ts"
@@ -28,7 +27,6 @@ const make = Effect.gen(function* () {
           metadata: {},
           createdBy: actorId,
           updatedBy: actorId,
-          parent: ROOT_ID,
           systemManaged: false,
           description: input.description ?? null,
           name: input.name,

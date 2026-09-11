@@ -94,7 +94,6 @@ export function NoteFeed({ relationship }: RelationshipOverviewProps) {
       )}
       <CollectionQueryToolbar
         object={Note}
-        parentLabel={undefined}
         records={collection.records.map((record) => tableRecord(Note, record))}
         columnFilters={filters}
         sorting={sorting}

@@ -12,12 +12,12 @@ import {
 import { defaultStringifySearch } from "@tanstack/react-router"
 import { functionalUpdate, type OnChangeFn } from "@tanstack/react-table"
 import {
+  LayersIcon,
   PencilIcon,
-  Trash2Icon,
   PlusIcon,
   RotateCcwIcon,
+  Trash2Icon,
   UnlinkIcon,
-  LayersIcon,
 } from "lucide-react"
 import {
   lazy,
@@ -28,6 +28,7 @@ import {
   type ReactNode,
 } from "react"
 
+import { modelObjectLinkTraversals } from "#/runtime/model/definition/model.ts"
 import {
   calendarDay,
   collectionDateWindow,
@@ -46,7 +47,6 @@ import {
 } from "#/runtime/ui/model/module-ui.tsx"
 import {
   clientFor,
-  parentName,
   tableRecord,
   type ClientRecord,
   type ModelObject,
@@ -167,15 +167,22 @@ export function ObjectCollection({
     deleteRecords: collection.deleteRecords,
   }
 
+  const linkColumns = modelObjectLinkTraversals(runtime.model, object)
   const propertyIds = [
-    ...(object.parent.kind === "root" ? [] : ["parent"]),
     ...Object.keys(object.properties),
+    ...linkColumns.map(({ traversal }) => traversal.key),
   ]
   const configuredVisibility = Object.keys(viewState.visibility).length > 0
   const columnVisibility = Object.fromEntries(
     propertyIds.map((propertyId) => [
       propertyId,
-      configuredVisibility ? viewState.visibility[propertyId] === true : true,
+      configuredVisibility
+        ? viewState.visibility[propertyId] === true
+        : object.properties[propertyId] !== undefined ||
+          linkColumns.some(
+            ({ traversal }) =>
+              traversal.key === propertyId && traversal.max === 1
+          ),
     ])
   )
   const updateState = (next: ObjectCollectionViewState) => {
@@ -362,7 +369,6 @@ export function ObjectCollection({
         <ObjectTable
           resetKey={collection.requestKey}
           object={object}
-          parentLabel={parentName(runtime, object)}
           records={collection.records.map((record) =>
             tableRecord(object, record)
           )}
@@ -442,7 +448,6 @@ export function ObjectCollection({
           </PageToolbar>
           <CollectionQueryToolbar
             object={object}
-            parentLabel={parentName(runtime, object)}
             records={collection.records.map((record) =>
               tableRecord(object, record)
             )}

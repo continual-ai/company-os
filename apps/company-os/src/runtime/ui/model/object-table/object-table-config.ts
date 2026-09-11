@@ -307,7 +307,9 @@ export function defaultFilterOperator(
   property: PropertyDefinition
 ): ObjectTableFilterOperator {
   const filterFamily = objectTableCellBehavior(property).filterFamily
-  return filterFamily === "boolean" || filterFamily === "number"
+  return filterFamily === "boolean" ||
+    filterFamily === "number" ||
+    filterFamily === "recordId"
     ? "equals"
     : filterFamily === "date"
       ? "equals"

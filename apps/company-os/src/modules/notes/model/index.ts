@@ -1,8 +1,8 @@
 import { NoteSubject } from "#/modules/notes/model/note-subject.ts"
 import {
-  defineObject,
-  defineModule,
   defineLink,
+  defineModule,
+  defineObject,
   schema,
 } from "#/runtime/model/index.ts"
 
@@ -29,21 +29,18 @@ export const Note = defineObject({
 export const NoteSubjects = defineLink({
   id: "noteSubjects",
   name: "Note subjects",
-  writeFrom: "subjects",
   description: "Attaches a note to the business records it concerns.",
+  from: Note,
+  to: NoteSubject,
   forward: {
-    from: Note,
-    to: NoteSubject,
     key: "subjects",
-    cardinality: "many",
+    min: 0,
     label: "Subjects",
     description: "Link the people, companies, or work this note is about.",
   },
   reverse: {
-    from: NoteSubject,
-    to: Note,
     key: "notes",
-    cardinality: "many",
+    min: 0,
     label: "Notes",
     description: "Notes attached to this business record.",
   },

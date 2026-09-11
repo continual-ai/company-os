@@ -21,11 +21,11 @@ import type {
   ModelObjectUpdateInput,
 } from "#/runtime/model/definition/model-input.ts"
 import {
+  modelObjectLinkTraversals,
+  modelObjects,
   type ModelCatalog,
   type ModelEndpointObjectTypeId,
   type ModelObject,
-  modelObjectLinkTraversals,
-  modelObjects,
 } from "#/runtime/model/definition/model.ts"
 import type {
   ObjectBatchDeleteInput,
@@ -102,7 +102,7 @@ type RelatedRecord<O extends ObjectType> = O extends ObjectType
 type LinkTraversalClient<TModel extends ModelCatalog, TSide> = TSide extends {
   readonly direction: "forward" | "reverse"
   readonly link: infer TLink extends LinkType
-  readonly side: infer TTraversal extends LinkTraversal
+  readonly side: LinkTraversal
   readonly target: infer TTarget extends LinkTraversal
 }
   ? {
@@ -119,15 +119,12 @@ type LinkTraversalClient<TModel extends ModelCatalog, TSide> = TSide extends {
           >
         >
       >
-    } & (TLink["writeFrom"] extends TTraversal["key"]
-      ? {
+    } & (TLink["outputOnly"] extends true
+      ? {}
+      : {
           readonly link: DirectClientMethod<LinkMutationInput, void>
-        } & (TTraversal["cardinality"] extends "one"
-          ? object
-          : TTarget["cardinality"] extends "one"
-            ? object
-            : { readonly unlink: DirectClientMethod<LinkMutationInput, void> })
-      : object)
+          readonly unlink: DirectClientMethod<LinkMutationInput, void>
+        })
   : never
 
 type ObjectLinkClient<
@@ -325,19 +322,14 @@ export function createModelClient<TModel extends ModelCatalog>(
             params: customMethodParams("link", { id: input.id }),
             payload: { target: input.target },
           })
-        if (
-          traversal.traversal.cardinality !== "one" &&
-          traversal.target.cardinality !== "one"
-        ) {
-          traversalMethods.unlink = (input: LinkMutationInput) =>
-            nativeMethod(
-              group,
-              linkHttpEndpointId("unlink", object, traversal)
-            )({
-              params: customMethodParams("unlink", { id: input.id }),
-              payload: { target: input.target },
-            })
-        }
+        traversalMethods.unlink = (input: LinkMutationInput) =>
+          nativeMethod(
+            group,
+            linkHttpEndpointId("unlink", object, traversal)
+          )({
+            params: customMethodParams("unlink", { id: input.id }),
+            payload: { target: input.target },
+          })
       }
       methods[traversal.traversal.key] = traversalMethods
     }

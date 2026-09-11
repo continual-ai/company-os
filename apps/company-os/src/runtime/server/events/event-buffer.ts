@@ -13,6 +13,8 @@ export interface PendingEvent {
   readonly actorId: string
   readonly data: unknown
   readonly occurredAt: string
+  /** Standard record snapshots are resolved after all writes in the transaction. */
+  readonly snapshot?: Effect.Effect<unknown>
 }
 
 /** A buffer is scoped to one open database transaction, never to an HTTP request. */

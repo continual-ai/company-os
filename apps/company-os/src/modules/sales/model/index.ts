@@ -1,10 +1,22 @@
-import { Activity } from "#/modules/sales/model/activity.ts"
+import {
+  Activity,
+  ActivityCompany,
+  ActivityContact,
+  ActivityDeal,
+  ActivityOwner,
+} from "#/modules/sales/model/activity.ts"
 import { Company } from "#/modules/sales/model/company.ts"
 import { Contact } from "#/modules/sales/model/contact.ts"
-import { Deal } from "#/modules/sales/model/deal.ts"
+import { Deal, DealOwner } from "#/modules/sales/model/deal.ts"
 import { Party } from "#/modules/sales/model/interfaces/party.ts"
-import { Lead, LeadConverted } from "#/modules/sales/model/lead.ts"
-import { LineItem } from "#/modules/sales/model/line-item.ts"
+import {
+  Lead,
+  LeadCompany,
+  LeadConverted,
+  LeadConvertedCompany,
+  LeadConvertedContact,
+} from "#/modules/sales/model/lead.ts"
+import { DealLineItems, LineItem } from "#/modules/sales/model/line-item.ts"
 import { ContactCompanies } from "#/modules/sales/model/links/contact-companies.ts"
 import { ContactPrimaryCompany } from "#/modules/sales/model/links/contact-primary-company.ts"
 import { DealCompanies } from "#/modules/sales/model/links/deal-companies.ts"
@@ -21,10 +33,23 @@ export const SalesModule = defineModule({
   name: "Sales",
   interfaces: [Party],
   events: [LeadConverted],
-  links: [ContactCompanies, ContactPrimaryCompany, DealCompanies],
+  links: [
+    DealLineItems,
+    ContactCompanies,
+    ContactPrimaryCompany,
+    DealCompanies,
+    ActivityCompany,
+    ActivityContact,
+    ActivityDeal,
+    ActivityOwner,
+    DealOwner,
+    LeadCompany,
+    LeadConvertedCompany,
+    LeadConvertedContact,
+  ],
   objects: [Activity, Company, Contact, Lead, Deal, LineItem],
 })
 
 export { LeadConverted } from "#/modules/sales/model/lead.ts"
 
-export { Deal, Contact, LineItem, Activity, Lead, Party, Company }
+export { Activity, Company, Contact, Deal, Lead, LineItem, Party }

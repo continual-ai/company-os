@@ -2,7 +2,7 @@ import { Campaign } from "#/modules/marketing/model/campaign.ts"
 import { NoteSubject } from "#/modules/notes/model/index.ts"
 import { Contact } from "#/modules/sales/model/index.ts"
 import { User } from "#/runtime/access/model/index.ts"
-import { defineObject, schema } from "#/runtime/model/index.ts"
+import { defineLink, defineObject, schema } from "#/runtime/model/index.ts"
 
 export const Outreach = defineObject({
   id: "outreach",
@@ -14,15 +14,6 @@ export const Outreach = defineObject({
   implements: [{ interface: NoteSubject }],
   properties: {
     subject: schema.string({ label: "Subject", maxLength: 300, minLength: 1 }),
-    campaign: schema.reference(Campaign, {
-      label: "Campaign",
-      nullable: true,
-      inverse: { key: "outreach", label: "Outreach" },
-    }),
-    contact: schema.reference(Contact, {
-      label: "Recipient",
-      inverse: { key: "outreach", label: "Outreach" },
-    }),
     channel: schema.select({
       label: "Channel",
       default: "email",
@@ -45,11 +36,6 @@ export const Outreach = defineObject({
         { value: "canceled", label: "Canceled" },
       ],
     }),
-    owner: schema.reference(User, {
-      label: "Owner",
-      nullable: true,
-      inverse: { key: "outreach", label: "Outreach" },
-    }),
     body: schema.string({ label: "Message", maxLength: 50000, nullable: true }),
     scheduledAt: schema.timestamp({ label: "Scheduled for", nullable: true }),
     sentAt: schema.timestamp({ label: "Sent at", nullable: true }),
@@ -66,4 +52,31 @@ export const Outreach = defineObject({
   },
   search: { fields: ["subject", "body"] },
   display: { title: "subject", icon: "mail", status: "status" },
+})
+
+export const OutreachCampaign = defineLink({
+  id: "outreachCampaign",
+  name: "Outreach Campaign",
+  from: Outreach,
+  to: Campaign,
+  forward: { key: "campaign", label: "Campaign", max: 1 },
+  reverse: { key: "outreach", label: "Outreach" },
+})
+
+export const OutreachContact = defineLink({
+  id: "outreachContact",
+  name: "Outreach Recipient",
+  from: Outreach,
+  to: Contact,
+  forward: { key: "contact", label: "Recipient", min: 1, max: 1 },
+  reverse: { key: "outreach", label: "Outreach" },
+})
+
+export const OutreachOwner = defineLink({
+  id: "outreachOwner",
+  name: "Outreach Owner",
+  from: Outreach,
+  to: User,
+  forward: { key: "owner", label: "Owner", max: 1 },
+  reverse: { key: "outreach", label: "Outreach" },
 })

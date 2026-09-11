@@ -247,19 +247,12 @@ export type RecordIdentifier<TTypeId extends string = string> =
   | RecordIds<TTypeId>
   | RecordAlias
 
-interface ReferenceInverse {
-  readonly key: string
-  readonly label: string
-  readonly description?: string
-}
-
 export interface RecordIdSchema<
   TTargetTypeId extends string = string,
   TRecordTypeId extends string = TTargetTypeId,
 > extends SchemaDefinition<RecordIds<TRecordTypeId>> {
   kind: "recordId"
   typeId: TTargetTypeId
-  inverse?: ReferenceInverse
 }
 
 export interface StringSchema<
@@ -346,31 +339,35 @@ export type AnySchema =
   | StructSchema
   | UnionSchema
 
-function isRecordReference(schemaDefinition: AnySchema): boolean {
-  switch (schemaDefinition.kind) {
-    case "array":
-      return isRecordReference(schemaDefinition.items)
-    case "optional":
-      return isRecordReference(schemaDefinition.value)
+function containsRecordId(value: AnySchema): boolean {
+  switch (value.kind) {
     case "recordId":
       return true
+    case "array":
+      return containsRecordId(value.items)
+    case "optional":
+      return containsRecordId(value.value)
     case "union":
-      return schemaDefinition.members.some(isRecordReference)
+      return value.members.some(containsRecordId)
+    case "struct":
+      return Object.values(value.properties).some(containsRecordId)
+    case "map":
+      return containsRecordId(value.values)
     default:
       return false
   }
 }
 
-export function assertReferencePropertyName(
+/** Record identifiers are transport values; stored relationships belong in defineLink. */
+export function assertStoredProperty(
   owner: string,
-  propertyId: string,
-  schemaDefinition: AnySchema
+  key: string,
+  value: AnySchema
 ): void {
-  if (/Ids?$/.test(propertyId) && isRecordReference(schemaDefinition)) {
+  if (containsRecordId(value))
     throw new Error(
-      `${owner} record reference '${propertyId}' must be named by its semantic role without an 'Id' suffix.`
+      `${owner} property '${key}' stores a record relationship. Use defineLink instead.`
     )
-  }
 }
 
 type InputSchemaValue<TSchema extends AnySchema> =
@@ -644,9 +641,8 @@ function object<
   properties: TProperties,
   options?: TOptions
 ): StructSchema<TProperties> & TOptions {
-  for (const [propertyId, property] of Object.entries(properties)) {
+  for (const propertyId of Object.keys(properties)) {
     definitionId(propertyId)
-    assertReferencePropertyName("Structured schema", propertyId, property)
   }
   return {
     kind: "struct",
@@ -661,15 +657,13 @@ function optional<TValue extends AnySchema>(
   return { kind: "optional", value }
 }
 
-function reference<
+function recordId<
   const TType extends { readonly id: string },
   const TOptions extends SchemaAnnotations<
     RecordIds<
       TType extends { readonly kind: "interface" } ? string : TType["id"]
     >
-  > & {
-    readonly inverse?: ReferenceInverse
-  } = {},
+  > = {},
 >(
   targetType: TType,
   options?: TOptions
@@ -774,7 +768,7 @@ export const schema = {
   object,
   optional,
   phone,
-  reference,
+  recordId,
   score,
   select,
   string,

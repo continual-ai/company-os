@@ -32,7 +32,7 @@ export function bindOperationContract(
     errors,
     input: schema.object(
       definition.scope === "object"
-        ? { id: schema.reference(object), ...definition.input }
+        ? { id: schema.recordId(object), ...definition.input }
         : (definition.input ?? {})
     ),
     output: schema.object(definition.output ?? {}),

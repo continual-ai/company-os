@@ -6,6 +6,7 @@ import {
   type FailedPreconditionError,
   type ObjectGetInput,
 } from "#/runtime/model/index.ts"
+import { linkedId } from "#/runtime/model/record-links.ts"
 import { requireProjectAccess } from "#/runtime/server/auth/project-access.ts"
 import { EventJournal } from "#/runtime/server/events/event-journal.ts"
 import { Links } from "#/runtime/server/model/link-service.ts"
@@ -55,13 +56,12 @@ const convertProspect = Effect.fn("fixture.convertProspect")(function* (
     Effect.gen(function* () {
       yield* requireProjectAccess
       const prospect = yield* records.get(Prospect).get(id)
-      if (
-        prospect.convertedAccount !== null &&
-        prospect.convertedPerson !== null
-      )
+      const convertedAccount = linkedId(prospect, "convertedAccount", Account)
+      const convertedPerson = linkedId(prospect, "convertedPerson", Person)
+      if (convertedAccount !== null && convertedPerson !== null)
         return {
-          account: prospect.convertedAccount,
-          person: prospect.convertedPerson,
+          account: convertedAccount,
+          person: convertedPerson,
         }
       if (prospect.accountName === null)
         return yield* Effect.fail(accountRequired)
@@ -70,13 +70,18 @@ const convertProspect = Effect.fn("fixture.convertProspect")(function* (
         email: prospect.email,
         name: prospect.name,
       })
-      yield* personLinks.initialize(person.id, { primaryAccount: account.id })
+      yield* personLinks.initialize(person.id, {
+        accounts: [account.id],
+        primaryAccount: [account.id],
+      })
       yield* prospects.update({
         convertedAt: Timestamp(DateTime.formatIso(yield* DateTime.now)),
-        convertedAccount: account.id,
-        convertedPerson: person.id,
         etag: prospect.etag,
         id,
+        links: {
+          convertedAccount: { replace: [account.id] },
+          convertedPerson: { replace: [person.id] },
+        },
       })
       yield* events.append(ProspectConverted, {
         subject: prospect.id,

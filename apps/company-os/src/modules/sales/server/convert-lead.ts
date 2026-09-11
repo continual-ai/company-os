@@ -7,16 +7,17 @@ import {
   Timestamp,
   type ApiError,
   type FailedPreconditionError,
-  type Violation,
   type ObjectGetInput,
+  type Violation,
 } from "#/runtime/model/index.ts"
+import { linkedId } from "#/runtime/model/record-links.ts"
 import { requireProjectAccess } from "#/runtime/server/auth/project-access.ts"
 import {
   Database,
-  Records,
   EventJournal,
   Links,
   RecordIdentifierResolver,
+  Records,
 } from "#/runtime/server/index.ts"
 
 function precondition(
@@ -46,15 +47,18 @@ export const convertLead = Effect.fn("sales.convertLead")(function* (
     Effect.gen(function* () {
       yield* requireProjectAccess
       const lead = yield* repository.get(id)
-      if (lead.convertedCompany !== null && lead.convertedContact !== null) {
+      const convertedCompany = linkedId(lead, "convertedCompany", Company)
+      const convertedContact = linkedId(lead, "convertedContact", Contact)
+      const company = linkedId(lead, "company", Company)
+      if (convertedCompany !== null && convertedContact !== null) {
         return {
-          company: lead.convertedCompany,
-          contact: lead.convertedContact,
+          company: convertedCompany,
+          contact: convertedContact,
         }
       }
       if (
-        lead.convertedCompany !== null ||
-        lead.convertedContact !== null ||
+        convertedCompany !== null ||
+        convertedContact !== null ||
         lead.convertedAt !== null
       ) {
         return yield* Effect.fail(
@@ -65,7 +69,7 @@ export const convertLead = Effect.fn("sales.convertLead")(function* (
         )
       }
 
-      let companyId = lead.company
+      let companyId = company
       if (companyId !== null) {
         yield* requireProjectAccess
       } else {
@@ -86,15 +90,20 @@ export const convertLead = Effect.fn("sales.convertLead")(function* (
         name: lead.name,
         phone: lead.phone,
       })
-      yield* contactLinks.initialize(contact.id, { primaryCompany: companyId })
+      yield* contactLinks.initialize(contact.id, {
+        companies: [companyId],
+        primaryCompany: [companyId],
+      })
       const convertedAt = yield* DateTime.now
       yield* leads.update({
-        company: companyId,
         convertedAt: Timestamp(DateTime.formatIso(convertedAt)),
-        convertedCompany: companyId,
-        convertedContact: contact.id,
         etag: lead.etag,
         id,
+        links: {
+          company: { replace: [companyId] },
+          convertedCompany: { replace: [companyId] },
+          convertedContact: { replace: [contact.id] },
+        },
       })
       yield* events.append(LeadConverted, {
         subject: lead.id,

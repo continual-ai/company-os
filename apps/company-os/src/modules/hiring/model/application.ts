@@ -1,7 +1,7 @@
 import { Candidate } from "#/modules/hiring/model/candidate.ts"
 import { JobPosting } from "#/modules/hiring/model/job-posting.ts"
 import { NoteSubject } from "#/modules/notes/model/index.ts"
-import { defineObject, schema } from "#/runtime/model/index.ts"
+import { defineLink, defineObject, schema } from "#/runtime/model/index.ts"
 
 export const Application = defineObject({
   id: "application",
@@ -12,14 +12,6 @@ export const Application = defineObject({
   implements: [{ interface: NoteSubject }],
   uniqueBy: { candidateJob: ["candidate", "job"] },
   properties: {
-    job: schema.reference(JobPosting, {
-      label: "Job posting",
-      inverse: { key: "applications", label: "Applications" },
-    }),
-    candidate: schema.reference(Candidate, {
-      label: "Candidate",
-      inverse: { key: "applications", label: "Applications" },
-    }),
     stage: schema.select({
       label: "Stage",
       default: "new",
@@ -71,4 +63,22 @@ export const Application = defineObject({
   },
   search: { fields: ["coverLetter", "reviewNotes"] },
   display: { icon: "clipboardCheck", title: "id", status: "stage" },
+})
+
+export const ApplicationJob = defineLink({
+  id: "applicationJob",
+  name: "Application Job posting",
+  from: Application,
+  to: JobPosting,
+  forward: { key: "job", label: "Job posting", min: 1, max: 1 },
+  reverse: { key: "applications", label: "Applications" },
+})
+
+export const ApplicationCandidate = defineLink({
+  id: "applicationCandidate",
+  name: "Application Candidate",
+  from: Application,
+  to: Candidate,
+  forward: { key: "candidate", label: "Candidate", min: 1, max: 1 },
+  reverse: { key: "applications", label: "Applications" },
 })

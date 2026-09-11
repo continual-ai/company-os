@@ -14,8 +14,8 @@ import {
 } from "#/runtime/model/definition/model.ts"
 import type { ObjectType } from "#/runtime/model/definition/object.ts"
 import {
-  type Query,
   type CustomQuery,
+  type Query,
 } from "#/runtime/model/definition/query.ts"
 import { schema } from "#/runtime/model/definition/schema.ts"
 import {
@@ -80,8 +80,8 @@ export function executableModelOperations(
             id,
             idempotent: true,
             input: schema.object({
-              id: schema.reference(object),
-              target: schema.reference({
+              id: schema.recordId(object),
+              target: schema.recordId({
                 id: linkTraversal.target.from.typeId,
               }),
             }),
@@ -95,10 +95,7 @@ export function executableModelOperations(
           linkTraversal,
           object,
         })
-        return linkTraversal.traversal.cardinality === "one" ||
-          linkTraversal.target.cardinality === "one"
-          ? [list, mutation("link")]
-          : [list, mutation("link"), mutation("unlink")]
+        return [list, mutation("link"), mutation("unlink")]
       }
     )
     return [...objectOperations, ...linkCapabilities]

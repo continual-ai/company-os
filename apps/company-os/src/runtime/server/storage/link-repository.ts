@@ -4,21 +4,21 @@ import { Data, Effect, Schema } from "effect"
 import type { SqlError } from "effect/unstable/sql/SqlError"
 import type { Fragment } from "effect/unstable/sql/Statement"
 
-import { RecordId } from "#/runtime/model/index.ts"
 import {
+  RecordId,
   type LinkDirection,
-  type PageToken,
-  type PageTokenCodec,
   type ModelCatalog,
   type ObjectRef,
+  type PageToken,
+  type PageTokenCodec,
 } from "#/runtime/model/index.ts"
 import { type PostgresDatabase } from "#/runtime/server/storage/database.ts"
 import type { PostgresStorage } from "#/runtime/server/storage/schema.ts"
-import { insertValues } from "#/runtime/server/storage/statement.ts"
 import {
+  insertValues,
   projection,
-  type SelectionRow,
   sqlValue,
+  type SelectionRow,
 } from "#/runtime/server/storage/statement.ts"
 import {
   tableColumns,
@@ -56,7 +56,7 @@ export interface LinkListRequest {
   readonly sourceId: string
 }
 
-/** One edge a mutation inserted or removed, including edges removed from subset Links. */
+/** One edge explicitly inserted or removed by a mutation. */
 export interface LinkChange {
   readonly kind: "linked" | "unlinked"
   readonly linkId: string
@@ -188,11 +188,6 @@ export function makeLinkRepository<const TModel extends ModelCatalog>(
     }
     return { link, table }
   }
-  const subsetsOf = (linkId: string) =>
-    Object.values(storage.model.links)
-      .filter((link) => link.subsetOf === linkId)
-      .map((link) => link.id)
-
   // Storage cascades subset rows when their membership row disappears; removing them
   // first, with the same predicate, reports every edge the cascade would have erased.
   const removeEdges = (
@@ -201,8 +196,6 @@ export function makeLinkRepository<const TModel extends ModelCatalog>(
   ): Effect.Effect<ReadonlyArray<LinkChange>, SqlError> =>
     Effect.gen(function* () {
       const changes: Array<LinkChange> = []
-      for (const subset of subsetsOf(linkId))
-        changes.push(...(yield* removeEdges(subset, condition)))
       const { table } = definition(linkId)
       const removedFields = {
         forwardId: linkColumn(table, "forwardId"),
@@ -217,7 +210,7 @@ export function makeLinkRepository<const TModel extends ModelCatalog>(
       return changes
     })
 
-  /** Idempotently establishes one edge, replacing compatible singular edges. */
+  /** Idempotently establishes one edge. Bounds are enforced by the database. */
   const link = Effect.fn("@company/runtime/storage/LinkRepository.link")(
     function* (
       pair: LinkPair
@@ -225,25 +218,12 @@ export function makeLinkRepository<const TModel extends ModelCatalog>(
       ReadonlyArray<LinkChange>,
       LinkCardinalityConflict | SqlError
     > {
-      const { link: definitionLink, table } = definition(pair.linkId)
+      const { table } = definition(pair.linkId)
       const sourceKey = pair.direction === "forward" ? "forwardId" : "reverseId"
       const targetKey = pair.direction === "forward" ? "reverseId" : "forwardId"
       const sourceColumn = linkColumn(table, sourceKey)
       const targetColumn = linkColumn(table, targetKey)
-      const sourceTraversal =
-        pair.direction === "forward"
-          ? definitionLink.forward
-          : definitionLink.reverse
-      const targetTraversal =
-        pair.direction === "forward"
-          ? definitionLink.reverse
-          : definitionLink.forward
       const changes: Array<LinkChange> = []
-      // A subset selection also establishes membership in its containing relationship.
-      if (definitionLink.subsetOf !== undefined)
-        changes.push(
-          ...(yield* link({ ...pair, linkId: definitionLink.subsetOf }))
-        )
       const exactPair = sql`(${sourceColumn} = ${pair.sourceId} and ${targetColumn} = ${pair.targetId})`
       const rowFields = { targetId: targetColumn }
       const [existingPair] = yield* sql<
@@ -253,61 +233,6 @@ export function makeLinkRepository<const TModel extends ModelCatalog>(
           where ${exactPair}
           limit ${1}`
       if (existingPair !== undefined) return changes
-
-      if (sourceTraversal.cardinality !== "many") {
-        const [sourceConflict] = yield* sql<
-          SelectionRow<typeof rowFields>
-        >`select ${projection(rowFields)}
-          from ${table}
-          where ${sourceColumn} = ${pair.sourceId}
-          limit ${1}`
-        if (sourceConflict !== undefined) {
-          if (targetTraversal.cardinality === "one") {
-            return yield* Effect.fail(
-              new LinkCardinalityConflict({
-                linkId: pair.linkId,
-                sourceId: pair.sourceId,
-                targetId: pair.targetId,
-              })
-            )
-          }
-          changes.push(
-            ...(yield* removeEdges(
-              pair.linkId,
-              (candidate) =>
-                sql`${linkColumn(candidate, sourceKey)} = ${pair.sourceId}`
-            ))
-          )
-        }
-      }
-
-      if (targetTraversal.cardinality !== "many") {
-        const sourceFields = { sourceId: sourceColumn }
-        const [targetConflict] = yield* sql<
-          SelectionRow<typeof sourceFields>
-        >`select ${projection(sourceFields)}
-          from ${table}
-          where ${targetColumn} = ${pair.targetId}
-          limit ${1}`
-        if (targetConflict !== undefined) {
-          if (sourceTraversal.cardinality === "one") {
-            return yield* Effect.fail(
-              new LinkCardinalityConflict({
-                linkId: pair.linkId,
-                sourceId: pair.sourceId,
-                targetId: pair.targetId,
-              })
-            )
-          }
-          changes.push(
-            ...(yield* removeEdges(
-              pair.linkId,
-              (candidate) =>
-                sql`${linkColumn(candidate, targetKey)} = ${pair.targetId}`
-            ))
-          )
-        }
-      }
 
       const insertedFields = {
         forwardId: linkColumn(table, "forwardId"),
@@ -430,5 +355,21 @@ export function makeLinkRepository<const TModel extends ModelCatalog>(
     }
   )
 
-  return { link, list, unlink }
+  const ids = (pair: Omit<LinkPair, "targetId">) => {
+    const { table } = definition(pair.linkId)
+    const source = linkColumn(
+      table,
+      pair.direction === "forward" ? "forwardId" : "reverseId"
+    )
+    const target = linkColumn(
+      table,
+      pair.direction === "forward" ? "reverseId" : "forwardId"
+    )
+    return sql<{
+      id: string
+    }>`select ${target} as id from ${table} where ${source} = ${pair.sourceId} order by ${target}`.pipe(
+      Effect.map((rows) => rows.map((row) => row.id))
+    )
+  }
+  return { link, list, unlink, ids }
 }

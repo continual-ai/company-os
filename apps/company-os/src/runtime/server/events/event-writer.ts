@@ -60,6 +60,7 @@ export function makeEventWriter(
     readonly version?: number
     readonly subjects: ReadonlyArray<EventSubject>
     readonly data: unknown
+    readonly snapshot?: Effect.Effect<unknown>
   }) {
     const { actorId } = yield* CurrentInvocation
     const occurredAt = DateTime.formatIso(yield* DateTime.now)
@@ -78,6 +79,7 @@ export function makeEventWriter(
       actorId,
       data: structuredClone(decoded.data),
       occurredAt,
+      ...(input.snapshot === undefined ? {} : { snapshot: input.snapshot }),
     })
     return undefined
   })

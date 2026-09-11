@@ -1,21 +1,22 @@
 import type {
   AnySchema,
-  RecordId,
-  RecordIdOf,
-  LinkTraversal,
   InferSchema,
+  LinkTraversal,
   ModelCatalog,
   ObjectType,
+  RecordId,
+  RecordIdOf,
 } from "#/runtime/model/index.ts"
+import { linkConstraintDdl } from "#/runtime/server/storage/link-constraints.ts"
 import {
   defineTable,
-  tableColumns,
-  snakeCase,
-  schemaSection,
-  quoteIdentifier,
   quoteLiteral as literal,
-  type Table,
+  quoteIdentifier,
+  schemaSection,
+  snakeCase,
+  tableColumns,
   type ColumnDefinition,
+  type Table,
 } from "#/runtime/server/storage/table.ts"
 
 type TraversalId<
@@ -27,15 +28,8 @@ type TraversalId<
 
 type ObjectRow<O extends ObjectType> = {
   readonly id: RecordId<O["id"]>
-  readonly parentId: RecordId<O["parent"]["typeId"]>
 } & {
-  readonly [
-    K in keyof O["properties"] as O["properties"][K] extends {
-      kind: "recordId"
-    }
-      ? `${K & string}Id`
-      : K
-  ]: InferSchema<O["properties"][K]>
+  readonly [K in keyof O["properties"]]: InferSchema<O["properties"][K]>
 }
 /** Typed table projection for custom SQL against one model object. */
 export type ObjectTable<O extends ObjectType> = Table<ObjectRow<O>>
@@ -60,7 +54,6 @@ export interface PostgresStorage<M extends ModelCatalog> {
     readonly objects: Table<{
       id: string
       objectType: string
-      parentId: string | null
       metadata: Readonly<Record<string, string>>
       systemManaged: boolean
       etag: string
@@ -79,8 +72,6 @@ export const objectUniqueConstraintName = (
   physicalName: string,
   ruleId: string
 ) => `${physicalName}_${snakeCase(ruleId)}_unique`
-export const physicalPropertyKey = (id: string, property: AnySchema) =>
-  property.kind === "recordId" ? `${id}Id` : id
 
 function nativeArray(schema: AnySchema): boolean {
   return ["boolean", "decimal", "enum", "number", "string"].includes(
@@ -160,11 +151,6 @@ export function makePostgresSchema<const M extends ModelCatalog>(
           type: "text",
           description: "Object type declared in the company model.",
         },
-        parentId: {
-          type: "text",
-          nullable: true,
-          description: "Ownership parent. Only the root has no parent.",
-        },
         metadata: { type: "jsonb", default: "'{}'" },
         systemManaged: { type: "boolean", default: "false" },
         etag: {
@@ -179,13 +165,10 @@ export function makePostgresSchema<const M extends ModelCatalog>(
       },
       {
         description:
-          "Shared record identity, ownership, audit fields, and concurrency state. Domain properties live in their object tables.",
+          "Shared record identity, audit fields, and concurrency state. Domain properties live in their object tables.",
         constraints: [
           'primary key ("id")',
-          'foreign key ("parent_id") references "objects" ("id") on delete restrict',
           `constraint "objects_object_type_check" check ("object_type" in (\n    ${[model.root.id, ...Object.keys(model.objects)].map(literal).join(",\n    ")}\n  ))`,
-          `constraint "objects_parent_required" check (\n    ("object_type" = ${literal(model.root.id)} and "parent_id" is null)\n    or ("object_type" <> ${literal(model.root.id)} and "parent_id" is not null)\n  )`,
-          'constraint "objects_id_parent_id_unique" unique ("id", "parent_id")',
         ],
       }
     ),
@@ -193,7 +176,7 @@ export function makePostgresSchema<const M extends ModelCatalog>(
       "roots",
       { id: { type: "text" } },
       {
-        description: "Root membership for the company ownership tree.",
+        description: "Root identity for application infrastructure.",
         constraints: [
           'primary key ("id")',
           'foreign key ("id") references "objects" ("id") on delete cascade',
@@ -233,7 +216,6 @@ export function makePostgresSchema<const M extends ModelCatalog>(
     schemaSection("Core record storage"),
     ...core.objects.ddl,
     'create index "objects_object_type_idx" on "objects" ("object_type")',
-    'create index "objects_parent_id_idx" on "objects" ("parent_id")',
     ...core.roots.ddl,
     ...core.recordAliases.ddl,
     'create index "record_aliases_object_id_idx" on "record_aliases" ("object_id")',
@@ -274,13 +256,9 @@ export function makePostgresSchema<const M extends ModelCatalog>(
     }
     const fields: Record<string, ColumnDefinition> = {
       id: { type: "text" },
-      parentId: {
-        type: "text",
-        description: `Ownership parent. References ${tableFor(object.parent.typeId)}.id.`,
-      },
     }
     for (const [id, property] of Object.entries(object.properties)) {
-      const key = physicalPropertyKey(id, property)
+      const key = id
       if (Object.hasOwn(fields, key))
         throw new Error(
           `Object '${object.id}' produces duplicate PostgreSQL column '${key}'.`
@@ -308,28 +286,12 @@ export function makePostgresSchema<const M extends ModelCatalog>(
     objects[object.id] = table
     const name = q(table.name)
     const columns = tableColumns(table)
-    ddl.push(
-      ...table.ddl,
-      `create index ${q(`${table.name}_parent_id_idx`)} on ${name} ("parent_id")`
-    )
-    for (const [id, property] of Object.entries(object.properties)) {
-      if (property.kind !== "recordId") continue
-      const column = columns[physicalPropertyKey(id, property)]!
-      constraints.push(
-        `alter table ${name}\n  add foreign key (${q(column.name)}) references ${q(tableFor(property.typeId))} ("id")\n  on delete restrict`
-      )
-      ddl.push(
-        `create index ${q(`${table.name}_${column.name}_idx`)} on ${name} (${q(column.name)})`
-      )
-    }
-    constraints.push(
-      `alter table ${name}\n  add constraint ${q(`${table.name}_parent_${snakeCase(object.parent.typeId)}_fk`)}\n  foreign key ("parent_id") references ${q(tableFor(object.parent.typeId))} ("id")\n  on delete restrict`,
-      `alter table ${name}\n  add constraint ${q(`${table.name}_object_parent_fk`)}\n  foreign key ("id", "parent_id") references "objects" ("id", "parent_id")\n  on delete cascade`
-    )
+    ddl.push(...table.ddl)
     for (const [rule, keys] of Object.entries(object.uniqueBy))
-      ddl.push(
-        `create unique index ${q(objectUniqueConstraintName(table.name, rule))} on ${name} (${keys.map((key) => q(columns[key === "parent" ? "parentId" : physicalPropertyKey(key, object.properties[key]!)]!.name)).join(", ")})`
-      )
+      if (keys.every((key) => object.properties[key] !== undefined))
+        ddl.push(
+          `create unique index ${q(objectUniqueConstraintName(table.name, rule))} on ${name} (${keys.map((key) => q(columns[key]!.name)).join(", ")})`
+        )
   }
   ddl.push(
     schemaSection(
@@ -339,7 +301,7 @@ export function makePostgresSchema<const M extends ModelCatalog>(
   )
   for (const link of Object.values(model.links)) {
     const table = defineTable(
-      claim(snakeCase(link.id)),
+      claim(`link_${snakeCase(link.id)}`),
       {
         forwardId: {
           type: "text",
@@ -354,8 +316,8 @@ export function makePostgresSchema<const M extends ModelCatalog>(
         description: `${link.name} (${link.id})${link.subsetOf ? `\nA selection from ${link.subsetOf}; removing membership clears the selection.` : ""}`,
         constraints: [
           'primary key ("forward_id", "reverse_id")',
-          `foreign key ("forward_id") references ${q(tableFor(link.forward.from.typeId))} ("id") on delete ${link.reverse.cardinality === "one" ? "restrict" : "cascade"}`,
-          `foreign key ("reverse_id") references ${q(tableFor(link.reverse.from.typeId))} ("id") on delete ${link.forward.cardinality === "one" ? "restrict" : "cascade"}`,
+          `foreign key ("forward_id") references ${q(tableFor(link.forward.from.typeId))} ("id") on delete cascade`,
+          `foreign key ("reverse_id") references ${q(tableFor(link.reverse.from.typeId))} ("id") on delete cascade`,
         ],
       }
     )
@@ -366,14 +328,15 @@ export function makePostgresSchema<const M extends ModelCatalog>(
       ["reverse", link.reverse],
     ] as const)
       ddl.push(
-        `create ${definition.cardinality === "many" ? "" : "unique "}index ${q(`${table.name}_${side}_id_${definition.cardinality === "many" ? "idx" : "unique"}`)} on ${q(table.name)} (${q(`${side}_id`)})`
+        `create ${definition.max !== 1 ? "" : "unique "}index ${q(`${table.name}_${side}_id_${definition.max !== 1 ? "idx" : "unique"}`)} on ${q(table.name)} (${q(`${side}_id`)})`
       )
     if (link.subsetOf)
       constraints.push(
-        `alter table ${q(table.name)}\n  add constraint ${q(`${table.name}_membership_fk`)}\n  foreign key ("forward_id", "reverse_id")\n  references ${q(snakeCase(link.subsetOf))} ("forward_id", "reverse_id") on delete cascade`
+        `alter table ${q(table.name)}\n  add constraint ${q(`${table.name}_membership_fk`)}\n  foreign key ("forward_id", "reverse_id")\n  references ${q(`link_${snakeCase(link.subsetOf)}`)} ("forward_id", "reverse_id") deferrable initially deferred`
       )
   }
   // The closed model supplies every table and its exact physical row type.
+  ddl.push(...linkConstraintDdl(model, tableFor))
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   return {
     model,

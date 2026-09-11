@@ -17,7 +17,6 @@ import {
   RecordId,
   type AnySchema,
   type RecordAlias,
-  type RecordIdentifier,
 } from "#/runtime/model/definition/schema.ts"
 
 export type RecordAliasResolver<TError, TRequirements> = (
@@ -38,9 +37,7 @@ export interface DecodedInput {
   readonly [key: string]: DecodedValue
 }
 
-export interface DecodedCreateInput extends DecodedInput {
-  readonly parent?: RecordIdentifier
-}
+export interface DecodedCreateInput extends DecodedInput {}
 
 export function normalizeCreateInput(
   object: ObjectType,
@@ -241,12 +238,16 @@ export function resolveUpdateIdentifiers<
 
 function filterTargetType(object: ObjectType, field: string) {
   if (field === "id") return object.id
-  if (field === "parent") return object.parent.typeId
   const property = object.properties[field]
   return property?.kind === "recordId" ? property.typeId : undefined
 }
 
 type FilterNode =
+  | {
+      readonly link: string
+      readonly contains?: string
+      readonly isEmpty?: true
+    }
   | { readonly and: ReadonlyArray<FilterNode> }
   | { readonly not: FilterNode }
   | { readonly or: ReadonlyArray<FilterNode> }
@@ -277,6 +278,7 @@ function resolveFilterNode<TError, TRequirements>(
     )
   }
 
+  if ("link" in filter) return Effect.succeed(filter)
   const expectedType = filterTargetType(object, filter.field)
   if (expectedType === undefined || filter.operator === "isNull") {
     return Effect.succeed(filter)

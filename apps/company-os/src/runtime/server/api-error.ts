@@ -20,6 +20,7 @@ import {
   type ExecutableModelOperation,
   modelOperationErrors,
 } from "#/runtime/model/operations.ts"
+import { constraintApiError } from "#/runtime/server/storage/constraint-error.ts"
 
 type StandardApiError = ApiError<
   | typeof AbortedError
@@ -235,12 +236,6 @@ function validationViolation(error: TaggedFailure): Violation {
         path: [stringProperty(error, "property") ?? "unknown"],
         reason: "IMMUTABLE_PROPERTY",
       }
-    case "ObjectParentTypeMismatch":
-      return {
-        message: "Select a valid parent.",
-        path: ["parent"],
-        reason: "PARENT_TYPE_MISMATCH",
-      }
     case "RequiredLinkMissing":
       return {
         message: "Select the required related record.",
@@ -266,15 +261,11 @@ function validation(error: TaggedFailure): StandardApiError {
   }
 }
 
-const notFoundTags = new Set([
-  "ObjectNotFound",
-  "ObjectParentNotFound",
-  "RecordAliasNotFound",
-])
+const notFoundTags = new Set(["ObjectNotFound", "RecordAliasNotFound"])
 const failedPreconditionTags = new Set([
   "AssetPrecondition",
   "ObjectDeleteRestricted",
-  "RequiredLinkUnlink",
+  "CascadeDeleteRestricted",
 ])
 const validationTags = new Set([
   "InvalidLinkRequest",
@@ -282,13 +273,14 @@ const validationTags = new Set([
   "ImmutablePropertyError",
   "InvalidBatchRequest",
   "InvalidListRequest",
-  "ObjectParentTypeMismatch",
   "LinkMutationNotAllowed",
   "RequiredLinkMissing",
 ])
 
 function translateApiError(error: unknown): ApiError | undefined {
   if (isApiError(error)) return error
+  const constraint = constraintApiError(error)
+  if (constraint) return constraint
   if (Schema.isSchemaError(error)) return schemaErrorToApiError(error)
   if (!isTaggedFailure(error)) return undefined
   if (

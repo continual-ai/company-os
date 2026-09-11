@@ -6,12 +6,13 @@ import {
 } from "#/runtime/model/system-records.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
 import { Database } from "#/runtime/server/storage/database.ts"
-import { insertValues, assignments } from "#/runtime/server/storage/index.ts"
 import {
+  assignments,
   conflictColumns,
+  insertValues,
+  inValues,
   projection,
   type SelectionRow,
-  inValues,
 } from "#/runtime/server/storage/index.ts"
 
 class SystemActorBootstrapConflict extends Data.TaggedError(
@@ -21,7 +22,6 @@ class SystemActorBootstrapConflict extends Data.TaggedError(
 function objectRow(input: {
   readonly id: string
   readonly objectType: string
-  readonly parentId: string | null
 }) {
   return {
     ...input,
@@ -49,7 +49,6 @@ export const bootstrapSystemActor = Effect.fn("@company/bootstrapSystemActor")(
         const root = objectRow({
           id: ROOT_ID,
           objectType: "root",
-          parentId: null,
         })
         yield* sql`insert into ${objects} ${insertValues(sql, objects, root)}
           on conflict (${conflictColumns(sql, objects.columns.id)})
@@ -65,7 +64,6 @@ export const bootstrapSystemActor = Effect.fn("@company/bootstrapSystemActor")(
         const systemAccount = objectRow({
           id: SYSTEM_SERVICE_ACCOUNT_ID,
           objectType: "serviceAccount",
-          parentId: ROOT_ID,
         })
         yield* sql`insert into ${objects} ${insertValues(sql, objects, systemAccount)}
           on conflict (${conflictColumns(sql, objects.columns.id)})
@@ -84,18 +82,15 @@ export const bootstrapSystemActor = Effect.fn("@company/bootstrapSystemActor")(
           {
             id: ROOT_ID,
             objectType: "root",
-            parentId: null,
           },
           {
             id: SYSTEM_SERVICE_ACCOUNT_ID,
             objectType: "serviceAccount",
-            parentId: ROOT_ID,
           },
         ] as const
         const storedObjectsFields = {
           id: objects.columns.id,
           objectType: objects.columns.objectType,
-          parentId: objects.columns.parentId,
         }
         const storedObjects = yield* sql<
           SelectionRow<typeof storedObjectsFields>
@@ -113,8 +108,7 @@ export const bootstrapSystemActor = Effect.fn("@company/bootstrapSystemActor")(
           const stored = storedById.get(expected.id)
           if (
             stored === undefined ||
-            stored.objectType !== expected.objectType ||
-            stored.parentId !== expected.parentId
+            stored.objectType !== expected.objectType
           ) {
             return yield* Effect.fail(
               new SystemActorBootstrapConflict({ recordId: expected.id })

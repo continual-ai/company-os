@@ -16,7 +16,7 @@ describe("module enablement", () => {
     expect(() =>
       enableModules(Model, ["platform", "notes", "support"])
     ).toThrow(
-      /Module 'support' depends on module 'sales' \(object 'ticket' references 'company'\), which is not enabled\./
+      /Module 'support' depends on module 'sales' \(link 'ticketCompany' references 'company'\), which is not enabled\./
     )
   })
 

@@ -7,7 +7,8 @@ import type { RecordUiProps } from "#/runtime/ui/module.ts"
 export function LeadConversion({ record }: RecordUiProps<typeof Lead>) {
   return (
     <section className="grid w-full gap-4">
-      {record.convertedCompany && record.convertedContact ? (
+      {record.links.convertedCompany?.ids[0] &&
+      record.links.convertedContact?.ids[0] ? (
         <>
           <h2 className="font-medium">Customer records created</h2>
           <p className="text-sm text-muted-foreground">
@@ -22,7 +23,7 @@ export function LeadConversion({ record }: RecordUiProps<typeof Lead>) {
                   to="/objects/$objectType/$recordId"
                   params={{
                     objectType: "company",
-                    recordId: record.convertedCompany,
+                    recordId: record.links.convertedCompany?.ids[0],
                   }}
                 />
               }
@@ -37,7 +38,7 @@ export function LeadConversion({ record }: RecordUiProps<typeof Lead>) {
                   to="/objects/$objectType/$recordId"
                   params={{
                     objectType: "contact",
-                    recordId: record.convertedContact,
+                    recordId: record.links.convertedContact?.ids[0],
                   }}
                 />
               }
@@ -52,7 +53,7 @@ export function LeadConversion({ record }: RecordUiProps<typeof Lead>) {
             Ready to become a customer relationship?
           </h2>
           <p className="text-sm text-muted-foreground">
-            {record.company
+            {record.links.company?.ids[0]
               ? `Conversion creates a contact for ${record.name} at the linked company.`
               : record.companyName
                 ? `Conversion creates ${record.companyName} and a contact for ${record.name}.`

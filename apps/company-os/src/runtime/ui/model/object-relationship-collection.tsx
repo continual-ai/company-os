@@ -44,7 +44,7 @@ export function ObjectRelationshipCollection({
   }
   const hasRoom =
     total.data !== undefined &&
-    (relationship.cardinality === "many" || total.data.totalSize === 0)
+    (relationship.max !== 1 || total.data.totalSize === 0)
   const canConnect = !pending
   const creates = hasRoom ? relationship.creates : []
   const renderLink = (records: ReadonlyArray<ClientRecord>) =>

@@ -10,7 +10,7 @@ import type {
   ImageSchema,
   SchemaDefinition,
 } from "#/runtime/model/definition/schema.ts"
-import { assertReferencePropertyName } from "#/runtime/model/definition/schema.ts"
+import { assertStoredProperty } from "#/runtime/model/definition/schema.ts"
 
 export interface InterfaceDisplay<
   TProperties extends Readonly<Record<string, AnySchema>>,
@@ -249,7 +249,7 @@ export function defineInterface<const D extends InterfaceDefinition>(
   const properties = input.properties ?? {}
   for (const [propertyId, property] of Object.entries(properties)) {
     definitionId(propertyId)
-    assertReferencePropertyName(`Interface '${input.id}'`, propertyId, property)
+    assertStoredProperty(`Interface '${input.id}'`, propertyId, property)
     if (
       Object.hasOwn(property, "default") ||
       property.immutable === true ||

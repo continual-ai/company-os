@@ -1,7 +1,20 @@
-import { Campaign } from "#/modules/marketing/model/campaign.ts"
-import { Content } from "#/modules/marketing/model/content.ts"
-import { Enrollment } from "#/modules/marketing/model/enrollment.ts"
-import { Outreach } from "#/modules/marketing/model/outreach.ts"
+import { Campaign, CampaignOwner } from "#/modules/marketing/model/campaign.ts"
+import {
+  Content,
+  ContentCampaign,
+  ContentOwner,
+} from "#/modules/marketing/model/content.ts"
+import {
+  Enrollment,
+  EnrollmentCampaign,
+  EnrollmentContact,
+} from "#/modules/marketing/model/enrollment.ts"
+import {
+  Outreach,
+  OutreachCampaign,
+  OutreachContact,
+  OutreachOwner,
+} from "#/modules/marketing/model/outreach.ts"
 import { defineModule } from "#/runtime/model/index.ts"
 
 export const MarketingModule = defineModule({
@@ -14,6 +27,16 @@ export const MarketingModule = defineModule({
   id: "marketing",
   name: "Marketing",
   objects: [Campaign, Content, Enrollment, Outreach],
+  links: [
+    CampaignOwner,
+    ContentCampaign,
+    ContentOwner,
+    EnrollmentCampaign,
+    EnrollmentContact,
+    OutreachCampaign,
+    OutreachContact,
+    OutreachOwner,
+  ],
 })
 
-export { Enrollment, Content, Campaign, Outreach }
+export { Campaign, Content, Enrollment, Outreach }

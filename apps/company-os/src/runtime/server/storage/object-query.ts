@@ -4,6 +4,7 @@ import { Schema } from "effect"
 import type { Constructor, Fragment } from "effect/unstable/sql/Statement"
 
 import { toEffectInputSchema } from "#/runtime/contract/schema.ts"
+import type { LinkFilter } from "#/runtime/model/definition/request.ts"
 import {
   RecordId,
   Timestamp,
@@ -132,6 +133,8 @@ export function recordValue<TObject extends ObjectType>(
 function cursorFilter<TObject extends ObjectType>(
   filter: RepositoryFilter<TObject>
 ): unknown {
+  if ("link" in filter)
+    return [filter.link, "contains" in filter ? filter.contains : "isEmpty"]
   if ("and" in filter) return ["and", filter.and.map(cursorFilter)]
   if ("not" in filter) return ["not", cursorFilter(filter.not)]
   if ("or" in filter) return ["or", filter.or.map(cursorFilter)]
@@ -208,7 +211,8 @@ function escapeLike(value: string): string {
 export function makeObjectQueryCompiler<TObject extends ObjectType>(
   sql: Constructor,
   object: TObject,
-  queryColumns: Readonly<Record<string, Column>>
+  queryColumns: Readonly<Record<string, Column>>,
+  linkFilter?: (filter: LinkFilter) => Fragment
 ) {
   const columnFor = (field: string): Column => {
     const column = queryColumns[field]
@@ -222,7 +226,7 @@ export function makeObjectQueryCompiler<TObject extends ObjectType>(
   }
 
   const allowedOperators = (field: string): ReadonlySet<string> => {
-    if (field === "id" || field === "parent") return new Set(["eq", "in"])
+    if (field === "id") return new Set(["eq", "in"])
     if (field === "createdBy" || field === "updatedBy") {
       return new Set(["eq", "in"])
     }
@@ -286,7 +290,7 @@ export function makeObjectQueryCompiler<TObject extends ObjectType>(
       return Schema.decodeUnknownSync(Schema.Boolean)(value)
     }
     const textValue = Schema.decodeUnknownSync(Schema.String)(value)
-    if (field === "id" || field === "parent") {
+    if (field === "id") {
       if (textValue.length === 0) {
         throw invalidListRequest(
           object,
@@ -322,6 +326,11 @@ export function makeObjectQueryCompiler<TObject extends ObjectType>(
     }
     if ("not" in filter) return sql`not (${compileFilter(filter.not)})`
 
+    if ("link" in filter) {
+      if (!linkFilter)
+        throw invalidListRequest(object, "Link filters are unavailable.")
+      return linkFilter(filter)
+    }
     const column = columnFor(filter.field)
     if (!allowedOperators(filter.field).has(filter.operator)) {
       throw invalidListRequest(

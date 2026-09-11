@@ -1,6 +1,6 @@
 import { Repository } from "#/modules/engineering/model/repository.ts"
 import { NoteSubject } from "#/modules/notes/model/index.ts"
-import { defineObject, schema } from "#/runtime/model/index.ts"
+import { defineLink, defineObject, schema } from "#/runtime/model/index.ts"
 
 export const PullRequest = defineObject({
   id: "pullRequest",
@@ -12,10 +12,6 @@ export const PullRequest = defineObject({
   implements: [{ interface: NoteSubject }],
   properties: {
     title: schema.string({ label: "Title", maxLength: 300, minLength: 1 }),
-    repository: schema.reference(Repository, {
-      label: "Repository",
-      inverse: { key: "pullRequests", label: "Pull requests" },
-    }),
     number: schema.number({
       label: "Number",
       nullable: true,
@@ -60,4 +56,13 @@ export const PullRequest = defineObject({
   },
   search: { fields: ["title", "url", "headCommit"] },
   display: { title: "title", icon: "gitPullRequest", status: "status" },
+})
+
+export const PullRequestRepository = defineLink({
+  id: "pullRequestRepository",
+  name: "PullRequest Repository",
+  from: PullRequest,
+  to: Repository,
+  forward: { key: "repository", label: "Repository", min: 1, max: 1 },
+  reverse: { key: "pullRequests", label: "Pull requests" },
 })

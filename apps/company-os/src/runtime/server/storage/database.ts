@@ -58,11 +58,20 @@ const make = Effect.gen(function* () {
             if (options?.accessMode)
               yield* sql`set transaction ${sql.literal(options.accessMode)}`
             const value = yield* body(database)
+            // Validate deferred graph constraints as typed failures before the driver commits.
+            yield* sql`set constraints all immediate`
             yield* updateSearchIndex(
               database,
               events.flatMap((event) => event.subjects),
               context
             )
+            for (let i = 0; i < events.length; i++) {
+              const pending = events[i]!
+              if (pending.snapshot !== undefined) {
+                const { snapshot, ...event } = pending
+                events[i] = { ...event, data: yield* snapshot }
+              }
+            }
             yield* flushEvents(database, events)
             return value
           }).pipe(Effect.provideService(PendingEvents, events))

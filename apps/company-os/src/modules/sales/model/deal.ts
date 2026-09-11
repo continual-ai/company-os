@@ -1,6 +1,6 @@
 import { NoteSubject } from "#/modules/notes/model/index.ts"
 import { User } from "#/runtime/access/model/index.ts"
-import { defineObject, schema } from "#/runtime/model/index.ts"
+import { defineLink, defineObject, schema } from "#/runtime/model/index.ts"
 
 export const Deal = defineObject({
   id: "deal",
@@ -60,11 +60,6 @@ export const Deal = defineObject({
       label: "Expected close date",
       nullable: true,
     }),
-    owner: schema.reference(User, {
-      label: "Owner",
-      nullable: true,
-      inverse: { key: "deals", label: "Deals" },
-    }),
     nextStep: schema.string({
       label: "Next step",
       maxLength: 5000,
@@ -78,4 +73,13 @@ export const Deal = defineObject({
     title: "name",
     status: "stage",
   },
+})
+
+export const DealOwner = defineLink({
+  id: "dealOwner",
+  name: "Deal Owner",
+  from: Deal,
+  to: User,
+  forward: { key: "owner", label: "Owner", max: 1 },
+  reverse: { key: "deals", label: "Deals" },
 })

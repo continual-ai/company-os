@@ -12,13 +12,14 @@ import type {
   ApiError,
   FailedPreconditionError,
 } from "#/runtime/model/index.ts"
+import { linkedId } from "#/runtime/model/record-links.ts"
 import { requireProjectAccess } from "#/runtime/server/auth/project-access.ts"
 import {
   Database,
   EventJournal,
   Links,
-  Records,
   RecordIdentifierResolver,
+  Records,
 } from "#/runtime/server/index.ts"
 
 const Input = toEffectSchema(Escalation.actions.createIssue.input)
@@ -41,11 +42,16 @@ export const createIssue = Effect.fn("supportEngineering.createIssue")(
         // Serialize retries before looking for a receipt; the unique constraint is a second integrity guard.
         yield* database.sql`select pg_advisory_xact_lock(hashtextextended(${`support-escalation:${ticketId}`}, 0))`
         const existing = (yield* records.get(Escalation).list({
-          filter: { field: "ticket", operator: "eq", value: ticketId },
+          filter: { link: "ticket", contains: ticketId },
         })).items[0]
         if (existing) {
           yield* requireProjectAccess
-          return { issue: existing.issue }
+          const issue = linkedId(existing, "issue", Issue)
+          if (issue === null)
+            return yield* Effect.die(
+              "Escalation is missing its required issue."
+            )
+          return { issue }
         }
         const ticket = yield* records.get(Ticket).get(ticketId)
         if (ticket.status === "resolved" || ticket.status === "closed") {
@@ -71,10 +77,11 @@ export const createIssue = Effect.fn("supportEngineering.createIssue")(
           priority: ticket.priority,
           status: "backlog",
         })
-        yield* ticketLinks.initialize(ticket.id, { issues: [issue.id] })
-        const escalation = yield* records
-          .writer(Escalation)
-          .create({ name: ticket.subject, ticket: ticket.id, issue: issue.id })
+        yield* ticketLinks.update(ticket.id, { issues: { add: [issue.id] } })
+        const escalation = yield* records.writer(Escalation).create({
+          name: ticket.subject,
+          links: { ticket: [ticket.id], issue: [issue.id] },
+        })
         yield* events.append(TicketEscalated, {
           subject: escalation.id,
           data: { ticket: ticket.id, issue: issue.id },

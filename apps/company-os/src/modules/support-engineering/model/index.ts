@@ -3,6 +3,7 @@ import { TicketIssues } from "#/modules/support-engineering/model/ticket-issues.
 import { Ticket } from "#/modules/support/model/index.ts"
 import {
   defineEvent,
+  defineLink,
   defineModule,
   defineObject,
   schema,
@@ -18,14 +19,6 @@ export const Escalation = defineObject({
     "A support request handed to engineering, with a durable receipt for retries.",
   properties: {
     name: schema.string({ label: "Name", minLength: 1, maxLength: 400 }),
-    ticket: schema.reference(Ticket, {
-      label: "Ticket",
-      inverse: { key: "escalations", label: "Escalations" },
-    }),
-    issue: schema.reference(Issue, {
-      label: "Issue",
-      inverse: { key: "escalations", label: "Escalations" },
-    }),
   },
   uniqueBy: { ticket: ["ticket"] },
   actions: {
@@ -39,8 +32,8 @@ export const Escalation = defineObject({
       idempotent: true,
       description:
         "Creates one engineering issue for an open support ticket. Retries return the original issue.",
-      input: { ticket: schema.reference(Ticket) },
-      output: { issue: schema.reference(Issue) },
+      input: { ticket: schema.recordId(Ticket) },
+      output: { issue: schema.recordId(Issue) },
       errors: [
         standardErrors.failedPrecondition,
         standardErrors.aborted,
@@ -50,13 +43,33 @@ export const Escalation = defineObject({
   },
   display: { title: "name", icon: "circleDot" },
 })
+
+export const EscalationTicket = defineLink({
+  outputOnly: true,
+  id: "escalationTicket",
+  name: "Escalation Ticket",
+  from: Escalation,
+  to: Ticket,
+  forward: { key: "ticket", label: "Ticket", min: 1, max: 1 },
+  reverse: { key: "escalations", label: "Escalations" },
+})
+
+export const EscalationIssue = defineLink({
+  outputOnly: true,
+  id: "escalationIssue",
+  name: "Escalation Issue",
+  from: Escalation,
+  to: Issue,
+  forward: { key: "issue", label: "Issue", min: 1, max: 1 },
+  reverse: { key: "escalations", label: "Escalations" },
+})
 export const TicketEscalated = defineEvent({
   type: "escalation.ticketEscalated",
   version: 1,
   subject: Escalation,
   data: schema.object({
-    ticket: schema.reference(Ticket),
-    issue: schema.reference(Issue),
+    ticket: schema.recordId(Ticket),
+    issue: schema.recordId(Issue),
   }),
 })
 export const SupportEngineeringModule = defineModule({
@@ -68,7 +81,7 @@ export const SupportEngineeringModule = defineModule({
   description: "Connect customer support tickets with engineering issues.",
   id: "supportEngineering",
   name: "Support engineering",
-  links: [TicketIssues],
+  links: [TicketIssues, EscalationTicket, EscalationIssue],
   objects: [Escalation],
   events: [TicketEscalated],
 })

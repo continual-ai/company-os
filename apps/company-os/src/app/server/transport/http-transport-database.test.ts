@@ -209,6 +209,7 @@ describe("application HTTP server", () => {
         const mcpToolNames = new Set(
           listedMcpPayload.result.tools.map(({ name }) => name)
         )
+        expect(mcpToolNames.has("records.batchGet")).toBe(true)
         expect(
           modelProjectionContract.filter(
             ({ mcpToolName }) => !mcpToolNames.has(mcpToolName)
@@ -272,6 +273,70 @@ describe("application HTTP server", () => {
         const escalation = yield* model.escalation.createIssue({
           ticket: ticket.id,
         })
+
+        const hydrated = yield* model.records.batchGet({
+          ids: [ticket.id, escalation.issue, "missing"],
+        })
+        expect(hydrated.items.map((item) => item.objectType)).toEqual([
+          "ticket",
+          "issue",
+        ])
+        expect(hydrated.missingIds).toEqual(["missing"])
+        const mcpHydrated = yield* Effect.promise(() =>
+          runtime.runPromise(
+            mcp.handle(
+              new Request("http://localhost/api/mcp", {
+                method: "POST",
+                headers: {
+                  ...runtimeHeaders,
+                  accept: "application/json, text/event-stream",
+                  "content-type": "application/json",
+                  host: "localhost",
+                },
+                body: JSON.stringify({
+                  id: 30,
+                  jsonrpc: "2.0",
+                  method: "tools/call",
+                  params: {
+                    name: "records.batchGet",
+                    arguments: {
+                      ids: [ticket.id, escalation.issue, "missing"],
+                    },
+                  },
+                }),
+              })
+            )
+          )
+        )
+        const hydratedText = yield* Effect.promise(() => mcpHydrated.text())
+        const hydratedPayload = Schema.decodeUnknownSync(
+          Schema.Struct({
+            result: Schema.Struct({
+              structuredContent: Schema.Struct({
+                items: Schema.Array(
+                  Schema.Struct({ objectType: Schema.String })
+                ),
+                missingIds: Schema.Array(Schema.String),
+              }),
+            }),
+          })
+        )(
+          JSON.parse(
+            hydratedText
+              .split("\n")
+              .find((line) => line.startsWith("data:"))
+              ?.slice(5)
+              .trim() ?? hydratedText
+          )
+        )
+        expect(
+          hydratedPayload.result.structuredContent.items.map(
+            (item) => item.objectType
+          )
+        ).toEqual(["ticket", "issue"])
+        expect(hydratedPayload.result.structuredContent.missingIds).toEqual([
+          "missing",
+        ])
 
         const repeated = yield* Effect.promise(() =>
           runtime.runPromise(
@@ -371,7 +436,7 @@ describe("application HTTP server", () => {
           totalSize: 1,
         })
         const contact = yield* model.contact.create({
-          links: { primaryCompany: created.id },
+          links: { companies: [created.id], primaryCompany: [created.id] },
           name: "Ada Lovelace",
         })
 
@@ -399,9 +464,10 @@ describe("application HTTP server", () => {
         })
 
         const updated = yield* model.company.update({
-          etag: created.etag,
+          etag: (yield* model.company.get({ id: created.id })).etag,
           id: created.id,
           links: {
+            primaryContacts: { remove: [contact.id] },
             contacts: {
               add: [secondContact.id],
               remove: [contact.id],
@@ -546,9 +612,9 @@ describe("application HTTP server", () => {
           target: contact.id,
         })
 
-        yield* model.contact.primaryCompany.link({
+        yield* model.contact.update({
           id: contact.id,
-          target: destination.id,
+          links: { primaryCompany: { replace: [destination.id] } },
         })
 
         expect(
@@ -572,7 +638,10 @@ describe("application HTTP server", () => {
           totalSize: 2,
         })
 
-        yield* model.company.delete({ etag: updated.etag, id: created.id })
+        yield* model.company.delete({
+          etag: (yield* model.company.get({ id: created.id })).etag,
+          id: created.id,
+        })
 
         expect(yield* model.note.subjects.list({ id: note.id })).toEqual({
           items: [],

@@ -3,8 +3,8 @@ import { Effect } from "effect"
 import { Application } from "#/modules/hiring/model/application.ts"
 import { Candidate } from "#/modules/hiring/model/candidate.ts"
 import { JobPosting } from "#/modules/hiring/model/job-posting.ts"
-import { EmailAddress, WebUrl } from "#/runtime/model/index.ts"
 import type { RecordId } from "#/runtime/model/index.ts"
+import { EmailAddress, WebUrl } from "#/runtime/model/index.ts"
 import { Records } from "#/runtime/server/index.ts"
 
 const departments = ["Engineering", "Operations", "Growth", "Finance"]
@@ -30,10 +30,10 @@ export const seedHiringPerformance = Effect.fn(
       department: departments[index % departments.length]!,
       description:
         "Build a durable business operation and make the next step clear for the team.",
-      hiringManager: owners[index % owners.length]!,
       location: locations[index % locations.length]!,
       status: index % 7 === 0 ? "paused" : "open",
       title: `${["Senior", "Staff", "Lead"][index % 3]} ${["Engineer", "Operator", "Designer", "Recruiter"][index % 4]}`,
+      links: { hiringManager: [owners[index % owners.length]!] },
     })
     const candidate = yield* records.writer(Candidate).create({
       email: EmailAddress(`candidate-${index}@hiring.example.test`),
@@ -44,8 +44,6 @@ export const seedHiringPerformance = Effect.fn(
           : null,
     })
     yield* records.writer(Application).create({
-      candidate: candidate.id,
-      job: job.id,
       rating: index % 5 === 0 ? null : (index % 5) + 1,
       reviewNotes:
         index % 4 === 0 ? "Strong evidence of ownership in prior work." : null,
@@ -53,6 +51,7 @@ export const seedHiringPerformance = Effect.fn(
         index % 4
       ]!,
       stage: stages[index % stages.length]!,
+      links: { candidate: [candidate.id], job: [job.id] },
     })
   }
   yield* Effect.log(

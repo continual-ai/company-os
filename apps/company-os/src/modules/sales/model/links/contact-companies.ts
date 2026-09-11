@@ -5,19 +5,16 @@ import { defineLink } from "#/runtime/model/index.ts"
 export const ContactCompanies = defineLink({
   id: "contactCompanies",
   name: "Contact companies",
-  writeFrom: "contacts",
+  from: Contact,
+  to: Company,
   forward: {
-    from: Contact,
-    to: Company,
     key: "companies",
-    cardinality: "many",
+    min: 0,
     label: "Companies",
   },
   reverse: {
-    from: Company,
-    to: Contact,
     key: "contacts",
-    cardinality: "many",
+    min: 0,
     label: "Contacts",
   },
 })

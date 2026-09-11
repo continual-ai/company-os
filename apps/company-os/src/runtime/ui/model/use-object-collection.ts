@@ -43,7 +43,8 @@ export function useObjectCollection(
     columnFilters,
     sorting,
     undefined,
-    options.window
+    options.window,
+    runtime.model
   )
   const query = modelCollectionQuery(list, request)
   const requestKey = hashKey(query.queryKey)

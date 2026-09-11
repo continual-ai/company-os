@@ -20,12 +20,10 @@ import {
 import { defineModule } from "#/runtime/model/definition/module.ts"
 import {
   defineObject,
-  type ObjectParent,
   type ObjectRecord,
   type ObjectType,
 } from "#/runtime/model/definition/object.ts"
 import {
-  type RecordId,
   type RecordIdentifier,
   schema,
 } from "#/runtime/model/definition/schema.ts"
@@ -95,11 +93,7 @@ describe("definition inference", () => {
     expectTypeOf(Contact.id).toEqualTypeOf<"contact">()
     expectTypeOf(Contact.collection).toEqualTypeOf<"contacts">()
     expectTypeOf(Contact.display.title).toEqualTypeOf<"name">()
-    expectTypeOf(Contact.parent).toEqualTypeOf<ObjectParent<"root", "root">>()
     expectTypeOf<ObjectRecord<typeof Contact>["name"]>().toEqualTypeOf<string>()
-    expectTypeOf<ObjectRecord<typeof Contact>["parent"]>().toEqualTypeOf<
-      RecordId<"root">
-    >()
     expectTypeOf<keyof typeof Contact.actions>().toEqualTypeOf<
       "batchDelete" | "create" | "delete" | "enroll" | "update"
     >()
@@ -121,25 +115,6 @@ describe("definition inference", () => {
   })
 
   it("rejects definitions that break the object contract", () => {
-    expect(() =>
-      defineTestModel({
-        interfaces: [TestActor],
-        links: [],
-        name: "Wrong parent",
-        objects: [
-          defineObject({
-            id: "orphan",
-            collection: "orphans",
-            name: "Orphan",
-            pluralName: "Orphans",
-            // @ts-expect-error A parent is an object, an interface, or Root.
-            parent: EnrollmentFailed,
-            properties: { name: schema.string() },
-            display: { title: "name" },
-          }),
-        ],
-      })
-    ).toThrow(/parent type/)
     expect(() =>
       defineObject({
         id: "mislabeled",
@@ -228,10 +203,6 @@ describe("model definitions", () => {
     })
     expect(Object.keys(model.objects)).toEqual(["contact"])
     expect(model.root).toEqual(Root)
-    expect(model.objects.contact.parent).toEqual({
-      kind: "root",
-      typeId: "root",
-    })
     expect(model.objects.contact.uniqueBy).toEqual({ name: ["name"] })
     expect(Object.keys(model.actions.contact)).toEqual([
       "create",
@@ -276,7 +247,6 @@ describe("model definitions", () => {
       scope: "collection",
     })
     expectTypeOf(model.objects.contact.collection).toEqualTypeOf<"contacts">()
-    expectTypeOf(model.objects.contact.parent.typeId).toEqualTypeOf<"root">()
     expectTypeOf(model.actions.contact.enroll.id).toEqualTypeOf<"enroll">()
     expect(model.actions.contact).toBe(model.objects.contact.actions)
   })
@@ -380,7 +350,7 @@ describe("model definitions", () => {
     ).toThrow(/unique rule 'missing' references unknown field 'missing'/)
   })
 
-  it("keeps single-link uniqueness in link cardinality", () => {
+  it("accepts singular traversals in compound uniqueness rules", () => {
     const Account = defineObject({
       id: "account",
       collection: "accounts",
@@ -400,21 +370,19 @@ describe("model definitions", () => {
     })
     const ProfileAccount = defineLink({
       id: "profileAccount",
-      writeFrom: "account",
+      from: Profile,
+      to: Account,
       forward: {
-        cardinality: "one",
-        from: Profile,
+        min: 1,
+        max: 1,
         key: "account",
         label: "Account",
-        to: Account,
       },
       name: "Profile account",
       reverse: {
-        cardinality: "many",
-        from: Account,
+        min: 0,
         key: "profiles",
         label: "Profiles",
-        to: Profile,
       },
     })
 
@@ -425,7 +393,7 @@ describe("model definitions", () => {
         name: "Invalid link unique model",
         objects: [Account, Profile],
       })
-    ).toThrow(/references unknown field 'account'/)
+    ).not.toThrow()
   })
 
   it("registers the kernel interfaces before any module", () => {
@@ -459,42 +427,37 @@ describe("model definitions", () => {
       display: { title: "name" },
     })
     const ContactCompanies = defineLink({
+      from: Contact,
+      to: Company,
       id: "contactCompanies",
-      writeFrom: "companies",
       name: "Contact companies",
       forward: {
-        cardinality: "many",
-        from: Contact,
+        min: 0,
         key: "companies",
         label: "Companies",
-        to: Company,
       },
       reverse: {
-        cardinality: "many",
-        from: Company,
+        min: 0,
         key: "contacts",
         label: "Contacts",
-        to: Contact,
       },
     })
     const PrimaryCompany = defineLink({
       id: "contactPrimaryCompany",
       subsetOf: ContactCompanies,
-      writeFrom: "primaryCompany",
       name: "Primary company",
+      from: Contact,
+      to: Company,
       forward: {
-        cardinality: "zeroOrOne",
-        from: Contact,
+        min: 0,
+        max: 1,
         key: "primaryCompany",
         label: "Primary company",
-        to: Company,
       },
       reverse: {
-        cardinality: "many",
-        from: Company,
+        min: 0,
         key: "primaryContacts",
         label: "Primary contacts",
-        to: Contact,
       },
     })
     const contacts = defineModule({
@@ -530,101 +493,50 @@ describe("model definitions", () => {
     )
   })
 
-  it("rejects object references absent from the model", () => {
-    const Account = defineObject({
-      id: "account",
-      collection: "accounts",
-      name: "Account",
-      pluralName: "Accounts",
+  it("requires registered endpoints for links", () => {
+    const Company = defineObject({
+      id: "company",
+      collection: "companies",
+      name: "Company",
+      pluralName: "Companies",
       properties: { name: schema.string() },
       display: { title: "name" },
     })
-    expect(() =>
-      defineObject({
-        id: "membership",
-        collection: "memberships",
-        name: "Membership",
-        parent: Account,
-        pluralName: "Memberships",
-        properties: { account: schema.reference(Account) },
-        display: { title: "account" },
-      })
-    ).toThrow(/use the standard 'parent'/)
-
-    const Membership = defineObject({
-      id: "membership",
-      collection: "memberships",
-      name: "Membership",
-      parent: Account,
-      pluralName: "Memberships",
-      properties: { name: schema.string() },
-      display: { title: "name" },
+    const Owner = defineLink({
+      id: "contactCompany",
+      name: "Contact company",
+      from: Contact,
+      to: Company,
+      forward: { key: "company", label: "Company", max: 1 },
+      reverse: { key: "contacts", label: "Contacts" },
     })
-
-    expectTypeOf(Membership.parent.typeId).toEqualTypeOf<"account">()
-    const completeModel = defineTestModel({
-      interfaces: [TestActor],
-      name: "Complete",
-      objects: [Account, Membership],
-      links: [],
-    })
-    expect(completeModel.actions.membership.create.input).toMatchObject({
-      properties: {
-        parent: { kind: "recordId", typeId: "account" },
-      },
-    })
-
     expect(() =>
       defineTestModel({
         interfaces: [TestActor],
-        name: "Example",
-        objects: [Membership],
-        links: [],
+        name: "Missing",
+        objects: [Contact],
+        links: [Owner],
       })
-    ).toThrow(/parent type 'account' is not registered as object/)
+    ).toThrow(/company/)
   })
 
-  it("names public record references by their semantic role", () => {
-    const Account = defineObject({
-      id: "account",
-      collection: "accounts",
-      name: "Account",
-      pluralName: "Accounts",
-      properties: { name: schema.string() },
-      display: { title: "name" },
-    })
-
+  it("keeps record identifiers in action schemas and relationships in links", () => {
     expect(() =>
       defineObject({
         id: "membership",
         collection: "memberships",
         name: "Membership",
         pluralName: "Memberships",
-        properties: { accountId: schema.reference(Account) },
-        display: { title: "accountId" },
+        properties: { account: schema.recordId(Contact) },
+        display: { title: "id" },
       })
-    ).toThrow(/record reference 'accountId'.*without an 'Id' suffix/)
-
+    ).toThrow(/Use defineLink/)
     expect(() =>
-      defineInterface({
-        id: "accountHolder",
-        name: "Account holder",
-        pluralName: "Account holders",
-        properties: { accountId: schema.reference(Account) },
-      })
-    ).toThrow(/record reference 'accountId'.*without an 'Id' suffix/)
-
-    expect(() =>
-      schema.object({ accountIds: schema.array(schema.reference(Account)) })
-    ).toThrow(/record reference 'accountIds'.*without an 'Id' suffix/)
-
-    expect(
       schema.object({
-        externalId: schema.string(),
-        id: schema.reference(Account),
-        ids: schema.array(schema.reference(Account)),
+        id: schema.recordId(Contact),
+        ids: schema.array(schema.recordId(Contact)),
       })
-    ).toMatchObject({ kind: "struct" })
+    ).not.toThrow()
   })
 
   it("registers first-class bidirectional links", () => {
@@ -646,20 +558,18 @@ describe("model definitions", () => {
     })
     const Contacts = defineLink({
       id: "companyContacts",
-      writeFrom: "company",
       name: "Company contacts",
+      from: CompanyContact,
+      to: Company,
       forward: {
-        from: CompanyContact,
-        to: Company,
         key: "company",
-        cardinality: "one",
+        min: 1,
+        max: 1,
         label: "Company",
       },
       reverse: {
-        from: Company,
-        to: CompanyContact,
         key: "contacts",
-        cardinality: "many",
+        min: 0,
         label: "Contacts",
       },
     })
@@ -672,7 +582,9 @@ describe("model definitions", () => {
     })
 
     expect(model.links.companyContacts.forward).toEqual({
-      cardinality: "one",
+      onDelete: "unlink",
+      min: 1,
+      max: 1,
       from: { kind: "object", typeId: "companyContact" },
       key: "company",
       label: "Company",
@@ -725,21 +637,18 @@ describe("model definitions", () => {
     })
     const ConflictingLink = defineLink({
       id: "conflictingLink",
-      writeFrom: false,
       name: "Conflicting link",
+      from: Contact,
+      to: Account,
       forward: {
-        cardinality: "many",
-        from: Contact,
+        min: 0,
         key: "get",
         label: "Accounts",
-        to: Account,
       },
       reverse: {
-        cardinality: "many",
-        from: Account,
+        min: 0,
         key: "contacts",
         label: "Contacts",
-        to: Contact,
       },
     })
     expect(() =>
@@ -772,20 +681,18 @@ describe("model definitions", () => {
 
     const CompanyEmployees = defineLink({
       id: "companyEmployees",
-      writeFrom: "employees",
       name: "Company employees",
+      from: Company,
+      to: Employee,
       forward: {
-        from: Company,
-        to: Employee,
         key: "employees",
-        cardinality: "many",
+        min: 0,
         label: "Employees",
       },
       reverse: {
-        from: Employee,
-        to: Company,
         key: "company",
-        cardinality: "one",
+        min: 1,
+        max: 1,
         label: "Company",
       },
     })
@@ -800,26 +707,14 @@ describe("model definitions", () => {
 
     expect(() =>
       defineLink({
-        id: "invalidReverse",
-        writeFrom: "employees",
-        name: "Invalid reverse",
-        forward: {
-          cardinality: "many",
-          from: Company,
-          key: "employees",
-          label: "Employees",
-          to: Employee,
-        },
-        reverse: {
-          cardinality: "one",
-          // @ts-expect-error The reverse source must equal the forward target.
-          from: Company,
-          key: "company",
-          label: "Company",
-          to: Company,
-        },
+        id: "invalidBounds",
+        name: "Invalid bounds",
+        from: Company,
+        to: Employee,
+        forward: { key: "employees", label: "Employees", min: 2, max: 1 },
+        reverse: { key: "company", label: "Company" },
       })
-    ).toThrow(/reverse traversal must mirror/)
+    ).toThrow(/bounds/)
   })
 
   it("allows interface endpoints without deriving hidden properties", () => {
@@ -840,20 +735,18 @@ describe("model definitions", () => {
     })
     const InvalidOwner = defineLink({
       id: "invalidOwner",
-      writeFrom: "activity",
       name: "Invalid owner",
+      from: Party,
+      to: Activity,
       forward: {
-        from: Party,
-        to: Activity,
         key: "activity",
-        cardinality: "zeroOrOne",
+        min: 0,
+        max: 1,
         label: "Activity",
       },
       reverse: {
-        from: Activity,
-        to: Party,
         key: "parties",
-        cardinality: "many",
+        min: 0,
         label: "Parties",
       },
     })
@@ -960,34 +853,33 @@ describe("model definitions", () => {
 })
 
 describe("relationship names", () => {
-  const model = (key: string) =>
-    defineTestModel({
-      interfaces: [TestActor],
-      name: "Inverse names",
-      links: [],
-      objects: [
-        Contact,
-        defineObject({
-          id: "message",
-          collection: "messages",
-          name: "Message",
-          pluralName: "Messages",
-          display: { title: "recipient" },
-          properties: {
-            recipient: schema.reference(Contact, {
-              inverse: { key, label: "Messages" },
-            }),
-          },
-        }),
-      ],
+  const model = (key: string) => {
+    const Message = defineObject({
+      id: "message",
+      collection: "messages",
+      name: "Message",
+      pluralName: "Messages",
+      properties: { body: schema.string() },
+      display: { title: "body" },
     })
+    const Recipient = defineLink({
+      id: "messageRecipient",
+      name: "Message recipient",
+      from: Message,
+      to: Contact,
+      forward: { key: "recipient", label: "Recipient", max: 1 },
+      reverse: { key, label: "Messages" },
+    })
+    return defineTestModel({
+      interfaces: [TestActor],
+      name: "Relationship names",
+      objects: [Contact, Message],
+      links: [Recipient],
+    })
+  }
   it("rejects inverse keys that collide with properties or methods", () => {
-    expect(() => model("name")).toThrow(
-      "conflicts with another relationship, property, or method"
-    )
-    expect(() => model("get")).toThrow(
-      "conflicts with another relationship, property, or method"
-    )
+    expect(() => model("name")).toThrow("conflicts with")
+    expect(() => model("get")).toThrow("conflicts with")
     expect(() => model("invalid.key")).toThrow(
       "must be an immutable lower-camel identifier"
     )
@@ -1016,22 +908,20 @@ describe("root definitions", () => {
       properties: { name: schema.string() },
     })
     const PermissionScope = defineLink({
+      from: Permission,
+      to: WorkspaceMarker,
       id: "permissionScope",
-      writeFrom: "scope",
       forward: {
-        cardinality: "one",
-        from: Permission,
+        min: 1,
+        max: 1,
         key: "scope",
         label: "Scope",
-        to: WorkspaceMarker,
       },
       name: "Permission scope",
       reverse: {
-        cardinality: "many",
-        from: WorkspaceMarker,
+        min: 0,
         key: "permissions",
         label: "Permissions",
-        to: Permission,
       },
     })
     const model = defineTestModel({

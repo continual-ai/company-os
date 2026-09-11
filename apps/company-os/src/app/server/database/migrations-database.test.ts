@@ -167,7 +167,8 @@ it("archives retired grants while preserving business data, files, identities an
       "select * from event_journal order by position"
     )
     await client.query("begin")
-    for (const migration of migrations.slice(3))
+    // This historical upgrade predates the intentionally destructive pre-release ontology reset.
+    for (const migration of migrations.slice(3, 7))
       await client.query(migration.sql)
     await client.query("commit")
     expect(

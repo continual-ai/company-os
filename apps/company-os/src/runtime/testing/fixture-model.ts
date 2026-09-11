@@ -110,19 +110,16 @@ export const Person = defineObject({
 const PersonAccounts = defineLink({
   id: "personAccounts",
   name: "Person accounts",
-  writeFrom: "people",
+  from: Person,
+  to: Account,
   forward: {
-    from: Person,
-    to: Account,
     key: "accounts",
-    cardinality: "many",
+    min: 0,
     label: "Accounts",
   },
   reverse: {
-    from: Account,
-    to: Person,
     key: "people",
-    cardinality: "many",
+    min: 0,
     label: "People",
   },
 })
@@ -130,20 +127,18 @@ const PersonAccounts = defineLink({
 const PersonPrimaryAccount = defineLink({
   id: "personPrimaryAccount",
   name: "Person primary account",
-  writeFrom: "primaryAccount",
   subsetOf: PersonAccounts,
+  from: Person,
+  to: Account,
   forward: {
-    from: Person,
-    to: Account,
     key: "primaryAccount",
-    cardinality: "zeroOrOne",
+    min: 0,
+    max: 1,
     label: "Primary account",
   },
   reverse: {
-    from: Account,
-    to: Person,
     key: "primaryPeople",
-    cardinality: "many",
+    min: 0,
     label: "Primary people",
   },
 })
@@ -162,8 +157,8 @@ export const Prospect = defineObject({
       idempotent: true,
       scope: "object",
       output: {
-        account: schema.reference({ id: "account" }),
-        person: schema.reference({ id: "person" }),
+        account: schema.recordId({ id: "account" }),
+        person: schema.recordId({ id: "person" }),
       },
       errors: [
         standardErrors.aborted,
@@ -199,18 +194,6 @@ export const Prospect = defineObject({
         { value: "qualified", label: "Qualified" },
       ],
     }),
-    convertedAccount: schema.reference(Account, {
-      label: "Converted account",
-      inverse: { key: "convertedProspects", label: "Converted prospects" },
-      nullable: true,
-      outputOnly: true,
-    }),
-    convertedPerson: schema.reference(Person, {
-      label: "Converted person",
-      inverse: { key: "convertedProspects", label: "Converted prospects" },
-      nullable: true,
-      outputOnly: true,
-    }),
     convertedAt: schema.timestamp({
       label: "Converted at",
       nullable: true,
@@ -226,13 +209,33 @@ export const Prospect = defineObject({
   },
 })
 
+const ProspectConvertedAccount = defineLink({
+  id: "prospectConvertedAccount",
+  outputOnly: true,
+  name: "Prospect Converted account",
+  from: Prospect,
+  to: Account,
+  forward: { key: "convertedAccount", label: "Converted account", max: 1 },
+  reverse: { key: "convertedProspects", label: "Converted prospects" },
+})
+
+const ProspectConvertedPerson = defineLink({
+  id: "prospectConvertedPerson",
+  outputOnly: true,
+  name: "Prospect Converted person",
+  from: Prospect,
+  to: Person,
+  forward: { key: "convertedPerson", label: "Converted person", max: 1 },
+  reverse: { key: "convertedProspects", label: "Converted prospects" },
+})
+
 export const ProspectConverted = defineEvent({
   type: "prospect.converted",
   version: 1,
   subject: Prospect,
   data: schema.object({
-    account: schema.reference(Account),
-    person: schema.reference(Person),
+    account: schema.recordId(Account),
+    person: schema.recordId(Person),
   }),
 })
 
@@ -241,7 +244,6 @@ export const Order = defineObject({
   collection: "orders",
   name: "Order",
   pluralName: "Orders",
-  parent: Account,
   implements: [{ interface: Topic }],
   properties: {
     name: schema.string({ label: "Name", minLength: 1, maxLength: 200 }),
@@ -260,11 +262,6 @@ export const Order = defineObject({
       label: "Expected close date",
       nullable: true,
     }),
-    owner: schema.reference(User, {
-      label: "Owner",
-      nullable: true,
-      inverse: { key: "orders", label: "Orders" },
-    }),
     nextStep: schema.string({
       label: "Next step",
       maxLength: 5_000,
@@ -276,12 +273,20 @@ export const Order = defineObject({
   display: { icon: "order", title: "name", status: "stage" },
 })
 
+const OrderOwner = defineLink({
+  id: "orderOwner",
+  name: "Order Owner",
+  from: Order,
+  to: User,
+  forward: { key: "owner", label: "Owner", max: 1 },
+  reverse: { key: "orders", label: "Orders" },
+})
+
 export const OrderLine = defineObject({
   id: "orderLine",
   collection: "orderLines",
   name: "Order line",
   pluralName: "Order lines",
-  parent: Order,
   properties: {
     name: schema.string({ label: "Name", minLength: 1, maxLength: 200 }),
     quantity: schema.number({
@@ -330,21 +335,35 @@ export const Memo = defineObject({
 const MemoTopics = defineLink({
   id: "memoTopics",
   name: "Memo topics",
-  writeFrom: "topics",
+  from: Memo,
+  to: Topic,
   forward: {
-    from: Memo,
-    to: Topic,
     key: "topics",
-    cardinality: "many",
+    min: 0,
     label: "Topics",
   },
   reverse: {
-    from: Topic,
-    to: Memo,
     key: "memos",
-    cardinality: "many",
+    min: 0,
     label: "Memos",
   },
+})
+
+const AccountOrders = defineLink({
+  id: "accountOrders",
+  name: "Account orders",
+  from: Account,
+  to: Order,
+  forward: { key: "orders", label: "Orders" },
+  reverse: { key: "account", label: "Account", min: 1, max: 1 },
+})
+const OrderLines = defineLink({
+  id: "orderLines",
+  name: "Order lines",
+  from: Order,
+  to: OrderLine,
+  forward: { key: "lines", label: "Lines", onDelete: "cascade" },
+  reverse: { key: "order", label: "Order", min: 1, max: 1 },
 })
 
 /** A representative business domain for kernel tests: ownership, interfaces, links, and a custom action. */
@@ -353,7 +372,16 @@ export const FixtureModule = defineModule({
   name: "Fixture",
   interfaces: [Participant, Topic],
   events: [ProspectConverted],
-  links: [PersonAccounts, PersonPrimaryAccount, MemoTopics],
+  links: [
+    AccountOrders,
+    OrderLines,
+    PersonAccounts,
+    PersonPrimaryAccount,
+    MemoTopics,
+    ProspectConvertedAccount,
+    ProspectConvertedPerson,
+    OrderOwner,
+  ],
   objects: [Account, Person, Prospect, Order, OrderLine, Document, Memo],
 })
 

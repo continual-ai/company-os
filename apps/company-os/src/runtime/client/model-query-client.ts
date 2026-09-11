@@ -18,6 +18,7 @@ import type {
   ModelObjectClient,
 } from "#/runtime/client/http-client.ts"
 import { applyMutationResult } from "#/runtime/client/model-cache.ts"
+import type { RecordBatchInput } from "#/runtime/contract/record-batch.ts"
 import type { RecordSearchInput } from "#/runtime/contract/record-search.ts"
 import {
   modelObjectLinkTraversals,
@@ -84,6 +85,7 @@ type ModelQueries<M extends ModelCatalog> = {
   >
 } & {
   readonly records: {
+    readonly batchGet: QueryMethod<EffectClient<M>["records"]["batchGet"]>
     readonly search: QueryMethod<EffectClient<M>["records"]["search"]>
   }
 }
@@ -175,6 +177,13 @@ export function createModelQueries<M extends ModelCatalog>(
     .filter((object) => object.search !== undefined)
     .map((object) => object.id)
   result.records = {
+    batchGet: (input: RecordBatchInput) =>
+      modelQuery(
+        modelObjects(model).map((object) => object.id),
+        "records.batchGet",
+        input,
+        (signal) => runClientEffect(client.records.batchGet(input), signal)
+      ),
     search: (input: RecordSearchInput) =>
       modelQuery(
         input.objectTypes ?? searchableTypes,

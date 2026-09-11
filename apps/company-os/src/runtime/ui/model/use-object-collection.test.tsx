@@ -57,6 +57,20 @@ it("retains actions and reference labels as pages append, and disables editing w
   const runtime = {
     ...testPresentation(fixtureModel),
     data: {
+      records: {
+        batchGet: (request: { ids: readonly string[] }) =>
+          remember(
+            modelQuery(["user"], "batchGet", request, async () => ({
+              items: request.ids.map((id) => ({
+                id,
+                objectType: "user",
+                etag: "1",
+                name: id === "user_z" ? "Zoe" : "Ada",
+              })),
+              missingIds: [],
+            }))
+          ),
+      },
       account: { list, get: unused, batchGet: unused },
       anonymousActor: { list, get: unused, batchGet: unused },
       serviceAccount: {

@@ -105,10 +105,13 @@ function restorePaths(document: OpenApi.OpenAPISpec): OpenApi.OpenAPISpec {
 }
 
 /** Compiles custom methods together, preserving group/API metadata and shared schema identities. */
-export function customMethodApi(api: Api): Api {
+export function customMethodApi<T extends Api>(api: T): T {
   const projected = projectApi(api, (endpoint) =>
     endpoint.path.includes("::")
-      ? withPath(endpoint, endpoint.path.replace(/::(\w+)$/, "/~$1"))
+      ? withPath(
+          endpoint.annotate(OpenApi.Exclude, false),
+          endpoint.path.replace(/::(\w+)$/, "/~$1")
+        )
       : undefined
   )
   class DocumentApi extends projected {
@@ -121,7 +124,7 @@ export function customMethodApi(api: Api): Api {
       ? endpoint.annotate(OpenApi.Exclude, true)
       : endpoint
   )
-  return ContractApi.annotate(OpenApi.Transform, (document) => {
+  const result = ContractApi.annotate(OpenApi.Transform, (document) => {
     // SAFETY: the transform receives Effect's complete OpenAPI document.
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
     const spec = document as OpenApi.OpenAPISpec
@@ -135,4 +138,7 @@ export function customMethodApi(api: Api): Api {
       },
     })
   })
+  // SAFETY: projection changes documentation paths and annotations, preserving the runtime groups.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  return result as T
 }

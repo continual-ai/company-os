@@ -15,6 +15,7 @@ import {
   createApplicationHttpApi,
 } from "#/runtime/contract/application-http-api.ts"
 import { customMethodParams } from "#/runtime/contract/http-custom-method.ts"
+import type { RecordBatchInput } from "#/runtime/contract/record-batch.ts"
 import type { RecordSearchInput } from "#/runtime/contract/record-search.ts"
 import type { ModelCatalog } from "#/runtime/model/index.ts"
 
@@ -66,6 +67,9 @@ export interface ApplicationEffectClient {
     ) => ReturnType<NativeGroups["events"]["streamEvents"]>
   }
   readonly records: {
+    readonly batchGet: (
+      input: RecordBatchInput
+    ) => ReturnType<NativeGroups["records"]["batchGetRecords"]>
     readonly search: (
       input: RecordSearchInput
     ) => ReturnType<NativeGroups["records"]["searchRecords"]>
@@ -169,6 +173,11 @@ export function createEffectClient<M extends ModelCatalog>(
         }),
     },
     records: {
+      batchGet: (input) =>
+        groups.records.batchGetRecords({
+          params: customMethodParams("batchGet"),
+          payload: input,
+        }),
       search: (input) =>
         groups.records.searchRecords({
           params: customMethodParams("search"),

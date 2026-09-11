@@ -6,7 +6,6 @@ import {
   type ObjectCreateInput,
   type ObjectRecord,
 } from "#/runtime/model/index.ts"
-import { ROOT_ID } from "#/runtime/model/system-records.ts"
 import { currentActorId } from "#/runtime/server/invocation-context.ts"
 import { ObjectRepositories } from "#/runtime/server/model/object-repositories.ts"
 import { makeObjectService } from "#/runtime/server/model/object-service.ts"
@@ -35,7 +34,6 @@ const make = Effect.gen(function* () {
         image: input.image ?? null,
         metadata: {},
         name: input.name,
-        parent: ROOT_ID,
         systemManaged: false,
         updatedBy: actorId,
       } satisfies ObjectInsert<typeof User>)

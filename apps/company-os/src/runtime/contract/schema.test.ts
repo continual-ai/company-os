@@ -132,7 +132,8 @@ describe("Effect Schema projection", () => {
       createdAt: "2026-08-18T12:00:00Z",
       createdBy: "user_1",
       etag: "v1",
-      parent: "root_1",
+      objectType: "account",
+      links: {},
       systemManaged: false,
       syncResult: null,
       updatedAt: "2026-08-18T13:00:00.123Z",
@@ -237,8 +238,6 @@ describe("Effect Schema projection", () => {
     expectTypeOf<Create["aliases"]>().toEqualTypeOf<
       ReadonlyArray<RecordAliasType> | undefined
     >()
-    expectTypeOf<Create["parent"]>().toEqualTypeOf<undefined>()
-    expectTypeOf<AccountRecord["parent"]>().toEqualTypeOf<RecordId<"root">>()
     expectTypeOf<Update["email"]>().toEqualTypeOf<
       EmailAddress | null | undefined
     >()
@@ -324,42 +323,11 @@ describe("Effect Schema projection", () => {
       externalId: "external_1",
     })
     expect(decodeUpdate({})).toEqual({})
-
-    const Membership = defineObject({
-      id: "membership",
-      collection: "memberships",
-      name: "Membership",
-      parent: Account,
-      pluralName: "Memberships",
-      properties: { role: schema.string() },
-      display: { title: "role" },
-    })
-    type MembershipCreate = ObjectCreateInput<typeof Membership>
-    const membership = {
-      parent: AccountId("account_1"),
-      role: "owner",
-    } satisfies MembershipCreate
-    expectTypeOf(membership.parent).toEqualTypeOf<RecordId<"account">>()
-    expectTypeOf<MembershipCreate["parent"]>().toEqualTypeOf<
-      RecordIdentifier<"account">
-    >()
-    const decodeMembership = Schema.decodeUnknownSync(
-      toEffectObjectCreateSchema(Membership)
-    )
-    expect(decodeMembership(membership)).toEqual({
-      parent: "account_1",
-      role: "owner",
-    })
-    expect(decodeMembership({ parent: hubspotAlias, role: "owner" })).toEqual({
-      parent: hubspotAlias,
-      role: "owner",
-    })
-    expect(() => decodeMembership({ role: "owner" })).toThrow()
   })
 
   it("preserves action input inference while keeping Effect out of definitions", () => {
     const input = schema.object({
-      account: schema.reference(Account),
+      account: schema.recordId(Account),
       notify: schema.optional(schema.boolean()),
     })
     type Input = InferSchema<typeof input>

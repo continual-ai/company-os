@@ -231,6 +231,7 @@ export const seedSalesPerformance = Effect.fn("@company/seedSalesPerformance")(
           contact.email !== null,
         optedOut: contact.emailPermission === "optedOut",
       })
+      yield* linkSeedRecords(Contact, "companies", contact.id, company.id)
       yield* linkSeedRecords(Contact, "primaryCompany", contact.id, company.id)
       if (index % 10 === 0 && company.id !== companies[1]!.id)
         yield* linkSeedRecords(
@@ -241,7 +242,6 @@ export const seedSalesPerformance = Effect.fn("@company/seedSalesPerformance")(
         )
       yield* records.writer(Lead).create({
         name: personName(index + 137),
-        company: index % 5 === 0 ? null : company.id,
         companyName: index % 5 === 0 ? company.name : null,
         email:
           index % 6 === 0
@@ -257,6 +257,7 @@ export const seedSalesPerformance = Effect.fn("@company/seedSalesPerformance")(
           index % 4
         ]!,
         source: (["inbound", "referral", "outbound"] as const)[index % 3]!,
+        links: { company: index % 5 === 0 ? [] : [company.id] },
       })
       const note = yield* records
         .writer(Note)
@@ -272,7 +273,6 @@ export const seedSalesPerformance = Effect.fn("@company/seedSalesPerformance")(
         const monthlyPrice = 1250 + (dealIndex % 20) * 250
         const deal = yield* records.writer(Deal).create({
           name: `${company.name} — ${initiatives[dealIndex % initiatives.length]}`,
-          owner,
           stage: (
             [
               "discovery",
@@ -297,6 +297,7 @@ export const seedSalesPerformance = Effect.fn("@company/seedSalesPerformance")(
                   "Send the pilot results for sponsor approval.",
                 ][dealIndex % 3]!,
           nextStepDate: date((dealIndex % 21) - 7),
+          links: { owner: [owner] },
         })
         dealId = deal.id
         yield* linkSeedRecords(Deal, "companies", deal.id, company.id)
@@ -311,10 +312,10 @@ export const seedSalesPerformance = Effect.fn("@company/seedSalesPerformance")(
           { name: "Team training workshop", quantity: 2, price: 1250 },
         ])
           yield* records.writer(LineItem).create({
-            parent: deal.id,
             name: item.name,
             quantity: item.quantity,
             unitPrice: { currency, amount: Decimal(String(item.price)) },
+            links: { deal: [deal.id] },
           })
       }
       const status = (["planned", "planned", "done", "canceled"] as const)[
@@ -322,10 +323,6 @@ export const seedSalesPerformance = Effect.fn("@company/seedSalesPerformance")(
       ]!
       yield* records.writer(Activity).create({
         title: `${["Review pilot results", "Confirm implementation scope", "Discuss renewal", "Schedule security review", "Follow up on open questions"][index % 5]} — ${company.name}`,
-        company: company.id,
-        contact: contact.id,
-        deal: dealId,
-        owner,
         kind: (["task", "call", "meeting"] as const)[index % 3]!,
         status,
         dueAt: Timestamp(
@@ -340,6 +337,12 @@ export const seedSalesPerformance = Effect.fn("@company/seedSalesPerformance")(
           status === "done"
             ? "Confirmed the next milestone and shared the implementation checklist with the customer."
             : null,
+        links: {
+          company: [company.id],
+          contact: [contact.id],
+          deal: dealId === null ? [] : [dealId],
+          owner: [owner],
+        },
       })
       if ((index + 1) % 100 === 0)
         yield* Effect.log(

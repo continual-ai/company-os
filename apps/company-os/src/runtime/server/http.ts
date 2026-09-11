@@ -188,12 +188,7 @@ export function createModelHttpHandlers(
         register("list")
         if (!traversal.writable) continue
         register("link")
-        if (
-          traversal.traversal.cardinality !== "one" &&
-          traversal.target.cardinality !== "one"
-        ) {
-          register("unlink")
-        }
+        register("unlink")
       }
 
       // SAFETY: every endpoint generated for the group was registered above.

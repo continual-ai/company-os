@@ -134,13 +134,16 @@ export function ObjectTableColumnMenu({
   const [query, setQuery] = useState("")
   const columns = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase()
-    return objectTablePropertyColumns(table).filter((column) => {
-      const meta = objectTableColumnMeta(column)
-      return (
-        normalizedQuery.length === 0 ||
-        meta?.label.toLowerCase().includes(normalizedQuery)
-      )
-    })
+    return table
+      .getAllLeafColumns()
+      .filter((column) => column.columnDef.meta?.label !== undefined)
+      .filter((column) => {
+        const meta = objectTableColumnMeta(column)
+        return (
+          normalizedQuery.length === 0 ||
+          meta?.label.toLowerCase().includes(normalizedQuery)
+        )
+      })
   }, [query, table])
 
   return (
@@ -171,7 +174,7 @@ export function ObjectTableColumnMenu({
         <div className="max-h-64 overflow-y-auto py-0.5">
           {columns.map((column) => {
             const meta = objectTableColumnMeta(column)
-            if (meta?.property === undefined) return null
+            if (meta === undefined) return null
             return (
               <Button
                 key={column.id}
@@ -187,11 +190,15 @@ export function ObjectTableColumnMenu({
                   tabIndex={-1}
                   className="pointer-events-none"
                 />
-                <ObjectTableProperty
-                  className="flex-1 text-left"
-                  label={meta.label}
-                  property={meta.property}
-                />
+                {meta.property ? (
+                  <ObjectTableProperty
+                    className="flex-1 text-left"
+                    label={meta.label}
+                    property={meta.property}
+                  />
+                ) : (
+                  <span className="flex-1 text-left">{meta.label}</span>
+                )}
                 {column.getIsVisible() ? <CheckIcon /> : null}
               </Button>
             )

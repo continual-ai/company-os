@@ -13,6 +13,7 @@ import {
   unauthenticatedApiError,
 } from "#/runtime/server/api-error.ts"
 import { Authentication } from "#/runtime/server/auth/authentication.ts"
+import { CurrentInvocation } from "#/runtime/server/invocation.ts"
 import { Operations } from "#/runtime/server/invoke.ts"
 import {
   createModelMcpHandler,
@@ -20,6 +21,8 @@ import {
 } from "#/runtime/server/mcp.ts"
 import type { ModelContext } from "#/runtime/server/model-context.ts"
 import { ModelImplementation } from "#/runtime/server/model/implementation.ts"
+import type { ObjectRepositories } from "#/runtime/server/model/object-repositories.ts"
+import { createRecordBatchGet } from "#/runtime/server/record-batch.ts"
 import type { Database } from "#/runtime/server/storage/database.ts"
 
 class McpTransportFailure extends Data.TaggedError("McpTransportFailure")<{
@@ -46,7 +49,7 @@ const invocationContextSchema = Schema.Struct({
 const make = Effect.gen(function* () {
   const operations = yield* Operations
   const runPromise = Effect.runPromiseWith(
-    yield* Effect.context<Database | ModelContext>()
+    yield* Effect.context<Database | ModelContext | ObjectRepositories>()
   )
   const authentication = yield* Authentication
   const implementation = yield* ModelImplementation
@@ -64,8 +67,19 @@ const make = Effect.gen(function* () {
         if (invocation === undefined) {
           throw new Error("MCP invocation context is missing.")
         }
+        const exposed = (await runPromise(activeModuleModel())).model
         return {
-          exposed: (await runPromise(activeModuleModel())).model,
+          exposed,
+          batchGetRecords: (input: { ids: readonly string[] }) =>
+            runPromise(
+              withApiErrors(createRecordBatchGet(exposed)(input)).pipe(
+                Effect.provideService(CurrentInvocation, invocation),
+                Effect.match({
+                  onFailure: (error) => ({ success: false as const, error }),
+                  onSuccess: (value) => ({ success: true as const, value }),
+                })
+              )
+            ),
           implementation,
           name: appMetadata.name,
           version: appMetadata.version,

@@ -1,11 +1,10 @@
 import { Deal } from "#/modules/sales/model/deal.ts"
-import { defineObject, schema } from "#/runtime/model/index.ts"
+import { defineLink, defineObject, schema } from "#/runtime/model/index.ts"
 
 export const LineItem = defineObject({
   id: "lineItem",
   collection: "lineItems",
   name: "Line item",
-  parent: Deal,
   pluralName: "Line items",
   description: "A product or service included in a deal.",
   properties: {
@@ -28,4 +27,13 @@ export const LineItem = defineObject({
     title: "name",
     subtitle: "quantity",
   },
+})
+
+export const DealLineItems = defineLink({
+  id: "dealLineItems",
+  name: "Deal line items",
+  from: Deal,
+  to: LineItem,
+  forward: { key: "lineItems", label: "Line items", onDelete: "cascade" },
+  reverse: { key: "deal", label: "Deal", min: 1, max: 1 },
 })

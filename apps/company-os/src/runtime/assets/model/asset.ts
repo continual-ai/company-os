@@ -22,7 +22,7 @@ export const Asset = defineObject({
         size: schema.number({ integer: true, minimum: 1, maximum: 25_000_000 }),
       },
       output: {
-        asset: schema.reference({ id: "asset" }),
+        asset: schema.recordId({ id: "asset" }),
         uploadUrl: schema.string(),
       },
       errors: [standardErrors.failedPrecondition, standardErrors.notFound],
@@ -33,7 +33,7 @@ export const Asset = defineObject({
         "Check the upload and make the file available. Uploaded files cannot be changed.",
       scope: "object",
       idempotent: true,
-      output: { asset: schema.reference({ id: "asset" }) },
+      output: { asset: schema.recordId({ id: "asset" }) },
       errors: [standardErrors.failedPrecondition, standardErrors.aborted],
     },
   },

@@ -1,6 +1,6 @@
 import { NoteSubject } from "#/modules/notes/model/index.ts"
 import { User } from "#/runtime/access/model/index.ts"
-import { defineObject, schema } from "#/runtime/model/index.ts"
+import { defineLink, defineObject, schema } from "#/runtime/model/index.ts"
 
 export const Campaign = defineObject({
   id: "campaign",
@@ -39,15 +39,19 @@ export const Campaign = defineObject({
         { value: "completed", label: "Completed" },
       ],
     }),
-    owner: schema.reference(User, {
-      label: "Owner",
-      nullable: true,
-      inverse: { key: "campaigns", label: "Campaigns" },
-    }),
     budget: schema.money({ label: "Budget", nullable: true }),
     startDate: schema.date({ label: "Starts on", nullable: true }),
     endDate: schema.date({ label: "Ends on", nullable: true }),
   },
   search: { fields: ["name", "objective"] },
   display: { title: "name", icon: "megaphone", status: "status" },
+})
+
+export const CampaignOwner = defineLink({
+  id: "campaignOwner",
+  name: "Campaign Owner",
+  from: Campaign,
+  to: User,
+  forward: { key: "owner", label: "Owner", max: 1 },
+  reverse: { key: "campaigns", label: "Campaigns" },
 })

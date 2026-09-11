@@ -5,12 +5,12 @@ import type { AssetPrecondition } from "#/runtime/assets/server/asset-error.ts"
 import { replaceAssetReferences } from "#/runtime/assets/server/asset-references.ts"
 import { compileAssetReferences } from "#/runtime/assets/server/references.ts"
 import {
-  type DecodedCreateInput,
-  type DecodedInput,
   normalizeCreateInput,
   resolveCreateIdentifiers,
   resolveIdentifier,
   resolveUpdateIdentifiers,
+  type DecodedCreateInput,
+  type DecodedInput,
 } from "#/runtime/contract/object-input.ts"
 import {
   toEffectObjectCreateSchema,
@@ -28,18 +28,19 @@ import {
   type ObjectWriterUpdateInput,
   type Page,
 } from "#/runtime/model/index.ts"
-import {
-  ROOT_ID,
-  SYSTEM_SERVICE_ACCOUNT_ID,
-} from "#/runtime/model/system-records.ts"
+import { SYSTEM_SERVICE_ACCOUNT_ID } from "#/runtime/model/system-records.ts"
 import { makeEventWriter } from "#/runtime/server/events/event-writer.ts"
 import { currentActorId } from "#/runtime/server/invocation-context.ts"
 import { CurrentInvocation } from "#/runtime/server/invocation.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
+import { makeLinkWrites } from "#/runtime/server/model/link-writes.ts"
 import { RecordIdentifierResolver } from "#/runtime/server/model/record-identifier-resolver.ts"
 import { PageTokens } from "#/runtime/server/page-tokens.ts"
 import { Database } from "#/runtime/server/storage/database.ts"
-import { deletionChanges } from "#/runtime/server/storage/deletion-changes.ts"
+import {
+  deletionChanges,
+  type CascadeDeleteRestricted,
+} from "#/runtime/server/storage/deletion-changes.ts"
 import {
   makeObjectRepository as makePostgresObjectRepository,
   makeObjectSeedRepository as makePostgresObjectSeedRepository,
@@ -65,7 +66,10 @@ class ImmutablePropertyError extends Data.TaggedError(
   readonly recordId: string
 }> {}
 
-type WriteError = PostgresRepositoryError | AssetPrecondition
+type WriteError =
+  | PostgresRepositoryError
+  | AssetPrecondition
+  | CascadeDeleteRestricted
 
 /**
  * Typed persistence for one installed object, as returned by `Records.get`.
@@ -123,7 +127,7 @@ function trackRepository<const O extends ObjectType>(
     )
     const events = makeEventWriter(database, context)
     const collectAssets = compileAssetReferences(object)
-    const deleting = deletionChanges(database, object, context)
+    const deleting = deletionChanges(database, context)
 
     const track = <A extends { readonly id: string }, E, R>(
       operation: Effect.Effect<A, E, R>,
@@ -143,6 +147,10 @@ function trackRepository<const O extends ObjectType>(
             type: `${object.id}.${kind}`,
             version: 1,
             data: record,
+            snapshot: repository.get(RecordId(object.id)(record.id)).pipe(
+              Effect.catchTag("ObjectNotFound", () => Effect.succeed(record)),
+              Effect.orDie
+            ),
             subjects: yield* events.subjects([record.id]),
           })
           return record
@@ -170,11 +178,11 @@ function trackRepository<const O extends ObjectType>(
           from ${core}
           where ${inValues(sql, core.columns.id, [...ids])}
           order by ${sql.csv([core.columns.id])} for update`
-          yield* deleting(ids)
+          const children = yield* deleting(ids)
           const result = yield* operation
-          for (const target of targets)
+          for (const target of [...targets, ...children])
             yield* events.record({
-              type: `${object.id}.deleted`,
+              type: `${target.objectType}.deleted`,
               version: 1,
               data: {
                 id: target.id,
@@ -335,21 +343,7 @@ export function makeObjectWrites<const O extends ObjectType>(
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
     const decodedInput = decoded as DecodedCreateInput
     const validated = normalizeCreateInput(object, decodedInput)
-    const requestedParentId =
-      validated.parent === undefined
-        ? undefined
-        : yield* resolveIdentifier(
-            object.parent.typeId,
-            validated.parent,
-            resolveAliases
-          )
     const invocation = yield* CurrentInvocation
-    // SAFETY: repository parent validation confirms a concrete interface
-    // implementation before commit.
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-    const parent = RecordId(object.parent.typeId)(
-      requestedParentId ?? ROOT_ID
-    ) as unknown as ObjectRecord<O>["parent"]
     const canonical = yield* resolveCreateIdentifiers(
       object,
       validated,
@@ -365,7 +359,6 @@ export function makeObjectWrites<const O extends ObjectType>(
       metadata: canonical.metadata ?? {},
       createdBy: actorId,
       id: RecordId(object.id)(generateRecordId(object.id)),
-      parent,
       systemManaged: false,
       updatedBy: actorId,
     })
@@ -427,6 +420,8 @@ export function makeObjectWrites<const O extends ObjectType>(
 const make = Effect.gen(function* () {
   const { model, installed } = yield* ModelContext
   const identifiers = yield* RecordIdentifierResolver
+  const database = yield* Database
+  const graph = yield* makeLinkWrites
   const entries = yield* Effect.forEach(
     Object.values(model.objects),
     (object) =>
@@ -450,10 +445,51 @@ const make = Effect.gen(function* () {
      * attribute, and journal like standard operations;
      * callers establish authority and, for multi-record work, the transaction.
      */
-    writer: <O extends ObjectType>(object: O) =>
-      makeObjectWrites(object, get(object), identifiers.resolveAliases, {
-        trusted: true,
-      }),
+    writer: <O extends ObjectType>(object: O) => {
+      const writes = makeObjectWrites(
+        object,
+        get(object),
+        identifiers.resolveAliases,
+        { trusted: true }
+      )
+      return {
+        ...writes,
+        create: (
+          input: ObjectCreateInput<O> & {
+            readonly links?: Parameters<typeof graph.initialize>[2]
+          }
+        ) =>
+          database.transaction(() =>
+            Effect.gen(function* () {
+              const { links = {}, ...values } = input
+              // SAFETY: links is the only additional envelope member.
+              const record = yield* writes.create(
+                // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+                values as ObjectCreateInput<O>
+              )
+              yield* graph.initialize(object, record.id, links, true)
+              return yield* get(object).get(record.id)
+            })
+          ),
+        update: (
+          input: ObjectWriterUpdateInput<O> & {
+            readonly links?: Parameters<typeof graph.update>[2]
+          }
+        ) =>
+          database.transaction(() =>
+            Effect.gen(function* () {
+              const { links = {}, ...values } = input
+              // SAFETY: links is the only additional envelope member.
+              const record = yield* writes.update(
+                // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+                values as ObjectWriterUpdateInput<O>
+              )
+              yield* graph.update(object, record.id, links, true)
+              return yield* get(object).get(record.id)
+            })
+          ),
+      }
+    },
   }
 })
 

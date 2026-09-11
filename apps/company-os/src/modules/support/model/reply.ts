@@ -1,6 +1,6 @@
 import { NoteSubject } from "#/modules/notes/model/index.ts"
 import { Ticket } from "#/modules/support/model/ticket.ts"
-import { defineObject, schema } from "#/runtime/model/index.ts"
+import { defineLink, defineObject, schema } from "#/runtime/model/index.ts"
 
 export const Reply = defineObject({
   id: "reply",
@@ -11,10 +11,6 @@ export const Reply = defineObject({
   implements: [{ interface: NoteSubject }],
   properties: {
     subject: schema.string({ label: "Subject", maxLength: 300, minLength: 1 }),
-    ticket: schema.reference(Ticket, {
-      label: "Ticket",
-      inverse: { key: "replies", label: "Replies" },
-    }),
     direction: schema.select({
       label: "Direction",
       default: "inbound",
@@ -49,4 +45,13 @@ export const Reply = defineObject({
   },
   search: { fields: ["subject", "body", "externalId"] },
   display: { title: "subject", icon: "mail", status: "status" },
+})
+
+export const ReplyTicket = defineLink({
+  id: "replyTicket",
+  name: "Reply Ticket",
+  from: Reply,
+  to: Ticket,
+  forward: { key: "ticket", label: "Ticket", min: 1, max: 1 },
+  reverse: { key: "replies", label: "Replies" },
 })

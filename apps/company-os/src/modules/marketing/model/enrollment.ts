@@ -1,7 +1,7 @@
 import { Campaign } from "#/modules/marketing/model/campaign.ts"
 import { NoteSubject } from "#/modules/notes/model/index.ts"
 import { Contact } from "#/modules/sales/model/index.ts"
-import { defineObject, schema } from "#/runtime/model/index.ts"
+import { defineLink, defineObject, schema } from "#/runtime/model/index.ts"
 
 export const Enrollment = defineObject({
   id: "enrollment",
@@ -12,14 +12,6 @@ export const Enrollment = defineObject({
   implements: [{ interface: NoteSubject }],
   properties: {
     name: schema.string({ label: "Name", maxLength: 300, minLength: 1 }),
-    campaign: schema.reference(Campaign, {
-      label: "Campaign",
-      inverse: { key: "enrollments", label: "Enrollments" },
-    }),
-    contact: schema.reference(Contact, {
-      label: "Contact",
-      inverse: { key: "enrollments", label: "Enrollments" },
-    }),
     status: schema.select({
       label: "Status",
       default: "queued",
@@ -46,4 +38,22 @@ export const Enrollment = defineObject({
   },
   search: { fields: ["name", "context"] },
   display: { title: "name", icon: "users", status: "status" },
+})
+
+export const EnrollmentCampaign = defineLink({
+  id: "enrollmentCampaign",
+  name: "Enrollment Campaign",
+  from: Enrollment,
+  to: Campaign,
+  forward: { key: "campaign", label: "Campaign", min: 1, max: 1 },
+  reverse: { key: "enrollments", label: "Enrollments" },
+})
+
+export const EnrollmentContact = defineLink({
+  id: "enrollmentContact",
+  name: "Enrollment Contact",
+  from: Enrollment,
+  to: Contact,
+  forward: { key: "contact", label: "Contact", min: 1, max: 1 },
+  reverse: { key: "enrollments", label: "Enrollments" },
 })

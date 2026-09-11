@@ -2,7 +2,6 @@ import { useTypedAppFormContext } from "#/runtime/ui/forms/app-form.ts"
 import type { FormValue } from "#/runtime/ui/forms/form-value.ts"
 import type { ResolvedObjectUi } from "#/runtime/ui/model/module-ui.tsx"
 import {
-  parentName,
   type ClientRecord,
   type ModelObject,
 } from "#/runtime/ui/model/object-client.ts"
@@ -46,8 +45,9 @@ export function ObjectFormFields({
   const runtime = useModelRuntime()
 
   const form = useTypedAppFormContext(objectFormContextOptions)
-  const links =
-    fields === undefined ? objectFormLinks(runtime, object, mode) : []
+  const links = objectFormLinks(runtime, object).filter(
+    ({ traversal }) => fields === undefined || fields.includes(traversal.key)
+  )
   const properties = objectFormProperties(object, mode)
     .filter(({ id }) => fields === undefined || fields.includes(id))
     .sort((a, b) =>
@@ -58,8 +58,7 @@ export function ObjectFormFields({
   const references = properties.filter(
     ({ schema }) => schema.kind === "recordId"
   )
-  const hasParent = mode === "create" && object.parent.kind !== "root"
-  const hasRelated = hasParent || references.length > 0 || links.length > 0
+  const hasRelated = references.length > 0 || links.length > 0
   const renderProperty = (entry: (typeof properties)[number]) => (
     <ObjectFormPropertyField
       key={entry.id}
@@ -84,37 +83,6 @@ export function ObjectFormFields({
         <ObjectFormSection
           title={fields === undefined ? "Related records" : undefined}
         >
-          {mode === "create" && object.parent.kind !== "root" ? (
-            <form.AppField name="parent">
-              {(field) => (
-                <field.FormField
-                  id={`${object.id}-parent`}
-                  label={parentName(runtime, object)}
-                >
-                  {({
-                    ariaDescribedBy,
-                    invalid,
-                    onBlur,
-                    onValueChange,
-                    value,
-                  }) => (
-                    <ObjectReferenceSelect
-                      ariaDescribedBy={ariaDescribedBy}
-                      id={`${object.id}-parent`}
-                      invalid={invalid}
-                      required
-                      name="parent"
-                      typeId={object.parent.typeId}
-                      value={stringValue(value)}
-                      initialLabel={referenceLabels.get(stringValue(value))}
-                      onBlur={onBlur}
-                      onValueChange={onValueChange}
-                    />
-                  )}
-                </field.FormField>
-              )}
-            </form.AppField>
-          ) : null}
           {references.map(renderProperty)}
           {links.map((linkTraversal) => {
             const { target, traversal } = linkTraversal
@@ -148,7 +116,7 @@ export function ObjectFormFields({
                           onBlur={onBlur}
                           onValueChange={onValueChange}
                         />
-                      ) : traversal.cardinality === "many" ? (
+                      ) : traversal.max !== 1 ? (
                         <ObjectReferenceMultiSelect
                           referenceLabels={referenceLabels}
                           id={fieldId}
@@ -166,7 +134,7 @@ export function ObjectFormFields({
                           id={fieldId}
                           invalid={invalid}
                           name={name}
-                          required={traversal.cardinality === "one"}
+                          required={traversal.min > 0}
                           typeId={target.from.typeId}
                           value={stringValue(value)}
                           initialLabel={referenceLabels.get(stringValue(value))}

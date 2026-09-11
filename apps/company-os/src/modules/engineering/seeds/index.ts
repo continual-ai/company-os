@@ -25,12 +25,11 @@ export const seedEngineeringDemo = Effect.fn("@company/seedEngineeringDemo")(
       name: "Customer onboarding",
       objective: "Make account setup reliable for every new customer.",
       status: "active",
-      owner,
+      links: { owner: [owner] },
     })
     const repository = yield* services.repository.create({
       name: "Customer portal",
-      project: project.id,
-      owner,
+      links: { project: [project.id], owner: [owner] },
     })
     const issues = yield* Effect.forEach(
       [
@@ -43,20 +42,19 @@ export const seedEngineeringDemo = Effect.fn("@company/seedEngineeringDemo")(
           title,
           status,
           priority,
-          project: project.id,
-          assignee: owner,
           description:
             "Reported during Northstar's pilot. Keep the user in context and make the next step clear.",
+          links: { project: [project.id], assignee: [owner] },
         })
     )
     for (const [index, issue] of issues.entries()) {
       const pr = yield* services.pullRequest.create({
         title: issue.title,
-        repository: repository.id,
         number: 120 + index,
         status: index === 2 ? "merged" : "open",
         review: index === 0 ? "changesRequested" : "approved",
         checks: index === 0 ? "failing" : "passing",
+        links: { repository: [repository.id] },
       })
       yield* linkSeedRecords(Issue, "pullRequests", issue.id, pr.id)
     }

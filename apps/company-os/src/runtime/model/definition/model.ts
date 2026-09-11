@@ -14,8 +14,8 @@ import type {
 } from "#/runtime/model/definition/object.ts"
 import {
   standardQueries,
-  type Query,
   type CustomQuery,
+  type Query,
   type StandardQueries,
 } from "#/runtime/model/definition/query.ts"
 import { modelRelationships } from "#/runtime/model/definition/relationship.ts"
@@ -407,7 +407,7 @@ export function modelObjectLinkTraversals(
           source: object,
           target: link[opposite],
           traversal,
-          writable: link.writeFrom === traversal.key,
+          writable: !link.outputOnly,
         },
       ]
     })

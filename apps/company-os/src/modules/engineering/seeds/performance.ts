@@ -53,7 +53,6 @@ export const seedEngineeringPerformance = Effect.fn(
       name: `${workstreams[index % workstreams.length]} — ${companies[index % companies.length]}`,
       objective:
         "Reduce manual follow-up and make the next step clear for customers and the operations team.",
-      owner: owners[index % owners.length]!,
       status: (["planned", "active", "active", "paused", "completed"] as const)[
         index % 5
       ]!,
@@ -62,14 +61,17 @@ export const seedEngineeringPerformance = Effect.fn(
           DateTime.add(now, { days: (index % 90) - 14 })
         ).slice(0, 10)
       ),
+      links: { owner: [owners[index % owners.length]!] },
     })
     projects.push(project)
     repositories.push(
       yield* records.writer(Repository).create({
         name: `${companies[index % companies.length]} — ${workstreams[index % workstreams.length]} service`,
-        project: project.id,
-        owner: owners[index % owners.length]!,
         url: WebUrl(`https://code.example.test/engineering/service-${index}`),
+        links: {
+          project: [project.id],
+          owner: [owners[index % owners.length]!],
+        },
       })
     )
   }
@@ -82,12 +84,10 @@ export const seedEngineeringPerformance = Effect.fn(
     const title = `${changes[index % changes.length]} in ${project.name}`
     const issue = yield* records.writer(Issue).create({
       title,
-      project: project.id,
       status,
       priority: (["normal", "normal", "low", "high", "urgent"] as const)[
         Math.floor(index / 3) % 5
       ]!,
-      assignee: index % 7 === 0 ? null : owners[index % owners.length]!,
       dueDate:
         index % 6 === 0
           ? null
@@ -97,6 +97,10 @@ export const seedEngineeringPerformance = Effect.fn(
               ).slice(0, 10)
             ),
       description: `### Customer impact\n\n${customers[index % customers.length]!.companyName} reported this during their rollout.\n\n### Acceptance criteria\n\n- Preserve the original request and its owner.\n- Show a clear recovery step.\n- Record the result for the support team.\n\n${index % 17 === 0 ? "The issue occurs intermittently when several teammates work on the same account. Include concurrent updates and large result sets in verification.\n\n".repeat(15) : "Verify with an existing account and a newly invited teammate."}`,
+      links: {
+        project: [project.id],
+        assignee: index % 7 === 0 ? [] : [owners[index % owners.length]!],
+      },
     })
     const prStatus =
       status === "done"
@@ -104,7 +108,6 @@ export const seedEngineeringPerformance = Effect.fn(
         : (["draft", "open", "open", "closed"] as const)[index % 4]!
     const pr = yield* records.writer(PullRequest).create({
       title,
-      repository: repository.id,
       number: 100 + index,
       url: WebUrl(
         `https://code.example.test/engineering/service-${index % repositories.length}/pull/${100 + index}`
@@ -123,6 +126,7 @@ export const seedEngineeringPerformance = Effect.fn(
       observedAt: Timestamp(
         DateTime.formatIso(DateTime.subtract(now, { hours: index % 48 }))
       ),
+      links: { repository: [repository.id] },
     })
     yield* linkSeedRecords(Issue, "pullRequests", issue.id, pr.id)
   }

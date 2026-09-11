@@ -76,7 +76,7 @@ export function ObjectLinkEditField({
   const page = useInfiniteQuery(
     modelCollectionQuery(
       (request) => client.list({ ...request, id: record.id }),
-      { pageSize: traversal.traversal.cardinality === "many" ? 50 : 1 }
+      { pageSize: traversal.traversal.max !== 1 ? 50 : 1 }
     )
   )
   const current = describeReferences(
@@ -128,7 +128,7 @@ export function ObjectLinkEditField({
       </div>
     )
 
-  if (traversal.traversal.cardinality !== "many") {
+  if (traversal.traversal.max === 1) {
     const original = current[0]
     const selected = added[0] ?? activeCurrent[0]
     return (
@@ -137,8 +137,7 @@ export function ObjectLinkEditField({
         <div className="flex items-center gap-2">
           <ObjectReferenceSelect
             clearable={
-              client.unlink !== undefined &&
-              traversal.traversal.cardinality !== "one"
+              client.unlink !== undefined && traversal.traversal.min === 0
             }
             ariaDescribedBy={ariaDescribedBy}
             disabled={loading || loadError !== undefined}
@@ -148,7 +147,7 @@ export function ObjectLinkEditField({
             invalid={invalid}
             name={name}
             placeholder={loading ? "Loading…" : "Select a record"}
-            required={traversal.traversal.cardinality === "one"}
+            required={traversal.traversal.min > 0}
             typeId={traversal.target.from.typeId}
             value={selected?.id ?? ""}
             onBlur={onBlur}
@@ -160,7 +159,9 @@ export function ObjectLinkEditField({
               }
               setDelta(
                 target === original?.id ? [] : [target],
-                delta.remove.filter((candidate) => candidate !== target)
+                original === undefined || original.id === target
+                  ? []
+                  : [original.id]
               )
             }}
           />
@@ -230,7 +231,7 @@ export function ObjectLinkEditField({
           if (currentById.has(target)) {
             setDelta(
               delta.add,
-              delta.remove.filter((candidate) => candidate !== target)
+              delta.remove.filter((removedId) => removedId !== target)
             )
             return
           }

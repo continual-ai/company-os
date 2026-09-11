@@ -20,8 +20,8 @@ import {
   linkHttpEndpointId,
 } from "#/runtime/contract/http-endpoint.ts"
 import {
-  linkPageOutputSchema,
   linkListInputSchema,
+  linkPageOutputSchema,
   objectBatchGetInputSchema,
   objectBatchOutputSchema,
   objectListInputSchema,
@@ -30,13 +30,13 @@ import {
   pageSizeSchema,
 } from "#/runtime/contract/model-schemas.ts"
 import {
+  schemaErrorToApiError,
   toEffectErrorSchema,
   toEffectInputSchema,
   toEffectModelObjectCreateSchema,
   toEffectModelObjectUpdateSchema,
   toEffectRecordIdentifierSchema,
   toEffectSchema,
-  schemaErrorToApiError,
 } from "#/runtime/contract/schema.ts"
 import {
   isStandardActionId,
@@ -47,10 +47,10 @@ import type {
   ErrorType,
 } from "#/runtime/model/definition/error.ts"
 import {
-  type ModelCatalog,
-  type ModelLinkTraversal,
   modelObjectLinkTraversals,
   modelObjects,
+  type ModelCatalog,
+  type ModelLinkTraversal,
 } from "#/runtime/model/definition/model.ts"
 import { Etag, type ObjectType } from "#/runtime/model/definition/object.ts"
 import {
@@ -66,8 +66,8 @@ import { schema } from "#/runtime/model/definition/schema.ts"
 import { ValidationError } from "#/runtime/model/definition/standard-error.ts"
 import {
   executableModelOperations,
-  type ExecutableModelOperation,
   modelOperationErrors,
+  type ExecutableModelOperation,
 } from "#/runtime/model/operations.ts"
 
 export interface HttpApiOptions {
@@ -271,12 +271,6 @@ function addLinkEndpoints(
       )
     )
 
-    if (
-      traversal.traversal.cardinality === "one" ||
-      traversal.target.cardinality === "one"
-    ) {
-      continue
-    }
     const unlinkDescriptor = linkDescriptor(model, object, traversal, "unlink")
     result = result.add(
       HttpApiEndpoint.post(

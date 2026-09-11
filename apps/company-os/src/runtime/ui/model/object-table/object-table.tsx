@@ -20,12 +20,12 @@ import {
 } from "@company/ui/table"
 import {
   createColumnHelper,
-  type ColumnFiltersState,
+  useTable,
   type CellContext,
+  type ColumnFiltersState,
   type HeaderContext,
   type OnChangeFn,
   type SortingState,
-  useTable,
 } from "@tanstack/react-table"
 import {
   ArrowDownIcon,
@@ -36,16 +36,17 @@ import {
   PlusIcon,
   SearchXIcon,
 } from "lucide-react"
+import type { ReactNode } from "react"
 import {
   Fragment,
-  type CSSProperties,
   useEffect,
   useEffectEvent,
   useMemo,
   useState,
+  type CSSProperties,
 } from "react"
-import type { ReactNode } from "react"
 
+import { modelObjectLinkTraversals } from "#/runtime/model/index.ts"
 import {
   type ObjectType,
   type PropertyDefinition,
@@ -63,6 +64,7 @@ import {
 import { ObjectTableCell } from "#/runtime/ui/model/object-table/object-table-cell.tsx"
 import {
   objectTableProperties,
+  objectTableLinkColumnDef,
   objectTablePropertyColumnDefs,
   type ObjectTableColumn,
 } from "#/runtime/ui/model/object-table/object-table-columns.ts"
@@ -70,10 +72,11 @@ import {
   objectTableFeatures,
   objectTableValueText,
   type ObjectTableImageResolver,
-  type ObjectTableRecordResolver,
   type ObjectTableRecord,
+  type ObjectTableRecordResolver,
   type ObjectTableValue,
 } from "#/runtime/ui/model/object-table/object-table-config.ts"
+import { ObjectTableLinkCell } from "#/runtime/ui/model/object-table/object-table-link-cell.tsx"
 import { useObjectTableNavigation } from "#/runtime/ui/model/object-table/object-table-navigation.ts"
 import { ObjectTableProperty } from "#/runtime/ui/model/object-table/object-table-property.tsx"
 import {
@@ -81,10 +84,11 @@ import {
   ObjectTableToolbar,
 } from "#/runtime/ui/model/object-table/object-table-toolbar.tsx"
 import {
-  useObjectTableRows,
   tableHeaderHeight,
   tableRowHeight,
+  useObjectTableRows,
 } from "#/runtime/ui/model/object-table/object-table-virtualization.ts"
+import { useModelRuntime } from "#/runtime/ui/model/runtime-context.tsx"
 
 export interface ObjectTableProps {
   canDeleteRecord?: ((recordId: string) => boolean) | undefined
@@ -120,7 +124,6 @@ export interface ObjectTableProps {
         readonly totalSize: number
       }
     | undefined
-  parentLabel?: string | undefined
   recordHref?: ((recordId: string) => string) | undefined
   renderSelectedRecordActions?: ((recordId: string) => ReactNode) | undefined
   toolbarActions?: ReactNode
@@ -253,6 +256,32 @@ function SelectionCell({
   )
 }
 
+function linkColumnDefs(
+  links: ReadonlyArray<ReturnType<typeof modelObjectLinkTraversals>[number]>,
+  object: ObjectType,
+  resolveRecord: ObjectTableProps["resolveRecord"],
+  canUpdateRecord: ObjectTableProps["canUpdateRecord"]
+) {
+  return links.map((link) => ({
+    ...objectTableLinkColumnDef(link),
+    id: link.traversal.key,
+    header: () => (
+      <span className="px-2 font-medium">{link.traversal.label}</span>
+    ),
+    cell: ({
+      row,
+    }: CellContext<typeof objectTableFeatures, ObjectTableRecord>) => (
+      <ObjectTableLinkCell
+        object={object}
+        record={row.original}
+        link={link}
+        resolveRecord={resolveRecord}
+        editable={canUpdateRecord?.(row.original.id) ?? false}
+      />
+    ),
+  }))
+}
+
 export function ObjectTable({
   canDeleteRecord,
   canFilterProperty,
@@ -265,7 +294,6 @@ export function ObjectTable({
   onCellCommit,
   onCreateRecord,
   onDeleteRecords,
-  parentLabel,
   records,
   resetKey,
   recordHref,
@@ -305,10 +333,12 @@ export function ObjectTable({
     },
   ])
   const [isHorizontallyScrolled, setIsHorizontallyScrolled] = useState(false)
-  const properties = useMemo(
-    () => objectTableProperties(object, parentLabel),
-    [object, parentLabel]
+  const runtime = useModelRuntime()
+  const links = useMemo(
+    () => modelObjectLinkTraversals(runtime.model, object),
+    [runtime, object]
   )
+  const properties = useMemo(() => objectTableProperties(object), [object])
   const columns = useMemo(() => {
     const propertyColumns = objectTablePropertyColumnDefs({
       object,
@@ -333,8 +363,21 @@ export function ObjectTable({
         ]
       : []
 
-    return columnHelper.columns([...selectionColumns, ...propertyColumns])
+    const linkColumns = linkColumnDefs(
+      links,
+      object,
+      resolveRecord,
+      canUpdateRecord
+    )
+    return columnHelper.columns([
+      ...selectionColumns,
+      ...propertyColumns,
+      ...linkColumns,
+    ])
   }, [
+    links,
+    resolveRecord,
+    canUpdateRecord,
     canFilterProperty,
     canSortProperty,
     enableRowSelection,
@@ -361,14 +404,28 @@ export function ObjectTable({
         ],
         end: [],
       },
-      columnVisibility: Object.fromEntries(
-        properties.map(([propertyId]) => [
-          propertyId,
-          defaultPropertyIds.has(propertyId),
-        ])
-      ),
+      columnVisibility: Object.fromEntries([
+        ...properties.map(
+          ([propertyId]) =>
+            [propertyId, defaultPropertyIds.has(propertyId)] as const
+        ),
+        ...links.map(
+          ({ traversal }) =>
+            [
+              traversal.key,
+              defaultPropertyIds.has(traversal.key) ||
+                (visiblePropertyIds === undefined && traversal.max === 1),
+            ] as const
+        ),
+      ]),
     }
-  }, [enableRowSelection, object.display, properties, visiblePropertyIds])
+  }, [
+    enableRowSelection,
+    links,
+    object.display,
+    properties,
+    visiblePropertyIds,
+  ])
 
   const table = useTable({
     features: objectTableFeatures,
@@ -389,7 +446,14 @@ export function ObjectTable({
     ...(onSortingChange === undefined ? {} : { onSortingChange }),
     state: {
       ...(columnFilters === undefined ? {} : { columnFilters }),
-      ...(columnVisibility === undefined ? {} : { columnVisibility }),
+      ...(columnVisibility === undefined
+        ? {}
+        : {
+            columnVisibility: {
+              ...initialState.columnVisibility,
+              ...columnVisibility,
+            },
+          }),
       ...(sorting === undefined ? {} : { sorting }),
     },
   })

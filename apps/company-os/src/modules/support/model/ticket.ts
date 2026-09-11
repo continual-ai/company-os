@@ -1,7 +1,7 @@
 import { NoteSubject } from "#/modules/notes/model/index.ts"
 import { Company, Contact } from "#/modules/sales/model/index.ts"
 import { User } from "#/runtime/access/model/index.ts"
-import { defineObject, schema } from "#/runtime/model/index.ts"
+import { defineLink, defineObject, schema } from "#/runtime/model/index.ts"
 
 export const Ticket = defineObject({
   id: "ticket",
@@ -16,21 +16,6 @@ export const Ticket = defineObject({
       label: "Description",
       maxLength: 50000,
       nullable: true,
-    }),
-    company: schema.reference(Company, {
-      label: "Company",
-      nullable: true,
-      inverse: { key: "tickets", label: "Tickets" },
-    }),
-    requester: schema.reference(Contact, {
-      label: "Requester",
-      nullable: true,
-      inverse: { key: "tickets", label: "Tickets" },
-    }),
-    owner: schema.reference(User, {
-      label: "Owner",
-      nullable: true,
-      inverse: { key: "tickets", label: "Tickets" },
     }),
     priority: schema.select({
       label: "Priority",
@@ -68,4 +53,31 @@ export const Ticket = defineObject({
   },
   search: { fields: ["subject", "description", "resolution", "externalId"] },
   display: { title: "subject", icon: "messageSquare", status: "status" },
+})
+
+export const TicketCompany = defineLink({
+  id: "ticketCompany",
+  name: "Ticket Company",
+  from: Ticket,
+  to: Company,
+  forward: { key: "company", label: "Company", max: 1 },
+  reverse: { key: "tickets", label: "Tickets" },
+})
+
+export const TicketRequester = defineLink({
+  id: "ticketRequester",
+  name: "Ticket Requester",
+  from: Ticket,
+  to: Contact,
+  forward: { key: "requester", label: "Requester", max: 1 },
+  reverse: { key: "tickets", label: "Tickets" },
+})
+
+export const TicketOwner = defineLink({
+  id: "ticketOwner",
+  name: "Ticket Owner",
+  from: Ticket,
+  to: User,
+  forward: { key: "owner", label: "Owner", max: 1 },
+  reverse: { key: "tickets", label: "Tickets" },
 })

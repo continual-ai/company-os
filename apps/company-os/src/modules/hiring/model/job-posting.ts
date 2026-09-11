@@ -1,6 +1,6 @@
 import { NoteSubject } from "#/modules/notes/model/index.ts"
 import { User } from "#/runtime/access/model/index.ts"
-import { defineObject, schema } from "#/runtime/model/index.ts"
+import { defineLink, defineObject, schema } from "#/runtime/model/index.ts"
 
 export const JobPosting = defineObject({
   id: "jobPosting",
@@ -47,11 +47,6 @@ export const JobPosting = defineObject({
         { value: "closed", label: "Closed" },
       ],
     }),
-    hiringManager: schema.reference(User, {
-      label: "Hiring manager",
-      nullable: true,
-      inverse: { key: "jobPostings", label: "Job postings" },
-    }),
     // These dates are manually recorded, not side effects of status updates.
     publishedAt: schema.timestamp({
       label: "Published at (manual)",
@@ -64,4 +59,13 @@ export const JobPosting = defineObject({
   },
   search: { fields: ["title", "description", "department", "location"] },
   display: { icon: "briefcaseBusiness", title: "title", status: "status" },
+})
+
+export const JobPostingHiringManager = defineLink({
+  id: "jobPostingHiringManager",
+  name: "JobPosting Hiring manager",
+  from: JobPosting,
+  to: User,
+  forward: { key: "hiringManager", label: "Hiring manager", max: 1 },
+  reverse: { key: "jobPostings", label: "Job postings" },
 })

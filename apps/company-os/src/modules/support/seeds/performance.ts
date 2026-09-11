@@ -40,9 +40,6 @@ export const seedSupportPerformance = Effect.fn(
     const closed = status === "resolved" || status === "closed"
     const ticket = yield* records.writer(Ticket).create({
       subject: `${subjects[index % subjects.length]} — ${customer.companyName}`,
-      company: customer.company,
-      requester: customer.contact,
-      owner: index % 9 === 0 ? null : customer.owner,
       status,
       priority: (["normal", "normal", "low", "high", "urgent"] as const)[
         Math.floor(index / 2) % 5
@@ -57,6 +54,11 @@ export const seedSupportPerformance = Effect.fn(
         ? "Verified the fix with the requester and shared the updated instructions with their team."
         : null,
       externalId: `HELP-${4200 + index}`,
+      links: {
+        company: [customer.company],
+        requester: [customer.contact],
+        owner: index % 9 === 0 ? [] : [customer.owner],
+      },
     })
     if (status === "waitingOnTeam") escalatable.push(ticket.id)
     for (const [replyIndex, message] of (
@@ -81,7 +83,6 @@ export const seedSupportPerformance = Effect.fn(
       ] as const
     ).entries()) {
       yield* records.writer(Reply).create({
-        ticket: ticket.id,
         subject: `Re: ${ticket.subject}`,
         direction: message.direction,
         status: message.status,
@@ -96,6 +97,7 @@ export const seedSupportPerformance = Effect.fn(
                 )
               )
             : null,
+        links: { ticket: [ticket.id] },
       })
     }
   }

@@ -25,8 +25,7 @@ export function RecordRelatedCreateMenu({
   const entries = relationships
     .filter(
       (item) =>
-        totals.has(item.key) &&
-        (item.cardinality === "many" || totals.get(item.key) === 0)
+        totals.has(item.key) && (item.max !== 1 || totals.get(item.key) === 0)
     )
     .flatMap((item) =>
       item.creates.map((create) => ({

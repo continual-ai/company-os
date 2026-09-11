@@ -47,7 +47,6 @@ fixture.test(
 
       const notes = records.writer(Note)
       const first = yield* notes.create(noteSeed(0, "Notebook"))
-      expect(first.parent).toBe("platform_system")
       const updated = yield* notes.update({
         id: first.id,
         etag: first.etag,

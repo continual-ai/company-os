@@ -13,6 +13,7 @@ import type { ModelCatalog } from "#/runtime/model/definition/model.ts"
 import {
   MAX_BATCH_DELETE_SIZE,
   MAX_BATCH_GET_SIZE,
+  RecordId,
   type ListRequest,
   type ObjectBatchDeleteInput,
   type ObjectBatchGetInput,
@@ -21,15 +22,14 @@ import {
   type ObjectGetInput,
   type ObjectType,
   type ObjectWriterUpdateInput,
-  RecordId,
 } from "#/runtime/model/index.ts"
 import { requireProjectAccess } from "#/runtime/server/auth/project-access.ts"
 import { Links } from "#/runtime/server/model/link-service.ts"
 import {
+  assertRecordWritable,
   makeObjectWrites,
   ObjectRepositories,
   type ObjectRepository,
-  assertRecordWritable,
 } from "#/runtime/server/model/object-repositories.ts"
 import { RecordIdentifierResolver } from "#/runtime/server/model/record-identifier-resolver.ts"
 import { Database } from "#/runtime/server/storage/database.ts"
@@ -164,7 +164,7 @@ function makeOperations<const O extends ObjectType>(
         const standard = values as unknown as ObjectCreateInput<O>
         const record = yield* writes.create(standard)
         yield* links.initialize(object, record.id, initialLinks)
-        return record
+        return yield* repository.get(record.id)
       })
     )
   })
@@ -182,7 +182,7 @@ function makeOperations<const O extends ObjectType>(
         const standard = values as unknown as ObjectWriterUpdateInput<O>
         const record = yield* writes.update(standard)
         yield* links.update(object, record.id, deltas)
-        return record
+        return yield* repository.get(record.id)
       })
     )
   })

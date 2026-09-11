@@ -26,15 +26,13 @@ export const seedMarketingDemo = Effect.fn("@company/seedMarketingDemo")(
       name: "Operations roundtable",
       channel: "event",
       status: "active",
-      owner,
       objective:
         "Bring operations leaders together to share lessons from their pilots.",
+      links: { owner: [owner] },
     })
     for (const [index, contact] of contacts.entries()) {
       yield* services.enrollment.create({
         name: `Roundtable participant ${index + 1}`,
-        campaign: campaign.id,
-        contact,
         status:
           index === 1 ? "unsubscribed" : index === 0 ? "active" : "paused",
         step: index === 0 ? 1 : 0,
@@ -42,14 +40,13 @@ export const seedMarketingDemo = Effect.fn("@company/seedMarketingDemo")(
           index === 0
             ? "Opted in; ready for review."
             : "Do not send until audience eligibility is checked.",
+        links: { campaign: [campaign.id], contact: [contact] },
       })
       yield* services.outreach.create({
         subject: "Invitation to the operations roundtable",
-        campaign: campaign.id,
-        contact,
-        owner,
         status: index === 0 ? "review" : "canceled",
         body: "A small discussion about what makes customer operations work well.",
+        links: { campaign: [campaign.id], contact: [contact], owner: [owner] },
       })
     }
   }

@@ -187,12 +187,16 @@ application.test("supports a paginated, repeatable performance dataset", () =>
     expect(tickets.some((ticket) => ticket.resolution !== null)).toBe(true)
     const ticketTable = Storage.objects.ticket
     const primary = Storage.linkTables.contactPrimaryCompany
+    const requester = Storage.linkTables.ticketRequester
+    const company = Storage.linkTables.ticketCompany
     const [mismatch] = yield* sql<{
       count: number
     }>`select count(*)::int as count
       from ${ticketTable}
-      left join ${primary} on ${primary.columns.forwardId} = ${ticketTable.columns.requesterId}
-      where ${primary.columns.reverseId} is distinct from ${ticketTable.columns.companyId}`
+      join ${requester} on ${requester.columns.forwardId} = ${ticketTable.columns.id}
+      join ${company} on ${company.columns.forwardId} = ${ticketTable.columns.id}
+      left join ${primary} on ${primary.columns.forwardId} = ${requester.columns.reverseId}
+      where ${primary.columns.reverseId} is distinct from ${company.columns.reverseId}`
     expect(mismatch?.count).toBe(0)
   })
 )

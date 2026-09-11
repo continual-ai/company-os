@@ -1,7 +1,6 @@
 import { Effect } from "effect"
 
 import { RecordId } from "#/runtime/model/index.ts"
-import { ROOT_ID } from "#/runtime/model/system-records.ts"
 import {
   ModuleSetting,
   requiredModuleIds,
@@ -30,7 +29,6 @@ export const seedModuleSettings = Effect.fn("platform.seedModuleSettings")(
         enabled:
           existing.length === 0 ||
           requiredModuleIds.some((id) => id === module.id),
-        parent: ROOT_ID,
         aliases: [],
         metadata: {},
         systemManaged: true,

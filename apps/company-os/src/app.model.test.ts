@@ -1,8 +1,7 @@
 import { describe, expect, expectTypeOf, it } from "vitest"
 
 import { appMetadata } from "#/app.config.ts"
-import { type ActorId, type IdentityId } from "#/app.model.ts"
-import { Model } from "#/app.model.ts"
+import { Model, type ActorId, type IdentityId } from "#/app.model.ts"
 import {
   describeModel,
   type ModelObjectCreateInput,
@@ -42,32 +41,24 @@ describe("model contract", () => {
         id: "contactPrimaryCompany",
         forward: expect.objectContaining({
           key: "primaryCompany",
-          cardinality: "zeroOrOne",
+          min: 0,
+          max: 1,
         }),
         reverse: expect.objectContaining({
           key: "primaryContacts",
-          cardinality: "many",
+          min: 0,
         }),
-        storage: {
-          kind: "link",
-          linkId: "contactPrimaryCompany",
-          subsetOf: "contactCompanies",
-        },
+        subsetOf: "contactCompanies",
       })
     )
     expect(description.relationships).toContainEqual(
       expect.objectContaining({
-        id: "lead.convertedCompany",
+        id: "leadConvertedCompany",
         reverse: expect.objectContaining({
           key: "convertedLeads",
           label: "Converted leads",
         }),
-        storage: {
-          kind: "reference",
-          objectType: "lead",
-          property: "convertedCompany",
-          onDelete: "restrict",
-        },
+        outputOnly: true,
       })
     )
     expectTypeOf<
@@ -126,7 +117,8 @@ describe("model contract", () => {
         expect.objectContaining({
           id: "contactPrimaryCompany",
           forward: expect.objectContaining({
-            cardinality: "zeroOrOne",
+            min: 0,
+            max: 1,
             description: "The company this person mainly works with.",
             from: { kind: "object", typeId: "contact" },
             key: "primaryCompany",
@@ -134,7 +126,7 @@ describe("model contract", () => {
             to: { kind: "object", typeId: "company" },
           }),
           reverse: expect.objectContaining({
-            cardinality: "many",
+            min: 0,
             from: { kind: "object", typeId: "company" },
             key: "primaryContacts",
             label: "Primary contacts",
@@ -144,7 +136,7 @@ describe("model contract", () => {
         expect.objectContaining({
           id: "noteSubjects",
           forward: expect.objectContaining({
-            cardinality: "many",
+            min: 0,
             description:
               "Link the people, companies, or work this note is about.",
             from: { kind: "object", typeId: "note" },
@@ -153,7 +145,7 @@ describe("model contract", () => {
             to: { kind: "interface", typeId: "noteSubject" },
           }),
           reverse: expect.objectContaining({
-            cardinality: "many",
+            min: 0,
             description: "Notes attached to this business record.",
             from: { kind: "interface", typeId: "noteSubject" },
             key: "notes",
@@ -202,15 +194,12 @@ describe("model contract", () => {
       expect.arrayContaining([
         expect.objectContaining({
           id: "company",
-          parent: { kind: "root", typeId: "root" },
         }),
         expect.objectContaining({
           id: "deal",
-          parent: { kind: "root", typeId: "root" },
         }),
         expect.objectContaining({
           id: "lineItem",
-          parent: { kind: "object", typeId: "deal" },
         }),
       ])
     )
@@ -229,7 +218,6 @@ describe("model contract", () => {
     expect(Model.objects.contact.properties).not.toHaveProperty(
       "primaryCompany"
     )
-    expectTypeOf(Model.objects.deal.parent.typeId).toEqualTypeOf<"root">()
     // Note subjects are exactly the NoteSubject implementers, whichever modules supply them.
     type NoteSubjectId = RecordIdOf<
       typeof Model,

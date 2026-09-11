@@ -1,8 +1,8 @@
 import { Button } from "@company/ui/button"
 import { PencilIcon } from "lucide-react"
 
+import { modelObjectLinkTraversals } from "#/runtime/model/index.ts"
 import {
-  parentName,
   modelObjectProperty,
   tableRecord,
   type ClientRecord,
@@ -10,11 +10,12 @@ import {
   type ObjectRecordPresentation,
 } from "#/runtime/ui/model/object-client.ts"
 import {
-  objectFormProperties,
   isSupportedFormSchema,
+  objectFormProperties,
 } from "#/runtime/ui/model/object-form.ts"
 import { objectPropertyValue } from "#/runtime/ui/model/object-property-value.tsx"
 import { objectTablePropertySchema } from "#/runtime/ui/model/object-table/object-table-cell-types.ts"
+import { RecordLinkValue } from "#/runtime/ui/model/record-link-value.tsx"
 import { useModelRuntime } from "#/runtime/ui/model/runtime-context.tsx"
 
 export function ObjectPropertiesCard({
@@ -38,12 +39,12 @@ export function ObjectPropertiesCard({
       .filter(({ schema }) => isSupportedFormSchema(schema))
       .map(({ id }) => id)
   )
-  const available = [
-    ...(object.parent.kind === "root"
-      ? []
-      : [["parent", { label: parentName(runtime, object) }] as const]),
-    ...Object.entries(object.properties),
-  ]
+  const traversals = modelObjectLinkTraversals(runtime.model, object).filter(
+    ({ traversal }) =>
+      traversal.max === 1 &&
+      (fields === undefined || fields.includes(traversal.key))
+  )
+  const available = Object.entries(object.properties)
   const properties =
     fields === undefined
       ? available
@@ -107,6 +108,33 @@ export function ObjectPropertiesCard({
             </div>
           )
         })}
+        {traversals.map(({ traversal, writable }) => (
+          <div
+            key={traversal.key}
+            data-record-field={traversal.key}
+            className="group relative grid min-h-8 grid-cols-[7.5rem_minmax(0,1fr)] items-center gap-x-2 rounded-md px-2 py-1.5 hover:bg-muted/40"
+          >
+            <dt className="text-xs text-muted-foreground">{traversal.label}</dt>
+            <dd className="min-w-0 pr-5 text-xs">
+              <RecordLinkValue
+                ids={record.links?.[traversal.key]?.ids ?? []}
+                totalSize={record.links?.[traversal.key]?.totalSize ?? 0}
+                resolveRecord={(id) => references.get(id)}
+              />
+            </dd>
+            {onEdit && writable && (
+              <Button
+                size="icon-xs"
+                variant="ghost"
+                className="absolute right-0 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
+                aria-label={`Edit ${traversal.label}`}
+                onClick={() => onEdit(traversal.key)}
+              >
+                <PencilIcon />
+              </Button>
+            )}
+          </div>
+        ))}
       </dl>
     </section>
   )

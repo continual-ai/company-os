@@ -123,6 +123,10 @@ fixture.test(
       })
       const member = yield* services.person.create({ name: "Member" })
       const links = yield* Links
+      yield* links.link(linkTraversal(Person, "accounts"), {
+        id: member.id,
+        target: standalone.id,
+      })
       yield* links.link(linkTraversal(Person, "primaryAccount"), {
         id: member.id,
         target: standalone.id,

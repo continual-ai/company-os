@@ -1,7 +1,7 @@
 import { Campaign } from "#/modules/marketing/model/campaign.ts"
 import { NoteSubject } from "#/modules/notes/model/index.ts"
 import { User } from "#/runtime/access/model/index.ts"
-import { defineObject, schema } from "#/runtime/model/index.ts"
+import { defineLink, defineObject, schema } from "#/runtime/model/index.ts"
 
 export const Content = defineObject({
   id: "content",
@@ -12,11 +12,6 @@ export const Content = defineObject({
   implements: [{ interface: NoteSubject }],
   properties: {
     title: schema.string({ label: "Title", maxLength: 300, minLength: 1 }),
-    campaign: schema.reference(Campaign, {
-      label: "Campaign",
-      nullable: true,
-      inverse: { key: "content", label: "Content" },
-    }),
     format: schema.select({
       label: "Format",
       default: "article",
@@ -40,11 +35,6 @@ export const Content = defineObject({
         { value: "archived", label: "Archived" },
       ],
     }),
-    owner: schema.reference(User, {
-      label: "Owner",
-      nullable: true,
-      inverse: { key: "content", label: "Content" },
-    }),
     brief: schema.string({ label: "Brief", maxLength: 20000, nullable: true }),
     body: schema.markdown({ label: "Body", maxLength: 100000, nullable: true }),
     scheduledAt: schema.timestamp({ label: "Scheduled for", nullable: true }),
@@ -56,4 +46,22 @@ export const Content = defineObject({
   },
   search: { fields: ["title", "brief", "body"] },
   display: { title: "title", icon: "fileText", status: "status" },
+})
+
+export const ContentCampaign = defineLink({
+  id: "contentCampaign",
+  name: "Content Campaign",
+  from: Content,
+  to: Campaign,
+  forward: { key: "campaign", label: "Campaign", max: 1 },
+  reverse: { key: "content", label: "Content" },
+})
+
+export const ContentOwner = defineLink({
+  id: "contentOwner",
+  name: "Content Owner",
+  from: Content,
+  to: User,
+  forward: { key: "owner", label: "Owner", max: 1 },
+  reverse: { key: "content", label: "Content" },
 })

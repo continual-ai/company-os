@@ -4,15 +4,13 @@ import { isNewerOrEqualRecord } from "#/runtime/client/model-cache.ts"
 import { MAX_PAGE_SIZE } from "#/runtime/model/index.ts"
 import { ROOT_ID } from "#/runtime/model/system-records.ts"
 import {
-  clientFor,
+  recordBatchFor,
   recordLabel,
-  recordObjectTypes,
   tableRecord,
-  type ObjectRecordPresentation,
   type ClientRecord,
   type ModelObject,
+  type ObjectRecordPresentation,
 } from "#/runtime/ui/model/object-client.ts"
-import { objectTablePropertySchema } from "#/runtime/ui/model/object-table/object-table-cell-types.ts"
 import {
   useModelRuntime,
   type ModelUiRuntime,
@@ -58,32 +56,16 @@ export function recordReferenceRequests(
   runtime: ModelUiRuntime,
   items: ReadonlyArray<ReferenceItem>
 ) {
-  const references = new Map<string, Set<string>>()
-  const add = (type: string, value: unknown) => {
-    if (typeof value !== "string" || value === ROOT_ID) return
-    const ids = references.get(type) ?? new Set<string>()
-    ids.add(value)
-    references.set(type, ids)
+  const ids = new Set<string>()
+  for (const { record } of items) {
+    if (typeof record.createdBy === "string") ids.add(record.createdBy)
+    if (typeof record.updatedBy === "string") ids.add(record.updatedBy)
+    for (const link of Object.values(record.links ?? {}))
+      for (const id of link.ids) ids.add(id)
   }
-  for (const { object, record } of items) {
-    add(runtime.model.actor.id, record.createdBy)
-    if (object.parent.kind !== "root") add(object.parent.typeId, record.parent)
-    for (const [key, property] of Object.entries(object.properties)) {
-      const field = objectTablePropertySchema(property)
-      if (field.kind === "recordId") add(field.typeId, record[key])
-    }
-  }
-  return [...references].flatMap(([type, ids]) =>
-    recordObjectTypes(runtime, type).flatMap((target) =>
-      chunks([...ids].sort(), MAX_PAGE_SIZE).map((batch) => ({
-        target,
-        query: clientFor(runtime, target).list({
-          filter: { field: "id", operator: "in", value: batch },
-          pageSize: MAX_PAGE_SIZE,
-        }),
-      }))
-    )
-  )
+  return chunks([...ids].sort(), MAX_PAGE_SIZE).map((batch) => ({
+    query: recordBatchFor(runtime, batch),
+  }))
 }
 
 function useRecordReferenceBatches(
@@ -101,15 +83,20 @@ function useRecordReferenceBatches(
   const labels = new Map<string, string>([[ROOT_ID, runtime.model.root.name]])
   const recordsById = new Map<string, ObjectRecordPresentation>()
   const versions = new Map<string, ClientRecord>()
-  results.forEach((result, index) => {
-    const target = requests[index]!.target
+  results.forEach((result) => {
     for (const record of result.data?.items ?? []) {
+      const target =
+        record.objectType === undefined
+          ? undefined
+          : runtime.model.objects[record.objectType]
+      if (!target) continue
       const previous = versions.get(record.id)
       if (previous && !isNewerOrEqualRecord(record, previous)) continue
       versions.set(record.id, record)
       labels.set(record.id, recordLabel(target, record))
       recordsById.set(record.id, {
         object: target,
+        source: record,
         record: tableRecord(target, record),
       })
     }

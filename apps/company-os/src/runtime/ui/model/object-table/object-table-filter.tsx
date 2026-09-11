@@ -17,6 +17,7 @@ import {
 } from "@company/ui/dropdown-menu"
 import { Input } from "@company/ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "@company/ui/popover"
+import { useQuery } from "@tanstack/react-query"
 import {
   CheckIcon,
   ChevronLeftIcon,
@@ -28,6 +29,11 @@ import { useEffect, useMemo, useRef, useState } from "react"
 
 import type { PropertyDefinition } from "#/runtime/model/index.ts"
 import { type ObjectTableFilterValue } from "#/runtime/ui/model/collection-view.ts"
+import {
+  recordBatchFor,
+  recordLabel,
+} from "#/runtime/ui/model/object-client.ts"
+import { ObjectReferenceSelect } from "#/runtime/ui/model/object-reference-select.tsx"
 import { objectTablePropertySchema } from "#/runtime/ui/model/object-table/object-table-cell-types.ts"
 import {
   objectTableColumnMeta,
@@ -44,6 +50,7 @@ import {
   type ObjectTableInstance,
 } from "#/runtime/ui/model/object-table/object-table-config.ts"
 import { ObjectTableProperty } from "#/runtime/ui/model/object-table/object-table-property.tsx"
+import { useModelRuntime } from "#/runtime/ui/model/runtime-context.tsx"
 
 interface FilterOption {
   label: string
@@ -148,7 +155,21 @@ function InitialFilterValue({
         />
       </div>
 
-      {options === null ? (
+      {property.kind === "recordId" ? (
+        <div className="p-1.5">
+          <ObjectReferenceSelect
+            allowCreate={false}
+            name={`filter-${column.id}`}
+            typeId={property.typeId}
+            value=""
+            onBlur={() => {}}
+            onValueChange={(value) => {
+              applyFilter(column, property, [value])
+              onComplete()
+            }}
+          />
+        </div>
+      ) : options === null ? (
         <form
           className="flex gap-1.5 p-1.5"
           onSubmit={(event) => {
@@ -429,6 +450,43 @@ function OptionFilterEditor({
   )
 }
 
+function RecordFilterValue({
+  column,
+  filter,
+  typeId,
+}: {
+  column: ObjectTableColumn
+  filter: ObjectTableFilterValue
+  typeId: string
+}) {
+  const runtime = useModelRuntime()
+  const value = filter.values[0] ?? ""
+  const { data } = useQuery({
+    ...recordBatchFor(runtime, value ? [value] : []),
+    enabled: value !== "",
+  })
+  const record = data?.items[0]
+  const object = record?.objectType
+    ? runtime.model.objects[record.objectType]
+    : undefined
+  const label = record && object ? recordLabel(object, record) : undefined
+  return (
+    <ObjectReferenceSelect
+      appearance="inline"
+      allowCreate={false}
+      includeHiddenInput={false}
+      name={`filter-${column.id}`}
+      typeId={typeId}
+      value={value}
+      initialLabel={label}
+      onBlur={() => {}}
+      onValueChange={(next) =>
+        column.setFilterValue({ ...filter, values: next ? [next] : [] })
+      }
+    />
+  )
+}
+
 function FilterValue({
   column,
   filter,
@@ -440,6 +498,14 @@ function FilterValue({
 }) {
   const property = objectTableColumnMeta(column)?.property
   if (property === undefined || !hasFilterInput(filter.operator)) return null
+  if (property.kind === "recordId")
+    return (
+      <RecordFilterValue
+        column={column}
+        filter={filter}
+        typeId={property.typeId}
+      />
+    )
   const options = filterOptions(property)
 
   return (

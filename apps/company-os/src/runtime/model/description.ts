@@ -3,18 +3,18 @@ import type { Action } from "#/runtime/model/definition/action.ts"
 import type { InterfaceType } from "#/runtime/model/definition/interface.ts"
 import type { LinkType } from "#/runtime/model/definition/link.ts"
 import {
-  type ModelCatalog,
-  type ModelObject,
   modelActions,
   modelInterfaces,
   modelLinks,
   modelModules,
   modelObjects,
   modelQueries,
+  type ModelCatalog,
+  type ModelObject,
 } from "#/runtime/model/definition/model.ts"
 import type { ModuleMetadata } from "#/runtime/model/definition/module.ts"
 import type { ObjectType } from "#/runtime/model/definition/object.ts"
-import type { Query, CustomQuery } from "#/runtime/model/definition/query.ts"
+import type { CustomQuery, Query } from "#/runtime/model/definition/query.ts"
 import {
   modelRelationships,
   type ModelRelationship,
@@ -22,15 +22,7 @@ import {
 
 export const MODEL_DESCRIPTION_VERSION = "0.30" as const
 
-type ObjectDescription = Omit<
-  ObjectType,
-  "actions" | "queries" | "kind" | "parent"
-> & {
-  parent: {
-    readonly kind: "interface" | "object" | "root"
-    readonly typeId: string
-  }
-}
+type ObjectDescription = Omit<ObjectType, "actions" | "queries" | "kind"> & {}
 
 /** Serializable membership metadata for one declared model module. */
 export interface ModuleDescription extends ModuleMetadata {
@@ -69,8 +61,6 @@ function describeObject({
     ...description,
     display: { ...description.display },
     interfaces: { ...description.interfaces },
-    parent: { ...description.parent },
-    properties: { ...description.properties },
   }
 }
 

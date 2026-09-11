@@ -26,6 +26,11 @@ import {
   pageSizeSchema,
 } from "#/runtime/contract/model-schemas.ts"
 import {
+  recordBatchInput,
+  recordBatchResult,
+  type RecordBatchInput,
+} from "#/runtime/contract/record-batch.ts"
+import {
   toEffectInputSchema,
   toEffectRecordIdentifierSchema,
   toEffectSchema,
@@ -56,6 +61,9 @@ export interface ModelMcpBinding {
     readonly model: ModelCatalog
     readonly services: Readonly<Record<string, object>>
   }
+  readonly batchGetRecords?: (
+    input: RecordBatchInput
+  ) => Promise<ModelMcpResult>
   readonly name: string
   readonly run: (
     descriptor: ExecutableModelOperation,
@@ -160,12 +168,36 @@ export function createModelMcpServer({
   name,
   run,
   version,
+  batchGetRecords,
 }: ModelMcpBinding): McpServer {
   const server = new McpServer({
     name,
     version,
   })
 
+  if (batchGetRecords)
+    server.registerTool(
+      "records.batchGet",
+      {
+        title: "Get records by ID",
+        description:
+          "Hydrate IDs of any active object type. Returns canonical records in input order, deduplicated, with missingIds for unavailable records.",
+        inputSchema: mcpSchema(recordBatchInput),
+        outputSchema: mcpSchema(recordBatchResult(exposed)),
+        annotations: {
+          readOnlyHint: true,
+          destructiveHint: false,
+          idempotentHint: true,
+          openWorldHint: false,
+        },
+      },
+      async (input) =>
+        toolResponse(
+          await batchGetRecords(
+            Schema.decodeUnknownSync(recordBatchInput)(input)
+          )
+        )
+    )
   for (const descriptor of executableModelOperations(exposed)) {
     const { definition, object } = descriptor
     if (descriptor.linkTraversal !== undefined) {

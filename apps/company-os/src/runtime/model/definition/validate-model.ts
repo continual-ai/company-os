@@ -131,17 +131,6 @@ function assertObjectsResolvable({
     ...interfaceIds,
   ])
   for (const object of objects) {
-    const parentRegistered =
-      (object.parent.kind === "root" && object.parent.typeId === Root.id) ||
-      (object.parent.kind === "object" &&
-        objectsById.has(object.parent.typeId)) ||
-      (object.parent.kind === "interface" &&
-        interfaceIds.includes(object.parent.typeId))
-    if (!parentRegistered) {
-      throw new Error(
-        `Object '${object.id}' parent type '${object.parent.typeId}' is not registered as ${object.parent.kind} in model '${name}'.`
-      )
-    }
     for (const [propertyId, property] of Object.entries(object.properties)) {
       assertReferencesRegistered(
         `Object '${object.id}' property '${propertyId}'`,
@@ -175,21 +164,6 @@ function assertObjectsResolvable({
         registeredTypeIds,
         name
       )
-    }
-  }
-  for (const object of objects) {
-    const ancestry = new Set([object.id])
-    let parent = object.parent
-    while (parent.kind === "object") {
-      if (ancestry.has(parent.typeId)) {
-        throw new Error(
-          `Object '${object.id}' has a cyclic parent hierarchy in model '${name}'.`
-        )
-      }
-      ancestry.add(parent.typeId)
-      const parentObject = objectsById.get(parent.typeId)
-      if (parentObject === undefined) break
-      parent = parentObject.parent
     }
   }
 }
@@ -303,11 +277,25 @@ function assertLinksResolvable({
   }
 }
 
-function assertUniqueRulesResolvable({ objects }: ModelDefinitions): void {
+function assertUniqueRulesResolvable({
+  objects,
+  links,
+}: ModelDefinitions): void {
   for (const object of objects) {
     for (const [ruleId, fields] of Object.entries(object.uniqueBy)) {
       for (const field of fields) {
-        if (field !== "parent" && !Object.hasOwn(object.properties, field)) {
+        if (
+          !Object.hasOwn(object.properties, field) &&
+          !links.some((link) =>
+            [link.forward, link.reverse].some(
+              (end) =>
+                (end.from.typeId === object.id ||
+                  Object.hasOwn(object.interfaces, end.from.typeId)) &&
+                end.key === field &&
+                end.max === 1
+            )
+          )
+        ) {
           throw new Error(
             `Object '${object.id}' unique rule '${ruleId}' references unknown field '${field}'.`
           )
@@ -334,17 +322,13 @@ export function assertRelationshipNamesUnambiguous(
 ): void {
   for (const object of objects) {
     const names = new Set([
-      "parent",
       ...Object.keys(object.properties),
       ...generatedQueryMethodIds,
       ...Object.keys(object.actions),
       ...Object.keys(object.queries),
     ])
     for (const relationship of relationships) {
-      const sides =
-        relationship.storage.kind === "link"
-          ? [relationship.forward, relationship.reverse]
-          : [relationship.reverse]
+      const sides = [relationship.forward, relationship.reverse]
       for (const side of sides) {
         if (!objectTypeAccepts(object, side.from.typeId)) continue
         definitionId(side.key)
@@ -393,7 +377,6 @@ export function moduleDependencies(
   }
   for (const object of module.objects) {
     const references = [
-      object.parent.typeId,
       ...Object.keys(object.interfaces),
       ...Object.values(object.properties).flatMap(referencedTypeIds),
       ...[...Object.values(object.actions), ...Object.values(object.queries)]

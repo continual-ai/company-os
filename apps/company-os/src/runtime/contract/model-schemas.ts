@@ -1,8 +1,8 @@
 import { Schema } from "effect"
 
 import {
-  toEffectObjectSchema,
   toEffectObjectFields,
+  toEffectObjectSchema,
   toEffectRecordIdentifierSchema,
 } from "#/runtime/contract/schema.ts"
 import {
@@ -77,7 +77,6 @@ export function objectListInputSchema(object: ObjectType) {
     "createdAt",
     "createdBy",
     "id",
-    "parent",
     "systemManaged",
     "updatedAt",
     "updatedBy",
@@ -90,6 +89,8 @@ export function objectListInputSchema(object: ObjectType) {
   let filter: Schema.Codec<unknown, unknown>
   filter = Schema.suspend(() =>
     Schema.Union([
+      Schema.Struct({ link: Schema.String, contains: Schema.String }),
+      Schema.Struct({ link: Schema.String, isEmpty: Schema.Literal(true) }),
       Schema.Struct({ and: Schema.Array(filter) }).annotate({
         identifier: `${pascalCase(object.id)}AndFilter`,
       }),

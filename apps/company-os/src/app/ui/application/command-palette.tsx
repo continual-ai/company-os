@@ -11,7 +11,7 @@ import { useKeyboardShortcuts } from "@company/ui/keyboard-shortcuts"
 import { SidebarMenuButton } from "@company/ui/sidebar"
 import { useQuery } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
-import { HomeIcon, PlusIcon, SearchIcon, CodeIcon } from "lucide-react"
+import { CodeIcon, HomeIcon, PlusIcon, SearchIcon } from "lucide-react"
 import {
   createContext,
   useContext,
@@ -44,8 +44,7 @@ function usePaletteCommands() {
       module.items.map((item) => ({ ...item, module: module.name }))
     )
     const createCommands = destinations.filter(
-      ({ object }) =>
-        "create" in object.actions && object.parent.kind === "root"
+      ({ object }) => "create" in object.actions
     )
 
     return {

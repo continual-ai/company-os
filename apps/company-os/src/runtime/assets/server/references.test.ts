@@ -2,7 +2,7 @@ import { expect, it } from "vitest"
 
 import { ServiceAccount } from "#/runtime/access/model/index.ts"
 import { compileAssetReferences } from "#/runtime/assets/server/references.ts"
-import { defineObject, Root, schema } from "#/runtime/model/index.ts"
+import { defineObject, schema } from "#/runtime/model/index.ts"
 
 it("discovers nested file usages and selects only the matching union branch", () => {
   const object = defineObject({
@@ -11,7 +11,6 @@ it("discovers nested file usages and selects only the matching union branch", ()
     name: "Document",
     pluralName: "Documents",
     display: { title: "name" },
-    parent: Root,
     properties: {
       name: schema.string(),
       details: schema.object({ attachments: schema.array(schema.file()) }),

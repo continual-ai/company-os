@@ -1,18 +1,17 @@
 import { Brand } from "effect"
 
 import type { ActorId } from "#/runtime/model/core/actor.ts"
-import { Root, type RootType } from "#/runtime/model/core/root.ts"
 import {
-  type ActionDefinitions,
   type Action,
+  type ActionDefinitions,
   type NormalizedActions,
   bindActions,
   standardActions,
 } from "#/runtime/model/definition/action.ts"
 import {
-  definitionId,
   type NoExtraKeys,
   type OpenOr,
+  definitionId,
 } from "#/runtime/model/definition/identity.ts"
 import {
   type InterfaceImplementation,
@@ -21,7 +20,6 @@ import {
   type InterfaceImplementationMap,
   bindInterfaceImplementations,
 } from "#/runtime/model/definition/interface.ts"
-import type { InterfaceType } from "#/runtime/model/definition/interface.ts"
 import {
   type InferProperties,
   type InferProperty,
@@ -30,10 +28,10 @@ import {
   normalizeProperties,
 } from "#/runtime/model/definition/property.ts"
 import {
-  bindQueries,
   type BoundQueries,
   type CustomQuery,
   type QueryDefinitions,
+  bindQueries,
 } from "#/runtime/model/definition/query.ts"
 import type {
   AnySchema,
@@ -45,18 +43,7 @@ import type {
   RecordIdentifier,
   Timestamp,
 } from "#/runtime/model/definition/schema.ts"
-import { assertReferencePropertyName } from "#/runtime/model/definition/schema.ts"
-
-export interface ObjectParent<
-  TTypeId extends string = string,
-  TKind extends "interface" | "object" | "root" =
-    | "interface"
-    | "object"
-    | "root",
-> {
-  readonly kind: TKind
-  readonly typeId: TTypeId
-}
+import { assertStoredProperty } from "#/runtime/model/definition/schema.ts"
 
 /** A typed reference used when records from multiple object types can appear. */
 export type ObjectRef<TObjectType extends string = string> =
@@ -67,29 +54,25 @@ export type ObjectRef<TObjectType extends string = string> =
       }
     : never
 
-export interface BaseRecord<
-  TObjectType extends string = string,
-  TParentId extends RecordId = RecordId,
-> {
+export interface BaseRecord<TObjectType extends string = string> {
+  readonly objectType: TObjectType
+  readonly links: Readonly<
+    Record<
+      string,
+      { readonly ids: ReadonlyArray<RecordId>; readonly totalSize: number }
+    >
+  >
   readonly aliases: ReadonlyArray<RecordAlias>
   readonly metadata: Readonly<Record<string, string>>
   readonly createdAt: Timestamp
   readonly createdBy: ActorId
   readonly etag: Etag
   readonly id: RecordId<TObjectType>
-  /** The owning record; the root record when the object is defined directly beneath Root. */
-  readonly parent: TParentId
   /** Whether ordinary mutations are reserved for trusted system workflows. */
   readonly systemManaged: boolean
   readonly updatedAt: Timestamp
   readonly updatedBy: ActorId
 }
-
-/** Interface parents accept any implementer, so only concrete parents narrow the ID. */
-export type ObjectParentRecordId<TObject extends ObjectType> =
-  TObject["parent"]["kind"] extends "interface"
-    ? RecordId
-    : RecordId<TObject["parent"]["typeId"]>
 
 export type Etag = string & Brand.Brand<"Etag">
 export const Etag = Brand.make<Etag>(
@@ -122,8 +105,6 @@ export interface ObjectDisplay<TProperties extends Properties> {
   title: (keyof TProperties & string) | "id"
 }
 
-type ParentDefinition = InterfaceType | ObjectType | RootType
-
 interface ObjectDisplayDefinition {
   icon?: string
   image?: string
@@ -146,7 +127,6 @@ export interface ObjectDefinition {
   readonly id: string
   readonly implements?: InterfaceImplementationInputs
   readonly name: string
-  readonly parent?: ParentDefinition
   readonly pluralName: string
   readonly properties: Readonly<Record<string, AnySchema>>
   /** Opts into cross-object search. Only these text fields are indexed; display title matches rank higher. */
@@ -172,13 +152,6 @@ type ObjectImplementations<D extends ObjectDefinition> = D extends {
 }
   ? TImplementations
   : readonly []
-
-/** The declared parent, or Root when the definition omits one. */
-type ObjectParentDefinition<D extends ObjectDefinition> = D extends {
-  readonly parent: infer TParent extends ParentDefinition
-}
-  ? TParent
-  : RootType
 
 type ObjectDefinitionConstraints<D extends ObjectDefinition> = NoExtraKeys<
   D,
@@ -226,14 +199,6 @@ export interface ObjectType<D extends ObjectDefinition = ObjectDefinition> {
   >
   kind: "object"
   name: string
-  parent: OpenOr<
-    D,
-    ObjectParent,
-    ObjectParent<
-      ObjectParentDefinition<D>["id"],
-      ObjectParentDefinition<D>["kind"]
-    >
-  >
   pluralName: string
   properties: OpenOr<D, Properties, NormalizeProperties<D["properties"]>>
   search?: { readonly fields: ReadonlyArray<string> } | undefined
@@ -241,8 +206,7 @@ export interface ObjectType<D extends ObjectDefinition = ObjectDefinition> {
 }
 
 export type ObjectRecord<TObject extends ObjectType> = BaseRecord<
-  TObject["id"],
-  ObjectParentRecordId<TObject>
+  TObject["id"]
 > &
   InferProperties<TObject["properties"]>
 
@@ -295,23 +259,7 @@ interface BaseUpdateProperties {
   readonly metadata?: Readonly<Record<string, string>>
 }
 
-/**
- * Objects beneath Root never take a parent. An interface parent accepts any
- * identifier here; the model-bound create input narrows it to implementers.
- */
-type CreateParent<TObject extends ObjectType> =
-  TObject["parent"]["kind"] extends "root"
-    ? { readonly parent?: never }
-    : TObject["parent"]["kind"] extends "object"
-      ? { readonly parent: RecordIdentifier<TObject["parent"]["typeId"]> }
-      : { readonly parent: RecordIdentifier }
-
-type CanonicalCreateParent<TObject extends ObjectType> =
-  TObject["parent"]["kind"] extends "root"
-    ? { readonly parent?: never }
-    : Pick<ObjectRecord<TObject>, "parent">
-
-/** Public create values other than the parent, which the model binds separately. */
+/** Public scalar create values; the model adds the links envelope separately. */
 export type ObjectCreateProperties<TObject extends ObjectType> = Simplify<
   BaseCreateProperties & {
     readonly [
@@ -325,7 +273,7 @@ export type ObjectCreateProperties<TObject extends ObjectType> = Simplify<
 >
 
 export type ObjectCreateInput<TObject extends ObjectType> = Simplify<
-  ObjectCreateProperties<TObject> & CreateParent<TObject>
+  ObjectCreateProperties<TObject>
 >
 
 type ObjectUpdateChanges<TObject extends ObjectType> = Simplify<
@@ -338,16 +286,15 @@ type ObjectUpdateChanges<TObject extends ObjectType> = Simplify<
 
 /** Canonical create values passed from the object service to persistence. */
 export type ObjectCreateValues<TObject extends ObjectType> = Simplify<
-  BaseCreateProperties &
-    CanonicalCreateParent<TObject> & {
-      readonly [
-        TKey in RequiredCreatePropertyKeys<TObject["properties"]>
-      ]: PropertyValue<TObject["properties"][TKey]>
-    } & {
-      readonly [
-        TKey in OptionalCreatePropertyKeys<TObject["properties"]>
-      ]?: PropertyValue<TObject["properties"][TKey]>
-    }
+  BaseCreateProperties & {
+    readonly [
+      TKey in RequiredCreatePropertyKeys<TObject["properties"]>
+    ]: PropertyValue<TObject["properties"][TKey]>
+  } & {
+    readonly [
+      TKey in OptionalCreatePropertyKeys<TObject["properties"]>
+    ]?: PropertyValue<TObject["properties"][TKey]>
+  }
 >
 
 /** Canonical update values passed from the object service to persistence. */
@@ -395,8 +342,9 @@ const reservedPropertyIds = new Set([
   "createdBy",
   "etag",
   "id",
+  "objectType",
+  "links",
   "metadata",
-  "parent",
   "systemManaged",
   "updatedAt",
   "updatedBy",
@@ -404,22 +352,15 @@ const reservedPropertyIds = new Set([
 
 /**
  * Defines a portable model object and derives its enabled standard actions.
- * `parent` is the ownership hierarchy and defaults to Root;
- * ordinary business relationships belong in links.
+ * Business relationships and ownership are declared as Links.
  */
 export function defineObject<const D extends ObjectDefinition>(
   definition: D & ObjectDefinitionConstraints<D>
 ): ObjectType<D> {
   const input: ObjectDefinition = definition
-  const parent: ParentDefinition = input.parent ?? Root
-  if (Object.hasOwn(input.properties, parent.id)) {
-    throw new Error(
-      `Object '${input.id}' cannot redefine its '${parent.id}' parent as property '${parent.id}'; use the standard 'parent'.`
-    )
-  }
   for (const [propertyId, property] of Object.entries(input.properties)) {
     definitionId(propertyId)
-    assertReferencePropertyName(`Object '${input.id}'`, propertyId, property)
+    assertStoredProperty(`Object '${input.id}'`, propertyId, property)
     if (reservedPropertyIds.has(propertyId)) {
       throw new Error(
         `Object '${input.id}' cannot redefine base property '${propertyId}'.`
@@ -509,7 +450,6 @@ export function defineObject<const D extends ObjectDefinition>(
     collection: identity.collection,
     name: input.name,
     interfaces,
-    parent: { kind: parent.kind, typeId: parent.id },
     pluralName: input.pluralName,
     display: input.display,
     properties,

@@ -1,5 +1,10 @@
-import { Reply } from "#/modules/support/model/reply.ts"
-import { Ticket } from "#/modules/support/model/ticket.ts"
+import { Reply, ReplyTicket } from "#/modules/support/model/reply.ts"
+import {
+  Ticket,
+  TicketCompany,
+  TicketOwner,
+  TicketRequester,
+} from "#/modules/support/model/ticket.ts"
 import { defineModule } from "#/runtime/model/index.ts"
 export const SupportModule = defineModule({
   maturity: "alpha",
@@ -11,6 +16,7 @@ export const SupportModule = defineModule({
   id: "support",
   name: "Support",
   objects: [Ticket, Reply],
+  links: [ReplyTicket, TicketCompany, TicketRequester, TicketOwner],
 })
 
 export { Ticket }

@@ -1,5 +1,5 @@
 import { Effect, Schema } from "effect"
-import { describe, expect, expectTypeOf } from "vitest"
+import { describe, expect } from "vitest"
 
 import { User } from "#/runtime/access/model/index.ts"
 import {
@@ -12,10 +12,7 @@ import {
   RecordId,
   Timestamp,
 } from "#/runtime/model/index.ts"
-import {
-  ROOT_ID,
-  SYSTEM_SERVICE_ACCOUNT_ID,
-} from "#/runtime/model/system-records.ts"
+import { SYSTEM_SERVICE_ACCOUNT_ID } from "#/runtime/model/system-records.ts"
 import { ObjectRepositories } from "#/runtime/server/model/object-repositories.ts"
 import {
   InvalidBatchRequest,
@@ -31,7 +28,6 @@ import {
 import {
   InvalidListRequest,
   ObjectNotFound,
-  ObjectParentTypeMismatch,
   ObjectWriteConflict,
   RecordAliasConflict,
   RecordAliasNotFound,
@@ -52,16 +48,21 @@ const participants = fixture.storage.interfaces.participant
 const orders = fixture.storage.objects.order
 const orderLines = fixture.storage.objects.orderLine
 const AccountId = RecordId("account")
-const RootId = RecordId("root")
 
 function omitStorageFields<
   TRecord extends {
+    readonly objectType: unknown
+    readonly links: unknown
     readonly createdAt: unknown
     readonly etag: unknown
     readonly updatedAt: unknown
   },
->(record: TRecord): Omit<TRecord, "createdAt" | "etag" | "updatedAt"> {
+>(
+  record: TRecord
+): Omit<TRecord, "objectType" | "links" | "createdAt" | "etag" | "updatedAt"> {
   const {
+    objectType: _objectType,
+    links: _links,
     createdAt: _createdAt,
     etag: _etag,
     updatedAt: _updatedAt,
@@ -235,13 +236,6 @@ describe("Effect SQL object repository", () => {
             updatedBy: SYSTEM_SERVICE_ACCOUNT_ID,
           })
           .pipe(Effect.flip)
-        const wrongParent = yield* repository
-          .insert({
-            ...omitStorageFields(first),
-            id: AccountId("account_3"),
-            parent: RootId(first.id),
-          })
-          .pipe(Effect.flip)
         const userRepository = records.get(User)
         const userRecord = {
           aliases: [],
@@ -250,7 +244,6 @@ describe("Effect SQL object repository", () => {
           image: null,
           metadata: {},
           name: "First User",
-          parent: ROOT_ID,
           systemManaged: false,
           updatedBy: SYSTEM_SERVICE_ACCOUNT_ID,
         }
@@ -298,23 +291,16 @@ describe("Effect SQL object repository", () => {
 
         const order = yield* orderService.create({
           name: "Expansion",
-          parent: legacyExample,
+          links: { account: [legacyExample] },
         })
         const storedOrders = yield* sql<
           TableRow<typeof orders>
         >`select ${tableProjection(orders)}
           from ${orders}`
-        type StoredOrder = (typeof storedOrders)[number]
-        expectTypeOf<StoredOrder["parentId"]>().toEqualTypeOf<
-          RecordId<"account">
-        >()
         const orderLine = yield* orderLineService.create({
           name: "Implementation",
-          parent: order.id,
+          links: { order: [order.id] },
         })
-        const inconsistentParent =
-          yield* sql`update ${objects} set ${assignments(sql, objects, { parentId: ROOT_ID })}
-          where ${objects.columns.id} = ${orderLine.id}`.pipe(Effect.flip)
         const batchDeleteFailure = yield* service
           .batchDelete({ ids: [second.id, first.id] })
           .pipe(Effect.flip)
@@ -382,7 +368,6 @@ describe("Effect SQL object repository", () => {
           id: expect.stringMatching(TYPE_ID),
           stage: "prospect",
           name: "Example",
-          parent: ROOT_ID,
         })
         expect(updated).toMatchObject({
           id: first.id,
@@ -447,7 +432,6 @@ describe("Effect SQL object repository", () => {
           email: "unique@example.example",
           name: "Second User",
         })
-        expect(wrongParent).toBeInstanceOf(ObjectParentTypeMismatch)
         expect(wrongTypeAlias).toBeInstanceOf(RecordAliasNotFound)
         expect(rolledBack).toBeInstanceOf(ObjectNotFound)
         expect(prospects.items).toHaveLength(1)
@@ -458,21 +442,21 @@ describe("Effect SQL object repository", () => {
         expect(participantRows.map(({ id }) => id)).toEqual(
           [first.id, second.id].sort()
         )
-        expect(inconsistentParent).toBeDefined()
         expect(orderLine).toMatchObject({
           name: "Implementation",
-          parent: order.id,
+          links: { order: { ids: [order.id], totalSize: 1 } },
           quantity: 1,
         })
         expect(storedOrders).toEqual([
-          expect.objectContaining({ id: order.id, parentId: first.id }),
+          expect.objectContaining({ id: order.id }),
         ])
         expect(orderLineRows).toEqual([
-          expect.objectContaining({ parentId: order.id, id: orderLine.id }),
+          expect.objectContaining({ id: orderLine.id }),
         ])
-        expect(objectRows.find(({ id }) => id === orderLine.id)).toMatchObject({
-          parentId: order.id,
-        })
+        expect(orderLine.links.order?.ids).toEqual([order.id])
+        expect(objectRows).toContainEqual(
+          expect.objectContaining({ id: orderLine.id, objectType: "orderLine" })
+        )
         for (const object of Object.values(fixture.model.objects)) {
           expect(
             new Set(
@@ -485,7 +469,6 @@ describe("Effect SQL object repository", () => {
           ).toEqual(
             new Set([
               "id",
-              "parent_id",
               ...Object.entries(object.properties).map(
                 ([propertyId, property]) =>
                   snakeCase(

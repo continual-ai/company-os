@@ -1,38 +1,30 @@
-import { useQueries } from "@tanstack/react-query"
-
+import type {
+  ClientRecord,
+  ObjectRecordPresentation,
+} from "#/runtime/ui/model/object-client.ts"
 import type { RecordRelationship } from "#/runtime/ui/model/record-relationships.ts"
-import { useModelRuntime } from "#/runtime/ui/model/runtime-context.tsx"
 
-/** Preview rows and counts share each relationship's cached query. */
+/** Counts and bounded IDs come from the record; hydration is shared with its other fields. */
 export function useRecordRelationshipPreviews(
   relationships: ReadonlyArray<RecordRelationship>,
-  enabled: boolean
+  record: ClientRecord | undefined,
+  references: ReadonlyMap<string, ObjectRecordPresentation>
 ) {
-  const runtime = useModelRuntime()
-
-  const results = useQueries({
-    queries: relationships.map((relationship) => ({
-      ...relationship.list({ pageSize: 3 }),
-      enabled,
-    })),
-  })
-  return relationships.map((relationship, index) => {
-    const result = results[index]!
+  return relationships.map((relationship) => {
+    const preview = record?.links?.[relationship.key]
     return {
       relationship,
       key: relationship.key,
       label: relationship.label,
-      total: result.data?.totalSize,
-      pending: result.isPending,
-      error: result.isError,
-      retry: () => void result.refetch(),
-      items: (result.data?.items ?? []).flatMap((record) => {
-        const target =
-          relationship.target ??
-          Object.values(runtime.model.objects).find(
-            (object) => object.id === record.objectType
-          )
-        return target ? [{ object: target, record }] : []
+      total: preview?.totalSize,
+      pending: record === undefined,
+      error: false,
+      retry: () => {},
+      items: (preview?.ids ?? []).flatMap((id) => {
+        const value = references.get(id)
+        return value?.source
+          ? [{ object: value.object, record: value.source }]
+          : []
       }),
     }
   })

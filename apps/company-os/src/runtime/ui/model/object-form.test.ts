@@ -113,27 +113,25 @@ describe("object forms", () => {
     const form = {
       amount: { amount: "12500.00", currency: "eur" },
       expectedCloseDate: "2026-09-30",
-      owner: null,
       nextStep: null,
       nextStepDate: null,
       name: "Expansion",
-      parent: "account_northstar",
+      links: { account: "account_northstar" },
       stage: "quoted",
     }
 
     expect(decodeObjectForm(presentation, Order, form, "create")).toEqual({
       amount: { amount: "12500.00", currency: "EUR" },
       expectedCloseDate: "2026-09-30",
-      owner: null,
       nextStep: null,
       nextStepDate: null,
       name: "Expansion",
-      parent: "account_northstar",
+      links: { account: ["account_northstar"] },
       stage: "quoted",
     })
   })
 
-  it("omits root parents and server-owned defaults", () => {
+  it("omits server-owned defaults", () => {
     const form = { domain: "northstar.example", name: "Northstar" }
 
     expect(decodeObjectForm(presentation, Account, form, "create")).toEqual({
@@ -157,15 +155,25 @@ describe("object forms", () => {
     })
   })
 
-  it("derives writable edit relationships and decodes Link deltas", () => {
+  it("derives writable relationships for creation and editing and decodes Link deltas", () => {
     expect(
-      objectFormLinks(presentation, Account, "edit").map(
+      objectFormDefaultValues(presentation, Account, "create").links
+    ).not.toHaveProperty("convertedProspects")
+    expect(
+      objectFormLinks(presentation, Account).map(
         ({ traversal }) => traversal.key
       )
-    ).toEqual(["people"])
+    ).toEqual(["orders", "people", "primaryPeople", "memos"])
     expect(
       objectFormDefaultValues(presentation, Account, "edit").links
-    ).toEqual({ people: { add: [], remove: [] } })
+    ).toEqual(
+      Object.fromEntries(
+        ["orders", "people", "primaryPeople", "memos"].map((key) => [
+          key,
+          { add: [], remove: [] },
+        ])
+      )
+    )
     expect(
       decodeObjectForm(
         presentation,

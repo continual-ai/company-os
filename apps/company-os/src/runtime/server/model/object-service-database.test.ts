@@ -79,7 +79,7 @@ fixture.test(
       yield* services.account.delete({ id: linkedAccount.id })
       yield* services.account.update({
         id: account.id,
-        etag: account.etag,
+        etag: (yield* services.account.get({ id: account.id })).etag,
         links: { people: { add: [person.id] } },
       })
       expect(

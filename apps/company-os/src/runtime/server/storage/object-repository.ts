@@ -3,9 +3,9 @@ import { isSqlError, type SqlError } from "effect/unstable/sql/SqlError"
 import type { Fragment } from "effect/unstable/sql/Statement"
 
 import { toEffectObjectSchema } from "#/runtime/contract/schema.ts"
+import { modelObjectLinkTraversals } from "#/runtime/model/definition/model.ts"
 import type {
   ObjectCreateValues,
-  ObjectParentRecordId,
   ObjectUpdateValues,
 } from "#/runtime/model/definition/object.ts"
 import type {
@@ -14,17 +14,17 @@ import type {
 } from "#/runtime/model/definition/request.ts"
 import {
   normalizePageSize,
-  type RecordId,
-  type RecordAlias,
-  type RecordAliasUpdate,
-  type ModelCatalog,
-  type PageTokenCodec,
+  type BaseRecord,
+  type Etag,
   type InferProperty,
+  type ModelCatalog,
   type ObjectRecord,
   type ObjectType,
   type Page,
-  type BaseRecord,
-  type Etag,
+  type PageTokenCodec,
+  type RecordAlias,
+  type RecordAliasUpdate,
+  type RecordId,
 } from "#/runtime/model/index.ts"
 import { type PostgresDatabase } from "#/runtime/server/storage/database.ts"
 import {
@@ -39,25 +39,22 @@ import {
 } from "#/runtime/server/storage/object-query.ts"
 import {
   objectUniqueConstraintName,
-  physicalPropertyKey,
   type PostgresStorage,
 } from "#/runtime/server/storage/schema.ts"
 import {
-  insertValues,
   assignments,
-} from "#/runtime/server/storage/statement.ts"
-import {
-  sqlValue,
-  projection,
-  type SelectionRow,
-  inValues,
   conflictColumns,
+  insertValues,
+  inValues,
+  projection,
+  sqlValue,
+  type SelectionRow,
 } from "#/runtime/server/storage/statement.ts"
 import {
-  tableName,
   tableColumns,
-  type Table,
+  tableName,
   type Column,
+  type Table,
 } from "#/runtime/server/storage/table.ts"
 
 type StoragePropertyValues<TObject extends ObjectType> = Partial<
@@ -72,13 +69,7 @@ type StoragePropertyValues<TObject extends ObjectType> = Partial<
 
 type ObjectInsertPropertyValues<TObject extends ObjectType> = Omit<
   ObjectInsert<TObject>,
-  | "aliases"
-  | "metadata"
-  | "createdBy"
-  | "id"
-  | "parent"
-  | "systemManaged"
-  | "updatedBy"
+  "aliases" | "metadata" | "createdBy" | "id" | "systemManaged" | "updatedBy"
 >
 
 type ObjectUpdatePropertyValues<TObject extends ObjectType> = Omit<
@@ -115,20 +106,6 @@ class ObjectUniqueConflict extends Data.TaggedError("ObjectUniqueConflict")<{
   readonly rule: string
 }> {}
 
-class ObjectParentNotFound extends Data.TaggedError("ObjectParentNotFound")<{
-  readonly objectType: string
-  readonly parentId: string
-}> {}
-
-export class ObjectParentTypeMismatch extends Data.TaggedError(
-  "ObjectParentTypeMismatch"
-)<{
-  readonly actualParentObjectType: string
-  readonly expectedParentTypeId: string
-  readonly objectType: string
-  readonly parentId: string
-}> {}
-
 export class InvalidListRequest extends Data.TaggedError("InvalidListRequest")<{
   readonly message: string
   readonly objectType: string
@@ -150,8 +127,8 @@ export class RecordAliasNotFound extends Data.TaggedError(
 
 /** Canonical insert values; persistence supplies the tag and timestamps. */
 export type ObjectInsert<TObject extends ObjectType> = Omit<
-  BaseRecord<TObject["id"], ObjectParentRecordId<TObject>>,
-  "createdAt" | "etag" | "updatedAt"
+  BaseRecord<TObject["id"]>,
+  "createdAt" | "etag" | "updatedAt" | "links" | "objectType"
 > &
   Omit<ObjectCreateValues<TObject>, "parent">
 
@@ -190,8 +167,6 @@ export type PostgresRepositoryError =
   | RecordAliasConflict
   | ObjectNotFound
   | ObjectDeleteRestricted
-  | ObjectParentNotFound
-  | ObjectParentTypeMismatch
   | ObjectUniqueConflict
   | ObjectWriteConflict
   | Schema.SchemaError
@@ -283,20 +258,6 @@ function makeRepository<
         }
       )
     }
-    const parentInterfaceTable =
-      object.parent.kind === "interface"
-        ? Object.entries(storage.interfaces).find(
-            ([interfaceId]) => interfaceId === object.parent.typeId
-          )?.[1]
-        : undefined
-    if (
-      object.parent.kind === "interface" &&
-      parentInterfaceTable === undefined
-    ) {
-      return yield* Effect.die(
-        `Parent interface '${object.parent.typeId}' does not have a PostgreSQL storage table.`
-      )
-    }
     const interfaceTables: ReadonlyArray<Table<{ id: string }>> = Object.values(
       object.interfaces
     ).map((implementation) => {
@@ -317,14 +278,9 @@ function makeRepository<
         `Storage table for object '${object.id}' must declare an id column.`
       )
     }
-    if (storageColumns.parentId === undefined) {
-      return yield* Effect.die(
-        `Storage table for object '${object.id}' must declare a parentId column.`
-      )
-    }
     const propertyColumns = Object.fromEntries(
-      Object.entries(object.properties).map(([propertyId, property]) => {
-        const storageKey = physicalPropertyKey(propertyId, property)
+      Object.entries(object.properties).map(([propertyId]) => {
+        const storageKey = propertyId
         const column = storageColumns[storageKey]
         if (column === undefined) {
           throw new Error(
@@ -339,18 +295,36 @@ function makeRepository<
       properties: CanonicalStoragePropertyValues<TObject>
     ): StoragePropertyValues<TObject> =>
       // SAFETY: every input key is drawn from this object's declared
-      // properties; only record references receive the physical `Id` suffix.
+      // properties and map directly to stored columns.
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion
       Object.fromEntries(
         Object.entries(properties).map(([propertyId, value]) => [
-          physicalPropertyKey(propertyId, object.properties[propertyId]!),
+          propertyId,
           value,
         ])
       ) as StoragePropertyValues<TObject>
     const RecordSchema = toEffectObjectSchema(object)
     const RecordsSchema = Schema.Array(RecordSchema)
+    const linkPreviews = modelObjectLinkTraversals(storage.model, object).map(
+      ({ link, direction, traversal }) => {
+        const edges = storage.linkTables[link.id]!
+        const source =
+          direction === "forward"
+            ? edges.columns.forwardId
+            : edges.columns.reverseId
+        const target =
+          direction === "forward"
+            ? edges.columns.reverseId
+            : edges.columns.forwardId
+        return sql`${traversal.key}::text, jsonb_build_object('ids', array(select ${target} from ${edges} where ${source} = ${objects.columns.id} order by ${target} limit 3), 'totalSize', (select count(*) from ${edges} where ${source} = ${objects.columns.id}))`
+      }
+    )
     const selection = {
       ...columns,
+      objectType: objects.columns.objectType,
+      links: sqlValue<ObjectRecord<TObject>["links"]>(
+        sql`jsonb_build_object(${sql.csv(linkPreviews)})`
+      ),
       aliases: sqlValue<ReadonlyArray<RecordAlias>>(sql`array(
         select ${recordAliases.columns.alias}
 
@@ -370,7 +344,6 @@ function makeRepository<
       createdAt: objects.columns.createdAt,
       createdBy: objects.columns.createdById,
       etag: objects.columns.etag,
-      parent: objects.columns.parentId,
       systemManaged: objects.columns.systemManaged,
       updatedAt: objects.columns.updatedAt,
       updatedBy: objects.columns.updatedById,
@@ -381,7 +354,6 @@ function makeRepository<
       createdAt: objects.columns.createdAt,
       createdBy: objects.columns.createdById,
       id: idColumn,
-      parent: objects.columns.parentId,
       systemManaged: objects.columns.systemManaged,
       updatedAt: objects.columns.updatedAt,
       updatedBy: objects.columns.updatedById,
@@ -390,7 +362,26 @@ function makeRepository<
     const { compileFilter, resolveSort } = makeObjectQueryCompiler(
       sql,
       object,
-      queryColumns
+      queryColumns,
+      (filter) => {
+        const traversal = modelObjectLinkTraversals(storage.model, object).find(
+          (item) => item.traversal.key === filter.link
+        )
+        if (!traversal)
+          throw invalidListRequest(object, `Unknown link '${filter.link}'.`)
+        const edges = storage.linkTables[traversal.link.id]!
+        const source =
+          traversal.direction === "forward"
+            ? edges.columns.forwardId
+            : edges.columns.reverseId
+        const target =
+          traversal.direction === "forward"
+            ? edges.columns.reverseId
+            : edges.columns.forwardId
+        if ("isEmpty" in filter)
+          return sql`not exists (select 1 from ${edges} where ${source} = ${idColumn})`
+        return sql`exists (select 1 from ${edges} where ${source} = ${idColumn} and ${target} = coalesce((select ${recordAliases.columns.objectId} from ${recordAliases} where ${recordAliases.columns.alias} = ${filter.contains}), ${filter.contains}))`
+      }
     )
 
     const select = (
@@ -565,57 +556,17 @@ function makeRepository<
         metadata,
         createdBy,
         id,
-        parent: parentId,
         systemManaged,
         updatedBy,
         ...properties
       } = record
 
       yield* Effect.gen(function* () {
-        const parentRowsFields = {
-          objectType: objects.columns.objectType,
-        }
-        const parentRows = yield* sql<
-          SelectionRow<typeof parentRowsFields>
-        >`select ${projection(parentRowsFields)}
-          from ${objects}
-          where ${objects.columns.id} = ${parentId}
-          limit ${1}`
-        const parent = parentRows[0]
-        if (parent === undefined) {
-          return yield* Effect.fail(
-            new ObjectParentNotFound({
-              objectType: object.id,
-              parentId,
-            })
-          )
-        }
-        const parentMatches =
-          parentInterfaceTable !== undefined
-            ? (yield* sql<{
-                present: number
-              }>`select 1 as present
-          from ${parentInterfaceTable}
-          where ${parentInterfaceTable.columns.id} = ${parentId}
-          limit ${1}`).length === 1
-            : parent.objectType === object.parent.typeId
-        if (!parentMatches) {
-          return yield* Effect.fail(
-            new ObjectParentTypeMismatch({
-              actualParentObjectType: parent.objectType,
-              expectedParentTypeId: object.parent.typeId,
-              objectType: object.id,
-              parentId,
-            })
-          )
-        }
-
         yield* sql`insert into ${objects} ${insertValues(sql, objects, {
           metadata,
           createdById: createdBy,
           id,
           objectType: object.id,
-          parentId,
           systemManaged,
           updatedById: updatedBy,
         })}`
@@ -649,7 +600,6 @@ function makeRepository<
         const objectValues = {
           id,
           ...toStorageProperties(properties),
-          parentId,
         }
         yield* sql`insert into ${table} ${insertValues(sql, table, objectValues)}`
         for (const interfaceTable of interfaceTables) {
@@ -671,51 +621,14 @@ function makeRepository<
         metadata,
         createdBy,
         id,
-        parent: parentId,
         systemManaged,
         updatedBy,
         ...properties
       } = record
 
       yield* Effect.gen(function* () {
-        const parentRowsFields2 = {
-          objectType: objects.columns.objectType,
-        }
-        const parentRows = yield* sql<
-          SelectionRow<typeof parentRowsFields2>
-        >`select ${projection(parentRowsFields2)}
-          from ${objects}
-          where ${objects.columns.id} = ${parentId}
-          limit ${1}`
-        const parent = parentRows[0]
-        if (parent === undefined) {
-          return yield* Effect.fail(
-            new ObjectParentNotFound({ objectType: object.id, parentId })
-          )
-        }
-        const parentMatches =
-          parentInterfaceTable !== undefined
-            ? (yield* sql<{
-                present: number
-              }>`select 1 as present
-          from ${parentInterfaceTable}
-          where ${parentInterfaceTable.columns.id} = ${parentId}
-          limit ${1}`).length === 1
-            : parent.objectType === object.parent.typeId
-        if (!parentMatches) {
-          return yield* Effect.fail(
-            new ObjectParentTypeMismatch({
-              actualParentObjectType: parent.objectType,
-              expectedParentTypeId: object.parent.typeId,
-              objectType: object.id,
-              parentId,
-            })
-          )
-        }
-
         const existingRowsFields = {
           objectType: objects.columns.objectType,
-          parentId: objects.columns.parentId,
         }
         const existingRows = yield* sql<
           SelectionRow<typeof existingRowsFields>
@@ -724,10 +637,7 @@ function makeRepository<
           where ${objects.columns.id} = ${id}
           limit ${1}`
         const existing = existingRows[0]
-        if (
-          existing !== undefined &&
-          (existing.objectType !== object.id || existing.parentId !== parentId)
-        ) {
+        if (existing !== undefined && existing.objectType !== object.id) {
           return yield* Effect.fail(conflict(object, id))
         }
 
@@ -736,7 +646,6 @@ function makeRepository<
           createdById: createdBy,
           id,
           objectType: object.id,
-          parentId,
           systemManaged,
           updatedById: updatedBy,
         })}
@@ -782,7 +691,7 @@ function makeRepository<
             and ${inValues(sql, recordAliases.columns.alias, aliases, true)}`
 
         const storageProperties = toStorageProperties(properties)
-        const objectValues = { id, ...storageProperties, parentId }
+        const objectValues = { id, ...storageProperties }
         const onConflict =
           Object.keys(storageProperties).length === 0
             ? sql`on conflict do nothing`

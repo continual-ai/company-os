@@ -5,6 +5,7 @@ export type { RootType } from "#/runtime/model/core/root.ts"
 export { defineEvent } from "#/runtime/model/definition/event.ts"
 export type { EventType } from "#/runtime/model/definition/event.ts"
 
+export { isStandardActionId } from "#/runtime/model/definition/action.ts"
 export type {
   Action,
   ActionDefinition,
@@ -15,7 +16,6 @@ export type {
   ActionScope,
   StandardActionId,
 } from "#/runtime/model/definition/action.ts"
-export { isStandardActionId } from "#/runtime/model/definition/action.ts"
 export {
   defineError,
   errorReason,
@@ -25,15 +25,9 @@ export {
 } from "#/runtime/model/definition/error.ts"
 export type {
   ApiError,
-  ErrorType,
   ErrorStatus,
+  ErrorType,
 } from "#/runtime/model/definition/error.ts"
-export type {
-  InferProperties,
-  InferProperty,
-  Properties,
-  PropertyDefinition,
-} from "#/runtime/model/definition/property.ts"
 export { defineInterface } from "#/runtime/model/definition/interface.ts"
 export type {
   InterfaceDefinition,
@@ -41,72 +35,73 @@ export type {
   InterfaceImplementation,
   InterfaceType,
 } from "#/runtime/model/definition/interface.ts"
+export { defineLink } from "#/runtime/model/definition/link.ts"
+export type {
+  LinkDefinition,
+  LinkEndpoint,
+  LinkTraversal,
+  LinkType,
+} from "#/runtime/model/definition/link.ts"
+export type {
+  ModelObjectCreateInput,
+  ModelObjectUpdateInput,
+} from "#/runtime/model/definition/model-input.ts"
 export {
   defineModel,
   enableModules,
-  modelObjectLinkTraversals,
   modelModules,
+  modelObjectLinkTraversals,
   modelObjects,
   modelQueries,
   modelTypeAccepts,
 } from "#/runtime/model/definition/model.ts"
 export type {
+  LinkDirection,
   Model,
   ModelCatalog,
   ModelEndpointObjectTypeId,
+  ModelLinkTraversal,
   ModelObject,
   ModelObjectRef,
-  ModelLinkTraversal,
-  LinkDirection,
   RecordIdOf,
 } from "#/runtime/model/definition/model.ts"
-export type {
-  ModelObjectCreateInput,
-  ModelObjectUpdateInput,
-} from "#/runtime/model/definition/model-input.ts"
 export { defineModule } from "#/runtime/model/definition/module.ts"
 export type {
   ModuleDefinition,
   ModuleDefinitionInput,
 } from "#/runtime/model/definition/module.ts"
-export {
-  defineLink,
-  linkCardinalities,
-} from "#/runtime/model/definition/link.ts"
-export type {
-  LinkDefinition,
-  LinkType,
-  LinkCardinality,
-  LinkEndpoint,
-  LinkTraversal,
-} from "#/runtime/model/definition/link.ts"
 export { defineObject, Etag } from "#/runtime/model/definition/object.ts"
 export type {
   BaseRecord,
-  RecordAliasDelta,
-  RecordAliasUpdate,
   ObjectBatchDeleteInput,
   ObjectBatchGetInput,
-  ObjectDeleteInput,
-  ObjectGetInput,
-  ObjectType,
   ObjectCreateInput,
   ObjectDefinition,
+  ObjectDeleteInput,
   ObjectDisplay,
-  ObjectParent,
-  ObjectRef,
+  ObjectGetInput,
   ObjectRecord,
+  ObjectRef,
+  ObjectType,
   ObjectUpdateInput,
   ObjectWriterUpdateInput,
+  RecordAliasDelta,
+  RecordAliasUpdate,
 } from "#/runtime/model/definition/object.ts"
+export type {
+  InferProperties,
+  InferProperty,
+  Properties,
+  PropertyDefinition,
+} from "#/runtime/model/definition/property.ts"
 export {
   queryKey,
   standardQueries,
   standardQueryIds,
 } from "#/runtime/model/definition/query.ts"
 export type {
-  Query,
   CustomQuery,
+  Query,
   QueryDefinition,
   QueryInput,
   QueryOutput,
@@ -144,8 +139,8 @@ export {
   EmailAddress,
   isRecordAlias,
   MAX_RECORD_ALIAS_LENGTH,
-  RecordAlias,
   PhoneNumber,
+  RecordAlias,
   RecordId,
   schema,
   Timestamp,
@@ -164,13 +159,13 @@ export type {
   InferInputSchema,
   InferSchema,
   LiteralValue,
-  Money,
   MediaRef,
   MediaSchema,
+  Money,
   NumberSchemaOptions,
   RecordIdentifier,
-  SchemaDefinition,
   SchemaAnnotations,
+  SchemaDefinition,
   SchemaProperties,
   StringSchemaOptions,
 } from "#/runtime/model/definition/schema.ts"
@@ -181,8 +176,8 @@ export {
   InternalError,
   NotFoundError,
   PermissionDeniedError,
-  standardErrorViolations,
   standardErrors,
+  standardErrorViolations,
   UnauthenticatedError,
   ValidationError,
   violationSchema,

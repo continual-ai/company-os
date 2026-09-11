@@ -1,6 +1,6 @@
 import { NoteSubject } from "#/modules/notes/model/index.ts"
 import { User } from "#/runtime/access/model/index.ts"
-import { defineObject, schema } from "#/runtime/model/index.ts"
+import { defineLink, defineObject, schema } from "#/runtime/model/index.ts"
 
 export const Project = defineObject({
   id: "project",
@@ -16,11 +16,6 @@ export const Project = defineObject({
       maxLength: 10000,
       nullable: true,
     }),
-    owner: schema.reference(User, {
-      label: "Owner",
-      nullable: true,
-      inverse: { key: "projects", label: "Projects" },
-    }),
     status: schema.select({
       label: "Status",
       default: "planned",
@@ -35,4 +30,13 @@ export const Project = defineObject({
   },
   search: { fields: ["name", "objective"] },
   display: { title: "name", icon: "folder", status: "status" },
+})
+
+export const ProjectOwner = defineLink({
+  id: "projectOwner",
+  name: "Project Owner",
+  from: Project,
+  to: User,
+  forward: { key: "owner", label: "Owner", max: 1 },
+  reverse: { key: "projects", label: "Projects" },
 })

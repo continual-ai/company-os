@@ -3,8 +3,8 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { describe, expect, it } from "vitest"
 
 import {
-  FixtureModule,
   fixtureModel,
+  FixtureModule,
   kernelModel,
   Prospect,
 } from "#/runtime/testing/fixture-model.ts"
@@ -115,7 +115,8 @@ describe("module UI composition", () => {
                     targetType: Prospect.id,
                     target: Prospect,
                     featured: true,
-                    cardinality: "many",
+                    min: 0,
+                    max: undefined,
                     creates: [{ target: Prospect, options: {} }],
                     list: () => {
                       throw new Error("Previews must not load collections")
