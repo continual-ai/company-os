@@ -29,8 +29,9 @@ reason to preserve a weak design. Prefer simple, idiomatic, editable source.
 
 ## Business behavior
 
-- Keep one authority per fact. `parent` means ownership; use references
-  for directional state, Links for associations, and Objects for relationships with a lifecycle,
+- Keep one authority per fact. Use Links for all relationships, with named forward/reverse
+  traversals and min/max bounds. Ownership is explicit `onDelete: "cascade"` on a traversal;
+  ordinary unlinking never deletes records. Use Objects for relationships with a lifecycle,
   attributes, or business rules. Never encode the same relationship twice.
 - Prefer standard record CRUD and model constraints. Add a custom Action only when they cannot
   express the required behavior correctly. Storage, APIs, MCP, and pages derive from the model.

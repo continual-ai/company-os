@@ -63,6 +63,61 @@ Change product identity and the entry experience in `src/app/customization`.
 code, tests, and generated contracts define the implementation. `apps/client-portal` is an optional
 satellite over the central app's API; delete it if unnecessary or copy it for another interface.
 
+### Relationships
+
+Declare every relationship once with `defineLink`; both directions use the same stored edge.
+Scalar properties contain values. `schema.recordId` is for Action and Query inputs or outputs,
+not stored relationships.
+
+```ts
+const DealOwner = defineLink({
+  id: "dealOwner",
+  name: "Deal owner",
+  from: Deal,
+  to: User,
+  forward: { key: "owner", label: "Owner", max: 1 },
+  reverse: { key: "ownedDeals", label: "Owned deals" },
+})
+```
+
+`min` defaults to zero; omitted `max` means unbounded. Bounds are enforced in both directions.
+A single link renders as one identity and a single-select editor; a collection renders a preview
+and a multi-select editor. Changing cardinality does not change the wire shape.
+
+Get, list, and batch-get return scalar properties alongside `objectType` and `links`:
+
+```json
+{
+  "id": "deal_…",
+  "objectType": "deal",
+  "name": "Expansion",
+  "links": {
+    "owner": { "ids": ["user_…"], "totalSize": 1 },
+    "companies": { "ids": ["company_…"], "totalSize": 1 }
+  }
+}
+```
+
+Each link includes at most three IDs and an exact `totalSize`. Use the traversal's paginated
+`list` operation for the complete collection. Hydrate previews with `records.batchGet({ ids })`
+(HTTP `POST /api/v1/records:batchGet`, MCP `records.batchGet`). It deduplicates input, preserves
+input order, and returns `missingIds` for missing or inactive records. Hydration returns the same
+canonical record shape without recursively expanding linked records.
+
+Create accepts `links: { owner: [userId] }`. Update accepts
+`links: { owner: { replace: [userId] }, companies: { add: [companyId], remove: [oldId] } }`.
+`replace` cannot be combined with `add` or `remove`. Linking a second target to a `max: 1`
+relationship fails; use explicit replacement. Subset links require membership in their base
+link; changing a selection does not silently add or remove base membership. Multi-link writes
+validate the final transaction state and commit together.
+
+Ownership is a link traversal with `onDelete: "cascade"`; its opposite direction must have
+`max: 1`. Deleting the source then deletes its linked targets. The default only removes edges,
+and fails if surviving records would lose a required relationship. Unlinking never deletes
+records. `outputOnly: true` reserves a link for trusted Actions and removes public mutation
+operations in both directions. Use an Object when the relationship itself needs properties,
+Actions, or a lifecycle.
+
 ### Page spacing
 
 Compose layouts with `PageHeader`, `PageToolbar`, `PageContent`, and `PageSectionHeader` from
