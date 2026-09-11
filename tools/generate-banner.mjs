@@ -46,7 +46,7 @@ const overlay = Buffer.from(`
     </g>
     <text x="72" y="566" fill="#101114" fill-opacity="0.68" font-size="22">By</text>
     <g transform="translate(110 540) scale(1.4)">${logo}</g>
-    <text x="1208" y="566" text-anchor="end" fill="#101114" fill-opacity="0.68" font-size="24">continual.ai</text>
+    <text x="1208" y="566" text-anchor="end" fill="#101114" fill-opacity="0.68" font-size="24">continual-ai/company-os</text>
     `
         : `
     <text x="54" y="60" fill="#101114" font-size="26" font-weight="600" letter-spacing="-0.5">Company OS</text>
