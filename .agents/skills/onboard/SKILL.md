@@ -7,7 +7,8 @@ description: >-
 
 # Onboard
 
-Use [README](../../../README.md) for setup and [AGENTS.md](../../../AGENTS.md) for conventions.
+Use [README](../../../README.md) for the vision and setup, and [AGENTS.md](../../../AGENTS.md)
+for conventions.
 Reuse supplied company facts; ask only for missing context that changes the first workflow:
 who uses it, what enters it, and what useful result should persist. Do not invent a company process.
 

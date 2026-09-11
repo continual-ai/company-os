@@ -1,8 +1,10 @@
 # Company OS
 
-One application a company clones and owns: business records and rules shared by people,
-integrations, and agents. Build real operations. Code and tests describe current behavior, not a
-reason to preserve a weak design. Prefer simple, idiomatic, editable source.
+An open-source foundation for a company's own operating system: software tailored to its business
+and built first for agents to operate. One application the company owns, with connected records,
+rules, and operations shared by people, integrations, and agents. Build real operations. Code and
+tests describe current behavior, not a reason to preserve a weak design. Prefer simple, idiomatic,
+editable source.
 
 ## Where things belong
 

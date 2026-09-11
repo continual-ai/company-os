@@ -8,7 +8,8 @@ description: >-
 
 # Customize
 
-Use [AGENTS.md](../../../AGENTS.md) for constraints and [README](../../../README.md) for commands.
+Use [AGENTS.md](../../../AGENTS.md) for constraints and [README](../../../README.md) for the vision
+and commands.
 Inspect Git state and the requested scope; reuse context already read. Read a company-context skill
 only when it exists and its company policy matters. Paths below start at `apps/company-os/src/`.
 
