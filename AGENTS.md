@@ -6,6 +6,14 @@ rules, and operations shared by people, integrations, and agents. Build real ope
 tests describe current behavior, not a reason to preserve a weak design. Prefer simple, idiomatic,
 editable source.
 
+## Pre-release policy
+
+Until v1, prioritize the cleanest current design over backward compatibility. Change contracts
+directly and update all callers, examples, and tests together. Remove obsolete paths; do not add
+compatibility shims, deprecated aliases, dual formats, or transitional layers unless explicitly requested.
+Use database resets for disposable development data instead of incremental upgrade migrations.
+Revisit compatibility and migration guarantees before v1.
+
 ## Where things belong
 
 - `apps/company-os/src/modules/<name>/{model,server,ui,seeds}` owns business capabilities; omit unused surfaces.
@@ -49,18 +57,18 @@ editable source.
 
 ## Data and delivery
 
-`schema.sql` projects the model; the app owns migration history. During development, `pnpm db:reset`
-rebuilds disposable local data from the model without changing migration files. When ready,
-`pnpm db:migration <name>` drafts the next SQL file with diff hints; finish it and run
-`pnpm test:migrations`. `pnpm db:migrate` applies history to empty or previously migrated databases.
-Never rewrite applied migrations. Upstream upgrades preserve company changes and applied history.
+`schema.sql` projects the model. After storage changes, run `pnpm db:reset` to regenerate it and
+rebuild disposable local data, then reseed as needed. Do not add incremental migrations or backfills
+for pre-release development. Pre-release migration history may be replaced with a fresh baseline
+when existing tooling needs it; it is not a compatibility contract. Reset is not authorization to
+delete remote data or data explicitly marked for retention; handle those cases deliberately.
 
 For implementation changes, run `pnpm check` and `pnpm test`; also run `pnpm build` for routing,
-bundling, or dependency changes and `pnpm test:migrations` for schema or data migrations. For prose-only
+bundling, or dependency changes and `pnpm test:migrations` when changing migration tooling or its baseline. For prose-only
 changes, validate the affected documents and links; application checks are unnecessary.
 Complete the requested behavior, run applicable checks, fix failures caused by the change, and
 demonstrate the requested interface before handing back. Use meaningful tests for changed behavior.
 Report unrun checks and environmental blockers honestly. Review requests stay read-only unless fixes
 are requested.
-`README.md` covers setup; the two skills cover onboarding and customization/review. Keep comments
+`README.md` covers setup; repository skills cover onboarding, customization, review, and delivery. Keep comments
 for non-obvious contracts and reasons. Do not duplicate implementation inventories or recreate docs.
