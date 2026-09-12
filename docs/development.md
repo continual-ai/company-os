@@ -63,10 +63,57 @@ Change product identity and the entry experience in `src/app/customization`.
 code, tests, and generated contracts define the implementation. `apps/client-portal` is an optional
 satellite over the central app's API; delete it if unnecessary or copy it for another interface.
 
+### Actions and Queries
+
+Objects generate `get`, `list`, `batchGet`, `create`, `update`, `delete`, and `batchDelete`.
+Disable standard writes with `actions: { delete: false }`; disabling delete also disables batch
+deletion. Custom operations are standalone `defineAction` or `defineQuery` definitions, registered
+once in their owning module's `actions` or `queries` array.
+
+```ts
+export const EscalateTicket = defineAction({
+  id: "escalate",
+  object: Ticket,
+  name: "Escalate to engineering",
+  description: "Creates an engineering issue for an open support ticket.",
+  input: { id: schema.id(Ticket) },
+  output: { issue: schema.id(Issue) },
+})
+```
+
+`object: Ticket` requires an explicit, non-nullable `input.id: schema.id(Ticket)`.
+`collection: Ticket` attaches to the collection and adds no parameters. Omit both for a global
+operation. The module owns activation and implementation; the attachment controls discovery and
+placement. An extension module can attach an operation to another module's Object.
+
+| Attachment        | HTTP                                 | MCP               | Client                           |
+| ----------------- | ------------------------------------ | ----------------- | -------------------------------- |
+| Ticket record     | `POST /api/v1/tickets/{id}:escalate` | `ticket.escalate` | `client.ticket.escalate({ id })` |
+| Ticket collection | `POST /api/v1/tickets:summary`       | `ticket.summary`  | `client.ticket.summary({})`      |
+| Global            | `POST /api/v1/:reconcile`            | `reconcile`       | `client.reconcile({})`           |
+
+Custom Queries also use POST with a structured body. Record IDs go in the HTTP path; MCP and the
+semantic client retain them in the explicit input. `schema.id` accepts canonical IDs or qualified
+aliases on input and emits canonical IDs on output. Module names do not appear in public operation
+names. Composition rejects duplicate names and collisions with standard methods or Link traversals.
+
+`defineModuleServer` binds methods in the same shape as the client: `{ ticket: { escalate } }`,
+or `{ reconcile }` for a global operation. Actions run in a transaction. Queries run read-only and
+cannot call writers or Actions, or join a write transaction. Within an Action, read through `Records`
+in the same transaction. Business operations still own admission checks, validation, invariants,
+and external-effect failure handling; read-only execution does not sandbox external services.
+
+The browser-safe model owns definitions. `runtime/contract/operations.ts` resolves complete schemas
+once per composed model; HTTP/OpenAPI and MCP project that catalog. UI uses the active model and the
+shared semantic client/cache. Record and collection Actions get schema-driven forms unless replaced
+by a custom control. `useOperationClient(EscalateTicket)` provides typed TanStack options for custom
+controls; `OperationAction` can place a global Action on a module page. Queries provide typed cache
+options for views, without inventing a visualization from their output schema.
+
 ### Relationships
 
 Declare every relationship once with `defineLink`; both directions use the same stored edge.
-Scalar properties contain values. `schema.recordId` is for Action and Query inputs or outputs,
+Scalar properties contain values. `schema.id` is for Action and Query inputs or outputs,
 not stored relationships.
 
 ```ts
