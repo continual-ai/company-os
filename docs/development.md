@@ -6,6 +6,7 @@ Build against the model; write the migration when the feature is ready.
 
 | Command                      | Purpose                                                                               |
 | ---------------------------- | ------------------------------------------------------------------------------------- |
+| `docker compose up -d`       | Start local PostgreSQL 18 + pgvector on host port 5433                                |
 | `pnpm db:reset`              | Rebuild the disposable local database from the model and refresh `schema.sql`         |
 | `pnpm db:migration <name>`   | Create the next SQL migration draft with structural diff hints                        |
 | `pnpm db:migrate`            | Apply completed migrations to a database with migration history, or an empty database |
@@ -43,7 +44,7 @@ intentionally refused; use the isolated migration tests to verify delivery inste
 that disposable database.
 
 Migration drafting and database tests need a PostgreSQL role with `CREATEDB`. Scratch databases
-are removed afterward. Tests default to `postgresql://localhost:5432/postgres`; commands use the
+are removed afterward. Tests default to `postgresql://localhost:5433/postgres`; commands use the
 application's configured connection. After changing the database environment,
 `pnpm turbo run test --force` bypasses cached test results. For inspecting a retained database,
 `pnpm --filter company-os db:dump` writes an ignored `schema.actual.sql` using `pg_dump` (the

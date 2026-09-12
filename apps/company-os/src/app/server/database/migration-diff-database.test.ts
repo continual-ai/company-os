@@ -16,7 +16,7 @@ it("ignores physical column order but reports changed storage contracts", async 
   ]
   const url = await Effect.runPromise(
     Config.string("DATABASE_URL").pipe(
-      Config.withDefault("postgresql://localhost:5432/postgres")
+      Config.withDefault("postgresql://localhost:5433/postgres")
     )
   )
   expect(

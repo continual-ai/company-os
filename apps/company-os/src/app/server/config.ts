@@ -6,7 +6,7 @@ import { ConfigProvider, Effect, Option } from "effect"
  */
 export const developmentDefaults = ConfigProvider.fromUnknown({
   APP_SECRET: "company-os-application-secret-local-development-only",
-  DATABASE_URL: "postgresql://localhost:5432/company_os",
+  DATABASE_URL: "postgresql://localhost:5433/company_os",
 })
 
 /** Local override files, app-level first, resolved from the app directory the tools run in. */

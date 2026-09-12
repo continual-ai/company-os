@@ -18,6 +18,6 @@ Migrations must stay schema-relative: no `public.` qualification and no cross-sc
 
 ## Local development
 
-From the repository root, `pnpm db:reset` prepares disposable model-based storage; `pnpm dev` starts the App on port 3002.
+From the repository root, `docker compose up -d` starts PostgreSQL 18 on host port 5433; `pnpm db:reset` prepares disposable model-based storage; `pnpm dev` starts the App on port 3002.
 Ordinary dev serves SSR from Node; `pnpm --dir apps/company-os preview` rebuilds and serves the production artifact locally.
 Under workerd the local `DATABASE_URL` needs an explicit user, and connection pools must never be shared across requests.

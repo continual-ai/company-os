@@ -1,0 +1,31 @@
+# Local PostgreSQL 18 + pgvector for Company OS.
+#
+# Host port 5433 keeps Davinci on 5432. Container port stays 5432 so in-stack
+# DNS is postgres:5432. The Node app is not in this file; run it with pnpm.
+#
+#   docker compose up -d
+#   pnpm install --frozen-lockfile
+#   pnpm db:reset
+#   pnpm dev
+
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.6-pg18-trixie
+    container_name: company-os-postgres
+    ports:
+      - "127.0.0.1:5433:5432"
+      - "[::1]:5433:5432"
+    environment:
+      POSTGRES_DB: company_os
+      POSTGRES_HOST_AUTH_METHOD: trust
+      POSTGRES_USER: "${USER:-postgres}"
+    volumes:
+      - company-os-postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  company-os-postgres-data:
