@@ -11,7 +11,7 @@
   "terminals": [
     {
       "name": "company-os",
-      "command": "pnpm turbo run dev --filter=company-os -- --host 0.0.0.0",
+      "command": "bash .cursor/cloud-dev.sh",
       "description": "Company OS development server at http://localhost:3002"
     }
   ]

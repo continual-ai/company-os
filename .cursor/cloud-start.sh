@@ -4,13 +4,8 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
-
-if [[ -d "${HOME}/.nvm/versions/node" ]]; then
-  latest_node="$(ls -1d "${HOME}/.nvm/versions/node"/v24* 2>/dev/null | sort -V | tail -1 || true)"
-  if [[ -n "${latest_node}" ]]; then
-    export PATH="${latest_node}/bin:${PATH}"
-  fi
-fi
+# shellcheck source=/dev/null
+source "${ROOT}/.cursor/cloud-env.sh"
 
 PG_MAJOR=18
 PG_HBA="/etc/postgresql/${PG_MAJOR}/main/pg_hba.conf"
