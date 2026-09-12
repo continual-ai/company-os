@@ -1,6 +1,11 @@
 import { NoteSubject } from "#/modules/notes/model/index.ts"
 import { User } from "#/runtime/access/model/index.ts"
-import { defineLink, defineObject, schema } from "#/runtime/model/index.ts"
+import {
+  defineLink,
+  defineObject,
+  schema,
+  defineQuery,
+} from "#/runtime/model/index.ts"
 
 export const Deal = defineObject({
   id: "deal",
@@ -9,24 +14,6 @@ export const Deal = defineObject({
   pluralName: "Deals",
   description: "A sales opportunity with its value, stage, and next steps.",
   implements: [{ interface: NoteSubject }],
-  queries: {
-    pipelineSummary: {
-      name: "Pipeline summary",
-      description:
-        "Summarize deals you can view by stage and currency. Keep currencies and unpriced deals separate.",
-      scope: "collection",
-      output: {
-        groups: schema.array(
-          schema.object({
-            stage: schema.string(),
-            currency: schema.string({ nullable: true }),
-            count: schema.number({ integer: true, minimum: 0 }),
-            amount: schema.decimal({ nullable: true }),
-          })
-        ),
-      },
-    },
-  },
   properties: {
     name: schema.string({
       label: "Name",
@@ -72,6 +59,23 @@ export const Deal = defineObject({
     icon: "handshake",
     title: "name",
     status: "stage",
+  },
+})
+export const PipelineSummaryQuery = defineQuery({
+  id: "pipelineSummary",
+  collection: Deal,
+  name: "Pipeline summary",
+  description:
+    "Summarize deals you can view by stage and currency. Keep currencies and unpriced deals separate.",
+  output: {
+    groups: schema.array(
+      schema.object({
+        stage: schema.string(),
+        currency: schema.string({ nullable: true }),
+        count: schema.number({ integer: true, minimum: 0 }),
+        amount: schema.decimal({ nullable: true }),
+      })
+    ),
   },
 })
 

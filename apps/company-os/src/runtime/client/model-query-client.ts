@@ -15,6 +15,7 @@ import {
 import { cacheGeneration } from "#/runtime/client/data-client.ts"
 import type {
   ModelClient,
+  CustomOperations,
   ModelObjectClient,
 } from "#/runtime/client/http-client.ts"
 import { applyMutationResult } from "#/runtime/client/model-cache.ts"
@@ -23,6 +24,8 @@ import type { RecordSearchInput } from "#/runtime/contract/record-search.ts"
 import {
   modelObjectLinkTraversals,
   modelObjects,
+  modelObjectQueries,
+  modelObjectActions,
   modelTypeAccepts,
   type ModelCatalog,
   type ModelObject,
@@ -67,9 +70,9 @@ type MutationMethod<T> = T extends (
 ) => Effect.Effect<infer A, infer E>
   ? () => UseMutationOptions<A, E, Input>
   : never
-type ObjectQueries<O extends { readonly queries: object }, C> = {
+type ObjectQueries<QueryIds extends PropertyKey, C> = {
   readonly [K in keyof C]: C[K] extends (...args: never[]) => unknown
-    ? K extends "get" | "list" | "batchGet" | keyof O["queries"]
+    ? K extends "get" | "list" | "batchGet" | QueryIds
       ? QueryMethod<C[K]>
       : MutationMethod<C[K]>
     : {
@@ -80,9 +83,21 @@ type ObjectQueries<O extends { readonly queries: object }, C> = {
 }
 type ModelQueries<M extends ModelCatalog> = {
   readonly [O in ModelObject<M> as O["id"]]: ObjectQueries<
-    O,
+    Extract<
+      CustomOperations<M>,
+      { readonly objectType: O["id"]; readonly kind: "query" }
+    >["id"],
     ModelClient<M>[O["id"]]
   >
+} & {
+  readonly [
+    O in Extract<
+      CustomOperations<M>,
+      { readonly objectType: undefined }
+    > as O["id"]
+  ]: O["kind"] extends "query"
+    ? QueryMethod<ModelClient<M>[O["id"]]>
+    : MutationMethod<ModelClient<M>[O["id"]]>
 } & {
   readonly records: {
     readonly batchGet: QueryMethod<EffectClient<M>["records"]["batchGet"]>
@@ -123,18 +138,13 @@ export function createModelQueries<M extends ModelCatalog>(
   // types is unbounded work for the compiler.
   client: NoInfer<EffectClient<M>>
 ): ModelQueries<M> {
-  const result = Object.fromEntries(
+  const result: Record<string, unknown> = Object.fromEntries(
     modelObjects(model).map((object) => {
       const group: unknown = Reflect.get(client, object.id)
       if (typeof group !== "object" || group === null)
         throw new Error(`Missing model object ${object.id}`)
       const operations: Record<string, unknown> = {}
-      for (const name of [
-        "get",
-        "list",
-        "batchGet",
-        ...Object.keys(object.queries),
-      ]) {
+      for (const { id: name } of modelObjectQueries(model, object)) {
         const fn = method(group, name)
         operations[name] = (input: unknown = {}) =>
           modelQuery(
@@ -145,7 +155,7 @@ export function createModelQueries<M extends ModelCatalog>(
             name !== "get" && name !== "list" && name !== "batchGet"
           )
       }
-      for (const name of Object.keys(object.actions)) {
+      for (const { id: name } of modelObjectActions(model, object)) {
         const fn = method(group, name)
         operations[name] = () => mutation(fn, name)
       }
@@ -173,6 +183,24 @@ export function createModelQueries<M extends ModelCatalog>(
       return [object.id, operations]
     })
   )
+  for (const operation of [
+    ...Object.values(model.actions),
+    ...Object.values(model.queries),
+  ]) {
+    if (operation.objectType !== undefined) continue
+    const fn = method(client, operation.id)
+    result[operation.id] =
+      operation.kind === "query"
+        ? (input: unknown = {}) =>
+            modelQuery(
+              [],
+              operation.id,
+              input,
+              (signal) => runClientEffect(fn(input), signal),
+              true
+            )
+        : () => mutation(fn, operation.id)
+  }
   const searchableTypes = modelObjects(model)
     .filter((object) => object.search !== undefined)
     .map((object) => object.id)
@@ -206,7 +234,13 @@ export function executeMutation<A, E, Input>(
   return new MutationObserver(cache, options).mutate(input)
 }
 
-export type ObjectQueryClient<O extends ObjectType> = ObjectQueries<
-  O,
-  ModelObjectClient<ModelCatalog, O>
+export type ObjectQueryClient<
+  O extends ObjectType,
+  M extends ModelCatalog = ModelCatalog,
+> = ObjectQueries<
+  Extract<
+    CustomOperations<M>,
+    { readonly objectType: O["id"]; readonly kind: "query" }
+  >["id"],
+  ModelObjectClient<M, O>
 >

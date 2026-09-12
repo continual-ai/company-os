@@ -15,7 +15,7 @@ import {
   type EventPage,
 } from "#/runtime/contract/events.ts"
 import { HttpValidationMiddleware } from "#/runtime/contract/http-api.ts"
-import type { ExecutableModelOperation } from "#/runtime/model/operations.ts"
+import type { ModelOperation } from "#/runtime/contract/operations.ts"
 import {
   activeModuleModel,
   requireModuleOperation,
@@ -82,7 +82,7 @@ const make = Effect.gen(function* () {
 
   const invoke = (
     request: ModelHttpRequest,
-    descriptor: ExecutableModelOperation,
+    descriptor: ModelOperation,
     operation: ModelHttpOperation
   ) =>
     authentication.invocation(requestHeaders(request)).pipe(

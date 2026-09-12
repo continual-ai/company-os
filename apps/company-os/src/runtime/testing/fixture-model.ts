@@ -8,6 +8,7 @@ import {
   defineObject,
   schema,
   standardErrors,
+  defineAction,
 } from "#/runtime/model/index.ts"
 import { PlatformModule } from "#/runtime/platform/model/index.ts"
 
@@ -149,24 +150,6 @@ export const Prospect = defineObject({
   name: "Prospect",
   pluralName: "Prospects",
   implements: [{ interface: Topic }],
-  actions: {
-    convert: {
-      name: "Convert prospect",
-      description:
-        "Creates a person and links it to a new account named after the prospect.",
-      idempotent: true,
-      scope: "object",
-      output: {
-        account: schema.recordId({ id: "account" }),
-        person: schema.recordId({ id: "person" }),
-      },
-      errors: [
-        standardErrors.aborted,
-        standardErrors.alreadyExists,
-        standardErrors.failedPrecondition,
-      ],
-    },
-  },
   properties: {
     name: schema.string({ label: "Name", minLength: 1, maxLength: 200 }),
     accountName: schema.string({
@@ -208,6 +191,24 @@ export const Prospect = defineObject({
     status: "status",
   },
 })
+const ProspectConvert = defineAction({
+  id: "convert",
+  object: Prospect,
+  name: "Convert prospect",
+  description:
+    "Creates a person and links it to a new account named after the prospect.",
+  idempotent: true,
+  output: {
+    account: schema.id({ id: "account" }),
+    person: schema.id({ id: "person" }),
+  },
+  errors: [
+    standardErrors.aborted,
+    standardErrors.alreadyExists,
+    standardErrors.failedPrecondition,
+  ],
+  input: { id: schema.id(Prospect) },
+})
 
 const ProspectConvertedAccount = defineLink({
   id: "prospectConvertedAccount",
@@ -234,8 +235,8 @@ export const ProspectConverted = defineEvent({
   version: 1,
   subject: Prospect,
   data: schema.object({
-    account: schema.recordId(Account),
-    person: schema.recordId(Person),
+    account: schema.id(Account),
+    person: schema.id(Person),
   }),
 })
 
@@ -383,6 +384,7 @@ export const FixtureModule = defineModule({
     OrderOwner,
   ],
   objects: [Account, Person, Prospect, Order, OrderLine, Document, Memo],
+  actions: [ProspectConvert],
 })
 
 /** Only the kernel modules. */

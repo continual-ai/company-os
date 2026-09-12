@@ -38,5 +38,5 @@ it("requires both domains for the optional escalation bridge", () => {
     name: "Engineering and support",
     modules: [...support, EngineeringModule, SupportEngineeringModule],
   })
-  expect(dogfood.objects.escalation.actions.createIssue).toBeDefined()
+  expect(dogfood.actions["ticket.escalate"]).toBeDefined()
 })

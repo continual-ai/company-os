@@ -1,16 +1,12 @@
 import type { Effect, Schema } from "effect"
 import type { HttpClientError } from "effect/unstable/http"
 
-import { customMethodParams } from "#/runtime/contract/http-custom-method.ts"
 import {
-  httpEndpointId,
-  linkHttpEndpointId,
-} from "#/runtime/contract/http-endpoint.ts"
-import {
-  isStandardActionId,
-  type Action,
-  type StandardActionId,
-} from "#/runtime/model/definition/action.ts"
+  httpOperation,
+  httpOperationRequest,
+} from "#/runtime/contract/http-operation.ts"
+import { modelOperations } from "#/runtime/contract/operations.ts"
+import { type Action } from "#/runtime/model/definition/action.ts"
 import type { ApiError } from "#/runtime/model/definition/error.ts"
 import type {
   LinkTraversal,
@@ -21,7 +17,6 @@ import type {
   ModelObjectUpdateInput,
 } from "#/runtime/model/definition/model-input.ts"
 import {
-  modelObjectLinkTraversals,
   modelObjects,
   type ModelCatalog,
   type ModelEndpointObjectTypeId,
@@ -35,7 +30,7 @@ import type {
   ObjectRecord,
   ObjectType,
 } from "#/runtime/model/definition/object.ts"
-import type { CustomQuery } from "#/runtime/model/definition/query.ts"
+import type { Query } from "#/runtime/model/definition/query.ts"
 import type {
   Batch,
   ListRequest,
@@ -44,16 +39,17 @@ import type {
 import type {
   InferInputSchema,
   InferSchema,
-  RecordIdentifier,
 } from "#/runtime/model/definition/schema.ts"
 import type {
   LinkListInput,
   LinkMutationInput,
 } from "#/runtime/model/link-input.ts"
 
-type CustomOperation = Action | CustomQuery
-type ObjectCustomOperations<TObject extends ObjectType> = TObject["actions"] &
-  TObject["queries"]
+type CustomOperation = Action | Query
+export type CustomOperations<M extends ModelCatalog> = Extract<
+  M["actions"][keyof M["actions"]] | M["queries"][keyof M["queries"]],
+  CustomOperation
+>
 type InputOf<T extends CustomOperation> = InferInputSchema<T["input"]>
 type OutputOf<T extends CustomOperation> = InferSchema<T["output"]>
 
@@ -136,23 +132,20 @@ type ObjectLinkClient<
   ]: LinkTraversalClient<TModel, TSide>
 }
 
+export type ModelClientError =
+  | ApiError
+  | HttpClientError.HttpClientError
+  | Schema.SchemaError
+
 type DirectClientMethod<TInput, TOutput> = (
   input: TInput
-) => Effect.Effect<
-  TOutput,
-  ApiError | HttpClientError.HttpClientError | Schema.SchemaError
->
+) => Effect.Effect<TOutput, ModelClientError>
 
-type DirectActionClient<TObject extends ObjectType> = {
-  readonly [
-    TAction in ObjectCustomOperations<TObject>[keyof ObjectCustomOperations<TObject>] as TAction extends CustomOperation
-      ? TAction["id"] extends StandardActionId
-        ? never
-        : TAction["id"]
-      : never
-  ]: TAction extends CustomOperation
-    ? DirectClientMethod<InputOf<TAction>, OutputOf<TAction>>
-    : never
+type CustomClient<Operations extends CustomOperation> = {
+  readonly [O in Operations as O["id"]]: DirectClientMethod<
+    InputOf<O>,
+    OutputOf<O>
+  >
 }
 
 export type ModelObjectClient<
@@ -202,7 +195,9 @@ export type ModelObjectClient<
         >
       }
     : object) &
-  DirectActionClient<TObject> &
+  CustomClient<
+    Extract<CustomOperations<TModel>, { readonly objectType: TObject["id"] }>
+  > &
   ObjectLinkClient<TModel, TObject>
 
 /** One noun-oriented model client generated from the native Effect contract. */
@@ -211,14 +206,16 @@ export type ModelClient<TModel extends ModelCatalog> = {
     TModel,
     TObject
   >
-}
+} & CustomClient<
+  Extract<CustomOperations<TModel>, { readonly objectType: undefined }>
+>
 
 type NativeModelMethod = (request: unknown) => Effect.Effect<unknown, unknown>
 
-function nativeGroup(nativeClient: object, object: ObjectType): object {
-  const group = Reflect.get(nativeClient, object.id)
+function nativeGroup(nativeClient: object, id: string): object {
+  const group = Reflect.get(nativeClient, id)
   if (typeof group !== "object" || group === null) {
-    throw new Error(`HTTP client group '${object.id}' is missing.`)
+    throw new Error(`HTTP client group '${id}' is missing.`)
   }
   return group
 }
@@ -243,97 +240,33 @@ export function createModelClient<TModel extends ModelCatalog>(
   model: TModel,
   nativeClient: object
 ): ModelClient<TModel> {
-  const result: Record<string, Record<string, unknown>> = {}
-  for (const object of modelObjects(model)) {
-    const group = nativeGroup(nativeClient, object)
-    const endpoint = (operation: string, scope?: "collection" | "object") =>
-      nativeMethod(group, httpEndpointId(operation, object, scope))
-    const list = endpoint("list")
-    const methods: Record<string, unknown> = {
-      batchGet: (input: ObjectBatchGetInput<ObjectType>) =>
-        endpoint("batchGet")({
-          params: customMethodParams("batchGet"),
-          payload: input,
-        }),
-      get: (input: ObjectGetInput<ObjectType>) =>
-        endpoint("get")({ params: input }),
-      list: (input: ListRequest = {}) => list({ query: input }),
+  const result: Record<string, unknown> = {}
+  for (const object of modelObjects(model)) result[object.id] = {}
+  for (const operation of modelOperations(model)) {
+    const http = httpOperation(operation)
+    const method = nativeMethod(
+      nativeGroup(nativeClient, http.group),
+      http.identifier
+    )
+    const call = (input: Readonly<Record<string, unknown>> = {}) =>
+      method(httpOperationRequest(http, input))
+    if (operation.object === undefined) {
+      result[operation.id] = call
+      continue
     }
-    if (Object.hasOwn(object.actions, "batchDelete")) {
-      methods.batchDelete = (input: ObjectBatchDeleteInput<ObjectType>) =>
-        endpoint("batchDelete")({
-          params: customMethodParams("batchDelete"),
-          payload: input,
-        })
+    const methods = result[operation.object.id]
+    if (typeof methods !== "object" || methods === null)
+      throw new Error(`Missing object client '${operation.object.id}'.`)
+    if (operation.linkTraversal === undefined)
+      Reflect.set(methods, operation.id, call)
+    else {
+      const key = operation.linkTraversal.traversal.key
+      const existing = Reflect.get(methods, key)
+      const traversal =
+        typeof existing === "object" && existing !== null ? existing : {}
+      Object.assign(traversal, { [operation.id]: call })
+      Reflect.set(methods, key, traversal)
     }
-    if (Object.hasOwn(object.actions, "create")) {
-      methods.create = (input: object) => endpoint("create")({ payload: input })
-    }
-    if (Object.hasOwn(object.actions, "delete")) {
-      methods.delete = (input: ObjectDeleteInput<ObjectType>) => {
-        const { id, ...query } = input
-        return endpoint("delete")({ params: { id }, query })
-      }
-    }
-    if (Object.hasOwn(object.actions, "update")) {
-      methods.update = (
-        input: Readonly<Record<string, unknown>> & {
-          readonly id: RecordIdentifier
-        }
-      ) => {
-        const { id, ...payload } = input
-        return endpoint("update")({ params: { id }, payload })
-      }
-    }
-    for (const action of [
-      ...Object.values(object.actions),
-      ...Object.values(object.queries),
-    ]) {
-      if (isStandardActionId(action.id)) continue
-      const actionEndpoint = endpoint(action.id, action.scope)
-      methods[action.id] = (input: Readonly<Record<string, unknown>>) => {
-        const { id, ...payload } = input
-        return actionEndpoint({
-          params: customMethodParams(
-            action.id,
-            action.scope === "object" ? { id } : {}
-          ),
-          payload: action.scope === "object" ? payload : input,
-        })
-      }
-    }
-
-    for (const traversal of modelObjectLinkTraversals(model, object)) {
-      const traversalMethods: Record<string, unknown> = {
-        list: (input: LinkListInput) => {
-          const { id, ...query } = input
-          return nativeMethod(
-            group,
-            linkHttpEndpointId("list", object, traversal)
-          )({ params: { id }, query })
-        },
-      }
-      if (traversal.writable) {
-        traversalMethods.link = (input: LinkMutationInput) =>
-          nativeMethod(
-            group,
-            linkHttpEndpointId("link", object, traversal)
-          )({
-            params: customMethodParams("link", { id: input.id }),
-            payload: { target: input.target },
-          })
-        traversalMethods.unlink = (input: LinkMutationInput) =>
-          nativeMethod(
-            group,
-            linkHttpEndpointId("unlink", object, traversal)
-          )({
-            params: customMethodParams("unlink", { id: input.id }),
-            payload: { target: input.target },
-          })
-      }
-      methods[traversal.traversal.key] = traversalMethods
-    }
-    result[object.id] = methods
   }
   // SAFETY: methods and traversal groups are exhaustively generated from the
   // same model and checked against its native Effect client above.

@@ -146,7 +146,7 @@ export function objectTableLinkColumnDef(
       meta: {
         label: link.traversal.label,
         property: {
-          ...schema.recordId({
+          ...schema.id({
             id: link.traversal.to.typeId,
             label: link.traversal.label,
           }),

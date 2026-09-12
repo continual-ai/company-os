@@ -7,12 +7,12 @@ import {
 } from "@company/ui/popover"
 import { Link } from "@tanstack/react-router"
 
-import { Deal } from "#/modules/sales/model/deal.ts"
+import { PipelineSummaryQuery } from "#/modules/sales/model/deal.ts"
 import { PipelineSummary } from "#/modules/sales/ui/deal/pipeline-summary.tsx"
-import { useObjectClient } from "#/runtime/ui/module.ts"
+import { useOperationClient } from "#/runtime/ui/module.ts"
 
 export function DealToolbar() {
-  const options = useObjectClient(Deal).pipelineSummary({})
+  const options = useOperationClient(PipelineSummaryQuery)({})
   return (
     <div className="flex items-center gap-2">
       <Popover>

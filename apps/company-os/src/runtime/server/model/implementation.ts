@@ -17,7 +17,8 @@ import type { OperationRequirements } from "#/runtime/server/model/module-server
 import type { ObjectRepositories } from "#/runtime/server/model/object-repositories.ts"
 import { makeObjectService } from "#/runtime/server/model/object-service.ts"
 import type { RecordIdentifierResolver } from "#/runtime/server/model/record-identifier-resolver.ts"
-import type { Database } from "#/runtime/server/storage/database.ts"
+import { runOperation } from "#/runtime/server/operation-mode.ts"
+import { Database } from "#/runtime/server/storage/database.ts"
 
 type Contribution = {
   readonly module: ModuleDefinition
@@ -77,6 +78,7 @@ export function modelImplementationLayer<
       const context = yield* Layer.build(services)
       const foundationContext: Context.Context<Foundation> = context
       const links = Context.get(context, Links)
+      const database = Context.get(context, Database)
       const overrides: Record<string, object> = {}
       for (const contribution of contributions) {
         // Contributions for modules outside this model (disabled ones) are skipped.
@@ -92,35 +94,50 @@ export function modelImplementationLayer<
         const implementations = yield* factory.pipe(
           Effect.provideContext(context)
         )
+        const declared = [
+          ...contribution.module.actions,
+          ...contribution.module.queries,
+        ]
         for (const [id, operations] of Object.entries(implementations)) {
           const object = contribution.module.objects.find(
             (candidate) => candidate.id === id
           )
-          if (!object)
-            throw new Error(
-              `Module '${contribution.module.id}' cannot implement object '${id}'.`
-            )
-          if (Object.hasOwn(overrides, id))
-            throw new Error(`Duplicate implementation for '${id}'.`)
+          const global = typeof operations === "function"
           const allowed = new Set([
-            "get",
-            "list",
-            "batchGet",
-            ...Object.keys(object.actions),
-            ...Object.keys(object.queries),
+            ...declared
+              .filter(
+                (operation) =>
+                  operation.objectType === (global ? undefined : id)
+              )
+              .map((operation) => operation.id),
+            ...(object
+              ? ["get", "list", "batchGet", ...Object.keys(object.actions)]
+              : []),
           ])
+          if (
+            !global &&
+            (typeof operations !== "object" || operations === null)
+          )
+            throw new Error(`Invalid operations for '${id}'.`)
           const bound: Record<
             string,
             (
               input: unknown
             ) => Effect.Effect<unknown, unknown, CurrentInvocation>
           > = {}
-          if (typeof operations !== "object" || operations === null)
-            throw new Error(`Invalid operations for ${id}.`)
-          for (const [name, operation] of Object.entries(operations)) {
+          for (const [name, operation] of global
+            ? [[id, operations]]
+            : Object.entries(operations)) {
             if (!allowed.has(name) || typeof operation !== "function")
-              throw new Error(`Invalid implementation for '${id}.${name}'.`)
-            // SAFETY: defineModuleServer checks inputs, outputs and requirements before this dispatch boundary.
+              throw new Error(
+                `Invalid implementation for '${global ? name : `${id}.${name}`}' in module '${contribution.module.id}'.`
+              )
+            const existing = global ? overrides : overrides[id]
+            if (existing && Object.hasOwn(existing, name))
+              throw new Error(
+                `Duplicate implementation for '${global ? name : `${id}.${name}`}'.`
+              )
+            // SAFETY: defineModuleServer checks each method against its declared operation.
             // oxlint-disable-next-line typescript/no-unsafe-type-assertion
             const invoke = operation as (
               input: unknown
@@ -129,12 +146,25 @@ export function modelImplementationLayer<
               unknown,
               ModuleRequirements<C> | CurrentInvocation
             >
+            const kind =
+              declared.find(
+                (candidate) =>
+                  candidate.id === name &&
+                  candidate.objectType === (global ? undefined : id)
+              )?.kind ??
+              (["get", "list", "batchGet"].includes(name) ? "query" : "action")
             bound[name] = (input) =>
-              invoke(input).pipe(Effect.provideContext(context))
+              runOperation(
+                database,
+                kind,
+                invoke(input).pipe(Effect.provideContext(context))
+              )
           }
-          overrides[id] = bound
+          if (global) Object.assign(overrides, bound)
+          else overrides[id] = { ...overrides[id], ...bound }
         }
       }
+
       const objects: ReadonlyArray<ObjectType> = Object.values(model.objects)
       const entries = yield* Effect.forEach(objects, (object) =>
         makeObjectService(object).pipe(
@@ -149,7 +179,10 @@ export function modelImplementationLayer<
       return implementModel<ModelCatalog>(
         model,
         // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-        Object.fromEntries(entries) as unknown as ModelServiceMap<ModelCatalog>,
+        {
+          ...overrides,
+          ...Object.fromEntries(entries),
+        } as unknown as ModelServiceMap<ModelCatalog>,
         links
       )
     })

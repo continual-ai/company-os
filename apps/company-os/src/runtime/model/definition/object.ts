@@ -2,10 +2,10 @@ import { Brand } from "effect"
 
 import type { ActorId } from "#/runtime/model/core/actor.ts"
 import {
-  type Action,
-  type ActionDefinitions,
+  type StandardAction,
+  type StandardActionOptions,
   type NormalizedActions,
-  bindActions,
+  standardActionSettings,
   standardActions,
 } from "#/runtime/model/definition/action.ts"
 import {
@@ -27,12 +27,6 @@ import {
   type Properties,
   normalizeProperties,
 } from "#/runtime/model/definition/property.ts"
-import {
-  type BoundQueries,
-  type CustomQuery,
-  type QueryDefinitions,
-  bindQueries,
-} from "#/runtime/model/definition/query.ts"
 import type {
   AnySchema,
   EnumSchema,
@@ -119,8 +113,7 @@ interface ObjectDisplayDefinition {
  * intersection so the whole definition still infers as one literal type.
  */
 export interface ObjectDefinition {
-  readonly actions?: ActionDefinitions
-  readonly queries?: QueryDefinitions
+  readonly actions?: StandardActionOptions
   readonly collection: string
   readonly description?: string
   readonly display: ObjectDisplayDefinition
@@ -135,15 +128,9 @@ export interface ObjectDefinition {
 }
 
 type ObjectActionDefinitions<D extends ObjectDefinition> = D extends {
-  readonly actions: infer TActions extends ActionDefinitions
+  readonly actions: infer TActions extends StandardActionOptions
 }
   ? TActions
-  : {}
-
-type ObjectQueryDefinitions<D extends ObjectDefinition> = D extends {
-  readonly queries: infer TQueries extends QueryDefinitions
-}
-  ? TQueries
   : {}
 
 type ObjectImplementations<D extends ObjectDefinition> = D extends {
@@ -180,13 +167,8 @@ export interface ObjectType<D extends ObjectDefinition = ObjectDefinition> {
   readonly [objectDefinition]?: D
   actions: OpenOr<
     D,
-    Readonly<Record<string, Action>>,
+    Readonly<Record<string, StandardAction>>,
     NormalizedActions<D["id"], ObjectActionDefinitions<D>>
-  >
-  queries: OpenOr<
-    D,
-    Readonly<Record<string, CustomQuery>>,
-    BoundQueries<D["id"], ObjectQueryDefinitions<D>>
   >
   collection: D["collection"]
   description?: string
@@ -438,12 +420,7 @@ export function defineObject<const D extends ObjectDefinition>(
     id: definitionId(input.id),
     collection: definitionId(input.collection),
   }
-  const bound = bindActions(identity, input.actions)
-  const queries = bindQueries(identity, input.queries)
-  for (const id of Object.keys(queries)) {
-    if (Object.hasOwn(bound.actions, id))
-      throw new Error(`Object '${identity.id}' duplicates operation '${id}'.`)
-  }
+  const settings = standardActionSettings(input.actions)
   const metadata = {
     kind: "object" as const,
     id: identity.id,
@@ -456,22 +433,15 @@ export function defineObject<const D extends ObjectDefinition>(
     uniqueBy,
     ...(input.search === undefined ? {} : { search: input.search }),
   }
-  const actions = {
-    ...Object.fromEntries(
-      standardActions(metadata, bound.standard).map((action) => [
-        action.id,
-        action,
-      ])
-    ),
-    ...bound.actions,
-  }
-  // SAFETY: bindActions rejects authored standard IDs and standardActions
+  const actions = Object.fromEntries(
+    standardActions(metadata, settings).map((action) => [action.id, action])
+  )
+  // SAFETY: standardActionSettings validates opt-outs and standardActions
   // materializes exactly the actions enabled by the inferred settings.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const object = {
     ...metadata,
     actions,
-    queries,
   } as unknown as ObjectType<D>
   if (input.description !== undefined) {
     return { ...object, description: input.description }

@@ -99,6 +99,7 @@ export function useObjectCollection(
 
   const can = (actionId: string, target?: string) =>
     objectActionAvailable(
+      runtime.model,
       object,
       actionId,
       records.find((record) => record.id === target)

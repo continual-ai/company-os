@@ -1,14 +1,14 @@
 import { useQuery } from "@tanstack/react-query"
 
-import type { Deal } from "#/modules/sales/model/deal.ts"
-import type { ObjectQueryClient } from "#/runtime/client/model-query-client.ts"
+import type { PipelineSummaryQuery } from "#/modules/sales/model/deal.ts"
+import type { OperationQueryClient } from "#/runtime/ui/model/use-operation-client.ts"
 
 /** Shares the model query cache with any loader or component using this request. */
 export function PipelineSummary({
   options,
 }: {
   readonly options: ReturnType<
-    ObjectQueryClient<typeof Deal>["pipelineSummary"]
+    OperationQueryClient<typeof PipelineSummaryQuery>
   >
 }) {
   const { data: value, error } = useQuery(options)

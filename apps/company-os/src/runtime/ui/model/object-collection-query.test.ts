@@ -49,7 +49,7 @@ describe("object collection queries", () => {
   it("projects relationships into graph membership filters, including empty links", () => {
     expect(
       defaultFilterOperator({
-        ...schema.recordId(Account),
+        ...schema.id(Account),
         nullable: true,
         immutable: false,
         outputOnly: false,

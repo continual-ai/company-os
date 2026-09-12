@@ -1,5 +1,6 @@
 import { Effect, Predicate, Schema } from "effect"
 
+import { type ModelOperation } from "#/runtime/contract/operations.ts"
 import { schemaErrorToApiError } from "#/runtime/contract/schema.ts"
 // This is the single boundary that normalizes independently typed Effect failures
 // into the portable API error contract without leaking infrastructure failures.
@@ -16,10 +17,6 @@ import {
   type ValidationError,
   type Violation,
 } from "#/runtime/model/index.ts"
-import {
-  type ExecutableModelOperation,
-  modelOperationErrors,
-} from "#/runtime/model/operations.ts"
 import { constraintApiError } from "#/runtime/server/storage/constraint-error.ts"
 
 type StandardApiError = ApiError<
@@ -319,16 +316,14 @@ function translateApiError(error: unknown): ApiError | undefined {
 /** Translates application failures and sanitizes unexpected typed failures. */
 export function withApiErrors<A, E, R>(
   effect: Effect.Effect<A, E, R>,
-  operation?: ExecutableModelOperation
+  operation?: ModelOperation
 ): Effect.Effect<A, ApiError, R> {
   return Effect.catch(effect, (error) => {
     const mapped = translateApiError(error)
     if (mapped !== undefined) {
       const declared =
         operation === undefined ||
-        modelOperationErrors(operation).some(
-          ({ reason }) => reason === mapped.reason
-        )
+        operation.errors.some(({ reason }) => reason === mapped.reason)
       if (declared) return Effect.fail(mapped)
       return Effect.logError(
         `Operation '${operation.key}' produced undeclared API error '${mapped.reason}'.`

@@ -7,6 +7,7 @@ import {
   defineObject,
   schema,
   standardErrors,
+  defineAction,
 } from "#/runtime/model/index.ts"
 
 const CompanyReference = { id: "company" } as const
@@ -19,24 +20,6 @@ export const Lead = defineObject({
   pluralName: "Leads",
   description: "A potential customer to qualify and follow up with.",
   implements: [{ interface: NoteSubject }],
-  actions: {
-    convert: {
-      name: "Convert lead",
-      description:
-        "Creates a contact and links it to the selected company, or creates a company from the supplied name.",
-      idempotent: true,
-      scope: "object",
-      output: {
-        company: schema.recordId(CompanyReference),
-        contact: schema.recordId(ContactReference),
-      },
-      errors: [
-        standardErrors.aborted,
-        standardErrors.alreadyExists,
-        standardErrors.failedPrecondition,
-      ],
-    },
-  },
   properties: {
     name: schema.string({
       label: "Name",
@@ -88,6 +71,24 @@ export const Lead = defineObject({
     status: "status",
   },
 })
+export const ConvertLead = defineAction({
+  id: "convert",
+  object: Lead,
+  name: "Convert lead",
+  description:
+    "Creates a contact and links it to the selected company, or creates a company from the supplied name.",
+  idempotent: true,
+  output: {
+    company: schema.id(CompanyReference),
+    contact: schema.id(ContactReference),
+  },
+  errors: [
+    standardErrors.aborted,
+    standardErrors.alreadyExists,
+    standardErrors.failedPrecondition,
+  ],
+  input: { id: schema.id(Lead) },
+})
 
 export const LeadCompany = defineLink({
   id: "leadCompany",
@@ -98,7 +99,7 @@ export const LeadCompany = defineLink({
   reverse: { key: "leads", label: "Leads" },
 })
 
-export const LeadConvertedCompany = defineLink({
+export const ConvertLeadedCompany = defineLink({
   outputOnly: true,
   id: "leadConvertedCompany",
   name: "Lead Converted company",
@@ -108,7 +109,7 @@ export const LeadConvertedCompany = defineLink({
   reverse: { key: "convertedLeads", label: "Converted leads" },
 })
 
-export const LeadConvertedContact = defineLink({
+export const ConvertLeadedContact = defineLink({
   outputOnly: true,
   id: "leadConvertedContact",
   name: "Lead Converted contact",
@@ -118,12 +119,12 @@ export const LeadConvertedContact = defineLink({
   reverse: { key: "convertedLeads", label: "Converted leads" },
 })
 
-export const LeadConverted = defineEvent({
+export const ConvertLeaded = defineEvent({
   type: "lead.converted",
   version: 1,
   subject: Lead,
   data: schema.object({
-    company: schema.recordId(Company),
-    contact: schema.recordId(Contact),
+    company: schema.id(Company),
+    contact: schema.id(Contact),
   }),
 })

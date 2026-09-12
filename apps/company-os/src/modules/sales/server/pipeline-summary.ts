@@ -1,11 +1,12 @@
 import { Effect, Schema } from "effect"
 
+import { PipelineSummaryQuery } from "#/modules/sales/model/deal.ts"
 import { Deal } from "#/modules/sales/model/deal.ts"
 import { toEffectSchema } from "#/runtime/contract/schema.ts"
 import { requireProjectAccess } from "#/runtime/server/auth/project-access.ts"
 import { Database, ModelContext } from "#/runtime/server/index.ts"
 
-const Output = toEffectSchema(Deal.queries.pipelineSummary.output)
+const Output = toEffectSchema(PipelineSummaryQuery.output)
 
 /** Aggregates project records, preserving exact decimal values and currency boundaries. */
 export const pipelineSummary = Effect.fn("sales.pipelineSummary")(function* () {

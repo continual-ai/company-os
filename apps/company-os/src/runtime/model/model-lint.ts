@@ -224,8 +224,13 @@ export function lintModelDescription(
     lintText(diagnostics, ["links", link.id, "reverse"], link.reverse)
   }
   for (const action of description.actions) {
-    const path = ["actions", action.objectType, action.id]
+    const path = [
+      "actions",
+      ...(action.objectType ? [action.objectType] : []),
+      action.id,
+    ]
     lintText(diagnostics, path, action)
+    if (!("input" in action)) continue
     lintProperty(diagnostics, [...path, "input"], {
       id: "input",
       schema: action.input,
@@ -236,7 +241,11 @@ export function lintModelDescription(
     })
   }
   for (const query of description.queries) {
-    lintText(diagnostics, ["queries", query.objectType, query.id], query)
+    lintText(
+      diagnostics,
+      ["queries", ...(query.objectType ? [query.objectType] : []), query.id],
+      query
+    )
   }
 
   return diagnostics

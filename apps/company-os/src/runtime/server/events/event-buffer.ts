@@ -1,5 +1,7 @@
 import { Context, Effect } from "effect"
 
+import { requireWritableOperation } from "#/runtime/server/operation-mode.ts"
+
 export interface EventSubject {
   readonly id: string
   readonly objectType: string
@@ -26,6 +28,7 @@ export const PendingEvents = Context.Reference<Array<PendingEvent> | undefined>(
 export const stageEvent = Effect.fn("@company/stageEvent")(function* (
   event: PendingEvent
 ) {
+  yield* requireWritableOperation
   const pending = yield* PendingEvents
   if (pending === undefined)
     return yield* Effect.die(

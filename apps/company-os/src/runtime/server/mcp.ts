@@ -15,34 +15,16 @@ import { Option, Schema } from "effect"
 import type { Effect } from "effect"
 
 import {
-  linkPageOutputSchema,
-  linkListInputSchema,
-  objectBatchGetInputSchema,
-  objectBatchOutputSchema,
-  objectGetInputSchema,
-  objectListInputSchema,
-  objectPageOutputSchema,
-  objectRecordOutputSchema,
-  pageSizeSchema,
-} from "#/runtime/contract/model-schemas.ts"
+  modelOperations,
+  type ModelOperation,
+} from "#/runtime/contract/operations.ts"
 import {
   recordBatchInput,
   recordBatchResult,
   type RecordBatchInput,
 } from "#/runtime/contract/record-batch.ts"
-import {
-  toEffectInputSchema,
-  toEffectRecordIdentifierSchema,
-  toEffectSchema,
-} from "#/runtime/contract/schema.ts"
 import type { ApiError } from "#/runtime/model/definition/error.ts"
 import type { ModelCatalog } from "#/runtime/model/definition/model.ts"
-import type { ObjectType } from "#/runtime/model/definition/object.ts"
-import type { Query, CustomQuery } from "#/runtime/model/definition/query.ts"
-import {
-  executableModelOperations,
-  type ExecutableModelOperation,
-} from "#/runtime/model/operations.ts"
 import type { CurrentInvocation } from "#/runtime/server/invocation.ts"
 import { executeModelOperation } from "#/runtime/server/model-implementation.ts"
 import type { Links } from "#/runtime/server/model/link-service.ts"
@@ -66,7 +48,7 @@ export interface ModelMcpBinding {
   ) => Promise<ModelMcpResult>
   readonly name: string
   readonly run: (
-    descriptor: ExecutableModelOperation,
+    descriptor: ModelOperation,
     operation: ModelMcpOperation
   ) => Promise<ModelMcpResult>
   readonly version: string
@@ -79,32 +61,6 @@ export type ModelMcpBindingFactory = (
 export interface ModelMcpRequestPolicy {
   readonly allowedHostnames: ReadonlyArray<string>
   readonly allowedOriginHostnames?: ReadonlyArray<string>
-}
-
-function querySchemas(object: ObjectType, query: Query | CustomQuery) {
-  if ("input" in query)
-    return {
-      input: toEffectInputSchema(query.input),
-      output: toEffectSchema(query.output),
-    }
-  switch (query.id) {
-    case "batchGet":
-      return {
-        input: objectBatchGetInputSchema(object),
-        output: objectBatchOutputSchema(object),
-      }
-    case "get":
-      return {
-        input: objectGetInputSchema(object),
-        output: objectRecordOutputSchema(object),
-      }
-    case "list":
-      return {
-        input: objectListInputSchema(object),
-        output: objectPageOutputSchema(object),
-      }
-  }
-  throw new Error(`Unsupported query for object '${query.objectType}'.`)
 }
 
 function toolResult(output: unknown) {
@@ -131,7 +87,11 @@ function toolResponse(result: ModelMcpResult) {
 }
 
 function mcpSchema(schema: Schema.Codec<unknown, unknown>) {
-  const standard = Schema.toStandardJSONSchemaV1(schema)
+  // The SDK requires an object at the JSON Schema root; a root $ref makes it
+  // wrap otherwise identical outputs in { result }. Keep names on nested schemas.
+  const standard = Schema.toStandardJSONSchemaV1(
+    schema.annotate({ identifier: undefined })
+  )
   const decode = Schema.decodeUnknownOption(schema)
   const validator: jsonSchemaValidator = {
     getValidator:
@@ -198,99 +158,26 @@ export function createModelMcpServer({
           )
         )
     )
-  for (const descriptor of executableModelOperations(exposed)) {
-    const { definition, object } = descriptor
-    if (descriptor.linkTraversal !== undefined) {
-      const traversal = descriptor.linkTraversal
-      const input = Schema.Struct({
-        id: toEffectRecordIdentifierSchema(object.id),
-        ...(definition.id === "list"
-          ? (linkListInputSchema(exposed, traversal)?.fields ?? {
-              pageSize: Schema.optionalKey(pageSizeSchema),
-              pageToken: Schema.optionalKey(Schema.String),
-            })
-          : {
-              target: toEffectRecordIdentifierSchema(
-                traversal.target.from.typeId
-              ),
-            }),
-      })
-      const output =
-        definition.id === "list"
-          ? linkPageOutputSchema(exposed, traversal)
-          : Schema.Struct({})
-      server.registerTool(
-        descriptor.key,
-        {
-          title: definition.name,
-          inputSchema: mcpSchema(input),
-          outputSchema: mcpSchema(output),
-          annotations: {
-            destructiveHint: definition.id === "unlink",
-            idempotentHint: definition.id !== "list",
-            openWorldHint: false,
-            readOnlyHint: definition.kind === "query",
-          },
-        },
-        async (toolInput: unknown) =>
-          toolResponse(
-            await run(
-              descriptor,
-              executeModelOperation(implementation, descriptor, toolInput)
-            )
-          )
-      )
-      continue
-    }
-    if (definition.kind === "query") {
-      const query = definition
-      const schemas = querySchemas(object, query)
-      server.registerTool(
-        `${object.id}.${query.id}`,
-        {
-          title: query.name,
-          description: query.description,
-          inputSchema: mcpSchema(schemas.input),
-          outputSchema: mcpSchema(schemas.output),
-          annotations: {
-            destructiveHint: false,
-            idempotentHint: true,
-            openWorldHint: false,
-            readOnlyHint: true,
-          },
-        },
-        async (input: unknown) =>
-          toolResponse(
-            await run(
-              descriptor,
-              executeModelOperation(implementation, descriptor, input)
-            )
-          )
-      )
-      continue
-    }
-
-    const action = definition
-    const output = toEffectSchema(action.output)
+  for (const operation of modelOperations(exposed)) {
     server.registerTool(
-      `${object.id}.${action.id}`,
+      operation.key,
       {
-        title: action.name,
-        description: action.description,
-        inputSchema: mcpSchema(toEffectInputSchema(action.input)),
-        outputSchema: mcpSchema(output),
+        title: operation.name,
+        description: operation.description,
+        inputSchema: mcpSchema(operation.input),
+        outputSchema: mcpSchema(operation.output),
         annotations: {
-          destructiveHint: action.destructive,
-          idempotentHint: action.idempotent,
+          destructiveHint: operation.destructive,
+          idempotentHint: operation.idempotent,
           openWorldHint: false,
-          readOnlyHint: false,
+          readOnlyHint: operation.kind === "query",
         },
       },
       async (input: unknown) =>
         toolResponse(
           await run(
-            descriptor,
-            executeModelOperation(implementation, descriptor, input)
+            operation,
+            executeModelOperation(implementation, operation, input)
           )
         )
     )

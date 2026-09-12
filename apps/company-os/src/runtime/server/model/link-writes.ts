@@ -15,6 +15,7 @@ import { makeEventWriter } from "#/runtime/server/events/event-writer.ts"
 import { currentActorId } from "#/runtime/server/invocation-context.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
 import { RecordIdentifierResolver } from "#/runtime/server/model/record-identifier-resolver.ts"
+import { requireWritableOperation } from "#/runtime/server/operation-mode.ts"
 import { PageTokens } from "#/runtime/server/page-tokens.ts"
 import { Database } from "#/runtime/server/storage/database.ts"
 import {
@@ -78,6 +79,7 @@ export const makeLinkWrites = Effect.gen(function* () {
   ) =>
     database.transaction(() =>
       Effect.gen(function* () {
+        yield* requireWritableOperation
         yield* sql`select pg_advisory_xact_lock(hashtextextended(${`link:${traversal.link.id}`}, 0))`
         const ids = [pair.sourceId, pair.targetId].sort()
         const selection = {
@@ -275,6 +277,7 @@ export const makeLinkWrites = Effect.gen(function* () {
           )
         const resolvedSource = yield* identifiers.resolve(object.id, sourceId)
         // Lock a relationship before reading its current set for replacement.
+        yield* requireWritableOperation
         yield* sql`select pg_advisory_xact_lock(hashtextextended(${`link:${traversal.link.id}`}, 0))`
         const current =
           change.replace === undefined

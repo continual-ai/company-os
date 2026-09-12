@@ -1,8 +1,5 @@
 import { Root } from "#/runtime/model/core/root.ts"
-import {
-  actionKey,
-  isStandardActionId,
-} from "#/runtime/model/definition/action.ts"
+import { isStandardActionId } from "#/runtime/model/definition/action.ts"
 import { definitionId } from "#/runtime/model/definition/identity.ts"
 import type { InterfaceType } from "#/runtime/model/definition/interface.ts"
 import type { LinkType } from "#/runtime/model/definition/link.ts"
@@ -146,25 +143,6 @@ function assertObjectsResolvable({
         )
       }
     }
-    for (const action of [
-      ...Object.values(object.actions),
-      ...Object.values(object.queries),
-    ]) {
-      if (
-        !isStandardActionId(action.id) &&
-        generatedQueryMethodIds.has(action.id)
-      ) {
-        throw new Error(
-          `Action '${actionKey(action)}' conflicts with a generated Query method.`
-        )
-      }
-      assertReferencesRegistered(
-        `Action '${actionKey(action)}'`,
-        [action.input, action.output],
-        registeredTypeIds,
-        name
-      )
-    }
   }
 }
 
@@ -266,7 +244,6 @@ function assertLinksResolvable({
     const methodIds = new Set([
       ...generatedQueryMethodIds,
       ...Object.keys(object.actions),
-      ...Object.keys(object.queries),
     ])
     const methodConflict = traversals.find(({ key }) => methodIds.has(key))
     if (methodConflict !== undefined) {
@@ -311,6 +288,7 @@ export function assertModelDefinitionsValid(
 ): void {
   assertUniqueIdentifiers(definitions)
   assertObjectsResolvable(definitions)
+  assertOperationsResolvable(definitions)
   assertLinksResolvable(definitions)
   assertUniqueRulesResolvable(definitions)
 }
@@ -325,7 +303,6 @@ export function assertRelationshipNamesUnambiguous(
       ...Object.keys(object.properties),
       ...generatedQueryMethodIds,
       ...Object.keys(object.actions),
-      ...Object.keys(object.queries),
     ])
     for (const relationship of relationships) {
       const sides = [relationship.forward, relationship.reverse]
@@ -379,12 +356,18 @@ export function moduleDependencies(
     const references = [
       ...Object.keys(object.interfaces),
       ...Object.values(object.properties).flatMap(referencedTypeIds),
-      ...[...Object.values(object.actions), ...Object.values(object.queries)]
-        .flatMap((operation) => [operation.input, operation.output])
-        .flatMap(referencedTypeIds),
     ]
     for (const typeId of references)
       depend(typeOwners, typeId, `object '${object.id}' references '${typeId}'`)
+  }
+  for (const operation of [...module.actions, ...module.queries]) {
+    const types = [
+      ...referencedTypeIds(operation.input),
+      ...referencedTypeIds(operation.output),
+      ...(operation.objectType ? [operation.objectType] : []),
+    ]
+    for (const id of types)
+      depend(typeOwners, id, `operation '${operation.key}' references '${id}'`)
   }
   for (const link of module.links) {
     for (const typeId of [link.forward.from.typeId, link.reverse.from.typeId])
@@ -417,4 +400,66 @@ export function assertModulesClosed(
         )
     }
   }
+}
+
+function assertOperationsResolvable({
+  objects,
+  interfaces,
+  modules,
+  name,
+  links,
+}: ModelDefinitions): void {
+  const registered = new Set([
+    Root.id,
+    ...objects.map((o) => o.id),
+    ...interfaces.map((i) => i.id),
+  ])
+  const keys = new Set<string>()
+  for (const module of modules)
+    for (const operation of [...module.actions, ...module.queries]) {
+      if (keys.has(operation.key))
+        throw new Error(`Duplicate operation '${operation.key}'.`)
+      keys.add(operation.key)
+      if (operation.objectType === undefined) {
+        if (
+          ["records", "events", ...objects.map((o) => o.id)].includes(
+            operation.id
+          )
+        )
+          throw new Error(
+            `Global operation '${operation.id}' conflicts with a client namespace.`
+          )
+      } else {
+        const object = objects.find((o) => o.id === operation.objectType)
+        if (!object)
+          throw new Error(
+            `Operation '${operation.key}' targets an object not registered in model '${name}'.`
+          )
+        if (
+          isStandardActionId(operation.id) ||
+          generatedQueryMethodIds.has(operation.id)
+        )
+          throw new Error(
+            `Operation '${operation.key}' conflicts with a standard operation.`
+          )
+        if (
+          links.some((link) =>
+            [link.forward, link.reverse].some(
+              (side) =>
+                objectTypeAccepts(object, side.from.typeId) &&
+                side.key === operation.id
+            )
+          )
+        )
+          throw new Error(
+            `Operation '${operation.key}' conflicts with a Link traversal.`
+          )
+      }
+      assertReferencesRegistered(
+        `Operation '${operation.key}'`,
+        [operation.input, operation.output],
+        registered,
+        name
+      )
+    }
 }

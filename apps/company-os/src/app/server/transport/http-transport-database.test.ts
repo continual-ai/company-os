@@ -27,12 +27,9 @@ import {
   eventPageSchema,
   InvalidEventCursor,
 } from "#/runtime/contract/events.ts"
-import {
-  httpEndpointId,
-  linkHttpEndpointId,
-} from "#/runtime/contract/http-endpoint.ts"
-import { isStandardActionId, RecordAlias } from "#/runtime/model/index.ts"
-import { executableModelOperations } from "#/runtime/model/operations.ts"
+import { httpOperation } from "#/runtime/contract/http-operation.ts"
+import { modelOperations } from "#/runtime/contract/operations.ts"
+import { RecordAlias } from "#/runtime/model/index.ts"
 import { ROOT_ID } from "#/runtime/model/system-records.ts"
 import { makeApplicationKeys } from "#/runtime/server/application-keys.ts"
 import {
@@ -63,36 +60,10 @@ const runtimeHeaders = {
   "x-continual-app-runtime-origin": "https://continual.example",
 }
 
-function projectedHttpId(
-  descriptor: ReturnType<typeof executableModelOperations>[number]
-): string {
-  const { definition, linkTraversal, object } = descriptor
-  if (linkTraversal !== undefined) {
-    if (
-      definition.id !== "link" &&
-      definition.id !== "list" &&
-      definition.id !== "unlink"
-    ) {
-      throw new Error(`Link operation '${descriptor.key}' is invalid.`)
-    }
-    return linkHttpEndpointId(definition.id, object, linkTraversal)
-  }
-  return httpEndpointId(
-    definition.id,
-    object,
-    (definition.kind === "action" && !isStandardActionId(definition.id)) ||
-      (definition.kind === "query" && "input" in definition)
-      ? definition.scope
-      : undefined
-  )
-}
-
-const modelProjectionContract = executableModelOperations(Model).map(
-  (descriptor) => ({
-    httpOperationId: projectedHttpId(descriptor),
-    mcpToolName: descriptor.key,
-  })
-)
+const modelProjectionContract = modelOperations(Model).map((descriptor) => ({
+  httpOperationId: httpOperation(descriptor).identifier,
+  mcpToolName: descriptor.key,
+}))
 
 const httpOperationIds = new Set(
   Object.values(OpenApi.fromApi(applicationHttpApi).paths).flatMap((path) =>
@@ -266,12 +237,56 @@ describe("application HTTP server", () => {
           fetch: fetchApi,
         })
 
+        const callMcp = (
+          name: string,
+          args: Readonly<Record<string, unknown>>
+        ) =>
+          Effect.promise(async () => {
+            const response = await runtime.runPromise(
+              mcp.handle(
+                new Request("http://localhost/api/mcp", {
+                  method: "POST",
+                  headers: {
+                    ...runtimeHeaders,
+                    accept: "application/json, text/event-stream",
+                    "content-type": "application/json",
+                    host: "localhost",
+                  },
+                  body: JSON.stringify({
+                    id: 10,
+                    jsonrpc: "2.0",
+                    method: "tools/call",
+                    params: { name, arguments: args },
+                  }),
+                })
+              )
+            )
+            expect(response.status).toBe(200)
+            const body = await response.text()
+            const data =
+              body
+                .split("\n")
+                .find((line) => line.startsWith("data:"))
+                ?.slice(5)
+                .trim() ?? body
+            return Schema.decodeUnknownSync(
+              Schema.Struct({
+                result: Schema.Struct({
+                  isError: Schema.optionalKey(Schema.Boolean),
+                  structuredContent: Schema.optionalKey(
+                    Schema.Record(Schema.String, Schema.Unknown)
+                  ),
+                }),
+              })
+            )(JSON.parse(data)).result
+          })
+
         const ticket = yield* model.ticket.create({
           subject: "HTTP to MCP escalation",
         })
 
-        const escalation = yield* model.escalation.createIssue({
-          ticket: ticket.id,
+        const escalation = yield* model.ticket.escalate({
+          id: ticket.id,
         })
 
         const hydrated = yield* model.records.batchGet({
@@ -354,8 +369,8 @@ describe("application HTTP server", () => {
                   jsonrpc: "2.0",
                   method: "tools/call",
                   params: {
-                    name: "escalation.createIssue",
-                    arguments: { ticket: ticket.id },
+                    name: "ticket.escalate",
+                    arguments: { id: ticket.id },
                   },
                 }),
               })
@@ -416,6 +431,72 @@ describe("application HTTP server", () => {
           lifecycleStage: "prospect",
           name: "Northstar",
         })
+        // MCP writes and HTTP reads must agree on canonical inputs, records, and Links.
+        expect(
+          yield* Effect.flip(
+            model.contact.create({
+              name: "Missing link target",
+              links: { companies: [RecordAlias("test:contract:missing")] },
+            })
+          )
+        ).toMatchObject({ reason: "NOT_FOUND" })
+        const contractAlias = RecordAlias("test:contract:contact")
+        expect(
+          yield* callMcp("contact.create", {
+            name: "Contract contact",
+            aliases: [contractAlias],
+            links: { companies: [created.id] },
+          })
+        ).toMatchObject({
+          structuredContent: {
+            name: "Contract contact",
+            objectType: "contact",
+          },
+        })
+        expect(
+          yield* model.contact.companies.list({ id: contractAlias })
+        ).toMatchObject({ items: [{ id: created.id }], totalSize: 1 })
+        expect(
+          yield* callMcp("contact.update", {
+            id: contractAlias,
+            name: "Updated contract contact",
+            links: { companies: { remove: [created.id] } },
+          })
+        ).toMatchObject({
+          structuredContent: { name: "Updated contract contact" },
+        })
+        expect(yield* model.contact.get({ id: contractAlias })).toMatchObject({
+          name: "Updated contract contact",
+        })
+        expect(
+          yield* model.contact.companies.list({ id: contractAlias })
+        ).toMatchObject({ items: [], totalSize: 0 })
+        expect(
+          yield* callMcp("contact.list", {
+            filter: {
+              field: "name",
+              operator: "eq",
+              value: "Updated contract contact",
+            },
+          })
+        ).toMatchObject({
+          structuredContent: {
+            items: [{ name: "Updated contract contact" }],
+            totalSize: 1,
+          },
+        })
+        expect(
+          yield* callMcp("contact.batchDelete", {
+            ids: Array.from({ length: 101 }, () => contractAlias),
+          })
+        ).toMatchObject({ isError: true })
+        expect(
+          yield* callMcp("contact.delete", { id: contractAlias })
+        ).toMatchObject({ structuredContent: {} })
+        expect(
+          yield* Effect.flip(model.contact.get({ id: contractAlias }))
+        ).toMatchObject({ reason: "NOT_FOUND" })
+
         const search = yield* model.records.search({
           query: "north",
           objectTypes: ["company"],

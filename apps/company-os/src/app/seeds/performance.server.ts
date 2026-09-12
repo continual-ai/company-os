@@ -28,7 +28,7 @@ export function performanceScenario(size: number) {
       const tickets = yield* seedSupportPerformance(sales)
       const { services } = yield* ModelImplementation
       for (const ticket of tickets)
-        yield* services.escalation.createIssue({ ticket })
+        yield* services.ticket.escalate({ id: ticket })
       yield* Effect.log(
         `Prepared ${tickets.length} engineering escalations through the business action.`
       )

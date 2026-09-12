@@ -6,6 +6,7 @@ import {
   defineModule,
   defineObject,
   schema,
+  defineAction,
 } from "#/runtime/model/index.ts"
 import { PlatformModule } from "#/runtime/platform/model/index.ts"
 import {
@@ -24,17 +25,16 @@ const Item = defineObject({
   name: "Item",
   pluralName: "Items",
   properties: { name: schema.string() },
-  actions: {
-    greet: {
-      name: "Greet",
-      description: "Returns a provider greeting.",
-      scope: "collection",
-      input: {},
-      output: { greeting: schema.string() },
-      errors: [],
-    },
-  },
   display: { title: "name" },
+})
+const ItemGreet = defineAction({
+  id: "greet",
+  collection: Item,
+  name: "Greet",
+  description: "Returns a provider greeting.",
+  input: {},
+  output: { greeting: schema.string() },
+  errors: [],
 })
 const Module = defineModule({
   id: "items",
@@ -42,6 +42,7 @@ const Module = defineModule({
   objects: [Item],
   interfaces: [],
   links: [],
+  actions: [ItemGreet],
 })
 const greet = Effect.fn(function* (_input: unknown) {
   return { greeting: (yield* Greeting).value }

@@ -8,6 +8,7 @@ import { defineModel } from "#/runtime/model/definition/model.ts"
 import { defineModule } from "#/runtime/model/definition/module.ts"
 import { defineObject } from "#/runtime/model/definition/object.ts"
 import { schema } from "#/runtime/model/definition/schema.ts"
+import { defineAction } from "#/runtime/model/index.ts"
 import { createApiReference } from "#/runtime/server/http.ts"
 
 const ArchiveFailed = defineError({
@@ -42,23 +43,23 @@ const Account = defineObject({
     }),
   },
   display: { title: "name" },
-  actions: {
-    delete: false,
-    archive: {
-      scope: "object",
-      name: "Archive account",
-      description: "Archives an account.",
-      input: { note: schema.optional(schema.string()) },
-      output: { archived: schema.boolean() },
-      errors: [ArchiveFailed],
-    },
-    archiveAll: {
-      scope: "collection",
-      name: "Archive all accounts",
-      description: "Archives every eligible account.",
-      output: { archivedCount: schema.number({ integer: true }) },
-    },
-  },
+  actions: { delete: false },
+})
+const AccountArchive = defineAction({
+  id: "archive",
+  object: Account,
+  name: "Archive account",
+  description: "Archives an account.",
+  input: { id: schema.id(Account), note: schema.optional(schema.string()) },
+  output: { archived: schema.boolean() },
+  errors: [ArchiveFailed],
+})
+const AccountArchiveAll = defineAction({
+  id: "archiveAll",
+  collection: Account,
+  name: "Archive all accounts",
+  description: "Archives every eligible account.",
+  output: { archivedCount: schema.number({ integer: true }) },
 })
 
 const Example = defineModel({
@@ -69,6 +70,7 @@ const Example = defineModel({
       links: [],
       name: "Accounts",
       objects: [Account],
+      actions: [AccountArchive, AccountArchiveAll],
     }),
   ],
   name: "Example",
@@ -232,7 +234,7 @@ describe("Effect HTTP projection", () => {
       operationId: "archiveAccount",
       summary: "Archive account",
       responses: {
-        "200": { description: "ArchiveAccountOutput" },
+        "200": { description: "AccountArchiveOutput" },
         "400": { description: expect.any(String) },
         "404": {
           description:

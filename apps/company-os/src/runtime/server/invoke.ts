@@ -1,12 +1,13 @@
 import { Context, Effect, Layer } from "effect"
 
-import type { ExecutableModelOperation } from "#/runtime/model/operations.ts"
+import type { ModelOperation } from "#/runtime/contract/operations.ts"
 import { withApiErrors } from "#/runtime/server/api-error.ts"
 import { requireProjectAccess } from "#/runtime/server/auth/project-access.ts"
 import {
   CurrentInvocation,
   type InvocationContext,
 } from "#/runtime/server/invocation.ts"
+import { runOperation } from "#/runtime/server/operation-mode.ts"
 import { CommittedChanges } from "#/runtime/server/storage/committed-changes.ts"
 import { Database } from "#/runtime/server/storage/database.ts"
 
@@ -16,7 +17,7 @@ const make = Effect.gen(function* () {
     /** All callers share action atomicity and committed write metadata; business policy remains in the operation. */
     run: Effect.fn("@company/Operations.run")(function* <A, E>(
       invocation: InvocationContext,
-      descriptor: ExecutableModelOperation,
+      descriptor: ModelOperation,
       operation: Effect.Effect<A, E, CurrentInvocation>
     ) {
       const changes = new Set<string>()
@@ -24,12 +25,9 @@ const make = Effect.gen(function* () {
         Effect.andThen(operation),
         Effect.provideService(CurrentInvocation, invocation)
       )
-      const value = yield* (
-        descriptor.definition.kind === "action"
-          ? database.transaction(() => run)
-          : run
-      ).pipe(Effect.provideService(CommittedChanges, changes), (effect) =>
-        withApiErrors(effect, descriptor)
+      const value = yield* runOperation(database, descriptor.kind, run).pipe(
+        Effect.provideService(CommittedChanges, changes),
+        (effect) => withApiErrors(effect, descriptor)
       )
       return { value, changes: [...changes].sort() }
     }),

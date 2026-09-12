@@ -7,14 +7,19 @@ import {
 } from "#/modules/sales/model/activity.ts"
 import { Company } from "#/modules/sales/model/company.ts"
 import { Contact } from "#/modules/sales/model/contact.ts"
-import { Deal, DealOwner } from "#/modules/sales/model/deal.ts"
+import {
+  Deal,
+  DealOwner,
+  PipelineSummaryQuery,
+} from "#/modules/sales/model/deal.ts"
 import { Party } from "#/modules/sales/model/interfaces/party.ts"
 import {
   Lead,
   LeadCompany,
-  LeadConverted,
-  LeadConvertedCompany,
-  LeadConvertedContact,
+  ConvertLeaded,
+  ConvertLeadedCompany,
+  ConvertLeadedContact,
+  ConvertLead,
 } from "#/modules/sales/model/lead.ts"
 import { DealLineItems, LineItem } from "#/modules/sales/model/line-item.ts"
 import { ContactCompanies } from "#/modules/sales/model/links/contact-companies.ts"
@@ -32,7 +37,7 @@ export const SalesModule = defineModule({
   id: "sales",
   name: "Sales",
   interfaces: [Party],
-  events: [LeadConverted],
+  events: [ConvertLeaded],
   links: [
     DealLineItems,
     ContactCompanies,
@@ -44,12 +49,14 @@ export const SalesModule = defineModule({
     ActivityOwner,
     DealOwner,
     LeadCompany,
-    LeadConvertedCompany,
-    LeadConvertedContact,
+    ConvertLeadedCompany,
+    ConvertLeadedContact,
   ],
   objects: [Activity, Company, Contact, Lead, Deal, LineItem],
+  queries: [PipelineSummaryQuery],
+  actions: [ConvertLead],
 })
 
-export { LeadConverted } from "#/modules/sales/model/lead.ts"
+export { ConvertLeaded } from "#/modules/sales/model/lead.ts"
 
 export { Activity, Company, Contact, Deal, Lead, LineItem, Party }

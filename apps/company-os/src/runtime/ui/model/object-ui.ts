@@ -9,11 +9,10 @@ import type {
 } from "#/runtime/ui/model/collection-view.ts"
 import type { ObjectRecordPresentation } from "#/runtime/ui/model/object-client.ts"
 
-type ActionId<O extends ObjectType> = keyof O["actions"] & string
 export interface RecordUiProps<O extends ObjectType> {
   readonly record: ObjectRecord<O>
   readonly author?: ObjectRecordPresentation | undefined
-  readonly can: (action: ActionId<O>) => boolean
+  readonly can: (action: string) => boolean
 }
 
 /** One object's reusable presentation in collection feeds and related-record previews. */
@@ -57,7 +56,10 @@ export interface FieldEditorProps extends FormControlAccessibility {
 
 /** An object's explicit UI contributions. Page replacements own their content;
  * standard pages receive the remaining extensions through ordinary React props. */
-export interface ObjectUi<O extends ObjectType> {
+export interface ObjectUi<
+  O extends ObjectType,
+  Actions extends string = string,
+> {
   /** Replaces property editors while preserving the shared form and decoder. */
   readonly fieldEditors?: Partial<
     Record<keyof O["properties"] & string, ComponentType<FieldEditorProps>>
@@ -74,7 +76,7 @@ export interface ObjectUi<O extends ObjectType> {
   readonly actions?:
     | Partial<
         Record<
-          ActionId<O>,
+          Actions,
           {
             readonly component: ComponentType<RecordUiProps<O>>
             readonly placements: ReadonlyArray<"record" | "row">

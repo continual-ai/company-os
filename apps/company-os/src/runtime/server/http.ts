@@ -10,31 +10,19 @@ import {
   HttpApiScalar,
 } from "effect/unstable/httpapi"
 
-import {
-  type ApiReference,
-  type DynamicHttpApi,
-  linkDescriptor,
+import type {
+  ApiReference,
+  DynamicHttpApi,
 } from "#/runtime/contract/http-api.ts"
 import { customMethodServerApi } from "#/runtime/contract/http-custom-method.ts"
 import {
-  httpEndpointId,
-  linkHttpEndpointId,
-} from "#/runtime/contract/http-endpoint.ts"
-import { isStandardActionId } from "#/runtime/model/definition/action.ts"
-import {
-  type ModelCatalog,
-  modelObjectLinkTraversals,
-  modelObjects,
-} from "#/runtime/model/definition/model.ts"
-import {
-  executableModelOperation,
-  type ExecutableModelOperation,
-} from "#/runtime/model/operations.ts"
+  httpOperationGroups,
+  httpOperationInput,
+} from "#/runtime/contract/http-operation.ts"
+import { type ModelOperation } from "#/runtime/contract/operations.ts"
+import { type ModelCatalog } from "#/runtime/model/definition/model.ts"
 import type { CurrentInvocation } from "#/runtime/server/invocation.ts"
-import {
-  executeModelOperation,
-  modelOperation,
-} from "#/runtime/server/model-implementation.ts"
+import { executeModelOperation } from "#/runtime/server/model-implementation.ts"
 import type { Links } from "#/runtime/server/model/link-service.ts"
 
 export interface ModelHttpRequest {
@@ -54,7 +42,7 @@ export type ModelHttpOperation = Effect.Effect<
 
 export type ModelHttpInvoke = (
   request: ModelHttpRequest,
-  descriptor: ExecutableModelOperation,
+  descriptor: ModelOperation,
   operation: ModelHttpOperation
 ) => Effect.Effect<unknown, unknown>
 
@@ -77,45 +65,6 @@ type ExecutableModelImplementation = {
   readonly services: Readonly<Record<string, object>>
 }
 
-function standardHandlers(
-  initial: DynamicHandlers,
-  implementation: ExecutableModelImplementation,
-  object: ReturnType<typeof modelObjects>[number],
-  invoke: ModelHttpInvoke
-): DynamicHandlers {
-  let handlers = initial
-  const call = (id: string, input: unknown) =>
-    modelOperation(implementation, object.id, id)(input)
-  const descriptor = (id: string) =>
-    executableModelOperation(implementation.model, object.id, id)
-
-  handlers = handlers.handle(httpEndpointId("get", object), (request) =>
-    invoke(request, descriptor("get"), call("get", request.params))
-  )
-  handlers = handlers.handle(httpEndpointId("list", object), (request) =>
-    invoke(request, descriptor("list"), call("list", request.query))
-  )
-  handlers = handlers.handle(httpEndpointId("batchGet", object), (request) =>
-    invoke(request, descriptor("batchGet"), call("batchGet", request.payload))
-  )
-
-  for (const action of Object.values(object.actions)) {
-    if (!isStandardActionId(action.id)) continue
-    handlers = handlers.handle(httpEndpointId(action.id, object), (request) =>
-      invoke(
-        request,
-        descriptor(action.id),
-        call(action.id, {
-          ...request.params,
-          ...request.query,
-          ...request.payload,
-        })
-      )
-    )
-  }
-  return handlers
-}
-
 /** Binds every model-derived HTTP endpoint to the corresponding service method. */
 export function createModelHttpHandlers(
   api: unknown,
@@ -129,68 +78,25 @@ export function createModelHttpHandlers(
   const dynamicApi = api as DynamicHttpApi
   const ServerApi = customMethodServerApi(dynamicApi)
 
-  const groupLayers = modelObjects(exposed).map((object) =>
-    HttpApiBuilder.group(ServerApi, object.id, (initialHandlers) => {
-      // SAFETY: Effect decoded these handlers from the model-derived group.
-      let handlers = standardHandlers(
-        // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-        initialHandlers as unknown as DynamicHandlers,
-        implementation,
-        object,
-        invoke
-      )
-
-      for (const action of [
-        ...Object.values(object.actions),
-        ...Object.values(object.queries),
-      ]) {
-        if (isStandardActionId(action.id)) continue
-        handlers = handlers.handle(
-          httpEndpointId(action.id, object, action.scope),
-          (request) =>
-            invoke(
-              request,
-              executableModelOperation(exposed, object.id, action.id),
-              modelOperation(
-                implementation,
-                object.id,
-                action.id
-              )({
-                ...request.params,
-                ...request.payload,
-              })
+  const groupLayers = httpOperationGroups(exposed).map((group) =>
+    HttpApiBuilder.group(ServerApi, group.id, (initialHandlers) => {
+      // SAFETY: every endpoint comes from this same closed operation catalog.
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+      let handlers = initialHandlers as unknown as DynamicHandlers
+      for (const http of group.operations) {
+        const operation = http.operation
+        handlers = handlers.handle(http.identifier, (request) =>
+          invoke(
+            request,
+            operation,
+            executeModelOperation(
+              implementation,
+              operation,
+              httpOperationInput(http, request)
             )
+          )
         )
       }
-
-      for (const traversal of modelObjectLinkTraversals(exposed, object)) {
-        const register = (operation: "link" | "list" | "unlink") => {
-          const descriptor = linkDescriptor(
-            exposed,
-            object,
-            traversal,
-            operation
-          )
-          handlers = handlers.handle(
-            linkHttpEndpointId(operation, object, traversal),
-            (request) =>
-              invoke(
-                request,
-                descriptor,
-                executeModelOperation(implementation, descriptor, {
-                  ...request.params,
-                  ...request.query,
-                  ...request.payload,
-                })
-              )
-          )
-        }
-        register("list")
-        if (!traversal.writable) continue
-        register("link")
-        register("unlink")
-      }
-
       // SAFETY: every endpoint generated for the group was registered above.
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion
       return handlers as unknown as CompleteHandlers

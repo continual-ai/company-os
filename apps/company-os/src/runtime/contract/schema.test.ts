@@ -327,7 +327,7 @@ describe("Effect Schema projection", () => {
 
   it("preserves action input inference while keeping Effect out of definitions", () => {
     const input = schema.object({
-      account: schema.recordId(Account),
+      account: schema.id(Account),
       notify: schema.optional(schema.boolean()),
     })
     type Input = InferSchema<typeof input>

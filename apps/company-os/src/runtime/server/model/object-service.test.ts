@@ -18,12 +18,7 @@ const ReadOnlyAccount = defineObject({
   collection: "readOnlyAccounts",
   name: "Read-only account",
   pluralName: "Read-only accounts",
-  actions: {
-    batchDelete: false,
-    create: false,
-    delete: false,
-    update: false,
-  },
+  actions: { batchDelete: false, create: false, delete: false, update: false },
   properties: { name: schema.string() },
   display: { title: "name" },
 })

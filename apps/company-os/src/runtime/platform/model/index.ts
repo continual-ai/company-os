@@ -4,9 +4,17 @@ import {
   AnonymousActor,
   Identity,
 } from "#/runtime/access/model/index.ts"
-import { Asset } from "#/runtime/assets/model/asset.ts"
+import {
+  Asset,
+  BeginAssetUpload,
+  CompleteAssetUpload,
+} from "#/runtime/assets/model/asset.ts"
 import { defineModule } from "#/runtime/model/index.ts"
-import { ModuleSetting } from "#/runtime/platform/model/module-setting.ts"
+import {
+  ModuleSetting,
+  SetModuleEnabled,
+  ModuleCatalog,
+} from "#/runtime/platform/model/module-setting.ts"
 
 export const PlatformModule = defineModule({
   maturity: "alpha",
@@ -19,6 +27,8 @@ export const PlatformModule = defineModule({
   interfaces: [Identity],
   objects: [User, ServiceAccount, AnonymousActor, Asset, ModuleSetting],
   description: "Core identities, files, and application capabilities.",
+  queries: [ModuleCatalog],
+  actions: [BeginAssetUpload, CompleteAssetUpload, SetModuleEnabled],
 })
 export { ModuleSetting }
 export const requiredModuleIds = ["platform"] as const

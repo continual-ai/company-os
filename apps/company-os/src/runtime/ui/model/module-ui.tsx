@@ -23,7 +23,10 @@ import { useModelRuntime } from "#/runtime/ui/model/runtime-context.tsx"
 
 type ModuleUi<M extends ModuleDefinition> = {
   readonly [Id in M["objects"][number]["id"]]?: ObjectUi<
-    Extract<M["objects"][number], { readonly id: Id }>
+    Extract<M["objects"][number], { readonly id: Id }>,
+    | (keyof Extract<M["objects"][number], { readonly id: Id }>["actions"] &
+        string)
+    | Extract<M["actions"][number], { readonly objectType: Id }>["id"]
   >
 }
 
@@ -114,7 +117,12 @@ export function defineModuleUi<M extends ModuleDefinition>(
         throw new Error(`Unknown field '${id}.${field}'.`)
     }
     for (const action of Object.keys(config.actions ?? {})) {
-      if (!Object.hasOwn(object.actions, action))
+      if (
+        !Object.hasOwn(object.actions, action) &&
+        !module.actions.some(
+          (candidate) => candidate.objectType === id && candidate.id === action
+        )
+      )
         throw new Error(`Unknown action '${id}.${action}'.`)
     }
     for (const field of config.record?.properties ?? []) {

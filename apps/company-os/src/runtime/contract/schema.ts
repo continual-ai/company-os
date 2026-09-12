@@ -19,6 +19,7 @@ import type {
   RecordIdentifier,
   SchemaDefinition,
   StringSchema,
+  StructSchema,
 } from "#/runtime/model/definition/schema.ts"
 import {
   CalendarDate,
@@ -370,6 +371,16 @@ export function toEffectInputSchema(
   return compile(definition, "input")
 }
 
+/** Compiles an object-shaped operation input while retaining its fields for protocol placement. */
+export function toEffectOperationInput(definition: StructSchema) {
+  const fields: CompiledSchemaFields = Object.fromEntries(
+    Object.entries(definition.properties).map(([id, member]) =>
+      entry(id, compile(member, "input"))
+    )
+  )
+  return Schema.Struct(fields)
+}
+
 const compiledPropertySchemas = new WeakMap<
   PropertyDefinition,
   Map<string, Schema.Codec<unknown, unknown>>
@@ -461,17 +472,19 @@ function compileUpdateProperties(
   )
 }
 
-function annotateObjectSchema(
+function annotateObjectSchema<S extends Schema.Top>(
   object: ObjectType,
-  value: Schema.Codec<unknown, unknown>,
+  value: S,
   title: string,
   identifier: string
-): Schema.Codec<unknown, unknown> {
-  value = value.annotate({ identifier, title })
-  if (object.description !== undefined) {
-    value = value.annotate({ description: object.description })
-  }
-  return value
+): S["Rebuild"] {
+  return value.annotate({
+    identifier,
+    title,
+    ...(object.description === undefined
+      ? {}
+      : { description: object.description }),
+  })
 }
 
 function pascalCase(value: string): string {
@@ -575,7 +588,7 @@ export function toEffectObjectCreateSchema(
 export function toEffectModelObjectCreateSchema(
   model: ModelCatalog,
   object: ObjectType
-): Schema.Codec<unknown, unknown> {
+) {
   const traversals = modelObjectLinkTraversals(model, object).filter(
     ({ writable }) => writable
   )
@@ -667,7 +680,7 @@ export function toEffectObjectWriterUpdateSchema(
 export function toEffectModelObjectUpdateSchema(
   model: ModelCatalog,
   object: ObjectType
-): Schema.Codec<unknown, unknown> {
+) {
   const traversals = modelObjectLinkTraversals(model, object).filter(
     ({ writable }) => writable
   )

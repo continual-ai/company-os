@@ -5,15 +5,17 @@ export type { RootType } from "#/runtime/model/core/root.ts"
 export { defineEvent } from "#/runtime/model/definition/event.ts"
 export type { EventType } from "#/runtime/model/definition/event.ts"
 
-export { isStandardActionId } from "#/runtime/model/definition/action.ts"
+export {
+  defineAction,
+  isStandardActionId,
+} from "#/runtime/model/definition/action.ts"
 export type {
   Action,
   ActionDefinition,
-  ActionDefinitions,
+  StandardActionOptions,
   ActionError,
   ActionInput,
   ActionOutput,
-  ActionScope,
   StandardActionId,
 } from "#/runtime/model/definition/action.ts"
 export {
@@ -100,12 +102,10 @@ export {
   standardQueryIds,
 } from "#/runtime/model/definition/query.ts"
 export type {
-  CustomQuery,
   Query,
   QueryDefinition,
   QueryInput,
   QueryOutput,
-  QueryScope,
   StandardQueries,
   StandardQueryId,
 } from "#/runtime/model/definition/query.ts"
@@ -196,3 +196,9 @@ export type { ModelDiagnostic } from "#/runtime/model/model-lint.ts"
 
 export { modelRelationships } from "#/runtime/model/definition/relationship.ts"
 export type { ModelRelationship } from "#/runtime/model/definition/relationship.ts"
+
+export { defineQuery } from "#/runtime/model/definition/query.ts"
+export {
+  modelObjectActions,
+  modelObjectQueries,
+} from "#/runtime/model/definition/model.ts"

@@ -8,6 +8,7 @@ import {
   defineObject,
   schema,
   standardErrors,
+  defineAction,
 } from "#/runtime/model/index.ts"
 
 export const Escalation = defineObject({
@@ -21,27 +22,23 @@ export const Escalation = defineObject({
     name: schema.string({ label: "Name", minLength: 1, maxLength: 400 }),
   },
   uniqueBy: { ticket: ["ticket"] },
-  actions: {
-    create: false,
-    update: false,
-    delete: false,
-    batchDelete: false,
-    createIssue: {
-      name: "Escalate to engineering",
-      scope: "collection",
-      idempotent: true,
-      description:
-        "Creates one engineering issue for an open support ticket. Retries return the original issue.",
-      input: { ticket: schema.recordId(Ticket) },
-      output: { issue: schema.recordId(Issue) },
-      errors: [
-        standardErrors.failedPrecondition,
-        standardErrors.aborted,
-        standardErrors.alreadyExists,
-      ],
-    },
-  },
+  actions: { create: false, update: false, delete: false, batchDelete: false },
   display: { title: "name", icon: "circleDot" },
+})
+export const EscalateTicket = defineAction({
+  id: "escalate",
+  object: Ticket,
+  name: "Escalate to engineering",
+  idempotent: true,
+  description:
+    "Creates one engineering issue for an open support ticket. Retries return the original issue.",
+  input: { id: schema.id(Ticket) },
+  output: { issue: schema.id(Issue) },
+  errors: [
+    standardErrors.failedPrecondition,
+    standardErrors.aborted,
+    standardErrors.alreadyExists,
+  ],
 })
 
 export const EscalationTicket = defineLink({
@@ -68,8 +65,8 @@ export const TicketEscalated = defineEvent({
   version: 1,
   subject: Escalation,
   data: schema.object({
-    ticket: schema.recordId(Ticket),
-    issue: schema.recordId(Issue),
+    ticket: schema.id(Ticket),
+    issue: schema.id(Issue),
   }),
 })
 export const SupportEngineeringModule = defineModule({
@@ -84,4 +81,5 @@ export const SupportEngineeringModule = defineModule({
   links: [TicketIssues, EscalationTicket, EscalationIssue],
   objects: [Escalation],
   events: [TicketEscalated],
+  actions: [EscalateTicket],
 })

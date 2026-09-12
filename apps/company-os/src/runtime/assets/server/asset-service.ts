@@ -1,5 +1,6 @@
 import { Context, Effect, Layer } from "effect"
 
+import type { BeginAssetUpload } from "#/runtime/assets/model/asset.ts"
 import { Asset } from "#/runtime/assets/model/asset.ts"
 import { AssetPrecondition } from "#/runtime/assets/server/asset-error.ts"
 import { BlobStorage } from "#/runtime/assets/server/blob-storage.ts"
@@ -33,7 +34,7 @@ const make = Effect.gen(function* () {
   const writer = records.writer(Asset)
 
   const beginUpload = Effect.fn("@company/Assets.beginUpload")(function* (
-    input: ActionInput<typeof Asset.actions.beginUpload>
+    input: ActionInput<typeof BeginAssetUpload>
   ) {
     yield* requireProjectAccess
     const record = yield* writer.create({

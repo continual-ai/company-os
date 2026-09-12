@@ -2,7 +2,7 @@ import { DateTime, Effect } from "effect"
 
 import { Company } from "#/modules/sales/model/company.ts"
 import { Contact } from "#/modules/sales/model/contact.ts"
-import { Lead, LeadConverted } from "#/modules/sales/model/lead.ts"
+import { Lead, ConvertLeaded } from "#/modules/sales/model/lead.ts"
 import {
   Timestamp,
   type ApiError,
@@ -105,7 +105,7 @@ export const convertLead = Effect.fn("sales.convertLead")(function* (
           convertedContact: { replace: [contact.id] },
         },
       })
-      yield* events.append(LeadConverted, {
+      yield* events.append(ConvertLeaded, {
         subject: lead.id,
         data: { company: companyId, contact: contact.id },
       })

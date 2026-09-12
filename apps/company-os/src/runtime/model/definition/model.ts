@@ -1,6 +1,9 @@
 import { Actor } from "#/runtime/model/core/actor.ts"
 import { Root, type RootType } from "#/runtime/model/core/root.ts"
-import type { Action } from "#/runtime/model/definition/action.ts"
+import type {
+  ModelAction,
+  StandardAction,
+} from "#/runtime/model/definition/action.ts"
 import type { InterfaceType } from "#/runtime/model/definition/interface.ts"
 import type { LinkType } from "#/runtime/model/definition/link.ts"
 import type {
@@ -14,7 +17,7 @@ import type {
 } from "#/runtime/model/definition/object.ts"
 import {
   standardQueries,
-  type CustomQuery,
+  type StandardQuery,
   type Query,
   type StandardQueries,
 } from "#/runtime/model/definition/query.ts"
@@ -113,15 +116,26 @@ type InterfaceRegistry<TInterfaces extends ReadonlyArray<InterfaceType>> = {
   readonly [TInterface in TInterfaces[number] as TInterface["id"]]: TInterface
 }
 
-type ActionRegistry<TObjects extends ReadonlyArray<ObjectType>> = {
-  readonly [TObject in TObjects[number] as TObject["id"]]: TObject["actions"]
-}
-
-type QueryRegistry<TObjects extends ReadonlyArray<ObjectType>> = {
+type StandardActionsFor<O> = O extends ObjectType
+  ? O["actions"][keyof O["actions"]]
+  : never
+type ActionRegistry<M extends ReadonlyArray<ModuleDefinition>> = {
   readonly [
-    TObject in TObjects[number] as TObject["id"]
-  ]: StandardQueries<TObject> & TObject["queries"]
-}
+    A in StandardActionsFor<
+      ModuleObjects<M>[number]
+    > as A extends StandardAction ? `${A["objectType"]}.${A["id"]}` : never
+  ]: A
+} & { readonly [A in M[number]["actions"][number] as A["key"]]: A }
+type StandardQueriesFor<O> = O extends ObjectType
+  ? StandardQueries<O>[keyof StandardQueries<O>]
+  : never
+type QueryRegistry<M extends ReadonlyArray<ModuleDefinition>> = {
+  readonly [
+    Q in StandardQueriesFor<
+      ModuleObjects<M>[number]
+    > as `${Q["objectType"]}.${Q["id"]}`
+  ]: Q
+} & { readonly [Q in M[number]["queries"][number] as Q["key"]]: Q }
 
 type ModuleInterfaces<TModules extends ReadonlyArray<ModuleDefinition>> =
   ReadonlyArray<CoreInterface | TModules[number]["interfaces"][number]>
@@ -144,7 +158,7 @@ export interface ModelCatalog {
     readonly interfaces: ReadonlyArray<InterfaceType>
     readonly objects: ReadonlyArray<ObjectType>
   }
-  actions: Readonly<Record<string, Readonly<Record<string, Action>>>>
+  actions: Readonly<Record<string, ModelAction>>
   /** Interface implemented by records allowed to appear in audit actor fields. */
   actor: typeof Actor
   interfaces: Readonly<Record<string, InterfaceType>>
@@ -154,9 +168,7 @@ export interface ModelCatalog {
   name: string
   readonly maintainer?: ModuleMaintainer | undefined
   objects: Readonly<Record<string, ObjectType>>
-  queries: Readonly<
-    Record<string, Readonly<Record<string, Query | CustomQuery>>>
-  >
+  queries: Readonly<Record<string, Query | StandardQuery>>
   root: RootType
 }
 
@@ -172,7 +184,7 @@ export interface Model<
       BoundObject<ModuleObjects<TModules>[number], ModuleObjects<TModules>>
     >
   }
-  actions: ActionRegistry<ModuleObjects<TModules>>
+  actions: ActionRegistry<TModules>
   actor: typeof Actor
   interfaces: InterfaceRegistry<ModuleInterfaces<TModules>>
   kind: "model"
@@ -181,7 +193,7 @@ export interface Model<
   name: string
   readonly maintainer?: ModuleMaintainer | undefined
   objects: ObjectRegistry<ModuleObjects<TModules>>
-  queries: QueryRegistry<ModuleObjects<TModules>>
+  queries: QueryRegistry<TModules>
   root: RootType
 }
 
@@ -328,15 +340,26 @@ export function defineModel<
   const interfaces = Object.fromEntries(
     moduleInterfaces.map((item) => [item.id, item])
   )
-  const actions = Object.fromEntries(
-    moduleObjects.map((object) => [object.id, object.actions])
-  )
-  const queries = Object.fromEntries(
-    moduleObjects.map((object) => [
-      object.id,
-      { ...standardQueries(object), ...object.queries },
-    ])
-  )
+  const actions = Object.fromEntries([
+    ...moduleObjects.flatMap((object) =>
+      Object.values(object.actions).map(
+        (action) => [`${object.id}.${action.id}`, action] as const
+      )
+    ),
+    ...definition.modules.flatMap((module) =>
+      module.actions.map((action) => [action.key, action] as const)
+    ),
+  ])
+  const queries = Object.fromEntries([
+    ...moduleObjects.flatMap((object) =>
+      Object.values(standardQueries(object)).map(
+        (query) => [`${object.id}.${query.id}`, query] as const
+      )
+    ),
+    ...definition.modules.flatMap((module) =>
+      module.queries.map((query) => [query.key, query] as const)
+    ),
+  ])
   const modules = Object.fromEntries(
     definition.modules.map((module) => [module.id, module])
   )
@@ -360,14 +383,14 @@ export function defineModel<
   return catalog as unknown as Model<TModules>
 }
 
-export function modelActions(model: ModelCatalog): ReadonlyArray<Action> {
-  return Object.values(model.actions).flatMap((group) => Object.values(group))
+export function modelActions(model: ModelCatalog): ReadonlyArray<ModelAction> {
+  return Object.values(model.actions)
 }
 
 export function modelQueries(
   model: ModelCatalog
-): ReadonlyArray<Query | CustomQuery> {
-  return Object.values(model.queries).flatMap((group) => Object.values(group))
+): ReadonlyArray<Query | StandardQuery> {
+  return Object.values(model.queries)
 }
 
 /** Whether a concrete stored object type is the expected type or implements it. */
@@ -428,4 +451,18 @@ export function modelInterfaces(
 
 export function modelObjects(model: ModelCatalog): ReadonlyArray<ObjectType> {
   return Object.values(model.objects)
+}
+
+/** Effective actions include contributions from every active module. */
+export function modelObjectActions(
+  model: ModelCatalog,
+  object: { readonly id: string }
+): ReadonlyArray<ModelAction> {
+  return modelActions(model).filter((action) => action.objectType === object.id)
+}
+export function modelObjectQueries(
+  model: ModelCatalog,
+  object: { readonly id: string }
+): ReadonlyArray<Query | StandardQuery> {
+  return modelQueries(model).filter((query) => query.objectType === object.id)
 }

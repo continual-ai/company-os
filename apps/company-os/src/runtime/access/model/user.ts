@@ -7,12 +7,7 @@ export const User = defineObject({
   name: "User",
   pluralName: "Users",
   description: "Someone who can sign in and use this application.",
-  actions: {
-    create: false,
-    delete: false,
-    batchDelete: false,
-    update: false,
-  },
+  actions: { create: false, delete: false, batchDelete: false, update: false },
   implements: [{ interface: Actor }, { interface: Identity }],
   properties: {
     name: schema.string({ label: "Name", minLength: 1, maxLength: 200 }),

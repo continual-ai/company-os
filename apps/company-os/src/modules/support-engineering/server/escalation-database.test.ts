@@ -47,8 +47,8 @@ fixture.test(
       const changes = new Set<string>()
       const results = yield* Effect.all(
         [
-          services.escalation.createIssue({ ticket: ticket.id }),
-          services.escalation.createIssue({ ticket: ticket.id }),
+          services.ticket.escalate({ id: ticket.id }),
+          services.ticket.escalate({ id: ticket.id }),
         ],
         { concurrency: 2 }
       ).pipe(Effect.provideService(CommittedChanges, changes))
@@ -69,14 +69,14 @@ fixture.test(
       ).toEqual([{ count: 1 }])
       changes.clear()
       expect(
-        yield* services.escalation
-          .createIssue({ ticket: ticket.id })
+        yield* services.ticket
+          .escalate({ id: ticket.id })
           .pipe(Effect.provideService(CommittedChanges, changes))
       ).toEqual(results[0])
       expect(changes.size).toBe(0)
       expect(
-        yield* services.escalation
-          .createIssue({ ticket: ticket.id })
+        yield* services.ticket
+          .escalate({ id: ticket.id })
           .pipe(
             Effect.provideService(CurrentInvocation, anonymousInvocation),
             Effect.flip
@@ -88,9 +88,7 @@ fixture.test(
         status: "closed",
       })
       expect(
-        yield* services.escalation
-          .createIssue({ ticket: closed.id })
-          .pipe(Effect.flip)
+        yield* services.ticket.escalate({ id: closed.id }).pipe(Effect.flip)
       ).toMatchObject({ reason: "FAILED_PRECONDITION" })
       const rollback = yield* services.ticket.create({
         subject: "Canceled escalation",
@@ -98,8 +96,8 @@ fixture.test(
       changes.clear()
       yield* database
         .transaction(() =>
-          services.escalation
-            .createIssue({ ticket: rollback.id })
+          services.ticket
+            .escalate({ id: rollback.id })
             .pipe(Effect.andThen(Effect.fail("cancel")))
         )
         .pipe(Effect.provideService(CommittedChanges, changes), Effect.flip)
@@ -109,7 +107,7 @@ fixture.test(
       expect(
         yield* database.sql`select count(*)::int as count from event_journal where type = 'escalation.ticketEscalated'`
       ).toEqual([{ count: 1 }])
-      yield* services.escalation.createIssue({ ticket: rollback.id })
+      yield* services.ticket.escalate({ id: rollback.id })
       expect((yield* services.issue.list({})).totalSize).toBe(2)
     })
 )

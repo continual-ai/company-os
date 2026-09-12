@@ -1,5 +1,9 @@
 import { Effect } from "effect"
 
+import {
+  modelOperations,
+  type ModelOperation,
+} from "#/runtime/contract/operations.ts"
 import { moduleDependencies } from "#/runtime/model/definition/validate-model.ts"
 import {
   defineModel,
@@ -7,10 +11,6 @@ import {
   type ApiError,
   type FailedPreconditionError,
 } from "#/runtime/model/index.ts"
-import {
-  executableModelOperations,
-  type ExecutableModelOperation,
-} from "#/runtime/model/operations.ts"
 import {
   ModuleSetting,
   moduleActivationPlan,
@@ -91,7 +91,7 @@ export const activeModuleModel = Effect.fn("platform.activeModuleModel")(
       key,
       model: active,
       operations: new Set(
-        executableModelOperations(active).map(({ key: operation }) => operation)
+        modelOperations(active).map(({ key: operation }) => operation)
       ),
     }
     activeModels.set(model, result)
@@ -101,7 +101,7 @@ export const activeModuleModel = Effect.fn("platform.activeModuleModel")(
 
 export const requireModuleOperation = Effect.fn(
   "platform.requireModuleOperation"
-)(function* (descriptor: ExecutableModelOperation) {
+)(function* (descriptor: ModelOperation) {
   const active = yield* activeModuleModel()
   if (!active.operations.has(descriptor.key))
     return yield* Effect.fail({

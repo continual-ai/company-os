@@ -1,77 +1,61 @@
+import type { ObjectType } from "#/runtime/model/definition/object.ts"
 import {
-  type ActionDefinition,
-  type ActionDefinitions,
-  type BoundActionSet,
-  type Action,
-  isStandardActionId,
-} from "#/runtime/model/definition/action.ts"
-import type {
-  ObjectBatchGetInput,
-  ObjectGetInput,
-  ObjectRecord,
-  ObjectType,
-} from "#/runtime/model/definition/object.ts"
-import { bindOperationContract } from "#/runtime/model/definition/operation-contract.ts"
-import type {
-  Batch,
-  ListRequest,
-  Page,
-} from "#/runtime/model/definition/request.ts"
+  defineOperationContract,
+  type DefinedOperation,
+  type OperationConstraints,
+  type OperationDefinition,
+} from "#/runtime/model/definition/operation.ts"
 import type {
   InferInputSchema,
   InferSchema,
 } from "#/runtime/model/definition/schema.ts"
 
 export const standardQueryIds = ["get", "list", "batchGet"] as const
-
 export type StandardQueryId = (typeof standardQueryIds)[number]
-export type QueryScope = "collection" | "object"
-
-/** Portable description of a read operation derived for every model object. */
-export interface Query<
+export type QueryDefinition = OperationDefinition
+export type Query<D extends QueryDefinition = QueryDefinition> = Omit<
+  DefinedOperation<D>,
+  "kind"
+> & { readonly kind: "query" }
+export type QueryInput<Q extends Query> = InferInputSchema<Q["input"]>
+export type QueryOutput<Q extends Query> = InferSchema<Q["output"]>
+export function defineQuery<const D extends QueryDefinition>(
+  definition: D & OperationConstraints<D>
+): Query<D> {
+  // SAFETY: the constructor preserves each literal field and validates record attachment.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  return {
+    ...defineOperationContract(definition),
+    kind: "query",
+    destructive: false,
+    idempotent: true,
+  } as Query<D>
+}
+export interface StandardQuery<
   TId extends string = string,
   TObjectType extends string = string,
-  TScope extends QueryScope = QueryScope,
+  TScope extends "object" | "collection" = "object" | "collection",
 > {
-  readonly description: string
   readonly id: TId
-  readonly kind: "query"
-  readonly name: string
   readonly objectType: TObjectType
   readonly scope: TScope
+  readonly kind: "query"
+  readonly name: string
+  readonly description: string
 }
-
-export type StandardQueries<TObject extends ObjectType> = {
-  readonly batchGet: Query<"batchGet", TObject["id"], "collection">
-  readonly get: Query<"get", TObject["id"], "object">
-  readonly list: Query<"list", TObject["id"], "collection">
+export type StandardQueries<O extends ObjectType> = {
+  readonly get: StandardQuery<"get", O["id"], "object">
+  readonly list: StandardQuery<"list", O["id"], "collection">
+  readonly batchGet: StandardQuery<"batchGet", O["id"], "collection">
 }
-
-export type QueryInput<
-  TObject extends ObjectType,
-  TQuery extends StandardQueryId | keyof TObject["queries"],
-> = TQuery extends "get"
-  ? ObjectGetInput<TObject>
-  : TQuery extends "list"
-    ? ListRequest<TObject>
-    : TQuery extends "batchGet"
-      ? ObjectBatchGetInput<TObject>
-      : TQuery extends keyof TObject["queries"]
-        ? InferInputSchema<TObject["queries"][TQuery]["input"]>
-        : never
-
-export type QueryOutput<
-  TObject extends ObjectType,
-  TQuery extends StandardQueryId | keyof TObject["queries"],
-> = TQuery extends "get"
-  ? ObjectRecord<TObject>
-  : TQuery extends "list"
-    ? Page<ObjectRecord<TObject>>
-    : TQuery extends "batchGet"
-      ? Batch<ObjectRecord<TObject>>
-      : TQuery extends keyof TObject["queries"]
-        ? InferSchema<TObject["queries"][TQuery]["output"]>
-        : never
+export function queryKey(query: {
+  readonly objectType: string | undefined
+  readonly id: string
+}): string {
+  return query.objectType === undefined
+    ? query.id
+    : `${query.objectType}.${query.id}`
+}
 
 export function standardQueries<TObject extends ObjectType>(
   object: TObject
@@ -102,56 +86,4 @@ export function standardQueries<TObject extends ObjectType>(
       scope: "collection",
     },
   }
-}
-
-export function queryKey(query: Query): string {
-  return `${query.objectType}.${query.id}`
-}
-
-/** A custom read uses the same schema contract as an Action, with no mutation semantics. */
-export type QueryDefinition = Omit<
-  ActionDefinition,
-  "destructive" | "idempotent"
->
-export type QueryDefinitions = Readonly<Record<string, QueryDefinition>>
-export type CustomQuery = Omit<
-  Action,
-  "kind" | "destructive" | "idempotent"
-> & { readonly kind: "query" }
-export type BoundQueries<
-  TId extends string,
-  TDefinitions extends ActionDefinitions,
-> = {
-  readonly [K in keyof BoundActionSet<TId, TDefinitions>["actions"]]: Omit<
-    BoundActionSet<TId, TDefinitions>["actions"][K],
-    "kind" | "destructive" | "idempotent"
-  > & { readonly kind: "query" }
-}
-export function bindQueries<
-  const TId extends string,
-  const TDefinitions extends QueryDefinitions,
->(
-  object: { readonly id: TId; readonly collection: string },
-  definitions?: TDefinitions
-): BoundQueries<TId, TDefinitions> {
-  for (const id of Object.keys(definitions ?? {})) {
-    if (standardQueryIds.some((standard) => standard === id))
-      throw new Error(
-        `Object '${object.id}' cannot redefine standard query '${id}'.`
-      )
-  }
-  const queries: Record<string, CustomQuery> = {}
-  for (const [id, definition] of Object.entries(definitions ?? {})) {
-    if (isStandardActionId(id))
-      throw new Error(
-        `Query '${object.id}.${id}' conflicts with a standard Action.`
-      )
-    queries[id] = {
-      ...bindOperationContract(object, id, definition),
-      kind: "query",
-    }
-  }
-  // SAFETY: each validated definition is bound under its own literal key.
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  return queries as BoundQueries<TId, TDefinitions>
 }

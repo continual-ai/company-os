@@ -657,7 +657,7 @@ function optional<TValue extends AnySchema>(
   return { kind: "optional", value }
 }
 
-function recordId<
+function id<
   const TType extends { readonly id: string },
   const TOptions extends SchemaAnnotations<
     RecordIds<
@@ -768,7 +768,7 @@ export const schema = {
   object,
   optional,
   phone,
-  recordId,
+  id,
   score,
   select,
   string,

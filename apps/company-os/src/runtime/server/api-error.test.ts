@@ -1,14 +1,14 @@
 import { Effect, Logger, Schema } from "effect"
 import { describe, expect, it } from "vitest"
 
+import {
+  modelOperation,
+  type ModelOperation,
+} from "#/runtime/contract/operations.ts"
 import type {
   ApiError,
   FailedPreconditionError,
 } from "#/runtime/model/index.ts"
-import {
-  executableModelOperation,
-  type ExecutableModelOperation,
-} from "#/runtime/model/operations.ts"
 import { withApiErrors } from "#/runtime/server/api-error.ts"
 import { fixtureModel } from "#/runtime/testing/fixture-model.ts"
 
@@ -25,7 +25,7 @@ type TestFailure =
 
 function translate(
   error: TestFailure | ApiError<typeof FailedPreconditionError>,
-  operation?: ExecutableModelOperation
+  operation?: ModelOperation
 ) {
   return Effect.runPromise(
     withApiErrors(Effect.fail(error), operation).pipe(
@@ -113,12 +113,8 @@ describe("API error translation", () => {
       reason: "FAILED_PRECONDITION",
       status: "FAILED_PRECONDITION",
     } satisfies ApiError<typeof FailedPreconditionError>
-    const convert = executableModelOperation(
-      fixtureModel,
-      "prospect",
-      "convert"
-    )
-    const list = executableModelOperation(fixtureModel, "prospect", "list")
+    const convert = modelOperation(fixtureModel, "prospect.convert")
+    const list = modelOperation(fixtureModel, "prospect.list")
 
     await expect(translate(error, convert)).resolves.toEqual(error)
     await expect(translate(error, list)).resolves.toMatchObject({

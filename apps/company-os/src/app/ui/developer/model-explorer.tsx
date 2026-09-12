@@ -20,8 +20,8 @@ import {
   DeveloperNavigationGroup,
   DeveloperNavigationItem,
 } from "#/app/ui/developer/developer-layout.tsx"
+import type { ModelAction } from "#/runtime/model/definition/action.ts"
 import type {
-  Action,
   AnySchema,
   Choice,
   InterfaceType,
@@ -36,13 +36,12 @@ type ModelDefinition = ModelCatalog
 type ModelObject = ObjectType
 type ModelInterface = InterfaceType
 type Relationship = ModelRelationship
-type ModelAction = Action
 type ModelItem = ModelObject | ModelInterface
 
 const allModules = "all"
 
 function modelActions(model: ModelDefinition) {
-  return Object.values(model.actions).flatMap((group) => Object.values(group))
+  return Object.values(model.actions)
 }
 
 function itemKey(item: ModelItem) {

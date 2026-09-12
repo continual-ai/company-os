@@ -1,7 +1,12 @@
-import type { Asset } from "#/runtime/assets/model/asset.ts"
+import type {
+  Asset,
+  BeginAssetUpload,
+  CompleteAssetUpload,
+} from "#/runtime/assets/model/asset.ts"
 import { modelData } from "#/runtime/client/data-client.ts"
 import { executeMutation } from "#/runtime/client/model-query-client.ts"
 import type { ObjectQueryClient } from "#/runtime/client/model-query-client.ts"
+import type { OperationQueryClient } from "#/runtime/ui/model/use-operation-client.ts"
 
 function putUpload(
   url: string,
@@ -45,12 +50,11 @@ function putUpload(
 }
 
 /** The single upload adapter used by generated and custom forms. */
-export function createAssetUploader(
-  asset: Pick<
-    ObjectQueryClient<typeof Asset>,
-    "beginUpload" | "completeUpload" | "delete"
-  >
-) {
+export function createAssetUploader(asset: {
+  readonly beginUpload: OperationQueryClient<typeof BeginAssetUpload>
+  readonly completeUpload: OperationQueryClient<typeof CompleteAssetUpload>
+  readonly delete: ObjectQueryClient<typeof Asset>["delete"]
+}) {
   return async function uploadAsset(
     file: File,
     signal: AbortSignal,

@@ -2,13 +2,13 @@
 // checked dynamic dispatch seam because model operation IDs are runtime data.
 import type { Effect } from "effect"
 
-import { type Action } from "#/runtime/model/definition/action.ts"
 import {
-  type ModelCatalog,
-  modelObjects,
-} from "#/runtime/model/definition/model.ts"
-import type { ObjectType } from "#/runtime/model/definition/object.ts"
-import { type CustomQuery } from "#/runtime/model/definition/query.ts"
+  modelOperations,
+  type ModelOperation,
+} from "#/runtime/contract/operations.ts"
+import { type Action } from "#/runtime/model/definition/action.ts"
+import { type ModelCatalog } from "#/runtime/model/definition/model.ts"
+import { type Query } from "#/runtime/model/definition/query.ts"
 import {
   type InferInputSchema,
   type InferSchema,
@@ -17,49 +17,35 @@ import type {
   LinkListInput,
   LinkMutationInput,
 } from "#/runtime/model/link-input.ts"
-import {
-  executableModelOperations,
-  type ExecutableModelOperation,
-} from "#/runtime/model/operations.ts"
 import type { CurrentInvocation } from "#/runtime/server/invocation.ts"
 import type { Links } from "#/runtime/server/model/link-service.ts"
 import type { ObjectService } from "#/runtime/server/model/object-service.ts"
 
 type LinkOperations = Pick<typeof Links.Service, "link" | "list" | "unlink">
 
-type CustomOperations<TObject extends ObjectType> = TObject["actions"] &
-  TObject["queries"]
-
 export type CustomOperationService<
-  TObject extends ObjectType,
+  Operations extends Action | Query,
   R = CurrentInvocation,
 > = {
-  readonly [
-    TAction in CustomOperations<TObject>[keyof CustomOperations<TObject>] as TAction extends
-      | Action
-      | CustomQuery
-      ? TAction["id"] extends "batchDelete" | "create" | "delete" | "update"
-        ? never
-        : TAction["id"]
-      : never
-  ]: TAction extends Action | CustomQuery
-    ? (
-        input: InferInputSchema<TAction["input"]>
-      ) => Effect.Effect<InferSchema<TAction["output"]>, unknown, R>
-    : never
+  readonly [O in Operations as O["id"]]: (
+    input: InferInputSchema<O["input"]>
+  ) => Effect.Effect<InferSchema<O["output"]>, unknown, R>
 }
 
-/** Standard operations, including declared Link initialization and deltas, plus custom queries and actions for one object. */
-type ObjectImplementation<TObject extends ObjectType> = ObjectService<TObject> &
-  CustomOperationService<TObject>
-
-export type ModelServiceMap<TModel extends ModelCatalog> = {
+type CustomOperations<M extends ModelCatalog> = Extract<
+  M["actions"][keyof M["actions"]] | M["queries"][keyof M["queries"]],
+  Action | Query
+>
+export type ModelServiceMap<M extends ModelCatalog> = {
   readonly [
-    TObjectId in keyof TModel["objects"]
-  ]: TModel["objects"][TObjectId] extends ObjectType
-    ? ObjectImplementation<TModel["objects"][TObjectId]>
-    : never
-}
+    O in M["objects"][keyof M["objects"]] as O["id"]
+  ]: ObjectService<O> &
+    CustomOperationService<
+      Extract<CustomOperations<M>, { readonly objectType: O["id"] }>
+    >
+} & CustomOperationService<
+  Extract<CustomOperations<M>, { readonly objectType: undefined }>
+>
 
 /** A portable model exhaustively bound to its existing governed services. */
 export interface ModelImplementation<TModel extends ModelCatalog> {
@@ -79,23 +65,21 @@ export function implementModel<TModel extends ModelCatalog>(
   services: ModelServiceMap<TModel>,
   links: LinkOperations
 ): ModelImplementation<TModel> {
-  const descriptors = executableModelOperations(model)
-  for (const object of modelObjects(model)) {
-    // SAFETY: model object IDs are exactly the keys required by ModelServiceMap.
-    const service = services[object.id as keyof typeof services]
-    if (service === undefined) {
-      throw new Error(`Object '${object.id}' has no service implementation.`)
-    }
-
-    for (const descriptor of descriptors.filter(
-      ({ linkTraversal, object: candidate }) =>
-        linkTraversal === undefined && candidate.id === object.id
-    )) {
-      if (typeof operation(service, descriptor.definition.id) !== "function") {
-        throw new Error(
-          `${descriptor.definition.kind === "query" ? "Query" : "Action"} '${descriptor.key}' has no implementation.`
-        )
-      }
+  const descriptors = modelOperations(model)
+  for (const descriptor of descriptors) {
+    if (descriptor.linkTraversal !== undefined) continue
+    const service =
+      descriptor.object === undefined
+        ? services
+        : Reflect.get(services, descriptor.object.id)
+    if (
+      typeof service !== "object" ||
+      service === null ||
+      typeof operation(service, descriptor.id) !== "function"
+    ) {
+      throw new Error(
+        `${descriptor.kind === "query" ? "Query" : "Action"} '${descriptor.key}' has no implementation.`
+      )
     }
   }
 
@@ -103,19 +87,22 @@ export function implementModel<TModel extends ModelCatalog>(
 }
 
 /** Internal dynamic dispatch used by transport projections after model validation. */
-export function modelOperation(
+function serviceOperation(
   implementation: {
     readonly services: Readonly<Record<string, object>>
   },
-  objectType: string,
+  objectType: string | undefined,
   operationId: string
 ): (input: unknown) => Effect.Effect<unknown, unknown, CurrentInvocation> {
-  const service = implementation.services[objectType]
+  const service =
+    objectType === undefined
+      ? implementation.services
+      : implementation.services[objectType]
   const method =
     service === undefined ? undefined : operation(service, operationId)
   if (typeof method !== "function") {
     throw new Error(
-      `Operation '${objectType}.${operationId}' has no implementation.`
+      `Operation '${objectType === undefined ? operationId : `${objectType}.${operationId}`}' has no implementation.`
     )
   }
   // SAFETY: implementModel validated this model-derived operation as a method.
@@ -131,18 +118,18 @@ export function executeModelOperation(
     readonly links: LinkOperations
     readonly services: Readonly<Record<string, object>>
   },
-  descriptor: ExecutableModelOperation,
+  descriptor: ModelOperation,
   input: unknown
 ): Effect.Effect<unknown, unknown, CurrentInvocation> {
   const traversal = descriptor.linkTraversal
   if (traversal === undefined) {
-    return modelOperation(
+    return serviceOperation(
       implementation,
-      descriptor.object.id,
-      descriptor.definition.id
+      descriptor.object?.id,
+      descriptor.id
     )(input)
   }
-  if (descriptor.definition.id === "list") {
+  if (descriptor.id === "list") {
     // SAFETY: each protocol compiler decoded input from this generated list operation.
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
     return implementation.links.list(traversal, input as LinkListInput)
@@ -150,7 +137,7 @@ export function executeModelOperation(
   // SAFETY: each protocol compiler decoded input from this generated mutation.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const mutation = input as LinkMutationInput
-  return descriptor.definition.id === "link"
+  return descriptor.id === "link"
     ? implementation.links.link(traversal, mutation)
     : implementation.links.unlink(traversal, mutation)
 }

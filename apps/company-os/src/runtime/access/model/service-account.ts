@@ -7,12 +7,7 @@ export const ServiceAccount = defineObject({
   name: "Service account",
   pluralName: "Service accounts",
   description: "An account for an integration, application, or agent.",
-  actions: {
-    create: false,
-    delete: false,
-    batchDelete: false,
-    update: false,
-  },
+  actions: { create: false, delete: false, batchDelete: false, update: false },
   implements: [{ interface: Actor }, { interface: Identity }],
   properties: {
     name: schema.string({ label: "Name", minLength: 1, maxLength: 200 }),

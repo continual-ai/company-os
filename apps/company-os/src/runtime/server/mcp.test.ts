@@ -14,7 +14,7 @@ import { defineObject } from "#/runtime/model/definition/object.ts"
 import { PageToken } from "#/runtime/model/definition/request.ts"
 import { schema } from "#/runtime/model/definition/schema.ts"
 import { NotFoundError } from "#/runtime/model/definition/standard-error.ts"
-import { RecordId } from "#/runtime/model/index.ts"
+import { RecordId, defineAction, defineQuery } from "#/runtime/model/index.ts"
 import { CurrentInvocation } from "#/runtime/server/invocation.ts"
 import {
   createModelMcpServer,
@@ -30,15 +30,27 @@ const Contact = defineObject({
   pluralName: "Contacts",
   properties: { name: schema.string() },
   display: { title: "name" },
-  actions: {
-    enroll: {
-      description: "Enrolls a contact.",
-      input: { notify: schema.optional(schema.boolean()) },
-      name: "Enroll contact",
-      output: { enrolled: schema.boolean() },
-      scope: "object",
-    },
-  },
+})
+const ContactEnroll = defineAction({
+  id: "enroll",
+  object: Contact,
+  description: "Enrolls a contact.",
+  input: { id: schema.id(Contact), notify: schema.optional(schema.boolean()) },
+  name: "Enroll contact",
+  output: { enrolled: schema.boolean() },
+})
+const Reconcile = defineAction({
+  id: "reconcile",
+  name: "Reconcile",
+  description: "Reconcile systems.",
+  input: { dryRun: schema.boolean() },
+  output: { accepted: schema.boolean() },
+})
+const Health = defineQuery({
+  id: "health",
+  name: "Health",
+  description: "Read system health.",
+  output: { count: schema.number() },
 })
 const TestModel = defineModel({
   modules: [
@@ -48,6 +60,8 @@ const TestModel = defineModel({
       links: [],
       name: "Contacts",
       objects: [Contact],
+      actions: [ContactEnroll, Reconcile],
+      queries: [Health],
     }),
   ],
   name: "Test",
@@ -55,6 +69,8 @@ const TestModel = defineModel({
 
 function services(): ModelServiceMap<typeof TestModel> {
   return {
+    reconcile: ({ dryRun }) => Effect.succeed({ accepted: dryRun }),
+    health: () => Effect.succeed({ count: 3 }),
     contact: {
       batchDelete: unused,
       batchGet: unused,
@@ -214,8 +230,26 @@ describe("model MCP projection", () => {
       "contact.delete",
       "contact.batchDelete",
       "contact.enroll",
+      "reconcile",
+      "health",
     ])
 
+    const reconciled = await request({
+      id: 20,
+      jsonrpc: "2.0",
+      method: "tools/call",
+      params: { name: "reconcile", arguments: { dryRun: true } },
+    })
+    expect(reconciled.result).toMatchObject({
+      structuredContent: { accepted: true },
+    })
+    const health = await request({
+      id: 21,
+      jsonrpc: "2.0",
+      method: "tools/call",
+      params: { name: "health", arguments: {} },
+    })
+    expect(health.result).toMatchObject({ structuredContent: { count: 3 } })
     const page = await request({
       id: 3,
       jsonrpc: "2.0",
@@ -227,7 +261,9 @@ describe("model MCP projection", () => {
     })
     expect(page.result).toMatchObject({
       structuredContent: {
-        result: { items: [], nextPageToken: null, totalSize: 0 },
+        items: [],
+        nextPageToken: null,
+        totalSize: 0,
       },
     })
 

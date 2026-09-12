@@ -1,3 +1,4 @@
+import type { Action } from "#/runtime/model/definition/action.ts"
 import type { EventType } from "#/runtime/model/definition/event.ts"
 import type {
   NoExtraKeys,
@@ -6,6 +7,7 @@ import type {
 import type { InterfaceType } from "#/runtime/model/definition/interface.ts"
 import type { LinkType } from "#/runtime/model/definition/link.ts"
 import type { ObjectType } from "#/runtime/model/definition/object.ts"
+import type { Query } from "#/runtime/model/definition/query.ts"
 
 export const moduleMaturities = [
   "alpha",
@@ -29,6 +31,8 @@ export interface ModuleMetadata {
 
 /** What `defineModule` accepts. */
 export interface ModuleDefinitionInput extends ModuleMetadata {
+  readonly actions?: ReadonlyArray<Action>
+  readonly queries?: ReadonlyArray<Query>
   readonly events?: ReadonlyArray<EventType>
   readonly id: string
   readonly interfaces?: ReadonlyArray<InterfaceType>
@@ -57,6 +61,20 @@ type ModuleLinks<D extends ModuleDefinitionInput> = D extends {
 export interface ModuleDefinition<
   D extends ModuleDefinitionInput = ModuleDefinitionInput,
 > extends ModuleMetadata {
+  readonly actions: OpenOr<
+    D,
+    ReadonlyArray<Action>,
+    D extends { readonly actions: infer A extends ReadonlyArray<Action> }
+      ? A
+      : readonly []
+  >
+  readonly queries: OpenOr<
+    D,
+    ReadonlyArray<Query>,
+    D extends { readonly queries: infer Q extends ReadonlyArray<Query> }
+      ? Q
+      : readonly []
+  >
   readonly events: ReadonlyArray<EventType>
   readonly id: D["id"]
   readonly interfaces: OpenOr<
@@ -81,6 +99,8 @@ export function defineModule<const D extends ModuleDefinitionInput>(
 ): ModuleDefinition<D> {
   const input: ModuleDefinitionInput = definition
   const module: ModuleDefinition = {
+    actions: input.actions ?? [],
+    queries: input.queries ?? [],
     events: input.events ?? [],
     id: input.id,
     interfaces: input.interfaces ?? [],

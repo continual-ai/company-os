@@ -27,6 +27,11 @@ import {
   type RecordIdentifier,
   schema,
 } from "#/runtime/model/definition/schema.ts"
+import {
+  defineAction,
+  defineQuery,
+  type Action,
+} from "#/runtime/model/index.ts"
 
 const TestActor = defineInterface({
   id: "testActor",
@@ -51,23 +56,24 @@ const Contact = defineObject({
   },
   uniqueBy: { name: ["name"] },
   display: { title: "name" },
-  actions: {
-    enroll: {
-      scope: "object",
-      name: "Enroll contact",
-      description: "Enrolls a contact in the customer program.",
-      input: { notify: schema.optional(schema.boolean()) },
-      output: { enrolled: schema.boolean() },
-      errors: [EnrollmentFailed],
-    },
-  },
+})
+const ContactEnroll = defineAction({
+  id: "enroll",
+  object: Contact,
+  name: "Enroll contact",
+  description: "Enrolls a contact in the customer program.",
+  input: { id: schema.id(Contact), notify: schema.optional(schema.boolean()) },
+  output: { enrolled: schema.boolean() },
+  errors: [EnrollmentFailed],
 })
 
 function defineTestModel<
   const TObjects extends ReadonlyArray<ObjectType>,
   const TLinks extends ReadonlyArray<LinkType>,
   const TInterfaces extends ReadonlyArray<InterfaceType>,
+  const TActions extends ReadonlyArray<Action> = readonly [],
 >(definition: {
+  actions?: TActions
   interfaces: TInterfaces
   links: TLinks
   name: string
@@ -79,6 +85,7 @@ function defineTestModel<
     links: definition.links,
     name: "Test",
     objects: definition.objects,
+    actions: definition.actions ?? [],
   })
   return defineModel({ modules: [testModule], name: definition.name })
 }
@@ -95,18 +102,18 @@ describe("definition inference", () => {
     expectTypeOf(Contact.display.title).toEqualTypeOf<"name">()
     expectTypeOf<ObjectRecord<typeof Contact>["name"]>().toEqualTypeOf<string>()
     expectTypeOf<keyof typeof Contact.actions>().toEqualTypeOf<
-      "batchDelete" | "create" | "delete" | "enroll" | "update"
+      "batchDelete" | "create" | "delete" | "update"
     >()
-    expectTypeOf<keyof typeof Contact.queries>().toEqualTypeOf<never>()
-    expectTypeOf(Contact.actions.enroll.scope).toEqualTypeOf<"object">()
-    expectTypeOf<ActionInput<typeof Contact.actions.enroll>>().toEqualTypeOf<{
+    expect(Contact).not.toHaveProperty("queries")
+    expectTypeOf(ContactEnroll.scope).toEqualTypeOf<"object">()
+    expectTypeOf<ActionInput<typeof ContactEnroll>>().toEqualTypeOf<{
       readonly id: RecordIdentifier<"contact">
       readonly notify?: boolean
     }>()
-    expectTypeOf<ActionOutput<typeof Contact.actions.enroll>>().toEqualTypeOf<{
+    expectTypeOf<ActionOutput<typeof ContactEnroll>>().toEqualTypeOf<{
       readonly enrolled: boolean
     }>()
-    expectTypeOf(Contact.actions.enroll.errors).toEqualTypeOf<
+    expectTypeOf(ContactEnroll.errors).toEqualTypeOf<
       readonly [typeof EnrollmentFailed]
     >()
     expectTypeOf(Contact).toExtend<ObjectType>()
@@ -150,22 +157,26 @@ describe("definition inference", () => {
         legacyName: "Extra",
       })
     ).not.toHaveProperty("legacyName")
+    const ping = {
+      id: "ping",
+      collection: Contact,
+      name: "Ping",
+      description: "Pings.",
+    } as const
     expect(() =>
-      defineObject({
-        id: "duplicated",
-        collection: "duplicateds",
-        name: "Duplicated",
-        pluralName: "Duplicateds",
-        properties: { name: schema.string() },
-        display: { title: "name" },
-        actions: {
-          ping: { name: "Ping", description: "Pings.", scope: "collection" },
-        },
-        queries: {
-          ping: { name: "Ping", description: "Pings.", scope: "collection" },
-        },
+      defineModel({
+        name: "Duplicate",
+        modules: [
+          defineModule({
+            id: "duplicate",
+            name: "Duplicate",
+            objects: [Contact],
+            actions: [defineAction(ping)],
+            queries: [defineQuery(ping)],
+          }),
+        ],
       })
-    ).toThrow(/duplicates operation 'ping'/)
+    ).toThrow(/Duplicate operation/)
     expect(() =>
       defineObject({
         id: "redefined",
@@ -175,6 +186,7 @@ describe("definition inference", () => {
         properties: { name: schema.string() },
         display: { title: "name" },
         actions: {
+          // @ts-expect-error Standard actions can only be disabled.
           create: {
             name: "Create",
             description: "Creates.",
@@ -182,13 +194,14 @@ describe("definition inference", () => {
           },
         },
       })
-    ).toThrow(/standard action 'create' may only be disabled with false/)
+    ).toThrow(/must be a standard operation disabled with false/)
   })
 })
 
 describe("model definitions", () => {
   it("indexes objects and their first-class actions", () => {
     const model = defineTestModel({
+      actions: [ContactEnroll],
       interfaces: [TestActor],
       name: "Example",
       objects: [Contact],
@@ -204,51 +217,47 @@ describe("model definitions", () => {
     expect(Object.keys(model.objects)).toEqual(["contact"])
     expect(model.root).toEqual(Root)
     expect(model.objects.contact.uniqueBy).toEqual({ name: ["name"] })
-    expect(Object.keys(model.actions.contact)).toEqual([
-      "create",
-      "update",
-      "delete",
-      "batchDelete",
-      "enroll",
+    expect(Object.keys(model.actions)).toEqual([
+      "contact.create",
+      "contact.update",
+      "contact.delete",
+      "contact.batchDelete",
+      "contact.enroll",
     ])
-    expect(model.actions.contact.enroll).toMatchObject({
+    expect(model.actions["contact.enroll"]).toMatchObject({
       id: "enroll",
       objectType: "contact",
       scope: "object",
     })
-    expect(model.actions.contact.enroll.input.properties).toHaveProperty("id")
-    expect(model.actions.contact.create).toMatchObject({
-      input: {
-        properties: {
-          name: { kind: "string", requiredOnCreate: true },
-        },
-      },
-      output: { properties: { id: { kind: "recordId" } } },
-    })
-    expect(model.actions.contact.create.input.properties.aliases).toMatchObject(
-      { kind: "optional", value: { kind: "array" } }
+    expect(model.actions["contact.enroll"].input.properties).toHaveProperty(
+      "id"
     )
-    expect(
-      model.actions.contact.create.output.properties.aliases
-    ).toMatchObject({ kind: "array" })
-    expect(model.actions.contact.update).toMatchObject({
-      input: { properties: { name: { kind: "optional" } } },
+    expect(model.actions["contact.create"]).toMatchObject({
+      id: "create",
+      kind: "action",
+      objectType: "contact",
+      scope: "collection",
     })
-    expect(model.actions.contact.update.input.properties.aliases).toMatchObject(
-      { kind: "optional", value: { kind: "union" } }
-    )
-    expect(Object.keys(model.queries.contact)).toEqual([
-      "get",
-      "list",
-      "batchGet",
+    expect(model.actions["contact.create"]).not.toHaveProperty("input")
+    expect(model.actions["contact.update"]).toMatchObject({
+      id: "update",
+      kind: "action",
+      objectType: "contact",
+      scope: "object",
+    })
+    expect(Object.keys(model.queries)).toEqual([
+      "contact.get",
+      "contact.list",
+      "contact.batchGet",
     ])
-    expect(model.actions.contact.batchDelete).toMatchObject({
-      input: { properties: { ids: { kind: "array" } } },
+    expect(model.actions["contact.batchDelete"]).toMatchObject({
       scope: "collection",
     })
     expectTypeOf(model.objects.contact.collection).toEqualTypeOf<"contacts">()
-    expectTypeOf(model.actions.contact.enroll.id).toEqualTypeOf<"enroll">()
-    expect(model.actions.contact).toBe(model.objects.contact.actions)
+    expectTypeOf(model.actions["contact.enroll"].id).toEqualTypeOf<"enroll">()
+    expect(model.actions["contact.create"]).toBe(
+      model.objects.contact.actions.create
+    )
   })
 
   it("rejects duplicate module ids", () => {
@@ -258,6 +267,7 @@ describe("model definitions", () => {
       links: [],
       name: "Contacts",
       objects: [Contact],
+      actions: [ContactEnroll],
     })
 
     expect(() =>
@@ -287,10 +297,12 @@ describe("model definitions", () => {
 
     expect(Object.keys(WithoutBatchDelete.actions)).toContain("delete")
     expect(Object.keys(WithoutBatchDelete.actions)).not.toContain("batchDelete")
-    expect(Object.keys(model.actions.withoutBatchDelete)).toContain("delete")
-    expect(Object.keys(model.actions.withoutBatchDelete)).not.toContain(
-      "batchDelete"
+    expect(Object.values(model.actions).map((action) => action.id)).toContain(
+      "delete"
     )
+    expect(
+      Object.values(model.actions).map((action) => action.id)
+    ).not.toContain("batchDelete")
   })
 
   it("rejects duplicate object identities and collections", () => {
@@ -464,6 +476,7 @@ describe("model definitions", () => {
       id: "contacts",
       name: "Contacts",
       objects: [Contact],
+      actions: [ContactEnroll],
     })
     const companies = defineModule({
       id: "companies",
@@ -527,14 +540,14 @@ describe("model definitions", () => {
         collection: "memberships",
         name: "Membership",
         pluralName: "Memberships",
-        properties: { account: schema.recordId(Contact) },
+        properties: { account: schema.id(Contact) },
         display: { title: "id" },
       })
     ).toThrow(/Use defineLink/)
     expect(() =>
       schema.object({
-        id: schema.recordId(Contact),
-        ids: schema.array(schema.recordId(Contact)),
+        id: schema.id(Contact),
+        ids: schema.array(schema.id(Contact)),
       })
     ).not.toThrow()
   })
@@ -610,13 +623,12 @@ describe("model definitions", () => {
       pluralName: "Conflicting actions",
       properties: { name: schema.string() },
       display: { title: "name" },
-      actions: {
-        list: {
-          description: "Conflicts with the generated list Query.",
-          name: "List",
-          scope: "collection",
-        },
-      },
+    })
+    const ConflictingActionList = defineAction({
+      id: "list",
+      collection: ConflictingAction,
+      description: "Conflicts with the generated list Query.",
+      name: "List",
     })
     expect(() =>
       defineTestModel({
@@ -624,8 +636,9 @@ describe("model definitions", () => {
         links: [],
         name: "Conflicting action",
         objects: [ConflictingAction],
+        actions: [ConflictingActionList],
       })
-    ).toThrow(/Action 'conflictingAction\.list'.*generated Query method/)
+    ).toThrow(/conflicts with a standard operation/)
 
     const Account = defineObject({
       id: "account",

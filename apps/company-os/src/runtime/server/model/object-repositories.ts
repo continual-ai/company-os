@@ -35,6 +35,7 @@ import { CurrentInvocation } from "#/runtime/server/invocation.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
 import { makeLinkWrites } from "#/runtime/server/model/link-writes.ts"
 import { RecordIdentifierResolver } from "#/runtime/server/model/record-identifier-resolver.ts"
+import { requireWritableOperation } from "#/runtime/server/operation-mode.ts"
 import { PageTokens } from "#/runtime/server/page-tokens.ts"
 import { Database } from "#/runtime/server/storage/database.ts"
 import {
@@ -337,6 +338,7 @@ export function makeObjectWrites<const O extends ObjectType>(
   const create = Effect.fn(`${object.id}.create`)(function* (
     input: ObjectCreateInput<O>
   ) {
+    yield* requireWritableOperation
     const decoded = yield* decodeCreateUnknown(input)
     // SAFETY: the compiled create schema accepts only portable decoded values
     // and was derived from this exact object definition.
@@ -367,6 +369,7 @@ export function makeObjectWrites<const O extends ObjectType>(
   const update = Effect.fn(`${object.id}.update`)(function* (
     input: ObjectWriterUpdateInput<O>
   ) {
+    yield* requireWritableOperation
     const { id: identifier, ...changes } = input
     const id = yield* resolveIdentifier(
       object.id,
@@ -404,6 +407,7 @@ export function makeObjectWrites<const O extends ObjectType>(
     etag,
     id: identifier,
   }: ObjectDeleteInput<O>) {
+    yield* requireWritableOperation
     const id = yield* resolveIdentifier(
       object.id,
       identifier,

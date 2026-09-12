@@ -19,6 +19,11 @@ interface TransactionOptions {
   readonly accessMode?: "read only" | "read write"
 }
 
+const TransactionAccessMode = Context.Reference<"read only" | "read write">(
+  "@company/TransactionAccessMode",
+  { defaultValue: () => "read write" }
+)
+
 /**
  * PostgreSQL access shared by every server capability. Effect binds the
  * transaction connection through fiber context, so the same `sql` client is
@@ -32,7 +37,8 @@ export interface PostgresDatabase {
    * the same buffer. An uncaught failure fails the enclosing transaction; a
    * caller that catches an inner failure keeps the writes made before it, so
    * "try, recover, continue" flows need an explicit rollback strategy. Options
-   * apply only to the call that opens the transaction.
+   * apply only to the call that opens the transaction. An explicit access mode
+   * must agree with the enclosing transaction; a Query cannot inherit write access.
    */
   readonly transaction: <A, E, R>(
     body: (database: PostgresDatabase) => Effect.Effect<A, E, R>,
@@ -49,7 +55,16 @@ const make = Effect.gen(function* () {
       Effect.gen(function* () {
         // A pending buffer exists exactly while this fiber runs inside a transaction opened here.
         const enclosing = yield* PendingEvents
-        if (enclosing !== undefined) return yield* body(database)
+        if (enclosing !== undefined) {
+          if (
+            options?.accessMode !== undefined &&
+            options.accessMode !== (yield* TransactionAccessMode)
+          )
+            return yield* Effect.die(
+              "Cannot change access mode inside an open transaction. Read through Records inside an Action; invoke Queries outside its write transaction."
+            )
+          return yield* body(database)
+        }
         const events: Array<PendingEvent> = []
         const result = yield* sql.withTransaction(
           Effect.gen(function* () {
@@ -74,7 +89,13 @@ const make = Effect.gen(function* () {
             }
             yield* flushEvents(database, events)
             return value
-          }).pipe(Effect.provideService(PendingEvents, events))
+          }).pipe(
+            Effect.provideService(PendingEvents, events),
+            Effect.provideService(
+              TransactionAccessMode,
+              options?.accessMode ?? "read write"
+            )
+          )
         )
         // Only the committing transaction knows which facts were durably written.
         const changes = yield* CommittedChanges

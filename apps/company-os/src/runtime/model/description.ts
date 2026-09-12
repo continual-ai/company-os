@@ -1,5 +1,5 @@
 import type { RootType } from "#/runtime/model/core/root.ts"
-import type { Action } from "#/runtime/model/definition/action.ts"
+import type { ModelAction } from "#/runtime/model/definition/action.ts"
 import type { InterfaceType } from "#/runtime/model/definition/interface.ts"
 import type { LinkType } from "#/runtime/model/definition/link.ts"
 import {
@@ -14,15 +14,15 @@ import {
 } from "#/runtime/model/definition/model.ts"
 import type { ModuleMetadata } from "#/runtime/model/definition/module.ts"
 import type { ObjectType } from "#/runtime/model/definition/object.ts"
-import type { CustomQuery, Query } from "#/runtime/model/definition/query.ts"
+import type { StandardQuery, Query } from "#/runtime/model/definition/query.ts"
 import {
   modelRelationships,
   type ModelRelationship,
 } from "#/runtime/model/definition/relationship.ts"
 
-export const MODEL_DESCRIPTION_VERSION = "0.30" as const
+export const MODEL_DESCRIPTION_VERSION = "0.32" as const
 
-type ObjectDescription = Omit<ObjectType, "actions" | "queries" | "kind"> & {}
+type ObjectDescription = Omit<ObjectType, "actions" | "kind">
 
 /** Serializable membership metadata for one declared model module. */
 export interface ModuleDescription extends ModuleMetadata {
@@ -30,22 +30,24 @@ export interface ModuleDescription extends ModuleMetadata {
   readonly interfaceIds: ReadonlyArray<string>
   readonly linkIds: ReadonlyArray<string>
   readonly name: string
+  readonly actionKeys: ReadonlyArray<string>
+  readonly queryKeys: ReadonlyArray<string>
   readonly objectIds: ReadonlyArray<string>
 }
 
 /**
- * Serializable, public description derived from an API contract. Consumers
+ * Serializable description of authored definitions and standard operation metadata. Consumers
  * never maintain this projection by hand.
  */
 export interface ModelDescription {
-  readonly actions: ReadonlyArray<Action>
+  readonly actions: ReadonlyArray<ModelAction>
   readonly actor: { readonly typeId: string }
   readonly interfaces: ReadonlyArray<InterfaceType>
   readonly links: ReadonlyArray<LinkType>
   readonly model: { readonly name: string }
   readonly modules: ReadonlyArray<ModuleDescription>
   readonly objects: ReadonlyArray<ObjectDescription>
-  readonly queries: ReadonlyArray<Query | CustomQuery>
+  readonly queries: ReadonlyArray<Query | StandardQuery>
   readonly relationships: ReadonlyArray<ModelRelationship>
   readonly root: RootType
   readonly version: typeof MODEL_DESCRIPTION_VERSION
@@ -53,7 +55,6 @@ export interface ModelDescription {
 
 function describeObject({
   actions: _actions,
-  queries: _queries,
   kind: _kind,
   ...description
 }: ModelObject<ModelCatalog>): ObjectDescription {
@@ -106,6 +107,8 @@ export function describeModel(model: ModelCatalog): ModelDescription {
       maintainer: module.maintainer ?? model.maintainer,
       origin: module.origin,
       objectIds: module.objects.map((object) => object.id),
+      actionKeys: module.actions.map((action) => action.key),
+      queryKeys: module.queries.map((query) => query.key),
     })),
     relationships: modelRelationships(model),
     queries: modelQueries(model).map((query) => ({ ...query })),

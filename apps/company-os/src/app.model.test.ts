@@ -24,7 +24,7 @@ describe("model contract", () => {
       actor: { typeId: "actor" },
       model: { name: appMetadata.name },
       root: { id: "root", kind: "root", name: "Root" },
-      version: "0.30",
+      version: "0.32",
     })
     expect(description.queries).toContainEqual(
       expect.objectContaining({
@@ -62,12 +62,11 @@ describe("model contract", () => {
       })
     )
     expectTypeOf<
-      QueryInput<typeof Model.objects.deal, "pipelineSummary">
+      QueryInput<(typeof Model.queries)["deal.pipelineSummary"]>
     >().toEqualTypeOf<{}>()
     expectTypeOf<
       QueryOutput<
-        typeof Model.objects.deal,
-        "pipelineSummary"
+        (typeof Model.queries)["deal.pipelineSummary"]
       >["groups"][number]["count"]
     >().toEqualTypeOf<number>()
     expect(description.modules.map((module) => module.id)).toEqual(
