@@ -9,8 +9,8 @@ editable source.
 ## Where things belong
 
 - `apps/company-os/src/modules/<name>/{model,server,ui,seeds}` owns business capabilities; omit unused surfaces.
-- `src/runtime` owns the kernel; `src/app` owns the shell. Add a module, edit an existing module, then
-  edit the kernel only when necessary. Explain departures from the first rung in the commit.
+- `src/runtime` owns the kernel; `src/app` owns the shell. Place business changes in the owning module;
+  create a module for a new capability. Change the kernel when the required behavior belongs there.
 - `app.model.ts` composes and migrates every module. Platform > Modules stores activation in the database;
   UI, HTTP, and MCP expose the active model. Disabling hides operations without deleting data. Identities,
   Assets, and Platform stay enabled. Enabled objects get internal pages and navigation automatically, after
@@ -55,7 +55,12 @@ rebuilds disposable local data from the model without changing migration files. 
 `pnpm test:migrations`. `pnpm db:migrate` applies history to empty or previously migrated databases.
 Never rewrite applied migrations. Upstream upgrades preserve company changes and applied history.
 
-Run `pnpm check` and `pnpm test`; also `pnpm build` for routing, bundling, or dependency changes.
-Use meaningful tests for changed behavior. Report unrun checks and environmental blockers honestly.
+For implementation changes, run `pnpm check` and `pnpm test`; also run `pnpm build` for routing,
+bundling, or dependency changes and `pnpm test:migrations` for schema or data migrations. For prose-only
+changes, validate the affected documents and links; application checks are unnecessary.
+Complete the requested behavior, run applicable checks, fix failures caused by the change, and
+demonstrate the requested interface before handing back. Use meaningful tests for changed behavior.
+Report unrun checks and environmental blockers honestly. Review requests stay read-only unless fixes
+are requested.
 `README.md` covers setup; the two skills cover onboarding and customization/review. Keep comments
 for non-obvious contracts and reasons. Do not duplicate implementation inventories or recreate docs.
