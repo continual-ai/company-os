@@ -1,6 +1,6 @@
 -- Company OS: desired PostgreSQL schema
 -- Generated from the model. Edit model or runtime storage source,
--- then run db:reset or db:migration.
+-- then run db:reset.
 -- Domain tables share their record identity with objects.
 -- Descriptions are documentation only; they are not stored in PostgreSQL.
 

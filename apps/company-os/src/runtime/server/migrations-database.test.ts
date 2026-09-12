@@ -28,9 +28,6 @@ fixture.test(
       const { sql } = yield* Database
       yield* applySchemaMigrations([first])
       yield* sql`insert into probe values (1, 'Retain me')`
-      // Existing deployments used checksum-suffixed names. Their IDs remain applied.
-      const oldName = `initial_${"a".repeat(64)}_${"b".repeat(64)}`
-      yield* sql`update company_os_migrations set name = ${oldName} where migration_id = 1`
       yield* verifySchemaMigrations([first])
       expect(
         Exit.isFailure(

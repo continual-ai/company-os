@@ -20,7 +20,6 @@
     "db:check": "tsx tools/check-db-schema.ts",
     "db:dump": "tsx tools/db-dump.ts",
     "db:migrate": "tsx tools/db-migrate.ts",
-    "db:migration": "tsx tools/db-migration.ts",
     "db:reset": "tsx tools/db-reset.ts",
     "db:seed": "tsx tools/db-seed.ts",
     "deploy": "tsx tools/db-migrate.ts --if-configured && continual deploy",

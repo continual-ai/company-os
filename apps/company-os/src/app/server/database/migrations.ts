@@ -1,8 +1,10 @@
+import { createHash } from "node:crypto"
+
 import { PgClient } from "@effect/sql-pg"
 import { Effect } from "effect"
 
-import { migrations } from "#/app/server/database/migrations/index.ts"
 import { databaseSchemaConfig } from "#/app/server/database/postgres.ts"
+import { schemaSql } from "#/app/server/database/schema.ts"
 import {
   applySchemaMigrations,
   verifySchemaMigrations,
@@ -22,6 +24,15 @@ export const ensureDatabaseSchema = Effect.fn("@company/ensureDatabaseSchema")(
   }
 )
 
-/** App-owned immutable migration sequence. */
+// One pre-release baseline, derived from the same model as local resets. Its fingerprint makes
+// deployment reject an outdated database instead of silently treating it as the current schema.
+export const migrations = [
+  {
+    id: 1,
+    name: `baseline_${createHash("sha256").update(schemaSql).digest("hex")}`,
+    sql: `${schemaSql}\ninsert into event_journal_state (id, position) values (1, 0);`,
+  },
+]
+
 export const applyMigrations = () => applySchemaMigrations(migrations)
 export const verifyDatabaseModel = () => verifySchemaMigrations(migrations)

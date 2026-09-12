@@ -59,8 +59,8 @@ Revisit compatibility and migration guarantees before v1.
 
 `schema.sql` projects the model. After storage changes, run `pnpm db:reset` to regenerate it and
 rebuild disposable local data, then reseed as needed. Do not add incremental migrations or backfills
-for pre-release development. Pre-release migration history may be replaced with a fresh baseline
-when existing tooling needs it; it is not a compatibility contract. Reset is not authorization to
+for pre-release development. Deployment initialization uses one baseline derived from the current
+model; there is no historical upgrade chain. Reset is not authorization to
 delete remote data or data explicitly marked for retention; handle those cases deliberately.
 
 For implementation changes, run `pnpm check` and `pnpm test`; also run `pnpm build` for routing,

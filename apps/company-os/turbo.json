@@ -41,10 +41,6 @@
       ]
     },
     "model:check": {},
-    "db:migration": {
-      "cache": false,
-      "passThroughEnv": ["DATABASE_URL"]
-    },
     "test:migrations": {
       "cache": false,
       "passThroughEnv": ["DATABASE_URL"]

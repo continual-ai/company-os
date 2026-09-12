@@ -22,9 +22,10 @@ membership checks and revocation; short token lifetimes bound the delay before r
 UI, HTTP, MCP discovery and execution, assets, search, and events require project admission. A local
 user record or a valid token for another project never grants access.
 
-Migration `0004-project_access` archives retired access records and former scope placement in
-`company_os_archive`; it preserves identities, business records, company Links, files, and the event
-journal. The archive is outside the generated app model and is accessible to database administrators.
+Before v1, deployment initializes an empty database from one model-derived baseline. There is no
+historical upgrade chain. A changed baseline or a database from an older release is rejected before
+initialization; it is never reset automatically. Decide how to retain or discard existing data
+before replacing an outdated deployment database.
 
 For Continual hosting:
 
@@ -35,8 +36,8 @@ pnpm exec continual env pull
 pnpm deploy
 ```
 
-Deploy builds `.output`, migrates the configured database, then publishes. Other hosts must preserve
-that order and configure a trusted identity boundary. Keep a restore point before production
-migrations and use changes compatible with overlapping app revisions; an app rollback does not undo
-a migration. Verify `/health` and an authenticated read and write after deployment. Satellites set
+Deploy builds `.output`, initializes or verifies the configured database baseline, then publishes.
+Other hosts must preserve that order and configure a trusted identity boundary. Keep a restore
+point for retained data; an app rollback does not restore a database. Verify `/health` and an
+authenticated read and write after deployment. Satellites set
 `COMPANY_OS_URL` to the central app and forward verified identity headers.

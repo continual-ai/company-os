@@ -30,7 +30,7 @@ Effect.gen(function* () {
     writeFileSync(new URL("../schema.sql", import.meta.url), schemaSql)
   )
   yield* Effect.log(
-    "Development database ready. Migration files are unchanged. Run pnpm dev; when the feature is ready, run pnpm db:migration <name>."
+    "Development database ready. Run pnpm db:seed for example records, then pnpm dev."
   )
 }).pipe(
   Effect.provide(localConfigLayer({ development: true })),

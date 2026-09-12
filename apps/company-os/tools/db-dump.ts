@@ -52,7 +52,7 @@ Effect.gen(function* () {
     writeFileSync(target, sql)
   })
   yield* Effect.log(
-    "Wrote schema.actual.sql. Compare it with schema.sql to author the next numbered SQL migration."
+    "Wrote schema.actual.sql. Compare it with schema.sql to inspect storage differences."
   )
 }).pipe(
   Effect.provide(localConfigLayer({ development: true })),

@@ -39,11 +39,9 @@ function verifyHistory(
 ) {
   for (const row of history) {
     const expected = migrations.find((migration) => migration.id === row.id)
-    // Older deployments recorded checksums in the name; retain their applied IDs without replaying SQL.
-    const name = row.name.replace(/_[a-f0-9]{64}_[a-f0-9]{64}$/, "")
-    if (!expected || name !== expected.name)
+    if (!expected || row.name !== expected.name)
       throw new Error(
-        `Migration ${row.id} is missing or renamed. Restore its numbered file; add a new migration for subsequent changes.`
+        `Database baseline differs from the current model. Use pnpm db:reset for disposable local data. Remote or retained data requires an explicit recovery plan.`
       )
   }
 }
@@ -58,14 +56,14 @@ const assertDatabaseEmpty = Effect.fn("@company/assertDatabaseEmpty")(
     if ((row?.count ?? 0) > 0)
       return yield* Effect.fail(
         new Error(
-          "This database has tables but no migration history (for example, after db:reset). Keep using db:reset for development. Apply migrations to a separate empty database or one with existing migration history; run pnpm test:migrations to verify the upgrade."
+          "This database has tables but no migration history (for example, after db:reset). Keep using db:reset for development. Initialize deployments with pnpm db:migrate on a separate empty database."
         )
       )
     return yield* Effect.void
   }
 )
 
-/** Startup refuses databases missing a committed migration or containing unknown history. */
+/** Verifies the recorded baseline before deployment initialization proceeds. */
 export const verifySchemaMigrations = Effect.fn(
   "@company/verifySchemaMigrations"
 )(function* (migrations: ReadonlyArray<SchemaMigration>) {
@@ -75,7 +73,7 @@ export const verifySchemaMigrations = Effect.fn(
   if (history.length !== migrations.length)
     return yield* Effect.fail(
       new Error(
-        "Database migrations are pending. Run pnpm db:migrate before starting the app."
+        "Database initialization is pending. Run pnpm db:migrate on an empty deployment database."
       )
     )
   return yield* Effect.void

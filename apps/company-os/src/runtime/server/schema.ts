@@ -7,7 +7,7 @@ export function makeSchemaSql(model: ModelCatalog) {
   return (
     "-- Company OS: desired PostgreSQL schema\n" +
     "-- Generated from the model. Edit model or runtime storage source,\n" +
-    "-- then run db:reset or db:migration.\n" +
+    "-- then run db:reset.\n" +
     "-- Domain tables share their record identity with objects.\n" +
     "-- Descriptions are documentation only; they are not stored in PostgreSQL.\n\n" +
     [...makePostgresSchema(model).ddl, ...infrastructureStatements]

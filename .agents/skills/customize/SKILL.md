@@ -24,7 +24,7 @@ relevant row below; do not survey every definition or trace the runtime before s
 | Add an object or field | The owning module's `model/`; `modules/support/model/ticket.ts` is a standard example. Register objects in `model/index.ts`. |
 | Add a Link | `modules/sales/model/links/contact-companies.ts`; use `contact-primary-company.ts` beside it for a subset selection. Register Links in the owning module’s `model/index.ts`. |
 | Add a module | Its `model/index.ts`, then `app.model.ts`; add server/UI roots only for contributions that exist. |
-| Remove an object | Find its references, Links, operation contracts, UI contributions, seeds, and tests with `rg`. Remove those dependencies and the object from its module's `objects` list together; use the migration guidance below for retained data. |
+| Remove an object | Find its references, Links, operation contracts, UI contributions, seeds, and tests with `rg`. Remove those dependencies and the object from its module's `objects` list together; use the storage guidance below for retained data. |
 | Hide a module | Turn it off in Settings > Platform > Modules and confirm any dependent modules. Keep the complete storage model. |
 | Add a business Action | `modules/sales/model/lead.ts`, `modules/sales/server/convert-lead.ts`, and the adjacent `operations-database.test.ts`. |
 | Aggregate records | `modules/sales/server/pipeline-summary.ts` aggregates the project records after admission. |
@@ -33,7 +33,7 @@ relevant row below; do not survey every definition or trace the runtime before s
 Read supporting guidance only when it applies:
 
 - [UI](references/ui.md) for presentation changes or missing internal pages.
-- [Migrations](references/migrations.md) for storage changes, retained-data transformations, or database setup.
+- [Storage](references/storage.md) for storage changes, retained-data transformations, or database setup.
 - [Review](references/review.md) for a requested code or architecture review.
 - [Upstream updates](references/upstream.md) for integrating changes from the foundation.
 

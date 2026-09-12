@@ -9,7 +9,6 @@
     "check": "turbo run lint typecheck db:check model:check format:check deadcode",
     "db:check": "pnpm --filter company-os db:check",
     "db:migrate": "pnpm --filter company-os db:migrate",
-    "db:migration": "pnpm --filter company-os db:migration",
     "db:reset": "pnpm --filter company-os db:reset",
     "db:seed": "turbo run db:seed --filter=company-os --",
     "deadcode": "knip",
