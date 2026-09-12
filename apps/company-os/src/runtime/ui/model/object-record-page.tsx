@@ -30,6 +30,7 @@ import { ObjectRecordStatusProgress } from "#/runtime/ui/model/object-record-sta
 import { ObjectRelationshipCollection } from "#/runtime/ui/model/object-relationship-collection.tsx"
 import { objectTablePropertySchema } from "#/runtime/ui/model/object-table/object-table-cell-types.ts"
 import { objectTableValueText } from "#/runtime/ui/model/object-table/object-table-config.ts"
+import { ModelActions } from "#/runtime/ui/model/operation-action.tsx"
 import { usePageChromeOverride } from "#/runtime/ui/model/page-chrome.tsx"
 import { useRecordNavigation } from "#/runtime/ui/model/record-navigation.tsx"
 import { RecordOptions } from "#/runtime/ui/model/record-options.tsx"
@@ -429,6 +430,13 @@ export function ObjectRecordPage({
               )}
             </h1>
             <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+              {!record.systemManaged && (
+                <ModelActions
+                  object={object}
+                  recordId={record.id}
+                  exclude={Object.keys(actions ?? {})}
+                />
+              )}
               <ObjectActions
                 actions={actions}
                 record={record}

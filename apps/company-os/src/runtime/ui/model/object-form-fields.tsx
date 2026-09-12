@@ -1,11 +1,11 @@
 import { useTypedAppFormContext } from "#/runtime/ui/forms/app-form.ts"
 import type { FormValue } from "#/runtime/ui/forms/form-value.ts"
+import { SchemaFormField } from "#/runtime/ui/forms/schema-form-field.tsx"
 import type { ResolvedObjectUi } from "#/runtime/ui/model/module-ui.tsx"
 import {
   type ClientRecord,
   type ModelObject,
 } from "#/runtime/ui/model/object-client.ts"
-import { ObjectFormPropertyField } from "#/runtime/ui/model/object-form-property-field.tsx"
 import { ObjectFormSection } from "#/runtime/ui/model/object-form-section.tsx"
 import {
   objectFormLinks,
@@ -60,12 +60,12 @@ export function ObjectFormFields({
   )
   const hasRelated = references.length > 0 || links.length > 0
   const renderProperty = (entry: (typeof properties)[number]) => (
-    <ObjectFormPropertyField
+    <SchemaFormField
       key={entry.id}
-      entry={entry}
-      record={record}
-      object={object}
-      mode={mode}
+      id={entry.id}
+      schema={entry.schema}
+      fieldId={`${object.id}-${mode}-${entry.id}`}
+      required={!entry.property.nullable}
       referenceLabels={referenceLabels}
       fieldEditors={fieldEditors}
     />

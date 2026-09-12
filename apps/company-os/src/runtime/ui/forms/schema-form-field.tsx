@@ -15,23 +15,17 @@ import {
 import { Textarea } from "@company/ui/textarea"
 
 import { FileField } from "#/runtime/assets/ui/file-field.tsx"
+import type { AnySchema } from "#/runtime/model/index.ts"
 import { useTypedAppFormContext } from "#/runtime/ui/forms/app-form.ts"
 import type {
   FormValue,
   FormValueObject,
 } from "#/runtime/ui/forms/form-value.ts"
 import type { ResolvedObjectUi } from "#/runtime/ui/model/module-ui.tsx"
-import type {
-  ModelObject,
-  ClientRecord,
-} from "#/runtime/ui/model/object-client.ts"
 import {
   isSupportedFormSchema,
-  objectFormFieldRequired,
   stringValue,
-  type ObjectFormMode,
   type ObjectFormValues,
-  type ObjectFormProperty,
 } from "#/runtime/ui/model/object-form.ts"
 import { ObjectReferenceSelect } from "#/runtime/ui/model/object-reference-select.tsx"
 
@@ -55,26 +49,27 @@ function updateNested(
   return { ...current, [key]: next }
 }
 
-export function ObjectFormPropertyField({
-  entry: { id, property, schema },
-  object,
-  mode,
+/** Shared schema controls for Object properties and operation parameters. */
+export function SchemaFormField({
+  id,
+  schema,
+  fieldId,
+  required,
+  json = false,
   referenceLabels,
   fieldEditors,
 }: {
-  readonly entry: ObjectFormProperty
-  readonly record?: ClientRecord | undefined
-  readonly object: ModelObject
-  readonly mode: ObjectFormMode
+  readonly id: string
+  readonly schema: AnySchema
+  readonly fieldId: string
+  readonly json?: boolean
+  readonly required: boolean
   readonly referenceLabels: ReadonlyMap<string, string>
   readonly fieldEditors?: ResolvedObjectUi["fieldEditors"]
 }) {
   const form = useTypedAppFormContext(objectFormContextOptions)
-
-  const fieldId = `${object.id}-${mode}-${id}`
+  const property = schema
   const label = property.label ?? id
-  const required = objectFormFieldRequired(property)
-
   const Editor = fieldEditors?.[id]
   if (Editor)
     return (
@@ -90,10 +85,35 @@ export function ObjectFormPropertyField({
     )
 
   if (!isSupportedFormSchema(schema)) {
+    if (!json)
+      return (
+        <FieldError>
+          {label} uses the unsupported {schema.kind} form type.
+        </FieldError>
+      )
     return (
-      <FieldError key={id}>
-        {label} uses the unsupported {schema.kind} form type.
-      </FieldError>
+      <form.AppField name={id}>
+        {(field) => (
+          <field.FormField
+            id={fieldId}
+            label={label}
+            description={schema.description ?? "Enter a JSON value."}
+          >
+            {({ value, onValueChange, onBlur, invalid, ariaDescribedBy }) => (
+              <Textarea
+                id={fieldId}
+                name={id}
+                value={stringValue(value)}
+                onChange={(event) => onValueChange(event.currentTarget.value)}
+                onBlur={onBlur}
+                aria-invalid={invalid}
+                aria-describedby={ariaDescribedBy}
+                required={required}
+              />
+            )}
+          </field.FormField>
+        )}
+      </form.AppField>
     )
   }
 

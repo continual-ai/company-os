@@ -23,3 +23,5 @@ export {
 export type { RelationshipOverviewProps } from "#/runtime/ui/model/module-ui.tsx"
 
 export { useOperationClient } from "#/runtime/ui/model/use-operation-client.ts"
+
+export { OperationAction } from "#/runtime/ui/model/operation-action.tsx"

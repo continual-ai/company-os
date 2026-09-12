@@ -69,6 +69,7 @@ import { objectHref } from "#/runtime/ui/model/object-routing.ts"
 import { readFilterValue } from "#/runtime/ui/model/object-table/object-table-config.ts"
 import { ObjectTable } from "#/runtime/ui/model/object-table/object-table.tsx"
 import { type CollectionToolbarProps } from "#/runtime/ui/model/object-ui.ts"
+import { ModelActions } from "#/runtime/ui/model/operation-action.tsx"
 import { useRememberCollection } from "#/runtime/ui/model/record-navigation.tsx"
 import { useModelRuntime } from "#/runtime/ui/model/runtime-context.tsx"
 import {
@@ -335,6 +336,7 @@ export function ObjectCollection({
           Reset view
         </Button>
       )}
+      <ModelActions object={object} />
       {Toolbar && (
         <Toolbar
           object={object}
