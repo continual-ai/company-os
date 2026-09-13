@@ -62,23 +62,29 @@ export const Application = defineObject({
     }),
   },
   search: { fields: ["coverLetter", "reviewNotes"] },
-  display: { icon: "clipboardCheck", title: "id", status: "stage" },
+  display: {
+    icon: "clipboardCheck",
+    title: ["candidate.name", "job.title"],
+    status: "stage",
+  },
 })
 
 export const ApplicationJob = defineLink({
   id: "applicationJob",
   name: "Application Job posting",
-  from: Application,
-  to: JobPosting,
-  forward: { key: "job", label: "Job posting", min: 1, max: 1 },
-  reverse: { key: "applications", label: "Applications" },
+  from: { type: Application, key: "job", label: "Job posting", min: 1, max: 1 },
+  to: { type: JobPosting, key: "applications", label: "Applications" },
 })
 
 export const ApplicationCandidate = defineLink({
   id: "applicationCandidate",
   name: "Application Candidate",
-  from: Application,
-  to: Candidate,
-  forward: { key: "candidate", label: "Candidate", min: 1, max: 1 },
-  reverse: { key: "applications", label: "Applications" },
+  from: {
+    type: Application,
+    key: "candidate",
+    label: "Candidate",
+    min: 1,
+    max: 1,
+  },
+  to: { type: Candidate, key: "applications", label: "Applications" },
 })

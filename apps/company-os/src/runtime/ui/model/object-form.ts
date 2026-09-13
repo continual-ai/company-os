@@ -9,6 +9,7 @@ import {
   type PropertyDefinition,
   type Violation,
 } from "#/runtime/model/index.ts"
+import { linkPreview } from "#/runtime/model/record-links.ts"
 import {
   decodeFormSchema,
   FormValidationError,
@@ -308,15 +309,19 @@ export function decodeObjectForm(
         }
         continue
       }
-      links[traversal.key] = targets
+      links[traversal.key] = traversal.max === 1 ? targets[0]! : targets
     }
     if (Object.keys(links).length > 0) input.links = links
   } else {
-    const links: Record<string, LinkDeltaInput> = {}
+    const links: Record<string, string | null | LinkDeltaInput> = {}
     const linkValues = values.links
     for (const { traversal } of objectFormLinks(runtime, object)) {
       if (fields !== undefined && !fields.includes(traversal.key)) continue
       const rawValue = nestedFormValue(linkValues, traversal.key)
+      if (traversal.max === 1) {
+        links[traversal.key] = stringValue(rawValue).trim() || null
+        continue
+      }
       const add = stringArrayValue(nestedFormValue(rawValue, "add"))
       const remove = stringArrayValue(nestedFormValue(rawValue, "remove"))
       if (add.length === 0 && remove.length === 0) continue
@@ -505,10 +510,12 @@ export function objectFormDefaultValues(
                   (value): value is string => typeof value === "string"
                 )
               : []
-            : Array.isArray(initial) && typeof initial[0] === "string"
-              ? initial[0]
+            : typeof initial === "string"
+              ? initial
               : ""
-          : { add: [], remove: [] }
+          : traversal.max === 1
+            ? (linkPreview(record?.links?.[traversal.key]).ids[0] ?? "")
+            : { add: [], remove: [] }
     }
     if (Object.keys(links).length > 0) values.links = links
   }

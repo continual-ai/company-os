@@ -1,8 +1,11 @@
 import { expect, it } from "vitest"
 
 import { User } from "#/runtime/access/model/user.ts"
-import { fixtureModel } from "#/runtime/testing/fixture-model.ts"
-import { Account, Prospect } from "#/runtime/testing/fixture-model.ts"
+import {
+  fixtureModel,
+  Account,
+  Prospect,
+} from "#/runtime/testing/fixture-model.ts"
 import { objectActionAvailable } from "#/runtime/ui/model/object-actions.ts"
 
 it("offers installed collection actions and protects missing or system records", () => {

@@ -1,6 +1,5 @@
 import type { Campaign } from "#/modules/marketing/model/campaign.ts"
-import { defineCollectionView } from "#/runtime/ui/module.ts"
-import type { ObjectUi } from "#/runtime/ui/module.ts"
+import { defineCollectionView, type ObjectUi } from "#/runtime/ui/module.ts"
 
 export const campaignUi = {
   collection: {

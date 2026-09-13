@@ -25,7 +25,7 @@ export function createEventFactSchema(Model: ModelCatalog) {
     Schema.Struct({
       type: Schema.Literals([`${object.id}.created`, `${object.id}.updated`]),
       version: Schema.Literal(1),
-      data: toEffectObjectSchema(object),
+      data: toEffectObjectSchema(object, Model),
     })
   )
   const deletionTypes = Object.values(Model.objects).map(
@@ -81,6 +81,30 @@ export const eventPageSchema = Schema.Struct({
   reset: Schema.Boolean,
 })
 export type EventPage = typeof eventPageSchema.Type
+
+/** Browser cache notices contain no business payloads. They share the journal's durable cursor. */
+export const changePageSchema = Schema.Struct({
+  changedTypes: Schema.Array(Schema.String),
+  nextCursor: Schema.String,
+  hasMore: Schema.Boolean,
+  reset: Schema.Boolean,
+})
+export type ChangePage = typeof changePageSchema.Type
+
+export function changePage(page: EventPage): ChangePage {
+  return {
+    changedTypes: [
+      ...new Set(
+        page.items.flatMap((event) =>
+          event.subjects.map((item) => item.objectType)
+        )
+      ),
+    ],
+    nextCursor: page.nextCursor,
+    hasMore: page.hasMore,
+    reset: page.reset,
+  }
+}
 
 /** Invalid, incompatible, or identity-mismatched cursors require a fresh snapshot and cursor. */
 export class InvalidEventCursor extends Schema.TaggedError<InvalidEventCursor>()(

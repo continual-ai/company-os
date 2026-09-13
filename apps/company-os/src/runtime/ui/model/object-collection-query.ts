@@ -4,20 +4,22 @@ import {
   type ListRequest,
   type PropertyDefinition,
 } from "#/runtime/model/index.ts"
+import { queryProperty } from "#/runtime/model/query-fields.ts"
+import { relationshipFields } from "#/runtime/model/relationship-fields.ts"
 import { type CollectionDateWindow } from "#/runtime/ui/model/collection-dates.ts"
 import type {
   ObjectCollectionFilter,
   ObjectCollectionSort,
+  ObjectTableFilterValue,
 } from "#/runtime/ui/model/collection-view.ts"
-import { type ObjectTableFilterValue } from "#/runtime/ui/model/collection-view.ts"
-import {
-  modelObjectProperty,
-  type ModelObject,
-} from "#/runtime/ui/model/object-client.ts"
+import type { ModelObject } from "#/runtime/ui/model/object-client.ts"
 import { objectTablePropertySchema } from "#/runtime/ui/model/object-table/object-table-cell-types.ts"
 import { readFilterValue } from "#/runtime/ui/model/object-table/object-table-config.ts"
 
 type RuntimeFilter =
+  | { readonly link: string; readonly some: RuntimeFilter }
+  | { readonly link: string; readonly none: RuntimeFilter }
+  | { readonly link: string; readonly every: RuntimeFilter }
   | { readonly link: string; readonly contains: string }
   | { readonly link: string; readonly isEmpty: true }
   | {
@@ -39,6 +41,7 @@ type RuntimeFilter =
   | { readonly not: RuntimeFilter }
 
 interface CollectionSort {
+  readonly aggregate?: "count" | "min" | "max"
   readonly direction: "asc" | "desc"
   readonly field: string
   readonly nulls: "last"
@@ -49,13 +52,6 @@ interface CollectionListRequest {
   pageSize: number
   pageToken?: ListRequest["pageToken"]
   sort?: ReadonlyArray<CollectionSort>
-}
-
-function objectProperty(
-  object: ModelObject,
-  propertyId: string
-): PropertyDefinition | undefined {
-  return modelObjectProperty(object, propertyId)
 }
 
 export function canFilterProperty(property: PropertyDefinition): boolean {
@@ -149,10 +145,37 @@ export function objectListRequest(
   sorting: ReadonlyArray<ObjectCollectionSort>,
   pageToken?: ListRequest["pageToken"],
   window?: CollectionDateWindow,
-  model?: ModelCatalog
+  model?: ModelCatalog,
+  visibility?: Readonly<Record<string, boolean>>
 ): ListRequest {
+  const relatedFields = model ? relationshipFields(model, object) : []
   const filters = columnFilters.flatMap((columnFilter) => {
-    const property = objectProperty(object, columnFilter.id)
+    const related = relatedFields.find(({ id }) => id === columnFilter.id)
+    if (related) {
+      const value = readFilterValue(columnFilter.value)
+      const filter = propertyFilter(
+        related.count || related.traversal.traversal.max === 1
+          ? related.id
+          : related.key,
+        related.property,
+        value
+      )
+      return filter === undefined
+        ? []
+        : [
+            related.count || related.traversal.traversal.max === 1
+              ? filter
+              : ({
+                  link: related.traversal.traversal.key,
+                  ...(value.quantifier === "none"
+                    ? { none: filter }
+                    : value.quantifier === "every"
+                      ? { every: filter }
+                      : { some: filter }),
+                } satisfies RuntimeFilter),
+          ]
+    }
+    const property = queryProperty(object, columnFilter.id)
     if (
       property === undefined &&
       model &&
@@ -190,11 +213,11 @@ export function objectListRequest(
     return filter === undefined ? [] : [filter]
   })
   if (window !== undefined) {
-    const start = objectProperty(object, window.startField)
+    const start = queryProperty(object, window.startField)
     const end =
       window.endField === undefined
         ? undefined
-        : objectProperty(object, window.endField)
+        : queryProperty(object, window.endField)
     if (start?.kind === "string") {
       const inWindow: RuntimeFilter = {
         and: [
@@ -232,7 +255,21 @@ export function objectListRequest(
     }
   }
   const sort = sorting.flatMap((columnSort) => {
-    const property = objectProperty(object, columnSort.id)
+    const related = relatedFields.find(({ id }) => id === columnSort.id)
+    if (related)
+      return related.count || related.traversal.traversal.max === 1
+        ? [
+            {
+              direction: columnSort.desc ? "desc" : "asc",
+              field: related.count
+                ? related.traversal.traversal.key
+                : related.id,
+              nulls: "last",
+              ...(related.count ? { aggregate: "count" as const } : {}),
+            } satisfies CollectionSort,
+          ]
+        : []
+    const property = queryProperty(object, columnSort.id)
     if (property === undefined || !canSortProperty(property)) return []
     return [
       {
@@ -243,7 +280,27 @@ export function objectListRequest(
     ]
   })
 
-  const request: CollectionListRequest = { pageSize: 50 }
+  const request: CollectionListRequest & {
+    expand?: Readonly<Record<string, true>>
+  } = { pageSize: 50 }
+  if (model && visibility !== undefined) {
+    const configured = Object.keys(visibility).length > 0
+    request.expand = Object.fromEntries(
+      modelObjectLinkTraversals(model, object)
+        .filter(({ traversal }) =>
+          configured
+            ? Object.entries(visibility).some(
+                ([key, visible]) =>
+                  visible &&
+                  (key === traversal.key ||
+                    (key.startsWith(`${traversal.key}.`) &&
+                      key !== `${traversal.key}.$count`))
+              )
+            : traversal.max === 1
+        )
+        .map(({ traversal }) => [traversal.key, true])
+    )
+  }
   if (filters.length > 0) {
     request.filter = filters.length === 1 ? filters[0]! : { and: filters }
   }

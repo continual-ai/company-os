@@ -7,7 +7,7 @@ export const Route = createFileRoute("/_app/settings/modules/")({
   ...pageOptions({
     title: "Modules",
     breadcrumb: "Modules",
-    description: "Discover and enable capabilities for your company.",
+    description: "Discover and enable capabilities for your account.",
   }),
   component: ModulesSettings,
 })

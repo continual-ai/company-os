@@ -9,13 +9,13 @@ it("verifies signature, issuer, audience and expiry while keeping local permissi
   const key = await exportJWK(publicKey)
   const provider = makeJwtIdentityProvider({
     issuer: "https://identity.example",
-    audience: "company",
+    audience: "account",
     projectId: "project_test",
     resolveKey: createLocalJWKSet({ keys: [key] }),
   })
   const token = (
     issuer = "https://identity.example",
-    audience = "company",
+    audience = "account",
     expires = "5m"
   ) =>
     new SignJWT({
@@ -56,7 +56,7 @@ it("verifies signature, issuer, audience and expiry while keeping local permissi
     .setProtectedHeader({ alg: "RS256" })
     .setSubject("ada")
     .setIssuer("https://identity.example")
-    .setAudience("company")
+    .setAudience("account")
     .setIssuedAt()
     .setExpirationTime("5m")
     .sign(other.privateKey)

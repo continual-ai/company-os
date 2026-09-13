@@ -1,179 +1,91 @@
 import { DateTime, Effect } from "effect"
 
+import { Activity } from "#/modules/crm/model/activity.ts"
+import type { CrmDemoData } from "#/modules/crm/seeds/index.ts"
 import { Note } from "#/modules/notes/model/index.ts"
 import { noteSeed } from "#/modules/notes/seeds/index.ts"
-import { Activity } from "#/modules/sales/model/activity.ts"
-import { Company } from "#/modules/sales/model/company.ts"
-import { Contact } from "#/modules/sales/model/contact.ts"
-import { Deal } from "#/modules/sales/model/deal.ts"
 import { Lead } from "#/modules/sales/model/lead.ts"
-import { UserService } from "#/runtime/access/server/user-service.ts"
-import { importSeedAsset } from "#/runtime/assets/server/seed-asset.ts"
-import {
-  CurrencyCode,
-  Decimal,
-  DomainName,
-  EmailAddress,
-  Timestamp,
-} from "#/runtime/model/index.ts"
-import { Records } from "#/runtime/server/index.ts"
+import { Opportunity } from "#/modules/sales/model/opportunity.ts"
+import { CurrencyCode, Decimal, Timestamp } from "#/runtime/model/index.ts"
+import { Database } from "#/runtime/server/index.ts"
 import { linkSeedRecords } from "#/runtime/server/seeds.ts"
 
-export const seedSalesDemo = Effect.fn("@company/seedSalesDemo")(function* () {
+export const seedSalesDemo = Effect.fn("@company/seedSalesDemo")(function* ({
+  accounts,
+  contacts,
+  owner,
+}: CrmDemoData) {
   const now = yield* DateTime.now
-  const records = yield* Records
+  const records = yield* Database
   const services = {
-    activity: records.writer(Activity),
-    company: records.writer(Company),
-    contact: records.writer(Contact),
-    deal: records.writer(Deal),
-    lead: records.writer(Lead),
-    note: records.writer(Note),
+    activity: records.repository(Activity),
+    opportunity: records.repository(Opportunity),
+    lead: records.repository(Lead),
+    note: records.repository(Note),
   }
-  const logos = yield* Effect.forEach(
-    ["northstar", "verdant", "aperture"],
-    (name) =>
-      importSeedAsset(
-        new URL(`./assets/${name}.png`, import.meta.url),
-        "image/png"
-      )
-  )
-  const portraits = yield* Effect.forEach(
-    ["maya", "leo", "amina", "sam"],
-    (name) =>
-      importSeedAsset(
-        new URL(`./assets/${name}.png`, import.meta.url),
-        "image/png"
-      )
-  )
-  const owner = yield* (yield* UserService).provision({
-    name: "Alex Rivera",
-    email: EmailAddress("alex@demo.example.test"),
-    image: portraits[3]!,
-  })
-  const companies = yield* Effect.forEach(
-    [
-      [
-        "Northstar Robotics",
-        "northstar.example.test",
-        "Manufacturing",
-        "customer",
-      ],
-      ["Verdant Health", "verdant.example.test", "Healthcare", "prospect"],
-      [
-        "Aperture Design & Research Collective",
-        "aperture.example.test",
-        "Professional services",
-        "prospect",
-      ],
-      ["Quiet Harbor", "harbor.example.test", "Other", "inactive"],
-    ] as const,
-    ([name, domain, industry, lifecycleStage], index) =>
-      services.company.create({
-        name,
-        domain: DomainName(domain),
-        industry,
-        lifecycleStage,
-        logo: logos[index] ?? null,
-      })
-  )
-  const contacts = yield* Effect.forEach(
-    [
-      ["Maya Chen", "VP of Operations", "marketing", "optedIn"],
-      ["Leo Martín", "Engineering Lead", "marketing", "optedOut"],
-      [
-        "Amina Okafor",
-        "Independent advisor for operations and customer experience",
-        "nonMarketing",
-        "unknown",
-      ],
-      ["Sam Patel", "Procurement", "marketing", "unknown"],
-      ["Noor Al-Hassan", "", "nonMarketing", "unknown"],
-    ] as const,
-    ([name, jobTitle, marketingStatus, emailPermission], index) =>
-      services.contact.create({
-        name,
-        jobTitle: jobTitle || null,
-        marketingStatus,
-        emailPermission,
-        email:
-          index === 4
-            ? null
-            : EmailAddress(`contact-${index}@demo.example.test`),
-        photo: portraits[index] ?? null,
-      })
-  )
-  for (const [index, contact] of contacts.entries()) {
-    yield* linkSeedRecords(
-      Contact,
-      "companies",
-      contact.id,
-      companies[index % 3]!.id
-    )
-    yield* linkSeedRecords(
-      Contact,
-      "primaryCompany",
-      contact.id,
-      companies[index % 3]!.id
-    )
-  }
-  yield* linkSeedRecords(Company, "contacts", companies[0].id, contacts[2]!.id)
-  const deal = yield* services.deal.create({
+  const opportunity = yield* services.opportunity.create({
     name: "Northstar — service operations rollout",
     stage: "proposal",
     amount: { currency: CurrencyCode("USD"), amount: Decimal("48000") },
     nextStep:
       "Review the pilot results with Maya and agree on the rollout schedule.",
-    links: { owner: [owner.id] },
+    links: { owner, contacts: [contacts[0].id] },
   })
-  yield* linkSeedRecords(Deal, "companies", deal.id, companies[0].id)
+  yield* linkSeedRecords(
+    Opportunity,
+    "accounts",
+    opportunity.id,
+    accounts[0].id
+  )
   for (const [index, stage] of (
     ["discovery", "negotiation", "won", "lost"] as const
   ).entries()) {
-    const other = yield* services.deal.create({
-      name: `${companies[index % 3]!.name} — expansion ${index + 1}`,
+    const other = yield* services.opportunity.create({
+      name: `${accounts[index % 3]!.name} — expansion ${index + 1}`,
       stage,
       amount: {
         currency: CurrencyCode(index === 1 ? "EUR" : "USD"),
         amount: Decimal(String(12000 + index * 8000)),
       },
-      links: { owner: [owner.id] },
+      links: { owner, contacts: [contacts[index % contacts.length]!.id] },
     })
     yield* linkSeedRecords(
-      Deal,
-      "companies",
+      Opportunity,
+      "accounts",
       other.id,
-      companies[index % 3]!.id
+      accounts[index % 3]!.id
     )
   }
   for (const [index, name] of (
     [
-      "Elena García",
-      "Oliver Brooks",
-      "Yuki Tanaka",
-      "Priya Shah",
-      "Robin Lee",
-      "Daniel Kim",
-      "Sofia Rossi",
-      "Jules Bernard",
+      "Operations pilot",
+      "Regional expansion",
+      "Implementation review",
+      "Service renewal",
+      "Security review",
+      "Partner rollout",
+      "Enterprise evaluation",
+      "Team training",
     ] as const
   ).entries())
     yield* services.lead.create({
-      name,
-      companyName: index % 2 === 0 ? null : "Westbridge Labs",
-      email: EmailAddress(`lead-${index}@demo.example.test`),
+      name: `${accounts[index % 3]!.name} — ${name}`,
       source: (["inbound", "referral", "outbound"] as const)[index % 3]!,
       status: (["new", "working", "qualified", "disqualified"] as const)[
         index % 4
       ]!,
-      links: { company: index % 2 === 0 ? [companies[index % 3]!.id] : [] },
+      links: {
+        owner,
+        account: accounts[index % 3]!.id,
+        contact: contacts[index % contacts.length]!.id,
+      },
     })
   for (let index = 0; index < 8; index++) {
     const note = yield* services.note.create(
       noteSeed(index, contacts[index % contacts.length]!.name)
     )
-    yield* linkSeedRecords(Note, "subjects", note.id, companies[0].id)
-    yield* linkSeedRecords(Note, "subjects", note.id, deal.id)
+    yield* linkSeedRecords(Note, "subjects", note.id, accounts[0].id)
+    yield* linkSeedRecords(Note, "subjects", note.id, opportunity.id)
   }
   for (const [index, title] of (
     [
@@ -190,16 +102,11 @@ export const seedSalesDemo = Effect.fn("@company/seedSalesDemo")(function* () {
         DateTime.formatIso(DateTime.add(now, { days: index - 1 }))
       ),
       links: {
-        company: [companies[0].id],
-        contact: [contacts[0].id],
-        deal: [deal.id],
-        owner: [owner.id],
+        accounts: [accounts[0].id],
+        contacts: [contacts[0].id],
+        opportunities: [opportunity.id],
+        owner: owner,
       },
     })
-  return {
-    company: companies[0].id,
-    contact: contacts[0].id,
-    owner: owner.id,
-    contacts: contacts.map(({ id }) => id),
-  }
+  return { opportunity: opportunity.id }
 })

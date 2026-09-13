@@ -24,20 +24,20 @@ const anonymousIdentityProvider = Layer.succeed(IdentityProvider, {
 export function testApplication({
   configuration = {},
   ...infrastructure
-}: Omit<ApplicationInfrastructure, "database" | "pageTokens"> & {
+}: Omit<ApplicationInfrastructure, "sql" | "pageTokens"> & {
   /** Environment the application layer reads while it is built, such as AUTH_* settings. */
   readonly configuration?: Record<string, string>
 } = {}) {
   const fixture = testDatabase(Model)
   const services = makeApplicationServicesLayer({
-    database: fixture.database,
+    sql: fixture.client,
     pageTokens: PageTokens.layerTest,
   })
   const application = makeApplicationLayer(
     {
       identityProvider: anonymousIdentityProvider,
       ...infrastructure,
-      database: fixture.database,
+      sql: fixture.client,
       pageTokens: PageTokens.layerTest,
     },
     services

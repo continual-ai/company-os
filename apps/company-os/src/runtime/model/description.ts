@@ -1,4 +1,3 @@
-import type { RootType } from "#/runtime/model/core/root.ts"
 import type { ModelAction } from "#/runtime/model/definition/action.ts"
 import type { InterfaceType } from "#/runtime/model/definition/interface.ts"
 import type { LinkType } from "#/runtime/model/definition/link.ts"
@@ -15,12 +14,8 @@ import {
 import type { ModuleMetadata } from "#/runtime/model/definition/module.ts"
 import type { ObjectType } from "#/runtime/model/definition/object.ts"
 import type { StandardQuery, Query } from "#/runtime/model/definition/query.ts"
-import {
-  modelRelationships,
-  type ModelRelationship,
-} from "#/runtime/model/definition/relationship.ts"
 
-export const MODEL_DESCRIPTION_VERSION = "0.32" as const
+export const MODEL_DESCRIPTION_VERSION = "0.34" as const
 
 type ObjectDescription = Omit<ObjectType, "actions" | "kind">
 
@@ -48,8 +43,6 @@ export interface ModelDescription {
   readonly modules: ReadonlyArray<ModuleDescription>
   readonly objects: ReadonlyArray<ObjectDescription>
   readonly queries: ReadonlyArray<Query | StandardQuery>
-  readonly relationships: ReadonlyArray<ModelRelationship>
-  readonly root: RootType
   readonly version: typeof MODEL_DESCRIPTION_VERSION
 }
 
@@ -110,9 +103,7 @@ export function describeModel(model: ModelCatalog): ModelDescription {
       actionKeys: module.actions.map((action) => action.key),
       queryKeys: module.queries.map((query) => query.key),
     })),
-    relationships: modelRelationships(model),
     queries: modelQueries(model).map((query) => ({ ...query })),
-    root: { ...model.root, interfaces: { ...model.root.interfaces } },
     objects: modelObjects(model).map(describeObject),
   }
 }

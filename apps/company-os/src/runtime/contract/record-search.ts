@@ -1,8 +1,7 @@
 import { Schema } from "effect"
 
 import { toEffectSchema } from "#/runtime/contract/schema.ts"
-import { schema } from "#/runtime/model/index.ts"
-import type { ModelCatalog } from "#/runtime/model/index.ts"
+import { schema, type ModelCatalog } from "#/runtime/model/index.ts"
 
 export function createRecordSearchContract(Model: ModelCatalog) {
   const searchableObjects = Object.values(Model.objects).filter(
@@ -51,3 +50,5 @@ export type RecordSearchInput = RecordSearchContract["input"]["Type"]
 /** A display projection, never a partial canonical record to merge into the record cache. */
 export type RecordSummary =
   RecordSearchContract["result"]["Type"]["hits"][number]
+
+export type RecordSearchOutput = RecordSearchContract["result"]["Type"]

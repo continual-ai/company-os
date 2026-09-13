@@ -2,20 +2,21 @@ import { Effect } from "effect"
 import { expect } from "vitest"
 
 import { EmailAddress } from "#/runtime/model/index.ts"
+import { Database } from "#/runtime/server/database.ts"
 import { makeEventWriter } from "#/runtime/server/events/event-writer.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
-import { modelImplementation } from "#/runtime/server/model/implementation.ts"
+import { operationsFor } from "#/runtime/server/operation-executor.ts"
 import { createRecordSearch } from "#/runtime/server/record-search.ts"
-import { Database } from "#/runtime/server/storage/database.ts"
 import { assignments } from "#/runtime/server/storage/index.ts"
 import { recordSearch } from "#/runtime/server/storage/infrastructure.ts"
 import { ensureSearchIndex } from "#/runtime/server/storage/search-index.ts"
-import { fixtureModel } from "#/runtime/testing/fixture-model.ts"
+import { SqlDatabase } from "#/runtime/server/storage/transactions.ts"
+import { Account, fixtureModel } from "#/runtime/testing/fixture-model.ts"
 import { FixtureServer } from "#/runtime/testing/fixture-server.ts"
 import { testFoundation } from "#/runtime/testing/foundation.ts"
 
 const fixture = testFoundation(fixtureModel, { servers: [FixtureServer] })
-const implementation = modelImplementation(fixtureModel)
+const implementation = operationsFor(fixtureModel)
 const accounts = fixture.storage.objects.account
 const searchRecords = createRecordSearch(fixtureModel)
 
@@ -23,9 +24,9 @@ fixture.test(
   "searches indexed fields across types, ranks titles, and follows transactions with transactional index maintenance",
   () =>
     Effect.gen(function* () {
-      const database = yield* Database
+      const database = yield* SqlDatabase
       const sql = database.sql
-      const { services } = yield* implementation
+      const services = yield* implementation
       const account = yield* services.account.create({
         name: "Quasar laboratories",
       })
@@ -76,7 +77,9 @@ fixture.test(
               type: "account.updated",
               version: 1,
               subjects: yield* events.subjects([account.id]),
-              data: yield* services.account.get({ id: account.id }),
+              data: yield* (yield* Database)
+                .repository(Account)
+                .get({ id: account.id }),
             })
             return yield* Effect.fail("rollback")
           })

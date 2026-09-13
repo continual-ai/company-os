@@ -1,20 +1,21 @@
 import { Context, Effect, Layer } from "effect"
 
-import { Database } from "#/runtime/server/storage/database.ts"
-import { insertValues, assignments } from "#/runtime/server/storage/index.ts"
 import {
+  insertValues,
+  assignments,
   conflictColumns,
   projection,
   type SelectionRow,
 } from "#/runtime/server/storage/index.ts"
 import { assetBlobs } from "#/runtime/server/storage/infrastructure.ts"
+import { SqlDatabase } from "#/runtime/server/storage/transactions.ts"
 
 /** Bounded private blobs. PostgreSQL keeps the default portable across current deployments. */
 export class BlobStorage extends Context.Service<BlobStorage>()(
   "@company/BlobStorage",
   {
     make: Effect.gen(function* () {
-      const database = yield* Database
+      const database = yield* SqlDatabase
       const sql = database.sql
       const selection = { bytes: assetBlobs.columns.bytes }
       return {

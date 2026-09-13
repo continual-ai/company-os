@@ -4,8 +4,8 @@ import { Config, Layer, Redacted } from "effect"
 import { Model } from "#/app.model.ts"
 import { EventNotifications } from "#/runtime/server/events/event-notifications.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
-import { Database } from "#/runtime/server/storage/database.ts"
 import { pgTypes } from "#/runtime/server/storage/index.ts"
+import { SqlDatabase } from "#/runtime/server/storage/transactions.ts"
 
 const SCHEMA_NAME_PATTERN = /^[a-z_][a-z0-9_]*$/
 
@@ -25,7 +25,7 @@ export function assertDatabaseSchemaName(schema: string): string {
 
 /**
  * Returns a connection URL whose sessions resolve unqualified names in the
- * given schema first. All company applications on a deployment share one
+ * given schema first. All account applications on a deployment share one
  * business schema, so schema selection happens only here, never in table
  * definitions or queries.
  */
@@ -58,7 +58,7 @@ const connectionUrlConfig = Config.all({
 )
 
 /** Configured PostgreSQL client used to construct the application database. */
-const clientLayer = PgClient.layerConfig({
+export const sqlLayer = PgClient.layerConfig({
   types: Config.succeed(pgTypes),
   applicationName: Config.succeed("company-os"),
   connectTimeout: Config.succeed("5 seconds"),
@@ -69,14 +69,14 @@ const clientLayer = PgClient.layerConfig({
 })
 
 /** The application-typed Effect SQL database backed by the configured PostgreSQL client. */
-export const databaseLayer = Database.layer.pipe(
+export const databaseLayer = SqlDatabase.layer.pipe(
   Layer.provideMerge(ModelContext.layer(Model)),
-  Layer.provide(clientLayer)
+  Layer.provide(sqlLayer)
 )
 
 /** Raw PostgreSQL and typed Effect SQL services used together by database administration commands. */
-export const databaseAndClientLayer = Layer.merge(clientLayer, databaseLayer)
+export const databaseAndClientLayer = Layer.merge(sqlLayer, databaseLayer)
 
 export const eventNotificationsLayer = EventNotifications.layer.pipe(
-  Layer.provide(clientLayer)
+  Layer.provide(sqlLayer)
 )

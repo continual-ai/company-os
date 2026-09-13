@@ -18,10 +18,9 @@ import { RecordId, defineAction, defineQuery } from "#/runtime/model/index.ts"
 import { CurrentInvocation } from "#/runtime/server/invocation.ts"
 import {
   createModelMcpServer,
-  type ModelMcpBinding,
   validateModelMcpRequest,
 } from "#/runtime/server/mcp.ts"
-import { type ModelServiceMap } from "#/runtime/server/model-implementation.ts"
+import { type OperationServices } from "#/runtime/server/operation-handlers.ts"
 
 const Contact = defineObject({
   id: "contact",
@@ -67,7 +66,7 @@ const TestModel = defineModel({
   name: "Test",
 })
 
-function services(): ModelServiceMap<typeof TestModel> {
+function services(): OperationServices<typeof TestModel> {
   return {
     reconcile: ({ dryRun }) => Effect.succeed({ accepted: dryRun }),
     health: () => Effect.succeed({ count: 3 }),
@@ -158,16 +157,16 @@ describe("model MCP projection", () => {
         }),
       unlink: () => Effect.succeed(undefined),
     }
-    const implementation: ModelMcpBinding["implementation"] = {
+    const implementation = {
       links,
       model: TestModel,
       services: services(),
     }
     const server = createModelMcpServer({
-      implementation,
+      model: TestModel,
       name: "test",
       version: "1.0.0",
-      run: (descriptor, operation) =>
+      run: (descriptor, _operation) =>
         descriptor.key === "contact.get"
           ? Promise.resolve({
               error: {
@@ -187,7 +186,18 @@ describe("model MCP projection", () => {
               success: false as const,
             })
           : Effect.runPromise(
-              operation.pipe(
+              Effect.gen(function* () {
+                return yield* descriptor.key === "contact.enroll"
+                  ? implementation.services.contact.enroll({
+                      id: RecordId("contact")("test-contact"),
+                      notify: true,
+                    })
+                  : descriptor.key === "contact.list"
+                    ? implementation.services.contact.list()
+                    : descriptor.key === "reconcile"
+                      ? implementation.services.reconcile({ dryRun: true })
+                      : implementation.services.health({})
+              }).pipe(
                 Effect.provideService(CurrentInvocation, {
                   actorId: RecordId("user")("test-user"),
                 }),
@@ -232,6 +242,8 @@ describe("model MCP projection", () => {
       "contact.enroll",
       "reconcile",
       "health",
+      "records.batchGet",
+      "records.search",
     ])
 
     const reconciled = await request({

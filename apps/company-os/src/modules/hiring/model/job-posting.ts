@@ -7,7 +7,7 @@ export const JobPosting = defineObject({
   collection: "jobPostings",
   name: "Job posting",
   pluralName: "Job postings",
-  description: "A role your company is hiring for.",
+  description: "A role your account is hiring for.",
   implements: [{ interface: NoteSubject }],
   properties: {
     title: schema.string({ label: "Title", minLength: 1, maxLength: 300 }),
@@ -64,8 +64,11 @@ export const JobPosting = defineObject({
 export const JobPostingHiringManager = defineLink({
   id: "jobPostingHiringManager",
   name: "JobPosting Hiring manager",
-  from: JobPosting,
-  to: User,
-  forward: { key: "hiringManager", label: "Hiring manager", max: 1 },
-  reverse: { key: "jobPostings", label: "Job postings" },
+  from: {
+    type: JobPosting,
+    key: "hiringManager",
+    label: "Hiring manager",
+    max: 1,
+  },
+  to: { type: User, key: "jobPostings", label: "Job postings" },
 })

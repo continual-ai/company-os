@@ -5,7 +5,7 @@ import {
   applySchemaMigrations,
   verifySchemaMigrations,
 } from "#/runtime/server/migrations.ts"
-import { Database } from "#/runtime/server/storage/database.ts"
+import { SqlDatabase } from "#/runtime/server/storage/transactions.ts"
 import { testDatabase } from "#/runtime/testing/database.ts"
 import { kernelModel } from "#/runtime/testing/fixture-model.ts"
 
@@ -25,7 +25,7 @@ fixture.test(
         name: "add_priority",
         sql: "alter table probe add column priority text not null default 'normal';",
       }
-      const { sql } = yield* Database
+      const { sql } = yield* SqlDatabase
       yield* applySchemaMigrations([first])
       yield* sql`insert into probe values (1, 'Retain me')`
       yield* verifySchemaMigrations([first])

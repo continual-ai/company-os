@@ -202,7 +202,6 @@ export function lintModelDescription(
   const diagnostics: Array<ModelDiagnostic> = []
 
   lintText(diagnostics, ["model"], description.model)
-  lintText(diagnostics, ["root", description.root.id], description.root)
 
   for (const module of description.modules) {
     lintText(diagnostics, ["modules", module.id], module)

@@ -83,9 +83,7 @@ export function NoteFeed({ relationship }: RelationshipOverviewProps) {
             includeHiddenInput={false}
             selectedValues={collection.records.map((record) => record.id)}
             onBlur={() => undefined}
-            onValueChange={(id) =>
-              void mutate(() => relationship.connect!(id, Note.id))
-            }
+            onValueChange={(id) => void mutate(() => relationship.connect!(id))}
           />
         )}
       </PageSectionHeader>
@@ -172,7 +170,7 @@ export function NoteFeed({ relationship }: RelationshipOverviewProps) {
       </ol>
       {collection.records.length === 0 && !collection.error && (
         <p className="py-4 text-sm text-muted-foreground">
-          {collection.loading
+          {collection.isFetching
             ? "Loading notes…"
             : filters.length > 0
               ? "No notes match your filters."
@@ -182,7 +180,7 @@ export function NoteFeed({ relationship }: RelationshipOverviewProps) {
       {collection.hasNextPage && (
         <Button
           variant="ghost"
-          disabled={collection.loading}
+          disabled={collection.isFetching}
           onClick={collection.nextPage}
         >
           Load more notes

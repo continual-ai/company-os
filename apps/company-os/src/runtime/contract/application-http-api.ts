@@ -8,6 +8,7 @@ import {
 
 import {
   eventPageSchema,
+  changePageSchema,
   InvalidEventCursor,
 } from "#/runtime/contract/events.ts"
 import {
@@ -19,18 +20,20 @@ import {
   customMethodParameter,
   customMethodPath,
 } from "#/runtime/contract/http-custom-method.ts"
-import {
-  recordBatchInput,
-  recordBatchResult,
-} from "#/runtime/contract/record-batch.ts"
-import { createRecordSearchContract } from "#/runtime/contract/record-search.ts"
 import { toEffectErrorSchema } from "#/runtime/contract/schema.ts"
-import type { ModelCatalog } from "#/runtime/model/index.ts"
-import { InternalError, UnauthenticatedError } from "#/runtime/model/index.ts"
+import {
+  type ModelCatalog,
+  InternalError,
+  UnauthenticatedError,
+  PermissionDeniedError,
+  ValidationError,
+} from "#/runtime/model/index.ts"
 
 const standardErrors = [
   toEffectErrorSchema(UnauthenticatedError).pipe(HttpApiSchema.status(401)),
   toEffectErrorSchema(InternalError).pipe(HttpApiSchema.status(500)),
+  toEffectErrorSchema(PermissionDeniedError).pipe(HttpApiSchema.status(403)),
+  toEffectErrorSchema(ValidationError).pipe(HttpApiSchema.status(400)),
 ]
 
 /**
@@ -43,13 +46,11 @@ export function createApplicationHttpApi(
   model: ModelCatalog,
   options: HttpApiOptions = {}
 ) {
-  const { input: recordSearchInput, result: recordSearchResult } =
-    createRecordSearchContract(model)
-  const eventStreamSchema = HttpApiSchema.StreamSse({
+  const changeStreamSchema = HttpApiSchema.StreamSse({
     events: Schema.Struct({
       id: Schema.UndefinedOr(Schema.String),
       event: Schema.Literal("page"),
-      data: Schema.fromJsonString(eventPageSchema),
+      data: Schema.fromJsonString(changePageSchema),
     }),
     error: InvalidEventCursor,
   })
@@ -82,69 +83,45 @@ export function createApplicationHttpApi(
       )
     )
     .add(
+      HttpApiEndpoint.get("listChanges", "/api/v1/changes", {
+        query: Schema.Struct({ cursor: Schema.optionalKey(Schema.String) }),
+        success: changePageSchema,
+        error: [
+          InvalidEventCursor.pipe(HttpApiSchema.status(400)),
+          ...standardErrors,
+        ],
+      }).annotateMerge(
+        OpenApi.annotations({
+          summary: "Read committed changes",
+          description:
+            "Compact cache invalidations from the event journal. Resume with nextCursor; reset requires reloading cached data.",
+        })
+      )
+    )
+    .add(
       HttpApiEndpoint.get(
-        "streamEvents",
-        customMethodPath("/api/v1/events", "stream"),
+        "streamChanges",
+        customMethodPath("/api/v1/changes", "stream"),
         {
           params: { stream: customMethodParameter("stream") },
           query: Schema.Struct({ cursor: Schema.optionalKey(Schema.String) }),
-          success: eventStreamSchema,
+          success: changeStreamSchema,
           error: standardErrors,
         }
       ).annotateMerge(
         OpenApi.annotations({
-          summary: "Subscribe to committed events",
+          summary: "Subscribe to committed changes",
           description:
             "Authorized SSE pages. Resume using the last successfully applied nextCursor. Connections end after 60 seconds to renew authentication; access is checked on every page, including idle checkpoints.",
         })
       )
     )
 
-  const recordGroup = HttpApiGroup.make("records")
-    .add(
-      HttpApiEndpoint.post(
-        "batchGetRecords",
-        customMethodPath("/api/v1/records", "batchGet"),
-        {
-          params: { batchGet: customMethodParameter("batchGet") },
-          payload: recordBatchInput,
-          success: recordBatchResult(model),
-          error: standardErrors,
-        }
-      ).annotateMerge(
-        OpenApi.annotations({
-          identifier: "batchGetRecords",
-          summary: "Get records of any object type",
-          description:
-            "Returns complete records, including bounded link IDs and total sizes, in input order. Duplicate IDs are collapsed. Missing or inactive records are listed in missingIds.",
-        })
-      )
-    )
-    .add(
-      HttpApiEndpoint.post(
-        "searchRecords",
-        customMethodPath("/api/v1/records", "search"),
-        {
-          params: { search: customMethodParameter("search") },
-          payload: recordSearchInput,
-          success: recordSearchResult,
-          error: standardErrors,
-        }
-      ).annotateMerge(
-        OpenApi.annotations({
-          identifier: "searchRecords",
-          summary: "Search records across objects",
-          description:
-            "Searches explicitly indexed model fields using word prefixes, with all terms required. Returns ranked display summaries, limited to active object types. Optional objectTypes narrows the search. hasMore means narrow the query or increase limit (maximum 50); use object list APIs for exhaustive traversal.",
-        })
-      )
-    )
-
   const api = customMethodApi(
-    createModelHttpApi(model, options).add(eventGroup).add(recordGroup)
+    createModelHttpApi(model, options).add(eventGroup)
   )
 
-  return { api, eventGroup, recordGroup }
+  return { api, eventGroup }
 }
 
 export type ApplicationHttpApi = ReturnType<typeof createApplicationHttpApi>

@@ -10,10 +10,10 @@ import { useQuery } from "@tanstack/react-query"
 import { DownloadIcon, FileIcon } from "lucide-react"
 import { useEffect, useState, type ReactNode } from "react"
 
-import { Asset } from "#/runtime/assets/model/asset.ts"
 import { assetContentUrl } from "#/runtime/assets/ui/content-url.ts"
 import { RecordId, type ImageRef } from "#/runtime/model/index.ts"
-import { useObjectClient } from "#/runtime/ui/model/use-object-client.ts"
+import { PlatformModel } from "#/runtime/platform/model/index.ts"
+import { useClient } from "#/runtime/ui/model/use-client.ts"
 
 const assetId = RecordId("asset")
 
@@ -59,8 +59,10 @@ function AssetViewer({
   reference: ImageRef
   name: string
 }) {
-  const client = useObjectClient(Asset)
-  const asset = useQuery(client.get({ id: assetId(reference.assetId) }))
+  const client = useClient(PlatformModel)
+  const asset = useQuery(
+    client.asset.get.queryOptions({ id: assetId(reference.assetId) })
+  )
   const filename = asset.data?.name ?? name
   return (
     <>

@@ -1,8 +1,9 @@
 import {
   MutationObserver,
-  queryOptions,
+  infiniteQueryOptions,
+  queryOptions as tanstackQueryOptions,
   type QueryClient,
-  type DataTag,
+  type InfiniteData,
   type UseMutationOptions,
 } from "@tanstack/react-query"
 import { Effect } from "effect"
@@ -12,63 +13,97 @@ import {
   type EffectClient,
   runClientEffect,
 } from "#/runtime/client/create-client.ts"
-import { cacheGeneration } from "#/runtime/client/data-client.ts"
-import type {
-  ModelClient,
-  CustomOperations,
-  ModelObjectClient,
-} from "#/runtime/client/http-client.ts"
-import { applyMutationResult } from "#/runtime/client/model-cache.ts"
-import type { RecordBatchInput } from "#/runtime/contract/record-batch.ts"
-import type { RecordSearchInput } from "#/runtime/contract/record-search.ts"
 import {
-  modelObjectLinkTraversals,
+  mapModelClient,
+  type ModelClient,
+  type CustomOperations,
+} from "#/runtime/client/http-client.ts"
+import {
+  cacheGeneration,
+  invalidateModelQueries,
+} from "#/runtime/client/model-cache.ts"
+import type {
+  ReadProjection,
+  PolymorphicReads,
+} from "#/runtime/client/read-types.ts"
+import {
   modelObjects,
-  modelObjectQueries,
-  modelObjectActions,
   modelTypeAccepts,
   type ModelCatalog,
   type ModelObject,
-  type ObjectType,
+  type ListRequest,
+  type Page,
+  type PageToken,
 } from "#/runtime/model/index.ts"
+import { queryDependencies } from "#/runtime/model/query-dependencies.ts"
 
-export function modelQuery<A, E>(
+export function modelQuery<A, E = unknown>(
   objectTypes: ReadonlyArray<string>,
   operation: string,
   input: unknown,
   request: (signal: AbortSignal) => Promise<A>,
   custom = false
-): ModelQueryOptions<A, E> {
-  const options = queryOptions<A, E>({
-    queryKey: ["model", objectTypes[0], operation, input],
-    queryFn: ({ signal }) => request(signal),
-    meta: { objectTypes, custom, operation },
-  })
+) {
+  const queryFn = ({ signal }: { signal: AbortSignal }) => request(signal)
+  const meta = { objectTypes, custom, operation }
   return {
-    queryKey: options.queryKey,
-    queryFn: ({ signal }: { signal: AbortSignal }) => request(signal),
-    meta: { objectTypes, custom, operation },
+    ...tanstackQueryOptions<A, E>({
+      queryKey: ["model", objectTypes[0], operation, input],
+      queryFn,
+      meta,
+    }),
+    queryFn,
+    meta,
   }
 }
 
-export interface ModelQueryOptions<A, E = unknown> {
-  readonly queryKey: DataTag<readonly unknown[], A, E>
-  readonly queryFn: (context: { signal: AbortSignal }) => Promise<A>
-  readonly meta: {
-    objectTypes: ReadonlyArray<string>
-    custom: boolean
-    operation: string
+export type ModelQueryOptions<A, E = unknown> = ReturnType<
+  typeof modelQuery<A, E>
+>
+/** The cursor adapter lives on collection operations, alongside their ordinary query options. */
+export function modelList<A, E = unknown, Input extends object = ListRequest>(
+  queryOptions: (
+    input: Input
+  ) => Pick<ModelQueryOptions<Page<A>, E>, "queryKey" | "queryFn" | "meta">
+) {
+  return {
+    queryOptions,
+    infiniteQueryOptions: (input: Input) => {
+      const first = queryOptions(input)
+      return infiniteQueryOptions<
+        Page<A>,
+        E,
+        InfiniteData<Page<A>, PageToken | undefined>,
+        ReadonlyArray<unknown>,
+        PageToken | undefined
+      >({
+        queryKey: [...first.queryKey, "pages"],
+        meta: { ...first.meta, paginated: true },
+        initialPageParam: undefined as PageToken | undefined,
+        queryFn: ({ pageParam, signal }) =>
+          queryOptions({
+            ...input,
+            ...(pageParam === undefined ? {} : { pageToken: pageParam }),
+          }).queryFn({ signal }),
+        getNextPageParam: (page) => page.nextPageToken ?? undefined,
+      })
+    },
   }
 }
+
+export type ModelInfiniteQueryOptions<A, E = unknown> = ReturnType<
+  ReturnType<typeof modelList<A, E>>["infiniteQueryOptions"]
+>
+
 type QueryMethod<T> = T extends (
   ...args: infer Args
 ) => Effect.Effect<infer A, infer E>
-  ? (...args: Args) => ModelQueryOptions<A, E>
+  ? { readonly queryOptions: (...args: Args) => ModelQueryOptions<A, E> }
   : never
 type MutationMethod<T> = T extends (
   input: infer Input
 ) => Effect.Effect<infer A, infer E>
-  ? () => UseMutationOptions<A, E, Input>
+  ? { readonly mutationOptions: () => UseMutationOptions<A, E, Input> }
   : never
 type ObjectQueries<QueryIds extends PropertyKey, C> = {
   readonly [K in keyof C]: C[K] extends (...args: never[]) => unknown
@@ -76,18 +111,23 @@ type ObjectQueries<QueryIds extends PropertyKey, C> = {
       ? QueryMethod<C[K]>
       : MutationMethod<C[K]>
     : {
-        readonly [L in keyof C[K]]: L extends "list"
+        readonly [L in keyof C[K]]: L extends "list" | "get"
           ? QueryMethod<C[K][L]>
           : MutationMethod<C[K][L]>
       }
 }
-type ModelQueries<M extends ModelCatalog> = {
-  readonly [O in ModelObject<M> as O["id"]]: ObjectQueries<
-    Extract<
-      CustomOperations<M>,
-      { readonly objectType: O["id"]; readonly kind: "query" }
-    >["id"],
-    ModelClient<M>[O["id"]]
+export type ModelQueries<M extends ModelCatalog> = {
+  readonly [O in ModelObject<M> as O["id"]]: ReadProjection<
+    M,
+    O,
+    ObjectQueries<
+      Extract<
+        CustomOperations<M>,
+        { readonly objectType: O["id"]; readonly kind: "query" }
+      >["id"],
+      ModelClient<M>[O["id"]]
+    >,
+    "query"
   >
 } & {
   readonly [
@@ -99,25 +139,14 @@ type ModelQueries<M extends ModelCatalog> = {
     ? QueryMethod<ModelClient<M>[O["id"]]>
     : MutationMethod<ModelClient<M>[O["id"]]>
 } & {
-  readonly records: {
-    readonly batchGet: QueryMethod<EffectClient<M>["records"]["batchGet"]>
+  readonly records: PolymorphicReads<M, "query"> & {
     readonly search: QueryMethod<EffectClient<M>["records"]["search"]>
   }
 }
 
-const method = (group: object, name: string) => {
-  const fn = Reflect.get(group, name)
-  if (typeof fn !== "function")
-    throw new Error(`Missing model operation ${name}`)
-  // SAFETY: the implementation and projection are built from the same closed model.
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  return fn as (input: unknown) => Effect.Effect<unknown, unknown>
-}
-
 /** Mutations record the server-reported change set and apply it to the cache that ran them. */
 const mutation = (
-  fn: (input: unknown) => Effect.Effect<unknown, unknown>,
-  operation: string
+  fn: (input: unknown) => Effect.Effect<unknown, unknown>
 ): UseMutationOptions<unknown, unknown, unknown> => ({
   mutationFn: async (input, { client: cache }) => {
     const generation = cacheGeneration(cache)
@@ -126,7 +155,7 @@ const mutation = (
       fn(input).pipe(Effect.provideService(ClientChanges, changes))
     )
     if (generation === cacheGeneration(cache))
-      await applyMutationResult(cache, operation, result, [...changes])
+      void invalidateModelQueries(cache, [...changes])
     return result
   },
 })
@@ -138,88 +167,49 @@ export function createModelQueries<M extends ModelCatalog>(
   // types is unbounded work for the compiler.
   client: NoInfer<EffectClient<M>>
 ): ModelQueries<M> {
-  const result: Record<string, unknown> = Object.fromEntries(
-    modelObjects(model).map((object) => {
-      const group: unknown = Reflect.get(client, object.id)
-      if (typeof group !== "object" || group === null)
-        throw new Error(`Missing model object ${object.id}`)
-      const operations: Record<string, unknown> = {}
-      for (const { id: name } of modelObjectQueries(model, object)) {
-        const fn = method(group, name)
-        operations[name] = (input: unknown = {}) =>
-          modelQuery(
-            [object.id],
-            name,
-            input,
-            (signal) => runClientEffect(fn(input), signal),
-            name !== "get" && name !== "list" && name !== "batchGet"
+  const result = mapModelClient(model, client, (contract, fn) => {
+    const path = contract.key.split(".")
+    if (contract.kind === "action")
+      return { mutationOptions: () => mutation(fn) }
+    const queryOptions = (input: unknown = {}) => {
+      const traversal = contract.linkTraversal
+      const targets = traversal
+        ? modelObjects(model).filter((object) =>
+            modelTypeAccepts(model, object.id, traversal.target.from.typeId)
           )
-      }
-      for (const { id: name } of modelObjectActions(model, object)) {
-        const fn = method(group, name)
-        operations[name] = () => mutation(fn, name)
-      }
-      for (const traversal of modelObjectLinkTraversals(model, object)) {
-        const key = traversal.traversal.key
-        const links = Reflect.get(group, key)
-        const types = modelObjects(model)
-          .filter((candidate) =>
-            modelTypeAccepts(model, candidate.id, traversal.target.from.typeId)
-          )
-          .map((candidate) => candidate.id)
-        const list = method(links, "list")
-        operations[key] = {
-          list: (input: unknown) =>
-            modelQuery([object.id, ...types], `${key}.list`, input, (signal) =>
-              runClientEffect(list(input), signal)
-            ),
-          ...Object.fromEntries(
-            ["link", "unlink"]
-              .filter((name) => Object.hasOwn(links, name))
-              .map((name) => [name, () => mutation(method(links, name), name)])
-          ),
-        }
-      }
-      return [object.id, operations]
-    })
-  )
-  for (const operation of [
-    ...Object.values(model.actions),
-    ...Object.values(model.queries),
-  ]) {
-    if (operation.objectType !== undefined) continue
-    const fn = method(client, operation.id)
-    result[operation.id] =
-      operation.kind === "query"
-        ? (input: unknown = {}) =>
-            modelQuery(
-              [],
-              operation.id,
-              input,
-              (signal) => runClientEffect(fn(input), signal),
-              true
-            )
-        : () => mutation(fn, operation.id)
-  }
-  const searchableTypes = modelObjects(model)
-    .filter((object) => object.search !== undefined)
-    .map((object) => object.id)
-  result.records = {
-    batchGet: (input: RecordBatchInput) =>
-      modelQuery(
-        modelObjects(model).map((object) => object.id),
-        "records.batchGet",
+        : contract.object
+          ? [contract.object]
+          : modelObjects(model)
+      const dependencies = [
+        ...new Set([
+          ...(traversal ? [traversal.source.id] : []),
+          ...queryDependencies(model, targets, input),
+        ]),
+      ]
+      const custom =
+        !contract.builtin &&
+        !traversal &&
+        contract.id !== "get" &&
+        contract.id !== "list" &&
+        contract.id !== "batchGet"
+      return modelQuery(
+        dependencies,
+        contract.object ? path.slice(1).join(".") : contract.key,
         input,
-        (signal) => runClientEffect(client.records.batchGet(input), signal)
-      ),
-    search: (input: RecordSearchInput) =>
-      modelQuery(
-        input.objectTypes ?? searchableTypes,
-        "records.search",
-        input,
-        (signal) => runClientEffect(client.records.search(input), signal)
-      ),
-  }
+        (signal) => runClientEffect(fn(input), signal),
+        custom
+      )
+    }
+    if (contract.object !== undefined && contract.id === "list") {
+      // SAFETY: these standard collection contracts decode a Page before returning from the transport.
+      return modelList(
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+        queryOptions as (input: ListRequest) => ModelQueryOptions<Page<unknown>>
+      )
+    }
+    return { queryOptions }
+  })
+  clients.set(result, model)
   // SAFETY: every query, action and traversal is projected above from the same model.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   return result as ModelQueries<M>
@@ -234,13 +224,24 @@ export function executeMutation<A, E, Input>(
   return new MutationObserver(cache, options).mutate(input)
 }
 
-export type ObjectQueryClient<
-  O extends ObjectType,
-  M extends ModelCatalog = ModelCatalog,
-> = ObjectQueries<
-  Extract<
-    CustomOperations<M>,
-    { readonly objectType: O["id"]; readonly kind: "query" }
-  >["id"],
-  ModelObjectClient<M, O>
->
+const clients = new WeakMap<object, ModelCatalog>()
+
+/** The requested model may be the full application or a portable subset of its module definitions. */
+export function modelQueriesFor<M extends ModelCatalog>(
+  data: object,
+  model: M
+): ModelQueries<M> {
+  const installed = clients.get(data)
+  if (
+    !installed ||
+    Object.values(model.modules).some(
+      (module) => installed.modules[module.id] !== module
+    )
+  )
+    throw new Error(
+      "The UI client was not created from this model's module definitions."
+    )
+  // SAFETY: createModelQueries registered this client, and every requested module is part of its model.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  return data as ModelQueries<M>
+}

@@ -2,7 +2,7 @@ import { Effect } from "effect"
 import * as Migrator from "effect/unstable/sql/Migrator"
 import * as SqlClient from "effect/unstable/sql/SqlClient"
 
-import { Database } from "#/runtime/server/storage/database.ts"
+import { SqlDatabase } from "#/runtime/server/storage/transactions.ts"
 
 export interface SchemaMigration {
   readonly id: number
@@ -21,7 +21,7 @@ function validateMigrations(migrations: ReadonlyArray<SchemaMigration>) {
 }
 
 const readMigrations = Effect.fn("@company/readMigrations")(function* () {
-  const { sql } = yield* Database
+  const { sql } = yield* SqlDatabase
   const [table] = yield* sql<{
     present: boolean
   }>`select to_regclass('company_os_migrations') is not null as present`
@@ -49,7 +49,7 @@ function verifyHistory(
 /** A database with tables but no ledger predates this baseline; the baseline would collide with it. */
 const assertDatabaseEmpty = Effect.fn("@company/assertDatabaseEmpty")(
   function* () {
-    const { sql } = yield* Database
+    const { sql } = yield* SqlDatabase
     const [row] = yield* sql<{
       count: number
     }>`select count(*)::int as count from pg_tables where schemaname = current_schema()`
@@ -84,7 +84,7 @@ export const applySchemaMigrations = Effect.fn(
   "@company/applySchemaMigrations"
 )(function* (migrations: ReadonlyArray<SchemaMigration>) {
   yield* Effect.try(() => validateMigrations(migrations))
-  const database = yield* Database
+  const database = yield* SqlDatabase
   const history = yield* readMigrations()
   yield* Effect.try(() => verifyHistory(history, migrations))
   if (history.length === 0) yield* assertDatabaseEmpty()

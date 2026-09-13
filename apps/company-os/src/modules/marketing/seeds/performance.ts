@@ -1,10 +1,10 @@
 import { DateTime, Effect } from "effect"
 
+import type { CrmSeedData } from "#/modules/crm/seeds/index.ts"
+import { CampaignMember } from "#/modules/marketing/model/campaign-member.ts"
 import { Campaign } from "#/modules/marketing/model/campaign.ts"
 import { Content } from "#/modules/marketing/model/content.ts"
-import { Enrollment } from "#/modules/marketing/model/enrollment.ts"
 import { Outreach } from "#/modules/marketing/model/outreach.ts"
-import type { SalesSeedData } from "#/modules/sales/seeds/index.ts"
 import {
   CalendarDate,
   CurrencyCode,
@@ -12,7 +12,7 @@ import {
   Timestamp,
   WebUrl,
 } from "#/runtime/model/index.ts"
-import { Records } from "#/runtime/server/index.ts"
+import { Database } from "#/runtime/server/index.ts"
 
 const topics = [
   "Operations roundtable",
@@ -27,9 +27,9 @@ const topics = [
 
 export const seedMarketingPerformance = Effect.fn(
   "@company/seedMarketingPerformance"
-)(function* ({ customers, owners }: SalesSeedData) {
+)(function* ({ customers, owners }: CrmSeedData) {
   const now = yield* DateTime.now
-  const records = yield* Records
+  const records = yield* Database
   const campaigns = []
   for (
     let index = 0;
@@ -38,7 +38,7 @@ export const seedMarketingPerformance = Effect.fn(
   ) {
     const start = DateTime.add(now, { days: (index % 90) - 60 })
     campaigns.push(
-      yield* records.writer(Campaign).create({
+      yield* records.repository(Campaign).create({
         name: `${topics[index % topics.length]} — ${["North America", "Europe", "Asia Pacific", "Global", "Partner community"][Math.floor(index / topics.length) % 5]}`,
         objective:
           "Help operations teams share practical lessons and evaluate the next step in their rollout.",
@@ -59,7 +59,7 @@ export const seedMarketingPerformance = Effect.fn(
         endDate: CalendarDate(
           DateTime.formatIso(DateTime.add(start, { days: 30 })).slice(0, 10)
         ),
-        links: { owner: [owners[index % owners.length]!] },
+        links: { owner: owners[index % owners.length]! },
       })
     )
   }
@@ -78,15 +78,15 @@ export const seedMarketingPerformance = Effect.fn(
           "archived",
         ] as const
       )[contentIndex % 6]!
-      yield* records.writer(Content).create({
-        title: `${topics[contentIndex % topics.length]}: lessons from ${customer.companyName}`,
+      yield* records.repository(Content).create({
+        title: `${topics[contentIndex % topics.length]}: lessons from ${customer.accountName}`,
         format: (["article", "social", "email", "ad", "landingPage"] as const)[
           contentIndex % 5
         ]!,
         status: contentStatus,
         brief:
           "Share a practical example of reducing manual follow-up. Include the original problem, the workflow change, and what the team learned.",
-        body: `# A clearer customer handoff\n\nThe team at **${customer.companyName}** needed a reliable way to keep customers informed.\n\n## What changed\n\n- Each request has one accountable owner.\n- Customers can see progress and provide missing details.\n- Exceptions reach the right team with their original context.\n\n${"Start with one operation, review the results with the team, and adapt the next step.\n\n".repeat(contentIndex % 9 === 0 ? 30 : 3)}`,
+        body: `# A clearer customer handoff\n\nThe team at **${customer.accountName}** needed a reliable way to keep customers informed.\n\n## What changed\n\n- Each request has one accountable owner.\n- Customers can see progress and provide missing details.\n- Exceptions reach the right team with their original context.\n\n${"Start with one operation, review the results with the team, and adapt the next step.\n\n".repeat(contentIndex % 9 === 0 ? 30 : 3)}`,
         scheduledAt:
           contentStatus === "scheduled"
             ? Timestamp(
@@ -101,7 +101,7 @@ export const seedMarketingPerformance = Effect.fn(
                 `https://stories.example.test/customer-handoff-${contentIndex}`
               )
             : null,
-        links: { campaign: [campaign.id], owner: [customer.owner] },
+        links: { campaign: campaign.id, owner: customer.owner },
       })
     }
     const sequence = customer.eligible ? eligibleIndex++ : 0
@@ -116,8 +116,7 @@ export const seedMarketingPerformance = Effect.fn(
         ]!
       : "canceled"
     const sent = outreachStatus === "sent" || outreachStatus === "replied"
-    yield* records.writer(Enrollment).create({
-      name: `${customer.name} — ${campaign.name}`,
+    yield* records.repository(CampaignMember).create({
       status,
       step: status === "completed" ? 3 : index % 3,
       nextTouchAt:
@@ -127,14 +126,14 @@ export const seedMarketingPerformance = Effect.fn(
             )
           : null,
       context: customer.eligible
-        ? `Interested in practical examples for ${customer.companyName}. Follow up with the session recording and implementation checklist.`
+        ? `Interested in practical examples for ${customer.accountName}. Follow up with the session recording and implementation checklist.`
         : "No eligible email permission; no further outreach is scheduled.",
-      links: { campaign: [campaign.id], contact: [customer.contact] },
+      links: { campaign: campaign.id, contact: customer.contact },
     })
-    yield* records.writer(Outreach).create({
-      subject: `${campaign.name}: next steps for ${customer.companyName}`,
+    yield* records.repository(Outreach).create({
+      subject: `${campaign.name}: next steps for ${customer.accountName}`,
       status: outreachStatus,
-      body: `Hi ${customer.name},\n\nWe are bringing together operations teams to share what worked during their first rollout. Would a practical session on customer onboarding be useful for ${customer.companyName}?\n\nWe can walk through approval steps, customer communication, and the handoff to engineering.\n\nBest,\nThe customer team`,
+      body: `Hi ${customer.name},\n\nWe are bringing together operations teams to share what worked during their first rollout. Would a practical session on customer onboarding be useful for ${customer.accountName}?\n\nWe can walk through approval steps, customer communication, and the handoff to engineering.\n\nBest,\nThe customer team`,
       scheduledAt:
         outreachStatus === "queued"
           ? Timestamp(
@@ -155,11 +154,13 @@ export const seedMarketingPerformance = Effect.fn(
           ? "The recipient mail server temporarily rejected delivery. Review before retrying."
           : null,
       links: {
-        campaign: [campaign.id],
-        contact: [customer.contact],
-        owner: [customer.owner],
+        campaign: campaign.id,
+        contact: customer.contact,
+        owner: customer.owner,
       },
     })
   }
-  yield* Effect.log("Prepared campaigns, enrollments, and outreach history.")
+  yield* Effect.log(
+    "Prepared campaigns, campaignMembers, and outreach history."
+  )
 })

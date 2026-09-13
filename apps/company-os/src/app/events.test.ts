@@ -2,8 +2,10 @@ import { Schema } from "effect"
 import { expect, it } from "vitest"
 
 import { Model } from "#/app.model.ts"
-import { eventPageSchema } from "#/runtime/contract/events.ts"
-import { createEventFactSchema } from "#/runtime/contract/events.ts"
+import {
+  eventPageSchema,
+  createEventFactSchema,
+} from "#/runtime/contract/events.ts"
 const eventFactSchema = createEventFactSchema(Model)
 
 it("validates new facts strictly and replays them inside a stable envelope", () => {
@@ -11,7 +13,7 @@ it("validates new facts strictly and replays them inside a stable envelope", () 
     type: "lead.converted",
     version: 1,
     subjects: [{ id: "ld_ada", objectType: "lead" }],
-    data: { company: "co_engine", contact: "ct_ada" },
+    data: { opportunity: "opp_engine" },
   }
   const decode = Schema.decodeUnknownSync(eventFactSchema)
   const decoded = decode(fact)
@@ -23,7 +25,7 @@ it("validates new facts strictly and replays them inside a stable envelope", () 
     { ...fact, type: "contact.updated", data: {} },
     { ...fact, version: 2 },
     { ...fact, subjects: [] },
-    { ...fact, data: { company: "co_engine" } },
+    { ...fact, data: { account: "co_engine" } },
   ])
     expect(() => decode(invalid)).toThrow()
 

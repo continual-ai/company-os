@@ -1,4 +1,4 @@
-import { Effect, Schema } from "effect"
+import { Schema, Effect } from "effect"
 import { describe, expect } from "vitest"
 
 import { User } from "#/runtime/access/model/index.ts"
@@ -12,31 +12,30 @@ import {
   RecordId,
   Timestamp,
 } from "#/runtime/model/index.ts"
+import { linkPreview } from "#/runtime/model/record-links.ts"
 import { SYSTEM_SERVICE_ACCOUNT_ID } from "#/runtime/model/system-records.ts"
-import { ObjectRepositories } from "#/runtime/server/model/object-repositories.ts"
+import { Database } from "#/runtime/server/database.ts"
 import {
   InvalidBatchRequest,
-  makeObjectService,
-} from "#/runtime/server/model/object-service.ts"
-import { RecordIdentifierResolver } from "#/runtime/server/model/record-identifier-resolver.ts"
-import { Database } from "#/runtime/server/storage/database.ts"
-import {
-  assignments,
-  tableProjection,
-  type TableRow,
-} from "#/runtime/server/storage/index.ts"
-import {
   InvalidListRequest,
   ObjectNotFound,
   ObjectWriteConflict,
   RecordAliasConflict,
   RecordAliasNotFound,
-} from "#/runtime/server/storage/object-repository.ts"
+} from "#/runtime/server/errors.ts"
+import { operationsFor } from "#/runtime/server/operation-executor.ts"
+import { RecordIdentifiers } from "#/runtime/server/storage/identifiers.ts"
+import {
+  assignments,
+  tableProjection,
+  type TableRow,
+} from "#/runtime/server/storage/index.ts"
+import { foreignKeys } from "#/runtime/server/storage/link-storage.ts"
+import { RecordStore } from "#/runtime/server/storage/record-store.ts"
+import { SqlDatabase } from "#/runtime/server/storage/transactions.ts"
 import {
   Account,
   fixtureModel,
-  Order,
-  OrderLine,
   Prospect,
 } from "#/runtime/testing/fixture-model.ts"
 import { FixtureServer } from "#/runtime/testing/fixture-server.ts"
@@ -53,16 +52,21 @@ function omitStorageFields<
   TRecord extends {
     readonly objectType: unknown
     readonly links: unknown
+    readonly label: unknown
     readonly createdAt: unknown
     readonly etag: unknown
     readonly updatedAt: unknown
   },
 >(
   record: TRecord
-): Omit<TRecord, "objectType" | "links" | "createdAt" | "etag" | "updatedAt"> {
+): Omit<
+  TRecord,
+  "objectType" | "links" | "label" | "createdAt" | "etag" | "updatedAt"
+> {
   const {
     objectType: _objectType,
     links: _links,
+    label: _label,
     createdAt: _createdAt,
     etag: _etag,
     updatedAt: _updatedAt,
@@ -82,15 +86,15 @@ describe("Effect SQL object repository", () => {
     "preserves object invariants across standard methods",
     () =>
       Effect.gen(function* () {
-        const database = yield* Database
+        const database = yield* SqlDatabase
         const sql = database.sql
-        const identifiers = yield* RecordIdentifierResolver
-        const records = yield* ObjectRepositories
+        const identifiers = yield* RecordIdentifiers
+        const records = yield* RecordStore
         const repository = records.get(Account)
-        const service = yield* makeObjectService(Account)
-        const prospectService = yield* makeObjectService(Prospect)
-        const orderService = yield* makeObjectService(Order)
-        const orderLineService = yield* makeObjectService(OrderLine)
+        const service = (yield* operationsFor(fixtureModel)).account
+        const prospectService = (yield* operationsFor(fixtureModel)).prospect
+        const orderService = (yield* operationsFor(fixtureModel)).order
+        const orderLineService = (yield* operationsFor(fixtureModel)).orderLine
 
         const hubspotExample = RecordAlias("hubspot:portal_1:account:example")
         const hubspotBravo = RecordAlias("hubspot:portal_1:account:bravo")
@@ -285,13 +289,13 @@ describe("Effect SQL object repository", () => {
           .get({ id: legacyExample })
           .pipe(Effect.flip)
         const convertedAt = Timestamp("2024-01-01T00:00:00.000Z")
-        const writerOutput = yield* records
-          .writer(Prospect)
+        const writerOutput = yield* (yield* Database)
+          .repository(Prospect)
           .update({ id: prospect.id, convertedAt })
 
         const order = yield* orderService.create({
           name: "Expansion",
-          links: { account: [legacyExample] },
+          links: { account: legacyExample },
         })
         const storedOrders = yield* sql<
           TableRow<typeof orders>
@@ -299,7 +303,7 @@ describe("Effect SQL object repository", () => {
           from ${orders}`
         const orderLine = yield* orderLineService.create({
           name: "Implementation",
-          links: { order: [order.id] },
+          links: { order: order.id },
         })
         const batchDeleteFailure = yield* service
           .batchDelete({ ids: [second.id, first.id] })
@@ -393,9 +397,8 @@ describe("Effect SQL object repository", () => {
           { alias: "legacy:account:example", objectId: first.id },
         ])
         expect(batch.items.map(({ id }) => id)).toEqual([second.id, first.id])
-        expect(emptyBatchGet).toBeInstanceOf(InvalidBatchRequest)
-        expect(emptyBatchGet).toMatchObject({ operation: "batchGet" })
-        expect(oversizedBatchGet).toBeInstanceOf(InvalidBatchRequest)
+        expect(emptyBatchGet).toBeInstanceOf(Schema.SchemaError)
+        expect(oversizedBatchGet).toBeInstanceOf(Schema.SchemaError)
         expect(batchDeleteFailure).toBeDefined()
         expect(retainedAfterBatchDelete.items.map(({ id }) => id)).toEqual([
           second.id,
@@ -405,8 +408,8 @@ describe("Effect SQL object repository", () => {
         expect(duplicateBatchDelete).toMatchObject({
           operation: "batchDelete",
         })
-        expect(emptyBatchDelete).toBeInstanceOf(InvalidBatchRequest)
-        expect(oversizedBatchDelete).toBeInstanceOf(InvalidBatchRequest)
+        expect(emptyBatchDelete).toBeInstanceOf(Schema.SchemaError)
+        expect(oversizedBatchDelete).toBeInstanceOf(Schema.SchemaError)
         expect(deleted).toBeInstanceOf(ObjectNotFound)
         expect(firstPage.items.map(({ id }) => id)).toEqual([second.id])
         expect(firstPage.nextPageToken.length).toBeLessThan(256)
@@ -426,7 +429,7 @@ describe("Effect SQL object repository", () => {
         expect(sortedSecondPage.items[0]?.name).toBe("Bravo")
         expect(sortedSecondPage.totalSize).toBe(2)
         expect(mismatchedCursor).toBeInstanceOf(InvalidListRequest)
-        expect(invalidFilterValue).toBeInstanceOf(InvalidListRequest)
+        expect(invalidFilterValue).toBeInstanceOf(Schema.SchemaError)
         expect(staleWrite).toBeInstanceOf(ObjectWriteConflict)
         expect(userWithSharedEmail).toMatchObject({
           email: "unique@example.example",
@@ -444,7 +447,7 @@ describe("Effect SQL object repository", () => {
         )
         expect(orderLine).toMatchObject({
           name: "Implementation",
-          links: { order: { ids: [order.id], totalSize: 1 } },
+          links: { order: order.id },
           quantity: 1,
         })
         expect(storedOrders).toEqual([
@@ -453,7 +456,7 @@ describe("Effect SQL object repository", () => {
         expect(orderLineRows).toEqual([
           expect.objectContaining({ id: orderLine.id }),
         ])
-        expect(orderLine.links.order?.ids).toEqual([order.id])
+        expect(linkPreview(orderLine.links.order).ids).toEqual([order.id])
         expect(objectRows).toContainEqual(
           expect.objectContaining({ id: orderLine.id, objectType: "orderLine" })
         )
@@ -469,6 +472,9 @@ describe("Effect SQL object repository", () => {
           ).toEqual(
             new Set([
               "id",
+              ...foreignKeys(fixture.model, object.id).map(
+                ({ storage }) => storage.column
+              ),
               ...Object.entries(object.properties).map(
                 ([propertyId, property]) =>
                   snakeCase(

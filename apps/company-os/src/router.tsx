@@ -6,7 +6,7 @@ import { routeTree } from "#/routeTree.gen.ts"
 import {
   createModelDataClient,
   modelData,
-} from "#/runtime/client/data-client.ts"
+} from "#/runtime/client/model-cache.ts"
 
 export function getRouter() {
   const queryClient =

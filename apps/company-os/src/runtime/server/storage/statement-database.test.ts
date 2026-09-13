@@ -1,7 +1,6 @@
 import { Effect } from "effect"
 import { expect } from "vitest"
 
-import { Database } from "#/runtime/server/storage/database.ts"
 import {
   assignments,
   defineTable,
@@ -9,6 +8,7 @@ import {
   tableProjection,
   type TableRow,
 } from "#/runtime/server/storage/index.ts"
+import { SqlDatabase } from "#/runtime/server/storage/transactions.ts"
 import { testDatabase } from "#/runtime/testing/database.ts"
 import { kernelModel } from "#/runtime/testing/fixture-model.ts"
 
@@ -18,7 +18,7 @@ fixture.test(
   "keeps multiline descriptions as source comments without database metadata",
   () =>
     Effect.gen(function* () {
-      const { sql } = yield* Database
+      const { sql } = yield* SqlDatabase
       const table = defineTable<{ id: number }>(
         "documented_record",
         {
@@ -47,7 +47,7 @@ fixture.test(
   "preserves SQL expressions, JSON arrays, defaults, and model names at the driver boundary",
   () =>
     Effect.gen(function* () {
-      const { sql } = yield* Database
+      const { sql } = yield* SqlDatabase
       yield* sql.withTransaction(
         Effect.gen(function* () {
           const records = defineTable<{

@@ -6,9 +6,9 @@ import { getCurrentUser } from "#/app/current-user.functions.ts"
 import { ActiveModelProvider } from "#/app/ui/application/active-model-provider.tsx"
 import { moduleCatalogQuery } from "#/app/ui/application/active-presentation.ts"
 import { AppShell } from "#/app/ui/application/app-shell.tsx"
-import { useModelEvents } from "#/app/ui/application/use-model-events.ts"
+import { useModelChanges } from "#/app/ui/application/use-model-changes.ts"
 import { runClientEffect } from "#/runtime/client/create-client.ts"
-import { modelData } from "#/runtime/client/data-client.ts"
+import { modelData } from "#/runtime/client/model-cache.ts"
 
 export const Route = createFileRoute("/_app")({
   beforeLoad: async ({ location }) => {
@@ -24,7 +24,7 @@ export const Route = createFileRoute("/_app")({
     // Capture the feed head before child loaders read their snapshots.
     const eventCursor =
       typeof window === "undefined"
-        ? (await runClientEffect(client.events.list({ cursor: "now" })))
+        ? (await runClientEffect(client.changes.list({ cursor: "now" })))
             .nextCursor
         : undefined
     return { authenticatedUser: currentUser.user, eventCursor }
@@ -45,7 +45,7 @@ function CompanyAppLayout() {
     identity: authenticatedUser.id,
     cursor: eventCursor,
   }))
-  useModelEvents(
+  const changeStatus = useModelChanges(
     authenticatedUser.id,
     initialFeed.identity === authenticatedUser.id
       ? initialFeed.cursor
@@ -53,7 +53,17 @@ function CompanyAppLayout() {
   )
   return (
     <ActiveModelProvider>
-      <AppShell key={authenticatedUser.id} user={authenticatedUser}>
+      <AppShell
+        key={authenticatedUser.id}
+        user={authenticatedUser}
+        connectionNotice={
+          changeStatus === "offline"
+            ? "You’re offline. Displaying cached data."
+            : changeStatus === "reconnecting"
+              ? "Reconnecting to live updates…"
+              : undefined
+        }
+      >
         <Outlet />
       </AppShell>
     </ActiveModelProvider>

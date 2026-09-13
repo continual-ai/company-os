@@ -2,7 +2,7 @@ import type { ModelCatalog } from "#/runtime/model/index.ts"
 import { infrastructureStatements } from "#/runtime/server/storage/infrastructure.ts"
 import { makePostgresSchema } from "#/runtime/server/storage/schema.ts"
 
-/** Deterministic SQL projection used by migrations and isolated test databases. */
+/** Deterministic SQL projection used by initialization, resets, and isolated test databases. */
 export function makeSchemaSql(model: ModelCatalog) {
   return (
     "-- Company OS: desired PostgreSQL schema\n" +

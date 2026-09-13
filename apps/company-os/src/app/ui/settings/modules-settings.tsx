@@ -17,17 +17,19 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { ArrowUpRightIcon, LockKeyholeIcon, SearchIcon } from "lucide-react"
 import { useState } from "react"
 
-import { data } from "#/app/app-client.ts"
+import { Model } from "#/app.model.ts"
 import { moduleCatalogQuery } from "#/app/ui/application/active-presentation.ts"
 import {
   SettingsPage,
   SettingsSection,
 } from "#/app/ui/settings/settings-page.tsx"
 import { moduleActivationPlan } from "#/runtime/platform/model/index.ts"
+import { useClient } from "#/runtime/ui/module.ts"
 
 const catalogQuery = moduleCatalogQuery
 
 export function ModulesSettings() {
+  const client = useClient(Model)
   const catalog = useQuery(catalogQuery)
   const cache = useQueryClient()
   const [search, setSearch] = useState("")
@@ -38,7 +40,7 @@ export function ModulesSettings() {
     dependents: ReadonlyArray<{ id: string; name: string }>
   }>()
   const change = useMutation({
-    ...data.moduleSetting.setEnabled(),
+    ...client.moduleSetting.setEnabled.mutationOptions(),
     onMutate: () => cache.getQueryData(catalogQuery.queryKey),
     onSuccess: (result, input, before) => {
       cache.setQueryData(
@@ -112,7 +114,7 @@ export function ModulesSettings() {
   }
 
   return (
-    <SettingsPage description="Choose what your company uses. Turning a module off hides its features and keeps its records.">
+    <SettingsPage description="Choose what your account uses. Turning a module off hides its features and keeps its records.">
       <div className="space-y-6">
         <div className="relative">
           <SearchIcon className="pointer-events-none absolute left-3 top-2.5 size-4 text-muted-foreground" />

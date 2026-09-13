@@ -21,21 +21,22 @@ import {
   DeveloperNavigationItem,
 } from "#/app/ui/developer/developer-layout.tsx"
 import type { ModelAction } from "#/runtime/model/definition/action.ts"
-import type {
-  AnySchema,
-  Choice,
-  InterfaceType,
-  ModelCatalog,
-  ModelRelationship,
-  ObjectType,
-  PropertyDefinition,
+import {
+  type AnySchema,
+  type Choice,
+  type InterfaceType,
+  type ModelCatalog,
+  type LinkType,
+  type ObjectType,
+  type PropertyDefinition,
+  modelLinks,
+  modelTypeAccepts,
 } from "#/runtime/model/index.ts"
-import { modelRelationships, modelTypeAccepts } from "#/runtime/model/index.ts"
 
 type ModelDefinition = ModelCatalog
 type ModelObject = ObjectType
 type ModelInterface = InterfaceType
-type Relationship = ModelRelationship
+type Relationship = LinkType
 type ModelItem = ModelObject | ModelInterface
 
 const allModules = "all"
@@ -707,7 +708,7 @@ export function ModelExplorer({
     () => Object.values(model.interfaces),
     [model.interfaces]
   )
-  const catalog = useMemo(() => modelRelationships(model), [model])
+  const catalog = useMemo(() => modelLinks(model), [model])
   const actions = useMemo(() => modelActions(model), [model])
   const defaultItem = objects[0] ? itemKey(objects[0]) : ""
   const [internalSelection, setInternalSelection] = useState(defaultItem)
@@ -721,7 +722,7 @@ export function ModelExplorer({
   )
   const resolvedObject =
     selectedObject ??
-    (selectedInterface === undefined ? model.objects.company : undefined)
+    (selectedInterface === undefined ? model.objects.account : undefined)
   const resolvedInterface = selectedInterface ?? interfaces[0]
   const resolvedItem = resolvedObject ?? resolvedInterface
   const selectedActions =

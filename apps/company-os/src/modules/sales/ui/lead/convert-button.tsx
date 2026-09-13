@@ -1,23 +1,25 @@
 import { ConfirmActionButton } from "@company/ui/confirm-action-button"
 import { useMutation } from "@tanstack/react-query"
 
-import { type Lead, ConvertLead } from "#/modules/sales/model/lead.ts"
-import type { RecordUiProps } from "#/runtime/ui/module.ts"
-import { useOperationClient } from "#/runtime/ui/module.ts"
+import { Model } from "#/app.model.ts"
+import { type Lead } from "#/modules/sales/model/lead.ts"
+import { linkPreview } from "#/runtime/model/record-links.ts"
+import { type RecordUiProps, useClient } from "#/runtime/ui/module.ts"
 
 export function ConvertLeadAction({ record }: RecordUiProps<typeof Lead>) {
-  const convert = useMutation(useOperationClient(ConvertLead)())
-  if (record.convertedAt !== null) return null
+  const client = useClient(Model)
+  const convert = useMutation(client.lead.convert.mutationOptions())
+  if (
+    record.status === "disqualified" ||
+    linkPreview(record.links.opportunity).totalSize > 0
+  )
+    return null
   return (
     <ConfirmActionButton
       actionLabel="Convert"
       destructive={false}
       title="Convert this lead?"
-      description={
-        record.links.company?.ids[0]
-          ? "Creates a contact at the linked company."
-          : "Creates a company and contact linked to this lead."
-      }
+      description="Creates an opportunity with the linked account and contact."
       onConfirm={async () => {
         await convert.mutateAsync({ id: record.id })
       }}

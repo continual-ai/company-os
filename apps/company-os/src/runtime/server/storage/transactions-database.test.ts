@@ -1,19 +1,19 @@
 import { Effect } from "effect"
 import { expect } from "vitest"
 
-import { Database } from "#/runtime/server/storage/database.ts"
 import {
   insertValues,
   tableProjection,
   type TableRow,
 } from "#/runtime/server/storage/index.ts"
 import { seedRuns } from "#/runtime/server/storage/infrastructure.ts"
+import { SqlDatabase } from "#/runtime/server/storage/transactions.ts"
 import { testDatabase } from "#/runtime/testing/database.ts"
 import { kernelModel } from "#/runtime/testing/fixture-model.ts"
 
 const fixture = testDatabase(kernelModel)
 
-const names = (database: typeof Database.Service) =>
+const names = (database: typeof SqlDatabase.Service) =>
   database.sql<TableRow<typeof seedRuns>>`select ${tableProjection(seedRuns)}
           from ${seedRuns}`.pipe(
     Effect.map((rows) => rows.map(({ name }) => name).sort())
@@ -21,7 +21,7 @@ const names = (database: typeof Database.Service) =>
 
 fixture.test("nested transaction calls join the enclosing transaction", () =>
   Effect.gen(function* () {
-    const database = yield* Database
+    const database = yield* SqlDatabase
     const sql = database.sql
     const insert = (name: string) =>
       sql`insert into ${seedRuns} ${insertValues(sql, seedRuns, { name, parameters: "{}" })}`

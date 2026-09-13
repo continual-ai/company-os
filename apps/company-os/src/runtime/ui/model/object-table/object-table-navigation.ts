@@ -1,5 +1,4 @@
-import { useCallback, useReducer, useRef } from "react"
-import type { KeyboardEvent } from "react"
+import { useCallback, useReducer, useRef, type KeyboardEvent } from "react"
 
 export interface ObjectTableCellAddress {
   columnId: string

@@ -8,15 +8,19 @@ import { HttpApiClient } from "effect/unstable/httpapi"
 
 import {
   createModelClient,
+  mapModelClient,
   type ModelClient,
 } from "#/runtime/client/http-client.ts"
+import type {
+  ReadProjection,
+  PolymorphicReads,
+} from "#/runtime/client/read-types.ts"
 import {
   type ApplicationHttpApi,
   createApplicationHttpApi,
 } from "#/runtime/contract/application-http-api.ts"
 import { customMethodParams } from "#/runtime/contract/http-custom-method.ts"
-import type { RecordBatchInput } from "#/runtime/contract/record-batch.ts"
-import type { RecordSearchInput } from "#/runtime/contract/record-search.ts"
+import type { ModelObject } from "#/runtime/model/definition/model.ts"
 import type { ModelCatalog } from "#/runtime/model/index.ts"
 
 /** Object types a committed write touched, reported by the server per response. */
@@ -46,8 +50,7 @@ export interface ClientOptions {
     | (() => Readonly<Record<string, string>>)
 }
 
-type NativeGroups = HttpApiClient.Client<ApplicationHttpApi["eventGroup"]> &
-  HttpApiClient.Client<ApplicationHttpApi["recordGroup"]>
+type NativeGroups = HttpApiClient.Client<ApplicationHttpApi["eventGroup"]>
 
 type Request<T> = T extends (request: infer R) => unknown ? R : never
 
@@ -61,18 +64,15 @@ export interface ApplicationEffectClient {
     readonly list: (
       query?: EventListQuery
     ) => ReturnType<NativeGroups["events"]["listEvents"]>
+  }
+  readonly changes: {
+    readonly list: (query?: {
+      readonly cursor?: string
+    }) => ReturnType<NativeGroups["events"]["listChanges"]>
     /** Typed SSE pages; checkpoints advance only after the consumer applies each page. */
     readonly stream: (
       cursor: string
-    ) => ReturnType<NativeGroups["events"]["streamEvents"]>
-  }
-  readonly records: {
-    readonly batchGet: (
-      input: RecordBatchInput
-    ) => ReturnType<NativeGroups["records"]["batchGetRecords"]>
-    readonly search: (
-      input: RecordSearchInput
-    ) => ReturnType<NativeGroups["records"]["searchRecords"]>
+    ) => ReturnType<NativeGroups["events"]["streamChanges"]>
   }
 }
 
@@ -89,14 +89,27 @@ type Promisified<T> = T extends (
     : T
 
 /** The Promise projection of an EffectClient. Event streaming stays on the Effect client. */
-export type Client<M extends ModelCatalog> = Promisified<ModelClient<M>> & {
+export type Client<M extends ModelCatalog> = Omit<
+  Promisified<ModelClient<M>>,
+  ModelObject<M>["id"]
+> & {
+  readonly [O in ModelObject<M> as O["id"]]: ReadProjection<
+    M,
+    O,
+    Promisified<ModelClient<M>[O["id"]]>,
+    "promise"
+  >
+} & {
   readonly events: {
     readonly list: Promisified<ApplicationEffectClient["events"]["list"]>
   }
-  readonly records: Promisified<ApplicationEffectClient["records"]>
+  readonly changes: {
+    readonly list: Promisified<ApplicationEffectClient["changes"]["list"]>
+  }
+  readonly records: PolymorphicReads<M, "promise"> & {
+    readonly search: Promisified<ModelClient<M>["records"]["search"]>
+  }
 }
-
-const APPLICATION_GROUPS = ["events", "records"] as const
 
 function resolveHeaders(
   headers: ClientOptions["headers"]
@@ -113,12 +126,6 @@ export function createEffectClient<M extends ModelCatalog>(
   model: M,
   options: ClientOptions
 ): EffectClient<M> {
-  for (const group of APPLICATION_GROUPS) {
-    if (Object.hasOwn(model.objects, group))
-      throw new Error(
-        `Object id '${group}' is reserved for an application client group.`
-      )
-  }
   const { api } = createApplicationHttpApi(model)
   const { baseUrl, headers } = options
   const withOrigin =
@@ -159,51 +166,23 @@ export function createEffectClient<M extends ModelCatalog>(
         : Effect.provideService(FetchHttpClient.Fetch, options.fetch)
     )
   )
-  // SAFETY: the contract adds exactly these two groups beside the model groups
-  // that createModelClient addresses by generated endpoint id.
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  const groups = nativeClient as unknown as NativeGroups
   const application: ApplicationEffectClient = {
     events: {
-      list: (query = {}) => groups.events.listEvents({ query }),
+      list: (query = {}) => nativeClient.events.listEvents({ query }),
+    },
+    changes: {
+      list: (query = {}) => nativeClient.events.listChanges({ query }),
       stream: (cursor) =>
-        groups.events.streamEvents({
+        nativeClient.events.streamChanges({
           params: customMethodParams("stream"),
           query: { cursor },
         }),
     },
-    records: {
-      batchGet: (input) =>
-        groups.records.batchGetRecords({
-          params: customMethodParams("batchGet"),
-          payload: input,
-        }),
-      search: (input) =>
-        groups.records.searchRecords({
-          params: customMethodParams("search"),
-          payload: input,
-        }),
-    },
   }
-  return { ...createModelClient(model, nativeClient), ...application }
-}
-
-function promisify(value: unknown, path: string): unknown {
-  if (typeof value === "function") {
-    // SAFETY: every function on an EffectClient takes one input and returns an Effect.
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-    const method = value as (
-      ...args: unknown[]
-    ) => Effect.Effect<unknown, unknown>
-    return (...args: unknown[]) => runClientEffect(method(...args))
+  return {
+    ...createModelClient(model, nativeClient),
+    ...application,
   }
-  if (typeof value === "object" && value !== null)
-    return Object.fromEntries(
-      Object.entries(value)
-        .filter(([key]) => `${path}${key}` !== "events.stream")
-        .map(([key, member]) => [key, promisify(member, `${path}${key}.`)])
-    )
-  return value
 }
 
 /**
@@ -215,7 +194,20 @@ export function createClient<M extends ModelCatalog>(
   model: M,
   options: ClientOptions
 ): Client<M> {
-  // SAFETY: promisify mirrors the EffectClient shape one level at a time.
+  const client = createEffectClient(model, options)
+  // SAFETY: every model operation is projected once; event streaming remains Effect-only.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  return promisify(createEffectClient(model, options), "") as Client<M>
+  return {
+    ...mapModelClient(
+      model,
+      client,
+      (_contract, invoke) =>
+        (input: unknown = {}) =>
+          runClientEffect(invoke(input))
+    ),
+    events: {
+      list: (input?: EventListQuery) =>
+        runClientEffect(client.events.list(input)),
+    },
+  } as Client<M>
 }

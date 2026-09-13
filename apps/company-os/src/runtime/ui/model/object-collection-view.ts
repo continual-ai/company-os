@@ -6,8 +6,8 @@ import type {
   ObjectCollectionSearch,
   ObjectCollectionView,
   ObjectCollectionViewState,
+  ObjectTableFilterOperator,
 } from "#/runtime/ui/model/collection-view.ts"
-import type { ObjectTableFilterOperator } from "#/runtime/ui/model/collection-view.ts"
 
 interface ResolvedObjectCollectionView {
   readonly state: ObjectCollectionViewState
@@ -51,6 +51,9 @@ const ObjectCollectionViewStateSchema = Schema.Struct({
     Schema.Struct({
       id: Schema.String,
       value: Schema.Struct({
+        quantifier: Schema.optionalKey(
+          Schema.Literals(["some", "none", "every"])
+        ),
         operator: Schema.Literals(filterOperators),
         values: Schema.Array(Schema.String),
       }),

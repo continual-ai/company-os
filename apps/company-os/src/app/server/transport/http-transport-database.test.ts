@@ -1,3 +1,4 @@
+import { PgClient } from "@effect/sql-pg"
 import {
   ConfigProvider,
   Effect,
@@ -10,7 +11,7 @@ import { OpenApi } from "effect/unstable/httpapi"
 import { describe, expect, vi } from "vitest"
 
 import { Model } from "#/app.model.ts"
-import { createEventConsumer } from "#/app/client/event-consumer.ts"
+import { createChangeConsumer } from "#/app/client/change-consumer.ts"
 import { makeApplicationLayer } from "#/app/server/application-layer.ts"
 import { Storage } from "#/app/server/database/schema.ts"
 import { applicationHttpApi } from "#/app/server/http-api.ts"
@@ -21,29 +22,27 @@ import {
   createEffectClient,
   runClientEffect,
 } from "#/runtime/client/create-client.ts"
-import { createModelDataClient } from "#/runtime/client/data-client.ts"
+import { createModelDataClient } from "#/runtime/client/model-cache.ts"
 import { modelQuery } from "#/runtime/client/model-query-client.ts"
 import {
   eventPageSchema,
   InvalidEventCursor,
 } from "#/runtime/contract/events.ts"
 import { httpOperation } from "#/runtime/contract/http-operation.ts"
-import { modelOperations } from "#/runtime/contract/operations.ts"
+import { operationContracts } from "#/runtime/contract/operation-contract.ts"
 import { RecordAlias } from "#/runtime/model/index.ts"
-import { ROOT_ID } from "#/runtime/model/system-records.ts"
 import { makeApplicationKeys } from "#/runtime/server/application-keys.ts"
 import {
   makeEncryptedPageTokenCodec,
   PageTokens,
 } from "#/runtime/server/page-tokens.ts"
-import { Database } from "#/runtime/server/storage/database.ts"
-import { assignments } from "#/runtime/server/storage/index.ts"
 import {
+  assignments,
   projection,
   type SelectionRow,
 } from "#/runtime/server/storage/index.ts"
-import { makeLinkRepository } from "#/runtime/server/storage/index.ts"
 import { identityBindings } from "#/runtime/server/storage/infrastructure.ts"
+import { SqlDatabase } from "#/runtime/server/storage/transactions.ts"
 
 const application = testApplication()
 const { objects } = Storage.core
@@ -60,7 +59,7 @@ const runtimeHeaders = {
   "x-continual-app-runtime-origin": "https://continual.example",
 }
 
-const modelProjectionContract = modelOperations(Model).map((descriptor) => ({
+const modelProjectionContract = operationContracts(Model).map((descriptor) => ({
   httpOperationId: httpOperation(descriptor).identifier,
   mcpToolName: descriptor.key,
 }))
@@ -91,14 +90,14 @@ describe("application HTTP server", () => {
             })
           )
         )
-        const database = yield* Database
+        const database = yield* SqlDatabase
         const sql = database.sql
 
         const runtime = yield* Effect.acquireRelease(
           Effect.sync(() =>
             ManagedRuntime.make(
               makeApplicationLayer({
-                database: Layer.succeed(Database, database),
+                sql: Layer.succeed(PgClient.PgClient, database.sql),
                 pageTokens: Layer.succeed(PageTokens, testPageTokens),
               }).pipe(
                 Layer.provide(
@@ -191,10 +190,10 @@ describe("application HTTP server", () => {
             ({ httpOperationId }) => !httpOperationIds.has(httpOperationId)
           )
         ).toEqual([])
-        const invalidCompany = yield* Effect.promise(() =>
+        const invalidAccount = yield* Effect.promise(() =>
           runtime.runPromise(
             api.handle(
-              new Request("http://company.test/api/v1/companies", {
+              new Request("http://company.test/api/v1/accounts", {
                 body: JSON.stringify({ domain: "test", name: "Invalid" }),
                 headers: {
                   "content-type": "application/json",
@@ -205,9 +204,9 @@ describe("application HTTP server", () => {
             )
           )
         )
-        expect(invalidCompany.status).toBe(400)
+        expect(invalidAccount.status).toBe(400)
         expect(
-          yield* Effect.promise(() => invalidCompany.json())
+          yield* Effect.promise(() => invalidAccount.json())
         ).toMatchObject({
           details: {
             violations: [{ path: ["domain"], reason: "INVALID" }],
@@ -282,15 +281,30 @@ describe("application HTTP server", () => {
           })
 
         const ticket = yield* model.ticket.create({
-          subject: "HTTP to MCP escalation",
+          subject: "HTTP to MCP customer report",
         })
 
-        const escalation = yield* model.ticket.escalate({
-          id: ticket.id,
+        const issue = yield* model.issue.create({
+          title: ticket.subject,
+          links: { tickets: [ticket.id] },
         })
+
+        const expandedTicket = yield* model.ticket.get({
+          id: ticket.id,
+          expand: true,
+        })
+        expect(
+          expandedTicket.links.issues.items.map((item) => item.id)
+        ).toContain(issue.id)
+        const mcpExpanded = yield* callMcp("ticket.get", {
+          id: ticket.id,
+          expand: true,
+        })
+        expect(mcpExpanded.isError).not.toBe(true)
+        expect(mcpExpanded.structuredContent).toEqual(expandedTicket)
 
         const hydrated = yield* model.records.batchGet({
-          ids: [ticket.id, escalation.issue, "missing"],
+          ids: [ticket.id, issue.id, "missing"],
         })
         expect(hydrated.items.map((item) => item.objectType)).toEqual([
           "ticket",
@@ -315,7 +329,7 @@ describe("application HTTP server", () => {
                   params: {
                     name: "records.batchGet",
                     arguments: {
-                      ids: [ticket.id, escalation.issue, "missing"],
+                      ids: [ticket.id, issue.id, "missing"],
                     },
                   },
                 }),
@@ -369,8 +383,8 @@ describe("application HTTP server", () => {
                   jsonrpc: "2.0",
                   method: "tools/call",
                   params: {
-                    name: "ticket.escalate",
-                    arguments: { id: ticket.id },
+                    name: "issue.get",
+                    arguments: { id: issue.id },
                   },
                 }),
               })
@@ -400,13 +414,12 @@ describe("application HTTP server", () => {
         expect(repeatedPayload.result.isError).not.toBe(true)
         expect(
           repeatedPayload.result.content.some((item) =>
-            item.text?.includes(escalation.issue)
+            item.text?.includes(issue.id)
           )
         ).toBe(true)
-        expect((yield* model.escalation.list({})).totalSize).toBe(1)
         expect((yield* model.issue.list({})).totalSize).toBe(1)
 
-        const streamed = yield* model.events.stream("now").pipe(
+        const streamed = yield* model.changes.stream("now").pipe(
           Effect.flatMap((stream) =>
             Stream.runCollect(stream.pipe(Stream.take(1)))
           ),
@@ -417,7 +430,7 @@ describe("application HTTP server", () => {
         expect(streamed[0]?.data.reset).toBe(true)
         expect(streamed[0]?.id).toBe(streamed[0]?.data.nextCursor)
 
-        const initial = yield* model.company.list({ pageSize: 10 })
+        const initial = yield* model.account.list({ pageSize: 10 })
 
         expect(initial).toEqual({
           items: [],
@@ -425,7 +438,7 @@ describe("application HTTP server", () => {
           totalSize: 0,
         })
 
-        const created = yield* model.company.create({ name: "Northstar" })
+        const created = yield* model.account.create({ name: "Northstar" })
 
         expect(created).toMatchObject({
           lifecycleStage: "prospect",
@@ -434,76 +447,76 @@ describe("application HTTP server", () => {
         // MCP writes and HTTP reads must agree on canonical inputs, records, and Links.
         expect(
           yield* Effect.flip(
-            model.contact.create({
-              name: "Missing link target",
-              links: { companies: [RecordAlias("test:contract:missing")] },
+            model.activity.create({
+              title: "Missing link target",
+              links: { accounts: [RecordAlias("test:contract:missing")] },
             })
           )
         ).toMatchObject({ reason: "NOT_FOUND" })
-        const contractAlias = RecordAlias("test:contract:contact")
+        const contractAlias = RecordAlias("test:contract:activity")
         expect(
-          yield* callMcp("contact.create", {
-            name: "Contract contact",
+          yield* callMcp("activity.create", {
+            title: "Contract activity",
             aliases: [contractAlias],
-            links: { companies: [created.id] },
+            links: { accounts: [created.id] },
           })
         ).toMatchObject({
           structuredContent: {
-            name: "Contract contact",
-            objectType: "contact",
+            title: "Contract activity",
+            objectType: "activity",
           },
         })
         expect(
-          yield* model.contact.companies.list({ id: contractAlias })
+          yield* model.activity.accounts.list({ id: contractAlias })
         ).toMatchObject({ items: [{ id: created.id }], totalSize: 1 })
         expect(
-          yield* callMcp("contact.update", {
+          yield* callMcp("activity.update", {
             id: contractAlias,
-            name: "Updated contract contact",
-            links: { companies: { remove: [created.id] } },
+            title: "Updated contract activity",
+            links: { accounts: { remove: [created.id] } },
           })
         ).toMatchObject({
-          structuredContent: { name: "Updated contract contact" },
+          structuredContent: { title: "Updated contract activity" },
         })
-        expect(yield* model.contact.get({ id: contractAlias })).toMatchObject({
-          name: "Updated contract contact",
+        expect(yield* model.activity.get({ id: contractAlias })).toMatchObject({
+          title: "Updated contract activity",
         })
         expect(
-          yield* model.contact.companies.list({ id: contractAlias })
+          yield* model.activity.accounts.list({ id: contractAlias })
         ).toMatchObject({ items: [], totalSize: 0 })
         expect(
-          yield* callMcp("contact.list", {
+          yield* callMcp("activity.list", {
             filter: {
-              field: "name",
+              field: "title",
               operator: "eq",
-              value: "Updated contract contact",
+              value: "Updated contract activity",
             },
           })
         ).toMatchObject({
           structuredContent: {
-            items: [{ name: "Updated contract contact" }],
+            items: [{ title: "Updated contract activity" }],
             totalSize: 1,
           },
         })
         expect(
-          yield* callMcp("contact.batchDelete", {
+          yield* callMcp("activity.batchDelete", {
             ids: Array.from({ length: 101 }, () => contractAlias),
           })
         ).toMatchObject({ isError: true })
         expect(
-          yield* callMcp("contact.delete", { id: contractAlias })
+          yield* callMcp("activity.delete", { id: contractAlias })
         ).toMatchObject({ structuredContent: {} })
         expect(
-          yield* Effect.flip(model.contact.get({ id: contractAlias }))
+          yield* Effect.flip(model.activity.get({ id: contractAlias }))
         ).toMatchObject({ reason: "NOT_FOUND" })
 
         const search = yield* model.records.search({
           query: "north",
-          objectTypes: ["company"],
+          objectTypes: ["account"],
         })
 
         expect(search.hits).toMatchObject([
-          { id: created.id, objectType: "company", title: "Northstar" },
+          { id: created.id, objectType: "account", title: "Northstar" },
         ])
         expect(search.hasMore).toBe(false)
         const note = yield* model.note.create({
@@ -512,46 +525,33 @@ describe("application HTTP server", () => {
         })
 
         expect(yield* model.note.subjects.list({ id: note.id })).toMatchObject({
-          items: [{ id: created.id, objectType: "company" }],
+          items: [{ id: created.id, objectType: "account" }],
           nextPageToken: null,
           totalSize: 1,
         })
-        const contact = yield* model.contact.create({
-          links: { companies: [created.id], primaryCompany: [created.id] },
-          name: "Ada Lovelace",
+        const activity = yield* model.activity.create({
+          links: { accounts: [created.id] },
+          title: "Discovery meeting",
         })
 
-        expect(
-          yield* makeLinkRepository(Storage, database, testPageTokens).list({
-            direction: "reverse",
-            linkId: "contactCompanies",
-            pageSize: 10,
-            sourceId: created.id,
-          })
-        ).toMatchObject({
-          items: [{ id: contact.id, objectType: "contact" }],
-          nextPageToken: null,
-          totalSize: 1,
-        })
-        const linkedContacts = yield* model.company.contacts.list({
+        const linkedActivities = yield* model.account.activities.list({
           id: created.id,
         })
 
-        expect(linkedContacts.items).toMatchObject([
-          { id: contact.id, objectType: "contact" },
+        expect(linkedActivities.items).toMatchObject([
+          { id: activity.id, objectType: "activity" },
         ])
-        const secondContact = yield* model.contact.create({
-          name: "Grace Hopper",
+        const secondActivity = yield* model.activity.create({
+          title: "Technical review",
         })
 
-        const updated = yield* model.company.update({
-          etag: (yield* model.company.get({ id: created.id })).etag,
+        const updated = yield* model.account.update({
+          etag: (yield* model.account.get({ id: created.id })).etag,
           id: created.id,
           links: {
-            primaryContacts: { remove: [contact.id] },
-            contacts: {
-              add: [secondContact.id],
-              remove: [contact.id],
+            activities: {
+              add: [secondActivity.id],
+              remove: [activity.id],
             },
           },
           name: "Northstar Systems",
@@ -559,168 +559,164 @@ describe("application HTTP server", () => {
 
         expect(updated.name).toBe("Northstar Systems")
         expect(
-          yield* model.company.contacts.list({ id: created.id })
+          yield* model.account.activities.list({ id: created.id })
         ).toMatchObject({
-          items: [{ id: secondContact.id, objectType: "contact" }],
+          items: [{ id: secondActivity.id, objectType: "activity" }],
           nextPageToken: null,
           totalSize: 1,
         })
         expect(
           yield* Effect.flip(
-            model.company.update({
+            model.account.update({
               etag: updated.etag,
               id: created.id,
               links: {
-                contacts: {
-                  add: [RecordAlias("test:contact:missing")],
+                activities: {
+                  add: [RecordAlias("test:activity:missing")],
                 },
               },
               name: "This must roll back",
             })
           )
         ).toMatchObject({ reason: "NOT_FOUND" })
-        expect(yield* model.company.list({ pageSize: 10 })).toMatchObject({
+        expect(yield* model.account.list({ pageSize: 10 })).toMatchObject({
           items: [expect.objectContaining({ name: "Northstar Systems" })],
         })
-        yield* model.company.contacts.unlink({
+        yield* model.account.activities.unlink({
           id: created.id,
-          target: contact.id,
+          target: activity.id,
         })
 
         expect(
-          yield* model.company.contacts.list({ id: created.id })
+          yield* model.account.activities.list({ id: created.id })
         ).toMatchObject({
-          items: [{ id: secondContact.id, objectType: "contact" }],
+          items: [{ id: secondActivity.id, objectType: "activity" }],
           nextPageToken: null,
           totalSize: 1,
         })
-        yield* model.company.contacts.link({
+        yield* model.account.activities.link({
           id: created.id,
-          target: contact.id,
+          target: activity.id,
         })
 
-        yield* model.contact.primaryCompany.link({
-          id: contact.id,
+        yield* model.activity.accounts.link({
+          id: activity.id,
           target: created.id,
         })
 
         expect(
-          yield* model.contact.primaryCompany.list({ id: contact.id })
+          yield* model.activity.accounts.list({ id: activity.id })
         ).toMatchObject({
-          items: [{ id: created.id, objectType: "company" }],
+          items: [{ id: created.id, objectType: "account" }],
           nextPageToken: null,
           totalSize: 1,
         })
 
         yield* sql`update ${objects} set ${assignments(sql, objects, { createdAt: "2001-01-01T00:00:00.000123Z" })}
-          where ${objects.columns.id} = ${contact.id}`
+          where ${objects.columns.id} = ${activity.id}`
         yield* sql`update ${objects} set ${assignments(sql, objects, { createdAt: "2001-01-01T00:00:00.000456Z" })}
-          where ${objects.columns.id} = ${secondContact.id}`
-        const firstContactPage = yield* model.company.contacts.list({
+          where ${objects.columns.id} = ${secondActivity.id}`
+        const firstActivityPage = yield* model.account.activities.list({
           id: created.id,
           pageSize: 1,
         })
 
-        expect(firstContactPage.items.map(({ id }) => id)).toEqual([
-          secondContact.id,
+        expect(firstActivityPage.items.map(({ id }) => id)).toEqual([
+          secondActivity.id,
         ])
-        expect(firstContactPage.nextPageToken).not.toBeNull()
-        expect(firstContactPage.totalSize).toBe(2)
-        const nextContactPageToken =
-          firstContactPage.nextPageToken === null
-            ? yield* Effect.die("Expected another contact page")
-            : firstContactPage.nextPageToken
-        expect(nextContactPageToken.length).toBeLessThan(256)
-        const mismatchedLinkCursor = yield* makeLinkRepository(
-          Storage,
-          database,
-          testPageTokens
-        )
+        expect(firstActivityPage.nextPageToken).not.toBeNull()
+        expect(firstActivityPage.totalSize).toBe(2)
+        const nextActivityPageToken =
+          firstActivityPage.nextPageToken === null
+            ? yield* Effect.die("Expected another activity page")
+            : firstActivityPage.nextPageToken
+        expect(nextActivityPageToken.length).toBeLessThan(256)
+        const otherAccount = yield* model.account.create({
+          name: "Other account",
+        })
+        const mismatchedLinkCursor = yield* model.account.activities
           .list({
-            direction: "reverse",
-            linkId: "contactCompanies",
+            id: otherAccount.id,
             pageSize: 1,
-            pageToken: nextContactPageToken,
-            sourceId: ROOT_ID,
+            pageToken: nextActivityPageToken,
           })
           .pipe(Effect.flip)
         expect(mismatchedLinkCursor).toMatchObject({
-          _tag: "InvalidLinkListRequest",
+          status: "INVALID_ARGUMENT",
         })
-        const secondContactPage = yield* model.company.contacts.list({
+        const secondActivityPage = yield* model.account.activities.list({
           id: created.id,
           pageSize: 1,
-          pageToken: nextContactPageToken,
+          pageToken: nextActivityPageToken,
         })
 
-        expect(secondContactPage.items.map(({ id }) => id)).toEqual([
-          contact.id,
+        expect(secondActivityPage.items.map(({ id }) => id)).toEqual([
+          activity.id,
         ])
-        expect(secondContactPage.nextPageToken).toBeNull()
-        expect(secondContactPage.totalSize).toBe(2)
+        expect(secondActivityPage.nextPageToken).toBeNull()
+        expect(secondActivityPage.totalSize).toBe(2)
         yield* sql`update ${objects} set ${assignments(sql, objects, { createdAt: "2001-01-01T00:00:00.000123Z" })}
-          where ${objects.columns.id} = ${secondContact.id}`
-        const tiedFirst = yield* model.company.contacts.list({
+          where ${objects.columns.id} = ${secondActivity.id}`
+        const tiedFirst = yield* model.account.activities.list({
           id: created.id,
           pageSize: 1,
         })
 
-        const tiedIds = [contact.id, secondContact.id].sort((left, right) =>
+        const tiedIds = [activity.id, secondActivity.id].sort((left, right) =>
           left < right ? 1 : left > right ? -1 : 0
         )
         expect(tiedFirst.items.map(({ id }) => id)).toEqual(tiedIds.slice(0, 1))
         const tiedToken =
           tiedFirst.nextPageToken ??
           (yield* Effect.die("Expected tied timestamp page"))
-        const tiedSecond = yield* model.company.contacts.list({
+        const tiedSecond = yield* model.account.activities.list({
           id: created.id,
           pageSize: 1,
           pageToken: tiedToken,
         })
 
         expect(tiedSecond.items.map(({ id }) => id)).toEqual(tiedIds.slice(1))
-        const destination = yield* model.company.create({
+        const destination = yield* model.account.create({
           name: "Analytical Engine",
         })
 
-        yield* model.company.contacts.link({
+        yield* model.account.activities.link({
           id: destination.id,
-          target: contact.id,
+          target: activity.id,
         })
 
-        yield* model.company.contacts.link({
+        yield* model.account.activities.link({
           id: destination.id,
-          target: contact.id,
+          target: activity.id,
         })
 
-        yield* model.contact.update({
-          id: contact.id,
-          links: { primaryCompany: { replace: [destination.id] } },
+        yield* model.activity.update({
+          id: activity.id,
+          links: { accounts: [destination.id] },
         })
 
         expect(
-          yield* model.contact.primaryCompany.list({ id: contact.id })
+          yield* model.activity.accounts.list({ id: activity.id })
         ).toMatchObject({
-          items: [{ id: destination.id, objectType: "company" }],
+          items: [{ id: destination.id, objectType: "account" }],
           nextPageToken: null,
           totalSize: 1,
         })
         expect(
-          yield* model.company.contacts.list({ id: created.id })
+          yield* model.account.activities.list({ id: created.id })
         ).toMatchObject({
           items: expect.arrayContaining([
             expect.objectContaining({
-              id: secondContact.id,
-              objectType: "contact",
+              id: secondActivity.id,
+              objectType: "activity",
             }),
-            expect.objectContaining({ id: contact.id, objectType: "contact" }),
           ]),
           nextPageToken: null,
-          totalSize: 2,
+          totalSize: 1,
         })
 
-        yield* model.company.delete({
-          etag: (yield* model.company.get({ id: created.id })).etag,
+        yield* model.account.delete({
+          etag: (yield* model.account.get({ id: created.id })).etag,
           id: created.id,
         })
 
@@ -733,7 +729,7 @@ describe("application HTTP server", () => {
           runtime.runPromise(
             api.handle(
               new Request(
-                "http://company.test/api/v1/events?type=company.deleted",
+                "http://company.test/api/v1/events?type=account.deleted",
                 { headers: runtimeHeaders }
               )
             )
@@ -746,15 +742,15 @@ describe("application HTTP server", () => {
         )
         expect(eventPage.items).toMatchObject([
           {
-            type: "company.deleted",
-            subjects: [{ id: created.id, objectType: "company" }],
+            type: "account.deleted",
+            subjects: [{ id: created.id, objectType: "account" }],
           },
         ])
         const replay = yield* Effect.promise(() =>
           runtime.runPromise(
             api.handle(
               new Request(
-                `http://company.test/api/v1/events?type=company.deleted&cursor=${encodeURIComponent(eventPage.nextCursor)}`,
+                `http://company.test/api/v1/events?type=account.deleted&cursor=${encodeURIComponent(eventPage.nextCursor)}`,
                 { headers: runtimeHeaders }
               )
             )
@@ -788,39 +784,58 @@ describe("application HTTP server", () => {
           (cache) => Effect.sync(() => cache.dispose())
         )
         const observed = modelQuery(
-          ["company"],
+          ["account"],
           "get",
           { id: destination.id },
           (signal) =>
-            runClientEffect(model.company.get({ id: destination.id }), signal)
+            runClientEffect(model.account.get({ id: destination.id }), signal)
         )
         const readCached = () =>
           Effect.promise(() => secondBrowser.queryClient.fetchQuery(observed))
         let offline = false
-        const consumer = createEventConsumer({
+        const consumer = createChangeConsumer({
           read: (cursor, signal) =>
             offline
               ? Promise.reject(new Error("offline"))
-              : Effect.runPromise(model.events.list({ cursor }), { signal }),
+              : Effect.runPromise(model.changes.list({ cursor }), { signal }),
           apply: (page) =>
             page.reset
               ? secondBrowser.reset()
-              : secondBrowser.invalidate(
-                  page.items.flatMap((event) =>
-                    event.subjects.map((subject) => subject.objectType)
-                  )
-                ),
+              : secondBrowser.invalidate(page.changedTypes),
           isInvalidCursor: (error) => error instanceof InvalidEventCursor,
         })
         const signal = new AbortController().signal
         yield* Effect.promise(() => consumer.poll(signal))
         expect((yield* readCached()).name).toBe("Analytical Engine")
+        const changesHead = yield* model.changes.list({ cursor: "now" })
         offline = true
-        yield* model.company.update({
+        yield* model.account.update({
           id: destination.id,
           name: "Changed in the first browser",
         })
 
+        const changes = yield* model.changes.list({
+          cursor: changesHead.nextCursor,
+        })
+        expect(changes.changedTypes).toContain("account")
+        expect(Object.keys(changes).sort()).toEqual([
+          "changedTypes",
+          "hasMore",
+          "nextCursor",
+          "reset",
+        ])
+        const changesResponse = yield* Effect.promise(() =>
+          runtime.runPromise(
+            api.handle(
+              new Request("http://company.test/api/v1/changes?cursor=now", {
+                headers: runtimeHeaders,
+              })
+            )
+          )
+        )
+        expect(changesResponse.headers.get("cache-control")).toBe(
+          "private, no-store"
+        )
         expect((yield* readCached()).name).toBe("Analytical Engine")
         yield* Effect.promise(() =>
           expect(consumer.poll(signal)).rejects.toThrow("offline")

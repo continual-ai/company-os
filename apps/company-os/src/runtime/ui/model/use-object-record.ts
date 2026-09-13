@@ -1,6 +1,10 @@
 import { useQuery } from "@tanstack/react-query"
 import { useMemo } from "react"
 
+import {
+  isUnavailable,
+  queryErrorMessage,
+} from "#/runtime/client/query-errors.ts"
 import { objectActionAvailable } from "#/runtime/ui/model/object-actions.ts"
 import {
   clientFor,
@@ -15,44 +19,43 @@ export function useObjectRecord(object: ModelObject, recordId: string) {
 
   const client = useMemo(() => clientFor(runtime, object), [runtime, object])
   const query = useMemo(() => client.get({ id: recordId }), [client, recordId])
-  const record = useQuery(query)
+  const result = useQuery(query)
+  const record = isUnavailable(result.error) ? undefined : result.data
   const references = useObjectReferences(
     object,
-    record.data === undefined ? [] : [record.data]
+    record === undefined ? [] : [record]
   )
   return {
     canDelete:
+      record !== undefined &&
       client.batchDelete !== undefined &&
-      objectActionAvailable(runtime.model, object, "delete", record.data),
+      objectActionAvailable(runtime.model, object, "delete", record),
     can: (actionId: string) =>
-      objectActionAvailable(runtime.model, object, actionId, record.data),
-    error:
-      record.error === null
-        ? undefined
-        : record.error instanceof Error
-          ? record.error.message
-          : "The record could not be loaded.",
-    loading: record.isPending,
-    reload: () => record.refetch(),
-    record: record.data,
+      record !== undefined &&
+      objectActionAvailable(runtime.model, object, actionId, record),
+    error: queryErrorMessage(result.error),
+    isPending: result.isPending,
+    isFetching: result.isFetching,
+    reload: () => result.refetch(),
+    record,
     referenceLabels: references.labels,
     references: references.records,
     deleteRecord: async () => {
       if (
-        record.data === undefined ||
+        record === undefined ||
         client.batchDelete === undefined ||
-        !objectActionAvailable(runtime.model, object, "delete", record.data)
+        !objectActionAvailable(runtime.model, object, "delete", record)
       )
         throw new Error("Deletion is not available.")
-      await client.batchDelete({ ids: [record.data.id] })
+      await client.batchDelete({ ids: [record.id] })
     },
     update: async (changes: ObjectFormInput) => {
-      if (record.data === undefined || client.update === undefined)
+      if (record === undefined || client.update === undefined)
         throw new Error("Updates are not available.")
       await client.update({
-        etag: record.data.etag,
+        etag: record.etag,
         ...changes,
-        id: record.data.id,
+        id: record.id,
       })
     },
   } as const

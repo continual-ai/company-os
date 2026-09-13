@@ -7,15 +7,15 @@ import {
 } from "#/runtime/platform/model/index.ts"
 import { currentActorId } from "#/runtime/server/invocation-context.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
-import { makeObjectSeedRepository } from "#/runtime/server/model/object-repositories.ts"
-import { Database } from "#/runtime/server/storage/database.ts"
+import { makeObjectSeedRepository } from "#/runtime/server/storage/record-store.ts"
+import { SqlDatabase } from "#/runtime/server/storage/transactions.ts"
 
-/** Initialize once; later migrations preserve selections and leave newly installed optional modules off. */
+/** Initialize once; subsequent calls preserve selections and leave newly installed optional modules off. */
 export const seedModuleSettings = Effect.fn("platform.seedModuleSettings")(
   function* () {
     const context = yield* ModelContext
     const { model } = context
-    const { sql } = yield* Database
+    const { sql } = yield* SqlDatabase
     const repository = yield* makeObjectSeedRepository(ModuleSetting)
     const actor = yield* currentActorId
     const existing = yield* sql<{

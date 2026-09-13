@@ -29,6 +29,7 @@ import {
 } from "react"
 
 import { modelObjectLinkTraversals } from "#/runtime/model/definition/model.ts"
+import { relationshipFields } from "#/runtime/model/relationship-fields.ts"
 import {
   calendarDay,
   collectionDateWindow,
@@ -60,8 +61,10 @@ import {
   objectCollectionStateSearch,
   resolveObjectCollectionView,
 } from "#/runtime/ui/model/object-collection-view.ts"
-import type { ObjectCreateOptions } from "#/runtime/ui/model/object-create-context.ts"
-import { useObjectCreate } from "#/runtime/ui/model/object-create-context.ts"
+import {
+  type ObjectCreateOptions,
+  useObjectCreate,
+} from "#/runtime/ui/model/object-create-context.ts"
 import type { ObjectFormInput } from "#/runtime/ui/model/object-form.ts"
 import { ObjectRecordDialog } from "#/runtime/ui/model/object-record-dialog.tsx"
 import { ObjectRecordFeed } from "#/runtime/ui/model/object-record-feed.tsx"
@@ -147,7 +150,7 @@ export function ObjectCollection({
     filters,
     viewState.sorting,
     suppliedSource?.list,
-    { window }
+    { window, visibility: viewState.visibility }
   )
   const openObjectCreate = useObjectCreate()
   useRememberCollection(
@@ -171,6 +174,7 @@ export function ObjectCollection({
   const linkColumns = modelObjectLinkTraversals(runtime.model, object)
   const propertyIds = [
     ...Object.keys(object.properties),
+    ...relationshipFields(runtime.model, object).map(({ id }) => id),
     ...linkColumns.map(({ traversal }) => traversal.key),
   ]
   const configuredVisibility = Object.keys(viewState.visibility).length > 0
@@ -413,7 +417,7 @@ export function ObjectCollection({
           pagination={{
             hasNextPage: collection.hasNextPage,
             error: collection.error,
-            loading: collection.loading,
+            loading: collection.isFetching,
             onNextPage: collection.nextPage,
             totalSize: collection.totalSize,
           }}
@@ -477,7 +481,7 @@ export function ObjectCollection({
             <ObjectRecordFeed
               items={collection.records.map((record) => ({ object, record }))}
               label={object.pluralName}
-              loading={collection.loading}
+              loading={collection.isFetching}
               recordHref={recordHref}
               renderActions={renderActions}
             />
@@ -508,7 +512,7 @@ export function ObjectCollection({
                 onDateChange={(date) => updateState({ ...viewState, date })}
                 onUpdate={collection.update}
                 onCreate={create}
-                loading={collection.loading}
+                loading={collection.isFetching}
               />
             </Suspense>
           )}
@@ -516,7 +520,7 @@ export function ObjectCollection({
             loaded={collection.records.length}
             totalSize={collection.totalSize}
             hasNextPage={collection.hasNextPage}
-            loading={collection.loading}
+            loading={collection.isFetching}
             error={collection.error}
             onNextPage={collection.nextPage}
           />

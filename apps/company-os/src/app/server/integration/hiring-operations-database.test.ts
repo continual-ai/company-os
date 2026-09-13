@@ -58,12 +58,12 @@ application.test(
         name: "Maya Chen",
       })
       const submitted = yield* client.application.create({
-        links: { candidate: [candidate.id], job: [job.id] },
+        links: { candidate: candidate.id, job: job.id },
       })
       expect(submitted.stage).toBe("new")
       expect(
         yield* client.application
-          .create({ links: { job: [job.id], candidate: [candidate.id] } })
+          .create({ links: { job: job.id, candidate: candidate.id } })
           .pipe(Effect.flip)
       ).toMatchObject({ status: "ALREADY_EXISTS" })
       const moved = yield* client.application.update({

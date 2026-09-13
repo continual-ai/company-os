@@ -4,7 +4,7 @@ import { expect } from "vitest"
 import { Model } from "#/app.model.ts"
 import { applyMigrations } from "#/app/server/database/migrations.ts"
 import { resetDevelopmentSchema } from "#/app/server/database/reset.ts"
-import { Database } from "#/runtime/server/storage/database.ts"
+import { SqlDatabase } from "#/runtime/server/storage/transactions.ts"
 import { testDatabase } from "#/runtime/testing/database.ts"
 
 const fixture = testDatabase(Model)
@@ -13,7 +13,7 @@ fixture.test(
   "rebuilds disposable storage from the model without pretending to replay migrations",
   () =>
     Effect.gen(function* () {
-      const { sql } = yield* Database
+      const { sql } = yield* SqlDatabase
       yield* sql`create table discarded_local_data (id integer)`
       yield* sql`insert into discarded_local_data values (1)`
       yield* resetDevelopmentSchema("public")

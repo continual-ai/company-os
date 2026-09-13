@@ -5,13 +5,13 @@ import {
   type RecordId as RecordIdType,
 } from "#/runtime/model/index.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
-import { Database } from "#/runtime/server/storage/database.ts"
-import { insertValues } from "#/runtime/server/storage/index.ts"
 import {
+  insertValues,
   projection,
   type SelectionRow,
 } from "#/runtime/server/storage/index.ts"
 import { identityBindings } from "#/runtime/server/storage/infrastructure.ts"
+import { SqlDatabase } from "#/runtime/server/storage/transactions.ts"
 
 export type BoundIdentity =
   | { readonly id: RecordId<"serviceAccount">; readonly kind: "serviceAccount" }
@@ -19,7 +19,7 @@ export type BoundIdentity =
 
 const make = Effect.gen(function* () {
   const objects = (yield* ModelContext).storage.core.objects
-  const database = yield* Database
+  const database = yield* SqlDatabase
   const sql = database.sql
 
   const find = Effect.fn("@company/IdentityBindingRepository.find")(function* (

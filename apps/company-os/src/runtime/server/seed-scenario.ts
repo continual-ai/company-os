@@ -2,13 +2,13 @@ import { Effect } from "effect"
 
 import { systemInvocation } from "#/runtime/server/invocation-context.ts"
 import { CurrentInvocation } from "#/runtime/server/invocation.ts"
-import { Database } from "#/runtime/server/storage/database.ts"
-import { insertValues } from "#/runtime/server/storage/index.ts"
 import {
+  insertValues,
   tableProjection,
   type TableRow,
 } from "#/runtime/server/storage/index.ts"
 import { seedRuns } from "#/runtime/server/storage/infrastructure.ts"
+import { SqlDatabase } from "#/runtime/server/storage/transactions.ts"
 
 export interface SeedScenario<R = never> {
   readonly name: string
@@ -20,7 +20,7 @@ export interface SeedScenario<R = never> {
 export const runSeedScenario = Effect.fn("@company/runSeedScenario")(function* <
   R,
 >(scenario: SeedScenario<R>) {
-  const database = yield* Database
+  const database = yield* SqlDatabase
   const sql = database.sql
   const parameters = JSON.stringify(
     Object.entries(scenario.parameters).sort(([a], [b]) => a.localeCompare(b))

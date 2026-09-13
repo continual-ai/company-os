@@ -90,15 +90,16 @@ names. Composition rejects duplicate names and collisions with standard methods 
 
 `defineModuleServer` binds methods in the same shape as the client: `{ ticket: { escalate } }`,
 or `{ reconcile }` for a global operation. Actions run in a transaction. Queries run read-only and
-cannot call writers or Actions, or join a write transaction. Within an Action, read through `Records`
+cannot call writers or Actions, or join a write transaction. Within an Action, read through `Database.repository(Object)`
 in the same transaction. Business operations still own admission checks, validation, invariants,
 and external-effect failure handling; read-only execution does not sandbox external services.
 
 The browser-safe model owns definitions. `runtime/contract/operations.ts` resolves complete schemas
 once per composed model; HTTP/OpenAPI and MCP project that catalog. UI uses the active model and the
 shared semantic client/cache. Record and collection Actions get schema-driven forms unless replaced
-by a custom control. `useOperationClient(EscalateTicket)` provides typed TanStack options for custom
-controls; `OperationAction` can place a global Action on a module page. Queries provide typed cache
+by a custom control. `useClient(Model)` exposes every object and custom operation through
+`queryOptions(input)`, `mutationOptions()`, and collection `infiniteQueryOptions(input)` factories;
+pass these directly to TanStack Query hooks. `OperationAction` can place a global Action on a module page. Queries provide typed cache
 options for views, without inventing a visualization from their output schema.
 
 ### Relationships

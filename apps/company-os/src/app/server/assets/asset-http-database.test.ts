@@ -67,9 +67,20 @@ application.test(
       expect(complete.headers.get("x-model-changes")).toBe("asset")
       const unknownAction = yield* send(`assets/${reservation.asset}:unknown`)
       expect(unknownAction.status).toBe(404)
+      const leadAccountResponse = yield* send("accounts", {
+        name: "Foundation customer",
+      })
+      const leadContactResponse = yield* send("contacts", { name: "Buyer" })
+      const idSchema = Schema.Struct({ id: Schema.String })
+      const leadAccount = Schema.decodeUnknownSync(idSchema)(
+        yield* Effect.promise(() => leadAccountResponse.json())
+      )
+      const leadContact = Schema.decodeUnknownSync(idSchema)(
+        yield* Effect.promise(() => leadContactResponse.json())
+      )
       const leadResponse = yield* send("leads", {
         name: "Buyer",
-        companyName: "Foundation customer",
+        links: { account: leadAccount.id, contact: leadContact.id },
       })
       expect(leadResponse.status).toBe(201)
       const lead = Schema.decodeUnknownSync(
@@ -130,53 +141,54 @@ application.test(
       const conversion = yield* send(`leads/${lead.id}:convert`)
       expect(conversion.status).toBe(200)
       expect(conversion.headers.get("x-model-changes")?.split(",")).toEqual([
-        "company",
+        "account",
         "contact",
         "lead",
+        "opportunity",
       ])
       const repeat = yield* send(`leads/${lead.id}:convert`)
       expect(repeat.status).toBe(200)
       expect(repeat.headers.get("x-model-changes")).toBeNull()
-      const companyResponse = yield* send("companies", { name: "Cascade test" })
-      const company = Schema.decodeUnknownSync(
+      const companyResponse = yield* send("accounts", { name: "Cascade test" })
+      const account = Schema.decodeUnknownSync(
         Schema.Struct({ id: Schema.String })
       )(yield* Effect.promise(() => companyResponse.json()))
-      const contactResponse = yield* send("contacts", {
-        name: "Linked contact",
-        links: { companies: [company.id], primaryCompany: [company.id] },
+      const activityResponse = yield* send("activities", {
+        title: "Linked activity",
+        links: { accounts: [account.id] },
       })
-      const contact = Schema.decodeUnknownSync(
+      const activity = Schema.decodeUnknownSync(
         Schema.Struct({ id: Schema.String })
-      )(yield* Effect.promise(() => contactResponse.json()))
+      )(yield* Effect.promise(() => activityResponse.json()))
       const deleted = yield* api.handle(
-        new Request(`http://company.test/api/v1/companies/${company.id}`, {
+        new Request(`http://company.test/api/v1/accounts/${account.id}`, {
           method: "DELETE",
         })
       )
       expect(deleted.status).toBe(204)
-      expect(deleted.headers.get("x-model-changes")).toBe("company,contact")
+      expect(deleted.headers.get("x-model-changes")).toBe("account,activity")
       const remaining = yield* api.handle(
         new Request(
-          `http://company.test/api/v1/contacts/${contact.id}/primaryCompany`
+          `http://company.test/api/v1/activities/${activity.id}/accounts`
         )
       )
       expect(yield* Effect.promise(() => remaining.json())).toMatchObject({
         items: [],
         totalSize: 0,
       })
-      const batchCompanyResponse = yield* send("companies", {
+      const batchAccountResponse = yield* send("accounts", {
         name: "Batch cascade",
-        links: { contacts: [contact.id] },
+        links: { activities: [activity.id] },
       })
-      const batchCompany = Schema.decodeUnknownSync(
+      const batchAccount = Schema.decodeUnknownSync(
         Schema.Struct({ id: Schema.String })
-      )(yield* Effect.promise(() => batchCompanyResponse.json()))
-      const batchDeleted = yield* send("companies:batchDelete", {
-        ids: [batchCompany.id],
+      )(yield* Effect.promise(() => batchAccountResponse.json()))
+      const batchDeleted = yield* send("accounts:batchDelete", {
+        ids: [batchAccount.id],
       })
       expect(batchDeleted.status).toBe(204)
       expect(batchDeleted.headers.get("x-model-changes")).toBe(
-        "company,contact"
+        "account,activity"
       )
     })
 )

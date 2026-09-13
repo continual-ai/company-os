@@ -3,12 +3,12 @@ import { randomUUID } from "node:crypto"
 import { DateTime, Effect, Schema } from "effect"
 
 import { toEffectSchema } from "#/runtime/contract/schema.ts"
-import { modelTypeAccepts } from "#/runtime/model/index.ts"
-import type {
-  AnySchema,
-  InferSchema,
-  ObjectType,
-  RecordId,
+import {
+  modelTypeAccepts,
+  type AnySchema,
+  type InferSchema,
+  type ObjectType,
+  type RecordId,
 } from "#/runtime/model/index.ts"
 import {
   stageEvent,
@@ -17,16 +17,16 @@ import {
 import { eventReferences } from "#/runtime/server/events/event-references.ts"
 import { CurrentInvocation } from "#/runtime/server/invocation.ts"
 import type { ModelContext } from "#/runtime/server/model-context.ts"
-import type { Database } from "#/runtime/server/storage/database.ts"
 import {
   projection,
   type SelectionRow,
   inValues,
 } from "#/runtime/server/storage/index.ts"
+import type { SqlDatabase } from "#/runtime/server/storage/transactions.ts"
 
 /** Shared by standard writers and EventJournal; stages into the caller's open transaction and attributes facts to its invocation. */
 export function makeEventWriter(
-  database: typeof Database.Service,
+  database: typeof SqlDatabase.Service,
   context: typeof ModelContext.Service
 ) {
   const { model: Model, eventFactSchema } = context

@@ -57,8 +57,8 @@ Start with one process you want to improve. For example:
 > Adapt Company OS to our support process. Set response deadlines based on ticket priority,
 > flag overdue tickets, and show the engineering work blocking each resolution.
 
-Try it, refine it, and expand from there. Included sales, support, engineering, hiring, and
-marketing modules give you a starting point. Every model, workflow, and screen is yours to change.
+Try it, refine it, and expand from there. Shared CRM, sales, marketing, service, product, engineering, and hiring
+modules give you a starting point. Every model, workflow, and screen is yours to change.
 
 ## Put your agents to work
 
@@ -71,8 +71,8 @@ With the demo data, try:
 > Find Northstar Robotics' open support tickets. Check the linked engineering issues and
 > customer replies, then add a note summarizing what is blocking each ticket.
 
-The notes appear on the tickets. Ask the agent to **escalate a ticket to engineering**, and
-Company OS creates and links the issue through the same business rules used by the app.
+The notes appear on the tickets. Ask the agent to **create an issue linked to the affected
+tickets and opportunities**. Record creation and relationship changes commit together.
 
 Company OS provides the data and operations; your chosen agent runtime handles reasoning,
 scheduling, and execution.
@@ -85,10 +85,10 @@ happen**. It gives your software and agents a shared understanding of the busine
 | Concept        | Purpose                                         | Example                                   |
 | -------------- | ----------------------------------------------- | ----------------------------------------- |
 | **Objects**    | Business records and their properties           | Customers, tickets, projects              |
-| **Links**      | Relationships you can follow in both directions | A ticket's company; a company's tickets   |
+| **Links**      | Relationships you can follow in both directions | A ticket's account; an account's tickets  |
 | **Interfaces** | Capabilities shared across record types         | Customers and tickets can both have notes |
 | **Queries**    | Read records or calculate results               | Summarize the sales pipeline              |
-| **Actions**    | Change records or perform work                  | Escalate a ticket to engineering          |
+| **Actions**    | Change records or perform work                  | Convert a lead into an opportunity        |
 
 One model drives storage, validation, search, standard pages, and APIs. Extend it, and the
 pages and APIs follow. Business rules apply whether work comes from a person, an integration,
@@ -142,21 +142,22 @@ Register definitions in a module and compose it in
 the Markdown field gets an editor automatically.
 
 Objects come with standard read, create, update, and delete operations. Add business-specific
-operations in their `queries` and `actions` fields, or disable a standard Action with `false`.
-See the [escalation Action](apps/company-os/src/modules/support-engineering/model/index.ts)
-and [pipeline Query](apps/company-os/src/modules/sales/model/deal.ts) for working examples.
+operations with `defineQuery` and `defineAction`, then register them in the owning module.
+Disable a standard Action with `false` in the object’s `actions` configuration.
+See the [lead conversion Action](apps/company-os/src/modules/sales/model/lead.ts)
+and [pipeline Query](apps/company-os/src/modules/sales/model/opportunity.ts) for working examples.
 
 ### One API for your software and agents
 
 The TypeScript client, HTTP API, and MCP tools expose the same object operations and business rules.
 HTTP paths below are relative to `/api/v1`.
 
-| TypeScript                        | HTTP                          | MCP                    |
-| --------------------------------- | ----------------------------- | ---------------------- |
-| `client.lead.list()`              | `GET /leads`                  | `lead.list`            |
-| `client.lead.create(input)`       | `POST /leads`                 | `lead.create`          |
-| `client.lead.convert({ id })`     | `POST /leads/{id}:convert`    | `lead.convert`         |
-| `client.deal.pipelineSummary({})` | `POST /deals:pipelineSummary` | `deal.pipelineSummary` |
+| TypeScript                               | HTTP                                  | MCP                           |
+| ---------------------------------------- | ------------------------------------- | ----------------------------- |
+| `client.lead.list()`                     | `GET /leads`                          | `lead.list`                   |
+| `client.lead.create(input)`              | `POST /leads`                         | `lead.create`                 |
+| `client.lead.convert({ id })`            | `POST /leads/{id}:convert`            | `lead.convert`                |
+| `client.opportunity.pipelineSummary({})` | `POST /opportunities:pipelineSummary` | `opportunity.pipelineSummary` |
 
 Explore the contracts in **Developer Center → API**. OpenAPI is at `/api/openapi`;
 MCP is at `/api/mcp` and requires a client with Streamable HTTP support and credentials
@@ -190,13 +191,13 @@ pnpm db:seed --scenario demo
 pnpm dev
 ```
 
-Open **[localhost:3002](http://localhost:3002)** and try **Support → Tickets**.
+Open **[localhost:3002](http://localhost:3002)** and try **Service → Tickets**.
 Local development signs you in automatically. Skip the seed command to start without demo data.
 
 The default database is `postgresql://localhost:5432/company_os`. Configure overrides in
 `.env.local` using [`.env.example`](apps/company-os/.env.example). See the
 [development guide](docs/development.md) for making changes and the
-[deployment guide](docs/deployment.md) for retained data, migrations, and production setup.
+[deployment guide](docs/deployment.md) for database initialization, retained data, and production setup.
 
 ---
 

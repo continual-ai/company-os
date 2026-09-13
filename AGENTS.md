@@ -19,7 +19,7 @@ Revisit compatibility and migration guarantees before v1.
 - `apps/company-os/src/modules/<name>/{model,server,ui,seeds}` owns business capabilities; omit unused surfaces.
 - `src/runtime` owns the kernel; `src/app` owns the shell. Place business changes in the owning module;
   create a module for a new capability. Change the kernel when the required behavior belongs there.
-- `app.model.ts` composes and migrates every module. Platform > Modules stores activation in the database;
+- `app.model.ts` composes every module for storage. Platform > Modules stores activation in the database;
   UI, HTTP, and MCP expose the active model. Disabling hides operations without deleting data. Identities,
   Assets, and Platform stay enabled. Enabled objects get internal pages and navigation automatically, after
   project admission. Register only custom server/UI contributions in `app.server.ts` and `app.ui.ts`.
@@ -42,14 +42,16 @@ Revisit compatibility and migration guarantees before v1.
 - Keep one authority per fact. Use Links for all relationships, with named forward/reverse
   traversals and min/max bounds. Ownership is explicit `onDelete: "cascade"` on a traversal;
   ordinary unlinking never deletes records. Use Objects for relationships with a lifecycle,
-  attributes, or business rules. Never encode the same relationship twice.
+  attributes, or business rules. Never encode the same relationship twice. Do not add a universal
+  parent or implicit authorization inheritance to business records; revisit authorization as a separate design.
 - Prefer standard record CRUD and model constraints. Add a custom Action only when they cannot
   express the required behavior correctly. Storage, APIs, MCP, and pages derive from the model.
   The host verifies access to this project; all admitted users and service accounts share full business access.
   Keep User and ServiceAccount as attribution identities, with Actor for audit references. Do not add
   local roles, groups, scopes, or record permission filters. Custom Effect v4 operations require project
-  admission and own invariants and transactions. Writers validate and attribute. Keep currencies separate and use PostgreSQL numeric arithmetic for money.
-- Use existing model services and `Database.sql` with `ModelContext.table`, never a second schema.
+  admission through OperationExecutor, which owns Action transactions and read-only Query execution.
+  Repositories validate, attribute, and commit record and Link writes together. Keep currencies separate and use PostgreSQL numeric arithmetic for money.
+- Use `Database.repository(Object)` for reads and writes, or `Database.sql` with `Database.table(Object)`, never a second schema.
   Append custom facts inside the transaction; keep a kernel change and its module fallout together.
 - UI uses the shared semantic client/cache, TanStack Form, Effect Schema, and `@company/ui` primitives
   and tokens. Add primitives with `pnpm ui:add`. Extend module-owned views/pages; shared routes and

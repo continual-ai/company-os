@@ -1,8 +1,10 @@
 import type { UseMutationOptions } from "@tanstack/react-query"
 
-import { modelData } from "#/runtime/client/data-client.ts"
+import { modelData } from "#/runtime/client/model-cache.ts"
 import {
   executeMutation,
+  modelQuery,
+  modelList,
   type ModelQueryOptions,
 } from "#/runtime/client/model-query-client.ts"
 import {
@@ -15,8 +17,11 @@ import {
   type Page,
   type PropertyDefinition,
 } from "#/runtime/model/index.ts"
-import type { ObjectTableRecord } from "#/runtime/ui/model/object-table/object-table-config.ts"
-import { objectTableValueText } from "#/runtime/ui/model/object-table/object-table-config.ts"
+import { linkPreview } from "#/runtime/model/record-links.ts"
+import {
+  type ObjectTableRecord,
+  objectTableValueText,
+} from "#/runtime/ui/model/object-table/object-table-config.ts"
 import { type ModelUiRuntime } from "#/runtime/ui/model/runtime-context.tsx"
 
 export type ModelObject = ObjectType
@@ -34,7 +39,14 @@ export interface ClientRecord {
   readonly links?: Readonly<
     Record<
       string,
-      { readonly ids: ReadonlyArray<string>; readonly totalSize: number }
+      | string
+      | ClientRecord
+      | {
+          readonly items: ReadonlyArray<ClientRecord>
+          readonly totalSize: number
+        }
+      | null
+      | { readonly ids: ReadonlyArray<string>; readonly totalSize: number }
     >
   >
   readonly etag: string
@@ -67,9 +79,7 @@ export interface DynamicObjectClient {
     input: Readonly<Record<string, ClientValue | undefined>>
   ) => Promise<ClientRecord>
   readonly get: (input: DynamicRecordInput) => ModelQueryOptions<ClientRecord>
-  readonly list: (
-    request?: ListRequest
-  ) => ModelQueryOptions<Page<ClientRecord>>
+  readonly list: ReturnType<typeof modelList<ClientRecord>>
   readonly update?: (
     input: Readonly<Record<string, ClientValue | undefined>> & {
       readonly etag?: string
@@ -80,9 +90,9 @@ export interface DynamicObjectClient {
 
 export interface DynamicLinkClient {
   readonly link?: (input: DynamicLinkMutationInput) => Promise<void>
-  readonly list: (
-    input: DynamicLinkListInput
-  ) => ModelQueryOptions<Page<ClientRecord & ObjectRef>>
+  readonly list: ReturnType<
+    typeof modelList<ClientRecord & ObjectRef, unknown, DynamicLinkListInput>
+  >
   readonly unlink?: (input: DynamicLinkMutationInput) => Promise<void>
 }
 
@@ -115,9 +125,10 @@ type DynamicOptions =
 
 function operation(
   group: object,
-  name: string
+  name: string,
+  factory: "queryOptions" | "mutationOptions" = "queryOptions"
 ): (input?: unknown) => DynamicOptions {
-  const value = Reflect.get(group, name)
+  const value = Reflect.get(Reflect.get(group, name), factory)
   if (typeof value !== "function")
     throw new Error(`Missing model operation ${name}`)
   // SAFETY: only the generated renderer erases concrete object types from the closed model.
@@ -150,25 +161,36 @@ export function clientFor(
   const list = operation(group, "list")
   const batchGet = operation(group, "batchGet")
   return {
-    get: (input) => queryMethod(get(input)),
-    list: (input = {}) => queryMethod(list(input)),
+    get: (input) => queryMethod(get({ expand: true, ...input })),
+    list: modelList((input: ListRequest) =>
+      queryMethod<Page<ClientRecord>>(list(input))
+    ),
     batchGet: (input) => queryMethod(batchGet(input)),
     ...("create" in object.actions
       ? {
           create: (input: ModelClientRequest) =>
-            mutationMethod<ClientRecord>(operation(group, "create")(), input),
+            mutationMethod<ClientRecord>(
+              operation(group, "create", "mutationOptions")(),
+              input
+            ),
         }
       : {}),
     ...("update" in object.actions
       ? {
           update: (input: ModelClientRequest) =>
-            mutationMethod<ClientRecord>(operation(group, "update")(), input),
+            mutationMethod<ClientRecord>(
+              operation(group, "update", "mutationOptions")(),
+              input
+            ),
         }
       : {}),
     ...("batchDelete" in object.actions
       ? {
           batchDelete: (input: ModelClientRequest) =>
-            mutationMethod<void>(operation(group, "batchDelete")(), input),
+            mutationMethod<void>(
+              operation(group, "batchDelete", "mutationOptions")(),
+              input
+            ),
         }
       : {}),
   }
@@ -178,24 +200,91 @@ export function clientFor(
 export function linkClientFor(
   runtime: ModelUiRuntime,
   object: ModelObject,
-  traversal: ModelLinkTraversal
+  traversal: ModelLinkTraversal,
+  source: ClientRecord
 ): DynamicLinkClient {
   const group = Reflect.get(
     Reflect.get(runtime.data, object.id),
     traversal.traversal.key
   )
+  if (traversal.traversal.max === 1) {
+    const objectClient = clientFor(runtime, object)
+    const assign = async (
+      input: DynamicLinkMutationInput,
+      target: string | null
+    ) => {
+      const record = source
+      if (!objectClient.update)
+        throw new Error("This relationship is read-only.")
+      if (
+        target === null &&
+        linkPreview(record.links?.[traversal.traversal.key]).ids[0] !==
+          input.target
+      )
+        throw new Error(
+          "This relationship changed. Refresh before clearing it."
+        )
+      await objectClient.update({
+        id: record.id,
+        etag: record.etag,
+        links: { [traversal.traversal.key]: target },
+      })
+    }
+    return {
+      list: modelList(({ id }: DynamicLinkListInput) => {
+        const query = queryMethod<{ item: (ClientRecord & ObjectRef) | null }>(
+          operation(group, "get")({ id })
+        )
+        return modelQuery<Page<ClientRecord & ObjectRef>>(
+          query.meta.objectTypes,
+          `${traversal.traversal.key}.page`,
+          { id },
+          async (signal) => {
+            const { item } = await query.queryFn({ signal })
+            return {
+              items: item === null ? [] : [item],
+              nextPageToken: null,
+              totalSize: item === null ? 0 : 1,
+            }
+          }
+        )
+      }),
+      ...(traversal.writable && objectClient.update
+        ? {
+            link: (input: DynamicLinkMutationInput) =>
+              assign(input, input.target),
+            ...(traversal.traversal.min === 0
+              ? {
+                  unlink: (input: DynamicLinkMutationInput) =>
+                    assign(input, null),
+                }
+              : {}),
+          }
+        : {}),
+    }
+  }
   return {
-    list: (input) => queryMethod(operation(group, "list")(input)),
+    list: modelList((input: DynamicLinkListInput) =>
+      queryMethod<Page<ClientRecord & ObjectRef>>(
+        operation(group, "list")(input)
+      )
+    ),
     ...(Object.hasOwn(group, "link")
       ? {
           link: (input: DynamicLinkMutationInput) =>
-            mutationMethod<void>(operation(group, "link")(), input),
+            mutationMethod<void>(
+              operation(group, "link", "mutationOptions")(),
+              input
+            ),
         }
       : {}),
     ...(Object.hasOwn(group, "unlink")
       ? {
           unlink: (input: DynamicLinkMutationInput) =>
-            mutationMethod<void>(operation(group, "unlink")(), input),
+            mutationMethod<void>(
+              operation(group, "unlink", "mutationOptions")(),
+              input
+            ),
         }
       : {}),
   }
@@ -217,11 +306,12 @@ export function tableRecord(
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const projected = {
     id: record.id,
+    label: record.label,
     systemManaged: record.systemManaged === true,
     ...Object.fromEntries(
       Object.entries(record.links ?? {}).flatMap(([key, value]) => [
-        [key, value.ids],
-        [`${key}TotalSize`, value.totalSize],
+        [key, linkPreview(value).ids],
+        [`${key}TotalSize`, linkPreview(value).totalSize],
       ])
     ),
     ...Object.fromEntries(
@@ -235,8 +325,11 @@ export function tableRecord(
 }
 
 export function recordLabel(object: ModelObject, record: ClientRecord): string {
-  const projected = tableRecord(object, record)
-  return objectTableValueText(projected[object.display.title]) || record.id
+  if (typeof record.label === "string") return record.label
+  return (
+    objectTableValueText(tableRecord(object, record)[object.display.title]) ||
+    record.id
+  )
 }
 
 export function recordObjectTypes(
@@ -279,4 +372,22 @@ export function recordBatchFor(
   return queryMethod(
     operation(Reflect.get(runtime.data, "records"), "batchGet")({ ids })
   )
+}
+
+/** Only the generated Action form selects an operation dynamically. */
+export function actionOptions(
+  runtime: ModelUiRuntime,
+  action: { readonly objectType?: string | undefined; readonly id: string }
+) {
+  const group =
+    action.objectType === undefined
+      ? runtime.data
+      : Reflect.get(runtime.data, action.objectType)
+  // SAFETY: the generated form supplies the installed Action and validates input against its schema.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  return operation(group, action.id, "mutationOptions")() as UseMutationOptions<
+    unknown,
+    unknown,
+    Readonly<Record<string, unknown>>
+  >
 }

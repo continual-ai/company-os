@@ -1,14 +1,14 @@
+import {
+  CampaignMember,
+  CampaignMemberCampaign,
+  CampaignMemberContact,
+} from "#/modules/marketing/model/campaign-member.ts"
 import { Campaign, CampaignOwner } from "#/modules/marketing/model/campaign.ts"
 import {
   Content,
   ContentCampaign,
   ContentOwner,
 } from "#/modules/marketing/model/content.ts"
-import {
-  Enrollment,
-  EnrollmentCampaign,
-  EnrollmentContact,
-} from "#/modules/marketing/model/enrollment.ts"
 import {
   Outreach,
   OutreachCampaign,
@@ -26,17 +26,17 @@ export const MarketingModule = defineModule({
   description: "Plan campaigns, content, audiences, and outreach.",
   id: "marketing",
   name: "Marketing",
-  objects: [Campaign, Content, Enrollment, Outreach],
+  objects: [Campaign, Content, CampaignMember, Outreach],
   links: [
     CampaignOwner,
     ContentCampaign,
     ContentOwner,
-    EnrollmentCampaign,
-    EnrollmentContact,
+    CampaignMemberCampaign,
+    CampaignMemberContact,
     OutreachCampaign,
     OutreachContact,
     OutreachOwner,
   ],
 })
 
-export { Campaign, Content, Enrollment, Outreach }
+export { Campaign, Content, CampaignMember, Outreach }

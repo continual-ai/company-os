@@ -12,11 +12,10 @@ import { useQueries } from "@tanstack/react-query"
 import { CheckIcon, ChevronDownIcon, XIcon } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 
-import { modelTypeAccepts, type ListRequest } from "#/runtime/model/index.ts"
-import { ROOT_ID } from "#/runtime/model/system-records.ts"
+import type { ListRequest } from "#/runtime/model/index.ts"
+import { queryProperty } from "#/runtime/model/query-fields.ts"
 import {
   clientFor,
-  modelObjectProperty,
   recordLabel,
   recordObjectTypes,
   tableRecord,
@@ -55,8 +54,8 @@ function findOptions(
 ) {
   const normalizedQuery = query.trim()
   return recordObjectTypes(runtime, typeId).map((object) => {
-    const title = object.display.title
-    const titleProperty = modelObjectProperty(object, title)
+    const title = "label"
+    const titleProperty = queryProperty(object, title)
     const titleFilter =
       normalizedQuery !== "" && titleProperty?.kind === "string"
         ? {
@@ -96,7 +95,10 @@ function findOptions(
     if (sort !== undefined) {
       request.sort = sort
     }
-    return { object, query: clientFor(runtime, object).list(request) }
+    return {
+      object,
+      query: clientFor(runtime, object).list.queryOptions(request),
+    }
   })
 }
 
@@ -168,8 +170,6 @@ export function ObjectReferenceSelect({
       presentation: { object, record: tableRecord(object, record) },
     }))
   })
-  if (modelTypeAccepts(runtime.model, runtime.model.root.id, typeId))
-    options.unshift({ id: ROOT_ID, label: runtime.model.root.name })
   const loading =
     results.some((result) => result.isFetching) || search !== query
   const cause = results.find((result) => result.error !== null)?.error

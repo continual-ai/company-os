@@ -1,6 +1,5 @@
 import { describe, expect, expectTypeOf, it } from "vitest"
 
-import { Root } from "#/runtime/model/core/root.ts"
 import type {
   ActionInput,
   ActionOutput,
@@ -215,7 +214,7 @@ describe("model definitions", () => {
       name: "Test",
     })
     expect(Object.keys(model.objects)).toEqual(["contact"])
-    expect(model.root).toEqual(Root)
+    expect(model).not.toHaveProperty("root")
     expect(model.objects.contact.uniqueBy).toEqual({ name: ["name"] })
     expect(Object.keys(model.actions)).toEqual([
       "contact.create",
@@ -382,20 +381,9 @@ describe("model definitions", () => {
     })
     const ProfileAccount = defineLink({
       id: "profileAccount",
-      from: Profile,
-      to: Account,
-      forward: {
-        min: 1,
-        max: 1,
-        key: "account",
-        label: "Account",
-      },
       name: "Profile account",
-      reverse: {
-        min: 0,
-        key: "profiles",
-        label: "Profiles",
-      },
+      from: { type: Profile, min: 1, max: 1, key: "account", label: "Account" },
+      to: { type: Account, min: 0, key: "profiles", label: "Profiles" },
     })
 
     expect(() =>
@@ -439,36 +427,26 @@ describe("model definitions", () => {
       display: { title: "name" },
     })
     const ContactCompanies = defineLink({
-      from: Contact,
-      to: Company,
       id: "contactCompanies",
       name: "Contact companies",
-      forward: {
-        min: 0,
-        key: "companies",
-        label: "Companies",
-      },
-      reverse: {
-        min: 0,
-        key: "contacts",
-        label: "Contacts",
-      },
+      from: { type: Contact, min: 0, key: "companies", label: "Companies" },
+      to: { type: Company, min: 0, key: "contacts", label: "Contacts" },
     })
-    const PrimaryCompany = defineLink({
-      id: "contactPrimaryCompany",
-      subsetOf: ContactCompanies,
-      name: "Primary company",
-      from: Contact,
-      to: Company,
-      forward: {
+    const BillingCompany = defineLink({
+      id: "contactBillingCompany",
+
+      name: "Billing company",
+      from: {
+        type: Contact,
         min: 0,
         max: 1,
-        key: "primaryCompany",
-        label: "Primary company",
+        key: "billingCompany",
+        label: "Billing company",
       },
-      reverse: {
+      to: {
+        type: Company,
         min: 0,
-        key: "primaryContacts",
+        key: "billingContacts",
         label: "Primary contacts",
       },
     })
@@ -487,7 +465,7 @@ describe("model definitions", () => {
     const roles = defineModule({
       id: "roles",
       name: "Roles",
-      links: [PrimaryCompany],
+      links: [BillingCompany],
       objects: [],
     })
     const model = defineModel({
@@ -502,7 +480,7 @@ describe("model definitions", () => {
       "Module 'companies' depends on module 'contacts' (link 'contactCompanies' references 'contact'), which is not enabled."
     )
     expect(() => enableModules(model, ["contacts", "roles"])).toThrow(
-      "Module 'roles' depends on module 'companies' (link 'contactPrimaryCompany' references 'company'), which is not enabled."
+      "Module 'roles' depends on module 'companies' (link 'contactBillingCompany' references 'company'), which is not enabled."
     )
   })
 
@@ -518,10 +496,8 @@ describe("model definitions", () => {
     const Owner = defineLink({
       id: "contactCompany",
       name: "Contact company",
-      from: Contact,
-      to: Company,
-      forward: { key: "company", label: "Company", max: 1 },
-      reverse: { key: "contacts", label: "Contacts" },
+      from: { type: Contact, key: "company", label: "Company", max: 1 },
+      to: { type: Company, key: "contacts", label: "Contacts" },
     })
     expect(() =>
       defineTestModel({
@@ -572,19 +548,14 @@ describe("model definitions", () => {
     const Contacts = defineLink({
       id: "companyContacts",
       name: "Company contacts",
-      from: CompanyContact,
-      to: Company,
-      forward: {
+      from: {
+        type: CompanyContact,
         key: "company",
         min: 1,
         max: 1,
         label: "Company",
       },
-      reverse: {
-        key: "contacts",
-        min: 0,
-        label: "Contacts",
-      },
+      to: { type: Company, key: "contacts", min: 0, label: "Contacts" },
     })
 
     const model = defineTestModel({
@@ -651,18 +622,8 @@ describe("model definitions", () => {
     const ConflictingLink = defineLink({
       id: "conflictingLink",
       name: "Conflicting link",
-      from: Contact,
-      to: Account,
-      forward: {
-        min: 0,
-        key: "get",
-        label: "Accounts",
-      },
-      reverse: {
-        min: 0,
-        key: "contacts",
-        label: "Contacts",
-      },
+      from: { type: Contact, min: 0, key: "get", label: "Accounts" },
+      to: { type: Account, min: 0, key: "contacts", label: "Contacts" },
     })
     expect(() =>
       defineTestModel({
@@ -695,19 +656,8 @@ describe("model definitions", () => {
     const CompanyEmployees = defineLink({
       id: "companyEmployees",
       name: "Company employees",
-      from: Company,
-      to: Employee,
-      forward: {
-        key: "employees",
-        min: 0,
-        label: "Employees",
-      },
-      reverse: {
-        key: "company",
-        min: 1,
-        max: 1,
-        label: "Company",
-      },
+      from: { type: Company, key: "employees", min: 0, label: "Employees" },
+      to: { type: Employee, key: "company", min: 1, max: 1, label: "Company" },
     })
     const model = defineTestModel({
       interfaces: [TestActor],
@@ -722,10 +672,14 @@ describe("model definitions", () => {
       defineLink({
         id: "invalidBounds",
         name: "Invalid bounds",
-        from: Company,
-        to: Employee,
-        forward: { key: "employees", label: "Employees", min: 2, max: 1 },
-        reverse: { key: "company", label: "Company" },
+        from: {
+          type: Company,
+          key: "employees",
+          label: "Employees",
+          min: 2,
+          max: 1,
+        },
+        to: { type: Employee, key: "company", label: "Company" },
       })
     ).toThrow(/bounds/)
   })
@@ -749,19 +703,8 @@ describe("model definitions", () => {
     const InvalidOwner = defineLink({
       id: "invalidOwner",
       name: "Invalid owner",
-      from: Party,
-      to: Activity,
-      forward: {
-        key: "activity",
-        min: 0,
-        max: 1,
-        label: "Activity",
-      },
-      reverse: {
-        key: "parties",
-        min: 0,
-        label: "Parties",
-      },
+      from: { type: Party, key: "activity", min: 0, max: 1, label: "Activity" },
+      to: { type: Activity, key: "parties", min: 0, label: "Parties" },
     })
 
     const model = defineTestModel({
@@ -878,10 +821,8 @@ describe("relationship names", () => {
     const Recipient = defineLink({
       id: "messageRecipient",
       name: "Message recipient",
-      from: Message,
-      to: Contact,
-      forward: { key: "recipient", label: "Recipient", max: 1 },
-      reverse: { key, label: "Messages" },
+      from: { type: Message, key: "recipient", label: "Recipient", max: 1 },
+      to: { type: Contact, key, label: "Messages" },
     })
     return defineTestModel({
       interfaces: [TestActor],
@@ -921,17 +862,11 @@ describe("root definitions", () => {
       properties: { name: schema.string() },
     })
     const PermissionScope = defineLink({
-      from: Permission,
-      to: WorkspaceMarker,
       id: "permissionScope",
-      forward: {
-        min: 1,
-        max: 1,
-        key: "scope",
-        label: "Scope",
-      },
       name: "Permission scope",
-      reverse: {
+      from: { type: Permission, min: 1, max: 1, key: "scope", label: "Scope" },
+      to: {
+        type: WorkspaceMarker,
         min: 0,
         key: "permissions",
         label: "Permissions",
@@ -946,18 +881,17 @@ describe("root definitions", () => {
 
     expect(model.interfaces.workspaceMarker.properties).toEqual({})
     expect(model.interfaces.workspaceMarker.display).toBeUndefined()
-    expect(model.root.interfaces).toEqual({})
     expect(model.objects.permission.properties).not.toHaveProperty("scope")
     expect(
       modelObjectLinkTraversals(model, model.objects.permission)[0]?.target.from
         .typeId
     ).toBe("workspaceMarker")
-    expect(modelTypeAccepts(model, "root", "workspaceMarker")).toBe(false)
+    expect(modelTypeAccepts(model, "unknown", "workspaceMarker")).toBe(false)
     expect(modelTypeAccepts(model, "workspace", "workspaceMarker")).toBe(true)
     expect(modelTypeAccepts(model, "permission", "workspaceMarker")).toBe(false)
   })
 
-  it("reserves the model-defined root ID within its type registry", () => {
+  it("allows an ordinary object to use the former root name", () => {
     const OtherRoot = defineObject({
       id: "root",
       collection: "roots",
@@ -967,14 +901,13 @@ describe("root definitions", () => {
       display: { title: "name" },
     })
 
-    expect(() =>
-      defineTestModel({
-        interfaces: [TestActor],
-        links: [],
-        name: "Root collision",
-        objects: [OtherRoot],
-      })
-    ).toThrow(/Root id 'root' must be unique/)
+    const model = defineTestModel({
+      interfaces: [TestActor],
+      links: [],
+      name: "Ordinary root object",
+      objects: [OtherRoot],
+    })
+    expect(model.objects.root).toBe(OtherRoot)
   })
 })
 

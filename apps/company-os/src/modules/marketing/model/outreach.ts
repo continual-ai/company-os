@@ -1,6 +1,6 @@
+import { Contact } from "#/modules/crm/model/index.ts"
 import { Campaign } from "#/modules/marketing/model/campaign.ts"
 import { NoteSubject } from "#/modules/notes/model/index.ts"
-import { Contact } from "#/modules/sales/model/index.ts"
 import { User } from "#/runtime/access/model/index.ts"
 import { defineLink, defineObject, schema } from "#/runtime/model/index.ts"
 
@@ -57,26 +57,20 @@ export const Outreach = defineObject({
 export const OutreachCampaign = defineLink({
   id: "outreachCampaign",
   name: "Outreach Campaign",
-  from: Outreach,
-  to: Campaign,
-  forward: { key: "campaign", label: "Campaign", max: 1 },
-  reverse: { key: "outreach", label: "Outreach" },
+  from: { type: Outreach, key: "campaign", label: "Campaign", max: 1 },
+  to: { type: Campaign, key: "outreach", label: "Outreach" },
 })
 
 export const OutreachContact = defineLink({
   id: "outreachContact",
   name: "Outreach Recipient",
-  from: Outreach,
-  to: Contact,
-  forward: { key: "contact", label: "Recipient", min: 1, max: 1 },
-  reverse: { key: "outreach", label: "Outreach" },
+  from: { type: Outreach, key: "contact", label: "Recipient", min: 1, max: 1 },
+  to: { type: Contact, key: "outreach", label: "Outreach" },
 })
 
 export const OutreachOwner = defineLink({
   id: "outreachOwner",
   name: "Outreach Owner",
-  from: Outreach,
-  to: User,
-  forward: { key: "owner", label: "Owner", max: 1 },
-  reverse: { key: "outreach", label: "Outreach" },
+  from: { type: Outreach, key: "owner", label: "Owner", max: 1 },
+  to: { type: User, key: "outreach", label: "Outreach" },
 })

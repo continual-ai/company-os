@@ -1,10 +1,4 @@
-import {
-  Issue,
-  IssueAssignee,
-  IssueProject,
-} from "#/modules/engineering/model/issue.ts"
 import { IssuePullRequests } from "#/modules/engineering/model/links/issue-pull-requests.ts"
-import { Project, ProjectOwner } from "#/modules/engineering/model/project.ts"
 import {
   PullRequest,
   PullRequestRepository,
@@ -12,7 +6,7 @@ import {
 import {
   Repository,
   RepositoryOwner,
-  RepositoryProject,
+  RepositoryProjects,
 } from "#/modules/engineering/model/repository.ts"
 import { defineModule } from "#/runtime/model/index.ts"
 export const EngineeringModule = defineModule({
@@ -21,19 +15,16 @@ export const EngineeringModule = defineModule({
     name: "Company OS",
     url: "https://github.com/continual-ai/company-os",
   },
-  description: "Organize projects, issues, repositories, and pull requests.",
+  description: "Connect repositories and pull requests to product delivery.",
   id: "engineering",
   name: "Engineering",
   links: [
     IssuePullRequests,
-    IssueProject,
-    IssueAssignee,
-    ProjectOwner,
     PullRequestRepository,
-    RepositoryProject,
+    RepositoryProjects,
     RepositoryOwner,
   ],
-  objects: [Issue, Project, Repository, PullRequest],
+  objects: [Repository, PullRequest],
 })
 
-export { Issue, Project, PullRequest, Repository }
+export { PullRequest, Repository }

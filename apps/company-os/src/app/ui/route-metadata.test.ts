@@ -6,13 +6,13 @@ import {
   pageMetadataForMatch,
   pageOptions,
   resolvePageMetadata,
+  type PageMetadata,
+  appName,
 } from "#/app/ui/route-metadata.ts"
-import type { PageMetadata } from "#/app/ui/route-metadata.ts"
-import { appName } from "#/app/ui/route-metadata.ts"
 
 const overview = {
   breadcrumb: "Overview",
-  description: "Review the company operating overview.",
+  description: "Review the account operating overview.",
   title: "Overview",
 } satisfies PageMetadata
 

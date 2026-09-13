@@ -1,3 +1,4 @@
+import { modelList } from "#/runtime/client/model-query-client.ts"
 import { modelObjectLinkTraversals } from "#/runtime/model/index.ts"
 import {
   clientFor,
@@ -28,9 +29,7 @@ export interface RecordRelationship {
   readonly max: number | undefined
   readonly list: ObjectCollectionList
   readonly creates: ReadonlyArray<RelatedCreate>
-  readonly connect?:
-    | ((id: string, objectType: string) => Promise<void>)
-    | undefined
+  readonly connect?: ((id: string) => Promise<void>) | undefined
   readonly disconnect?: ((record: ClientRecord) => Promise<void>) | undefined
 }
 
@@ -43,7 +42,8 @@ export function recordRelationships(
   const labels = new Map([[record.id, recordLabel(object, record)]])
   const traversals = modelObjectLinkTraversals(runtime.model, object)
   return traversals.map((traversal): RecordRelationship => {
-    const client = linkClientFor(runtime, object, traversal)
+    const client = linkClientFor(runtime, object, traversal, record)
+    const editable = traversal.writable && record.systemManaged !== true
     const targets = recordObjectTypes(runtime, traversal.target.from.typeId)
     const target = targets.find(
       (item) => item.id === traversal.target.from.typeId
@@ -65,17 +65,21 @@ export function recordRelationships(
       featured: targets.some(
         (item) => runtime.ui[item.id]?.navigation?.hidden !== true
       ),
-      list: (request) => client.list({ ...request, id: record.id }),
+      list: modelList<ClientRecord>((request) =>
+        client.list.queryOptions({ ...request, id: record.id })
+      ),
       creates: targets.flatMap((item) => {
-        if (!clientFor(runtime, item).create) return []
+        if (!editable || !clientFor(runtime, item).create) return []
         const inverse = inverseFor(item)
+        if (!inverse.writable) return []
         return [
           {
             target: item,
             options: {
               initialValues: {
                 links: {
-                  [inverse.traversal.key]: [record.id],
+                  [inverse.traversal.key]:
+                    inverse.traversal.max === 1 ? record.id : [record.id],
                 },
               },
               referenceLabels: labels,
@@ -83,8 +87,31 @@ export function recordRelationships(
           },
         ]
       }),
-      connect: (id) => client.link!({ id: record.id, target: id }),
-      disconnect: (item) => client.unlink!({ id: record.id, target: item.id }),
+      ...(editable && client.link
+        ? {
+            connect: (id: string) =>
+              client.link!({ id: record.id, target: id }),
+          }
+        : {}),
+      ...(editable && client.unlink
+        ? {
+            disconnect: (item: ClientRecord) =>
+              client.unlink!({ id: record.id, target: item.id }),
+          }
+        : {}),
     }
   })
+}
+
+/** Local affordances reflect known bounds; the server validates both ends atomically. */
+export function relationshipCapabilities(
+  relationship: Pick<RecordRelationship, "min" | "max">,
+  total: number | undefined
+) {
+  return {
+    canAdd:
+      total !== undefined &&
+      (relationship.max === undefined || total < relationship.max),
+    canRemove: total !== undefined && total > relationship.min,
+  }
 }

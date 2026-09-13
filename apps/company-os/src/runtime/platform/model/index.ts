@@ -9,7 +9,7 @@ import {
   BeginAssetUpload,
   CompleteAssetUpload,
 } from "#/runtime/assets/model/asset.ts"
-import { defineModule } from "#/runtime/model/index.ts"
+import { defineModule, defineModel } from "#/runtime/model/index.ts"
 import {
   ModuleSetting,
   SetModuleEnabled,
@@ -34,3 +34,9 @@ export { ModuleSetting }
 export const requiredModuleIds = ["platform"] as const
 
 export { moduleActivationPlan } from "#/runtime/platform/model/activation.ts"
+
+/** The portable kernel contract used by its own UI; applications compose the same module. */
+export const PlatformModel = defineModel({
+  name: "Platform",
+  modules: [PlatformModule],
+})

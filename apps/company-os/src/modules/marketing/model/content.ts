@@ -51,17 +51,13 @@ export const Content = defineObject({
 export const ContentCampaign = defineLink({
   id: "contentCampaign",
   name: "Content Campaign",
-  from: Content,
-  to: Campaign,
-  forward: { key: "campaign", label: "Campaign", max: 1 },
-  reverse: { key: "content", label: "Content" },
+  from: { type: Content, key: "campaign", label: "Campaign", max: 1 },
+  to: { type: Campaign, key: "content", label: "Content" },
 })
 
 export const ContentOwner = defineLink({
   id: "contentOwner",
   name: "Content Owner",
-  from: Content,
-  to: User,
-  forward: { key: "owner", label: "Owner", max: 1 },
-  reverse: { key: "content", label: "Content" },
+  from: { type: Content, key: "owner", label: "Owner", max: 1 },
+  to: { type: User, key: "content", label: "Content" },
 })

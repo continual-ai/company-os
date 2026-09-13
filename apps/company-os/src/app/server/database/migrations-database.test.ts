@@ -12,9 +12,9 @@ import {
 } from "#/app/server/database/migrations.ts"
 import { schemaSql } from "#/app/server/database/schema.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
-import { Database } from "#/runtime/server/storage/database.ts"
 import { pgTypes } from "#/runtime/server/storage/index.ts"
 import { TestDatabase } from "#/runtime/server/storage/testing.ts"
+import { SqlDatabase } from "#/runtime/server/storage/transactions.ts"
 import { testDatabase } from "#/runtime/testing/database.ts"
 import { readSchemaCatalog } from "#/runtime/testing/schema-catalog.ts"
 
@@ -25,7 +25,7 @@ const application = testDatabase(
       Effect.scoped(
         applyMigrations().pipe(
           Effect.provide(
-            Database.layer.pipe(
+            SqlDatabase.layer.pipe(
               Layer.provideMerge(ModelContext.layer(Model)),
               Layer.provide(
                 PgClient.layer({ url: Redacted.make(url), types: pgTypes })
@@ -59,7 +59,7 @@ application.test("does not reapply completed migrations", () =>
     yield* verifyDatabaseModel()
     yield* applyMigrations()
     yield* applyMigrations()
-    const { sql } = yield* Database
+    const { sql } = yield* SqlDatabase
     expect(
       yield* sql`select migration_id as id from company_os_migrations`
     ).toEqual(migrations.map(({ id }) => ({ id })))
@@ -71,7 +71,7 @@ application.test(
   "refuses an outdated baseline without changing existing data",
   () =>
     Effect.gen(function* () {
-      const { sql } = yield* Database
+      const { sql } = yield* SqlDatabase
       yield* sql`create table retained_probe (value text)`
       yield* sql`insert into retained_probe values ('keep me')`
       yield* sql`update company_os_migrations set name = 'baseline_outdated'`
@@ -91,7 +91,7 @@ application.test(
   "rolls back a failing whole-file migration, including function bodies",
   () =>
     Effect.gen(function* () {
-      const { sql } = yield* Database
+      const { sql } = yield* SqlDatabase
       const result = yield* Migrator.make({})({
         table: "test_migrations",
         loader: Migrator.fromRecord({
@@ -127,7 +127,7 @@ empty.test("refuses to start before the committed baseline is applied", () =>
     )
     yield* applyMigrations()
     yield* verifyDatabaseModel()
-    const { sql } = yield* Database
+    const { sql } = yield* SqlDatabase
     expect(yield* sql`select to_regclass('objects')::text as registry`).toEqual(
       [{ registry: "objects" }]
     )

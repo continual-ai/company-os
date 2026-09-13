@@ -1,7 +1,6 @@
 import { cn } from "@company/ui/lib/utils"
 import { CheckIcon, CircleAlertIcon, LoaderCircleIcon } from "lucide-react"
-import { useLayoutEffect, useRef, useState } from "react"
-import type { ReactNode } from "react"
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react"
 
 import type { ObjectTableCellSaveStatus } from "#/runtime/ui/model/object-table/object-table-cell-state.ts"
 import { objectTableCellSelectionClassName } from "#/runtime/ui/model/object-table/object-table-cell-styles.ts"

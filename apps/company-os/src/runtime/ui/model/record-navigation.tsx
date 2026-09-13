@@ -9,7 +9,6 @@ import {
   type ReactNode,
 } from "react"
 
-import { modelCollectionQuery } from "#/runtime/client/model-collection-query.ts"
 import type { ListRequest } from "#/runtime/model/index.ts"
 import {
   clientFor,
@@ -85,8 +84,7 @@ export function useRecordNavigation(
   const source = useContext(CollectionNavigationContext)?.sources.get(object.id)
   const client = useMemo(() => clientFor(runtime, object), [runtime, object])
   const page = useInfiniteQuery({
-    ...modelCollectionQuery(
-      client.list,
+    ...client.list.infiniteQueryOptions(
       source?.request ?? objectListRequest(object, [], [])
     ),
     enabled,

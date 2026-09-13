@@ -9,6 +9,10 @@ import type {
 } from "#/runtime/model/index.ts"
 import { linkConstraintDdl } from "#/runtime/server/storage/link-constraints.ts"
 import {
+  foreignKeys,
+  linkStorage,
+} from "#/runtime/server/storage/link-storage.ts"
+import {
   defineTable,
   quoteLiteral as literal,
   quoteIdentifier,
@@ -62,7 +66,6 @@ export interface PostgresStorage<M extends ModelCatalog> {
       createdById: string
       updatedById: string
     }>
-    readonly roots: Table<{ id: string }>
     readonly recordAliases: Table<{ alias: string; objectId: string }>
   }
   readonly ddl: ReadonlyArray<string>
@@ -138,6 +141,11 @@ export function makePostgresSchema<const M extends ModelCatalog>(
   model: M
 ): PostgresStorage<M> {
   const q = quoteIdentifier
+  const objectTypeIds = Object.keys(model.objects)
+  const objectTypeCheck =
+    objectTypeIds.length === 0
+      ? "false"
+      : `"object_type" in (\n    ${objectTypeIds.map(literal).join(",\n    ")}\n  )`
   const core = {
     objects: defineTable(
       "objects",
@@ -168,18 +176,7 @@ export function makePostgresSchema<const M extends ModelCatalog>(
           "Shared record identity, audit fields, and concurrency state. Domain properties live in their object tables.",
         constraints: [
           'primary key ("id")',
-          `constraint "objects_object_type_check" check ("object_type" in (\n    ${[model.root.id, ...Object.keys(model.objects)].map(literal).join(",\n    ")}\n  ))`,
-        ],
-      }
-    ),
-    roots: defineTable(
-      "roots",
-      { id: { type: "text" } },
-      {
-        description: "Root identity for application infrastructure.",
-        constraints: [
-          'primary key ("id")',
-          'foreign key ("id") references "objects" ("id") on delete cascade',
+          `constraint "objects_object_type_check" check (${objectTypeCheck})`,
         ],
       }
     ),
@@ -198,7 +195,7 @@ export function makePostgresSchema<const M extends ModelCatalog>(
   const interfaces: Record<string, Table<object>> = {}
   const objects: Record<string, Table<object>> = {}
   const linkTables: Record<string, Table<object>> = {}
-  const names = new Set(["objects", "roots", "record_aliases"])
+  const names = new Set(["objects", "record_aliases"])
   const claim = (name: string) => {
     if (names.has(name))
       throw new Error(`Duplicate PostgreSQL table '${name}'.`)
@@ -206,7 +203,6 @@ export function makePostgresSchema<const M extends ModelCatalog>(
     return name
   }
   const tableFor = (id: string): string => {
-    if (id === model.root.id) return "roots"
     if (model.interfaces[id]) return `interface_${snakeCase(id)}`
     const object = model.objects[id]
     if (!object) throw new Error(`Type '${id}' has no PostgreSQL table.`)
@@ -216,7 +212,6 @@ export function makePostgresSchema<const M extends ModelCatalog>(
     schemaSection("Core record storage"),
     ...core.objects.ddl,
     'create index "objects_object_type_idx" on "objects" ("object_type")',
-    ...core.roots.ddl,
     ...core.recordAliases.ddl,
     'create index "record_aliases_object_id_idx" on "record_aliases" ("object_id")',
     schemaSection(
@@ -225,10 +220,22 @@ export function makePostgresSchema<const M extends ModelCatalog>(
     ),
   ]
   const constraints: string[] = []
+  const referenceFields = (typeId: string): Record<string, ColumnDefinition> =>
+    Object.fromEntries(
+      foreignKeys(model, typeId).map(({ storage }) => [
+        storage.column,
+        {
+          type: "text",
+          nullable: true,
+          description:
+            "Relationship reference; requiredness is checked at transaction commit.",
+        },
+      ])
+    )
   for (const item of Object.values(model.interfaces)) {
     const table = defineTable(
       claim(tableFor(item.id)),
-      { id: { type: "text" } },
+      { id: { type: "text" }, ...referenceFields(item.id) },
       {
         description: `${item.name} membership (${item.id})${item.description ? `\n${item.description}` : ""}`,
         constraints: [
@@ -256,6 +263,7 @@ export function makePostgresSchema<const M extends ModelCatalog>(
     }
     const fields: Record<string, ColumnDefinition> = {
       id: { type: "text" },
+      ...referenceFields(object.id),
     }
     for (const [id, property] of Object.entries(object.properties)) {
       const key = id
@@ -287,6 +295,13 @@ export function makePostgresSchema<const M extends ModelCatalog>(
     const name = q(table.name)
     const columns = tableColumns(table)
     ddl.push(...table.ddl)
+
+    for (const [rule, check] of Object.entries(object.checks)) {
+      const operators = { lt: "<", lte: "<=", gt: ">", gte: ">=" }
+      ddl.push(
+        `alter table ${name} add constraint ${q(`${table.name}_check_${rule}`)} check (${q(columns[check.left]!.name)} ${operators[check.operator]} ${q(columns[check.right]!.name)})`
+      )
+    }
     for (const [rule, keys] of Object.entries(object.uniqueBy))
       if (keys.every((key) => object.properties[key] !== undefined))
         ddl.push(
@@ -313,7 +328,7 @@ export function makePostgresSchema<const M extends ModelCatalog>(
         },
       },
       {
-        description: `${link.name} (${link.id})${link.subsetOf ? `\nA selection from ${link.subsetOf}; removing membership clears the selection.` : ""}`,
+        description: `${link.name} (${link.id})`,
         constraints: [
           'primary key ("forward_id", "reverse_id")',
           `foreign key ("forward_id") references ${q(tableFor(link.forward.from.typeId))} ("id") on delete cascade`,
@@ -322,17 +337,38 @@ export function makePostgresSchema<const M extends ModelCatalog>(
       }
     )
     linkTables[link.id] = table
+    const plan = linkStorage(link)
+    if (plan.kind === "foreignKey") {
+      const owner = q(tableFor(plan.ownerType))
+      const column = q(plan.column)
+      const forward = plan.side === "forward" ? '"id"' : column
+      const reverse = plan.side === "reverse" ? '"id"' : column
+      // Views provide one read vocabulary over native FKs and association tables.
+      ddl.push(
+        `create view ${q(table.name)} as select ${forward} as forward_id, ${reverse} as reverse_id from ${owner} where ${column} is not null`
+      )
+      constraints.push(
+        `alter table ${owner} add constraint ${q(`${snakeCase(link.id)}_target_fk`)} foreign key (${column}) references ${q(tableFor(plan.targetType))} (id) on delete set null deferrable initially deferred`
+      )
+      const opposite = link[plan.side === "forward" ? "reverse" : "forward"]
+      if (opposite.max === 1)
+        constraints.push(
+          `alter table ${owner} add constraint ${q(`${snakeCase(link.id)}_target_unique`)} unique (${column}) deferrable initially deferred`
+        )
+      else
+        ddl.push(
+          `create index ${q(`${snakeCase(link.id)}_target_idx`)} on ${owner} (${column})`
+        )
+      continue
+    }
     ddl.push(...table.ddl)
+
     for (const [side, definition] of [
       ["forward", link.forward],
       ["reverse", link.reverse],
     ] as const)
       ddl.push(
         `create ${definition.max !== 1 ? "" : "unique "}index ${q(`${table.name}_${side}_id_${definition.max !== 1 ? "idx" : "unique"}`)} on ${q(table.name)} (${q(`${side}_id`)})`
-      )
-    if (link.subsetOf)
-      constraints.push(
-        `alter table ${q(table.name)}\n  add constraint ${q(`${table.name}_membership_fk`)}\n  foreign key ("forward_id", "reverse_id")\n  references ${q(`link_${snakeCase(link.subsetOf)}`)} ("forward_id", "reverse_id") deferrable initially deferred`
       )
   }
   // The closed model supplies every table and its exact physical row type.

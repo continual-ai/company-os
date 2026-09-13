@@ -9,7 +9,7 @@ The **Marketing contacts** view includes contacts designated for marketing. The 
 audience** view additionally requires recorded opt-in and an email address. These are editable
 collection filters, not an authorization or delivery boundary.
 
-Campaigns, enrollments, and outreach currently track work; saving those records does not send
+Campaigns, campaignMembers, and outreach currently track work; saving those records does not send
 email. Contact preferences do not implement email-address subscription history, unsubscribe
 processing, bounce suppression, or provider delivery checks. A sending integration must enforce
 recipient eligibility at dispatch through its governed server action, independently of the view

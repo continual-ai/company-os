@@ -1,7 +1,6 @@
 import { Context, Effect, Layer } from "effect"
 
-import type { BeginAssetUpload } from "#/runtime/assets/model/asset.ts"
-import { Asset } from "#/runtime/assets/model/asset.ts"
+import { type BeginAssetUpload, Asset } from "#/runtime/assets/model/asset.ts"
 import { AssetPrecondition } from "#/runtime/assets/server/asset-error.ts"
 import { BlobStorage } from "#/runtime/assets/server/blob-storage.ts"
 import { inspectUpload } from "#/runtime/assets/server/inspect-upload.ts"
@@ -11,27 +10,27 @@ import {
   type ObjectGetInput,
 } from "#/runtime/model/index.ts"
 import { requireProjectAccess } from "#/runtime/server/auth/project-access.ts"
+import { Database } from "#/runtime/server/database.ts"
 import { currentActorId } from "#/runtime/server/invocation-context.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
-import { ObjectRepositories } from "#/runtime/server/model/object-repositories.ts"
-import { makeObjectService } from "#/runtime/server/model/object-service.ts"
-import { RecordIdentifierResolver } from "#/runtime/server/model/record-identifier-resolver.ts"
-import { Database } from "#/runtime/server/storage/database.ts"
+import { RecordIdentifiers } from "#/runtime/server/storage/identifiers.ts"
 import {
   projection,
   type SelectionRow,
 } from "#/runtime/server/storage/index.ts"
+import { RecordStore } from "#/runtime/server/storage/record-store.ts"
+import { SqlDatabase } from "#/runtime/server/storage/transactions.ts"
 
 const make = Effect.gen(function* () {
   const assets = (yield* ModelContext).table(Asset)
-  const database = yield* Database
+  const database = yield* SqlDatabase
   const sql = database.sql
   const blobs = yield* BlobStorage
-  const identifiers = yield* RecordIdentifierResolver
-  const records = yield* ObjectRepositories
+  const identifiers = yield* RecordIdentifiers
+  const records = yield* RecordStore
   const repository = records.get(Asset)
-  const base = yield* makeObjectService(Asset)
-  const writer = records.writer(Asset)
+  const base = (yield* Database).repository(Asset)
+  const writer = (yield* Database).repository(Asset)
 
   const beginUpload = Effect.fn("@company/Assets.beginUpload")(function* (
     input: ActionInput<typeof BeginAssetUpload>
@@ -121,6 +120,7 @@ const make = Effect.gen(function* () {
   })
 
   const content = Effect.fn("@company/Assets.content")(function* (id: string) {
+    yield* requireProjectAccess
     const record = yield* base.get({ id: RecordId("asset")(id) })
     if (record.state !== "ready")
       return yield* Effect.fail(

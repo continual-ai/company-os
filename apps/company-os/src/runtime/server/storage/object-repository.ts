@@ -1,10 +1,11 @@
-import { Cause, Data, Effect, Option, Schema } from "effect"
+import { Cause, Effect, Option, Schema } from "effect"
 import { isSqlError, type SqlError } from "effect/unstable/sql/SqlError"
 import type { Fragment } from "effect/unstable/sql/Statement"
 
 import { toEffectObjectSchema } from "#/runtime/contract/schema.ts"
 import { modelObjectLinkTraversals } from "#/runtime/model/definition/model.ts"
 import type {
+  BaseRecord,
   ObjectCreateValues,
   ObjectUpdateValues,
 } from "#/runtime/model/definition/object.ts"
@@ -14,7 +15,6 @@ import type {
 } from "#/runtime/model/definition/request.ts"
 import {
   normalizePageSize,
-  type BaseRecord,
   type Etag,
   type InferProperty,
   type ModelCatalog,
@@ -26,7 +26,14 @@ import {
   type RecordAliasUpdate,
   type RecordId,
 } from "#/runtime/model/index.ts"
-import { type PostgresDatabase } from "#/runtime/server/storage/database.ts"
+import {
+  ObjectNotFound,
+  ObjectWriteConflict,
+  ObjectDeleteRestricted,
+  type ObjectUniqueConflict,
+  InvalidListRequest,
+  RecordAliasConflict,
+} from "#/runtime/server/errors.ts"
 import {
   cursorCondition,
   cursorFingerprint,
@@ -35,12 +42,11 @@ import {
   invalidListRequest,
   makeObjectQueryCompiler,
   orderExpression,
-  recordValue,
+  type ResolvedSort,
 } from "#/runtime/server/storage/object-query.ts"
-import {
-  objectUniqueConstraintName,
-  type PostgresStorage,
-} from "#/runtime/server/storage/schema.ts"
+import { recordLabelSql } from "#/runtime/server/storage/record-label.ts"
+import { relationalQuery } from "#/runtime/server/storage/relational-query.ts"
+import type { PostgresStorage } from "#/runtime/server/storage/schema.ts"
 import {
   assignments,
   conflictColumns,
@@ -52,10 +58,10 @@ import {
 } from "#/runtime/server/storage/statement.ts"
 import {
   tableColumns,
-  tableName,
   type Column,
   type Table,
 } from "#/runtime/server/storage/table.ts"
+import { type PostgresDatabase } from "#/runtime/server/storage/transactions.ts"
 
 type StoragePropertyValues<TObject extends ObjectType> = Partial<
   Readonly<
@@ -81,56 +87,12 @@ type CanonicalStoragePropertyValues<TObject extends ObjectType> =
   | ObjectInsertPropertyValues<TObject>
   | ObjectUpdatePropertyValues<TObject>
 
-export class ObjectNotFound extends Data.TaggedError("ObjectNotFound")<{
-  readonly objectType: string
-  readonly recordId: string
-}> {}
-
-export class ObjectWriteConflict extends Data.TaggedError(
-  "ObjectWriteConflict"
-)<{
-  readonly objectType: string
-  readonly recordId: string
-}> {}
-
-class ObjectDeleteRestricted extends Data.TaggedError(
-  "ObjectDeleteRestricted"
-)<{
-  readonly objectType: string
-  readonly recordIds: ReadonlyArray<string>
-}> {}
-
-class ObjectUniqueConflict extends Data.TaggedError("ObjectUniqueConflict")<{
-  readonly fields: ReadonlyArray<string>
-  readonly objectType: string
-  readonly rule: string
-}> {}
-
-export class InvalidListRequest extends Data.TaggedError("InvalidListRequest")<{
-  readonly message: string
-  readonly objectType: string
-}> {}
-
-export class RecordAliasConflict extends Data.TaggedError(
-  "RecordAliasConflict"
-)<{
-  readonly alias: string
-  readonly conflictingRecordId: string
-  readonly recordId: string
-}> {}
-
-export class RecordAliasNotFound extends Data.TaggedError(
-  "RecordAliasNotFound"
-)<{
-  readonly alias: string
-}> {}
-
 /** Canonical insert values; persistence supplies the tag and timestamps. */
 export type ObjectInsert<TObject extends ObjectType> = Omit<
   BaseRecord<TObject["id"]>,
-  "createdAt" | "etag" | "updatedAt" | "links" | "objectType"
+  "createdAt" | "etag" | "updatedAt" | "links" | "objectType" | "label"
 > &
-  Omit<ObjectCreateValues<TObject>, "parent">
+  ObjectCreateValues<TObject>
 
 /** Canonical update command accepted by persistence. */
 export type ObjectRepositoryUpdate<TObject extends ObjectType> =
@@ -162,7 +124,7 @@ export interface ObjectDeleteTarget<TObject extends ObjectType> {
   readonly id: RecordId<TObject["id"]>
 }
 
-export type PostgresRepositoryError =
+type PostgresRepositoryError =
   | InvalidListRequest
   | RecordAliasConflict
   | ObjectNotFound
@@ -172,38 +134,12 @@ export type PostgresRepositoryError =
   | Schema.SchemaError
   | SqlError
 
-interface UniqueConstraint {
-  readonly fields: ReadonlyArray<string>
-  readonly rule: string
-}
-
 function wrappedSqlError(error: unknown): SqlError | undefined {
   if (isSqlError(error)) return error
   if (Cause.isCause(error)) {
     return wrappedSqlError(Option.getOrUndefined(Cause.findErrorOption(error)))
   }
   return undefined
-}
-
-function translateUniqueConflict<A, E, R>(
-  effect: Effect.Effect<A, E, R>,
-  object: ObjectType,
-  constraints: ReadonlyMap<string, UniqueConstraint>
-): Effect.Effect<A, E | ObjectUniqueConflict, R> {
-  return Effect.mapError(effect, (error) => {
-    const sqlError = wrappedSqlError(error)
-    const constraint =
-      sqlError?.reason._tag === "UniqueViolation"
-        ? constraints.get(sqlError.reason.constraint)
-        : undefined
-    return constraint === undefined
-      ? error
-      : new ObjectUniqueConflict({
-          fields: constraint.fields,
-          objectType: object.id,
-          rule: constraint.rule,
-        })
-  })
 }
 
 function translateDeleteRestriction<A, E, R>(
@@ -245,17 +181,6 @@ function makeRepository<
     if (table === undefined) {
       return yield* Effect.die(
         `Object '${object.id}' does not have a PostgreSQL storage table.`
-      )
-    }
-    const physicalTableName = tableName(table)
-    const uniqueConstraints = new Map<string, UniqueConstraint>()
-    for (const [rule, fields] of Object.entries(object.uniqueBy)) {
-      uniqueConstraints.set(
-        objectUniqueConstraintName(physicalTableName, rule),
-        {
-          fields,
-          rule,
-        }
       )
     }
     const interfaceTables: ReadonlyArray<Table<{ id: string }>> = Object.values(
@@ -316,10 +241,14 @@ function makeRepository<
           direction === "forward"
             ? edges.columns.reverseId
             : edges.columns.forwardId
+        if (traversal.max === 1)
+          return sql`${traversal.key}::text, (select ${target} from ${edges} where ${source} = ${objects.columns.id})`
         return sql`${traversal.key}::text, jsonb_build_object('ids', array(select ${target} from ${edges} where ${source} = ${objects.columns.id} order by ${target} limit 3), 'totalSize', (select count(*) from ${edges} where ${source} = ${objects.columns.id}))`
       }
     )
+    const label = recordLabelSql(sql, storage, object)
     const selection = {
+      label: sqlValue<string>(label),
       ...columns,
       objectType: objects.columns.objectType,
       links: sqlValue<ObjectRecord<TObject>["links"]>(
@@ -335,12 +264,6 @@ function makeRepository<
           order by ${recordAliases.columns.alias}
       )`),
       metadata: objects.columns.metadata,
-      createdAtCursor: sqlValue<string>(
-        sql`${objects.columns.createdAt}::text`
-      ),
-      updatedAtCursor: sqlValue<string>(
-        sql`${objects.columns.updatedAt}::text`
-      ),
       createdAt: objects.columns.createdAt,
       createdBy: objects.columns.createdById,
       etag: objects.columns.etag,
@@ -350,7 +273,12 @@ function makeRepository<
     }
 
     const queryColumns = {
-      ...columns,
+      label: Object.assign(label, { name: "label", type: "text" }),
+      ...Object.fromEntries(
+        Object.entries(columns).filter(([key]) =>
+          Object.hasOwn(object.properties, key)
+        )
+      ),
       createdAt: objects.columns.createdAt,
       createdBy: objects.columns.createdById,
       id: idColumn,
@@ -359,37 +287,26 @@ function makeRepository<
       updatedBy: objects.columns.updatedById,
     }
 
+    const relations = relationalQuery(sql, storage, object, idColumn)
     const { compileFilter, resolveSort } = makeObjectQueryCompiler(
       sql,
       object,
       queryColumns,
-      (filter) => {
-        const traversal = modelObjectLinkTraversals(storage.model, object).find(
-          (item) => item.traversal.key === filter.link
-        )
-        if (!traversal)
-          throw invalidListRequest(object, `Unknown link '${filter.link}'.`)
-        const edges = storage.linkTables[traversal.link.id]!
-        const source =
-          traversal.direction === "forward"
-            ? edges.columns.forwardId
-            : edges.columns.reverseId
-        const target =
-          traversal.direction === "forward"
-            ? edges.columns.reverseId
-            : edges.columns.forwardId
-        if ("isEmpty" in filter)
-          return sql`not exists (select 1 from ${edges} where ${source} = ${idColumn})`
-        return sql`exists (select 1 from ${edges} where ${source} = ${idColumn} and ${target} = coalesce((select ${recordAliases.columns.objectId} from ${recordAliases} where ${recordAliases.columns.alias} = ${filter.contains}), ${filter.contains}))`
-      }
+      relations.filter,
+      relations.field
     )
 
     const select = (
       where?: Fragment,
       orderBy: ReadonlyArray<Fragment> = [sql`${idColumn} asc`],
-      limit?: number
+      limit?: number,
+      cursorSort: ReadonlyArray<ResolvedSort> = []
     ) =>
-      sql<SelectionRow<typeof selection>>`select ${projection(selection)}
+      sql<
+        SelectionRow<typeof selection> & {
+          cursorValues: ReadonlyArray<string | null>
+        }
+      >`select ${projection(selection)}, jsonb_build_array(${sql.csv(cursorSort.map(({ column }) => sql`${column}::text`))}) as "cursorValues"
           from ${table}
 
           inner join ${objects} on ${idColumn} = ${objects.columns.id}
@@ -514,7 +431,8 @@ function makeRepository<
         const rows = yield* select(
           sql.and([matching, after].filter((part) => part !== undefined)),
           resolvedSort.map((sort) => orderExpression(sql, sort)),
-          size + 1
+          size + 1,
+          resolvedSort
         )
         const records = yield* decodeRecords(rows)
         const hasNextPage = records.length > size
@@ -533,14 +451,7 @@ function makeRepository<
             hasNextPage && last !== undefined
               ? encodeCursor(pageTokens, {
                   fingerprint,
-                  // Preserve PostgreSQL timestamp precision across page boundaries.
-                  values: resolvedSort.map(({ field }) =>
-                    field === "createdAt"
-                      ? rows[items.length - 1]!.createdAtCursor
-                      : field === "updatedAt"
-                        ? rows[items.length - 1]!.updatedAtCursor
-                        : recordValue(last, field)
-                  ),
+                  values: rows[items.length - 1]!.cursorValues,
                   version: 1,
                 })
               : null,
@@ -606,9 +517,7 @@ function makeRepository<
           yield* sql`insert into ${interfaceTable} ${insertValues(sql, interfaceTable, { id })}`
         }
         return undefined
-      }).pipe((effect) =>
-        translateUniqueConflict(effect, object, uniqueConstraints)
-      )
+      })
 
       return yield* get(id)
     })
@@ -703,9 +612,7 @@ function makeRepository<
           on conflict do nothing`
         }
         return undefined
-      }).pipe((effect) =>
-        translateUniqueConflict(effect, object, uniqueConstraints)
-      )
+      })
 
       return yield* get(id)
     })
@@ -799,9 +706,7 @@ function makeRepository<
           where ${idColumn} = ${id}`
         }
         return undefined
-      }).pipe((effect) =>
-        translateUniqueConflict(effect, object, uniqueConstraints)
-      )
+      })
 
       return yield* get(id)
     })

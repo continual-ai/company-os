@@ -36,8 +36,8 @@ import {
   PlusIcon,
   SearchXIcon,
 } from "lucide-react"
-import type { ReactNode } from "react"
 import {
+  type ReactNode,
   Fragment,
   useEffect,
   useEffectEvent,
@@ -46,11 +46,12 @@ import {
   type CSSProperties,
 } from "react"
 
-import { modelObjectLinkTraversals } from "#/runtime/model/index.ts"
 import {
+  modelObjectLinkTraversals,
   type ObjectType,
   type PropertyDefinition,
 } from "#/runtime/model/index.ts"
+import { relationshipFields } from "#/runtime/model/relationship-fields.ts"
 import { CollectionPagination } from "#/runtime/ui/model/collection-pagination.tsx"
 import { ObjectIcon } from "#/runtime/ui/model/object-record-identity.tsx"
 import {
@@ -64,6 +65,7 @@ import {
 import { ObjectTableCell } from "#/runtime/ui/model/object-table/object-table-cell.tsx"
 import {
   objectTableProperties,
+  objectTableRelationshipColumnDefs,
   objectTableLinkColumnDef,
   objectTablePropertyColumnDefs,
   type ObjectTableColumn,
@@ -369,12 +371,19 @@ export function ObjectTable({
       resolveRecord,
       canUpdateRecord
     )
+    const relatedColumns = objectTableRelationshipColumnDefs(
+      runtime.model,
+      object,
+      resolveRecord
+    )
     return columnHelper.columns([
       ...selectionColumns,
       ...propertyColumns,
+      ...relatedColumns,
       ...linkColumns,
     ])
   }, [
+    runtime.model,
     links,
     resolveRecord,
     canUpdateRecord,
@@ -405,6 +414,10 @@ export function ObjectTable({
         end: [],
       },
       columnVisibility: Object.fromEntries([
+        ...relationshipFields(runtime.model, object).map(({ id }) => [
+          id,
+          visiblePropertyIds?.includes(id) ?? false,
+        ]),
         ...properties.map(
           ([propertyId]) =>
             [propertyId, defaultPropertyIds.has(propertyId)] as const
@@ -420,9 +433,10 @@ export function ObjectTable({
       ]),
     }
   }, [
+    runtime.model,
+    object,
     enableRowSelection,
     links,
-    object.display,
     properties,
     visiblePropertyIds,
   ])
@@ -575,7 +589,7 @@ export function ObjectTable({
                         >
                           <ObjectTableProperty
                             label={meta.label}
-                            property={meta.property}
+                            property={meta.displayProperty ?? meta.property}
                           />
                           {direction === "asc" ? (
                             <ArrowDownIcon className="ml-auto" />
@@ -593,7 +607,7 @@ export function ObjectTable({
                         >
                           <ObjectTableProperty
                             label={meta.label}
-                            property={meta.property}
+                            property={meta.displayProperty ?? meta.property}
                           />
                           {direction === "asc" ? (
                             <ArrowDownIcon className="ml-auto" />
@@ -674,7 +688,8 @@ export function ObjectTable({
                         columnId: cell.column.id,
                       }
                       const propertyId = meta.propertyId
-                      const cellValue = row.original[propertyId] ?? null
+                      const cellValue =
+                        cell.getValue<ObjectTableValue>() ?? null
                       const active = navigation.isActive(address)
                       const tabbable = navigation.isTabbable(address)
                       const editing = navigation.isEditing(address)
@@ -775,7 +790,7 @@ export function ObjectTable({
                                       }
                                     : undefined
                                 }
-                                property={meta.property}
+                                property={meta.displayProperty ?? meta.property}
                                 resolveImageSrc={resolveImageSrc}
                                 resolveRecord={resolveRecord}
                                 value={cellValue}

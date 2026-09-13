@@ -1,9 +1,9 @@
 import { Effect } from "effect"
 
 import {
-  modelOperations,
-  type ModelOperation,
-} from "#/runtime/contract/operations.ts"
+  operationContracts,
+  type OperationContract,
+} from "#/runtime/contract/operation-contract.ts"
 import { moduleDependencies } from "#/runtime/model/definition/validate-model.ts"
 import {
   defineModel,
@@ -17,14 +17,15 @@ import {
   requiredModuleIds,
 } from "#/runtime/platform/model/index.ts"
 import { requireProjectAccess } from "#/runtime/server/auth/project-access.ts"
+import { Database } from "#/runtime/server/database.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
-import { ObjectRepositories as Records } from "#/runtime/server/model/object-repositories.ts"
-import { Database } from "#/runtime/server/storage/database.ts"
+import { RecordStore as Records } from "#/runtime/server/storage/record-store.ts"
+import { SqlDatabase } from "#/runtime/server/storage/transactions.ts"
 
 const readModuleCatalog = Effect.fn("platform.readModuleCatalog")(function* () {
   const context = yield* ModelContext
   const { model } = context
-  const { sql } = yield* Database
+  const { sql } = yield* SqlDatabase
   const states = yield* sql<{
     moduleId: string
     enabled: boolean
@@ -91,7 +92,7 @@ export const activeModuleModel = Effect.fn("platform.activeModuleModel")(
       key,
       model: active,
       operations: new Set(
-        modelOperations(active).map(({ key: operation }) => operation)
+        operationContracts(active).map(({ key: operation }) => operation)
       ),
     }
     activeModels.set(model, result)
@@ -101,7 +102,7 @@ export const activeModuleModel = Effect.fn("platform.activeModuleModel")(
 
 export const requireModuleOperation = Effect.fn(
   "platform.requireModuleOperation"
-)(function* (descriptor: ModelOperation) {
+)(function* (descriptor: OperationContract) {
   const active = yield* activeModuleModel()
   if (!active.operations.has(descriptor.key))
     return yield* Effect.fail({
@@ -130,7 +131,7 @@ export const setModuleEnabled = Effect.fn("platform.setModuleEnabled")(
     enabled: boolean
     disableDependents?: ReadonlyArray<string>
   }) {
-    const database = yield* Database
+    const database = yield* SqlDatabase
     const records = yield* Records
     return yield* database.transaction(() =>
       Effect.gen(function* () {
@@ -179,8 +180,8 @@ export const setModuleEnabled = Effect.fn("platform.setModuleEnabled")(
         for (const state of stored.items) {
           const next = enabled.has(state.moduleId)
           if (state.enabled !== next)
-            yield* records
-              .writer(ModuleSetting)
+            yield* (yield* Database)
+              .repository(ModuleSetting)
               .update({ id: state.id, etag: state.etag, enabled: next })
         }
         return { enabledModules: [...enabled] }

@@ -3,7 +3,6 @@ import { useInfiniteQuery, useQuery } from "@tanstack/react-query"
 import { UnlinkIcon } from "lucide-react"
 import { useState, type ReactNode } from "react"
 
-import { modelCollectionQuery } from "#/runtime/client/model-collection-query.ts"
 import { CollectionPagination } from "#/runtime/ui/model/collection-pagination.tsx"
 import { useObjectUi } from "#/runtime/ui/model/module-ui.tsx"
 import {
@@ -15,7 +14,10 @@ import { ObjectRecordFeed } from "#/runtime/ui/model/object-record-feed.tsx"
 import { ObjectReferenceSelect } from "#/runtime/ui/model/object-reference-select.tsx"
 import { objectHref } from "#/runtime/ui/model/object-routing.ts"
 import { RecordRelatedCreateMenu } from "#/runtime/ui/model/record-related-create-menu.tsx"
-import type { RecordRelationship } from "#/runtime/ui/model/record-relationships.ts"
+import {
+  relationshipCapabilities,
+  type RecordRelationship,
+} from "#/runtime/ui/model/record-relationships.ts"
 import { useModelRuntime } from "#/runtime/ui/model/runtime-context.tsx"
 
 /** A relationship supplies context and actions; collection rendering stays object-owned. */
@@ -24,7 +26,7 @@ export function ObjectRelationshipCollection({
 }: {
   readonly relationship: RecordRelationship
 }) {
-  const total = useQuery(relationship.list({ pageSize: 3 }))
+  const total = useQuery(relationship.list.queryOptions({ pageSize: 3 }))
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string>()
   const mutate = async (operation: () => Promise<void>) => {
@@ -42,9 +44,10 @@ export function ObjectRelationshipCollection({
       setPending(false)
     }
   }
-  const hasRoom =
-    total.data !== undefined &&
-    (relationship.max !== 1 || total.data.totalSize === 0)
+  const { canAdd: hasRoom, canRemove } = relationshipCapabilities(
+    relationship,
+    total.data?.totalSize
+  )
   const canConnect = !pending
   const creates = hasRoom ? relationship.creates : []
   const renderLink = (records: ReadonlyArray<ClientRecord>) =>
@@ -61,15 +64,13 @@ export function ObjectRelationshipCollection({
         includeHiddenInput={false}
         selectedValues={records.map((record) => record.id)}
         onBlur={() => undefined}
-        onValueChange={(id, option) => {
-          const typeId =
-            option?.presentation?.object.id ?? relationship.target?.id
-          if (typeId) void mutate(() => relationship.connect!(id, typeId))
+        onValueChange={(id) => {
+          void mutate(() => relationship.connect!(id))
         }}
       />
     ) : null
   const unlink =
-    canConnect && relationship.disconnect
+    canConnect && canRemove && relationship.disconnect
       ? (record: ClientRecord) => mutate(() => relationship.disconnect!(record))
       : undefined
   return (
@@ -145,7 +146,7 @@ function RelatedRecordFeed({
   const runtime = useModelRuntime()
 
   const page = useInfiniteQuery(
-    modelCollectionQuery(relationship.list, { pageSize: 50 })
+    relationship.list.infiniteQueryOptions({ pageSize: 50 })
   )
   const records = page.data?.pages.flatMap((result) => result.items) ?? []
   const items = records.flatMap((record) => {

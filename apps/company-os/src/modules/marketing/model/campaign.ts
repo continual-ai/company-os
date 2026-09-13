@@ -43,6 +43,14 @@ export const Campaign = defineObject({
     startDate: schema.date({ label: "Starts on", nullable: true }),
     endDate: schema.date({ label: "Ends on", nullable: true }),
   },
+  checks: {
+    dates: {
+      left: "startDate",
+      operator: "lte",
+      right: "endDate",
+      message: "End date must be on or after start date.",
+    },
+  },
   search: { fields: ["name", "objective"] },
   display: { title: "name", icon: "megaphone", status: "status" },
 })
@@ -50,8 +58,6 @@ export const Campaign = defineObject({
 export const CampaignOwner = defineLink({
   id: "campaignOwner",
   name: "Campaign Owner",
-  from: Campaign,
-  to: User,
-  forward: { key: "owner", label: "Owner", max: 1 },
-  reverse: { key: "campaigns", label: "Campaigns" },
+  from: { type: Campaign, key: "owner", label: "Owner", max: 1 },
+  to: { type: User, key: "campaigns", label: "Campaigns" },
 })

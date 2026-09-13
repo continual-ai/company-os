@@ -8,14 +8,14 @@ import {
   type ModelCatalog,
   type ModelObjectRef,
 } from "#/runtime/model/index.ts"
-import { type PostgresDatabase } from "#/runtime/server/storage/database.ts"
-import { RecordAliasNotFound } from "#/runtime/server/storage/object-repository.ts"
+import { RecordAliasNotFound } from "#/runtime/server/errors.ts"
 import type { PostgresStorage } from "#/runtime/server/storage/schema.ts"
 import {
   projection,
   type SelectionRow,
   inValues,
 } from "#/runtime/server/storage/statement.ts"
+import { type PostgresDatabase } from "#/runtime/server/storage/transactions.ts"
 
 export type PostgresRecordAliasResolutionError = RecordAliasNotFound | SqlError
 
@@ -61,11 +61,6 @@ export function resolveRecordAliases<const TModel extends ModelCatalog>(
       const resolved = byAlias.get(alias)
       if (resolved === undefined) {
         return yield* Effect.fail(new RecordAliasNotFound({ alias }))
-      }
-      if (resolved.objectType === storage.model.root.id) {
-        return yield* Effect.die(
-          `Model root '${resolved.id}' cannot own a record alias.`
-        )
       }
       if (!Object.hasOwn(storage.model.objects, resolved.objectType)) {
         return yield* Effect.die(

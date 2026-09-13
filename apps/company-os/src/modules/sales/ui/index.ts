@@ -1,19 +1,14 @@
-import type { Deal } from "#/modules/sales/model/deal.ts"
 import { SalesModule } from "#/modules/sales/model/index.ts"
 import type { Lead } from "#/modules/sales/model/lead.ts"
-import { activityUi } from "#/modules/sales/ui/activity/config.ts"
-import { companyUi } from "#/modules/sales/ui/company/config.ts"
-import { contactUi } from "#/modules/sales/ui/contact/config.ts"
-import { dealUi } from "#/modules/sales/ui/deal/config.ts"
-import { DealToolbar } from "#/modules/sales/ui/deal/toolbar.tsx"
+import type { Opportunity } from "#/modules/sales/model/opportunity.ts"
 import { leadUi } from "#/modules/sales/ui/lead/config.ts"
 import { ConvertLeadAction } from "#/modules/sales/ui/lead/convert-button.tsx"
 import { lineItemUi } from "#/modules/sales/ui/line-item/config.ts"
-import { defineModuleUi } from "#/runtime/ui/module.ts"
-import type { ObjectUi } from "#/runtime/ui/module.ts"
+import { opportunityUi } from "#/modules/sales/ui/opportunity/config.ts"
+import { OpportunityToolbar } from "#/modules/sales/ui/opportunity/toolbar.tsx"
+import { defineModuleUi, type ObjectUi } from "#/runtime/ui/module.ts"
 
 export const SalesUi = defineModuleUi(SalesModule, {
-  activity: activityUi,
   lead: {
     ...leadUi,
     actions: {
@@ -23,14 +18,12 @@ export const SalesUi = defineModuleUi(SalesModule, {
       },
     },
   } satisfies ObjectUi<typeof Lead>,
-  company: companyUi,
-  contact: contactUi,
-  deal: {
-    ...dealUi,
+  opportunity: {
+    ...opportunityUi,
     collection: {
-      ...dealUi.collection,
-      toolbarComponent: DealToolbar,
+      ...opportunityUi.collection,
+      toolbarComponent: OpportunityToolbar,
     },
-  } satisfies ObjectUi<typeof Deal>,
+  } satisfies ObjectUi<typeof Opportunity>,
   lineItem: lineItemUi,
 })

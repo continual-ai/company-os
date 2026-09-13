@@ -1,9 +1,13 @@
 import { Schema } from "effect"
 
 import {
-  toEffectObjectFields,
-  toEffectObjectSchema,
+  expansionInputSchema,
+  expandableRecordSchema,
+} from "#/runtime/contract/expansion.ts"
+import { validateQuery } from "#/runtime/contract/query-validation.ts"
+import {
   toEffectRecordIdentifierSchema,
+  toEffectObjectSchema,
 } from "#/runtime/contract/schema.ts"
 import {
   modelObjects,
@@ -21,6 +25,7 @@ import {
   PageToken,
   sortDirections,
 } from "#/runtime/model/definition/request.ts"
+import type { AnySchema } from "#/runtime/model/definition/schema.ts"
 
 function pascalCase(value: string): string {
   return value
@@ -41,7 +46,7 @@ const pageTotalSizeSchema = Schema.Number.check(
     "Exact number of matching items visible to the caller before pagination.",
   identifier: "PageTotalSize",
 })
-export const pageSizeSchema = Schema.Number.check(
+const pageSizeSchema = Schema.Number.check(
   Schema.isInt(),
   Schema.isGreaterThanOrEqualTo(0)
 ).annotate({
@@ -49,21 +54,22 @@ export const pageSizeSchema = Schema.Number.check(
   description: `Maximum number of records to return. Zero uses the default of ${DEFAULT_PAGE_SIZE}; values above ${MAX_PAGE_SIZE} are capped.`,
   identifier: "PageSize",
 })
-const recordSchemas = new WeakMap<
-  ObjectType,
-  ReturnType<typeof toEffectObjectSchema>
->()
 
-export function objectGetInputSchema(object: ObjectType) {
+export function objectGetInputSchema(object: ObjectType, model: ModelCatalog) {
   return Schema.Struct({
+    expand: Schema.optionalKey(expansionInputSchema(model, object)),
     id: toEffectRecordIdentifierSchema(object.id).annotate({
       title: `${object.name} ID or alias`,
     }),
   }).annotate({ identifier: `${pascalCase(object.id)}GetInput` })
 }
 
-export function objectBatchGetInputSchema(object: ObjectType) {
+export function objectBatchGetInputSchema(
+  object: ObjectType,
+  model: ModelCatalog
+) {
   return Schema.Struct({
+    expand: Schema.optionalKey(expansionInputSchema(model, object)),
     ids: Schema.Array(
       toEffectRecordIdentifierSchema(object.id).annotate({
         title: `${object.name} ID or alias`,
@@ -72,18 +78,16 @@ export function objectBatchGetInputSchema(object: ObjectType) {
   }).annotate({ identifier: `${pascalCase(object.id)}BatchGetInput` })
 }
 
-export function objectListInputSchema(object: ObjectType) {
-  const fields = [
-    "createdAt",
-    "createdBy",
-    "id",
-    "systemManaged",
-    "updatedAt",
-    "updatedBy",
-    ...Object.keys(object.properties),
-  ]
-  const field = Schema.Literals(fields).annotate({
-    description: `A declared ${object.name.toLowerCase()} property or standard record field.`,
+export function objectListInputSchema(
+  object: {
+    readonly id: string
+    readonly name: string
+    readonly properties: Readonly<Record<string, AnySchema>>
+  },
+  model: ModelCatalog
+) {
+  const field = Schema.String.check(Schema.isNonEmpty()).annotate({
+    description: `A declared property or dot-separated path through singular relationships (at most three traversals). Aggregate sorts may traverse a plural relationship. Use relationship.$count to filter counts. Properties: ${Object.keys(object.properties).join(", ")}.`,
     identifier: `${pascalCase(object.id)}FilterField`,
   })
   let filter: Schema.Codec<unknown, unknown>
@@ -91,6 +95,27 @@ export function objectListInputSchema(object: ObjectType) {
     Schema.Union([
       Schema.Struct({ link: Schema.String, contains: Schema.String }),
       Schema.Struct({ link: Schema.String, isEmpty: Schema.Literal(true) }),
+      Schema.Struct({
+        link: Schema.String,
+        some: Schema.Union([
+          filter,
+          Schema.Record(Schema.String, Schema.Never),
+        ]),
+      }),
+      Schema.Struct({
+        link: Schema.String,
+        none: Schema.Union([
+          filter,
+          Schema.Record(Schema.String, Schema.Never),
+        ]),
+      }),
+      Schema.Struct({
+        link: Schema.String,
+        every: Schema.Union([
+          filter,
+          Schema.Record(Schema.String, Schema.Never),
+        ]),
+      }),
       Schema.Struct({ and: Schema.Array(filter) }).annotate({
         identifier: `${pascalCase(object.id)}AndFilter`,
       }),
@@ -115,19 +140,34 @@ export function objectListInputSchema(object: ObjectType) {
   ).annotate({ identifier: `${pascalCase(object.id)}Filter` })
 
   return Schema.Struct({
+    expand: Schema.optionalKey(expansionInputSchema(model, object)),
     filter: Schema.optionalKey(filter),
     pageSize: Schema.optionalKey(pageSizeSchema),
     pageToken: Schema.optionalKey(pageTokenSchema),
     sort: Schema.optionalKey(
       Schema.Array(
         Schema.Struct({
+          aggregate: Schema.optionalKey(
+            Schema.Literals(["count", "min", "max"])
+          ),
           direction: Schema.Literals(sortDirections),
           field,
           nulls: Schema.optionalKey(Schema.Literals(nullPlacements)),
         })
       )
     ),
-  }).annotate({ identifier: `${pascalCase(object.id)}ListInput` })
+  })
+    .check(
+      Schema.makeFilter((input) => {
+        try {
+          validateQuery(model, object, input)
+          return true
+        } catch (error) {
+          return error instanceof Error ? error.message : "Invalid query."
+        }
+      })
+    )
+    .annotate({ identifier: `${pascalCase(object.id)}ListInput` })
 }
 
 /** Link queries reuse the target object's list contract. */
@@ -138,26 +178,37 @@ export function linkListInputSchema(
   const target = modelObjects(model).find(
     (object) => object.id === traversal.target.from.typeId
   )
-  return target ? objectListInputSchema(target) : undefined
+  return objectListInputSchema(
+    target ?? model.interfaces[traversal.target.from.typeId]!,
+    model
+  )
 }
 
-export function objectRecordOutputSchema(object: ObjectType) {
-  const cached = recordSchemas.get(object)
-  if (cached !== undefined) return cached
-  const record = toEffectObjectSchema(object)
-  recordSchemas.set(object, record)
-  return record
+export function objectRecordOutputSchema(
+  object: ObjectType,
+  model: ModelCatalog,
+  expandable = false
+) {
+  return expandable
+    ? expandableRecordSchema(object, model)
+    : toEffectObjectSchema(object, model)
 }
 
-export function objectBatchOutputSchema(object: ObjectType) {
+export function objectBatchOutputSchema(
+  object: ObjectType,
+  model: ModelCatalog
+) {
   return Schema.Struct({
-    items: Schema.Array(objectRecordOutputSchema(object)),
+    items: Schema.Array(expandableRecordSchema(object, model)),
   }).annotate({ identifier: `${pascalCase(object.id)}Batch` })
 }
 
-export function objectPageOutputSchema(object: ObjectType) {
+export function objectPageOutputSchema(
+  object: ObjectType,
+  model: ModelCatalog
+) {
   return Schema.Struct({
-    items: Schema.Array(objectRecordOutputSchema(object)),
+    items: Schema.Array(expandableRecordSchema(object, model)),
     nextPageToken: Schema.NullOr(pageTokenSchema).annotate({
       identifier: "PageContinuation",
     }),
@@ -173,12 +224,7 @@ export function linkPageOutputSchema(
   const targets = modelObjects(model).filter((object) =>
     modelTypeAccepts(model, object.id, traversal.target.from.typeId)
   )
-  const records = targets.map((object) =>
-    Schema.Struct({
-      ...toEffectObjectFields(object),
-      objectType: Schema.Literal(object.id),
-    })
-  )
+  const records = targets.map((object) => expandableRecordSchema(object, model))
   return Schema.Struct({
     items: Schema.Array(Schema.Union(records)),
     nextPageToken: Schema.NullOr(pageTokenSchema),

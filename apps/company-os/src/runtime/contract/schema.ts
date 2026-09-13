@@ -11,17 +11,15 @@ import {
   type ObjectType,
 } from "#/runtime/model/definition/object.ts"
 import type { PropertyDefinition } from "#/runtime/model/definition/property.ts"
-import type {
-  AnySchema,
-  DecimalSchema,
-  InferSchema,
-  NumberSchema,
-  RecordIdentifier,
-  SchemaDefinition,
-  StringSchema,
-  StructSchema,
-} from "#/runtime/model/definition/schema.ts"
 import {
+  type AnySchema,
+  type DecimalSchema,
+  type InferSchema,
+  type NumberSchema,
+  type RecordIdentifier,
+  type SchemaDefinition,
+  type StringSchema,
+  type StructSchema,
   CalendarDate,
   CurrencyCode,
   Decimal,
@@ -437,10 +435,13 @@ function compileObjectProperties(object: ObjectType): CompiledSchemaFields {
   )
 }
 
-function compileCreateProperties(object: ObjectType): CompiledSchemaFields {
+function compileCreateProperties(
+  object: ObjectType,
+  internal = false
+): CompiledSchemaFields {
   return Object.fromEntries(
     Object.entries(object.properties)
-      .filter(([, property]) => !property.outputOnly)
+      .filter(([, property]) => internal || !property.outputOnly)
       .map(([propertyId, property]) =>
         entry(
           propertyId,
@@ -495,22 +496,38 @@ function pascalCase(value: string): string {
     .replace(/[^a-zA-Z0-9]/g, "")
 }
 
+const modelRecordSchemas = new WeakMap<
+  ModelCatalog,
+  Map<ObjectType, Schema.Codec<unknown, unknown>>
+>()
+
 export function toEffectObjectSchema<TObject extends ObjectType>(
-  object: TObject
+  object: TObject,
+  model?: ModelCatalog
 ): Schema.Codec<ObjectRecord<TObject>, unknown>
 export function toEffectObjectSchema(
-  object: ObjectType
+  object: ObjectType,
+  model?: ModelCatalog
 ): Schema.Codec<unknown, unknown> {
-  return annotateObjectSchema(
+  const cached =
+    model === undefined ? undefined : modelRecordSchemas.get(model)?.get(object)
+  if (cached) return cached
+  const compiled = annotateObjectSchema(
     object,
-    Schema.Struct(toEffectObjectFields(object)),
+    Schema.Struct(toEffectObjectFields(object, model)),
     object.name,
     pascalCase(object.id)
   )
+  if (model) {
+    const entries = modelRecordSchemas.get(model) ?? new Map()
+    entries.set(object, compiled)
+    modelRecordSchemas.set(model, entries)
+  }
+  return compiled
 }
 
 /** Shared record fields for full records and discriminated relationship results. */
-export function toEffectObjectFields(object: ObjectType) {
+export function toEffectObjectFields(object: ObjectType, model?: ModelCatalog) {
   const id = Schema.String.annotate({
     readOnly: true,
     title: `${object.name} ID`,
@@ -532,19 +549,56 @@ export function toEffectObjectFields(object: ObjectType) {
     entry("id", id),
     entry("objectType", Schema.Literal(object.id)),
     entry(
+      "label",
+      Schema.String.annotate({
+        readOnly: true,
+        description: "Current display label derived from the model.",
+      })
+    ),
+    entry(
       "links",
-      Schema.Record(
-        Schema.String,
-        Schema.Struct({
-          ids: Schema.Array(
-            Schema.String.pipe(Schema.fromBrand("RecordId", RecordId("object")))
-          ),
-          totalSize: Schema.Number.check(
-            Schema.isInt(),
-            Schema.isGreaterThanOrEqualTo(0)
-          ),
-        }).annotate({ identifier: "LinkPreview" })
-      ).annotate({ identifier: "RecordLinks" })
+      model === undefined
+        ? Schema.Record(
+            Schema.String,
+            Schema.Union([
+              Schema.String,
+              Schema.Null,
+              Schema.Struct({
+                ids: Schema.Array(
+                  Schema.String.pipe(
+                    Schema.fromBrand("RecordId", RecordId("object"))
+                  )
+                ),
+                totalSize: Schema.Number.check(
+                  Schema.isInt(),
+                  Schema.isGreaterThanOrEqualTo(0)
+                ),
+              }).annotate({ identifier: "LinkPreview" }),
+            ])
+          ).annotate({ identifier: "RecordLinks" })
+        : Schema.Struct(
+            Object.fromEntries(
+              modelObjectLinkTraversals(model, object).map(
+                ({ traversal, target }) => {
+                  const targetId = recordIdSchema(target.from.typeId)
+                  return [
+                    traversal.key,
+                    traversal.max === 1
+                      ? Schema.NullOr(targetId)
+                      : Schema.Struct({
+                          ids: Schema.Array(targetId).check(
+                            Schema.isMaxLength(3)
+                          ),
+                          totalSize: Schema.Number.check(
+                            Schema.isInt(),
+                            Schema.isGreaterThanOrEqualTo(0)
+                          ),
+                        }),
+                  ]
+                }
+              )
+            )
+          )
     ),
     entry("aliases", recordAliasesSchema),
     entry("metadata", metadataSchema),
@@ -584,6 +638,15 @@ export function toEffectObjectCreateSchema(
   )
 }
 
+/** Internal creates can initialize action-owned fields as well as public properties. */
+export function toEffectObjectWriterCreateSchema(object: ObjectType) {
+  return Schema.Struct({
+    aliases: Schema.optionalKey(recordAliasesSchema),
+    metadata: Schema.optionalKey(metadataSchema),
+    ...compileCreateProperties(object, true),
+  })
+}
+
 /** Compiles the public create contract, including atomic initial Links. */
 export function toEffectModelObjectCreateSchema(
   model: ModelCatalog,
@@ -597,12 +660,18 @@ export function toEffectModelObjectCreateSchema(
       const identifier = toEffectRecordIdentifierSchema(
         target.from.typeId
       ).annotate({ title: target.label })
-      const value = Schema.Array(identifier).check(
+      const many = Schema.Array(identifier).check(
         Schema.isMinLength(traversal.min),
         ...(traversal.max === undefined
           ? []
           : [Schema.isMaxLength(traversal.max)])
       )
+      const value =
+        traversal.max === 1
+          ? traversal.min === 0
+            ? Schema.NullOr(identifier)
+            : identifier
+          : many
       return [
         traversal.key,
         traversal.min > 0 ? value : Schema.optionalKey(value),
@@ -695,11 +764,15 @@ export function toEffectModelObjectUpdateSchema(
         add: Schema.optionalKey(identifiers),
       }
       changes.remove = Schema.optionalKey(Schema.Array(identifier))
-      changes.replace = Schema.optionalKey(identifiers)
       return [
         traversal.key,
         Schema.optionalKey(
-          Schema.Struct(changes).annotate({
+          (traversal.max === 1
+            ? traversal.min === 0
+              ? Schema.NullOr(identifier)
+              : identifier
+            : Schema.Union([identifiers, Schema.Struct(changes)])
+          ).annotate({
             title: `${traversal.label} changes`,
           })
         ),

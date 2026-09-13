@@ -4,8 +4,9 @@ import { Effect } from "effect"
 import { SqlError, UnknownError } from "effect/unstable/sql/SqlError"
 
 import type { PendingEvent } from "#/runtime/server/events/event-buffer.ts"
-import { assignments, insertValues } from "#/runtime/server/storage/index.ts"
 import {
+  assignments,
+  insertValues,
   tableProjection,
   type TableRow,
   type PostgresDatabase,
@@ -31,7 +32,7 @@ export const flushEvents = (
           returning ${tableProjection(eventJournalState)}`
     if (state === undefined)
       return yield* Effect.die(
-        "Event journal state is missing. Apply database migrations."
+        "Event journal state is missing. Initialize or reset the database from the current model."
       )
     const first = state.position - BigInt(events.length) + 1n
     const transactionId = randomUUID()

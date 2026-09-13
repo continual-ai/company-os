@@ -12,36 +12,26 @@ import { Model } from "#/app.model.ts"
 import { applicationHttpApi } from "#/app/server/http-api.ts"
 import {
   InvalidEventCursor,
+  changePage,
   type EventPage,
 } from "#/runtime/contract/events.ts"
 import { HttpValidationMiddleware } from "#/runtime/contract/http-api.ts"
-import type { ModelOperation } from "#/runtime/contract/operations.ts"
-import {
-  activeModuleModel,
-  requireModuleOperation,
-} from "#/runtime/platform/server/index.ts"
+import type { OperationContract } from "#/runtime/contract/operation-contract.ts"
 import {
   internalApiError,
   unauthenticatedApiError,
   withApiErrors,
 } from "#/runtime/server/api-error.ts"
 import { Authentication } from "#/runtime/server/auth/authentication.ts"
+import { streamChanges } from "#/runtime/server/events/change-stream.ts"
 import { EventJournal } from "#/runtime/server/events/event-journal.ts"
 import { EventNotifications } from "#/runtime/server/events/event-notifications.ts"
-import { streamEvents } from "#/runtime/server/events/event-stream.ts"
 import {
   createModelHttpHandlers,
-  type ModelHttpOperation,
   type ModelHttpRequest,
 } from "#/runtime/server/http.ts"
 import { CurrentInvocation } from "#/runtime/server/invocation.ts"
-import { Operations } from "#/runtime/server/invoke.ts"
-import { ModelContext } from "#/runtime/server/model-context.ts"
-import { ModelImplementation } from "#/runtime/server/model/implementation.ts"
-import { ObjectRepositories } from "#/runtime/server/model/object-repositories.ts"
-import { createRecordBatchGet } from "#/runtime/server/record-batch.ts"
-import { createRecordSearch } from "#/runtime/server/record-search.ts"
-import { Database } from "#/runtime/server/storage/database.ts"
+import { OperationExecutor } from "#/runtime/server/operation-executor.ts"
 
 class HttpTransportFailure extends Data.TaggedError("HttpTransportFailure")<{
   readonly cause: unknown
@@ -52,29 +42,20 @@ function requestHeaders(request: ModelHttpRequest): Headers {
 }
 
 const make = Effect.gen(function* () {
-  const modelContext = yield* ModelContext
   // Register the installed contract once; each request checks database activation.
-  const operations = yield* Operations
-  const database = yield* Database
-  const repositories = yield* ObjectRepositories
+  const operations = yield* OperationExecutor
   const authentication = yield* Authentication
   const notifications = yield* EventNotifications
   const events = yield* EventJournal
-  const implementation = yield* ModelImplementation
 
-  const active = activeModuleModel().pipe(
-    Effect.provideService(Database, database),
-    Effect.provideService(ModelContext, modelContext)
-  )
+  const active = operations.activeModel
   const filterActiveEvents = (page: EventPage) =>
     active.pipe(
       Effect.map(({ model }) => ({
         ...page,
         items: page.items.filter((event) =>
-          event.subjects.every(
-            (subject) =>
-              Object.hasOwn(model.objects, subject.objectType) ||
-              subject.objectType === model.root.id
+          event.subjects.every((subject) =>
+            Object.hasOwn(model.objects, subject.objectType)
           )
         ),
       }))
@@ -82,20 +63,16 @@ const make = Effect.gen(function* () {
 
   const invoke = (
     request: ModelHttpRequest,
-    descriptor: ModelOperation,
-    operation: ModelHttpOperation
+    descriptor: OperationContract,
+    input: unknown
   ) =>
     authentication.invocation(requestHeaders(request)).pipe(
       Effect.flatMap((invocation) =>
         Effect.gen(function* () {
-          yield* requireModuleOperation(descriptor).pipe(
-            Effect.provideService(Database, database),
-            Effect.provideService(ModelContext, modelContext)
-          )
           const { value: result, changes } = yield* operations.run(
             invocation,
             descriptor,
-            operation
+            input
           )
           if (changes.length > 0) {
             // SAFETY: HttpApiBuilder supplies its current HttpServerRequest here.
@@ -122,35 +99,68 @@ const make = Effect.gen(function* () {
 
   const objectGroupsLayer = createModelHttpHandlers(
     applicationHttpApi,
-    implementation,
-    invoke,
-    Model
+    Model,
+    invoke
   )
+  const eventInvocation = (request: {
+    readonly request: HttpServerRequest.HttpServerRequest
+  }) => {
+    HttpEffect.appendPreResponseHandlerUnsafe(
+      request.request,
+      (_request, response) =>
+        Effect.succeed(
+          HttpServerResponse.setHeaders(response, {
+            "cache-control": "private, no-store",
+            "x-accel-buffering": "no",
+          })
+        )
+    )
+    return authentication
+      .invocation(requestHeaders(request))
+      .pipe(
+        Effect.mapError(() =>
+          unauthenticatedApiError("Authentication credentials are invalid.")
+        )
+      )
+  }
+  const readEvents = (query: Parameters<typeof events.list>[0]) =>
+    events.list(query).pipe(
+      Effect.flatMap(filterActiveEvents),
+      Effect.mapError((error) =>
+        error instanceof InvalidEventCursor ? error : internalApiError()
+      )
+    )
   const eventGroupLayer = HttpApiBuilder.group(
     applicationHttpApi,
     "events",
     (handlers) =>
       handlers
-        .handle("streamEvents", (request) => {
-          HttpEffect.appendPreResponseHandlerUnsafe(
-            request.request,
-            (_request, response) =>
-              Effect.succeed(
-                HttpServerResponse.setHeaders(response, {
-                  "cache-control": "private, no-store",
-                  "x-accel-buffering": "no",
-                })
+        .handle("listEvents", (request) =>
+          eventInvocation(request).pipe(
+            Effect.flatMap((invocation) =>
+              readEvents(request.query).pipe(
+                Effect.provideService(CurrentInvocation, invocation)
               )
+            )
           )
-          return authentication.invocation(requestHeaders(request)).pipe(
-            Effect.mapError(() =>
-              unauthenticatedApiError("Authentication credentials are invalid.")
-            ),
+        )
+        .handle("listChanges", (request) =>
+          eventInvocation(request).pipe(
+            Effect.flatMap((invocation) =>
+              readEvents({ ...request.query, pageSize: 200 }).pipe(
+                Effect.map(changePage),
+                Effect.provideService(CurrentInvocation, invocation)
+              )
+            )
+          )
+        )
+        .handle("streamChanges", (request) =>
+          eventInvocation(request).pipe(
             Effect.map((invocation) =>
-              streamEvents(
+              streamChanges(
                 (cursor) =>
-                  events.list({ cursor, pageSize: 200 }).pipe(
-                    Effect.flatMap(filterActiveEvents),
+                  readEvents({ cursor, pageSize: 200 }).pipe(
+                    Effect.map(changePage),
                     Effect.provideService(CurrentInvocation, invocation),
                     Effect.catch((error) =>
                       error instanceof InvalidEventCursor
@@ -162,92 +172,10 @@ const make = Effect.gen(function* () {
               ).pipe(Stream.provideService(EventNotifications, notifications))
             )
           )
-        })
-        .handle("listEvents", (request) => {
-          HttpEffect.appendPreResponseHandlerUnsafe(
-            request.request,
-            (_request, response) =>
-              Effect.succeed(
-                HttpServerResponse.setHeader(
-                  response,
-                  "cache-control",
-                  "private, no-store"
-                )
-              )
-          )
-          return authentication.invocation(requestHeaders(request)).pipe(
-            Effect.mapError(() =>
-              unauthenticatedApiError("Authentication credentials are invalid.")
-            ),
-            Effect.flatMap((invocation) =>
-              events.list(request.query).pipe(
-                Effect.flatMap(filterActiveEvents),
-                Effect.provideService(CurrentInvocation, invocation),
-                Effect.mapError((error) =>
-                  error instanceof InvalidEventCursor
-                    ? error
-                    : internalApiError()
-                )
-              )
-            )
-          )
-        })
-  )
-  const recordGroupLayer = HttpApiBuilder.group(
-    applicationHttpApi,
-    "records",
-    (handlers) =>
-      handlers
-        .handle("batchGetRecords", (request) =>
-          authentication.invocation(requestHeaders(request)).pipe(
-            Effect.mapError(() =>
-              unauthenticatedApiError("Authentication credentials are invalid.")
-            ),
-            Effect.flatMap((invocation) =>
-              active.pipe(
-                Effect.flatMap(({ model }) =>
-                  createRecordBatchGet(model)(request.payload)
-                ),
-                Effect.provideService(CurrentInvocation, invocation),
-                Effect.provideService(Database, database),
-                Effect.provideService(ModelContext, modelContext),
-                Effect.provideService(ObjectRepositories, repositories),
-                Effect.catch((error) =>
-                  Effect.logError("Record batch failed", error).pipe(
-                    Effect.andThen(Effect.fail(internalApiError()))
-                  )
-                )
-              )
-            )
-          )
-        )
-        .handle("searchRecords", (request) =>
-          authentication.invocation(requestHeaders(request)).pipe(
-            Effect.mapError(() =>
-              unauthenticatedApiError("Authentication credentials are invalid.")
-            ),
-            Effect.flatMap((invocation) =>
-              active.pipe(
-                Effect.flatMap(({ model }) =>
-                  createRecordSearch(model)(request.payload)
-                ),
-                Effect.provideService(CurrentInvocation, invocation),
-                Effect.provideService(Database, database),
-                Effect.provideService(ModelContext, modelContext),
-                Effect.catch((error) =>
-                  Effect.logError("Record search failed", error).pipe(
-                    Effect.andThen(Effect.fail(internalApiError()))
-                  )
-                )
-              )
-            )
-          )
         )
   )
   const apiLayer = HttpApiBuilder.layer(applicationHttpApi).pipe(
-    Layer.provide(
-      Layer.mergeAll(objectGroupsLayer, eventGroupLayer, recordGroupLayer)
-    ),
+    Layer.provide(Layer.mergeAll(objectGroupsLayer, eventGroupLayer)),
     Layer.provide(HttpValidationMiddleware.layer),
     Layer.provide(HttpServer.layerServices)
   )

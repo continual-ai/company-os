@@ -1,7 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query"
 import { notFound } from "@tanstack/react-router"
 
-import { modelCollectionQuery } from "#/runtime/client/model-collection-query.ts"
 import type { ObjectType } from "#/runtime/model/index.ts"
 import {
   calendarDay,
@@ -20,7 +19,6 @@ import {
   emptyObjectCollectionViewState,
   resolveObjectCollectionView,
 } from "#/runtime/ui/model/object-collection-view.ts"
-import { recordReferenceRequests } from "#/runtime/ui/model/object-references.ts"
 import { type ModelUiRuntime } from "#/runtime/ui/model/runtime-context.tsx"
 
 export function objectHref(
@@ -100,9 +98,8 @@ export async function preloadCollection(
     views === undefined
       ? (search.state ?? emptyObjectCollectionViewState)
       : resolveObjectCollectionView(views, search).state
-  const result = await cache.ensureInfiniteQueryData(
-    modelCollectionQuery(
-      clientFor(runtime, object).list,
+  await cache.ensureInfiniteQueryData(
+    clientFor(runtime, object).list.infiniteQueryOptions(
       objectListRequest(
         object,
         state.filters,
@@ -112,19 +109,9 @@ export async function preloadCollection(
           state.layout,
           calendarDay(state.date) ?? new Date().toISOString().slice(0, 10)
         ),
-        runtime.model
+        runtime.model,
+        state.visibility
       )
     )
-  )
-  const pages = result.pages.map((page) => page.items)
-  await Promise.all(
-    pages
-      .flatMap((records) =>
-        recordReferenceRequests(
-          runtime,
-          records.map((record) => ({ object, record }))
-        )
-      )
-      .map(({ query }) => cache.prefetchQuery(query))
   )
 }

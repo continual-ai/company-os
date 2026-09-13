@@ -3,9 +3,8 @@ import { Effect } from "effect"
 import { Application } from "#/modules/hiring/model/application.ts"
 import { Candidate } from "#/modules/hiring/model/candidate.ts"
 import { JobPosting } from "#/modules/hiring/model/job-posting.ts"
-import type { RecordId } from "#/runtime/model/index.ts"
-import { EmailAddress, WebUrl } from "#/runtime/model/index.ts"
-import { Records } from "#/runtime/server/index.ts"
+import { type RecordId, EmailAddress, WebUrl } from "#/runtime/model/index.ts"
+import { Database } from "#/runtime/server/index.ts"
 
 const departments = ["Engineering", "Operations", "Growth", "Finance"]
 const locations = ["Remote", "New York", "San Francisco", "London"]
@@ -24,18 +23,18 @@ const stages = [
 export const seedHiringPerformance = Effect.fn(
   "@company/seedHiringPerformance"
 )(function* (size: number, owners: ReadonlyArray<RecordId<"user">>) {
-  const records = yield* Records
+  const records = yield* Database
   for (let index = 0; index < size; index++) {
-    const job = yield* records.writer(JobPosting).create({
+    const job = yield* records.repository(JobPosting).create({
       department: departments[index % departments.length]!,
       description:
         "Build a durable business operation and make the next step clear for the team.",
       location: locations[index % locations.length]!,
       status: index % 7 === 0 ? "paused" : "open",
       title: `${["Senior", "Staff", "Lead"][index % 3]} ${["Engineer", "Operator", "Designer", "Recruiter"][index % 4]}`,
-      links: { hiringManager: [owners[index % owners.length]!] },
+      links: { hiringManager: owners[index % owners.length]! },
     })
-    const candidate = yield* records.writer(Candidate).create({
+    const candidate = yield* records.repository(Candidate).create({
       email: EmailAddress(`candidate-${index}@hiring.example.test`),
       name: `Candidate ${index + 1}`,
       linkedinUrl:
@@ -43,7 +42,7 @@ export const seedHiringPerformance = Effect.fn(
           ? WebUrl(`https://www.linkedin.com/in/candidate-${index}`)
           : null,
     })
-    yield* records.writer(Application).create({
+    yield* records.repository(Application).create({
       rating: index % 5 === 0 ? null : (index % 5) + 1,
       reviewNotes:
         index % 4 === 0 ? "Strong evidence of ownership in prior work." : null,
@@ -51,7 +50,7 @@ export const seedHiringPerformance = Effect.fn(
         index % 4
       ]!,
       stage: stages[index % stages.length]!,
-      links: { candidate: [candidate.id], job: [job.id] },
+      links: { candidate: candidate.id, job: job.id },
     })
   }
   yield* Effect.log(

@@ -3,11 +3,11 @@ import { expect } from "vitest"
 
 import { defineModel, type ModuleDefinition } from "#/runtime/model/index.ts"
 import { PlatformModule } from "#/runtime/platform/model/index.ts"
+import { Database } from "#/runtime/server/database.ts"
 import { foundationLayer } from "#/runtime/server/foundation.ts"
 import type { CurrentInvocation } from "#/runtime/server/invocation.ts"
-import { ObjectRepositories } from "#/runtime/server/model/object-repositories.ts"
 import { PageTokens } from "#/runtime/server/page-tokens.ts"
-import { Database } from "#/runtime/server/storage/database.ts"
+import { SqlDatabase } from "#/runtime/server/storage/transactions.ts"
 import { testDatabase } from "#/runtime/testing/database.ts"
 import { seededLayer } from "#/runtime/testing/foundation.ts"
 
@@ -22,7 +22,7 @@ export function expectModuleStandsAlone(
   dependencies: ReadonlyArray<ModuleDefinition>,
   options: {
     readonly create: (
-      records: typeof ObjectRepositories.Service
+      records: typeof Database.Service
     ) => Effect.Effect<
       { readonly id: string },
       unknown,
@@ -39,14 +39,14 @@ export function expectModuleStandsAlone(
   )
   const layer = seededLayer(
     foundationLayer(fixture.model, {
-      database: fixture.database,
+      sql: fixture.client,
       pageTokens: PageTokens.layerTest,
     })
   )
   fixture.test("persists its own model with only declared dependencies", () =>
     Effect.gen(function* () {
-      const { sql } = yield* Database
-      const record = yield* options.create(yield* ObjectRepositories)
+      const { sql } = yield* SqlDatabase
+      const record = yield* options.create(yield* Database)
       expect(
         yield* sql`select id from objects where id = ${record.id}`
       ).toEqual([{ id: record.id }])

@@ -8,28 +8,30 @@ import {
   moduleCatalog,
   setModuleEnabled,
 } from "#/runtime/platform/server/activation.ts"
-import { defineModuleServer } from "#/runtime/server/model/module-server.ts"
+import { defineModuleServer } from "#/runtime/server/module-server.ts"
 
 export const PlatformServer = defineModuleServer(
   PlatformModule,
-  Effect.gen(function* () {
-    const assets = yield* AssetService
-    return {
-      asset: {
-        beginUpload: assets.beginUpload,
-        completeUpload: assets.completeUpload,
-      },
-      moduleSetting: { catalog: moduleCatalog, setEnabled: setModuleEnabled },
-    }
-  }),
+  {
+    asset: {
+      beginUpload: Effect.fn("asset.beginUpload")(function* (
+        input: Parameters<typeof AssetService.Service.beginUpload>[0]
+      ) {
+        return yield* (yield* AssetService).beginUpload(input)
+      }),
+      completeUpload: Effect.fn("asset.completeUpload")(function* (
+        input: Parameters<typeof AssetService.Service.completeUpload>[0]
+      ) {
+        return yield* (yield* AssetService).completeUpload(input)
+      }),
+    },
+    moduleSetting: { catalog: moduleCatalog, setEnabled: setModuleEnabled },
+  },
   Layer.mergeAll(
     ServiceAccountService.layer,
     UserService.layer,
     AssetService.layer
   )
 )
-export {
-  activeModuleModel,
-  requireModuleOperation,
-} from "#/runtime/platform/server/activation.ts"
+export { activeModuleModel } from "#/runtime/platform/server/activation.ts"
 export { seedModuleSettings } from "#/runtime/platform/server/seed.ts"

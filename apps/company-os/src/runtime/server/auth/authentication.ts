@@ -1,5 +1,6 @@
-import { Context, Data, Effect, Layer } from "effect"
+import { Context, Effect, Layer } from "effect"
 
+import { User, ServiceAccount } from "#/runtime/access/model/index.ts"
 import { ServiceAccountService } from "#/runtime/access/server/service-account-service.ts"
 import { UserService } from "#/runtime/access/server/user-service.ts"
 import type { AuthenticatedUser } from "#/runtime/contract/authenticated-user.ts"
@@ -14,28 +15,27 @@ import {
   InvalidIdentityAssertion,
   type AuthenticatedSubject,
 } from "#/runtime/server/auth/identity-provider.ts"
+import { Database } from "#/runtime/server/database.ts"
+import {
+  IdentityProvisioningRequired,
+  UserInterfaceRequired,
+} from "#/runtime/server/errors.ts"
 import {
   ReservedSystemActor,
   authenticatedInvocation,
   systemInvocation,
 } from "#/runtime/server/invocation-context.ts"
 import { CurrentInvocation } from "#/runtime/server/invocation.ts"
-import { Database } from "#/runtime/server/storage/database.ts"
-
-class IdentityProvisioningRequired extends Data.TaggedError(
-  "IdentityProvisioningRequired"
-)<{ readonly reason: "email" }> {}
-
-class UserInterfaceRequired extends Data.TaggedError(
-  "UserInterfaceRequired"
-)<{}> {}
+import { SqlDatabase } from "#/runtime/server/storage/transactions.ts"
 
 const make = Effect.gen(function* () {
-  const database = yield* Database
+  const database = yield* SqlDatabase
   const bindings = yield* IdentityBindingRepository
   const provider = yield* IdentityProvider
   const serviceAccounts = yield* ServiceAccountService
   const users = yield* UserService
+  const userRecords = (yield* Database).repository(User)
+  const accountRecords = (yield* Database).repository(ServiceAccount)
 
   const emailAddress = Effect.fn("@company/Authentication.emailAddress")(
     function* (email: string) {
@@ -56,7 +56,7 @@ const make = Effect.gen(function* () {
         })
       )
     if (identity.kind === "user") {
-      const record = yield* users.get({ id: identity.id })
+      const record = yield* userRecords.get({ id: identity.id })
       yield* users.reconcile({
         email:
           subject.email === undefined
@@ -66,7 +66,7 @@ const make = Effect.gen(function* () {
         name: subject.name?.trim() || record.name,
       })
     } else {
-      const record = yield* serviceAccounts.get({ id: identity.id })
+      const record = yield* accountRecords.get({ id: identity.id })
       yield* serviceAccounts.reconcile({
         id: identity.id,
         name: subject.name?.trim() || record.name,
@@ -186,7 +186,7 @@ const make = Effect.gen(function* () {
       if (resolved.kind !== "user") {
         return yield* Effect.fail(new UserInterfaceRequired())
       }
-      const user = yield* users
+      const user = yield* userRecords
         .get({ id: resolved.id })
         .pipe(Effect.provideService(CurrentInvocation, systemInvocation))
       return {

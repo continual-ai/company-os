@@ -39,9 +39,11 @@ function SidebarNavigation() {
 export function AppShell({
   children,
   user,
+  connectionNotice,
 }: {
   children: React.ReactNode
   user: AuthenticatedUser
+  connectionNotice?: string | undefined
 }) {
   const matchRoute = useMatchRoute()
   const isSettings = Boolean(matchRoute({ to: "/settings", fuzzy: true }))
@@ -98,6 +100,11 @@ export function AppShell({
                             </header>
                           ) : (
                             <SiteHeader />
+                          )}
+                          {connectionNotice && (
+                            <output className="border-b bg-muted px-page-gutter py-2 text-sm text-muted-foreground">
+                              {connectionNotice}
+                            </output>
                           )}
                           <div
                             data-page-content

@@ -1,12 +1,9 @@
-import type {
-  Asset,
-  BeginAssetUpload,
-  CompleteAssetUpload,
-} from "#/runtime/assets/model/asset.ts"
-import { modelData } from "#/runtime/client/data-client.ts"
-import { executeMutation } from "#/runtime/client/model-query-client.ts"
-import type { ObjectQueryClient } from "#/runtime/client/model-query-client.ts"
-import type { OperationQueryClient } from "#/runtime/ui/model/use-operation-client.ts"
+import { modelData } from "#/runtime/client/model-cache.ts"
+import {
+  executeMutation,
+  type ModelQueries,
+} from "#/runtime/client/model-query-client.ts"
+import type { PlatformModel } from "#/runtime/platform/model/index.ts"
 
 function putUpload(
   url: string,
@@ -50,30 +47,32 @@ function putUpload(
 }
 
 /** The single upload adapter used by generated and custom forms. */
-export function createAssetUploader(asset: {
-  readonly beginUpload: OperationQueryClient<typeof BeginAssetUpload>
-  readonly completeUpload: OperationQueryClient<typeof CompleteAssetUpload>
-  readonly delete: ObjectQueryClient<typeof Asset>["delete"]
-}) {
+export function createAssetUploader(
+  asset: ModelQueries<typeof PlatformModel>["asset"]
+) {
   return async function uploadAsset(
     file: File,
     signal: AbortSignal,
     progress: (percent: number) => void
   ) {
     const cache = modelData().queryClient
-    const reserved = await executeMutation(cache, asset.beginUpload(), {
-      name: file.name,
-      contentType: file.type || "application/octet-stream",
-      size: file.size,
-    })
+    const reserved = await executeMutation(
+      cache,
+      asset.beginUpload.mutationOptions(),
+      {
+        name: file.name,
+        contentType: file.type || "application/octet-stream",
+        size: file.size,
+      }
+    )
     try {
       await putUpload(reserved.uploadUrl, file, signal, progress)
-      await executeMutation(cache, asset.completeUpload(), {
+      await executeMutation(cache, asset.completeUpload.mutationOptions(), {
         id: reserved.asset,
       })
       return { assetId: reserved.asset }
     } catch (error) {
-      await executeMutation(cache, asset.delete(), {
+      await executeMutation(cache, asset.delete.mutationOptions(), {
         id: reserved.asset,
       }).catch(() => undefined)
       throw error

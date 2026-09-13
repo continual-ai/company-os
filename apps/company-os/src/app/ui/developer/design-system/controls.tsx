@@ -77,7 +77,7 @@ export const controlSections: ReadonlyArray<ComponentSection> = [
       "Single-line text with a visible label. Associate descriptions and errors with the input.",
     component: InputExamples,
     usage:
-      'import { Input } from "@company/ui/input"\nimport { Label } from "@company/ui/label"\n\n<Label htmlFor="name">Name</Label>\n<Input id="name" placeholder="Company name" />',
+      'import { Input } from "@company/ui/input"\nimport { Label } from "@company/ui/label"\n\n<Label htmlFor="name">Name</Label>\n<Input id="name" placeholder="Account name" />',
   },
   {
     id: "textarea",
@@ -229,7 +229,7 @@ function InputExamples() {
         <FieldGroup className="max-w-md">
           <Field>
             <FieldLabel htmlFor="ds-name">Name</FieldLabel>
-            <Input id="ds-name" placeholder="Company name" />
+            <Input id="ds-name" placeholder="Account name" />
           </Field>
           <Field>
             <FieldLabel htmlFor="ds-email">Email</FieldLabel>
@@ -388,7 +388,7 @@ function InputGroupExamples() {
           <InputGroupAddon>
             <InputGroupText>https://</InputGroupText>
           </InputGroupAddon>
-          <InputGroupInput aria-label="Website" placeholder="company.com" />
+          <InputGroupInput aria-label="Website" placeholder="account.com" />
         </InputGroup>
       </div>
     </Example>

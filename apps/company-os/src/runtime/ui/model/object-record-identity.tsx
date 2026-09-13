@@ -118,7 +118,7 @@ export function ObjectRecordIdentity({
   record,
   resolveImageSrc,
 }: ObjectRecordIdentityProps) {
-  const title = displayText(record[object.display.title])
+  const title = displayText(record.label ?? record[object.display.title])
   const subtitle =
     object.display.subtitle === undefined
       ? ""

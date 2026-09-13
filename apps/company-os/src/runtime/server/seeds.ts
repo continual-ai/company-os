@@ -6,7 +6,7 @@ import {
   type RecordId,
 } from "#/runtime/model/index.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
-import { Links } from "#/runtime/server/model/link-service.ts"
+import { Links } from "#/runtime/server/storage/link-store.ts"
 
 /** Connects fixtures through the same relationship catalog and mutations as the application. */
 export const linkSeedRecords = Effect.fn("@company/linkSeedRecords")(function* (

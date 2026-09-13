@@ -17,13 +17,13 @@ import {
   formErrorMessages,
 } from "#/runtime/ui/forms/form-errors.ts"
 import { SchemaFormField } from "#/runtime/ui/forms/schema-form-field.tsx"
+import { actionOptions } from "#/runtime/ui/model/object-client.ts"
 import {
   decodeOperationForm,
   operationFormDefaults,
   operationFormFields,
 } from "#/runtime/ui/model/operation-form.ts"
 import { useModelRuntime } from "#/runtime/ui/model/runtime-context.tsx"
-import { useOperationClient } from "#/runtime/ui/model/use-operation-client.ts"
 
 const noReferenceLabels = new Map<string, string>()
 function ActionForm({
@@ -37,7 +37,8 @@ function ActionForm({
   readonly onPendingChange: (pending: boolean) => void
   readonly onComplete: () => void
 }) {
-  const mutation = useMutation(useOperationClient(action)())
+  const runtime = useModelRuntime()
+  const mutation = useMutation(actionOptions(runtime, action))
   const form = useAppForm({
     defaultValues: operationFormDefaults(action, recordId),
     validators: {

@@ -4,13 +4,13 @@ import {
   type OpenOr,
 } from "#/runtime/model/definition/identity.ts"
 import type { Properties } from "#/runtime/model/definition/property.ts"
-import type {
-  AnySchema,
-  EnumSchema,
-  ImageSchema,
-  SchemaDefinition,
+import {
+  type AnySchema,
+  type EnumSchema,
+  type ImageSchema,
+  type SchemaDefinition,
+  assertStoredProperty,
 } from "#/runtime/model/definition/schema.ts"
-import { assertStoredProperty } from "#/runtime/model/definition/schema.ts"
 
 export interface InterfaceDisplay<
   TProperties extends Readonly<Record<string, AnySchema>>,

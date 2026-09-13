@@ -1,12 +1,16 @@
-import { Root } from "#/runtime/model/core/root.ts"
 import { isStandardActionId } from "#/runtime/model/definition/action.ts"
 import { definitionId } from "#/runtime/model/definition/identity.ts"
 import type { InterfaceType } from "#/runtime/model/definition/interface.ts"
 import type { LinkType } from "#/runtime/model/definition/link.ts"
 import type { ModuleDefinition } from "#/runtime/model/definition/module.ts"
 import type { ObjectType } from "#/runtime/model/definition/object.ts"
-import type { ModelRelationship } from "#/runtime/model/definition/relationship.ts"
 import type { AnySchema } from "#/runtime/model/definition/schema.ts"
+
+const reservedNamespaces: ReadonlySet<string> = new Set([
+  "records",
+  "events",
+  "changes",
+])
 
 /** Query method ids the framework generates for every object. */
 const generatedQueryMethodIds: ReadonlySet<string> = new Set([
@@ -59,7 +63,6 @@ function assertUniqueIdentifiers({
   interfaces,
   links,
   modules,
-  name,
   objects,
 }: ModelDefinitions): void {
   const duplicateModule = duplicateValue(modules.map((module) => module.id))
@@ -67,6 +70,14 @@ function assertUniqueIdentifiers({
     throw new Error(
       `Module id '${duplicateModule}' is registered more than once.`
     )
+  for (const object of objects)
+    if (
+      reservedNamespaces.has(object.id) ||
+      reservedNamespaces.has(object.collection)
+    )
+      throw new Error(
+        `Object '${object.id}' conflicts with a reserved operation namespace.`
+      )
   const objectTypeIds = objects.map((object) => object.id)
   const duplicateObject = duplicateValue(objectTypeIds)
   if (duplicateObject !== undefined)
@@ -94,10 +105,6 @@ function assertUniqueIdentifiers({
     throw new Error(
       `Type id '${typeCollision}' is shared by an object and interface.`
     )
-  if (objectTypeIds.includes(Root.id) || interfaceIds.includes(Root.id))
-    throw new Error(
-      `Root id '${Root.id}' must be unique within model '${name}'.`
-    )
 }
 
 function assertReferencesRegistered(
@@ -122,11 +129,7 @@ function assertObjectsResolvable({
 }: ModelDefinitions): void {
   const interfaceIds = interfaces.map((item) => item.id)
   const objectsById = new Map(objects.map((object) => [object.id, object]))
-  const registeredTypeIds = new Set([
-    Root.id,
-    ...objectsById.keys(),
-    ...interfaceIds,
-  ])
+  const registeredTypeIds = new Set([...objectsById.keys(), ...interfaceIds])
   for (const object of objects) {
     for (const [propertyId, property] of Object.entries(object.properties)) {
       assertReferencesRegistered(
@@ -154,20 +157,8 @@ function assertLinksResolvable({
 }: ModelDefinitions): void {
   const interfaceIds = interfaces.map((item) => item.id)
   const objectsById = new Map(objects.map((object) => [object.id, object]))
-  const registeredTypeIds = new Set([
-    Root.id,
-    ...objectsById.keys(),
-    ...interfaceIds,
-  ])
+  const registeredTypeIds = new Set([...objectsById.keys(), ...interfaceIds])
   for (const link of links) {
-    if (
-      link.subsetOf !== undefined &&
-      !links.some((candidate) => candidate.id === link.subsetOf)
-    ) {
-      throw new Error(
-        `Link '${link.id}' selects from unregistered relationship '${link.subsetOf}'.`
-      )
-    }
     for (const traversal of [link.forward, link.reverse]) {
       const endpoint = traversal.from
       if (!registeredTypeIds.has(endpoint.typeId)) {
@@ -296,7 +287,7 @@ export function assertModelDefinitionsValid(
 /** Every relationship direction must project onto a name no property, method, or other relationship uses. */
 export function assertRelationshipNamesUnambiguous(
   objects: ReadonlyArray<ObjectType>,
-  relationships: ReadonlyArray<ModelRelationship>
+  relationships: ReadonlyArray<LinkType>
 ): void {
   for (const object of objects) {
     const names = new Set([
@@ -326,7 +317,7 @@ interface ModuleDependency {
 
 /**
  * Modules another module depends on, derived from every type and link its
- * definitions reference. Kernel types such as Root and Actor have no owner.
+ * definitions reference. The kernel Actor interface has no owner.
  */
 export function moduleDependencies(
   module: ModuleDefinition,
@@ -372,12 +363,6 @@ export function moduleDependencies(
   for (const link of module.links) {
     for (const typeId of [link.forward.from.typeId, link.reverse.from.typeId])
       depend(typeOwners, typeId, `link '${link.id}' references '${typeId}'`)
-    if (link.subsetOf !== undefined)
-      depend(
-        linkOwners,
-        link.subsetOf,
-        `link '${link.id}' selects from '${link.subsetOf}'`
-      )
   }
   for (const event of module.events) {
     for (const typeId of referencedTypeIds(event.data))
@@ -410,7 +395,6 @@ function assertOperationsResolvable({
   links,
 }: ModelDefinitions): void {
   const registered = new Set([
-    Root.id,
     ...objects.map((o) => o.id),
     ...interfaces.map((i) => i.id),
   ])
@@ -422,9 +406,8 @@ function assertOperationsResolvable({
       keys.add(operation.key)
       if (operation.objectType === undefined) {
         if (
-          ["records", "events", ...objects.map((o) => o.id)].includes(
-            operation.id
-          )
+          reservedNamespaces.has(operation.id) ||
+          objects.some((object) => object.id === operation.id)
         )
           throw new Error(
             `Global operation '${operation.id}' conflicts with a client namespace.`

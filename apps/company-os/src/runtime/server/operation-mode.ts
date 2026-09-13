@@ -1,6 +1,6 @@
 import { Context, Effect } from "effect"
 
-import type { PostgresDatabase } from "#/runtime/server/storage/database.ts"
+import type { PostgresDatabase } from "#/runtime/server/storage/transactions.ts"
 
 const ReadOnlyOperation = Context.Reference<boolean>(
   "@company/ReadOnlyOperation",
@@ -9,7 +9,7 @@ const ReadOnlyOperation = Context.Reference<boolean>(
   }
 )
 
-/** A Query cannot acquire write privileges by calling an Action or a trusted writer. */
+/** A Query cannot acquire write privileges by calling an Action or a repository. */
 export const requireWritableOperation = Effect.gen(function* () {
   if (yield* ReadOnlyOperation)
     return yield* Effect.die("Queries cannot write records, Links, or events.")
@@ -26,6 +26,9 @@ export function runOperation<A, E, R>(
       Effect.andThen(database.transaction(() => operation))
     )
   return database
-    .transaction(() => operation, { accessMode: "read only" })
+    .transaction(() => operation, {
+      accessMode: "read only",
+      isolationLevel: "repeatable read",
+    })
     .pipe(Effect.provideService(ReadOnlyOperation, true))
 }

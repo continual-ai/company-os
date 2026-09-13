@@ -163,19 +163,19 @@ application.test("required modules and dependency closure are enforced", () =>
       ).toMatchObject({ status: "FAILED_PRECONDITION" })
     }
     yield* client.moduleSetting.setEnabled({
-      moduleId: "supportEngineering",
+      moduleId: "customerFeedback",
       enabled: false,
     })
     yield* client.moduleSetting.setEnabled({
-      moduleId: "support",
+      moduleId: "service",
       enabled: false,
     })
     const result = yield* client.moduleSetting.setEnabled({
-      moduleId: "supportEngineering",
+      moduleId: "customerFeedback",
       enabled: true,
     })
     expect(result.enabledModules).toEqual(
-      expect.arrayContaining(["supportEngineering", "support", "engineering"])
+      expect.arrayContaining(["customerFeedback", "service", "product"])
     )
   })
 )
@@ -207,22 +207,25 @@ application.test(
         moduleId: "notes",
         enabled: false,
         disableDependents: [
+          "crm",
+          "product",
           "sales",
           "marketing",
           "engineering",
           "hiring",
-          "support",
-          "supportEngineering",
+          "service",
+          "customerFeedback",
+          "productDemand",
         ],
       })
       expect(result.enabledModules).toEqual(["platform"])
       yield* client.moduleSetting.setEnabled({
-        moduleId: "support",
+        moduleId: "service",
         enabled: true,
       })
       const enabled = (yield* client.moduleSetting.catalog({})).modules
         .filter((module) => module.enabled)
         .map((module) => module.id)
-      expect(enabled).toEqual(["platform", "notes", "sales", "support"])
+      expect(enabled).toEqual(["platform", "notes", "crm", "service"])
     })
 )

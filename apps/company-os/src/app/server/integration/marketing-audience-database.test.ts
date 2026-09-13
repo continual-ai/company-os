@@ -2,9 +2,9 @@ import { Effect } from "effect"
 import { expect } from "vitest"
 
 import { Model } from "#/app.model.ts"
-import { ModelImplementation } from "#/app/server/application-services.ts"
+import { applicationOperations } from "#/app/server/application-services.ts"
 import { testApplication } from "#/app/server/test-application.ts"
-import { contactViews } from "#/modules/sales/ui/contact/views.ts"
+import { contactViews } from "#/modules/crm/ui/contact/views.ts"
 import { EmailAddress, type ListRequest } from "#/runtime/model/index.ts"
 import { objectListRequest } from "#/runtime/ui/model/object-collection-query.ts"
 
@@ -14,7 +14,7 @@ application.test(
   "defaults contacts out of marketing and keeps audience selection separate from consent",
   () =>
     Effect.gen(function* () {
-      const { services } = yield* ModelImplementation
+      const services = yield* applicationOperations
       const fresh = yield* services.contact.create({ name: "New contact" })
       expect(fresh.marketingStatus).toBe("nonMarketing")
       expect(fresh.emailPermission).toBe("unknown")

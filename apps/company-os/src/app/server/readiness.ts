@@ -1,9 +1,9 @@
 import { Context, Effect, Layer } from "effect"
 
-import { Database } from "#/runtime/server/storage/database.ts"
+import { SqlDatabase } from "#/runtime/server/storage/transactions.ts"
 
 const make = Effect.gen(function* () {
-  const database = yield* Database
+  const database = yield* SqlDatabase
   const sql = database.sql
   return {
     check: Effect.fn("@company/Readiness.check")(function* () {

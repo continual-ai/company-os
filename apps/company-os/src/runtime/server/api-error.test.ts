@@ -3,30 +3,25 @@ import { describe, expect, it } from "vitest"
 
 import {
   modelOperation,
-  type ModelOperation,
-} from "#/runtime/contract/operations.ts"
+  type OperationContract,
+} from "#/runtime/contract/operation-contract.ts"
 import type {
   ApiError,
   FailedPreconditionError,
 } from "#/runtime/model/index.ts"
 import { withApiErrors } from "#/runtime/server/api-error.ts"
+import { InvalidIdentityAssertion } from "#/runtime/server/auth/identity-provider.ts"
+import {
+  ProjectAccessRequired,
+  ObjectWriteConflict,
+  RecordAliasConflict,
+  ObjectDeleteRestricted,
+  ObjectNotFound,
+  ObjectUniqueConflict,
+} from "#/runtime/server/errors.ts"
 import { fixtureModel } from "#/runtime/testing/fixture-model.ts"
 
-type TestFailure =
-  | Error
-  | {
-      readonly _tag: string
-      readonly fields?: ReadonlyArray<string>
-      readonly objectType?: string
-      readonly property?: string
-      readonly recordIds?: ReadonlyArray<string>
-      readonly reason?: string
-    }
-
-function translate(
-  error: TestFailure | ApiError<typeof FailedPreconditionError>,
-  operation?: ModelOperation
-) {
+function translate(error: unknown, operation?: OperationContract) {
   return Effect.runPromise(
     withApiErrors(Effect.fail(error), operation).pipe(
       Effect.flip,
@@ -37,22 +32,39 @@ function translate(
 
 describe("API error translation", () => {
   it.each([
-    ["InvalidIdentityAssertion", "UNAUTHENTICATED"],
-    ["ProjectAccessRequired", "PERMISSION_DENIED"],
-    ["ObjectWriteConflict", "ABORTED"],
-    ["RecordAliasConflict", "ALREADY_EXISTS"],
-    ["ObjectDeleteRestricted", "FAILED_PRECONDITION"],
-  ])("maps %s to canonical status %s", async (_tag, status) => {
-    await expect(translate({ _tag })).resolves.toMatchObject({ status })
+    [new InvalidIdentityAssertion({ reason: "invalid" }), "UNAUTHENTICATED"],
+    [new ProjectAccessRequired(), "PERMISSION_DENIED"],
+    [
+      new ObjectWriteConflict({ objectType: "account", recordId: "missing" }),
+      "ABORTED",
+    ],
+    [
+      new RecordAliasConflict({
+        alias: "test:id",
+        conflictingRecordId: "existing",
+        recordId: "new",
+      }),
+      "ALREADY_EXISTS",
+    ],
+    [
+      new ObjectDeleteRestricted({
+        objectType: "account",
+        recordIds: ["existing"],
+      }),
+      "FAILED_PRECONDITION",
+    ],
+  ])("maps %s to canonical status %s", async (error, status) => {
+    await expect(translate(error)).resolves.toMatchObject({ status })
   })
 
   it("preserves resource context for not-found failures", async () => {
     await expect(
-      translate({
-        _tag: "ObjectNotFound",
-        objectType: "account",
-        recordIds: ["account_missing"],
-      })
+      translate(
+        new ObjectNotFound({
+          objectType: "account",
+          recordId: "account_missing",
+        })
+      )
     ).resolves.toMatchObject({
       details: {
         resourceId: "account_missing",
@@ -81,10 +93,13 @@ describe("API error translation", () => {
 
   it("maps model uniqueness failures to every participating field", async () => {
     await expect(
-      translate({
-        _tag: "ObjectUniqueConflict",
-        fields: ["parent", "member"],
-      })
+      translate(
+        new ObjectUniqueConflict({
+          fields: ["parent", "member"],
+          objectType: "account",
+          rule: "members",
+        })
+      )
     ).resolves.toMatchObject({
       details: {
         violations: [

@@ -6,8 +6,7 @@ import {
 import { renderToStaticMarkup } from "react-dom/server"
 import { expect, it } from "vitest"
 
-import { modelCollectionQuery } from "#/runtime/client/model-collection-query.ts"
-import { modelQuery } from "#/runtime/client/model-query-client.ts"
+import { modelQuery, modelList } from "#/runtime/client/model-query-client.ts"
 import type { ListRequest, Page } from "#/runtime/model/index.ts"
 import { Account, fixtureModel } from "#/runtime/testing/fixture-model.ts"
 import { testPresentation } from "#/runtime/testing/presentation.ts"
@@ -17,19 +16,17 @@ import { preloadCollection } from "#/runtime/ui/model/object-routing.ts"
 import { ModelUiProvider } from "#/runtime/ui/model/runtime-context.tsx"
 import { useObjectCollection } from "#/runtime/ui/model/use-object-collection.ts"
 
-const list = (request: ListRequest) =>
-  modelQuery<Page<ClientRecord>, unknown>(
-    ["account"],
-    "list",
-    request,
-    async () => ({
-      items: [],
-      totalSize: 2,
-      nextPageToken: null,
-    })
-  )
-const unused = () =>
-  modelQuery(["account"], "unused", {}, async () => undefined)
+const list = modelList((request: ListRequest) =>
+  modelQuery<Page<ClientRecord>>(["account"], "list", request, async () => ({
+    items: [],
+    totalSize: 2,
+    nextPageToken: null,
+  }))
+)
+const unused = {
+  queryOptions: () =>
+    modelQuery(["account"], "unused", {}, async () => undefined),
+}
 function Preview() {
   const collection = useObjectCollection(Account, [], [])
   return (
@@ -50,7 +47,7 @@ it("retains actions and reference labels as pages append, and disables editing w
     defaultOptions: { queries: { staleTime: Infinity, retry: false } },
   })
   const pending = new Map<string, () => Promise<unknown>>()
-  const remember = <T,>(query: ReturnType<typeof modelQuery<T, unknown>>) => {
+  const remember = <T,>(query: ReturnType<typeof modelQuery<T>>) => {
     pending.set(hashKey(query.queryKey), () => cache.fetchQuery(query))
     return query
   }
@@ -58,54 +55,29 @@ it("retains actions and reference labels as pages append, and disables editing w
     ...testPresentation(fixtureModel),
     data: {
       records: {
-        batchGet: (request: { ids: readonly string[] }) =>
-          remember(
-            modelQuery(["user"], "batchGet", request, async () => ({
-              items: request.ids.map((id) => ({
-                id,
-                objectType: "user",
-                etag: "1",
-                name: id === "user_z" ? "Zoe" : "Ada",
-              })),
-              missingIds: [],
-            }))
-          ),
-      },
-      account: { list, get: unused, batchGet: unused },
-      anonymousActor: { list, get: unused, batchGet: unused },
-      serviceAccount: {
-        get: unused,
-        batchGet: unused,
-        list: (request: ListRequest) =>
-          modelQuery(["serviceAccount"], "list", request, async () => ({
-            items: [],
-          })),
-      },
-      user: {
-        get: unused,
-        batchGet: unused,
-        list: (request: ListRequest) =>
-          remember(
-            modelQuery(["user"], "list", request, async () => {
-              const ids =
-                request.filter &&
-                "value" in request.filter &&
-                Array.isArray(request.filter.value)
-                  ? request.filter.value
-                  : []
-              return {
-                items: ids.map((id) => ({
+        batchGet: {
+          queryOptions: (request: { ids: readonly string[] }) =>
+            remember(
+              modelQuery(["user"], "batchGet", request, async () => ({
+                items: request.ids.map((id) => ({
                   id,
+                  objectType: "user",
                   etag: "1",
                   name: id === "user_z" ? "Zoe" : "Ada",
                 })),
-              }
-            })
-          ),
+                missingIds: [],
+              }))
+            ),
+        },
       },
+      account: { list, get: unused, batchGet: unused },
+      anonymousActor: { list, get: unused, batchGet: unused },
     },
   }
-  const query = modelCollectionQuery(list, objectListRequest(Account, [], []))
+  const query = list.infiniteQueryOptions({
+    ...objectListRequest(Account, [], []),
+    expand: {},
+  })
   const first = {
     items: [{ id: "account_one", etag: "1", name: "One", createdBy: "user_z" }],
     totalSize: 2,
@@ -133,6 +105,8 @@ it("retains actions and reference labels as pages append, and disables editing w
     await preloadCollection(runtime, cache, Account, {})
     expect(render()).toContain("&quot;create&quot;:true")
     expect(render()).toContain("&quot;edit&quot;:true")
+    expect(render()).not.toContain("&quot;actor&quot;")
+    await Promise.all([...pending.values()].map((load) => load()))
     expect(render()).toContain("&quot;actor&quot;:&quot;Zoe&quot;")
     cache.setQueryData(query.queryKey, {
       pages: [first, second],

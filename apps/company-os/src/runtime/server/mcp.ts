@@ -12,44 +12,24 @@ import {
   type McpRequestContext,
 } from "@modelcontextprotocol/server"
 import { Option, Schema } from "effect"
-import type { Effect } from "effect"
 
 import {
-  modelOperations,
-  type ModelOperation,
-} from "#/runtime/contract/operations.ts"
-import {
-  recordBatchInput,
-  recordBatchResult,
-  type RecordBatchInput,
-} from "#/runtime/contract/record-batch.ts"
+  operationContracts,
+  type OperationContract,
+} from "#/runtime/contract/operation-contract.ts"
 import type { ApiError } from "#/runtime/model/definition/error.ts"
 import type { ModelCatalog } from "#/runtime/model/definition/model.ts"
-import type { CurrentInvocation } from "#/runtime/server/invocation.ts"
-import { executeModelOperation } from "#/runtime/server/model-implementation.ts"
-import type { Links } from "#/runtime/server/model/link-service.ts"
-
-type ModelMcpOperation = Effect.Effect<unknown, unknown, CurrentInvocation>
 
 type ModelMcpResult =
   | { readonly success: true; readonly value: unknown }
   | { readonly error: ApiError; readonly success: false }
 
 export interface ModelMcpBinding {
-  /** Model whose operations become tools; defaults to the implementation's complete model. */
-  readonly exposed?: ModelCatalog
-  readonly implementation: {
-    readonly links: Pick<typeof Links.Service, "link" | "list" | "unlink">
-    readonly model: ModelCatalog
-    readonly services: Readonly<Record<string, object>>
-  }
-  readonly batchGetRecords?: (
-    input: RecordBatchInput
-  ) => Promise<ModelMcpResult>
+  readonly model: ModelCatalog
   readonly name: string
   readonly run: (
-    descriptor: ModelOperation,
-    operation: ModelMcpOperation
+    descriptor: OperationContract,
+    input: unknown
   ) => Promise<ModelMcpResult>
   readonly version: string
 }
@@ -123,42 +103,17 @@ function mcpSchema(schema: Schema.Codec<unknown, unknown>) {
 
 /** Projects every query and action in a model implementation as an MCP tool. */
 export function createModelMcpServer({
-  implementation,
-  exposed = implementation.model,
+  model,
   name,
   run,
   version,
-  batchGetRecords,
 }: ModelMcpBinding): McpServer {
   const server = new McpServer({
     name,
     version,
   })
 
-  if (batchGetRecords)
-    server.registerTool(
-      "records.batchGet",
-      {
-        title: "Get records by ID",
-        description:
-          "Hydrate IDs of any active object type. Returns canonical records in input order, deduplicated, with missingIds for unavailable records.",
-        inputSchema: mcpSchema(recordBatchInput),
-        outputSchema: mcpSchema(recordBatchResult(exposed)),
-        annotations: {
-          readOnlyHint: true,
-          destructiveHint: false,
-          idempotentHint: true,
-          openWorldHint: false,
-        },
-      },
-      async (input) =>
-        toolResponse(
-          await batchGetRecords(
-            Schema.decodeUnknownSync(recordBatchInput)(input)
-          )
-        )
-    )
-  for (const operation of modelOperations(exposed)) {
+  for (const operation of operationContracts(model)) {
     server.registerTool(
       operation.key,
       {
@@ -173,13 +128,7 @@ export function createModelMcpServer({
           readOnlyHint: operation.kind === "query",
         },
       },
-      async (input: unknown) =>
-        toolResponse(
-          await run(
-            operation,
-            executeModelOperation(implementation, operation, input)
-          )
-        )
+      async (input: unknown) => toolResponse(await run(operation, input))
     )
   }
 

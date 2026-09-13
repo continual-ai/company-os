@@ -4,8 +4,11 @@ import { Link } from "@tanstack/react-router"
 import { ArrowUpRightIcon } from "lucide-react"
 
 import type { Note } from "#/modules/notes/model/index.ts"
-import type { RecordSummaryProps, RecordUiProps } from "#/runtime/ui/module.ts"
-import { RecordAttribution } from "#/runtime/ui/module.ts"
+import {
+  type RecordSummaryProps,
+  type RecordUiProps,
+  RecordAttribution,
+} from "#/runtime/ui/module.ts"
 
 export function NoteSummary({
   record,

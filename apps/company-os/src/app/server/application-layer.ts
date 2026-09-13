@@ -25,20 +25,15 @@ export function makeApplicationLayer(
   services = makeApplicationServicesLayer(infrastructure)
 ) {
   const {
-    database,
     eventNotifications = EventNotifications.layerPolling,
     identityProvider = identityProviderLayer,
   } = infrastructure
   const bindings = IdentityBindingRepository.layer.pipe(Layer.provide(services))
   const authentication = Authentication.layer.pipe(
-    Layer.provide(
-      Layer.mergeAll(identityProvider, services, bindings, database)
-    )
+    Layer.provide(Layer.mergeAll(identityProvider, services, bindings))
   )
   const httpTransport = HttpTransport.layer.pipe(
-    Layer.provide(
-      Layer.mergeAll(authentication, services, database, eventNotifications)
-    )
+    Layer.provide(Layer.mergeAll(authentication, services, eventNotifications))
   )
   const mcpTransport = McpTransport.layer.pipe(
     Layer.provide(Layer.merge(authentication, services))
@@ -55,6 +50,6 @@ export function makeApplicationLayer(
 
 /** The deployed application: PostgreSQL infrastructure, business services, authentication, and transports. */
 export const applicationLayer = makeApplicationLayer({
-  database: Postgres.databaseLayer,
+  sql: Postgres.sqlLayer,
   eventNotifications: Postgres.eventNotificationsLayer,
 })

@@ -2,18 +2,17 @@ import { Context, Effect, Layer } from "effect"
 
 import { ServiceAccount } from "#/runtime/access/model/index.ts"
 import type { ObjectCreateInput, ObjectRecord } from "#/runtime/model/index.ts"
+import { Database } from "#/runtime/server/database.ts"
 import { currentActorId } from "#/runtime/server/invocation-context.ts"
-import { ObjectRepositories } from "#/runtime/server/model/object-repositories.ts"
-import { makeObjectService } from "#/runtime/server/model/object-service.ts"
+import { RecordStore } from "#/runtime/server/storage/record-store.ts"
 
 type ServiceAccountRecord = ObjectRecord<typeof ServiceAccount>
 type ServiceAccountCreateInput = ObjectCreateInput<typeof ServiceAccount>
 
 const make = Effect.gen(function* () {
-  const records = yield* ObjectRepositories
+  const records = yield* RecordStore
   const repository = records.get(ServiceAccount)
-  const base = yield* makeObjectService(ServiceAccount)
-  const writer = records.writer(ServiceAccount)
+  const writer = (yield* Database).repository(ServiceAccount)
 
   const provision = Effect.fn("@company/ServiceAccountService.provision")(
     function* (
@@ -53,7 +52,7 @@ const make = Effect.gen(function* () {
     }
   )
 
-  return { ...base, provision, reconcile }
+  return { provision, reconcile }
 })
 
 /** Governed ServiceAccount projections plus trusted JIT provisioning. */

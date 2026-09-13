@@ -1,7 +1,7 @@
 /**
  * Deployment identity shared by the model, the UI, generated protocol
  * adapters, and optional apps. Change the name and currency here when
- * adopting the application for a company.
+ * adopting the application for a account.
  */
 export const appMetadata = {
   id: "application",

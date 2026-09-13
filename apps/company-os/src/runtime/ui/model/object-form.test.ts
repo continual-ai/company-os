@@ -126,7 +126,7 @@ describe("object forms", () => {
       nextStep: null,
       nextStepDate: null,
       name: "Expansion",
-      links: { account: ["account_northstar"] },
+      links: { account: "account_northstar" },
       stage: "quoted",
     })
   })
@@ -163,12 +163,12 @@ describe("object forms", () => {
       objectFormLinks(presentation, Account).map(
         ({ traversal }) => traversal.key
       )
-    ).toEqual(["orders", "people", "primaryPeople", "memos"])
+    ).toEqual(["orders", "people", "billingPeople", "memos"])
     expect(
       objectFormDefaultValues(presentation, Account, "edit").links
     ).toEqual(
       Object.fromEntries(
-        ["orders", "people", "primaryPeople", "memos"].map((key) => [
+        ["orders", "people", "billingPeople", "memos"].map((key) => [
           key,
           { add: [], remove: [] },
         ])
@@ -198,6 +198,24 @@ describe("object forms", () => {
         },
       },
     })
+  })
+
+  it("preserves singular relationships when editing an expanded record", () => {
+    for (const account of [
+      "account_northstar",
+      { id: "account_northstar", etag: "1", name: "Northstar" },
+    ]) {
+      const values = objectFormDefaultValues(presentation, Order, "edit", {
+        id: "order_one",
+        etag: "1",
+        name: "Expansion",
+        links: { account },
+      })
+      expect(values.links).toMatchObject({ account: "account_northstar" })
+      expect(
+        decodeObjectForm(presentation, Order, values, "edit", ["account"])
+      ).toEqual({ links: { account: "account_northstar" } })
+    }
   })
 
   it("formats timestamps for datetime-local in local time", () => {

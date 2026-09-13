@@ -1,6 +1,5 @@
-export { makeLinkRepository } from "#/runtime/server/storage/link-repository.ts"
 export { resolveRecordAliases } from "#/runtime/server/storage/record-aliases.ts"
-export { type PostgresDatabase } from "#/runtime/server/storage/database.ts"
+export { type PostgresDatabase } from "#/runtime/server/storage/transactions.ts"
 export { pgTypes } from "#/runtime/server/storage/pg-types.ts"
 export {
   defineTable,

@@ -9,6 +9,7 @@ import {
   Prospect,
 } from "#/runtime/testing/fixture-model.ts"
 import { testPresentation } from "#/runtime/testing/presentation.ts"
+import { defineCollectionView } from "#/runtime/ui/model/collection-view.ts"
 import {
   ModelCollectionPage,
   ModelRecordPage,
@@ -36,6 +37,14 @@ const extension = defineModuleUi(FixtureModule, {
 })
 
 const component = () => <div>Memo feed</div>
+
+const composeAccountView = (view: ReturnType<typeof defineCollectionView>) =>
+  composeModelUi(
+    fixtureModel,
+    defineModuleUi(FixtureModule, {
+      account: { collection: { views: [view] } },
+    })
+  )
 
 describe("module UI composition", () => {
   it("places relationship contributions on accepting records without replacing their UI", () => {
@@ -118,14 +127,17 @@ describe("module UI composition", () => {
                     min: 0,
                     max: undefined,
                     creates: [{ target: Prospect, options: {} }],
-                    list: () => {
-                      throw new Error("Previews must not load collections")
+                    list: {
+                      queryOptions: () => {
+                        throw new Error("Previews must not load collections")
+                      },
+                      infiniteQueryOptions: () => {
+                        throw new Error("Previews must not load collections")
+                      },
                     },
                   },
                   total: 12,
                   pending: false,
-                  error: false,
-                  retry: () => undefined,
                   items: [{ object: Prospect, record }],
                 },
               ]}
@@ -216,6 +228,35 @@ describe("module UI composition", () => {
       )
     ).toThrow("Duplicate record tab")
   })
+  it("rejects stale view columns, filters, and sorts during composition", () => {
+    for (const options of [
+      { columns: ["removed"] },
+      {
+        columns: ["name"],
+        filters: [{ id: "removed", value: { operator: "empty", values: [] } }],
+      },
+      { columns: ["name"], sorting: [{ id: "removed", desc: false }] },
+    ] as const) {
+      expect(() =>
+        composeAccountView(defineCollectionView("all", "All", options))
+      ).toThrow("Unknown field 'account.removed' in view 'all'.")
+    }
+    expect(() =>
+      composeAccountView(
+        defineCollectionView("related", "Related", {
+          columns: ["name", "people", "people.name", "people.$count"],
+          filters: [
+            {
+              id: "people.name",
+              value: { operator: "contains", values: ["Maya"] },
+            },
+          ],
+          sorting: [{ id: "people.$count", desc: true }],
+        })
+      )
+    ).not.toThrow()
+  })
+
   it("validates overview relationships against the composed model", () => {
     expect(() =>
       composeModelUi(

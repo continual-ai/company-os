@@ -6,10 +6,9 @@ import { testApplication } from "#/app/server/test-application.ts"
 import {
   SYSTEM_SERVICE_ACCOUNT_ID,
   ANONYMOUS_ACTOR_ID,
-  ROOT_ID,
 } from "#/runtime/model/system-records.ts"
 import { authenticatedInvocation } from "#/runtime/server/invocation-context.ts"
-import { Database } from "#/runtime/server/storage/database.ts"
+import { SqlDatabase } from "#/runtime/server/storage/transactions.ts"
 const application = testApplication()
 application.test(
   "converges attribution identities and protects the reserved system identity",
@@ -17,12 +16,12 @@ application.test(
     Effect.gen(function* () {
       yield* seedSystem()
       yield* seedSystem()
-      const { sql } = yield* Database
+      const { sql } = yield* SqlDatabase
       const rows = yield* sql<{
         id: string
         systemManaged: boolean
-      }>`select id, system_managed as "systemManaged" from objects where id in (${ROOT_ID}, ${SYSTEM_SERVICE_ACCOUNT_ID}, ${ANONYMOUS_ACTOR_ID})`
-      expect(rows).toHaveLength(3)
+      }>`select id, system_managed as "systemManaged" from objects where id in (${SYSTEM_SERVICE_ACCOUNT_ID}, ${ANONYMOUS_ACTOR_ID})`
+      expect(rows).toHaveLength(2)
       expect(rows.every((row) => row.systemManaged)).toBe(true)
       expect(
         yield* authenticatedInvocation(SYSTEM_SERVICE_ACCOUNT_ID).pipe(

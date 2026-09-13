@@ -8,8 +8,8 @@ import {
 } from "#/runtime/contract/http-operation.ts"
 import {
   modelOperation,
-  modelOperations,
-} from "#/runtime/contract/operations.ts"
+  operationContracts,
+} from "#/runtime/contract/operation-contract.ts"
 import {
   defineLink,
   defineModel,
@@ -50,19 +50,20 @@ const ContactEnroll = defineAction({
 const Membership = defineLink({
   id: "membership",
   name: "Membership",
-  from: Contact,
-  to: Account,
-  forward: { key: "account", label: "Account", min: 1, max: 1 },
-  reverse: { key: "contacts", label: "Contacts" },
+  from: { type: Contact, key: "account", label: "Account", min: 1, max: 1 },
+  to: { type: Account, key: "contacts", label: "Contacts" },
 })
 const Assignment = defineLink({
   id: "assignment",
   name: "Assignment",
-  from: Contact,
-  to: Account,
   outputOnly: true,
-  forward: { key: "assignedAccount", label: "Assigned account", max: 1 },
-  reverse: { key: "assignedContacts", label: "Assigned contacts" },
+  from: {
+    type: Contact,
+    key: "assignedAccount",
+    label: "Assigned account",
+    max: 1,
+  },
+  to: { type: Account, key: "assignedContacts", label: "Assigned contacts" },
 })
 const model = defineModel({
   name: "Contracts",
@@ -83,12 +84,12 @@ const decode = (key: string, input: unknown) =>
 
 describe("resolved operation contracts", () => {
   it("resolves standard mutations against required, bounded, and output-only Links", () => {
-    const input = { name: "Ada", links: { account: ["acme"] } }
+    const input = { name: "Ada", links: { account: "acme" } }
     expect(decode("contact.create", input)).toEqual(input)
     for (const links of [
       undefined,
       {},
-      { account: [] },
+      { account: null },
       { account: ["acme", "other"] },
     ]) {
       expect(() => decode("contact.create", { name: "Ada", links })).toThrow()
@@ -99,17 +100,17 @@ describe("resolved operation contracts", () => {
       "~standard"
     ].jsonSchema.input({ target: "draft-2020-12" })
     expect(JSON.stringify(json)).not.toContain("assignedAccount")
-    expect(modelOperations(model).map(({ key }) => key)).toContain(
-      "contact.assignedAccount.list"
+    expect(operationContracts(model).map(({ key }) => key)).toContain(
+      "contact.assignedAccount.get"
     )
-    expect(modelOperations(model).map(({ key }) => key)).not.toContain(
+    expect(operationContracts(model).map(({ key }) => key)).not.toContain(
       "contact.assignedAccount.link"
     )
 
     expect(
       decode("contact.update", { id: "ada", name: "Ada Lovelace" })
     ).toEqual({ id: "ada", name: "Ada Lovelace" })
-    const update = { id: "ada", links: { account: { replace: ["other"] } } }
+    const update = { id: "ada", links: { account: "other" } }
     expect(decode("contact.update", update)).toEqual(update)
     expect(decode("contact.delete", { id: "ada" })).toEqual({ id: "ada" })
     expect(() => decode("contact.batchDelete", { ids: [] })).toThrow()

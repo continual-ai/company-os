@@ -61,8 +61,12 @@ export const PullRequest = defineObject({
 export const PullRequestRepository = defineLink({
   id: "pullRequestRepository",
   name: "PullRequest Repository",
-  from: PullRequest,
-  to: Repository,
-  forward: { key: "repository", label: "Repository", min: 1, max: 1 },
-  reverse: { key: "pullRequests", label: "Pull requests" },
+  from: {
+    type: PullRequest,
+    key: "repository",
+    label: "Repository",
+    min: 1,
+    max: 1,
+  },
+  to: { type: Repository, key: "pullRequests", label: "Pull requests" },
 })

@@ -1,7 +1,5 @@
 export { Actor } from "#/runtime/model/core/actor.ts"
 export type { ActorId } from "#/runtime/model/core/actor.ts"
-export { Root } from "#/runtime/model/core/root.ts"
-export type { RootType } from "#/runtime/model/core/root.ts"
 export { defineEvent } from "#/runtime/model/definition/event.ts"
 export type { EventType } from "#/runtime/model/definition/event.ts"
 
@@ -44,13 +42,10 @@ export type {
   LinkTraversal,
   LinkType,
 } from "#/runtime/model/definition/link.ts"
-export type {
-  ModelObjectCreateInput,
-  ModelObjectUpdateInput,
-} from "#/runtime/model/definition/model-input.ts"
 export {
   defineModel,
   enableModules,
+  modelLinks,
   modelModules,
   modelObjectLinkTraversals,
   modelObjects,
@@ -74,7 +69,6 @@ export type {
 } from "#/runtime/model/definition/module.ts"
 export { defineObject, Etag } from "#/runtime/model/definition/object.ts"
 export type {
-  BaseRecord,
   ObjectBatchDeleteInput,
   ObjectBatchGetInput,
   ObjectCreateInput,
@@ -86,7 +80,6 @@ export type {
   ObjectRef,
   ObjectType,
   ObjectUpdateInput,
-  ObjectWriterUpdateInput,
   RecordAliasDelta,
   RecordAliasUpdate,
 } from "#/runtime/model/definition/object.ts"
@@ -194,11 +187,13 @@ export type {
 export { lintModelDescription } from "#/runtime/model/model-lint.ts"
 export type { ModelDiagnostic } from "#/runtime/model/model-lint.ts"
 
-export { modelRelationships } from "#/runtime/model/definition/relationship.ts"
-export type { ModelRelationship } from "#/runtime/model/definition/relationship.ts"
-
 export { defineQuery } from "#/runtime/model/definition/query.ts"
 export {
   modelObjectActions,
   modelObjectQueries,
 } from "#/runtime/model/definition/model.ts"
+
+export type {
+  Expansion,
+  ModelExpansion,
+} from "#/runtime/model/definition/model-record.ts"

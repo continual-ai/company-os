@@ -1,10 +1,11 @@
 import { Effect, Schema } from "effect"
 
-import { PipelineSummaryQuery } from "#/modules/sales/model/deal.ts"
-import { Deal } from "#/modules/sales/model/deal.ts"
+import {
+  PipelineSummaryQuery,
+  Opportunity,
+} from "#/modules/sales/model/opportunity.ts"
 import { toEffectSchema } from "#/runtime/contract/schema.ts"
-import { requireProjectAccess } from "#/runtime/server/auth/project-access.ts"
-import { Database, ModelContext } from "#/runtime/server/index.ts"
+import { Database } from "#/runtime/server/index.ts"
 
 const Output = toEffectSchema(PipelineSummaryQuery.output)
 
@@ -12,17 +13,15 @@ const Output = toEffectSchema(PipelineSummaryQuery.output)
 export const pipelineSummary = Effect.fn("sales.pipelineSummary")(function* () {
   const database = yield* Database
   const sql = database.sql
-  const context = yield* ModelContext
-  const deals = context.table(Deal)
-  yield* requireProjectAccess
-  const currency = sql`${deals.columns.amount}->>'currency'`
+  const opportunities = database.table(Opportunity)
+  const currency = sql`${opportunities.columns.amount}->>'currency'`
   const groups = yield* sql`select
-            ${deals.columns.stage} as stage,
+            ${opportunities.columns.stage} as stage,
             ${currency} as currency,
             count(*)::double precision as count,
-            sum((${deals.columns.amount}->>'amount')::numeric)::text as amount
-          from ${deals}
-          group by ${sql.csv([deals.columns.stage, currency])}
-          order by ${sql.csv([deals.columns.stage, currency])}`
+            sum((${opportunities.columns.amount}->>'amount')::numeric)::text as amount
+          from ${opportunities}
+          group by ${sql.csv([opportunities.columns.stage, currency])}
+          order by ${sql.csv([opportunities.columns.stage, currency])}`
   return yield* Schema.decodeUnknownEffect(Output)({ groups })
 })

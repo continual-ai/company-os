@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest"
 
-import { PageToken, schema } from "#/runtime/model/index.ts"
+import { validateQuery } from "#/runtime/contract/query-validation.ts"
+import { defineObject, PageToken, schema } from "#/runtime/model/index.ts"
+import { relationshipFields } from "#/runtime/model/relationship-fields.ts"
 import {
   Account,
   Person,
@@ -64,7 +66,7 @@ describe("object collection queries", () => {
             id: "accounts",
             value: { operator: "equals", values: ["account_a", "account_b"] },
           },
-          { id: "primaryAccount", value: { operator: "notEmpty", values: [] } },
+          { id: "billingAccount", value: { operator: "notEmpty", values: [] } },
         ],
         [],
         undefined,
@@ -81,7 +83,7 @@ describe("object collection queries", () => {
               { link: "accounts", contains: "account_b" },
             ],
           },
-          { not: { link: "primaryAccount", isEmpty: true } },
+          { not: { link: "billingAccount", isEmpty: true } },
         ],
       },
     })
@@ -93,7 +95,7 @@ describe("object collection queries", () => {
             id: "accounts",
             value: { operator: "notEquals", values: ["account_a"] },
           },
-          { id: "primaryAccount", value: { operator: "empty", values: [] } },
+          { id: "billingAccount", value: { operator: "empty", values: [] } },
         ],
         [],
         undefined,
@@ -105,7 +107,7 @@ describe("object collection queries", () => {
       filter: {
         and: [
           { not: { or: [{ link: "accounts", contains: "account_a" }] } },
-          { link: "primaryAccount", isEmpty: true },
+          { link: "billingAccount", isEmpty: true },
         ],
       },
     })
@@ -119,5 +121,124 @@ describe("object collection queries", () => {
         []
       )
     ).toEqual({ pageSize: 50 })
+  })
+})
+
+it("uses quantified related filters and exact count sorts in table requests", () => {
+  expect(
+    objectListRequest(
+      Person,
+      [
+        {
+          id: "accounts.name",
+          value: { operator: "contains", values: ["Acme"] },
+        },
+      ],
+      [{ id: "accounts.$count", desc: true }],
+      undefined,
+      undefined,
+      fixtureModel
+    )
+  ).toEqual({
+    pageSize: 50,
+    filter: {
+      link: "accounts",
+      some: { field: "name", operator: "contains", value: "Acme" },
+    },
+    sort: [
+      {
+        field: "accounts",
+        aggregate: "count",
+        direction: "desc",
+        nulls: "last",
+      },
+    ],
+  })
+})
+
+it("preserves quantified negation and supports relationship count filters", () => {
+  expect(
+    objectListRequest(
+      Person,
+      [
+        {
+          id: "accounts.name",
+          value: { quantifier: "none", operator: "contains", values: ["Beta"] },
+        },
+      ],
+      [],
+      undefined,
+      undefined,
+      fixtureModel
+    ).filter
+  ).toEqual({
+    link: "accounts",
+    none: { field: "name", operator: "contains", value: "Beta" },
+  })
+  expect(
+    objectListRequest(
+      Person,
+      [
+        {
+          id: "accounts.$count",
+          value: { operator: "greaterThan", values: ["2"] },
+        },
+      ],
+      [],
+      undefined,
+      undefined,
+      fixtureModel
+    ).filter
+  ).toEqual({ field: "accounts.$count", operator: "gt", value: 2 })
+})
+
+it("uses target nullability inside plural quantifiers and path nullability for singular fields", () => {
+  const fields = relationshipFields(fixtureModel, Person)
+  expect(
+    fields.find(({ id }) => id === "accounts.name")?.property.nullable
+  ).toBe(false)
+  expect(
+    fields.find(({ id }) => id === "accounts.domain")?.property.nullable
+  ).toBe(true)
+  expect(
+    fields.find(({ id }) => id === "billingAccount.name")?.property.nullable
+  ).toBe(true)
+  for (const id of ["accounts.domain", "billingAccount.name"]) {
+    const request = objectListRequest(
+      Person,
+      [{ id, value: { operator: "empty", values: [] } }],
+      [],
+      undefined,
+      undefined,
+      fixtureModel
+    )
+    expect(request.filter).toBeDefined()
+    expect(() => validateQuery(fixtureModel, Person, request)).not.toThrow()
+  }
+})
+
+it("uses the derived label consistently for the identity column's filtering and sorting", () => {
+  const object = defineObject({
+    id: "participation",
+    collection: "participations",
+    name: "Participation",
+    pluralName: "Participations",
+    properties: { name: schema.string() },
+    display: { title: ["name"] },
+  })
+  expect(
+    objectListRequest(
+      object,
+      [
+        {
+          id: object.display.title,
+          value: { operator: "contains", values: ["Maya"] },
+        },
+      ],
+      [{ id: object.display.title, desc: false }]
+    )
+  ).toMatchObject({
+    filter: { field: "label", operator: "contains", value: "Maya" },
+    sort: [{ field: "label", direction: "asc" }],
   })
 })

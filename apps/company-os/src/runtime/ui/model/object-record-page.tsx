@@ -17,6 +17,7 @@ import {
 } from "#/runtime/ui/model/module-ui.tsx"
 import {
   modelObjectProperty,
+  recordLabel,
   tableRecord,
   type ModelObject,
 } from "#/runtime/ui/model/object-client.ts"
@@ -29,13 +30,13 @@ import { ObjectRecordLayout } from "#/runtime/ui/model/object-record-layout.tsx"
 import { ObjectRecordStatusProgress } from "#/runtime/ui/model/object-record-status-progress.tsx"
 import { ObjectRelationshipCollection } from "#/runtime/ui/model/object-relationship-collection.tsx"
 import { objectTablePropertySchema } from "#/runtime/ui/model/object-table/object-table-cell-types.ts"
-import { objectTableValueText } from "#/runtime/ui/model/object-table/object-table-config.ts"
 import { ModelActions } from "#/runtime/ui/model/operation-action.tsx"
 import { usePageChromeOverride } from "#/runtime/ui/model/page-chrome.tsx"
 import { useRecordNavigation } from "#/runtime/ui/model/record-navigation.tsx"
 import { RecordOptions } from "#/runtime/ui/model/record-options.tsx"
 import { RecordRelatedCreateMenu } from "#/runtime/ui/model/record-related-create-menu.tsx"
 import { RecordRelationshipPicker } from "#/runtime/ui/model/record-relationship-picker.tsx"
+import { recordRelationshipPreviews } from "#/runtime/ui/model/record-relationship-preview-data.ts"
 import {
   RecordRelationshipPreviews,
   RelationshipCount,
@@ -43,7 +44,6 @@ import {
 import { recordRelationships } from "#/runtime/ui/model/record-relationships.ts"
 import { useModelRuntime } from "#/runtime/ui/model/runtime-context.tsx"
 import { useObjectRecord } from "#/runtime/ui/model/use-object-record.ts"
-import { useRecordRelationshipPreviews } from "#/runtime/ui/model/use-record-relationship-previews.ts"
 
 const isBoolean = (value: unknown): value is boolean =>
   typeof value === "boolean"
@@ -114,7 +114,7 @@ export function ObjectRecordPage({
   const otherRelationships = related.filter(
     (item) => !visibleRelationships.some(({ key }) => key === item.key)
   )
-  const previews = useRecordRelationshipPreviews(
+  const previews = recordRelationshipPreviews(
     visibleRelationships,
     state.record,
     state.references
@@ -140,7 +140,7 @@ export function ObjectRecordPage({
   if (!record)
     return (
       <div className="grid min-h-64 place-items-center p-6 text-center text-sm text-muted-foreground">
-        {state.loading ? (
+        {state.isPending ? (
           `Loading ${object.name.toLowerCase()}…`
         ) : (
           <div>
@@ -356,6 +356,17 @@ export function ObjectRecordPage({
       ref={pageElement}
       className="@container flex min-h-0 flex-1 flex-col bg-background"
     >
+      {state.error && (
+        <div
+          role="alert"
+          className="flex items-center gap-3 border-b px-page-gutter py-2 text-sm text-destructive"
+        >
+          <span>Could not refresh. {state.error}</span>
+          <Button variant="ghost" size="sm" onClick={() => void state.reload()}>
+            Retry
+          </Button>
+        </div>
+      )}
       <Tabs
         value={active}
         onValueChange={select}
@@ -462,11 +473,7 @@ export function ObjectRecordPage({
               <RecordOptions
                 key={record.id}
                 value={record.id}
-                label={
-                  objectTableValueText(
-                    tableRecord(object, record)[object.display.title]
-                  ) || record.id
-                }
+                label={recordLabel(object, record)}
                 objectName={object.name}
                 onDelete={
                   state.canDelete

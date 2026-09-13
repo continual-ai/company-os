@@ -4,20 +4,20 @@ import { expect } from "vitest"
 import { AssetService } from "#/runtime/assets/server/asset-service.ts"
 import { anonymousInvocation } from "#/runtime/server/invocation-context.ts"
 import { CurrentInvocation } from "#/runtime/server/invocation.ts"
-import { modelImplementation } from "#/runtime/server/model/implementation.ts"
+import { operationsFor } from "#/runtime/server/operation-executor.ts"
 import { fixtureModel } from "#/runtime/testing/fixture-model.ts"
 import { FixtureServer } from "#/runtime/testing/fixture-server.ts"
 import { testFoundation } from "#/runtime/testing/foundation.ts"
 
 const fixture = testFoundation(fixtureModel, { servers: [FixtureServer] })
-const implementation = modelImplementation(fixtureModel)
+const implementation = operationsFor(fixtureModel)
 
 fixture.test(
   "verifies uploads, protects content, and keeps references consistent through deletion",
   () =>
     Effect.gen(function* () {
       const assets = yield* AssetService
-      const { services } = yield* implementation
+      const services = yield* implementation
       const png = Uint8Array.from(
         Buffer.from(
           "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jvX8AAAAASUVORK5CYII=",

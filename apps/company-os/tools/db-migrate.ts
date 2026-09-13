@@ -10,8 +10,8 @@ import * as Postgres from "#/app/server/database/postgres.ts"
 import { localConfigLayer } from "#/app/server/local-config.ts"
 import { seedSystem } from "#/app/server/seeds/seed-system.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
-import { Database } from "#/runtime/server/storage/database.ts"
 import { ensureSearchIndex } from "#/runtime/server/storage/search-index.ts"
+import { SqlDatabase } from "#/runtime/server/storage/transactions.ts"
 
 // Deployment sequencing lives in this application's own scripts, not in any
 // platform: the deploy task invokes this tool with --if-configured so the
@@ -28,7 +28,7 @@ const migrate = Effect.gen(function* () {
   yield* applyMigrations()
   yield* seedSystem()
   yield* ensureSearchIndex(
-    yield* Database,
+    yield* SqlDatabase,
     yield* ModelContext,
     process.argv.includes("--rebuild-search")
   )

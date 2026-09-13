@@ -69,7 +69,7 @@ export function Foundations() {
       <Example title="Typography" source="packages/ui/src/styles.css · Geist">
         <div className="space-y-5">
           <p className="text-3xl font-semibold tracking-tight">
-            Your company, in focus.
+            Your account, in focus.
           </p>
           <p className="text-xl font-semibold tracking-tight">
             Review the next step

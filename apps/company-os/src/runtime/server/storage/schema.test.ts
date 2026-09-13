@@ -30,10 +30,23 @@ const WorkspaceMarker = defineInterface({
   pluralName: "Workspaces",
 })
 describe("makePostgresSchema", () => {
+  it("emits valid storage for an empty model without synthetic records", () => {
+    const storage = makePostgresSchema(
+      defineModel({ name: "Empty", modules: [] })
+    )
+    const ddl = storage.ddl.join("\n")
+    expect(ddl).toContain(
+      'constraint "objects_object_type_check" check (false)'
+    )
+    expect(ddl).not.toContain('create table "roots"')
+    expect(storage.core).not.toHaveProperty("roots")
+  })
+
   it("projects model fields, relationships, and infrastructure constraints", () => {
     const storage = makePostgresSchema(fixtureModel)
     expect(Object.keys(getTableColumns(storage.objects.person))).toEqual([
       "id",
+      "billing_account_id",
       "photo",
       "name",
       "email",
@@ -41,7 +54,7 @@ describe("makePostgresSchema", () => {
       "consent",
     ])
     expect(
-      Object.keys(getTableColumns(storage.linkTables.personPrimaryAccount))
+      Object.keys(getTableColumns(storage.linkTables.personBillingAccount))
     ).toEqual(["forwardId", "reverseId"])
     expect(getTableName(storage.interfaces.participant)).toBe(
       "interface_participant"
@@ -65,7 +78,7 @@ describe("makePostgresSchema", () => {
     )
     expect(ddl).toContain(`"etag" text not null default '1'`)
     expect(ddl).not.toContain("users_email_unique")
-    expect(ddl).toContain('create table "link_order_lines"')
+    expect(ddl).toContain('create view "link_order_lines"')
     expect(ddl).toContain('create trigger "event_journal_append_only"')
     expect(ddl).toContain('create index "record_search_document_idx"')
   })
@@ -92,16 +105,10 @@ describe("makePostgresSchema", () => {
     })
     const PermissionScope = defineLink({
       id: "permissionScope",
-      from: Permission,
-      to: WorkspaceMarker,
-      forward: {
-        min: 1,
-        max: 1,
-        key: "scope",
-        label: "Scope",
-      },
       name: "Permission scope",
-      reverse: {
+      from: { type: Permission, min: 1, max: 1, key: "scope", label: "Scope" },
+      to: {
+        type: WorkspaceMarker,
         min: 0,
         key: "permissions",
         label: "Permissions",
@@ -154,20 +161,10 @@ describe("makePostgresSchema", () => {
       display: { title: "name" },
     })
     const TeamMembership = defineLink({
-      from: Person,
-      to: Team,
       id: "teamMembership",
       name: "Team membership",
-      forward: {
-        key: "teams",
-        min: 0,
-        label: "Teams",
-      },
-      reverse: {
-        key: "members",
-        min: 0,
-        label: "Members",
-      },
+      from: { type: Person, key: "teams", min: 0, label: "Teams" },
+      to: { type: Team, key: "members", min: 0, label: "Members" },
     })
     const model = defineModel({
       modules: [
@@ -218,22 +215,10 @@ describe("makePostgresSchema", () => {
       properties: { name: schema.string() },
     })
     const PersonBadge = defineLink({
-      from: Person,
-      to: Badge,
       id: "personBadge",
-      forward: {
-        min: 0,
-        max: 1,
-        key: "badge",
-        label: "Badge",
-      },
       name: "Person badge",
-      reverse: {
-        min: 0,
-        max: 1,
-        key: "holder",
-        label: "Holder",
-      },
+      from: { type: Person, min: 0, max: 1, key: "badge", label: "Badge" },
+      to: { type: Badge, min: 0, max: 1, key: "holder", label: "Holder" },
     })
     const model = defineModel({
       modules: [
@@ -250,10 +235,13 @@ describe("makePostgresSchema", () => {
 
     const storage = makePostgresSchema(model)
 
-    for (const side of ["forward", "reverse"])
-      expect(storage.ddl.join("\n")).toContain(
-        `create unique index "link_person_badge_${side}_id_unique" on "link_person_badge" ("${side}_id")`
-      )
+    expect(storage.ddl.join("\n")).toContain(
+      'unique ("badge_id") deferrable initially deferred'
+    )
+    expect(storage.ddl.join("\n")).toContain('create view "link_person_badge"')
+    expect(storage.ddl.join("\n")).not.toContain(
+      'create function "check_person_badge"'
+    )
   })
 
   it("rejects physical table-name collisions after normalization", () => {
@@ -332,4 +320,18 @@ describe("makePostgresSchema", () => {
     ).not.toContain("check")
     expect(storage.objects.validatedRecord.columns.labels.type).toBe("text[]")
   })
+})
+
+it("generates cardinality triggers only for non-native bounds and changed relationships", () => {
+  const ddl = makePostgresSchema(fixtureModel).ddl.join("\n")
+  expect(ddl).not.toContain('create function "check_person_accounts"')
+  expect(ddl).not.toContain('create function "lock_person_accounts"')
+  expect(ddl).not.toContain('create function "check_person_billing_account"')
+  expect(ddl).toContain('create function "check_account_orders"')
+  expect(ddl).toContain(
+    'when (OLD."account_id" is distinct from NEW."account_id")'
+  )
+  expect(ddl).toContain(
+    'create constraint trigger "require_account_orders_reverse"'
+  )
 })

@@ -111,37 +111,22 @@ export const Person = defineObject({
 const PersonAccounts = defineLink({
   id: "personAccounts",
   name: "Person accounts",
-  from: Person,
-  to: Account,
-  forward: {
-    key: "accounts",
-    min: 0,
-    label: "Accounts",
-  },
-  reverse: {
-    key: "people",
-    min: 0,
-    label: "People",
-  },
+  from: { type: Person, key: "accounts", min: 0, label: "Accounts" },
+  to: { type: Account, key: "people", min: 0, label: "People" },
 })
 
-const PersonPrimaryAccount = defineLink({
-  id: "personPrimaryAccount",
-  name: "Person primary account",
-  subsetOf: PersonAccounts,
-  from: Person,
-  to: Account,
-  forward: {
-    key: "primaryAccount",
+const PersonBillingAccount = defineLink({
+  id: "personBillingAccount",
+  name: "Person billing account",
+
+  from: {
+    type: Person,
+    key: "billingAccount",
     min: 0,
     max: 1,
-    label: "Primary account",
+    label: "Billing account",
   },
-  reverse: {
-    key: "primaryPeople",
-    min: 0,
-    label: "Primary people",
-  },
+  to: { type: Account, key: "billingPeople", min: 0, label: "Billing people" },
 })
 
 export const Prospect = defineObject({
@@ -214,20 +199,30 @@ const ProspectConvertedAccount = defineLink({
   id: "prospectConvertedAccount",
   outputOnly: true,
   name: "Prospect Converted account",
-  from: Prospect,
-  to: Account,
-  forward: { key: "convertedAccount", label: "Converted account", max: 1 },
-  reverse: { key: "convertedProspects", label: "Converted prospects" },
+  from: {
+    type: Prospect,
+    key: "convertedAccount",
+    label: "Converted account",
+    max: 1,
+  },
+  to: {
+    type: Account,
+    key: "convertedProspects",
+    label: "Converted prospects",
+  },
 })
 
 const ProspectConvertedPerson = defineLink({
   id: "prospectConvertedPerson",
   outputOnly: true,
   name: "Prospect Converted person",
-  from: Prospect,
-  to: Person,
-  forward: { key: "convertedPerson", label: "Converted person", max: 1 },
-  reverse: { key: "convertedProspects", label: "Converted prospects" },
+  from: {
+    type: Prospect,
+    key: "convertedPerson",
+    label: "Converted person",
+    max: 1,
+  },
+  to: { type: Person, key: "convertedProspects", label: "Converted prospects" },
 })
 
 export const ProspectConverted = defineEvent({
@@ -277,13 +272,11 @@ export const Order = defineObject({
 const OrderOwner = defineLink({
   id: "orderOwner",
   name: "Order Owner",
-  from: Order,
-  to: User,
-  forward: { key: "owner", label: "Owner", max: 1 },
-  reverse: { key: "orders", label: "Orders" },
+  from: { type: Order, key: "owner", label: "Owner", max: 1 },
+  to: { type: User, key: "orders", label: "Orders" },
 })
 
-export const OrderLine = defineObject({
+const OrderLine = defineObject({
   id: "orderLine",
   collection: "orderLines",
   name: "Order line",
@@ -336,35 +329,21 @@ export const Memo = defineObject({
 const MemoTopics = defineLink({
   id: "memoTopics",
   name: "Memo topics",
-  from: Memo,
-  to: Topic,
-  forward: {
-    key: "topics",
-    min: 0,
-    label: "Topics",
-  },
-  reverse: {
-    key: "memos",
-    min: 0,
-    label: "Memos",
-  },
+  from: { type: Memo, key: "topics", min: 0, label: "Topics" },
+  to: { type: Topic, key: "memos", min: 0, label: "Memos" },
 })
 
 const AccountOrders = defineLink({
   id: "accountOrders",
   name: "Account orders",
-  from: Account,
-  to: Order,
-  forward: { key: "orders", label: "Orders" },
-  reverse: { key: "account", label: "Account", min: 1, max: 1 },
+  from: { type: Account, key: "orders", label: "Orders" },
+  to: { type: Order, key: "account", label: "Account", min: 1, max: 1 },
 })
 const OrderLines = defineLink({
   id: "orderLines",
   name: "Order lines",
-  from: Order,
-  to: OrderLine,
-  forward: { key: "lines", label: "Lines", onDelete: "cascade" },
-  reverse: { key: "order", label: "Order", min: 1, max: 1 },
+  from: { type: Order, key: "lines", label: "Lines", onDelete: "cascade" },
+  to: { type: OrderLine, key: "order", label: "Order", min: 1, max: 1 },
 })
 
 /** A representative business domain for kernel tests: ownership, interfaces, links, and a custom action. */
@@ -377,7 +356,7 @@ export const FixtureModule = defineModule({
     AccountOrders,
     OrderLines,
     PersonAccounts,
-    PersonPrimaryAccount,
+    PersonBillingAccount,
     MemoTopics,
     ProspectConvertedAccount,
     ProspectConvertedPerson,

@@ -1,13 +1,16 @@
 import { Effect } from "effect"
-import { SqlError, UnknownError } from "effect/unstable/sql/SqlError"
-import type { Constructor } from "effect/unstable/sql/Statement"
-import type { Fragment } from "effect/unstable/sql/Statement"
+import type { Constructor, Fragment } from "effect/unstable/sql/Statement"
 
-import type { ObjectType } from "#/runtime/model/index.ts"
-import type { ModelContext } from "#/runtime/server/model-context.ts"
-import { insertValues, assignments } from "#/runtime/server/storage/index.ts"
-import type { Column } from "#/runtime/server/storage/index.ts"
 import {
+  modelObjectLinkTraversals,
+  modelTypeAccepts,
+  type ObjectType,
+} from "#/runtime/model/index.ts"
+import type { ModelContext } from "#/runtime/server/model-context.ts"
+import {
+  insertValues,
+  assignments,
+  type Column,
   tableColumns,
   tableProjection,
   type TableRow,
@@ -18,6 +21,7 @@ import {
   recordSearch,
   searchIndexState,
 } from "#/runtime/server/storage/infrastructure.ts"
+import { recordLabelSql } from "#/runtime/server/storage/record-label.ts"
 
 /** Shared tokenization makes email domains, URLs, hyphens, and names searchable as word prefixes. */
 export function searchVector(sql: Constructor, text: Fragment) {
@@ -34,13 +38,15 @@ function project(
   const columns: Readonly<Record<string, Column>> = tableColumns(table)
   const display = (field: string | undefined) =>
     field === undefined ? sql`null` : sql`${columns[field]}`
-  const title = sql`coalesce(nullif(${display(object.display.title)}::text, ''), ${table.columns.id})`
+  const title = recordLabelSql(sql, context.storage, object)
   const vectors = object.search!.fields.map((field) => {
     const vector = searchVector(sql, sql`${columns[field]}`)
     return field === object.display.title
       ? sql`setweight(${vector}, 'A')`
       : sql`setweight(${vector}, 'B')`
   })
+  if (object.display.titleFields)
+    vectors.push(sql`setweight(${searchVector(sql, title)}, 'A')`)
   return sql`insert into ${recordSearch} (id, title, subtitle, image, status, document)
     select ${table.columns.id}, left(${title}, 300), left(${display(object.display.subtitle)}::text, 300),
       ${display(object.display.image)}::jsonb, ${display(object.display.status)}::text,
@@ -68,12 +74,50 @@ export function updateSearchIndex(
   )
 
   return Effect.gen(function* () {
+    const affected = [...subjects]
+    // Derived titles depend only on direct singular links. Refresh those index rows when a target changes.
+    for (const object of searchableObjects) {
+      const keys = new Set(
+        (object.display.titleFields ?? [])
+          .filter((path) => path.includes("."))
+          .map((path) => path.split(".")[0])
+      )
+      for (const { link, traversal, direction } of modelObjectLinkTraversals(
+        context.model,
+        object
+      )) {
+        if (!keys.has(traversal.key)) continue
+        const ids = subjects
+          .filter((subject) =>
+            modelTypeAccepts(
+              context.model,
+              subject.objectType,
+              traversal.to.typeId
+            )
+          )
+          .map(({ id }) => id)
+        if (ids.length === 0) continue
+        const edges = context.storage.linkTables[link.id]!
+        const source =
+          direction === "forward"
+            ? edges.columns.forwardId
+            : edges.columns.reverseId
+        const target =
+          direction === "forward"
+            ? edges.columns.reverseId
+            : edges.columns.forwardId
+        const rows = yield* sql<{
+          id: string
+        }>`select ${source} as id from ${edges} where ${target} in (${sql.csv(ids.map((id) => sql`${id}`))})`
+        affected.push(...rows.map(({ id }) => ({ id, objectType: object.id })))
+      }
+    }
     const searchableTypes = new Set<string>(
       searchableObjects.map((object) => object.id)
     )
     const targets = [
       ...new Set(
-        subjects
+        affected
           .filter((subject) => searchableTypes.has(subject.objectType))
           .map((subject) => subject.id)
       ),
@@ -87,7 +131,7 @@ export function updateSearchIndex(
     for (const object of searchableObjects) {
       const ids = [
         ...new Set(
-          subjects
+          affected
             .filter((subject) => subject.objectType === object.id)
             .map((subject) => subject.id)
         ),
@@ -101,17 +145,7 @@ export function updateSearchIndex(
         context
       )}`
     }
-  }).pipe(
-    Effect.mapError(
-      (cause) =>
-        new SqlError({
-          reason: new UnknownError({
-            cause,
-            message: "Could not update the transaction's search index.",
-          }),
-        })
-    )
-  )
+  })
 }
 
 /** Migration-time rebuild when indexed fields change. Locks source tables while replacing the disposable projection. */

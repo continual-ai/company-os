@@ -17,13 +17,14 @@ export interface LinkEndpoint<
 }
 
 interface LinkEndDefinition {
+  readonly type: LinkTarget
   readonly key: string
-  readonly label: string
+  readonly label?: string
   readonly description?: string
   readonly min?: number
   readonly max?: number
   /** Deleting the source deletes these targets. Ordinary unlinking never deletes records. */
-  readonly onDelete?: "unlink" | "cascade"
+  readonly onDelete?: "unlink" | "restrict" | "cascade"
 }
 
 export interface LinkTraversal<
@@ -40,19 +41,16 @@ export interface LinkTraversal<
   description?: string
   min: TMin
   max: TMax
-  onDelete: "unlink" | "cascade"
+  onDelete: "unlink" | "restrict" | "cascade"
 }
 
 export interface LinkDefinition {
   readonly id: string
-  readonly name: string
+  readonly name?: string
   readonly description?: string
-  readonly from: LinkTarget
-  readonly to: LinkTarget
-  readonly forward: LinkEndDefinition
-  readonly reverse: LinkEndDefinition
+  readonly from: LinkEndDefinition
+  readonly to: LinkEndDefinition
   readonly outputOnly?: boolean
-  readonly subsetOf?: LinkType
 }
 
 type EndpointOf<T extends LinkTarget> = LinkEndpoint<T["id"], T["kind"]>
@@ -78,9 +76,16 @@ export interface LinkType<D extends LinkDefinition = LinkDefinition> {
     boolean,
     D extends { readonly outputOnly: true } ? true : false
   >
-  subsetOf?: string
-  forward: OpenOr<D, LinkTraversal, EndOf<D["forward"], D["from"], D["to"]>>
-  reverse: OpenOr<D, LinkTraversal, EndOf<D["reverse"], D["to"], D["from"]>>
+  forward: OpenOr<
+    D,
+    LinkTraversal,
+    EndOf<D["from"], D["from"]["type"], D["to"]["type"]>
+  >
+  reverse: OpenOr<
+    D,
+    LinkTraversal,
+    EndOf<D["to"], D["to"]["type"], D["from"]["type"]>
+  >
 }
 
 function traversal(
@@ -99,7 +104,8 @@ function traversal(
       `Link traversal '${end.key}' requires integer bounds with 0 <= min <= max.`
     )
   return {
-    ...end,
+    label: end.label ?? (max === 1 ? to.name : to.pluralName),
+    ...(end.description === undefined ? {} : { description: end.description }),
     key: definitionId(end.key),
     from: { kind: from.kind, typeId: from.id },
     to: { kind: to.kind, typeId: to.id },
@@ -113,24 +119,13 @@ function traversal(
 export function defineLink<const D extends LinkDefinition>(
   definition: D &
     NoExtraKeys<D, LinkDefinition> & {
-      readonly forward: D["forward"] &
-        NoExtraKeys<D["forward"], LinkEndDefinition>
-      readonly reverse: D["reverse"] &
-        NoExtraKeys<D["reverse"], LinkEndDefinition>
+      readonly from: D["from"] & NoExtraKeys<D["from"], LinkEndDefinition>
+      readonly to: D["to"] & NoExtraKeys<D["to"], LinkEndDefinition>
     }
 ): LinkType<D> {
   const input: LinkDefinition = definition
-  const forward = traversal(input.forward, input.from, input.to)
-  const reverse = traversal(input.reverse, input.to, input.from)
-  if (
-    input.subsetOf !== undefined &&
-    (input.subsetOf.forward.from.typeId !== input.from.id ||
-      input.subsetOf.reverse.from.typeId !== input.to.id ||
-      input.subsetOf.subsetOf !== undefined)
-  )
-    throw new Error(
-      `Link '${input.id}' must select from a relationship with identical endpoints.`
-    )
+  const forward = traversal(input.from, input.from.type, input.to.type)
+  const reverse = traversal(input.to, input.to.type, input.from.type)
   if (
     (forward.onDelete === "cascade" && reverse.max !== 1) ||
     (reverse.onDelete === "cascade" && forward.max !== 1) ||
@@ -142,14 +137,13 @@ export function defineLink<const D extends LinkDefinition>(
   const link: LinkType = {
     kind: "link",
     id: definitionId(input.id),
-    name: input.name,
+    name: input.name ?? `${input.from.type.name} ${input.from.key}`,
     outputOnly: input.outputOnly ?? false,
     forward,
     reverse,
     ...(input.description === undefined
       ? {}
       : { description: input.description }),
-    ...(input.subsetOf === undefined ? {} : { subsetOf: input.subsetOf.id }),
   }
   // SAFETY: normalized traversals preserve the literal keys, endpoint types, and supplied bounds.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion

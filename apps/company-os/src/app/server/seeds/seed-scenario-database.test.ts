@@ -6,14 +6,13 @@ import { demoScenario } from "#/app/seeds/demo.server.ts"
 import { performanceScenario } from "#/app/seeds/performance.server.ts"
 import {
   type makeApplicationServicesLayer,
-  ModelImplementation,
+  applicationOperations,
   runSeedScenario,
 } from "#/app/server/application-services.ts"
 import { Storage } from "#/app/server/database/schema.ts"
 import { testApplication } from "#/app/server/test-application.ts"
 import type { CurrentInvocation } from "#/runtime/server/invocation.ts"
 import { PageTokens } from "#/runtime/server/page-tokens.ts"
-import { Database } from "#/runtime/server/storage/database.ts"
 import {
   tableProjection,
   type TableRow,
@@ -25,15 +24,16 @@ import {
   eventJournal,
   seedRuns,
 } from "#/runtime/server/storage/infrastructure.ts"
+import { SqlDatabase } from "#/runtime/server/storage/transactions.ts"
 
 const application = testApplication()
-const { company: companies, lead: leads } = Storage.objects
+const { account: accounts, lead: leads } = Storage.objects
 
 application.test(
   "seeds connected records and real assets once, preserves edits, and rolls back failures",
   () =>
     Effect.gen(function* () {
-      const database = yield* Database
+      const database = yield* SqlDatabase
       const sql = database.sql
       const infrastructure = { pageTokens: PageTokens.layerTest }
       expect(yield* runSeedScenario(demoScenario, infrastructure)).toBe(
@@ -46,21 +46,21 @@ application.test(
       expect(blobs).toHaveLength(7)
       expect(blobs.every(({ bytes }) => bytes.byteLength > 100)).toBe(true)
       const [customer] = yield* sql<
-        TableRow<typeof companies>
-      >`select ${tableProjection(companies)}
-          from ${companies}
-          where ${companies.columns.name} = ${"Northstar Robotics"}`
+        TableRow<typeof accounts>
+      >`select ${tableProjection(accounts)}
+          from ${accounts}
+          where ${accounts.columns.name} = ${"Northstar Robotics"}`
       expect(customer?.logo).not.toBeNull()
       const originalEventsFields = { id: eventJournal.columns.id }
       const originalEvents = yield* sql<
         SelectionRow<typeof originalEventsFields>
       >`select ${projection(originalEventsFields)}
           from ${eventJournal}`
-      const { services } = yield* ModelImplementation
-      const record = (yield* services.company.list({
+      const services = yield* applicationOperations
+      const record = (yield* services.account.list({
         filter: { field: "name", operator: "eq", value: "Northstar Robotics" },
       })).items[0]!
-      yield* services.company.update({
+      yield* services.account.update({
         id: record.id,
         etag: record.etag,
         name: "Manually renamed",
@@ -82,10 +82,10 @@ application.test(
       ).toHaveLength(7)
       expect(
         (yield* sql<
-          TableRow<typeof companies>
-        >`select ${tableProjection(companies)}
-          from ${companies}
-          where ${companies.columns.id} = ${customer!.id}`)[0]!.name
+          TableRow<typeof accounts>
+        >`select ${tableProjection(accounts)}
+          from ${accounts}
+          where ${accounts.columns.id} = ${customer!.id}`)[0]!.name
       ).toBe("Manually renamed")
       expect(
         yield* sql<
@@ -113,7 +113,7 @@ application.test(
         name: "broken",
         parameters: {},
         run: Effect.gen(function* () {
-          yield* (yield* ModelImplementation).services.company.create({
+          yield* (yield* applicationOperations).account.create({
             name: "Must roll back",
           })
           return yield* Effect.fail(new Error("fixture failed"))
@@ -124,10 +124,10 @@ application.test(
       ).toBe("Failure")
       expect(
         yield* sql<
-          TableRow<typeof companies>
-        >`select ${tableProjection(companies)}
-          from ${companies}
-          where ${companies.columns.name} = ${"Must roll back"}`
+          TableRow<typeof accounts>
+        >`select ${tableProjection(accounts)}
+          from ${accounts}
+          where ${accounts.columns.name} = ${"Must roll back"}`
       ).toHaveLength(0)
       expect(
         yield* sql<
@@ -151,7 +151,7 @@ application.test("supports a paginated, repeatable performance dataset", () =>
         runSeedScenario(performanceScenario(61), infrastructure)
       ))._tag
     ).toBe("Failure")
-    const { services } = yield* ModelImplementation
+    const services = yield* applicationOperations
     const first = yield* services.contact.list({ pageSize: 50 })
     expect(first.totalSize).toBe(60)
     expect(first.items).toHaveLength(50)
@@ -165,9 +165,9 @@ application.test("supports a paginated, repeatable performance dataset", () =>
       new Set([...first.items, ...second.items].map(({ id }) => id)).size
     ).toBe(60)
     expect((yield* services.lead.list({})).totalSize).toBe(60)
-    expect((yield* services.note.list({})).totalSize).toBe(60)
+    expect((yield* services.note.list({})).totalSize).toBe(120)
     // Every shipped business object must have examples; this catches forgotten modules and new objects.
-    const sql = (yield* Database).sql
+    const sql = (yield* SqlDatabase).sql
     for (const module of Object.values(Model.modules)) {
       if (module.id === "platform") continue
       for (const object of module.objects) {
@@ -178,7 +178,7 @@ application.test("supports a paginated, repeatable performance dataset", () =>
         expect(row?.count, `${module.id}.${object.id}`).toBeGreaterThan(0)
       }
     }
-    expect((yield* services.deal.list({})).totalSize).toBe(30)
+    expect((yield* services.opportunity.list({})).totalSize).toBe(30)
     expect((yield* services.lineItem.list({})).totalSize).toBe(90)
     expect((yield* services.activity.list({})).totalSize).toBe(60)
     expect((yield* services.reply.list({})).totalSize).toBe(90)
@@ -186,17 +186,17 @@ application.test("supports a paginated, repeatable performance dataset", () =>
     expect(new Set(tickets.map((ticket) => ticket.status)).size).toBe(6)
     expect(tickets.some((ticket) => ticket.resolution !== null)).toBe(true)
     const ticketTable = Storage.objects.ticket
-    const primary = Storage.linkTables.contactPrimaryCompany
+    const membershipContact = Storage.linkTables.affiliationContact
+    const membershipAccount = Storage.linkTables.affiliationAccount
     const requester = Storage.linkTables.ticketRequester
-    const company = Storage.linkTables.ticketCompany
+    const account = Storage.linkTables.ticketAccount
     const [mismatch] = yield* sql<{
       count: number
     }>`select count(*)::int as count
       from ${ticketTable}
       join ${requester} on ${requester.columns.forwardId} = ${ticketTable.columns.id}
-      join ${company} on ${company.columns.forwardId} = ${ticketTable.columns.id}
-      left join ${primary} on ${primary.columns.forwardId} = ${requester.columns.reverseId}
-      where ${primary.columns.reverseId} is distinct from ${company.columns.reverseId}`
+      join ${account} on ${account.columns.forwardId} = ${ticketTable.columns.id}
+      where not exists (select 1 from ${membershipContact} join ${membershipAccount} on ${membershipAccount.columns.forwardId} = ${membershipContact.columns.forwardId} where ${membershipContact.columns.reverseId} = ${requester.columns.reverseId} and ${membershipAccount.columns.reverseId} = ${account.columns.reverseId})`
     expect(mismatch?.count).toBe(0)
   })
 )

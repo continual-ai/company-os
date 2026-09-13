@@ -1,11 +1,14 @@
 import { appMetadata } from "#/app.config.ts"
+import { CrmModule } from "#/modules/crm/model/index.ts"
+import { CustomerFeedbackModule } from "#/modules/customer-feedback/model/index.ts"
 import { EngineeringModule } from "#/modules/engineering/model/index.ts"
 import { HiringModule } from "#/modules/hiring/model/index.ts"
 import { MarketingModule } from "#/modules/marketing/model/index.ts"
 import { NotesModule } from "#/modules/notes/model/index.ts"
+import { ProductDemandModule } from "#/modules/product-demand/model/index.ts"
+import { ProductModule } from "#/modules/product/model/index.ts"
 import { SalesModule } from "#/modules/sales/model/index.ts"
-import { SupportEngineeringModule } from "#/modules/support-engineering/model/index.ts"
-import { SupportModule } from "#/modules/support/model/index.ts"
+import { ServiceModule } from "#/modules/service/model/index.ts"
 import { defineModel } from "#/runtime/model/index.ts"
 import { PlatformModule } from "#/runtime/platform/model/index.ts"
 
@@ -22,11 +25,14 @@ export const Model = defineModel({
   modules: [
     PlatformModule,
     NotesModule,
+    CrmModule,
     SalesModule,
     MarketingModule,
+    ProductModule,
     EngineeringModule,
     HiringModule,
-    SupportModule,
-    SupportEngineeringModule,
+    ServiceModule,
+    CustomerFeedbackModule,
+    ProductDemandModule,
   ],
 })

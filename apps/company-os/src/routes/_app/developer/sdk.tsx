@@ -4,32 +4,32 @@ import { Link, createFileRoute } from "@tanstack/react-router"
 import { pageOptions } from "#/app/ui/route-metadata.ts"
 
 const queryExample = `import { useQuery } from "@tanstack/react-query"
-import { data } from "#/app/app-client.ts"
+import { Model } from "#/app.model.ts"
+import { useClient } from "#/runtime/ui/module.ts"
 
-const companies = data.company.list({ pageSize: 50 })
-
-// In a TanStack Router loader:
-// await context.queryClient.ensureQueryData(companies)
-
-export function CompanyNames() {
-  const query = useQuery(companies)
-  if (query.isPending) return <p>Loading companies…</p>
+export function AccountNames() {
+  const client = useClient(Model)
+  const query = useQuery(client.account.list.queryOptions({ pageSize: 50 }))
+  if (query.isPending) return <p>Loading accounts…</p>
   if (query.isError) return <p>{query.error.message}</p>
-  return <ul>{query.data.items.map(company => (
-    <li key={company.id}>{company.name}</li>
+  return <ul>{query.data.items.map(account => (
+    <li key={account.id}>{account.name}</li>
   ))}</ul>
 }`
 
 const mutationExample = `import { useMutation } from "@tanstack/react-query"
-import { data } from "#/app/app-client.ts"
+
+import { Model } from "#/app.model.ts"
+import { useClient } from "#/runtime/ui/module.ts"
 
 // Inside a React component:
-const update = useMutation(data.company.update())
+const client = useClient(Model)
+const update = useMutation(client.account.update.mutationOptions())
 
 // On form submission, use the revision the user edited:
 await update.mutateAsync({
-  id: company.id,
-  etag: company.etag,
+  id: account.id,
+  etag: account.etag,
   name: values.name,
 })
 // Render update.error through the shared form error boundary.
@@ -55,9 +55,9 @@ function SdkPage() {
           Build with the model.
         </h1>
         <p className="mt-3 leading-7 text-muted-foreground">
-          Import <code>data</code> from <code>#/app/app-client.ts</code>. Reads
-          return TanStack Query options; writes return mutation options. React
-          and Router share one cache and the same typed contracts as the API.
+          Use <code>useClient(Model)</code> with your application model. Reads
+          expose query options; writes expose mutation options. React and Router
+          share one cache and the same typed contracts as the API.
         </p>
       </header>
       <section className="grid gap-6 xl:grid-cols-2">
@@ -66,7 +66,8 @@ function SdkPage() {
           <p className="text-sm leading-6 text-muted-foreground">
             Preload the screen’s exact request in its loader. Components observe
             that same query, keep cached data during revalidation, and receive
-            committed changes from the project event feed.
+            committed changes from the project change feed. For pagination, pass
+            the collection’s infiniteQueryOptions(input) to useInfiniteQuery.
           </p>
           <CodeBlock
             language="tsx"

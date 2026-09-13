@@ -7,8 +7,12 @@ project admission. `app.ui.ts` is optional presentation customization, not an ac
 Public intake is a separate surface; a request for Company OS without a public site still includes
 its standard internal pages.
 
-Module UI uses `useObjectClient(Object)` from `runtime/ui/module.ts`; shell code uses
-`app/app-client.ts`. Use the existing forms, error paths, and server-driven invalidation. Prefer
+UI uses `useClient(Model)` from `runtime/ui/module.ts`, importing the application contract from
+`app.model.ts`. Pass an operation’s `queryOptions(input)` to `useQuery`, `mutationOptions()` to
+`useMutation`, or a collection’s `infiniteQueryOptions(input)` to `useInfiniteQuery`. Expanded
+relationships are inferred from the model. Keep models outside React; the hook reads the provided
+client. Loaders use the same option factories on the request’s client and QueryClient. Use the
+existing forms, error paths, and server-driven invalidation. Prefer
 `defineModuleUi` additions/replacements, then a module-owned page for a distinct workflow. Do not
 create a custom route, transport, or service merely to expose standard CRUD.
 

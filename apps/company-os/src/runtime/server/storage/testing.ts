@@ -245,11 +245,11 @@ async function dropClone(database: TestDatabaseClone): Promise<void> {
   await dropDatabase(database.adminUrl, database.name)
 }
 
-/** Ledgers and index definitions describe the schema rather than test data and survive a reset. */
+/** Migration history and index definitions describe the schema rather than test data and survive a reset. */
 const PRESERVED_TABLES = ["company_os_migrations", "search_index_state"]
 
 /**
- * Returns a clone to its post-migration state: every data table is truncated
+ * Returns a clone to its initialized state: every data table is truncated
  * with identities restarted, and the journal position row is restored. Much
  * cheaper than cloning again, which is what makes one clone per file viable.
  */

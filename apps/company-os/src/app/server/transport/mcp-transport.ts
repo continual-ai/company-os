@@ -4,26 +4,15 @@ import { appMetadata } from "#/app.config.ts"
 import { appUrl } from "#/app/client/environment.ts"
 import type { ActorId } from "#/runtime/model/core/actor.ts"
 import {
-  activeModuleModel,
-  requireModuleOperation,
-} from "#/runtime/platform/server/index.ts"
-import {
   internalApiError,
-  withApiErrors,
   unauthenticatedApiError,
 } from "#/runtime/server/api-error.ts"
 import { Authentication } from "#/runtime/server/auth/authentication.ts"
-import { CurrentInvocation } from "#/runtime/server/invocation.ts"
-import { Operations } from "#/runtime/server/invoke.ts"
 import {
   createModelMcpHandler,
   validateModelMcpRequest,
 } from "#/runtime/server/mcp.ts"
-import type { ModelContext } from "#/runtime/server/model-context.ts"
-import { ModelImplementation } from "#/runtime/server/model/implementation.ts"
-import type { ObjectRepositories } from "#/runtime/server/model/object-repositories.ts"
-import { createRecordBatchGet } from "#/runtime/server/record-batch.ts"
-import type { Database } from "#/runtime/server/storage/database.ts"
+import { OperationExecutor } from "#/runtime/server/operation-executor.ts"
 
 class McpTransportFailure extends Data.TaggedError("McpTransportFailure")<{
   readonly cause: unknown
@@ -47,12 +36,9 @@ const invocationContextSchema = Schema.Struct({
 })
 
 const make = Effect.gen(function* () {
-  const operations = yield* Operations
-  const runPromise = Effect.runPromiseWith(
-    yield* Effect.context<Database | ModelContext | ObjectRepositories>()
-  )
+  const operations = yield* OperationExecutor
+  const runPromise = Effect.runPromise
   const authentication = yield* Authentication
-  const implementation = yield* ModelImplementation
   const requestPolicy = { allowedHostnames: allowedMcpHostnames() }
   const handler = yield* Effect.acquireRelease(
     Effect.sync(() =>
@@ -67,29 +53,14 @@ const make = Effect.gen(function* () {
         if (invocation === undefined) {
           throw new Error("MCP invocation context is missing.")
         }
-        const exposed = (await runPromise(activeModuleModel())).model
+        const exposed = (await runPromise(operations.activeModel)).model
         return {
-          exposed,
-          batchGetRecords: (input: { ids: readonly string[] }) =>
-            runPromise(
-              withApiErrors(createRecordBatchGet(exposed)(input)).pipe(
-                Effect.provideService(CurrentInvocation, invocation),
-                Effect.match({
-                  onFailure: (error) => ({ success: false as const, error }),
-                  onSuccess: (value) => ({ success: true as const, value }),
-                })
-              )
-            ),
-          implementation,
+          model: exposed,
           name: appMetadata.name,
           version: appMetadata.version,
           run: (descriptor, operation) =>
             runPromise(
-              requireModuleOperation(descriptor).pipe(
-                Effect.andThen(
-                  operations.run(invocation, descriptor, operation)
-                ),
-                (effect) => withApiErrors(effect, descriptor),
+              operations.run(invocation, descriptor, operation).pipe(
                 Effect.match({
                   onFailure: (error) => ({ error, success: false as const }),
                   onSuccess: ({ value }) => ({ success: true as const, value }),

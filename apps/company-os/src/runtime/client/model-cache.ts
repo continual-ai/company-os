@@ -1,38 +1,108 @@
-import type { QueryClient } from "@tanstack/react-query"
-import { Schema } from "effect"
-
 import {
-  cacheGeneration,
-  changedModelQueries,
-  resetModelCache,
-  invalidateModelQueries,
-} from "#/runtime/client/data-client.ts"
-import type { EventPage } from "#/runtime/contract/events.ts"
-import { toEffectObjectSchema } from "#/runtime/contract/schema.ts"
-import type { ModelCatalog } from "#/runtime/model/index.ts"
+  QueryClient,
+  type Query,
+  type QueryFilters,
+} from "@tanstack/react-query"
 
-interface Snapshot {
-  readonly id: string
-  readonly etag: string
-  readonly [key: string]: unknown
-}
-interface Change {
-  readonly record: Snapshot
-  readonly deleted?: boolean
+import type { ChangePage } from "#/runtime/contract/events.ts"
+
+const generations = new WeakMap<QueryClient, number>()
+export const cacheGeneration = (cache: QueryClient) =>
+  generations.get(cache) ?? 0
+export function resetModelCache(cache: QueryClient) {
+  generations.set(cache, cacheGeneration(cache) + 1)
+  void cache.resetQueries()
 }
 
-function isSnapshot(value: unknown): value is Snapshot {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "id" in value &&
-    typeof value.id === "string" &&
-    "etag" in value &&
-    typeof value.etag === "string"
+/** One cache per authenticated browser session; SSR creates a separate request cache. */
+export function createModelDataClient() {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        staleTime: 30_000,
+        retry: false,
+      },
+    },
+  })
+  let identity: string | undefined
+  return {
+    queryClient,
+    reset: () => resetModelCache(queryClient),
+    invalidate: (types: ReadonlyArray<string>) =>
+      invalidateModelQueries(queryClient, types),
+    setIdentity: (next: string) => {
+      if (identity !== undefined && identity !== next) {
+        generations.set(queryClient, cacheGeneration(queryClient) + 1)
+        queryClient.clear()
+      }
+      identity = next
+    },
+    dispose: () => {
+      generations.set(queryClient, cacheGeneration(queryClient) + 1)
+      queryClient.clear()
+    },
+  }
+}
+
+const pending = new WeakMap<
+  Query,
+  { again: boolean; done: Promise<void>; generation: number }
+>()
+
+/** Mark stale immediately and coalesce refreshes independently, so a slow report cannot block a table. */
+export async function invalidateModelQueries(
+  cache: QueryClient,
+  types: ReadonlyArray<string>
+): Promise<void> {
+  if (types.length === 0) return
+  const affected = changedModelQueries(types)
+  void cache.invalidateQueries({ ...affected, refetchType: "none" })
+  await Promise.all(
+    cache
+      .getQueryCache()
+      .findAll(affected)
+      .filter((query) => query.isActive())
+      .map((query) => {
+        const generation = cacheGeneration(cache)
+        const existing = pending.get(query)
+        if (existing && existing.generation === generation) {
+          existing.again = true
+          return existing.done
+        }
+        const batch = { again: true, done: Promise.resolve(), generation }
+        batch.done = (async () => {
+          try {
+            while (batch.again && generation === cacheGeneration(cache)) {
+              await new Promise<void>((resolve) => setTimeout(resolve, 25))
+              if (generation !== cacheGeneration(cache)) return
+              batch.again = false
+              const exact = {
+                predicate: (candidate: Query) => candidate === query,
+              }
+              await cache.cancelQueries(exact, { revert: false })
+              if (generation !== cacheGeneration(cache)) return
+              await cache.invalidateQueries(exact)
+            }
+          } finally {
+            if (pending.get(query) === batch) pending.delete(query)
+          }
+        })()
+        pending.set(query, batch)
+        return batch.done
+      })
   )
 }
 
-/** The application repository issues monotonically increasing numeric etags. */
+export function applyChanges(cache: QueryClient, page: ChangePage) {
+  if (page.reset) {
+    resetModelCache(cache)
+    return
+  }
+  // Applying a notice schedules its refresh; feed progress never waits for a slow report.
+  void invalidateModelQueries(cache, page.changedTypes)
+}
+
+/** Compare stored record revisions when expanded and batch results overlap. */
 export function isNewerOrEqualRecord(
   incoming: { readonly etag: string },
   current: { readonly etag: string }
@@ -40,132 +110,24 @@ export function isNewerOrEqualRecord(
   return BigInt(incoming.etag) >= BigInt(current.etag)
 }
 
-/** Replace appearances, never infer filtered membership, ordering, totals, or aggregate results. */
-export async function applyModelChanges(
-  cache: QueryClient,
-  changes: ReadonlyArray<Change>,
-  types: ReadonlyArray<string>
-) {
-  if (types.length === 0) return
-  const generation = cacheGeneration(cache)
-  const affected = changedModelQueries(types)
-  // Cancel first: a read started before this commit must not overwrite its snapshot.
-  await cache.cancelQueries(affected, { revert: false })
-  if (cacheGeneration(cache) !== generation) return
-  const latest = new Map<string, Change>()
-  for (const change of changes) {
-    const previous = latest.get(change.record.id)
-    if (!previous || isNewerOrEqualRecord(change.record, previous.record))
-      latest.set(change.record.id, change)
+/** Cancellation and invalidation use the same model dependencies. */
+function changedModelQueries(types: ReadonlyArray<string>): QueryFilters {
+  const changed = new Set(types)
+  return {
+    predicate: (query) =>
+      query.queryKey[0] === "model" &&
+      (changed.has("*") ||
+        query.meta?.custom === true ||
+        (Array.isArray(query.meta?.objectTypes) &&
+          query.meta.objectTypes.some((type: string) => changed.has(type)))),
   }
-  const patch = (value: unknown): unknown => {
-    if (!isSnapshot(value)) return value
-    const change = latest.get(value.id)
-    return change && isNewerOrEqualRecord(change.record, value)
-      ? change.deleted
-        ? undefined
-        : { ...value, ...change.record }
-      : value
-  }
-  const patchPage = (value: unknown): unknown => {
-    if (
-      typeof value !== "object" ||
-      value === null ||
-      !("items" in value) ||
-      !Array.isArray(value.items)
-    )
-      return value
-    return {
-      ...value,
-      items: value.items.map(patch).filter((item) => item !== undefined),
-    }
-  }
-  for (const query of cache.getQueryCache().findAll(affected)) {
-    if (query.meta?.custom === true) continue
-    const value = query.state.data
-    if (isSnapshot(value)) {
-      const updated = patch(value)
-      if (updated === undefined) query.reset()
-      else if (updated !== value) cache.setQueryData(query.queryKey, updated)
-    } else if (
-      query.meta?.paginated === true &&
-      typeof value === "object" &&
-      value !== null &&
-      "pages" in value &&
-      Array.isArray(value.pages)
-    ) {
-      cache.setQueryData(query.queryKey, {
-        ...value,
-        pages: value.pages.map(patchPage),
-      })
-    } else {
-      const updated = patchPage(value)
-      if (updated !== value) cache.setQueryData(query.queryKey, updated)
-    }
-  }
-  invalidateModelQueries(cache, types)
 }
 
-/** Standard actions return canonical records; custom actions report their actual writes in HTTP headers. */
-export function applyMutationResult(
-  cache: QueryClient,
-  operation: string,
-  result: unknown,
-  types: ReadonlyArray<string>
-) {
-  return applyModelChanges(
-    cache,
-    (operation === "create" || operation === "update") && isSnapshot(result)
-      ? [{ record: result }]
-      : [],
-    types
-  )
-}
-
-export async function applyEventPage(
-  cache: QueryClient,
-  page: EventPage,
-  Model: ModelCatalog
-) {
-  const currentRecords = new Map<string, (value: unknown) => boolean>(
-    Object.values(Model.objects).map((object) => [
-      object.id,
-      Schema.is(toEffectObjectSchema(object)),
-    ])
-  )
-
-  if (page.reset) {
-    const generation = cacheGeneration(cache)
-    await cache.cancelQueries()
-    if (cacheGeneration(cache) !== generation) return
-    // Reset also drops records whose access was revoked; invalidation alone would leave them visible.
-    resetModelCache(cache)
-    return
-  }
-  const changes: Change[] = []
-  for (const event of page.items) {
-    if (event.version !== 1 || !isSnapshot(event.data)) continue
-    const snapshotData = event.data
-    const target = event.subjects.find(
-      (subject) => subject.id === snapshotData.id
+let browserClient: ReturnType<typeof createModelDataClient> | undefined
+export function modelData() {
+  if (typeof window === "undefined")
+    throw new Error(
+      "Use the router's request-scoped query client on the server."
     )
-    if (target === undefined) continue
-    const deleted = event.type === `${target.objectType}.deleted`
-    const snapshot =
-      event.type === `${target.objectType}.created` ||
-      event.type === `${target.objectType}.updated`
-    // Old schemas remain replayable but cannot introduce invalid records into today's UI.
-    if (
-      deleted ||
-      (snapshot && currentRecords.get(target.objectType)?.(event.data))
-    )
-      changes.push({ record: event.data, deleted })
-  }
-  await applyModelChanges(cache, changes, [
-    ...new Set(
-      page.items.flatMap((event) =>
-        event.subjects.map((subject) => subject.objectType)
-      )
-    ),
-  ])
+  return (browserClient ??= createModelDataClient())
 }

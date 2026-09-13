@@ -119,7 +119,7 @@ export const overlaySections: ReadonlyArray<ComponentSection> = [
       "Read-only context revealed from a linked identity. Keep essential actions outside hover-only content.",
     component: PreviewExamples,
     usage:
-      'import { Button } from "@company/ui/button"\nimport { PreviewCard, PreviewCardContent, PreviewCardTrigger } from "@company/ui/preview-card"\n\n<PreviewCard>\n  <PreviewCardTrigger render={<Button variant="link" />}>Company</PreviewCardTrigger>\n  <PreviewCardContent>Design partner · Active customer</PreviewCardContent>\n</PreviewCard>',
+      'import { Button } from "@company/ui/button"\nimport { PreviewCard, PreviewCardContent, PreviewCardTrigger } from "@company/ui/preview-card"\n\n<PreviewCard>\n  <PreviewCardTrigger render={<Button variant="link" />}>Account</PreviewCardTrigger>\n  <PreviewCardContent>Design partner · Active customer</PreviewCardContent>\n</PreviewCard>',
   },
   {
     id: "tooltip",
@@ -302,10 +302,10 @@ function PopoverExamples() {
 
 function PreviewExamples() {
   return (
-    <Example title="Company preview" source="@company/ui/preview-card">
+    <Example title="Account preview" source="@company/ui/preview-card">
       <PreviewCard>
         <PreviewCardTrigger render={<Button variant="link" />}>
-          Preview company
+          Preview account
         </PreviewCardTrigger>
         <PreviewCardContent>
           <p className="font-medium">Northstar Studio</p>

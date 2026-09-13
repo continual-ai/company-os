@@ -5,10 +5,8 @@ import { modelObjectLinkTraversals } from "#/runtime/model/index.ts"
 import { EventJournal } from "#/runtime/server/events/event-journal.ts"
 import { flushEvents } from "#/runtime/server/events/flush-events.ts"
 import { systemInvocation } from "#/runtime/server/invocation-context.ts"
-import { modelImplementation } from "#/runtime/server/model/implementation.ts"
-import { Links } from "#/runtime/server/model/link-service.ts"
+import { operationsFor } from "#/runtime/server/operation-executor.ts"
 import { CommittedChanges } from "#/runtime/server/storage/committed-changes.ts"
-import { Database } from "#/runtime/server/storage/database.ts"
 import {
   assignments,
   tableProjection,
@@ -18,6 +16,8 @@ import {
   eventJournal,
   eventJournalState,
 } from "#/runtime/server/storage/infrastructure.ts"
+import { Links } from "#/runtime/server/storage/link-store.ts"
+import { SqlDatabase } from "#/runtime/server/storage/transactions.ts"
 import {
   Account,
   fixtureModel,
@@ -28,7 +28,7 @@ import { FixtureServer } from "#/runtime/testing/fixture-server.ts"
 import { testFoundation } from "#/runtime/testing/foundation.ts"
 
 const fixture = testFoundation(fixtureModel, { servers: [FixtureServer] })
-const implementation = modelImplementation(fixtureModel)
+const implementation = operationsFor(fixtureModel)
 const linkTraversal = (object: typeof Account | typeof Person, key: string) =>
   modelObjectLinkTraversals(fixtureModel, object).find(
     (candidate) => candidate.traversal.key === key
@@ -38,9 +38,9 @@ fixture.test(
   "records business writes, semantic events, joined transactions, and Link cascades atomically",
   () =>
     Effect.gen(function* () {
-      const database = yield* Database
+      const database = yield* SqlDatabase
       const journal = yield* EventJournal
-      const { services } = yield* implementation
+      const services = yield* implementation
       const start = yield* journal.list({ cursor: "now" })
       const changes = new Set<string>()
       yield* database
@@ -110,7 +110,7 @@ fixture.test(
           "person.created",
           "prospect.updated",
           "personAccounts.linked",
-          "personPrimaryAccount.linked",
+          "personBillingAccount.linked",
           "prospect.converted",
         ])
       )
@@ -127,7 +127,7 @@ fixture.test(
         id: member.id,
         target: standalone.id,
       })
-      yield* links.link(linkTraversal(Person, "primaryAccount"), {
+      yield* links.link(linkTraversal(Person, "billingAccount"), {
         id: member.id,
         target: standalone.id,
       })
@@ -147,7 +147,7 @@ fixture.test(
       ).toEqual([
         "account.deleted",
         "personAccounts.unlinked",
-        "personPrimaryAccount.unlinked",
+        "personBillingAccount.unlinked",
       ])
     })
 )
@@ -156,10 +156,10 @@ fixture.test(
   "never skips a transaction that began earlier but commits later",
   () =>
     Effect.gen(function* () {
-      const database = yield* Database
+      const database = yield* SqlDatabase
       const sql = database.sql
       const journal = yield* EventJournal
-      const { services } = yield* implementation
+      const services = yield* implementation
       const start = yield* journal.list({ cursor: "now" })
       const staged = yield* Deferred.make<void>()
       const release = yield* Deferred.make<void>()
@@ -206,7 +206,7 @@ fixture.test(
   () =>
     Effect.gen(function* () {
       const journal = yield* EventJournal
-      const { services } = yield* implementation
+      const services = yield* implementation
       const prospect = yield* services.prospect.create({
         name: "Ada",
         accountName: "Engine",
@@ -230,10 +230,10 @@ fixture.test(
   "rolls back business writes when journal persistence fails and forbids rewriting history",
   () =>
     Effect.gen(function* () {
-      const database = yield* Database
+      const database = yield* SqlDatabase
       const sql = database.sql
       const journal = yield* EventJournal
-      const { services } = yield* implementation
+      const services = yield* implementation
       yield* services.account.create({ name: "Committed" })
       const before = yield* journal.list({ cursor: "now" })
       // Force a journal primary-key collision at flush, after the business INSERT succeeds.
@@ -271,10 +271,10 @@ fixture.test(
   "replays stored JSON after its original model shape has changed",
   () =>
     Effect.gen(function* () {
-      const database = yield* Database
+      const database = yield* SqlDatabase
       const sql = database.sql
       const journal = yield* EventJournal
-      const { services } = yield* implementation
+      const services = yield* implementation
       const start = yield* journal.list({ cursor: "now" })
       const person = yield* services.person.create({
         name: "Historical person",

@@ -105,6 +105,8 @@ export function objectTableSortText(
 }
 
 export interface ObjectTableColumnMeta {
+  relationship?: string
+  displayProperty?: PropertyDefinition
   essential?: boolean
   label: string
   property?: PropertyDefinition
@@ -142,6 +144,10 @@ function isFilterValue(value: unknown): value is ObjectTableFilterValue {
   }
 
   return (
+    (!("quantifier" in value) ||
+      value.quantifier === "some" ||
+      value.quantifier === "none" ||
+      value.quantifier === "every") &&
     typeof value.operator === "string" &&
     value.operator in operatorLabels &&
     Array.isArray(value.values) &&

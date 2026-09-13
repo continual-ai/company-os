@@ -30,15 +30,15 @@ export const NoteSubjects = defineLink({
   id: "noteSubjects",
   name: "Note subjects",
   description: "Attaches a note to the business records it concerns.",
-  from: Note,
-  to: NoteSubject,
-  forward: {
+  from: {
+    type: Note,
     key: "subjects",
     min: 0,
     label: "Subjects",
-    description: "Link the people, companies, or work this note is about.",
+    description: "Link the people, accounts, or work this note is about.",
   },
-  reverse: {
+  to: {
+    type: NoteSubject,
     key: "notes",
     min: 0,
     label: "Notes",

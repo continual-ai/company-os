@@ -1,7 +1,6 @@
 import { UserRoundSearchIcon } from "lucide-react"
 
 import type { Lead } from "#/modules/sales/model/lead.ts"
-import { LeadConversion } from "#/modules/sales/ui/lead/conversion-tab.tsx"
 import { leadViews } from "#/modules/sales/ui/lead/views.ts"
 import type { ObjectUi } from "#/runtime/ui/module.ts"
 
@@ -12,9 +11,5 @@ export const leadUi = {
     description: "Potential customers to qualify and follow up with.",
   },
   collection: { views: leadViews },
-  record: {
-    additionalTabs: [
-      { id: "conversion", label: "Conversion", component: LeadConversion },
-    ],
-  },
+  record: { relationships: ["account", "contact", "opportunity", "notes"] },
 } satisfies ObjectUi<typeof Lead>

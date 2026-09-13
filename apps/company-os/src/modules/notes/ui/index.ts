@@ -1,12 +1,14 @@
 import { NotebookPenIcon } from "lucide-react"
 
-import { NotesModule, NoteSubjects } from "#/modules/notes/model/index.ts"
-import type { Note } from "#/modules/notes/model/index.ts"
+import {
+  NotesModule,
+  NoteSubjects,
+  type Note,
+} from "#/modules/notes/model/index.ts"
 import { NoteFeed } from "#/modules/notes/ui/note-feed.tsx"
 import { NoteOverview, NoteSummary } from "#/modules/notes/ui/note-summary.tsx"
 import { noteViews } from "#/modules/notes/ui/views.ts"
-import { defineModuleUi } from "#/runtime/ui/module.ts"
-import type { ObjectUi } from "#/runtime/ui/module.ts"
+import { defineModuleUi, type ObjectUi } from "#/runtime/ui/module.ts"
 
 const noteUi = {
   navigation: {

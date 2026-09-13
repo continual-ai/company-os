@@ -6,19 +6,18 @@ import {
   type ObjectCreateInput,
   type ObjectRecord,
 } from "#/runtime/model/index.ts"
+import { Database } from "#/runtime/server/database.ts"
 import { currentActorId } from "#/runtime/server/invocation-context.ts"
-import { ObjectRepositories } from "#/runtime/server/model/object-repositories.ts"
-import { makeObjectService } from "#/runtime/server/model/object-service.ts"
 import type { ObjectInsert } from "#/runtime/server/storage/object-repository.ts"
+import { RecordStore } from "#/runtime/server/storage/record-store.ts"
 
 type UserRecord = ObjectRecord<typeof User>
 type UserCreateInput = ObjectCreateInput<typeof User>
 
 const make = Effect.gen(function* () {
-  const records = yield* ObjectRepositories
+  const records = yield* RecordStore
   const repository = records.get(User)
-  const base = yield* makeObjectService(User)
-  const writer = records.writer(User)
+  const writer = (yield* Database).repository(User)
 
   const provision = Effect.fn("@company/UserService.provision")(function* (
     input: Pick<UserRecord, "email" | "name"> &
@@ -60,7 +59,7 @@ const make = Effect.gen(function* () {
     })
   })
 
-  return { ...base, provision, reconcile }
+  return { provision, reconcile }
 })
 
 /** Governed User records plus trusted JIT provisioning for identity adapters. */

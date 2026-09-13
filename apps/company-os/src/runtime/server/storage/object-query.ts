@@ -3,24 +3,38 @@ import { createHash } from "node:crypto"
 import { Schema } from "effect"
 import type { Constructor, Fragment } from "effect/unstable/sql/Statement"
 
-import { toEffectInputSchema } from "#/runtime/contract/schema.ts"
+import { decodeQueryValue } from "#/runtime/contract/query-validation.ts"
 import type { LinkFilter } from "#/runtime/model/definition/request.ts"
 import {
-  RecordId,
-  Timestamp,
-  type ObjectRecord,
   type ObjectSort,
   type ObjectType,
   type PageToken,
   type PageTokenCodec,
 } from "#/runtime/model/index.ts"
 import {
-  InvalidListRequest,
+  queryProperty,
+  fieldOperators,
+  type QueryType,
+} from "#/runtime/model/query-fields.ts"
+import { InvalidListRequest } from "#/runtime/server/errors.ts"
+import {
   type RepositoryFilter,
   type RepositoryListRequest,
 } from "#/runtime/server/storage/object-repository.ts"
+import type { QueryField } from "#/runtime/server/storage/relational-query.ts"
 import { inValues } from "#/runtime/server/storage/statement.ts"
 import { type Column } from "#/runtime/server/storage/table.ts"
+
+export type QueryFilter =
+  | LinkFilter
+  | {
+      readonly field: string
+      readonly operator: string
+      readonly value?: unknown
+    }
+  | { readonly and: ReadonlyArray<QueryFilter> }
+  | { readonly or: ReadonlyArray<QueryFilter> }
+  | { readonly not: QueryFilter }
 
 export type QueryValue = boolean | null | number | string
 
@@ -33,6 +47,7 @@ export interface CursorPayload {
 export interface CursorSort {
   readonly direction: "asc" | "desc"
   readonly field: string
+  readonly aggregate?: "count" | "min" | "max"
   readonly nulls?: "first" | "last"
 }
 
@@ -56,7 +71,10 @@ const cursorPayloadSchema = Schema.Struct({
   version: Schema.Literal(1),
 })
 
-export function invalidListRequest(object: ObjectType, message: string) {
+export function invalidListRequest(
+  object: { readonly id: string },
+  message: string
+) {
   return new InvalidListRequest({ message, objectType: object.id })
 }
 
@@ -122,19 +140,10 @@ export function cursorCondition(
   )([later, tiedAndLater].filter((part) => part !== undefined))
 }
 
-export function recordValue<TObject extends ObjectType>(
-  record: ObjectRecord<TObject>,
-  field: string
-): QueryValue {
-  const value = Object.entries(record).find(([key]) => key === field)?.[1]
-  return Schema.decodeUnknownSync(queryValueSchema)(value)
-}
-
 function cursorFilter<TObject extends ObjectType>(
   filter: RepositoryFilter<TObject>
 ): unknown {
-  if ("link" in filter)
-    return [filter.link, "contains" in filter ? filter.contains : "isEmpty"]
+  if ("link" in filter) return filter
   if ("and" in filter) return ["and", filter.and.map(cursorFilter)]
   if ("not" in filter) return ["not", cursorFilter(filter.not)]
   if ("or" in filter) return ["or", filter.or.map(cursorFilter)]
@@ -144,7 +153,7 @@ function cursorFilter<TObject extends ObjectType>(
 }
 
 export function cursorFingerprint<TObject extends ObjectType>(
-  object: TObject,
+  object: { readonly id: string },
   request: RepositoryListRequest<TObject>,
   sort: ReadonlyArray<CursorSort>
 ): string {
@@ -155,9 +164,10 @@ export function cursorFingerprint<TObject extends ObjectType>(
           request.filter === undefined ? null : cursorFilter(request.filter),
         objectType: object.id,
         relatedTo: request.relatedTo,
-        sort: sort.map(({ direction, field, nulls }) => [
+        sort: sort.map(({ direction, field, nulls, aggregate }) => [
           field,
           direction,
+          aggregate,
           nulls ?? "last",
         ]),
       })
@@ -175,7 +185,7 @@ export function encodeCursor(
 }
 
 export function decodeCursor(
-  object: ObjectType,
+  object: { readonly id: string },
   pageTokens: PageTokenCodec,
   token: PageToken,
   fingerprint: string,
@@ -208,14 +218,20 @@ function escapeLike(value: string): string {
     .replaceAll("_", "\\_")
 }
 
-export function makeObjectQueryCompiler<TObject extends ObjectType>(
+export function makeObjectQueryCompiler(
   sql: Constructor,
-  object: TObject,
+  object: QueryType,
   queryColumns: Readonly<Record<string, Column>>,
-  linkFilter?: (filter: LinkFilter) => Fragment
+  linkFilter?: (filter: LinkFilter) => Fragment,
+  relatedField?: (
+    field: string,
+    aggregate?: "count" | "min" | "max"
+  ) => QueryField
 ) {
   const columnFor = (field: string): Column => {
-    const column = queryColumns[field]
+    const column =
+      queryColumns[field] ??
+      (field.includes(".") ? relatedField?.(field).column : undefined)
     if (column === undefined) {
       throw invalidListRequest(
         object,
@@ -225,93 +241,24 @@ export function makeObjectQueryCompiler<TObject extends ObjectType>(
     return column
   }
 
-  const allowedOperators = (field: string): ReadonlySet<string> => {
-    if (field === "id") return new Set(["eq", "in"])
-    if (field === "createdBy" || field === "updatedBy") {
-      return new Set(["eq", "in"])
-    }
-    if (field === "systemManaged") return new Set(["eq", "in"])
-    if (field === "createdAt" || field === "updatedAt") {
-      return new Set(["eq", "gt", "gte", "in", "lt", "lte"])
-    }
-
-    const property = object.properties[field]
-    if (property === undefined) return new Set()
-    const nullable = property.nullable ? ["isNull"] : []
-    switch (property.kind) {
-      case "boolean":
-      case "enum":
-      case "recordId":
-        return new Set(["eq", "in", ...nullable])
-      case "decimal":
-      case "number":
-        return new Set(["eq", "gt", "gte", "in", "lt", "lte", ...nullable])
-      case "string":
-        return property.format === "date" || property.format === "timestamp"
-          ? new Set(["eq", "gt", "gte", "in", "lt", "lte", ...nullable])
-          : new Set([
-              "contains",
-              "endsWith",
-              "eq",
-              "in",
-              "startsWith",
-              ...nullable,
-            ])
-      default:
-        return new Set()
-    }
+  const propertyFor = (field: string) => {
+    const property = field.includes(".")
+      ? relatedField?.(field).property
+      : queryProperty(object, field)
+    if (!property)
+      throw invalidListRequest(object, `Unknown filter property '${field}'.`)
+    return property
   }
 
-  const decodeFilterValue = (
-    field: string,
-    value: QueryValue
-  ): Exclude<QueryValue, null> => {
-    if (value === null || value === undefined) {
-      throw invalidListRequest(
-        object,
-        `Filter property '${field}' requires a non-null value.`
-      )
-    }
-    const property = object.properties[field]
-    if (property !== undefined) {
-      const decoded = Schema.decodeUnknownSync(toEffectInputSchema(property))(
-        value
-      )
-      const queryValue = Schema.decodeUnknownSync(queryValueSchema)(decoded)
-      if (queryValue === null) {
-        throw invalidListRequest(
-          object,
-          `Filter property '${field}' requires a non-null value.`
-        )
-      }
-      return queryValue
-    }
-    if (field === "systemManaged") {
-      return Schema.decodeUnknownSync(Schema.Boolean)(value)
-    }
-    const textValue = Schema.decodeUnknownSync(Schema.String)(value)
-    if (field === "id") {
-      if (textValue.length === 0) {
-        throw invalidListRequest(
-          object,
-          `Filter property '${field}' requires a non-empty record ID.`
-        )
-      }
-      return textValue
-    }
-    if (field === "createdBy" || field === "updatedBy") {
-      return RecordId("actor")(textValue)
-    }
-    if (field === "createdAt" || field === "updatedAt") {
-      return Timestamp(textValue)
-    }
-    throw invalidListRequest(object, `Unknown filter property '${field}'.`)
-  }
+  const decodeFilterValue = (field: string, value: unknown, operator = "eq") =>
+    decodeQueryValue(propertyFor(field), operator, value)
 
-  const decodeStringFilterValue = (field: string, value: string): string =>
-    Schema.decodeUnknownSync(Schema.String)(decodeFilterValue(field, value))
+  const decodeStringFilterValue = (field: string, value: unknown): string =>
+    Schema.decodeUnknownSync(Schema.String)(
+      decodeFilterValue(field, value, "contains")
+    )
 
-  const compileFilter = (filter: RepositoryFilter<TObject>): Fragment => {
+  const compileFilter = (filter: QueryFilter): Fragment => {
     if ("and" in filter) {
       if (filter.and.length === 0) {
         throw invalidListRequest(object, "An 'and' filter cannot be empty.")
@@ -332,7 +279,7 @@ export function makeObjectQueryCompiler<TObject extends ObjectType>(
       return linkFilter(filter)
     }
     const column = columnFor(filter.field)
-    if (!allowedOperators(filter.field).has(filter.operator)) {
+    if (!fieldOperators(propertyFor(filter.field)).includes(filter.operator)) {
       throw invalidListRequest(
         object,
         `Operator '${filter.operator}' is not supported for property '${filter.field}'.`
@@ -398,7 +345,7 @@ export function makeObjectQueryCompiler<TObject extends ObjectType>(
     throw invalidListRequest(object, "The filter operator is invalid.")
   }
 
-  const resolveSort = (
+  const resolveSort = <TObject extends ObjectType>(
     request: RepositoryListRequest<TObject>
   ): ReadonlyArray<ResolvedSort> => {
     const requested: Array<ObjectSort<TObject>> = request.sort?.length
@@ -440,11 +387,31 @@ export function makeObjectQueryCompiler<TObject extends ObjectType>(
       }
       return {
         ...sort,
-        column: columnFor(sort.field),
+        column:
+          sort.aggregate === undefined
+            ? columnFor(sort.field)
+            : (relatedField?.(sort.field, sort.aggregate).column ??
+              columnFor(sort.field)),
         nulls: sort.nulls ?? "last",
       }
     })
   }
 
-  return { compileFilter, resolveSort }
+  const boundedFilter = (filter: QueryFilter): Fragment => {
+    let nodes = 0
+    const visit = (value: unknown, depth = 0): void => {
+      if (++nodes > 100 || depth > 20)
+        throw invalidListRequest(object, "Filter exceeds the complexity limit.")
+      if (value === null || typeof value !== "object") return
+      for (const [key, child] of Object.entries(value)) {
+        if (["and", "or"].includes(key) && Array.isArray(child))
+          child.forEach((item) => visit(item, depth + 1))
+        else if (["not", "some", "none", "every"].includes(key))
+          visit(child, depth + 1)
+      }
+    }
+    visit(filter)
+    return compileFilter(filter)
+  }
+  return { compileFilter: boundedFilter, resolveSort }
 }

@@ -51,7 +51,7 @@ export const navigationSections: ReadonlyArray<ComponentSection> = [
       "Show the route back to a parent collection. Avoid repeating a record name already visible in the page heading.",
     component: BreadcrumbExamples,
     usage:
-      'import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbPage } from "@company/ui/breadcrumb"\n\n<Breadcrumb>\n  <BreadcrumbList>\n    <BreadcrumbItem><BreadcrumbPage>Companies</BreadcrumbPage></BreadcrumbItem>\n  </BreadcrumbList>\n</Breadcrumb>',
+      'import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbPage } from "@company/ui/breadcrumb"\n\n<Breadcrumb>\n  <BreadcrumbList>\n    <BreadcrumbItem><BreadcrumbPage>Accounts</BreadcrumbPage></BreadcrumbItem>\n  </BreadcrumbList>\n</Breadcrumb>',
   },
   {
     id: "command",
@@ -94,7 +94,7 @@ function SidebarExamples() {
               <SidebarMenu>
                 {[
                   { name: "Home", icon: HomeIcon },
-                  { name: "Companies", icon: UsersIcon },
+                  { name: "Accounts", icon: UsersIcon },
                   { name: "Notes", icon: FileTextIcon },
                 ].map(({ name, icon: Icon }) => (
                   <SidebarMenuItem key={name}>
@@ -123,7 +123,7 @@ function BreadcrumbExamples() {
         <BreadcrumbList>
           <BreadcrumbItem>Workspace</BreadcrumbItem>
           <BreadcrumbSeparator />
-          <BreadcrumbItem>Companies</BreadcrumbItem>
+          <BreadcrumbItem>Accounts</BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem>
             <BreadcrumbPage>Northstar Studio</BreadcrumbPage>
@@ -196,7 +196,7 @@ function CommandExamples() {
         <CommandList>
           <CommandEmpty>No matching commands.</CommandEmpty>
           <CommandGroup heading="Example actions">
-            {["Find a company", "Create a note", "Review requests"].map(
+            {["Find a account", "Create a note", "Review requests"].map(
               (name) => (
                 <CommandItem key={name} onSelect={() => setCommand(name)}>
                   {name}

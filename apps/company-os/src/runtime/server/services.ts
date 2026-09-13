@@ -1,27 +1,26 @@
-import { Layer, type Effect } from "effect"
+import type { PgClient } from "@effect/sql-pg"
+import { Layer } from "effect"
 
 import { BlobStorage } from "#/runtime/assets/server/blob-storage.ts"
 import type { ModelCatalog, ModuleDefinition } from "#/runtime/model/index.ts"
 import { foundationLayer } from "#/runtime/server/foundation.ts"
-import { Operations } from "#/runtime/server/invoke.ts"
 import {
-  modelImplementationLayer,
+  OperationExecutor,
   type ModuleRequirements,
-} from "#/runtime/server/model/implementation.ts"
+} from "#/runtime/server/operation-executor.ts"
 import type { PageTokens } from "#/runtime/server/page-tokens.ts"
-import type { Database } from "#/runtime/server/storage/database.ts"
 
 export interface ServicesInfrastructure {
   readonly blobStorage?: Layer.Layer<BlobStorage, unknown>
   readonly pageTokens?: Layer.Layer<PageTokens, unknown>
-  readonly database: Layer.Layer<Database, unknown>
+  readonly sql: Layer.Layer<PgClient.PgClient, unknown>
 }
 
 /** Composes explicit module providers with one shared foundation. */
 export function makeServicesLayer<
   const C extends ReadonlyArray<{
     readonly module: ModuleDefinition
-    readonly implementations: Effect.Effect<object, unknown, unknown>
+    readonly implementations: object
     readonly layer: Layer.Layer<never, unknown, unknown>
   }>,
 >(
@@ -49,7 +48,7 @@ export function makeServicesLayer<
   const foundation = foundationLayer(model, infrastructure)
   const blobs =
     infrastructure.blobStorage ??
-    BlobStorage.layer.pipe(Layer.provide(infrastructure.database))
+    BlobStorage.layer.pipe(Layer.provide(foundation))
   const base = Layer.merge(foundation, blobs)
   // SAFETY: the merged tuple has exactly the union of its declared layer services and requirements.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion, effecttsgo/unsafe-effect-type-assertion
@@ -63,9 +62,23 @@ export function makeServicesLayer<
   >
   const providers = moduleLayers.pipe(Layer.provide(base))
   const services = Layer.merge(base, providers)
+  const contributions: C = modules
   return Layer.mergeAll(
     services,
-    Operations.layer.pipe(Layer.provide(services)),
-    modelImplementationLayer(model, modules, services)
+    OperationExecutor.layer<
+      C,
+      Layer.Error<typeof services>,
+      Layer.Services<typeof services>
+    >(
+      model,
+      contributions,
+      // The call-site constraint proves all handler dependencies are supplied by these providers.
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+      services as Layer.Layer<
+        Layer.Success<typeof foundation> | ModuleRequirements<C>,
+        Layer.Error<typeof services>,
+        Layer.Services<typeof services>
+      >
+    )
   )
 }

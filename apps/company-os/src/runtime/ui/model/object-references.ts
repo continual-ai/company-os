@@ -2,7 +2,7 @@ import { hashKey, useQueries } from "@tanstack/react-query"
 
 import { isNewerOrEqualRecord } from "#/runtime/client/model-cache.ts"
 import { MAX_PAGE_SIZE } from "#/runtime/model/index.ts"
-import { ROOT_ID } from "#/runtime/model/system-records.ts"
+import { linkPreview } from "#/runtime/model/record-links.ts"
 import {
   recordBatchFor,
   recordLabel,
@@ -34,10 +34,12 @@ export function useObjectReferences(
 
 export function useObjectReferencePages(
   object: ModelObject,
-  pages: ReadonlyArray<ReadonlyArray<ClientRecord>>
+  pages: ReadonlyArray<ReadonlyArray<ClientRecord>>,
+  links?: ReadonlyArray<string>
 ) {
   return useRecordReferenceBatches(
-    pages.map((records) => records.map((record) => ({ object, record })))
+    pages.map((records) => records.map((record) => ({ object, record }))),
+    links
   )
 }
 
@@ -52,16 +54,21 @@ export function useRecordReferences(items: ReadonlyArray<ReferenceItem>) {
 }
 
 /** Page-local requests retain their query keys when later pages introduce more references. */
-export function recordReferenceRequests(
+function recordReferenceRequests(
   runtime: ModelUiRuntime,
-  items: ReadonlyArray<ReferenceItem>
+  items: ReadonlyArray<ReferenceItem>,
+  links?: ReadonlyArray<string>
 ) {
   const ids = new Set<string>()
   for (const { record } of items) {
     if (typeof record.createdBy === "string") ids.add(record.createdBy)
     if (typeof record.updatedBy === "string") ids.add(record.updatedBy)
-    for (const link of Object.values(record.links ?? {}))
-      for (const id of link.ids) ids.add(id)
+    for (const [key, link] of Object.entries(record.links ?? {})) {
+      if (links && !links.includes(key)) continue
+      if (link && typeof link === "object" && ("id" in link || "items" in link))
+        continue
+      for (const id of linkPreview(link).ids) ids.add(id)
+    }
   }
   return chunks([...ids].sort(), MAX_PAGE_SIZE).map((batch) => ({
     query: recordBatchFor(runtime, batch),
@@ -69,22 +76,39 @@ export function recordReferenceRequests(
 }
 
 function useRecordReferenceBatches(
-  batches: ReadonlyArray<ReadonlyArray<ReferenceItem>>
+  batches: ReadonlyArray<ReadonlyArray<ReferenceItem>>,
+  links?: ReadonlyArray<string>
 ) {
   const runtime = useModelRuntime()
   const requests = [
     ...new Map(
       batches
-        .flatMap((items) => recordReferenceRequests(runtime, items))
+        .flatMap((items) => recordReferenceRequests(runtime, items, links))
         .map((request) => [hashKey(request.query.queryKey), request])
     ).values(),
   ]
   const results = useQueries({ queries: requests.map(({ query }) => query) })
-  const labels = new Map<string, string>([[ROOT_ID, runtime.model.root.name]])
+  const labels = new Map<string, string>()
   const recordsById = new Map<string, ObjectRecordPresentation>()
   const versions = new Map<string, ClientRecord>()
-  results.forEach((result) => {
-    for (const record of result.data?.items ?? []) {
+  const embedded = batches.flat().flatMap(({ record }) => [
+    record,
+    ...Object.values(record.links ?? {}).flatMap(
+      (link): ReadonlyArray<ClientRecord> => {
+        if (!link || typeof link === "string") return []
+        if (isClientRecord(link)) return [link]
+        if ("items" in link && Array.isArray(link.items))
+          return link.items.filter(isClientRecord)
+        return []
+      }
+    ),
+  ])
+  const recordGroups = [
+    embedded,
+    ...results.map((result) => result.data?.items ?? []),
+  ]
+  recordGroups.forEach((records) => {
+    for (const record of records) {
       const target =
         record.objectType === undefined
           ? undefined
@@ -102,4 +126,18 @@ function useRecordReferenceBatches(
     }
   })
   return { labels, records: recordsById }
+}
+
+// Expanded records were validated by the transport; distinguish them from plural envelopes here.
+function isClientRecord(value: unknown): value is ClientRecord {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "id" in value &&
+    typeof value.id === "string" &&
+    "objectType" in value &&
+    typeof value.objectType === "string" &&
+    "etag" in value &&
+    typeof value.etag === "string"
+  )
 }

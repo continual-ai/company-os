@@ -90,15 +90,15 @@ describe("Effect HTTP projection", () => {
       version: "1.0.0",
     })
     expect(document.paths["/api/v1/accounts"]).toMatchObject({
-      get: { operationId: "listAccounts" },
-      post: { operationId: "createAccount" },
+      get: { operationId: "account.list" },
+      post: { operationId: "account.create" },
     })
     expect(document.paths["/api/v1/accounts:batchGet"]).toMatchObject({
-      post: { operationId: "batchGetAccounts", tags: ["Accounts"] },
+      post: { operationId: "account.batchGet", tags: ["Accounts"] },
     })
     expect(document.paths["/api/v1/accounts:batchDelete"]).toBeUndefined()
     expect(document.paths["/api/v1/accounts:archiveAll"]).toMatchObject({
-      post: { operationId: "archiveAllAccounts" },
+      post: { operationId: "account.archiveAll" },
     })
     expect(
       document.paths["/api/v1/accounts:archiveAll"]?.post?.responses
@@ -111,8 +111,8 @@ describe("Effect HTTP projection", () => {
       ])
     )
     expect(document.paths["/api/v1/accounts/{id}"]).toMatchObject({
-      get: { operationId: "getAccount" },
-      patch: { operationId: "updateAccount" },
+      get: { operationId: "account.get" },
+      patch: { operationId: "account.update" },
     })
     expect(document.paths["/api/v1/accounts/{id}"]?.delete).toBeUndefined()
     expect(document.paths["/api/v1/accounts"]?.post?.parameters).toEqual([])
@@ -207,7 +207,7 @@ describe("Effect HTTP projection", () => {
     expect(batchDocument.paths["/api/v1/deletables:batchDelete"]).toMatchObject(
       {
         post: {
-          operationId: "batchDeleteDeletables",
+          operationId: "deletable.batchDelete",
           responses: { "204": expect.any(Object) },
         },
       }
@@ -231,7 +231,7 @@ describe("Effect HTTP projection", () => {
     const action = document.paths["/api/v1/accounts/{id}:archive"]?.post
 
     expect(action).toMatchObject({
-      operationId: "archiveAccount",
+      operationId: "account.archive",
       summary: "Archive account",
       responses: {
         "200": { description: "AccountArchiveOutput" },

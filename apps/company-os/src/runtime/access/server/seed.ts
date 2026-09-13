@@ -7,8 +7,8 @@ import {
 } from "#/runtime/model/system-records.ts"
 import { currentActorId } from "#/runtime/server/invocation-context.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
-import { makeObjectSeedRepository } from "#/runtime/server/model/object-repositories.ts"
 import type { ObjectInsert } from "#/runtime/server/storage/object-repository.ts"
+import { makeObjectSeedRepository } from "#/runtime/server/storage/record-store.ts"
 /** Ensures stable attribution identities, including historical anonymous actors. */
 export const seedIdentities = Effect.fn("@company/seedIdentities")(
   function* () {

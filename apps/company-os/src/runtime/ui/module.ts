@@ -9,7 +9,7 @@ export type {
   RecordPageUiProps,
 } from "#/runtime/ui/model/object-ui.ts"
 export { defineCollectionView } from "#/runtime/ui/model/collection-view.ts"
-export { useObjectClient } from "#/runtime/ui/model/use-object-client.ts"
+export { useClient } from "#/runtime/ui/model/use-client.ts"
 export { RecordAttribution } from "#/runtime/ui/model/record-attribution.tsx"
 export {
   useAppForm,
@@ -21,7 +21,5 @@ export {
 } from "#/runtime/ui/model/object-form.ts"
 
 export type { RelationshipOverviewProps } from "#/runtime/ui/model/module-ui.tsx"
-
-export { useOperationClient } from "#/runtime/ui/model/use-operation-client.ts"
 
 export { OperationAction } from "#/runtime/ui/model/operation-action.tsx"

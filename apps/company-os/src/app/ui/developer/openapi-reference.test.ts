@@ -13,16 +13,16 @@ const document: OpenApiDocument = {
   info: { title: "Example API", version: "1.0.0" },
   openapi: "3.1.0",
   paths: {
-    "/api/v1/companies": {
+    "/api/v1/accounts": {
       get: {
-        operationId: "listCompanies",
-        summary: "List companies",
-        tags: ["Companies"],
+        operationId: "listAccounts",
+        summary: "List accounts",
+        tags: ["Accounts"],
       },
       post: {
-        operationId: "createCompany",
-        summary: "Create company",
-        tags: ["Companies"],
+        operationId: "createAccount",
+        summary: "Create account",
+        tags: ["Accounts"],
       },
     },
     "/health": {
@@ -36,15 +36,15 @@ describe("OpenAPI reference projection", () => {
     expect(operationsFromDocument(document)).toEqual([
       expect.objectContaining({
         method: "get",
-        operationId: "listCompanies",
-        path: "/api/v1/companies",
-        tag: "Companies",
+        operationId: "listAccounts",
+        path: "/api/v1/accounts",
+        tag: "Accounts",
       }),
       expect.objectContaining({
         method: "post",
-        operationId: "createCompany",
-        path: "/api/v1/companies",
-        tag: "Companies",
+        operationId: "createAccount",
+        path: "/api/v1/accounts",
+        tag: "Accounts",
       }),
       expect.objectContaining({
         method: "get",
@@ -58,7 +58,7 @@ describe("OpenAPI reference projection", () => {
     const operations = operationsFromDocument(document)
     expect(filterOperations(operations, "create")).toHaveLength(1)
     expect(filterOperations(operations, "/health")).toHaveLength(1)
-    expect(filterOperations(operations, "companies")).toHaveLength(2)
+    expect(filterOperations(operations, "accounts")).toHaveLength(2)
   })
 
   it("builds stable deep-link keys and useful request examples", () => {
@@ -66,12 +66,12 @@ describe("OpenAPI reference projection", () => {
     expect(operation).toBeDefined()
     if (operation === undefined) return
 
-    expect(operationKey(operation)).toBe("createCompany")
+    expect(operationKey(operation)).toBe("createAccount")
     expect(
       exampleForSchema(
-        { $ref: "#/components/schemas/CreateCompany" },
+        { $ref: "#/components/schemas/CreateAccount" },
         {
-          CreateCompany: {
+          CreateAccount: {
             type: "object",
             properties: {
               name: { type: "string" },
@@ -83,7 +83,7 @@ describe("OpenAPI reference projection", () => {
       )
     ).toEqual({ name: "string" })
     expect(curlExample(operation, {})).toContain(
-      "curl -X POST '/api/v1/companies'"
+      "curl -X POST '/api/v1/accounts'"
     )
   })
 })

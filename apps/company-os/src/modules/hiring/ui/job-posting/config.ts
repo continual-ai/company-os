@@ -1,6 +1,5 @@
 import type { JobPosting } from "#/modules/hiring/model/job-posting.ts"
-import { defineCollectionView } from "#/runtime/ui/module.ts"
-import type { ObjectUi } from "#/runtime/ui/module.ts"
+import { defineCollectionView, type ObjectUi } from "#/runtime/ui/module.ts"
 
 export const jobPostingUi = {
   collection: {

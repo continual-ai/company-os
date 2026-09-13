@@ -4,15 +4,15 @@ import { assertDatabaseSchemaName } from "#/app/server/database/postgres.ts"
 import { schemaSql } from "#/app/server/database/schema.ts"
 import { seedSystem } from "#/app/server/seeds/seed-system.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
-import { Database } from "#/runtime/server/storage/database.ts"
 import { ensureSearchIndex } from "#/runtime/server/storage/search-index.ts"
+import { SqlDatabase } from "#/runtime/server/storage/transactions.ts"
 
 /** Rebuilds disposable storage from the model, without claiming any migrations were applied. */
 export const resetDevelopmentSchema = Effect.fn(
   "@company/resetDevelopmentSchema"
 )(function* (schema: string) {
   const name = assertDatabaseSchemaName(schema)
-  const database = yield* Database
+  const database = yield* SqlDatabase
   const model = yield* ModelContext
   yield* database.sql.withTransaction(
     Effect.gen(function* () {

@@ -1,70 +1,18 @@
-import { Effect, Predicate, Schema } from "effect"
+import { Effect, Schema } from "effect"
 
-import { type ModelOperation } from "#/runtime/contract/operations.ts"
+import { AssetPrecondition } from "#/runtime/assets/server/asset-error.ts"
+import type { OperationContract } from "#/runtime/contract/operation-contract.ts"
 import { schemaErrorToApiError } from "#/runtime/contract/schema.ts"
-// This is the single boundary that normalizes independently typed Effect failures
-// into the portable API error contract without leaking infrastructure failures.
 import {
-  type AbortedError,
-  type AlreadyExistsError,
-  type ApiError,
-  type FailedPreconditionError,
-  type InternalError,
   isApiError,
-  type NotFoundError,
-  type PermissionDeniedError,
+  type ApiError,
+  type InternalError,
   type UnauthenticatedError,
-  type ValidationError,
   type Violation,
 } from "#/runtime/model/index.ts"
+import { InvalidIdentityAssertion } from "#/runtime/server/auth/identity-provider.ts"
+import { isRuntimeError, type RuntimeError } from "#/runtime/server/errors.ts"
 import { constraintApiError } from "#/runtime/server/storage/constraint-error.ts"
-
-type StandardApiError = ApiError<
-  | typeof AbortedError
-  | typeof AlreadyExistsError
-  | typeof FailedPreconditionError
-  | typeof InternalError
-  | typeof NotFoundError
-  | typeof PermissionDeniedError
-  | typeof UnauthenticatedError
-  | typeof ValidationError
->
-
-interface TaggedFailure {
-  readonly _tag: string
-}
-
-function isTaggedFailure(error: unknown): error is TaggedFailure {
-  return Predicate.hasProperty(error, "_tag") && Predicate.isString(error._tag)
-}
-
-function stringProperty(error: unknown, property: string): string | undefined {
-  if (!Predicate.hasProperty(error, property)) return undefined
-  const value = error[property]
-  return Predicate.isString(value) ? value : undefined
-}
-
-function firstStringProperty(
-  error: unknown,
-  property: string
-): string | undefined {
-  if (!Predicate.hasProperty(error, property)) return undefined
-  const values = error[property]
-  if (!Array.isArray(values)) return undefined
-  const first = values[0]
-  return Predicate.isString(first) ? first : undefined
-}
-
-function stringArrayProperty(
-  error: unknown,
-  property: string
-): ReadonlyArray<string> | undefined {
-  if (!Predicate.hasProperty(error, property)) return undefined
-  const values = error[property]
-  return Array.isArray(values) && values.every(Predicate.isString)
-    ? values
-    : undefined
-}
 
 export function unauthenticatedApiError(
   message: string
@@ -77,16 +25,6 @@ export function unauthenticatedApiError(
   }
 }
 
-function permissionDenied(message: string): StandardApiError {
-  return {
-    details: {},
-    message,
-    reason: "PERMISSION_DENIED",
-    status: "PERMISSION_DENIED",
-  }
-}
-
-/** Returns the sanitized envelope for a failure with no safe public meaning. */
 export function internalApiError(): ApiError<typeof InternalError> {
   return {
     details: {},
@@ -96,239 +34,204 @@ export function internalApiError(): ApiError<typeof InternalError> {
   }
 }
 
-function notFound(error: TaggedFailure): StandardApiError {
-  const recordId =
-    firstStringProperty(error, "recordIds") ??
-    stringProperty(error, "recordId") ??
-    stringProperty(error, "parentId") ??
-    stringProperty(error, "alias") ??
-    "unknown"
-  const objectType = stringProperty(error, "objectType") ?? "record"
+function violationError(
+  status:
+    | "INVALID_ARGUMENT"
+    | "FAILED_PRECONDITION"
+    | "ALREADY_EXISTS"
+    | "ABORTED",
+  message: string,
+  violations: ReadonlyArray<Violation>
+): ApiError {
   return {
-    details: {
-      resourceId: recordId,
-      resourceType: objectType,
-    },
-    message: "The requested resource does not exist or is not visible.",
-    reason: "NOT_FOUND",
-    status: "NOT_FOUND",
+    status,
+    reason: status === "INVALID_ARGUMENT" ? "VALIDATION_FAILED" : status,
+    message,
+    details: { violations },
   }
 }
 
-function aborted(_error: TaggedFailure): StandardApiError {
-  return {
-    details: {
-      violations: [
-        {
-          message: "The record changed. Reload it and try again.",
-          path: ["etag"],
-          reason: "ETAG_MISMATCH",
-        },
-      ],
-    },
-    message: "The operation was aborted by a concurrent change.",
-    reason: "ABORTED",
-    status: "ABORTED",
-  }
-}
-
-function alreadyExists(error: TaggedFailure): StandardApiError {
-  if (error._tag === "LinkCardinalityConflict") {
-    return {
-      details: {
-        violations: [
+/** Exhaustive translation of kernel failures; no reflection or inferred field names. */
+function runtimeApiError(error: RuntimeError): ApiError {
+  switch (error._tag) {
+    case "IdentityProvisioningRequired":
+      return unauthenticatedApiError(
+        "Valid authentication credentials are required."
+      )
+    case "ProjectAccessRequired":
+    case "UserInterfaceRequired":
+    case "SystemRecordReadOnly":
+      return {
+        details: {},
+        message: "The caller cannot perform this operation.",
+        reason: "PERMISSION_DENIED",
+        status: "PERMISSION_DENIED",
+      }
+    case "ObjectNotFound":
+      return {
+        details: { resourceId: error.recordId, resourceType: error.objectType },
+        message: "The requested resource does not exist or is not visible.",
+        reason: "NOT_FOUND",
+        status: "NOT_FOUND",
+      }
+    case "RecordAliasNotFound":
+      return {
+        details: { resourceId: error.alias, resourceType: "record" },
+        message: "The requested resource does not exist or is not visible.",
+        reason: "NOT_FOUND",
+        status: "NOT_FOUND",
+      }
+    case "ObjectWriteConflict":
+      return violationError(
+        "ABORTED",
+        "The operation was aborted by a concurrent change.",
+        [
+          {
+            message: "The record changed. Reload it and try again.",
+            path: ["etag"],
+            reason: "ETAG_MISMATCH",
+          },
+        ]
+      )
+    case "ObjectCheckFailed":
+      return violationError(
+        "INVALID_ARGUMENT",
+        error.message,
+        error.fields.map((field) => ({
+          message: error.message,
+          path: [field],
+          reason: "CHECK_FAILED",
+        }))
+      )
+    case "ObjectUniqueConflict":
+      return violationError(
+        "ALREADY_EXISTS",
+        "A record with these values already exists.",
+        error.fields.map((field) => ({
+          message: "A record with this value already exists.",
+          path: [field],
+          reason: "NOT_UNIQUE",
+        }))
+      )
+    case "RecordAliasConflict":
+      return violationError(
+        "ALREADY_EXISTS",
+        "The requested identifier already exists.",
+        [
+          {
+            message: `The alias '${error.alias}' is already in use.`,
+            path: ["aliases"],
+            reason: "RECORD_ALIAS_ALREADY_EXISTS",
+          },
+        ]
+      )
+    case "LinkCardinalityConflict":
+      return violationError(
+        "ALREADY_EXISTS",
+        "The relationship would violate its declared cardinality.",
+        [
           {
             message: "This relationship already has its allowed target.",
             path: ["target"],
             reason: "LINK_CARDINALITY_CONFLICT",
           },
-        ],
-      },
-      message: "The relationship would violate its declared cardinality.",
-      reason: "ALREADY_EXISTS",
-      status: "ALREADY_EXISTS",
-    }
-  }
-  const alias = stringProperty(error, "alias")
-  const fields = stringArrayProperty(error, "fields")
-  const violations =
-    fields === undefined
-      ? [
+        ]
+      )
+    case "ObjectDeleteRestricted":
+    case "CascadeDeleteRestricted":
+      return violationError(
+        "FAILED_PRECONDITION",
+        "The operation cannot run in the current system state.",
+        [
           {
             message:
-              alias === undefined
-                ? "The identifier is already in use."
-                : `The alias '${alias}' is already in use.`,
-            path: ["aliases"],
-            reason: "RECORD_ALIAS_ALREADY_EXISTS",
+              "Remove required references to this record before deleting it.",
+            reason: "RECORD_STILL_REFERENCED",
           },
         ]
-      : fields.map((field) => ({
-          message: "A record with this value already exists.",
-          path: [field],
-          reason: "NOT_UNIQUE",
-        }))
-  return {
-    details: { violations },
-    message:
-      fields === undefined
-        ? "The requested identifier already exists."
-        : "A record with these values already exists.",
-    reason: "ALREADY_EXISTS",
-    status: "ALREADY_EXISTS",
-  }
-}
-
-function preconditionViolation(error: TaggedFailure): Violation {
-  switch (error._tag) {
-    case "AssetPrecondition":
-      return {
-        message: stringProperty(error, "message") ?? "The asset is not ready.",
-        path: (stringProperty(error, "field") ?? "asset").split("."),
-        reason: "ASSET_PRECONDITION",
-      }
-    case "RequiredLinkUnlink":
-      return {
-        message: "A required relationship cannot be removed.",
-        path: [stringProperty(error, "traversal") ?? "target"],
-        reason: "REQUIRED_LINK",
-      }
-    case "ObjectDeleteRestricted":
-      return {
-        message:
-          "Remove required references to this record before deleting it.",
-        reason: "RECORD_STILL_REFERENCED",
-      }
-    default:
-      return {
-        message: "The system state must change before trying again.",
-        reason: "FAILED_PRECONDITION",
-      }
-  }
-}
-
-function failedPrecondition(error: TaggedFailure): StandardApiError {
-  return {
-    details: { violations: [preconditionViolation(error)] },
-    message: "The operation cannot run in the current system state.",
-    reason: "FAILED_PRECONDITION",
-    status: "FAILED_PRECONDITION",
-  }
-}
-
-function validationViolation(error: TaggedFailure): Violation {
-  switch (error._tag) {
-    case "InvalidLinkRequest": {
-      const path = stringArrayProperty(error, "path")
-      const violation = {
-        message:
-          stringProperty(error, "message") ?? "The Link request is invalid.",
-        reason: "INVALID_LINK_REQUEST",
-      }
-      return path === undefined ? violation : { ...violation, path }
-    }
+      )
+    case "InvalidExpansion":
+    case "InvalidLinkRequest":
+      return violationError("INVALID_ARGUMENT", "The request is invalid.", [
+        {
+          message: error.message,
+          path: error.path,
+          reason:
+            error._tag === "InvalidExpansion"
+              ? "INVALID_EXPANSION"
+              : "INVALID_LINK_REQUEST",
+        },
+      ])
     case "ImmutablePropertyError":
-      return {
-        message: "This field cannot be changed after creation.",
-        path: [stringProperty(error, "property") ?? "unknown"],
-        reason: "IMMUTABLE_PROPERTY",
-      }
+      return violationError("INVALID_ARGUMENT", "The request is invalid.", [
+        {
+          message: "This field cannot be changed after creation.",
+          path: [error.property],
+          reason: "IMMUTABLE_PROPERTY",
+        },
+      ])
     case "RequiredLinkMissing":
-      return {
-        message: "Select the required related record.",
-        path: ["links", stringProperty(error, "traversal") ?? "unknown"],
-        reason: "REQUIRED_LINK",
-      }
-    default:
-      return {
-        message: stringProperty(error, "message") ?? "The request is invalid.",
-        reason: "INVALID_REQUEST",
-      }
+      return violationError("INVALID_ARGUMENT", "The request is invalid.", [
+        {
+          message: "Select the required related record.",
+          path: ["links", error.traversal],
+          reason: "REQUIRED_LINK",
+        },
+      ])
+    case "LinkMutationNotAllowed":
+      return violationError("INVALID_ARGUMENT", "The request is invalid.", [
+        {
+          message: "This relationship is read-only.",
+          path: ["links", error.traversal],
+          reason: "INVALID_REQUEST",
+        },
+      ])
+    case "InvalidBatchRequest":
+    case "InvalidListRequest":
+      return violationError("INVALID_ARGUMENT", "The request is invalid.", [
+        { message: error.message, reason: "INVALID_REQUEST" },
+      ])
   }
+  const unreachable: never = error
+  throw new Error("Unexpected runtime error", { cause: unreachable })
 }
-
-function validation(error: TaggedFailure): StandardApiError {
-  return {
-    details: {
-      violations: [validationViolation(error)],
-    },
-    message: "The request is invalid.",
-    reason: "VALIDATION_FAILED",
-    status: "INVALID_ARGUMENT",
-  }
-}
-
-const notFoundTags = new Set(["ObjectNotFound", "RecordAliasNotFound"])
-const failedPreconditionTags = new Set([
-  "AssetPrecondition",
-  "ObjectDeleteRestricted",
-  "CascadeDeleteRestricted",
-])
-const validationTags = new Set([
-  "InvalidLinkRequest",
-  "InvalidLinkListRequest",
-  "ImmutablePropertyError",
-  "InvalidBatchRequest",
-  "InvalidListRequest",
-  "LinkMutationNotAllowed",
-  "RequiredLinkMissing",
-])
 
 function translateApiError(error: unknown): ApiError | undefined {
   if (isApiError(error)) return error
-  const constraint = constraintApiError(error)
-  if (constraint) return constraint
   if (Schema.isSchemaError(error)) return schemaErrorToApiError(error)
-  if (!isTaggedFailure(error)) return undefined
-  if (
-    error._tag === "IdentityProvisioningRequired" ||
-    error._tag === "InvalidIdentityAssertion"
-  ) {
+  if (isRuntimeError(error)) return runtimeApiError(error)
+  if (error instanceof InvalidIdentityAssertion)
     return unauthenticatedApiError(
       "Valid authentication credentials are required."
     )
-  }
-  if (
-    error._tag === "UserInterfaceRequired" ||
-    error._tag === "SystemRecordReadOnly" ||
-    error._tag === "ProjectAccessRequired"
-  ) {
-    return permissionDenied("The caller cannot perform this operation.")
-  }
-  if (notFoundTags.has(error._tag)) return notFound(error)
-  if (error._tag === "ObjectWriteConflict") return aborted(error)
-  if (
-    error._tag === "ObjectUniqueConflict" ||
-    error._tag === "LinkCardinalityConflict" ||
-    error._tag === "RecordAliasConflict"
-  ) {
-    return alreadyExists(error)
-  }
-  if (failedPreconditionTags.has(error._tag)) {
-    return failedPrecondition(error)
-  }
-  if (validationTags.has(error._tag)) {
-    return validation(error)
-  }
-  return undefined
+  if (error instanceof AssetPrecondition)
+    return violationError(
+      "FAILED_PRECONDITION",
+      "The operation cannot run in the current system state.",
+      [
+        {
+          message: error.message,
+          path: (error.field ?? "asset").split("."),
+          reason: "ASSET_PRECONDITION",
+        },
+      ]
+    )
+  return constraintApiError(error)
 }
 
-/** Translates application failures and sanitizes unexpected typed failures. */
+/** Expected failures retain their public meaning; unexpected failures are logged and sanitized. */
 export function withApiErrors<A, E, R>(
   effect: Effect.Effect<A, E, R>,
-  operation?: ModelOperation
+  operation?: OperationContract
 ): Effect.Effect<A, ApiError, R> {
   return Effect.catch(effect, (error) => {
     const mapped = translateApiError(error)
-    if (mapped !== undefined) {
-      const declared =
-        operation === undefined ||
-        operation.errors.some(({ reason }) => reason === mapped.reason)
-      if (declared) return Effect.fail(mapped)
-      return Effect.logError(
-        `Operation '${operation.key}' produced undeclared API error '${mapped.reason}'.`
-      ).pipe(Effect.andThen(Effect.fail(internalApiError())))
-    }
+    if (
+      mapped &&
+      (operation === undefined ||
+        operation.errors.some(({ reason }) => reason === mapped.reason))
+    )
+      return Effect.fail(mapped)
     return Effect.logError("Unhandled API failure", error).pipe(
       Effect.andThen(Effect.fail(internalApiError()))
     )

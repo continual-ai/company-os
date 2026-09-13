@@ -333,6 +333,7 @@ function FilterOperator({
               key={operator}
               onClick={() => {
                 column.setFilterValue({
+                  ...filter,
                   operator,
                   values: hasFilterInput(operator) ? filter.values : [],
                 } satisfies ObjectTableFilterValue)
@@ -561,6 +562,46 @@ function ObjectTableFilterItem({
       <div className="flex h-full items-center px-2 font-medium">
         <ObjectTableProperty label={meta.label} property={meta.property} />
       </div>
+      {meta.relationship ? (
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-full rounded-none px-2 font-normal"
+              />
+            }
+          >
+            {
+              { some: "Any", none: "None", every: "Every" }[
+                filter.quantifier ?? "some"
+              ]
+            }
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>Matching related records</DropdownMenuLabel>
+              {(["some", "none", "every"] as const).map((quantifier) => (
+                <DropdownMenuItem
+                  key={quantifier}
+                  onClick={() =>
+                    column.setFilterValue({ ...filter, quantifier })
+                  }
+                >
+                  {
+                    {
+                      some: "Any record matches",
+                      none: "No records match",
+                      every: "Every record matches",
+                    }[quantifier]
+                  }
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ) : null}
       <FilterOperator column={column} filter={filter} />
       <FilterValue column={column} filter={filter} table={table} />
       <Button

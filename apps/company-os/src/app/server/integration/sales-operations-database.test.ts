@@ -1,84 +1,67 @@
 import { Effect, Exit } from "effect"
 import { expect } from "vitest"
 
-import { Model } from "#/app.model.ts"
-import { ModelImplementation } from "#/app/server/application-services.ts"
+import { applicationOperations } from "#/app/server/application-services.ts"
 import { testApplication } from "#/app/server/test-application.ts"
-import { UserService } from "#/runtime/access/server/user-service.ts"
-import {
-  CurrencyCode,
-  Decimal,
-  EmailAddress,
-  modelObjectLinkTraversals,
-} from "#/runtime/model/index.ts"
+import { linkPreview } from "#/runtime/model/record-links.ts"
 import { anonymousInvocation } from "#/runtime/server/invocation-context.ts"
 import { CurrentInvocation } from "#/runtime/server/invocation.ts"
-import { Links } from "#/runtime/server/model/link-service.ts"
 import { CommittedChanges } from "#/runtime/server/storage/committed-changes.ts"
-import { Database } from "#/runtime/server/storage/database.ts"
+import { SqlDatabase } from "#/runtime/server/storage/transactions.ts"
 
 const application = testApplication()
 
 application.test(
-  "keeps custom queries scoped, conversions atomic, and primary affiliation a selection",
+  "converts qualification into an opportunity without duplicating customer identities",
   () =>
     Effect.gen(function* () {
-      const database = yield* Database
-      // Constructed under system invocation deliberately: bindings must never capture its authority.
-      const { services } = yield* ModelImplementation
-      const users = yield* UserService
-      const links = yield* Links
-      const reader = yield* users.provision({
-        name: "Scoped reader",
-        email: EmailAddress("reader@example.test"),
+      const services = yield* applicationOperations
+      const database = yield* SqlDatabase
+      const account = yield* services.account.create({ name: "Northstar" })
+      const partner = yield* services.account.create({
+        name: "Implementation partner",
       })
-      const readerInvocation = {
-        actorId: reader.id,
-      }
-      const first = yield* services.company.create({ name: "Readable company" })
-      const second = yield* services.company.create({ name: "Other company" })
-      for (const [_parent, currency, amount] of [
-        [first.id, "USD", "0.10"],
-        [first.id, "USD", "0.20"],
-        [first.id, "EUR", "12.30"],
-        [second.id, "USD", "9999.00"],
-      ] as const) {
-        yield* services.deal.create({
-          name: "Opportunity",
-          amount: { currency: CurrencyCode(currency), amount: Decimal(amount) },
+      const contact = yield* services.contact.create({
+        name: "Maya Chen",
+      })
+      for (const linkedAccount of [account, partner]) {
+        yield* services.affiliation.create({
+          links: { contact: contact.id, account: linkedAccount.id },
         })
       }
-      const summary = () =>
-        services.deal
-          .pipelineSummary({})
-          .pipe(Effect.provideService(CurrentInvocation, readerInvocation))
-      expect(yield* summary()).toEqual({
-        groups: [
-          { stage: "discovery", currency: "EUR", count: 1, amount: "12.30" },
-          { stage: "discovery", currency: "USD", count: 3, amount: "9999.30" },
-        ],
-      })
+      const input = {
+        name: "Northstar pilot",
+        links: { account: account.id, contact: contact.id },
+      }
+      const lead = yield* services.lead.create(input)
       expect(
-        yield* services.deal
-          .pipelineSummary({})
+        yield* services.lead
+          .convert({ id: lead.id })
           .pipe(
             Effect.provideService(CurrentInvocation, anonymousInvocation),
             Effect.flip
           )
       ).toMatchObject({ _tag: "ProjectAccessRequired" })
-
-      const lead = yield* services.lead.create({
-        name: "Ada",
-        companyName: "Analytical Engines",
-      })
       const changes = new Set<string>()
       const converted = yield* services.lead
         .convert({ id: lead.id })
         .pipe(Effect.provideService(CommittedChanges, changes))
-      expect(changes).toEqual(new Set(["company", "contact", "lead"]))
-      expect(
-        (yield* services.lead.get({ id: lead.id })).links.company?.ids[0]
-      ).toBe(converted.company)
+      expect(changes).toEqual(
+        new Set(["lead", "opportunity", "account", "contact"])
+      )
+      const opportunity = yield* services.opportunity.get({
+        id: converted.opportunity,
+        expand: true,
+      })
+      expect(opportunity.links.accounts).toMatchObject({
+        items: [{ id: account.id }],
+        totalSize: 1,
+      })
+      expect(opportunity.links.contacts).toMatchObject({
+        items: [{ id: contact.id }],
+        totalSize: 1,
+      })
+      expect(opportunity.stage).toBe("qualified")
       changes.clear()
       expect(
         yield* services.lead
@@ -86,93 +69,36 @@ application.test(
           .pipe(Effect.provideService(CommittedChanges, changes))
       ).toEqual(converted)
       expect(changes.size).toBe(0)
+      expect((yield* services.account.list({})).totalSize).toBe(2)
+      expect((yield* services.contact.list({})).totalSize).toBe(1)
       expect(
-        (yield* services.contact.get({ id: converted.contact })).name
-      ).toBe("Ada")
+        linkPreview(
+          (yield* services.contact.get({ id: contact.id })).links.affiliations
+        ).totalSize
+      ).toBe(2)
 
-      const linkedLead = yield* services.lead.create({
-        name: "Existing company contact",
-        links: { company: [first.id] },
+      const rollback = yield* services.lead.create({
+        ...input,
+        name: "Rollback",
       })
-      const companyCount = (yield* services.company.list({})).totalSize
-      const linkedConversion = yield* services.lead.convert({
-        id: linkedLead.id,
-      })
-      expect(linkedConversion.company).toBe(first.id)
-      expect((yield* services.company.list({})).totalSize).toBe(companyCount)
-      expect(yield* services.lead.convert({ id: linkedLead.id })).toEqual(
-        linkedConversion
-      )
-      const affiliation = modelObjectLinkTraversals(
-        Model,
-        Model.objects.contact
-      ).find(({ traversal }) => traversal.key === "primaryCompany")!
-      expect(
-        (yield* links.list(affiliation, { id: linkedConversion.contact })).items
-      ).toMatchObject([
-        { id: first.id, objectType: "company", name: first.name },
-      ])
-
-      const unassignedLead = yield* services.lead.create({
-        name: "Unassigned contact",
-      })
-      expect(
-        yield* services.lead
-          .convert({ id: unassignedLead.id })
-          .pipe(Effect.flip)
-      ).toMatchObject({
-        reason: "FAILED_PRECONDITION",
-        details: { violations: [{ reason: "LEAD_COMPANY_REQUIRED" }] },
-      })
-      expect(
-        (yield* services.contact.list({
-          filter: {
-            field: "name",
-            operator: "eq",
-            value: "Unassigned contact",
-          },
-        })).totalSize
-      ).toBe(0)
-
-      const rolledBackLead = yield* services.lead.create({
-        name: "Rollback contact",
-        companyName: "Rollback company",
-      })
-      changes.clear()
       yield* database
         .transaction(() =>
           Effect.gen(function* () {
-            yield* services.lead.convert({ id: rolledBackLead.id })
-            return yield* Effect.fail("cancel conversion" as const)
+            yield* services.lead.convert({ id: rollback.id })
+            return yield* Effect.fail("cancel" as const)
           })
         )
-        .pipe(Effect.provideService(CommittedChanges, changes), Effect.flip)
-      expect(changes.size).toBe(0)
-      expect(yield* services.lead.get({ id: rolledBackLead.id })).toMatchObject(
-        {
-          links: {
-            convertedCompany: { ids: [], totalSize: 0 },
-            convertedContact: { ids: [], totalSize: 0 },
-          },
-          convertedAt: null,
-        }
-      )
+        .pipe(Effect.flip)
       expect(
-        (yield* services.company.list({
-          filter: { field: "name", operator: "eq", value: "Rollback company" },
-        })).totalSize
-      ).toBe(0)
-      expect(
-        (yield* services.contact.list({
-          filter: { field: "name", operator: "eq", value: "Rollback contact" },
-        })).totalSize
-      ).toBe(0)
+        (yield* services.lead.get({ id: rollback.id })).links.opportunity
+      ).toBeNull()
+      expect((yield* services.opportunity.list({})).totalSize).toBe(1)
 
       const contested = yield* services.lead.create({
-        name: "Concurrent contact",
-        companyName: "Concurrent company",
+        ...input,
+        name: "Concurrent conversion",
       })
-      const conversions = yield* Effect.all(
+      const results = yield* Effect.all(
         [
           services.lead.convert({ id: contested.id }).pipe(Effect.exit),
           services.lead.convert({ id: contested.id }).pipe(Effect.exit),
@@ -180,79 +106,17 @@ application.test(
         { concurrency: 2 }
       )
       const winner = yield* services.lead.convert({ id: contested.id })
-      expect(conversions.some(Exit.isSuccess)).toBe(true)
-      for (const result of conversions) {
+      expect(results.some(Exit.isSuccess)).toBe(true)
+      for (const result of results)
         if (Exit.isSuccess(result)) expect(result.value).toEqual(winner)
-      }
-      expect(
-        (yield* services.company.list({
-          filter: {
-            field: "name",
-            operator: "eq",
-            value: "Concurrent company",
-          },
-        })).totalSize
-      ).toBe(1)
-      expect(
-        (yield* services.contact.list({
-          filter: {
-            field: "name",
-            operator: "eq",
-            value: "Concurrent contact",
-          },
-        })).totalSize
-      ).toBe(1)
-
-      const primary = modelObjectLinkTraversals(
-        Model,
-        Model.objects.contact
-      ).find(({ traversal }) => traversal.key === "primaryCompany")!
-      const memberships = modelObjectLinkTraversals(
-        Model,
-        Model.objects.contact
-      ).find(({ traversal }) => traversal.key === "companies")!
-      const contacts = modelObjectLinkTraversals(
-        Model,
-        Model.objects.company
-      ).find(({ traversal }) => traversal.key === "contacts")!
-      yield* services.contact.update({
-        id: converted.contact,
-        links: {
-          companies: { add: [first.id] },
-          primaryCompany: { replace: [first.id] },
-        },
+      expect((yield* services.opportunity.list({})).totalSize).toBe(2)
+      expect((yield* services.contact.list({})).totalSize).toBe(1)
+      const disqualified = yield* services.lead.create({
+        ...input,
+        status: "disqualified",
       })
       expect(
-        (yield* links.list(memberships, { id: converted.contact })).totalSize
-      ).toBe(2)
-      expect(
-        (yield* links.list(primary, { id: converted.contact })).items
-      ).toMatchObject([
-        { id: first.id, objectType: "company", name: first.name },
-      ])
-      yield* links.unlink(primary, { id: converted.contact, target: first.id })
-      yield* links.unlink(contacts, { id: first.id, target: converted.contact })
-      expect(
-        (yield* links.list(primary, { id: converted.contact })).items
-      ).toEqual([])
-      expect(
-        (yield* links.list(memberships, { id: converted.contact })).totalSize
-      ).toBe(1)
-
-      // Adding a commercial party cannot change the deal's inherited authorization.
-      const privateDeal = yield* services.deal.create({
-        name: "Private agreement",
-      })
-      const dealCompanies = modelObjectLinkTraversals(
-        Model,
-        Model.objects.deal
-      ).find(({ traversal }) => traversal.key === "companies")!
-      yield* links.link(dealCompanies, { id: privateDeal.id, target: first.id })
-      expect(
-        (yield* summary()).groups.reduce(
-          (total, group) => total + group.count,
-          0
-        )
-      ).toBe(5)
+        yield* services.lead.convert({ id: disqualified.id }).pipe(Effect.flip)
+      ).toMatchObject({ status: "FAILED_PRECONDITION" })
     })
 )

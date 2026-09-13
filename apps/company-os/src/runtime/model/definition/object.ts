@@ -20,6 +20,12 @@ import {
   type InterfaceImplementationMap,
   bindInterfaceImplementations,
 } from "#/runtime/model/definition/interface.ts"
+import type {
+  ModelObjectCreateInput,
+  ModelObjectUpdateInput,
+} from "#/runtime/model/definition/model-input.ts"
+import type { ModelRecord } from "#/runtime/model/definition/model-record.ts"
+import type { ModelCatalog } from "#/runtime/model/definition/model.ts"
 import {
   type InferProperties,
   type InferProperty,
@@ -27,17 +33,17 @@ import {
   type Properties,
   normalizeProperties,
 } from "#/runtime/model/definition/property.ts"
-import type {
-  AnySchema,
-  EnumSchema,
-  ImageSchema,
-  InferInputSchema,
-  RecordAlias,
-  RecordId,
-  RecordIdentifier,
-  Timestamp,
+import {
+  type AnySchema,
+  type EnumSchema,
+  type ImageSchema,
+  type InferInputSchema,
+  type RecordAlias,
+  type RecordId,
+  type RecordIdentifier,
+  type Timestamp,
+  assertStoredProperty,
 } from "#/runtime/model/definition/schema.ts"
-import { assertStoredProperty } from "#/runtime/model/definition/schema.ts"
 
 /** A typed reference used when records from multiple object types can appear. */
 export type ObjectRef<TObjectType extends string = string> =
@@ -50,10 +56,19 @@ export type ObjectRef<TObjectType extends string = string> =
 
 export interface BaseRecord<TObjectType extends string = string> {
   readonly objectType: TObjectType
+  /** Derived presentation text; never stored or writable. */
+  readonly label: string
   readonly links: Readonly<
     Record<
       string,
-      { readonly ids: ReadonlyArray<RecordId>; readonly totalSize: number }
+      | RecordId
+      | ObjectRecord<ObjectType>
+      | {
+          readonly items: ReadonlyArray<ObjectRecord<ObjectType>>
+          readonly totalSize: number
+        }
+      | null
+      | { readonly ids: ReadonlyArray<RecordId>; readonly totalSize: number }
     >
   >
   readonly aliases: ReadonlyArray<RecordAlias>
@@ -96,7 +111,7 @@ export interface ObjectDisplay<TProperties extends Properties> {
   }[keyof TProperties] &
     string
   subtitle?: (keyof TProperties & string) | "id"
-  title: (keyof TProperties & string) | "id"
+  title: (keyof TProperties & string) | "id" | ReadonlyArray<string>
 }
 
 interface ObjectDisplayDefinition {
@@ -104,7 +119,7 @@ interface ObjectDisplayDefinition {
   image?: string
   status?: string
   subtitle?: string
-  title: string
+  title: string | ReadonlyArray<string>
 }
 
 /**
@@ -124,6 +139,17 @@ export interface ObjectDefinition {
   readonly properties: Readonly<Record<string, AnySchema>>
   /** Opts into cross-object search. Only these text fields are indexed; display title matches rank higher. */
   readonly search?: { readonly fields: ReadonlyArray<string> }
+  readonly checks?: Readonly<
+    Record<
+      string,
+      {
+        readonly left: string
+        readonly operator: "lt" | "lte" | "gt" | "gte"
+        readonly right: string
+        readonly message: string
+      }
+    >
+  >
   readonly uniqueBy?: Readonly<Record<string, ReadonlyArray<string>>>
 }
 
@@ -152,6 +178,17 @@ type ObjectDefinitionConstraints<D extends ObjectDefinition> = NoExtraKeys<
   readonly search?: {
     readonly fields: ReadonlyArray<keyof D["properties"] & string>
   }
+  readonly checks?: Readonly<
+    Record<
+      string,
+      {
+        readonly left: keyof D["properties"] & string
+        readonly right: keyof D["properties"] & string
+        readonly operator: "lt" | "lte" | "gt" | "gte"
+        readonly message: string
+      }
+    >
+  >
 }
 
 declare const objectDefinition: unique symbol
@@ -172,7 +209,14 @@ export interface ObjectType<D extends ObjectDefinition = ObjectDefinition> {
   >
   collection: D["collection"]
   description?: string
-  display: D["display"]
+  display: Omit<D["display"], "title"> & {
+    title: OpenOr<
+      D,
+      string,
+      D["display"]["title"] extends string ? D["display"]["title"] : "label"
+    >
+    titleFields?: ReadonlyArray<string>
+  }
   id: D["id"]
   interfaces: OpenOr<
     D,
@@ -184,13 +228,18 @@ export interface ObjectType<D extends ObjectDefinition = ObjectDefinition> {
   pluralName: string
   properties: OpenOr<D, Properties, NormalizeProperties<D["properties"]>>
   search?: { readonly fields: ReadonlyArray<string> } | undefined
+  checks: NonNullable<ObjectDefinition["checks"]>
   uniqueBy: Readonly<Record<string, ReadonlyArray<string>>>
 }
 
-export type ObjectRecord<TObject extends ObjectType> = BaseRecord<
-  TObject["id"]
-> &
-  InferProperties<TObject["properties"]>
+/** Record fields, with precise relationships when the composed model is supplied. */
+export type ObjectRecord<
+  TObject extends ObjectType,
+  M extends ModelCatalog | undefined = undefined,
+  E = undefined,
+> = M extends ModelCatalog
+  ? ModelRecord<M, TObject, E>
+  : BaseRecord<TObject["id"]> & InferProperties<TObject["properties"]>
 
 type PropertyValue<TProperty extends Properties[string]> =
   InferProperty<TProperty>
@@ -254,9 +303,12 @@ export type ObjectCreateProperties<TObject extends ObjectType> = Simplify<
   }
 >
 
-export type ObjectCreateInput<TObject extends ObjectType> = Simplify<
-  ObjectCreateProperties<TObject>
->
+export type ObjectCreateInput<
+  TObject extends ObjectType,
+  M extends ModelCatalog | undefined = undefined,
+> = M extends ModelCatalog
+  ? ModelObjectCreateInput<M, TObject>
+  : Simplify<ObjectCreateProperties<TObject>>
 
 type ObjectUpdateChanges<TObject extends ObjectType> = Simplify<
   BaseUpdateProperties & {
@@ -307,10 +359,14 @@ export interface ObjectBatchDeleteInput<TObject extends ObjectType> {
   readonly ids: ReadonlyArray<RecordIdentifier<TObject["id"]>>
 }
 
-export type ObjectUpdateInput<TObject extends ObjectType> =
-  ObjectGetInput<TObject> &
-    ObjectWritePrecondition &
-    ObjectUpdateChanges<TObject>
+export type ObjectUpdateInput<
+  TObject extends ObjectType,
+  M extends ModelCatalog | undefined = undefined,
+> = M extends ModelCatalog
+  ? ModelObjectUpdateInput<M, TObject>
+  : ObjectGetInput<TObject> &
+      ObjectWritePrecondition &
+      ObjectUpdateChanges<TObject>
 
 /** Update input accepted only by trusted server-internal object writers. */
 export type ObjectWriterUpdateInput<TObject extends ObjectType> =
@@ -320,6 +376,7 @@ export type ObjectWriterUpdateInput<TObject extends ObjectType> =
 
 const reservedPropertyIds = new Set([
   "aliases",
+  "label",
   "createdAt",
   "createdBy",
   "etag",
@@ -336,6 +393,15 @@ const reservedPropertyIds = new Set([
  * Defines a portable model object and derives its enabled standard actions.
  * Business relationships and ownership are declared as Links.
  */
+function isOrderedProperty(property: AnySchema): boolean {
+  return (
+    property.kind === "number" ||
+    property.kind === "decimal" ||
+    (property.kind === "string" &&
+      (property.format === "date" || property.format === "timestamp"))
+  )
+}
+
 export function defineObject<const D extends ObjectDefinition>(
   definition: D & ObjectDefinitionConstraints<D>
 ): ObjectType<D> {
@@ -368,6 +434,40 @@ export function defineObject<const D extends ObjectDefinition>(
   }
 
   const properties = normalizeProperties(input.properties)
+  const checks = input.checks ?? {}
+  for (const [key, check] of Object.entries(checks)) {
+    definitionId(key)
+    const left = properties[check.left]
+    const right = properties[check.right]
+    if (
+      !left ||
+      !right ||
+      !isOrderedProperty(left) ||
+      !isOrderedProperty(right) ||
+      left.kind !== right.kind ||
+      (left.kind === "string" &&
+        right.kind === "string" &&
+        left.format !== right.format) ||
+      !["lt", "lte", "gt", "gte"].includes(check.operator) ||
+      check.message.trim() === ""
+    )
+      throw new Error(
+        `Object '${input.id}' check '${key}' requires matching ordered fields and a message.`
+      )
+  }
+  const display =
+    typeof input.display.title === "string"
+      ? input.display
+      : {
+          ...input.display,
+          title: "label",
+          titleFields: input.display.title,
+        }
+  if (
+    typeof input.display.title !== "string" &&
+    input.display.title.length === 0
+  )
+    throw new Error(`Object '${input.id}' title requires at least one field.`)
   if (input.search !== undefined) {
     if (input.search.fields.length === 0)
       throw new Error(
@@ -391,6 +491,7 @@ export function defineObject<const D extends ObjectDefinition>(
     input.implements ?? []
   )
   for (const [role, propertyId] of Object.entries(input.display)) {
+    if (typeof propertyId !== "string") continue
     if (role === "icon") {
       definitionId(propertyId)
       continue
@@ -428,7 +529,8 @@ export function defineObject<const D extends ObjectDefinition>(
     name: input.name,
     interfaces,
     pluralName: input.pluralName,
-    display: input.display,
+    display,
+    checks,
     properties,
     uniqueBy,
     ...(input.search === undefined ? {} : { search: input.search }),

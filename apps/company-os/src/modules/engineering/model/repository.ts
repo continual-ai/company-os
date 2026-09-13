@@ -1,5 +1,5 @@
-import { Project } from "#/modules/engineering/model/project.ts"
 import { NoteSubject } from "#/modules/notes/model/index.ts"
+import { Project } from "#/modules/product/model/project.ts"
 import { User } from "#/runtime/access/model/index.ts"
 import { defineLink, defineObject, schema } from "#/runtime/model/index.ts"
 
@@ -24,20 +24,16 @@ export const Repository = defineObject({
   display: { title: "name", icon: "code" },
 })
 
-export const RepositoryProject = defineLink({
-  id: "repositoryProject",
-  name: "Repository Project",
-  from: Repository,
-  to: Project,
-  forward: { key: "project", label: "Project", max: 1 },
-  reverse: { key: "repositories", label: "Repositories" },
+export const RepositoryProjects = defineLink({
+  id: "repositoryProjects",
+  name: "Repository projects",
+  from: { type: Repository, key: "projects", label: "Projects" },
+  to: { type: Project, key: "repositories", label: "Repositories" },
 })
 
 export const RepositoryOwner = defineLink({
   id: "repositoryOwner",
   name: "Repository Owner",
-  from: Repository,
-  to: User,
-  forward: { key: "owner", label: "Owner", max: 1 },
-  reverse: { key: "repositories", label: "Repositories" },
+  from: { type: Repository, key: "owner", label: "Owner", max: 1 },
+  to: { type: User, key: "repositories", label: "Repositories" },
 })

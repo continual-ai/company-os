@@ -2,7 +2,7 @@ import { Button } from "@company/ui/button"
 import { useInfiniteQuery } from "@tanstack/react-query"
 import { useMemo, useState } from "react"
 
-import { modelCollectionQuery } from "#/runtime/client/model-collection-query.ts"
+import { queryErrorMessage } from "#/runtime/client/query-errors.ts"
 import type { ModelLinkTraversal } from "#/runtime/model/index.ts"
 import type {
   FormLinkDeltaValue,
@@ -41,7 +41,7 @@ function unique(values: ReadonlyArray<string>): ReadonlyArray<string> {
   return [...new Set(values)]
 }
 
-export function ObjectLinkEditField({
+function PluralLinkEditField({
   ariaDescribedBy,
   id,
   invalid,
@@ -59,7 +59,7 @@ export function ObjectLinkEditField({
   readonly name: string
   readonly object: ModelObject
   readonly onBlur: () => void
-  readonly onValueChange: (value: FormLinkDeltaValue) => void
+  readonly onValueChange: (value: FormLinkDeltaValue | string | null) => void
   readonly record: ClientRecord
   readonly traversal: ModelLinkTraversal
   readonly value: FormValue
@@ -67,24 +67,24 @@ export function ObjectLinkEditField({
   const runtime = useModelRuntime()
 
   const client = useMemo(
-    () => linkClientFor(runtime, object, traversal),
-    [runtime, object, traversal]
+    () => linkClientFor(runtime, object, traversal, record),
+    [runtime, object, traversal, record]
   )
   const [addedOptions, setAddedOptions] = useState<
     ReadonlyMap<string, ReferenceOption>
   >(new Map())
   const page = useInfiniteQuery(
-    modelCollectionQuery(
-      (request) => client.list({ ...request, id: record.id }),
-      { pageSize: traversal.traversal.max !== 1 ? 50 : 1 }
-    )
+    client.list.infiniteQueryOptions({
+      id: record.id,
+      pageSize: traversal.traversal.max !== 1 ? 50 : 1,
+    })
   )
   const current = describeReferences(
     runtime,
     page.data?.pages.flatMap((result) => result.items) ?? []
   )
   const loading = page.isFetching
-  const loadError = page.error?.message
+  const loadError = queryErrorMessage(page.error)
   const delta = linkDelta(value)
 
   const setDelta = (
@@ -127,48 +127,6 @@ export function ObjectLinkEditField({
         </Button>
       </div>
     )
-
-  if (traversal.traversal.max === 1) {
-    const original = current[0]
-    const selected = added[0] ?? activeCurrent[0]
-    return (
-      <div className="grid gap-2">
-        {loadFailure}
-        <div className="flex items-center gap-2">
-          <ObjectReferenceSelect
-            clearable={
-              client.unlink !== undefined && traversal.traversal.min === 0
-            }
-            ariaDescribedBy={ariaDescribedBy}
-            disabled={loading || loadError !== undefined}
-            id={id}
-            includeHiddenInput={false}
-            initialLabel={selected?.label}
-            invalid={invalid}
-            name={name}
-            placeholder={loading ? "Loading…" : "Select a record"}
-            required={traversal.traversal.min > 0}
-            typeId={traversal.target.from.typeId}
-            value={selected?.id ?? ""}
-            onBlur={onBlur}
-            onValueChange={(target, option) => {
-              remember(option)
-              if (target === "") {
-                setDelta([], original === undefined ? [] : [original.id])
-                return
-              }
-              setDelta(
-                target === original?.id ? [] : [target],
-                original === undefined || original.id === target
-                  ? []
-                  : [original.id]
-              )
-            }}
-          />
-        </div>
-      </div>
-    )
-  }
 
   const visible = [
     ...activeCurrent,
@@ -239,5 +197,27 @@ export function ObjectLinkEditField({
         }}
       />
     </div>
+  )
+}
+
+export function ObjectLinkEditField(
+  props: Parameters<typeof PluralLinkEditField>[0]
+) {
+  if (props.traversal.traversal.max !== 1)
+    return <PluralLinkEditField {...props} />
+  return (
+    <ObjectReferenceSelect
+      id={props.id}
+      name={props.name}
+      invalid={props.invalid}
+      ariaDescribedBy={props.ariaDescribedBy}
+      includeHiddenInput={false}
+      clearable={props.traversal.traversal.min === 0}
+      required={props.traversal.traversal.min > 0}
+      typeId={props.traversal.target.from.typeId}
+      value={typeof props.value === "string" ? props.value : ""}
+      onBlur={props.onBlur}
+      onValueChange={(id) => props.onValueChange(id || null)}
+    />
   )
 }

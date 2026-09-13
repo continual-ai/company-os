@@ -2,9 +2,9 @@ import { describe, expect, expectTypeOf, it } from "vitest"
 
 import { appMetadata } from "#/app.config.ts"
 import { Model, type ActorId, type IdentityId } from "#/app.model.ts"
+import { type ModelObjectCreateInput } from "#/runtime/model/definition/model-input.ts"
 import {
   describeModel,
-  type ModelObjectCreateInput,
   type ModelObjectRef,
   type ObjectRecord,
   type QueryInput,
@@ -14,7 +14,7 @@ import {
   type RecordIdOf,
 } from "#/runtime/model/index.ts"
 
-const ContactPrimaryCompany = Model.links.contactPrimaryCompany
+const ActivityAccounts = Model.links.activityAccounts
 
 describe("model contract", () => {
   it("publishes a serializable closed-world description", () => {
@@ -23,50 +23,48 @@ describe("model contract", () => {
     expect(description).toMatchObject({
       actor: { typeId: "actor" },
       model: { name: appMetadata.name },
-      root: { id: "root", kind: "root", name: "Root" },
-      version: "0.32",
+      version: "0.34",
     })
+    expect(description).not.toHaveProperty("root")
     expect(description.queries).toContainEqual(
       expect.objectContaining({
         id: "pipelineSummary",
         kind: "query",
-        objectType: "deal",
+        objectType: "opportunity",
         scope: "collection",
         input: expect.objectContaining({ kind: "struct" }),
         output: expect.objectContaining({ kind: "struct" }),
       })
     )
-    expect(description.relationships).toContainEqual(
+    expect(description.links).toContainEqual(
       expect.objectContaining({
-        id: "contactPrimaryCompany",
+        id: "activityAccounts",
         forward: expect.objectContaining({
-          key: "primaryCompany",
+          key: "accounts",
           min: 0,
-          max: 1,
         }),
         reverse: expect.objectContaining({
-          key: "primaryContacts",
+          key: "activities",
           min: 0,
         }),
-        subsetOf: "contactCompanies",
       })
     )
-    expect(description.relationships).toContainEqual(
+    expect(description.links).toContainEqual(
       expect.objectContaining({
-        id: "leadConvertedCompany",
+        id: "leadOpportunity",
         reverse: expect.objectContaining({
-          key: "convertedLeads",
-          label: "Converted leads",
+          key: "sourceLead",
+          label: "Source lead",
         }),
         outputOnly: true,
       })
     )
     expectTypeOf<
-      QueryInput<(typeof Model.queries)["deal.pipelineSummary"]>
+      QueryInput<(typeof Model.queries)["opportunity.pipelineSummary"]>
     >().toEqualTypeOf<{}>()
     expectTypeOf<
       QueryOutput<
-        (typeof Model.queries)["deal.pipelineSummary"]
+        (typeof Model.queries)["opportunity.pipelineSummary"]
       >["groups"][number]["count"]
     >().toEqualTypeOf<number>()
     expect(description.modules.map((module) => module.id)).toEqual(
@@ -106,30 +104,28 @@ describe("model contract", () => {
     expect(description.links.map((link) => link.id)).toEqual(
       expect.arrayContaining([
         "noteSubjects",
-        "contactCompanies",
-        "contactPrimaryCompany",
-        "dealCompanies",
+        "activityAccounts",
+        "opportunityAccounts",
       ])
     )
     expect(description.links).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          id: "contactPrimaryCompany",
+          id: "activityAccounts",
           forward: expect.objectContaining({
             min: 0,
-            max: 1,
-            description: "The company this person mainly works with.",
-            from: { kind: "object", typeId: "contact" },
-            key: "primaryCompany",
-            label: "Primary company",
-            to: { kind: "object", typeId: "company" },
+
+            from: { kind: "object", typeId: "activity" },
+            key: "accounts",
+            label: "Accounts",
+            to: { kind: "object", typeId: "account" },
           }),
           reverse: expect.objectContaining({
             min: 0,
-            from: { kind: "object", typeId: "company" },
-            key: "primaryContacts",
-            label: "Primary contacts",
-            to: { kind: "object", typeId: "contact" },
+            from: { kind: "object", typeId: "account" },
+            key: "activities",
+            label: "Activities",
+            to: { kind: "object", typeId: "activity" },
           }),
         }),
         expect.objectContaining({
@@ -137,7 +133,7 @@ describe("model contract", () => {
           forward: expect.objectContaining({
             min: 0,
             description:
-              "Link the people, companies, or work this note is about.",
+              "Link the people, accounts, or work this note is about.",
             from: { kind: "object", typeId: "note" },
             key: "subjects",
             label: "Subjects",
@@ -155,7 +151,7 @@ describe("model contract", () => {
       ])
     )
     expect(
-      description.objects.find((object) => object.id === "lead")?.properties
+      description.objects.find((object) => object.id === "contact")?.properties
         .email
     ).toMatchObject({
       kind: "string",
@@ -164,15 +160,15 @@ describe("model contract", () => {
       requiredOnCreate: false,
     })
     expect(
-      description.objects.find((object) => object.id === "company")?.properties
+      description.objects.find((object) => object.id === "account")?.properties
         .name
     ).toMatchObject({ requiredOnCreate: true })
     expect(
-      description.objects.find((object) => object.id === "company")?.properties
+      description.objects.find((object) => object.id === "account")?.properties
         .logo
     ).toMatchObject({ kind: "image", nullable: true })
     expect(
-      description.objects.find((object) => object.id === "company")?.interfaces
+      description.objects.find((object) => object.id === "account")?.interfaces
     ).toEqual({
       party: {
         interfaceId: "party",
@@ -192,10 +188,10 @@ describe("model contract", () => {
     expect(description.objects).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          id: "company",
+          id: "account",
         }),
         expect.objectContaining({
-          id: "deal",
+          id: "opportunity",
         }),
         expect.objectContaining({
           id: "lineItem",
@@ -207,16 +203,10 @@ describe("model contract", () => {
 
   it("preserves model and link literal types", () => {
     expect(Model.actor.id).toBe("actor")
-    expectTypeOf(Model.objects.company.collection).toEqualTypeOf<"companies">()
-    expectTypeOf(
-      ContactPrimaryCompany.forward.key
-    ).toEqualTypeOf<"primaryCompany">()
-    expectTypeOf(
-      ContactPrimaryCompany.reverse.key
-    ).toEqualTypeOf<"primaryContacts">()
-    expect(Model.objects.contact.properties).not.toHaveProperty(
-      "primaryCompany"
-    )
+    expectTypeOf(Model.objects.account.collection).toEqualTypeOf<"accounts">()
+    expectTypeOf(ActivityAccounts.forward.key).toEqualTypeOf<"accounts">()
+    expectTypeOf(ActivityAccounts.reverse.key).toEqualTypeOf<"activities">()
+    expect(Model.objects.contact.properties).not.toHaveProperty("accounts")
     // Note subjects are exactly the NoteSubject implementers, whichever modules supply them.
     type NoteSubjectId = RecordIdOf<
       typeof Model,
@@ -233,21 +223,21 @@ describe("model contract", () => {
       >[number]
     >().toEqualTypeOf<RecordAlias | NoteSubjectId>()
     expectTypeOf<
-      RecordId<"company"> | RecordId<"contact"> | RecordId<"lead">
+      RecordId<"account"> | RecordId<"contact"> | RecordId<"lead">
     >().toExtend<NoteSubjectId>()
     expectTypeOf<RecordId<"user">>().not.toExtend<NoteSubjectId>()
     expectTypeOf<RecordId<"role">>().not.toExtend<NoteSubjectId>()
-    expectTypeOf<"contacts" | "primaryContacts" | "notes">().toExtend<
+    expectTypeOf<"affiliations" | "notes">().toExtend<
       keyof NonNullable<
         ModelObjectCreateInput<
           typeof Model,
-          typeof Model.objects.company
+          typeof Model.objects.account
         >["links"]
       >
     >()
     expectTypeOf<
       RecordIdOf<typeof Model, (typeof Model.interfaces)["party"]>
-    >().toEqualTypeOf<RecordId<"company"> | RecordId<"contact">>()
+    >().toEqualTypeOf<RecordId<"account"> | RecordId<"contact">>()
     expectTypeOf<IdentityId>().toEqualTypeOf<
       RecordId<"serviceAccount"> | RecordId<"user">
     >()
@@ -255,16 +245,16 @@ describe("model contract", () => {
       RecordId<"anonymousActor"> | RecordId<"serviceAccount"> | RecordId<"user">
     >()
     expectTypeOf<
-      ObjectRecord<typeof Model.objects.company>["createdBy"]
+      ObjectRecord<typeof Model.objects.account>["createdBy"]
     >().toEqualTypeOf<ActorId>()
   })
 
   it("keeps heterogeneous object references discriminated", () => {
     type Ref = ModelObjectRef<typeof Model>
-    type CompanyRef = Extract<Ref, { readonly objectType: "company" }>
+    type AccountRef = Extract<Ref, { readonly objectType: "account" }>
     type ContactRef = Extract<Ref, { readonly objectType: "contact" }>
 
-    expectTypeOf<CompanyRef["id"]>().toEqualTypeOf<RecordId<"company">>()
+    expectTypeOf<AccountRef["id"]>().toEqualTypeOf<RecordId<"account">>()
     expectTypeOf<ContactRef["id"]>().toEqualTypeOf<RecordId<"contact">>()
   })
 })

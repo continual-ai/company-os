@@ -22,7 +22,7 @@ export const toolPreviews = [
     id: "headshot-studio",
     moduleId: "marketing",
     label: "Headshot Studio",
-    description: "Turn a photo into a headshot that fits your company's style.",
+    description: "Turn a photo into a headshot that fits your account's style.",
     category: "Creative",
     icon: ScanFaceIcon,
     input: "A portrait photo and a visual style",
@@ -61,24 +61,30 @@ export const reportPreviews = [
 ] as const
 
 export const workspaceModuleOrder = [
+  "crm",
   "sales",
   "marketing",
+  "product",
   "engineering",
   "hiring",
-  "support",
-  "supportEngineering",
+  "service",
+  "customerFeedback",
+  "productDemand",
   "notes",
   "platform",
 ]
 
 export const workspaceModuleIcons: Record<string, LucideIcon> = {
   platform: BlocksIcon,
+  crm: UsersIcon,
   sales: HandshakeIcon,
   marketing: MegaphoneIcon,
+  product: BlocksIcon,
   engineering: CodeIcon,
   hiring: UsersIcon,
-  support: HeadsetIcon,
-  supportEngineering: LifeBuoyIcon,
+  service: HeadsetIcon,
+  customerFeedback: LifeBuoyIcon,
+  productDemand: HandshakeIcon,
   notes: NotebookPenIcon,
 }
 

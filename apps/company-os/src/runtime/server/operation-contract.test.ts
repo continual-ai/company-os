@@ -1,4 +1,4 @@
-import { Effect, Layer } from "effect"
+import { Schema, Effect, Layer } from "effect"
 import { HttpRouter, HttpServer } from "effect/unstable/http"
 import { OpenApi, HttpApiBuilder } from "effect/unstable/httpapi"
 import { expect, expectTypeOf, it } from "vitest"
@@ -9,7 +9,10 @@ import {
   createModelHttpApi,
   HttpValidationMiddleware,
 } from "#/runtime/contract/http-api.ts"
-import { modelOperation } from "#/runtime/contract/operations.ts"
+import {
+  type OperationContract,
+  modelOperation,
+} from "#/runtime/contract/operation-contract.ts"
 import { moduleDependencies } from "#/runtime/model/definition/validate-model.ts"
 import {
   defineAction,
@@ -24,7 +27,6 @@ import {
 import { createModelHttpHandlers } from "#/runtime/server/http.ts"
 import { systemInvocation } from "#/runtime/server/invocation-context.ts"
 import { CurrentInvocation } from "#/runtime/server/invocation.ts"
-import { implementModel } from "#/runtime/server/model-implementation.ts"
 
 const Ticket = defineObject({
   id: "ticket",
@@ -95,8 +97,8 @@ it("owns operations independently of attachment and removes them with their modu
 it("uses noun-based colon routes, typed clients and shared cache options for all attachments", async () => {
   const document = OpenApi.fromApi(createModelHttpApi(model))
   for (const [path, operationId] of [
-    ["/api/v1/tickets/{id}:escalate", "escalateTicket"],
-    ["/api/v1/tickets:summary", "summaryTickets"],
+    ["/api/v1/tickets/{id}:escalate", "ticket.escalate"],
+    ["/api/v1/tickets:summary", "ticket.summary"],
     ["/api/v1/:reconcile", "reconcile"],
     ["/api/v1/:health", "health"],
   ]) {
@@ -132,7 +134,9 @@ it("uses noun-based colon routes, typed clients and shared cache options for all
   await Effect.runPromise(client.reconcile({ dryRun: true }))
   const data = createModelQueries(model, client)
   expect(
-    await data.health({}).queryFn({ signal: new AbortController().signal })
+    await data.health
+      .queryOptions({})
+      .queryFn({ signal: new AbortController().signal })
   ).toEqual({ count: 2 })
   expectTypeOf<Parameters<typeof client.reconcile>[0]>().toEqualTypeOf<{
     readonly dryRun: boolean
@@ -197,6 +201,15 @@ it("rejects ambiguous attachment and missing, optional, or wrongly typed record 
   )
 })
 
+const invoke = (
+  descriptor: OperationContract,
+  input: unknown
+): Effect.Effect<unknown, unknown> =>
+  descriptor.key === "reconcile"
+    ? Schema.decodeUnknownEffect(Schema.Struct({ dryRun: Schema.Boolean }))(
+        input
+      ).pipe(Effect.map(({ dryRun }) => ({ accepted: dryRun })))
+    : Effect.succeed({ count: 5 })
 it("binds global-only models to real HTTP handlers", async () => {
   const globalModel = defineModel({
     name: "Global",
@@ -211,24 +224,13 @@ it("binds global-only models to real HTTP handlers", async () => {
     ],
   })
   const api = createModelHttpApi(globalModel)
-  const implementation = implementModel(
-    globalModel,
-    {
-      reconcile: ({ dryRun }: { readonly dryRun: boolean }) =>
-        Effect.succeed({ accepted: dryRun }),
-      health: () => Effect.succeed({ count: 5 }),
-    },
-    {
-      list: () => Effect.die("unused"),
-      link: () => Effect.die("unused"),
-      unlink: () => Effect.die("unused"),
-    }
-  )
   const groups = createModelHttpHandlers(
     api,
-    implementation,
-    (_request, _descriptor, operation) =>
-      operation.pipe(Effect.provideService(CurrentInvocation, systemInvocation))
+    globalModel,
+    (_request, descriptor, operation) =>
+      invoke(descriptor, operation).pipe(
+        Effect.provideService(CurrentInvocation, systemInvocation)
+      )
   )
   const handler = HttpRouter.toWebHandler(
     HttpApiBuilder.layer(api).pipe(
@@ -258,7 +260,7 @@ it("binds global-only models to real HTTP handlers", async () => {
   }
 })
 
-it("rejects public OpenAPI identifier collisions without adding module prefixes", () => {
+it("distinguishes global and attached operations by their canonical keys", () => {
   const collision = defineAction({
     id: "escalateTicket",
     name: "Collision",
@@ -277,7 +279,11 @@ it("rejects public OpenAPI identifier collisions without adding module prefixes"
       }),
     ],
   })
-  expect(() => createModelHttpApi(conflicts)).toThrow(
-    /duplicate OpenAPI operationId/
+  const document = OpenApi.fromApi(createModelHttpApi(conflicts))
+  expect(document.paths["/api/v1/:escalateTicket"]?.post?.operationId).toBe(
+    "escalateTicket"
   )
+  expect(
+    document.paths["/api/v1/tickets/{id}:escalate"]?.post?.operationId
+  ).toBe("ticket.escalate")
 })

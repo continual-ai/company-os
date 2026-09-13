@@ -4,7 +4,7 @@ import { presentation } from "#/app/app-presentation.ts"
 import { defineModel } from "#/runtime/model/index.ts"
 import { requiredModuleIds } from "#/runtime/platform/model/index.ts"
 
-const query = data.moduleSetting.catalog({})
+const query = data.moduleSetting.catalog.queryOptions({})
 /** This query reads only activation rows, so unrelated business writes do not affect it. */
 export const moduleCatalogQuery = {
   ...query,

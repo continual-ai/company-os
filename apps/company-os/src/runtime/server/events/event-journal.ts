@@ -12,7 +12,6 @@ import { makeEventWriter } from "#/runtime/server/events/event-writer.ts"
 import { CurrentInvocation } from "#/runtime/server/invocation.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
 import { PageTokens } from "#/runtime/server/page-tokens.ts"
-import { Database } from "#/runtime/server/storage/database.ts"
 import {
   tableProjection,
   type TableRow,
@@ -21,6 +20,7 @@ import {
   eventJournal,
   eventJournalState,
 } from "#/runtime/server/storage/infrastructure.ts"
+import { SqlDatabase } from "#/runtime/server/storage/transactions.ts"
 
 const cursorSchema = Schema.Struct({
   kind: Schema.Literal("events.v2"),
@@ -33,7 +33,7 @@ const cursorSchema = Schema.Struct({
 const make = Effect.gen(function* () {
   const context = yield* ModelContext
 
-  const database = yield* Database
+  const database = yield* SqlDatabase
   const sql = database.sql
   const tokens = yield* PageTokens
   const writer = makeEventWriter(database, context)
@@ -156,7 +156,7 @@ const make = Effect.gen(function* () {
   return { append: writer.append, list }
 })
 
-/** App-owned journal. Its persistence shares Database transactions; consumers never execute on append. */
+/** App-owned journal. Its persistence shares SqlDatabase transactions; consumers never execute on append. */
 export class EventJournal extends Context.Service<EventJournal>()(
   "@company/EventJournal",
   { make }

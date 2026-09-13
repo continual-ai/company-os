@@ -133,6 +133,7 @@ describe("Effect Schema projection", () => {
       createdBy: "user_1",
       etag: "v1",
       objectType: "account",
+      label: "Example",
       links: {},
       systemManaged: false,
       syncResult: null,

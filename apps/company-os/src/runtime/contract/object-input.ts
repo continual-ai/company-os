@@ -1,6 +1,7 @@
 import { Effect, Option, Schema } from "effect"
 
 import { toEffectInputSchema } from "#/runtime/contract/schema.ts"
+import type { ModelCatalog } from "#/runtime/model/definition/model.ts"
 import type {
   ObjectCreateValues,
   ObjectType,
@@ -18,6 +19,7 @@ import {
   type AnySchema,
   type RecordAlias,
 } from "#/runtime/model/definition/schema.ts"
+import { resolveQueryField } from "#/runtime/model/query-fields.ts"
 
 export type RecordAliasResolver<TError, TRequirements> = (
   expectedType: string,
@@ -236,9 +238,15 @@ export function resolveUpdateIdentifiers<
   )
 }
 
-function filterTargetType(object: ObjectType, field: string) {
+function filterTargetType(
+  object: Parameters<typeof resolveQueryField>[1],
+  field: string,
+  model: ModelCatalog
+) {
   if (field === "id") return object.id
-  const property = object.properties[field]
+  const resolved = resolveQueryField(model, object, field)
+  if (resolved.key === "id") return resolved.target.id
+  const property = resolved.property
   return property?.kind === "recordId" ? property.typeId : undefined
 }
 
@@ -247,6 +255,9 @@ type FilterNode =
       readonly link: string
       readonly contains?: string
       readonly isEmpty?: true
+      readonly some?: FilterNode | Readonly<Record<string, never>>
+      readonly none?: FilterNode | Readonly<Record<string, never>>
+      readonly every?: FilterNode | Readonly<Record<string, never>>
     }
   | { readonly and: ReadonlyArray<FilterNode> }
   | { readonly not: FilterNode }
@@ -258,28 +269,43 @@ type FilterNode =
     }
 
 function resolveFilterNode<TError, TRequirements>(
-  object: ObjectType,
+  object: Parameters<typeof resolveQueryField>[1],
   filter: FilterNode,
-  resolveAliases: RecordAliasResolver<TError, TRequirements>
+  resolveAliases: RecordAliasResolver<TError, TRequirements>,
+  model: ModelCatalog
 ): Effect.Effect<FilterNode, TError, TRequirements> {
   if ("and" in filter) {
     return Effect.forEach(filter.and, (member) =>
-      resolveFilterNode(object, member, resolveAliases)
+      resolveFilterNode(object, member, resolveAliases, model)
     ).pipe(Effect.map((and) => ({ and })))
   }
   if ("or" in filter) {
     return Effect.forEach(filter.or, (member) =>
-      resolveFilterNode(object, member, resolveAliases)
+      resolveFilterNode(object, member, resolveAliases, model)
     ).pipe(Effect.map((or) => ({ or })))
   }
   if ("not" in filter) {
-    return resolveFilterNode(object, filter.not, resolveAliases).pipe(
+    return resolveFilterNode(object, filter.not, resolveAliases, model).pipe(
       Effect.map((not) => ({ not }))
     )
   }
 
-  if ("link" in filter) return Effect.succeed(filter)
-  const expectedType = filterTargetType(object, filter.field)
+  if ("link" in filter) {
+    const target = resolveQueryField(model, object, filter.link, "count").target
+    for (const key of ["some", "none", "every"] as const) {
+      const nested = filter[key]
+      if (nested && Object.keys(nested).length > 0) {
+        // SAFETY: the list contract decoded each nonempty quantified expression.
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+        const node = nested as FilterNode
+        return resolveFilterNode(target, node, resolveAliases, model).pipe(
+          Effect.map((value) => ({ ...filter, [key]: value }))
+        )
+      }
+    }
+    return Effect.succeed(filter)
+  }
+  const expectedType = filterTargetType(object, filter.field, model)
   if (expectedType === undefined || filter.operator === "isNull") {
     return Effect.succeed(filter)
   }
@@ -307,14 +333,15 @@ function resolveFilterIdentifiers<
   TError,
   TRequirements,
 >(
-  object: TObject,
+  object: Parameters<typeof resolveQueryField>[1],
   filter: ObjectFilter<TObject>,
-  resolveAliases: RecordAliasResolver<TError, TRequirements>
+  resolveAliases: RecordAliasResolver<TError, TRequirements>,
+  model: ModelCatalog
 ): Effect.Effect<CanonicalObjectFilter<TObject>, TError, TRequirements> {
   // SAFETY: ObjectFilter is the typed public form of this recursive filter node.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const node = filter as FilterNode
-  return resolveFilterNode(object, node, resolveAliases).pipe(
+  return resolveFilterNode(object, node, resolveAliases, model).pipe(
     Effect.map((resolved) => {
       // SAFETY: resolution preserves the filter shape and canonicalizes only
       // values for fields whose model schema declares a record reference.
@@ -329,14 +356,15 @@ export function resolveListRequest<
   TError,
   TRequirements,
 >(
-  object: TObject,
+  object: Parameters<typeof resolveQueryField>[1],
   request: ListRequest<TObject>,
-  resolveAliases: RecordAliasResolver<TError, TRequirements>
+  resolveAliases: RecordAliasResolver<TError, TRequirements>,
+  model: ModelCatalog
 ): Effect.Effect<CanonicalListRequest<TObject>, TError, TRequirements> {
   const { filter, ...rest } = request
   return filter === undefined
     ? Effect.succeed(rest)
-    : resolveFilterIdentifiers(object, filter, resolveAliases).pipe(
+    : resolveFilterIdentifiers(object, filter, resolveAliases, model).pipe(
         Effect.map((resolvedFilter) => ({ ...rest, filter: resolvedFilter }))
       )
 }

@@ -1,5 +1,6 @@
 import { Brand } from "effect"
 
+import type { Expansion } from "#/runtime/model/definition/model-record.ts"
 import type {
   ObjectRecord,
   ObjectType,
@@ -150,16 +151,29 @@ type CanonicalObjectPropertyFilter<TObject extends ObjectType> = {
 type BaseObjectFilter<TObject extends ObjectType> =
   | EqualityFilter<"createdBy" | "updatedBy", string>
   | EqualityFilter<"id", RecordIdentifier<TObject["id"]>>
+  | TextFilter<"label", string>
   | EqualityFilter<"systemManaged", boolean>
   | OrderedFilter<"createdAt" | "updatedAt", ObjectRecord<TObject>["createdAt"]>
 
 export type LinkFilter = { readonly link: string } & (
   | { readonly contains: string }
   | { readonly isEmpty: true }
+  | { readonly some: ObjectFilter | Readonly<Record<string, never>> }
+  | { readonly none: ObjectFilter | Readonly<Record<string, never>> }
+  | { readonly every: ObjectFilter | Readonly<Record<string, never>> }
 )
 
 export type ObjectFilter<TObject extends ObjectType = ObjectType> =
   | LinkFilter
+  | {
+      readonly field: `${string}.${string}`
+      readonly operator: FilterOperator
+      readonly value?:
+        | boolean
+        | number
+        | string
+        | ReadonlyArray<boolean | number | string>
+    }
   | BaseObjectFilter<TObject>
   | ObjectPropertyFilter<TObject>
   | {
@@ -175,11 +189,21 @@ export type ObjectFilter<TObject extends ObjectType = ObjectType> =
 type CanonicalBaseObjectFilter<TObject extends ObjectType> =
   | EqualityFilter<"createdBy" | "updatedBy", string>
   | EqualityFilter<"id", ObjectRecord<TObject>["id"]>
+  | TextFilter<"label", string>
   | EqualityFilter<"systemManaged", boolean>
   | OrderedFilter<"createdAt" | "updatedAt", ObjectRecord<TObject>["createdAt"]>
 
 export type CanonicalObjectFilter<TObject extends ObjectType> =
   | LinkFilter
+  | {
+      readonly field: `${string}.${string}`
+      readonly operator: FilterOperator
+      readonly value?:
+        | boolean
+        | number
+        | string
+        | ReadonlyArray<boolean | number | string>
+    }
   | CanonicalBaseObjectFilter<TObject>
   | CanonicalObjectPropertyFilter<TObject>
   | { readonly and: ReadonlyArray<CanonicalObjectFilter<TObject>> }
@@ -202,24 +226,33 @@ type SortablePropertyKeys<TObject extends ObjectType> = {
     : never
 }[keyof TObject["properties"] & string]
 
-export interface ObjectSort<TObject extends ObjectType = ObjectType> {
+export type ObjectSort<TObject extends ObjectType = ObjectType> = {
   readonly direction: SortDirection
-  readonly field:
-    | "createdAt"
-    | "createdBy"
-    | "id"
-    | "systemManaged"
-    | "updatedAt"
-    | "updatedBy"
-    | (string extends keyof TObject["properties"]
-        ? string
-        : SortablePropertyKeys<TObject>)
-  /** Defaults to `last`, independently of direction. */
   readonly nulls?: NullPlacement
-}
+} & (
+  | { readonly field: string; readonly aggregate: "count" | "min" | "max" }
+  | {
+      readonly aggregate?: never
+      readonly field:
+        | `${string}.${string}`
+        | "createdAt"
+        | "createdBy"
+        | "id"
+        | "label"
+        | "systemManaged"
+        | "updatedAt"
+        | "updatedBy"
+        | (string extends keyof TObject["properties"]
+            ? string
+            : SortablePropertyKeys<TObject>)
+      /** Defaults to `last`, independently of direction. */
+    }
+)
 
 /** Lists default to newest creation first, then descending ID. An explicit sort takes precedence. */
 export interface ListRequest<TObject extends ObjectType = ObjectType> {
+  readonly expand?: Expansion
+
   readonly filter?: ObjectFilter<TObject>
   readonly pageSize?: number
   readonly pageToken?: PageToken

@@ -18,6 +18,7 @@ export type ObjectTableFilterOperator =
   | "startsWith"
 
 export interface ObjectTableFilterValue {
+  quantifier?: "some" | "none" | "every"
   operator: ObjectTableFilterOperator
   values: ReadonlyArray<string>
 }

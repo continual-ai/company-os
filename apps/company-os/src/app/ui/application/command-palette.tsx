@@ -21,7 +21,7 @@ import {
   type ReactNode,
 } from "react"
 
-import { data } from "#/app/app-client.ts"
+import { Model } from "#/app.model.ts"
 import { presentation } from "#/app/app-presentation.ts"
 import {
   reportPreviews,
@@ -35,6 +35,7 @@ import { useObjectCreate } from "#/runtime/ui/model/object-create-context.ts"
 import { ObjectRecordIdentity } from "#/runtime/ui/model/object-record-identity.tsx"
 import { objectHref } from "#/runtime/ui/model/object-routing.ts"
 import type { ObjectTableRecord } from "#/runtime/ui/model/object-table/object-table-config.ts"
+import { useClient } from "#/runtime/ui/module.ts"
 
 /** Collections and root-level create commands, from the active model. */
 function usePaletteCommands() {
@@ -81,6 +82,7 @@ function SearchRecordIdentity({ hit }: { readonly hit: RecordSummary }) {
 }
 
 function PaletteContent({ close }: { readonly close: () => void }) {
+  const client = useClient(Model)
   const [input, setInput] = useState("")
   const [query, setQuery] = useState("")
   const navigate = useNavigate()
@@ -92,7 +94,7 @@ function PaletteContent({ close }: { readonly close: () => void }) {
     return () => clearTimeout(timer)
   }, [trimmed])
   const result = useQuery({
-    ...data.records.search({ query }),
+    ...client.records.search.queryOptions({ query }),
     enabled: query.length > 0,
   })
   const current = query === trimmed

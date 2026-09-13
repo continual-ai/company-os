@@ -19,11 +19,8 @@ import {
   httpOperationGroups,
   httpOperationInput,
 } from "#/runtime/contract/http-operation.ts"
-import { type ModelOperation } from "#/runtime/contract/operations.ts"
+import { type OperationContract } from "#/runtime/contract/operation-contract.ts"
 import { type ModelCatalog } from "#/runtime/model/definition/model.ts"
-import type { CurrentInvocation } from "#/runtime/server/invocation.ts"
-import { executeModelOperation } from "#/runtime/server/model-implementation.ts"
-import type { Links } from "#/runtime/server/model/link-service.ts"
 
 export interface ModelHttpRequest {
   readonly params?: Readonly<Record<string, unknown>>
@@ -34,16 +31,10 @@ export interface ModelHttpRequest {
   }
 }
 
-export type ModelHttpOperation = Effect.Effect<
-  unknown,
-  unknown,
-  CurrentInvocation
->
-
 export type ModelHttpInvoke = (
   request: ModelHttpRequest,
-  descriptor: ModelOperation,
-  operation: ModelHttpOperation
+  descriptor: OperationContract,
+  input: unknown
 ) => Effect.Effect<unknown, unknown>
 
 type DynamicHandlers = {
@@ -59,26 +50,19 @@ type CompleteHandlers = HttpApiBuilder.Handlers<
   string
 >
 
-type ExecutableModelImplementation = {
-  readonly links: Pick<typeof Links.Service, "link" | "list" | "unlink">
-  readonly model: ModelCatalog
-  readonly services: Readonly<Record<string, object>>
-}
-
 /** Binds every model-derived HTTP endpoint to the corresponding service method. */
 export function createModelHttpHandlers(
   api: unknown,
-  implementation: ExecutableModelImplementation,
-  invoke: ModelHttpInvoke,
-  exposed: ModelCatalog = implementation.model
+  model: ModelCatalog,
+  invoke: ModelHttpInvoke
 ) {
   // SAFETY: callers provide an Effect HttpApi containing groups generated from
-  // implementation.model; the dynamic compiler validates those same keys.
+  // model; the dynamic compiler validates those same keys.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const dynamicApi = api as DynamicHttpApi
   const ServerApi = customMethodServerApi(dynamicApi)
 
-  const groupLayers = httpOperationGroups(exposed).map((group) =>
+  const groupLayers = httpOperationGroups(model).map((group) =>
     HttpApiBuilder.group(ServerApi, group.id, (initialHandlers) => {
       // SAFETY: every endpoint comes from this same closed operation catalog.
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion
@@ -86,15 +70,7 @@ export function createModelHttpHandlers(
       for (const http of group.operations) {
         const operation = http.operation
         handlers = handlers.handle(http.identifier, (request) =>
-          invoke(
-            request,
-            operation,
-            executeModelOperation(
-              implementation,
-              operation,
-              httpOperationInput(http, request)
-            )
-          )
+          invoke(request, operation, httpOperationInput(http, request))
         )
       }
       // SAFETY: every endpoint generated for the group was registered above.

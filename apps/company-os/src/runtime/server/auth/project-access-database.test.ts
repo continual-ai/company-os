@@ -15,11 +15,11 @@ import {
 } from "#/runtime/server/invocation-context.ts"
 import { CurrentInvocation } from "#/runtime/server/invocation.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
-import { modelImplementation } from "#/runtime/server/model/implementation.ts"
-import { Links } from "#/runtime/server/model/link-service.ts"
+import { operationsFor } from "#/runtime/server/operation-executor.ts"
 import { createRecordSearch } from "#/runtime/server/record-search.ts"
-import { Database } from "#/runtime/server/storage/database.ts"
+import { Links } from "#/runtime/server/storage/link-store.ts"
 import { assignments } from "#/runtime/server/storage/statement.ts"
+import { SqlDatabase } from "#/runtime/server/storage/transactions.ts"
 import { fixtureModel, Account } from "#/runtime/testing/fixture-model.ts"
 import { FixtureServer } from "#/runtime/testing/fixture-server.ts"
 import { testFoundation } from "#/runtime/testing/foundation.ts"
@@ -40,7 +40,7 @@ fixture.test(
   "users and service accounts share project records, links, search and events without grants",
   () =>
     Effect.gen(function* () {
-      const { services } = yield* modelImplementation(fixtureModel)
+      const services = yield* operationsFor(fixtureModel)
       const user = yield* (yield* UserService).provision({
         name: "Member",
         email: EmailAddress("member@example.test"),
@@ -95,8 +95,6 @@ fixture.test(
       yield* denied(services.account.delete({ id: account.id }))
       yield* denied(services.account.batchGet({ ids: [] }))
       yield* denied(services.account.batchDelete({ ids: [] }))
-      yield* denied(links.initialize(Account, account.id, {}))
-      yield* denied(links.update(Account, account.id, {}))
       yield* denied(
         links.link(traversal, {
           id: account.id,
@@ -119,13 +117,13 @@ fixture.test(
   "project admission does not permit changing immutable system records",
   () =>
     Effect.gen(function* () {
-      const { services } = yield* modelImplementation(fixtureModel)
+      const services = yield* operationsFor(fixtureModel)
       const member = yield* (yield* UserService).provision({
         name: "Member",
         email: EmailAddress("immutable@example.test"),
       })
       const record = yield* services.account.create({ name: "System record" })
-      const { sql } = yield* Database
+      const { sql } = yield* SqlDatabase
       const { storage } = yield* ModelContext
       const objects = storage.core.objects
       yield* sql`update ${objects} set ${assignments(sql, objects, { systemManaged: true })} where ${objects.columns.id} = ${record.id}`
@@ -157,7 +155,7 @@ fixture.test(
   "Link changes and their events roll back if a later target is missing",
   () =>
     Effect.gen(function* () {
-      const { services } = yield* modelImplementation(fixtureModel)
+      const services = yield* operationsFor(fixtureModel)
       const links = yield* Links
       const journal = yield* EventJournal
       const account = yield* services.account.create({ name: "Atomic links" })
@@ -169,17 +167,15 @@ fixture.test(
       const operations: ReadonlyArray<
         Effect.Effect<unknown, unknown, CurrentInvocation>
       > = [
-        links.initialize(Account, account.id, {
-          people: [person.id, RecordId("person")("missing")],
+        services.account.update({
+          id: account.id,
+          links: { people: [person.id, RecordId("person")("missing")] },
         }),
-        links.update(Account, account.id, {
-          people: { add: [person.id, RecordId("person")("missing")] },
-        }),
-        links.writer(Account).initialize(account.id, {
-          people: [person.id, RecordId("person")("missing")],
-        }),
-        links.writer(Account).update(account.id, {
-          people: { add: [person.id, RecordId("person")("missing")] },
+        services.account.update({
+          id: account.id,
+          links: {
+            people: { add: [person.id, RecordId("person")("missing")] },
+          },
         }),
       ]
       for (const operation of operations) {

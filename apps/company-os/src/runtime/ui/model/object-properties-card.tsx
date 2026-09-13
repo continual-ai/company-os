@@ -2,6 +2,7 @@ import { Button } from "@company/ui/button"
 import { PencilIcon } from "lucide-react"
 
 import { modelObjectLinkTraversals } from "#/runtime/model/index.ts"
+import { linkPreview } from "#/runtime/model/record-links.ts"
 import {
   modelObjectProperty,
   tableRecord,
@@ -117,8 +118,10 @@ export function ObjectPropertiesCard({
             <dt className="text-xs text-muted-foreground">{traversal.label}</dt>
             <dd className="min-w-0 pr-5 text-xs">
               <RecordLinkValue
-                ids={record.links?.[traversal.key]?.ids ?? []}
-                totalSize={record.links?.[traversal.key]?.totalSize ?? 0}
+                ids={linkPreview(record.links?.[traversal.key]).ids ?? []}
+                totalSize={
+                  linkPreview(record.links?.[traversal.key]).totalSize ?? 0
+                }
                 resolveRecord={(id) => references.get(id)}
               />
             </dd>

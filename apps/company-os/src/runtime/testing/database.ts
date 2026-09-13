@@ -7,13 +7,13 @@ import { systemInvocation } from "#/runtime/server/invocation-context.ts"
 import { CurrentInvocation } from "#/runtime/server/invocation.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
 import { makeSchemaSql } from "#/runtime/server/schema.ts"
-import { Database } from "#/runtime/server/storage/database.ts"
 import { makePostgresSchema } from "#/runtime/server/storage/schema.ts"
 import {
   TestDatabase,
   type TestDatabaseClone,
   type TestDatabaseTemplate,
 } from "#/runtime/server/storage/testing.ts"
+import { SqlDatabase } from "#/runtime/server/storage/transactions.ts"
 
 /** SQL applied to an empty template, or a function that prepares it through a connection URL. */
 export type DatabaseInitializer = string | ((url: string) => Promise<void>)
@@ -57,7 +57,7 @@ export function layerTest<R, E>(layer: Layer.Layer<R, E>) {
 /**
  * One shared template per schema and one clone per test file. Every build of
  * `database` resets the clone (truncate and restore the journal position) and
- * opens a fresh pool, so each test starts from the migrated state without paying
+ * opens a fresh pool, so each test starts from the initialized state without paying
  * for another CREATE DATABASE. Call at test-file top level; the global setup
  * removes every test database when the run ends.
  */
@@ -81,12 +81,13 @@ export function testDatabase<M extends ModelCatalog>(
       return TestDatabase.layer(cloned)
     })
   )
-  const database = Database.layer.pipe(
+  const database = SqlDatabase.layer.pipe(
     Layer.provideMerge(ModelContext.layer(model)),
     Layer.provide(client)
   )
   return {
     model,
+    client,
     storage: makePostgresSchema(model),
     template: acquire,
     database,

@@ -32,8 +32,7 @@ import {
   Trash2Icon,
   XIcon,
 } from "lucide-react"
-import { useMemo, useState } from "react"
-import type { ReactNode } from "react"
+import { useMemo, useState, type ReactNode } from "react"
 
 import {
   MAX_BATCH_DELETE_SIZE,

@@ -1,5 +1,4 @@
 import { Actor } from "#/runtime/model/core/actor.ts"
-import { Root, type RootType } from "#/runtime/model/core/root.ts"
 import type {
   ModelAction,
   StandardAction,
@@ -21,7 +20,6 @@ import {
   type Query,
   type StandardQueries,
 } from "#/runtime/model/definition/query.ts"
-import { modelRelationships } from "#/runtime/model/definition/relationship.ts"
 import type {
   RecordId,
   RecordIdSchema,
@@ -31,6 +29,7 @@ import {
   assertModulesClosed,
   assertRelationshipNamesUnambiguous,
 } from "#/runtime/model/definition/validate-model.ts"
+import { resolveQueryField } from "#/runtime/model/query-fields.ts"
 
 /** Interfaces the kernel defines; every model registers them before its modules. */
 const coreInterfaces = [Actor] as const
@@ -40,15 +39,10 @@ type RecordIds<TTypeId extends string> = TTypeId extends string
   ? RecordId<TTypeId>
   : never
 
-type RootImplements<TInterfaceId extends string> =
-  TInterfaceId extends keyof RootType["interfaces"] ? RootType["id"] : never
-
 type InterfaceImplementerId<
   TObjects extends ReadonlyArray<ObjectType>,
   TInterfaceId extends string,
-> =
-  | InterfaceImplementerIdFor<TObjects[number], TInterfaceId>
-  | RootImplements<TInterfaceId>
+> = InterfaceImplementerIdFor<TObjects[number], TInterfaceId>
 
 type InterfaceImplementerIdFor<
   TObject,
@@ -62,7 +56,7 @@ type InterfaceImplementerIdFor<
 /** Interface references resolve to the model's implementers; concrete references are already exact. */
 type BoundProperty<TProperty, TObjects extends ReadonlyArray<ObjectType>> =
   TProperty extends RecordIdSchema<infer TTargetTypeId, infer _TRecordTypeId>
-    ? TTargetTypeId extends TObjects[number]["id"] | RootType["id"]
+    ? TTargetTypeId extends TObjects[number]["id"]
       ? TProperty
       : Omit<TProperty, "_Type"> & {
           readonly _Type?: RecordIds<
@@ -169,7 +163,6 @@ export interface ModelCatalog {
   readonly maintainer?: ModuleMaintainer | undefined
   objects: Readonly<Record<string, ObjectType>>
   queries: Readonly<Record<string, Query | StandardQuery>>
-  root: RootType
 }
 
 /** A composed model; the registries derive from its module tuple, and `ModelCatalog` is its open form. */
@@ -194,7 +187,6 @@ export interface Model<
   readonly maintainer?: ModuleMaintainer | undefined
   objects: ObjectRegistry<ModuleObjects<TModules>>
   queries: QueryRegistry<TModules>
-  root: RootType
 }
 
 export type ModelObject<TModel extends ModelCatalog> = NonNullable<
@@ -216,10 +208,7 @@ type ModelInterfaceObjectTypeId<
 type InterfaceRecordId<
   TModel extends ModelCatalog,
   TInterfaceId extends keyof TModel["interfaces"] & string,
-> = RecordIds<
-  | ModelInterfaceObjectTypeId<TModel, TInterfaceId>
-  | RootImplements<TInterfaceId>
->
+> = RecordIds<ModelInterfaceObjectTypeId<TModel, TInterfaceId>>
 
 /** Canonical record ID represented by an object or by any implementer of an interface. */
 export type RecordIdOf<
@@ -243,11 +232,9 @@ export type ModelEndpointObjectTypeId<
   TModel extends ModelCatalog,
   TEndpoint extends LinkType["forward"]["from"],
 > = TEndpoint["kind"] extends "object"
-  ? TEndpoint["typeId"] & (ModelObject<TModel>["id"] | RootType["id"])
+  ? TEndpoint["typeId"] & ModelObject<TModel>["id"]
   : TEndpoint["typeId"] extends keyof TModel["interfaces"] & string
-    ?
-        | ModelInterfaceObjectTypeId<TModel, TEndpoint["typeId"]>
-        | RootImplements<TEndpoint["typeId"]>
+    ? ModelInterfaceObjectTypeId<TModel, TEndpoint["typeId"]>
     : never
 
 export type LinkDirection = "forward" | "reverse"
@@ -277,7 +264,7 @@ type SelectModules<
 
 /**
  * Narrows a composed model to the listed modules for the UI and API. Storage and
- * migrations keep using the complete model, so disabling a module hides its
+ * storage keeps using the complete model, so disabling a module hides its
  * operations without touching its data. Returns the same instance when every
  * module is enabled. Fails when a listed module is unknown or when an enabled
  * module references types or links owned by a module that is not listed.
@@ -311,7 +298,7 @@ export function enableModules<
   }) as unknown as Model<SelectModules<TModules, TIds[number]>>
 }
 
-/** Closes, validates, and indexes a portable model over the kernel Root and Actor. */
+/** Closes, validates, and indexes a portable model over the kernel Actor interface. */
 export function defineModel<
   const TModules extends ReadonlyArray<ModuleDefinition>,
 >(definition: {
@@ -374,9 +361,25 @@ export function defineModel<
     maintainer: definition.maintainer,
     objects,
     queries,
-    root: Root,
   }
-  assertRelationshipNamesUnambiguous(moduleObjects, modelRelationships(catalog))
+  assertRelationshipNamesUnambiguous(moduleObjects, modelLinks(catalog))
+  for (const object of moduleObjects) {
+    for (const path of object.display.titleFields ?? []) {
+      const field = resolveQueryField(catalog, object, path)
+      if (
+        field.traversals.length > 1 ||
+        (field.key !== "id" &&
+          !Object.hasOwn(field.target.properties, field.key)) ||
+        field.count ||
+        !["string", "enum", "number", "decimal", "recordId"].includes(
+          field.property.kind
+        )
+      )
+        throw new Error(
+          `Object '${object.id}' title field '${path}' must be a scalar property through singular relationships.`
+        )
+    }
+  }
 
   // SAFETY: duplicate identifiers were rejected before building the registries.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
@@ -400,9 +403,6 @@ export function modelTypeAccepts(
   expectedTypeId: string
 ): boolean {
   if (actualObjectType === expectedTypeId) return true
-  if (actualObjectType === model.root.id) {
-    return Object.hasOwn(model.root.interfaces, expectedTypeId)
-  }
   const object = model.objects[actualObjectType]
   return (
     object !== undefined && Object.hasOwn(object.interfaces, expectedTypeId)
@@ -413,21 +413,17 @@ export function modelLinks(model: ModelCatalog): ReadonlyArray<LinkType> {
   return Object.values(model.links)
 }
 
-/** Expands interface endpoints onto each concrete implementing object. */
-export function modelObjectLinkTraversals(
-  model: ModelCatalog,
-  object: ObjectType
-): ReadonlyArray<ModelLinkTraversal> {
+/** Declared traversals available to an object or an interface. */
+export function modelLinkTraversals(model: ModelCatalog, typeId: string) {
   return modelLinks(model).flatMap((link) =>
     (["forward", "reverse"] as const).flatMap((direction) => {
       const traversal = link[direction]
-      if (!modelTypeAccepts(model, object.id, traversal.from.typeId)) return []
+      if (!modelTypeAccepts(model, typeId, traversal.from.typeId)) return []
       const opposite = direction === "forward" ? "reverse" : "forward"
       return [
         {
           direction,
           link,
-          source: object,
           target: link[opposite],
           traversal,
           writable: !link.outputOnly,
@@ -435,6 +431,17 @@ export function modelObjectLinkTraversals(
       ]
     })
   )
+}
+
+/** Expands interface endpoints onto each concrete object that owns an API route. */
+export function modelObjectLinkTraversals(
+  model: ModelCatalog,
+  object: ObjectType
+): ReadonlyArray<ModelLinkTraversal> {
+  return modelLinkTraversals(model, object.id).map((traversal) => ({
+    ...traversal,
+    source: object,
+  }))
 }
 
 export function modelModules(

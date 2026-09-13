@@ -1,6 +1,5 @@
 import type { Outreach } from "#/modules/marketing/model/outreach.ts"
-import { defineCollectionView } from "#/runtime/ui/module.ts"
-import type { ObjectUi } from "#/runtime/ui/module.ts"
+import { defineCollectionView, type ObjectUi } from "#/runtime/ui/module.ts"
 
 export const outreachUi = {
   collection: {

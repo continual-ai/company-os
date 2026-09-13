@@ -5,6 +5,6 @@ import { defineModuleServer } from "#/runtime/server/index.ts"
 
 export const SalesServer = defineModuleServer(SalesModule, {
   lead: { convert: convertLead },
-  deal: { pipelineSummary },
+  opportunity: { pipelineSummary },
 })
 export { convertLead, pipelineSummary }

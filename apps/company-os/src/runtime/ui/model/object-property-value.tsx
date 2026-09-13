@@ -37,10 +37,7 @@ export function objectPropertyValue(
   const property = modelObjectProperty(object, propertyId)
   const schema =
     property === undefined ? undefined : objectTablePropertySchema(property)
-  if (
-    (propertyId === "parent" || schema?.kind === "recordId") &&
-    typeof value === "string"
-  ) {
+  if (schema?.kind === "recordId" && typeof value === "string") {
     const reference = references.get(value)
     return reference === undefined ? (
       value

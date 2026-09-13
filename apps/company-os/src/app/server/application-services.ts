@@ -1,9 +1,10 @@
+import { PgClient } from "@effect/sql-pg"
 import { Effect, Layer } from "effect"
 
 import { Model } from "#/app.model.ts"
 import { serverModules } from "#/app.server.ts"
 import type { CurrentInvocation } from "#/runtime/server/invocation.ts"
-import { modelImplementation } from "#/runtime/server/model/implementation.ts"
+import { operationsFor } from "#/runtime/server/operation-executor.ts"
 import {
   runSeedScenario as runScenario,
   type SeedScenario,
@@ -12,15 +13,15 @@ import {
   makeServicesLayer,
   type ServicesInfrastructure,
 } from "#/runtime/server/services.ts"
-import { Database } from "#/runtime/server/storage/database.ts"
+import { SqlDatabase } from "#/runtime/server/storage/transactions.ts"
 
 export type ApplicationServicesInfrastructure = ServicesInfrastructure
 
 /**
  * Services, storage, cascades, and the event journal always see the complete
- * model. Database activation controls exposure through HTTP, MCP, and the UI.
+ * model. SqlDatabase activation controls exposure through HTTP, MCP, and the UI.
  */
-export const ModelImplementation = modelImplementation(Model)
+export const applicationOperations = operationsFor(Model)
 
 export function makeApplicationServicesLayer(
   infrastructure: ApplicationServicesInfrastructure
@@ -35,15 +36,15 @@ type ApplicationEnvironment = Layer.Success<
 /** Runs a seed scenario with the application's services bound to the current database. */
 export function runSeedScenario(
   scenario: SeedScenario<ApplicationEnvironment | CurrentInvocation>,
-  infrastructure: Omit<ServicesInfrastructure, "database"> = {}
+  infrastructure: Omit<ServicesInfrastructure, "sql"> = {}
 ) {
   return Effect.gen(function* () {
-    const database = yield* Database
+    const database = yield* SqlDatabase
     return yield* runScenario(scenario).pipe(
       Effect.provide(
         makeApplicationServicesLayer({
           ...infrastructure,
-          database: Layer.succeed(Database, database),
+          sql: Layer.succeed(PgClient.PgClient, database.sql),
         })
       )
     )

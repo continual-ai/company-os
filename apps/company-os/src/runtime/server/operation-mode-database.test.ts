@@ -16,12 +16,9 @@ import { PlatformModule } from "#/runtime/platform/model/index.ts"
 import {
   Database,
   EventJournal,
-  Links,
-  Records,
-  RecordIdentifierResolver,
   defineModuleServer,
 } from "#/runtime/server/index.ts"
-import { modelImplementation } from "#/runtime/server/model/implementation.ts"
+import { operationsFor } from "#/runtime/server/operation-executor.ts"
 import { runOperation } from "#/runtime/server/operation-mode.ts"
 import { testFoundation } from "#/runtime/testing/foundation.ts"
 
@@ -36,10 +33,8 @@ const Item = defineObject({
 const Related = defineLink({
   id: "related",
   name: "Related",
-  from: Item,
-  to: Item,
-  forward: { key: "related", label: "Related" },
-  reverse: { key: "relatedTo", label: "Related to" },
+  from: { type: Item, key: "related", label: "Related" },
+  to: { type: Item, key: "relatedTo", label: "Related to" },
 })
 const Fact = defineEvent({
   type: "item.checked",
@@ -84,7 +79,7 @@ const Extension = defineModule({
   queries: [Probe],
 })
 const makeItem = Effect.fn(function* ({ name }: { readonly name: string }) {
-  const row = yield* (yield* Records).writer(Item).create({ name })
+  const row = yield* (yield* Database).repository(Item).create({ name })
   return { id: row.id }
 })
 const model = defineModel({
@@ -92,18 +87,16 @@ const model = defineModel({
   modules: [PlatformModule, Items, Extension],
 })
 const probe = Effect.fn(function* (input: QueryInput<typeof Probe>) {
-  const records = yield* Records
-  const row = yield* records
-    .get(Item)
-    .get(yield* (yield* RecordIdentifierResolver).resolve("item", input.id))
+  const records = yield* Database
+  const row = yield* records.repository(Item).get({ id: input.id })
   switch (input.mode) {
     case "record":
-      yield* records.writer(Item).update({ id: row.id, name: "forbidden" })
+      yield* records.repository(Item).update({ id: row.id, name: "forbidden" })
       break
     case "link":
-      yield* (yield* Links)
-        .writer(Item)
-        .update(row.id, { related: { add: [row.id] } })
+      yield* records
+        .repository(Item)
+        .update({ id: row.id, links: { related: { add: [row.id] } } })
       break
     case "event":
       yield* (yield* EventJournal).append(Fact, { subject: row.id, data: {} })
@@ -129,7 +122,7 @@ fixture.test(
   "read-only Queries reject trusted writes, nested Actions, events and raw SQL while Actions remain atomic",
   () =>
     Effect.gen(function* () {
-      const { services } = yield* modelImplementation(model)
+      const services = yield* operationsFor(model)
       const { id } = yield* services.makeItem({ name: "original" })
       expect(yield* services.item.probe({ id, mode: "read" })).toEqual({
         count: 1,

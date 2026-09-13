@@ -1,8 +1,8 @@
 import type { ReactNode } from "react"
 
 import { useObjectUi } from "#/runtime/ui/model/module-ui.tsx"
-import type { ObjectRecordPresentation } from "#/runtime/ui/model/object-client.ts"
 import {
+  type ObjectRecordPresentation,
   tableRecord,
   type ClientRecord,
   type ModelObject,

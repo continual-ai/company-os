@@ -11,7 +11,7 @@ it("documents identity without losing generated colon methods or list parameters
     name: "x-continual-app-runtime-assertion",
   })
   expect(spec.paths["/api/v1/leads/{id}:convert"]?.post).toMatchObject({
-    operationId: "convertLead",
+    operationId: "lead.convert",
     tags: ["Leads"],
     security: [{ runtimeIdentity: [] }],
   })

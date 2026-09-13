@@ -5,8 +5,8 @@ import { ObjectRecordSummary } from "#/runtime/ui/model/object-record-summary.ts
 import { useRecordReferences } from "#/runtime/ui/model/object-references.ts"
 import { objectHref } from "#/runtime/ui/model/object-routing.ts"
 import { RecordRelatedCreateMenu } from "#/runtime/ui/model/record-related-create-menu.tsx"
+import type { recordRelationshipPreviews } from "#/runtime/ui/model/record-relationship-preview-data.ts"
 import { useModelRuntime } from "#/runtime/ui/model/runtime-context.tsx"
-import type { useRecordRelationshipPreviews } from "#/runtime/ui/model/use-record-relationship-previews.ts"
 
 export function RelationshipCount({
   count,
@@ -24,7 +24,7 @@ export function RecordRelationshipPreviews({
   previews,
   onSelect,
 }: {
-  readonly previews: ReturnType<typeof useRecordRelationshipPreviews>
+  readonly previews: ReturnType<typeof recordRelationshipPreviews>
   readonly onSelect: (key: string) => void
 }) {
   const runtime = useModelRuntime()
@@ -59,17 +59,7 @@ export function RecordRelationshipPreviews({
               />
             </div>
           </PageSectionHeader>
-          {preview.error ? (
-            <div
-              role="alert"
-              className="flex items-center justify-between text-xs text-muted-foreground"
-            >
-              Could not load {preview.label.toLowerCase()}.
-              <Button size="sm" variant="ghost" onClick={preview.retry}>
-                Retry
-              </Button>
-            </div>
-          ) : preview.pending ? (
+          {preview.pending ? (
             <p className="py-2 text-xs text-muted-foreground">Loading…</p>
           ) : preview.items.length === 0 ? (
             <p className="py-1 text-xs text-muted-foreground">

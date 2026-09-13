@@ -1,17 +1,19 @@
 import { type ComponentType } from "react"
 
 import {
-  modelRelationships,
+  modelObjectLinkTraversals,
   modelTypeAccepts,
   type ModuleDefinition,
   type ModelCatalog,
 } from "#/runtime/model/index.ts"
+import { relationshipFields } from "#/runtime/model/relationship-fields.ts"
 import { collectionLayoutError } from "#/runtime/ui/model/collection-layout.ts"
-import type { ObjectRecordPresentation } from "#/runtime/ui/model/object-client.ts"
 import type {
+  ObjectRecordPresentation,
   ClientRecord,
   ModelObject,
 } from "#/runtime/ui/model/object-client.ts"
+import { objectTableProperties } from "#/runtime/ui/model/object-table/object-table-columns.ts"
 import type {
   ObjectUi,
   FieldEditorProps,
@@ -160,17 +162,30 @@ export function composeModelUi(
       )
       if (!installedObject)
         throw new Error(`Object '${id}' is not installed in the model.`)
-      const tabs = new Set<string>([
-        "overview",
-        "related",
-        ...modelRelationships(Model).flatMap((relationship) =>
-          [relationship.forward, relationship.reverse]
-            .filter((side) =>
-              modelTypeAccepts(Model, installedObject.id, side.from.typeId)
-            )
-            .map((side) => side.key)
+      const relationships = modelObjectLinkTraversals(
+        Model,
+        installedObject
+      ).map(({ traversal }) => traversal.key)
+      const fields = new Set([
+        ...objectTableProperties(installedObject).map(([key]) => key),
+        ...relationships,
+        ...relationshipFields(Model, installedObject).map(
+          ({ id: field }) => field
         ),
       ])
+      for (const view of config.collection?.views ?? []) {
+        for (const field of [
+          ...Object.keys(view.state.visibility),
+          ...view.state.filters.map((entry) => entry.id),
+          ...view.state.sorting.map((entry) => entry.id),
+        ]) {
+          if (!fields.has(field))
+            throw new Error(
+              `Unknown field '${id}.${field}' in view '${view.id}'.`
+            )
+        }
+      }
+      const tabs = new Set<string>(["overview", "related", ...relationships])
       for (const key of config.record?.relationships ?? []) {
         if (key === "overview" || key === "related" || !tabs.has(key))
           throw new Error(`Unknown overview relationship '${id}.${key}'.`)

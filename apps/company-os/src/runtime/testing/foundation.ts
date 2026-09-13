@@ -9,7 +9,7 @@ import { CurrentInvocation } from "#/runtime/server/invocation.ts"
 import type { ModelContext } from "#/runtime/server/model-context.ts"
 import { PageTokens } from "#/runtime/server/page-tokens.ts"
 import { makeServicesLayer } from "#/runtime/server/services.ts"
-import type { Database } from "#/runtime/server/storage/database.ts"
+import type { SqlDatabase } from "#/runtime/server/storage/transactions.ts"
 import {
   layerTest,
   testDatabase,
@@ -18,7 +18,7 @@ import {
 
 type ServerContributions = ReadonlyArray<{
   readonly module: ModuleDefinition
-  readonly implementations: Effect.Effect<object, unknown, unknown>
+  readonly implementations: object
   readonly layer: Layer.Layer<never, unknown, unknown>
 }>
 type Servers<C extends ServerContributions> = Parameters<
@@ -36,11 +36,11 @@ const bootstrapIdentities = bootstrapSystemActor().pipe(
 
 /** Runs `seed` once per built `services` under the system invocation, alongside the services themselves. */
 export function seededLayer<R, E>(
-  services: Layer.Layer<R | Database | ModelContext, E>,
+  services: Layer.Layer<R | SqlDatabase | ModelContext, E>,
   seed: Effect.Effect<
     unknown,
     unknown,
-    R | Database | ModelContext | CurrentInvocation
+    R | SqlDatabase | ModelContext | CurrentInvocation
   > = bootstrapIdentities
 ) {
   return Layer.merge(
@@ -82,10 +82,14 @@ export function testFoundation<
     PlatformServer,
     ...(options.servers ?? []),
   ] as unknown as Servers<readonly [...KernelServers, ...C]>
-  const services = makeServicesLayer(model, contributions, {
-    database: fixture.database,
-    pageTokens: PageTokens.layerTest,
-  })
+  const services = makeServicesLayer<readonly [...KernelServers, ...C]>(
+    model,
+    contributions,
+    {
+      sql: fixture.client,
+      pageTokens: PageTokens.layerTest,
+    }
+  )
   const layer = seededLayer(services, options.seed)
   return { ...fixture, services, layer, test: layerTest(layer) }
 }
