@@ -74,9 +74,6 @@ export const databaseLayer = SqlDatabase.layer.pipe(
   Layer.provide(sqlLayer)
 )
 
-/** Raw PostgreSQL and typed Effect SQL services used together by database administration commands. */
-export const databaseAndClientLayer = Layer.merge(sqlLayer, databaseLayer)
-
 export const eventNotificationsLayer = EventNotifications.layer.pipe(
   Layer.provide(sqlLayer)
 )

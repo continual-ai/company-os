@@ -8,11 +8,10 @@ and their callers together; backward compatibility is not a pre-release requirem
 | Command                      | Purpose                                                                       |
 | ---------------------------- | ----------------------------------------------------------------------------- |
 | `pnpm db:reset`              | Rebuild the disposable local database from the model and refresh `schema.sql` |
-| `pnpm db:migrate`            | Initialize or verify the current baseline on a deployment database            |
+| `pnpm db:migrate`            | Apply pending migrations without resetting data                               |
 | `pnpm dev`                   | Run the apps                                                                  |
 | `pnpm check`                 | Lint, typecheck, generated schema/model checks, formatting, and dead code     |
 | `pnpm test`                  | Test application behavior against the current model                           |
-| `pnpm test:migrations`       | Test deployment baseline initialization and refusal behavior                  |
 | `pnpm build`                 | Build the apps                                                                |
 | `pnpm format`                | Format the repository                                                         |
 | `pnpm ui:add <component>`    | Add a shadcn primitive to `packages/ui`                                       |
@@ -24,14 +23,15 @@ search. It refuses remote hosts and PostgreSQL system
 databases. Run `pnpm db:seed --scenario demo` when you want fictional records.
 
 **Before delivery:** commit the model, generated `schema.sql`, and relevant tests together. Do not
-add incremental migrations or backfills for disposable pre-release data. Deployment uses a single
-baseline derived from the model, with a fingerprint that rejects outdated databases.
-`pnpm test:migrations` verifies baseline initialization and refusal behavior; ordinary application
-tests use the current model.
+add incremental migrations or backfills for disposable pre-release data. Keep one model-derived
+initial migration. Reset drops disposable storage and reapplies it through the same Effect SQL runner
+used by `pnpm db:migrate`. Migration and reset tests run in `pnpm test`.
 
-**Retained data:** follow the [deployment guide](deployment.md) when data must survive an upgrade.
-A development database created by `db:reset` has no migration ledger and must continue using resets. Pre-release reset policy does not authorize deleting remote or explicitly retained data.
-Revisit compatibility and migration guarantees before v1.
+**Retained data:** follow the [deployment guide](deployment.md). Pre-release reset policy does not
+authorize deleting remote or explicitly retained data. When retained-data upgrades become necessary,
+freeze migration 1's SQL and add immutable numbered migrations to the app-owned registry. The runner
+already supports pending migrations; the generated schema remains the expected final structure.
+Revisit compatibility guarantees before v1.
 
 Database tests need a PostgreSQL role with `CREATEDB`. Scratch databases
 are removed afterward. Tests default to `postgresql://localhost:5432/postgres`; commands use the

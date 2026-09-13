@@ -16,14 +16,6 @@
       ]
     },
     "db:check": {},
-    "db:migrate": {
-      "cache": false,
-      "passThroughEnv": [
-        "DATABASE_MAX_CONNECTIONS",
-        "DATABASE_SCHEMA",
-        "DATABASE_URL"
-      ]
-    },
     "db:reset": {
       "cache": false,
       "passThroughEnv": [
@@ -41,9 +33,13 @@
       ]
     },
     "model:check": {},
-    "test:migrations": {
+    "db:migrate": {
       "cache": false,
-      "passThroughEnv": ["DATABASE_URL"]
+      "passThroughEnv": [
+        "DATABASE_MAX_CONNECTIONS",
+        "DATABASE_SCHEMA",
+        "DATABASE_URL"
+      ]
     }
   }
 }

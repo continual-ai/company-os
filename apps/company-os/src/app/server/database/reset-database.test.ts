@@ -2,7 +2,6 @@ import { Effect } from "effect"
 import { expect } from "vitest"
 
 import { Model } from "#/app.model.ts"
-import { applyMigrations } from "#/app/server/database/migrations.ts"
 import { resetDevelopmentSchema } from "#/app/server/database/reset.ts"
 import { SqlDatabase } from "#/runtime/server/storage/transactions.ts"
 import { testDatabase } from "#/runtime/testing/database.ts"
@@ -10,7 +9,7 @@ import { testDatabase } from "#/runtime/testing/database.ts"
 const fixture = testDatabase(Model)
 
 fixture.test(
-  "rebuilds disposable storage from the model without pretending to replay migrations",
+  "rebuilds disposable storage from the model by reapplying migration one with system records and search",
   () =>
     Effect.gen(function* () {
       const { sql } = yield* SqlDatabase
@@ -18,8 +17,11 @@ fixture.test(
       yield* sql`insert into discarded_local_data values (1)`
       yield* resetDevelopmentSchema("public")
       expect(
-        yield* sql`select to_regclass('discarded_local_data') as old, to_regclass('company_os_migrations') as ledger`
-      ).toEqual([{ old: null, ledger: null }])
+        yield* sql`select to_regclass('discarded_local_data') as old`
+      ).toEqual([{ old: null }])
+      expect(
+        yield* sql`select migration_id from company_os_migrations`
+      ).toEqual([{ migration_id: 1 }])
       expect(yield* sql`select id from event_journal_state`).toEqual([
         { id: 1 },
       ])
@@ -27,9 +29,5 @@ fixture.test(
         (yield* sql`select id from service_accounts`).length
       ).toBeGreaterThan(0)
       expect((yield* sql`select id from search_index_state`).length).toBe(1)
-      yield* Effect.flip(applyMigrations())
-      expect(
-        yield* sql`select to_regclass('company_os_migrations') as ledger`
-      ).toEqual([{ ledger: null }])
     })
 )

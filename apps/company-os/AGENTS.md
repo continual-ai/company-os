@@ -7,14 +7,18 @@ It already exists and stays on its checked-in stack; never scaffold a replacemen
 
 The app directory name is its stable app key.
 The package manifest declares that key and its user-visible name under `continual`.
-`pnpm build` produces conventional `.output`; root `pnpm deploy` makes Turbo build first, then the App deployment task migrates a configured database and asks the repository-pinned Continual CLI to publish that existing output.
+`pnpm build` produces conventional `.output`; root `pnpm deploy` makes Turbo build first, then the App deployment task asks the repository-pinned Continual CLI to publish that existing output.
 Runtime configuration arrives as deploy-time bindings (`DATABASE_URL`, `DATABASE_SCHEMA`, `APP_SECRET`) and Continual's request-bound runtime headers; do not add provider-specific build configuration.
 `GET /api/health` is the platform liveness probe and must stay dependency-free; `GET /health` is the database-backed readiness check.
 
 ## Data
 
-The app owns the semantic model's migrations and migrates first on a shared deployment schema; run them with `pnpm db:migrate`, which honors `DATABASE_URL` and `DATABASE_SCHEMA`.
-Migrations must stay schema-relative: no `public.` qualification and no cross-schema references.
+The app owns its migration registry and Effect SQL runner. `pnpm db:migrate` applies pending migrations;
+`pnpm db:reset` drops disposable local storage and runs the same migrations from scratch. Both honor
+`DATABASE_URL` and `DATABASE_SCHEMA`. Keep one initial migration before v1: update it from the model
+and reset, rather than accumulating incremental migrations. When retained-data upgrades become
+necessary, freeze its SQL and append immutable numbered migrations. Keep migration SQL schema-relative:
+no `public.` qualification and no cross-schema references.
 
 ## Local development
 

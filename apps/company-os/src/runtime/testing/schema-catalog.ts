@@ -34,8 +34,8 @@ export interface SchemaCatalog {
 }
 
 /**
- * Reads database structure from the system catalogs. Descriptive comments and
- * migration bookkeeping are excluded; documentation changes do not need migrations.
+ * Reads database structure from the system catalogs. Descriptive comments are
+ * excluded so documentation changes do not affect structural comparisons.
  */
 export async function readSchemaCatalog(
   url: string,
@@ -45,7 +45,7 @@ export async function readSchemaCatalog(
   } = {}
 ): Promise<SchemaCatalog> {
   const schema = options.schema ?? "public"
-  const excluded = options.exclude ?? ["company_os_migrations"]
+  const excluded = options.exclude ?? []
   const client = new Client({
     connectionString: url,
     connectionTimeoutMillis: 5_000,

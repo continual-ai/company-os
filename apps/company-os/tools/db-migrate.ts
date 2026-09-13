@@ -1,52 +1,26 @@
+import { parseArgs } from "node:util"
+
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
-import { Config, Effect, Option, Redacted } from "effect"
+import { Config, Effect, Redacted } from "effect"
 
 import { ensureLocalDatabase } from "#/app/server/database/local-database.ts"
-import {
-  applyMigrations,
-  ensureDatabaseSchema,
-} from "#/app/server/database/migrations.ts"
+import { migrateDatabaseSchema } from "#/app/server/database/migrations.ts"
 import * as Postgres from "#/app/server/database/postgres.ts"
 import { localConfigLayer } from "#/app/server/local-config.ts"
-import { seedSystem } from "#/app/server/seeds/seed-system.ts"
-import { ModelContext } from "#/runtime/server/model-context.ts"
-import { ensureSearchIndex } from "#/runtime/server/storage/search-index.ts"
-import { SqlDatabase } from "#/runtime/server/storage/transactions.ts"
 
-// Deployment sequencing lives in this application's own scripts, not in any
-// platform: the deploy task invokes this tool with --if-configured so the
-// same command migrates wherever a database is configured and stays a pure
-// build everywhere else.
-const skipWhenUnconfigured = process.argv.includes("--if-configured")
-
-// Direct development and administration commands may use the committed local
-// defaults. Artifact-only deployment builds must remain unconfigured when the
-// host did not inject a database and no local override exists.
-
-const migrate = Effect.gen(function* () {
-  yield* ensureDatabaseSchema()
-  yield* applyMigrations()
-  yield* seedSystem()
-  yield* ensureSearchIndex(
-    yield* SqlDatabase,
-    yield* ModelContext,
-    process.argv.includes("--rebuild-search")
-  )
-  yield* Effect.log("Database migrated and required records ensured.")
-}).pipe(Effect.provide(Postgres.databaseAndClientLayer))
+parseArgs({ options: {} })
 
 Effect.gen(function* () {
-  const databaseUrl = yield* Config.option(Config.redacted("DATABASE_URL"))
-  if (Option.isNone(databaseUrl) && skipWhenUnconfigured) {
-    yield* Effect.log("DATABASE_URL is not configured; skipping migrations.")
-    return
-  }
-  if (Option.isSome(databaseUrl)) {
-    yield* ensureLocalDatabase(Redacted.value(databaseUrl.value))
-  }
-  yield* migrate
+  const url = yield* Config.redacted("DATABASE_URL")
+  const schema = yield* Postgres.databaseSchemaConfig
+  yield* ensureLocalDatabase(Redacted.value(url))
+  yield* migrateDatabaseSchema(schema).pipe(
+    Effect.provide(Postgres.databaseLayer)
+  )
+  yield* Effect.log(
+    "Database migrations applied; system records and search are ready."
+  )
 }).pipe(
-  // Deployments pass --if-configured and must not inherit development defaults.
-  Effect.provide(localConfigLayer({ development: !skipWhenUnconfigured })),
+  Effect.provide(localConfigLayer({ development: true })),
   NodeRuntime.runMain
 )

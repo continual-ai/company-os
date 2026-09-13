@@ -39,7 +39,6 @@ Effect.gen(function* () {
         "--no-comments",
         "--no-password",
         `--schema=${schema}`,
-        `--exclude-table=${schema}.company_os_migrations`,
       ],
       {
         // Connection details stay out of command-line arguments and logs.

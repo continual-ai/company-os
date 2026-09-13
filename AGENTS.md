@@ -61,12 +61,15 @@ Revisit compatibility and migration guarantees before v1.
 
 `schema.sql` projects the model. After storage changes, run `pnpm db:reset` to regenerate it and
 rebuild disposable local data, then reseed as needed. Do not add incremental migrations or backfills
-for pre-release development. Deployment initialization uses one baseline derived from the current
-model; there is no historical upgrade chain. Reset is not authorization to
+for pre-release development. Keep one model-derived initial migration and an app-owned runner.
+`pnpm db:reset` drops disposable storage and reapplies that migration; `pnpm db:migrate` applies
+pending migrations without resetting data. Before v1, update migration 1 and reset rather than adding
+incremental migrations. When retained-data upgrades become necessary, freeze migration 1's SQL and
+append immutable numbered migrations using the same runner. Reset is not authorization to
 delete remote data or data explicitly marked for retention; handle those cases deliberately.
 
 For implementation changes, run `pnpm check` and `pnpm test`; also run `pnpm build` for routing,
-bundling, or dependency changes and `pnpm test:migrations` when changing migration tooling or its baseline. For prose-only
+bundling, or dependency changes. Database initialization and reset tests run in `pnpm test`. For prose-only
 changes, validate the affected documents and links; application checks are unnecessary.
 Complete the requested behavior, run applicable checks, fix failures caused by the change, and
 demonstrate the requested interface before handing back. Use meaningful tests for changed behavior.

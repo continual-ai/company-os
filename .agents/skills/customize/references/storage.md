@@ -6,10 +6,17 @@ database from the model, and restores system records/search.
 Commit the model, generated schema, and relevant tests together; do not draft incremental migrations
 or backfills for disposable data.
 
-`pnpm db:migrate` initializes an empty deployment from a single model-derived baseline. Its
-fingerprint rejects outdated databases; it does not upgrade or reset them. `pnpm test:migrations`
-checks initialization and refusal behavior. A local reset database has no migration ledger and
-must continue using resets.
+The app owns `src/app/server/database/migrations.ts`, using Effect SQL's migration runner.
+`pnpm db:migrate` applies pending migrations and records them; `pnpm db:reset` drops disposable
+storage and reapplies the same migrations. Both restore system records and search.
+
+Before v1, keep only `migrations/0001-initial.ts`, derived from the current model. Update it and reset
+after schema changes. The recorded fingerprint rejects an outdated initial migration without changing
+existing data. Migration and reset tests run in `pnpm test`.
+
+When retained-data upgrades become necessary, freeze migration 1's SQL and append immutable numbered
+migrations to the same registry. Compare their final structure against the model projection and verify
+that upgrades preserve existing data. No new runner is needed at that point.
 
 For data explicitly marked for retention, establish its migration, archive, or deletion outcome
 before changing storage. Do not infer permission to reset a remote or retained database.

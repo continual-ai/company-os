@@ -21,7 +21,6 @@
     "lint": "turbo run lint",
     "prepare": "effect-tsgo patch --no-typescript --oxlint",
     "test": "turbo run test",
-    "test:migrations": "pnpm --filter company-os test:migrations",
     "ui:add": "pnpm --filter @company/ui ui:add --",
     "ui:remove": "pnpm --filter @company/ui ui:remove --",
     "upstream:merge": "git fetch upstream && git merge upstream/main"

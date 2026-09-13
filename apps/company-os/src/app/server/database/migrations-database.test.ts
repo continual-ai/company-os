@@ -1,15 +1,13 @@
 import { PgClient } from "@effect/sql-pg"
 import { Effect, Exit, Layer, Redacted } from "effect"
-import * as Migrator from "effect/unstable/sql/Migrator"
-import * as SqlClient from "effect/unstable/sql/SqlClient"
 import { expect, it } from "vitest"
 
 import { Model } from "#/app.model.ts"
 import {
-  applyMigrations,
+  migrateDatabaseSchema,
   migrations,
-  verifyDatabaseModel,
 } from "#/app/server/database/migrations.ts"
+import { resetDevelopmentSchema } from "#/app/server/database/reset.ts"
 import { schemaSql } from "#/app/server/database/schema.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
 import { pgTypes } from "#/runtime/server/storage/index.ts"
@@ -18,12 +16,12 @@ import { SqlDatabase } from "#/runtime/server/storage/transactions.ts"
 import { testDatabase } from "#/runtime/testing/database.ts"
 import { readSchemaCatalog } from "#/runtime/testing/schema-catalog.ts"
 
-const application = testDatabase(
+const initialized = testDatabase(
   Model,
   async (url) => {
     await Effect.runPromise(
       Effect.scoped(
-        applyMigrations().pipe(
+        migrateDatabaseSchema("public").pipe(
           Effect.provide(
             SqlDatabase.layer.pipe(
               Layer.provideMerge(ModelContext.layer(Model)),
@@ -36,100 +34,128 @@ const application = testDatabase(
       )
     )
   },
-  `migrations:${JSON.stringify(migrations)}`
+  `migrations:${schemaSql}`
 )
 const empty = testDatabase(Model, "")
 
-it("replayed migrations match the declared structure, including indexes, functions, and triggers", async () => {
-  const declared = await TestDatabase.createTemplate(schemaSql)
-  try {
-    const [migrated, expected] = await Promise.all([
-      readSchemaCatalog(TestDatabase.url(await application.template())),
-      readSchemaCatalog(TestDatabase.url(declared)),
+initialized.test("keeps data and records the initial migration only once", () =>
+  Effect.gen(function* () {
+    const { sql } = yield* SqlDatabase
+    yield* sql`create table retained_probe (value text)`
+    yield* sql`insert into retained_probe values ('keep me')`
+    yield* migrateDatabaseSchema("public")
+    yield* migrateDatabaseSchema("public")
+    const expected = yield* migrations
+    expect(
+      yield* sql`select migration_id as id, name from company_os_migrations`
+    ).toEqual(expected.map(([id, name]) => ({ id, name })))
+    expect(yield* sql`select value from retained_probe`).toEqual([
+      { value: "keep me" },
     ])
-    expect(migrated.tables.length).toBeGreaterThan(10)
-    expect(migrated).toEqual(expected)
-  } finally {
-    await TestDatabase.drop(declared)
-  }
+  })
+)
+
+initialized.test(
+  "rejects a changed pre-release baseline and reset reapplies only migration one",
+  () =>
+    Effect.gen(function* () {
+      const { sql } = yield* SqlDatabase
+      yield* sql`create table baseline_probe (value text)`
+      yield* sql`insert into baseline_probe values ('keep until reset')`
+      yield* sql`update company_os_migrations set name = 'initial_outdated'`
+      expect(
+        Exit.isFailure(yield* migrateDatabaseSchema("public").pipe(Effect.exit))
+      ).toBe(true)
+      expect(yield* sql`select value from baseline_probe`).toEqual([
+        { value: "keep until reset" },
+      ])
+      yield* resetDevelopmentSchema("public")
+      const expected = yield* migrations
+      expect(
+        yield* sql`select migration_id as id, name from company_os_migrations`
+      ).toEqual(expected.map(([id, name]) => ({ id, name })))
+      expect(
+        yield* sql`select to_regclass('baseline_probe') as discarded`
+      ).toEqual([{ discarded: null }])
+    })
+)
+
+it("initializes exactly the current model structure, including functions, triggers, and indexes", async () => {
+  const declared = await TestDatabase.createTemplate(schemaSql)
+  const [actual, expected] = await Promise.all([
+    readSchemaCatalog(TestDatabase.url(await initialized.template()), {
+      exclude: ["company_os_migrations"],
+    }),
+    readSchemaCatalog(TestDatabase.url(declared)),
+  ])
+  expect(actual.tables.length).toBeGreaterThan(10)
+  expect(actual).toEqual(expected)
 })
 
-application.test("does not reapply completed migrations", () =>
+empty.test("refuses an occupied schema without changing its contents", () =>
   Effect.gen(function* () {
-    yield* verifyDatabaseModel()
-    yield* applyMigrations()
-    yield* applyMigrations()
     const { sql } = yield* SqlDatabase
+    yield* sql`create table retained_probe (value text)`
+    yield* sql`insert into retained_probe values ('keep me')`
     expect(
-      yield* sql`select migration_id as id from company_os_migrations`
-    ).toEqual(migrations.map(({ id }) => ({ id })))
-    expect(yield* sql`select id from event_journal_state`).toEqual([{ id: 1 }])
+      Exit.isFailure(yield* migrateDatabaseSchema("public").pipe(Effect.exit))
+    ).toBe(true)
+    expect(yield* sql`select value from retained_probe`).toEqual([
+      { value: "keep me" },
+    ])
+    expect(yield* sql`select to_regclass('objects') as registry`).toEqual([
+      { registry: null },
+    ])
   })
 )
 
-application.test(
-  "refuses an outdated baseline without changing existing data",
+empty.test(
+  "initializes a named schema without touching public, and does not apply setup twice",
   () =>
     Effect.gen(function* () {
       const { sql } = yield* SqlDatabase
-      yield* sql`create table retained_probe (value text)`
-      yield* sql`insert into retained_probe values ('keep me')`
-      yield* sql`update company_os_migrations set name = 'baseline_outdated'`
-
-      const result = yield* applyMigrations().pipe(Effect.exit)
-      expect(Exit.isFailure(result)).toBe(true)
-      expect(yield* sql`select value from retained_probe`).toEqual([
+      yield* sql`create table untouched (value text)`
+      yield* sql`insert into untouched values ('keep me')`
+      yield* migrateDatabaseSchema("company")
+      expect(yield* sql`select id from company.event_journal_state`).toEqual([
+        { id: 1 },
+      ])
+      expect(
+        (yield* sql`select id from company.service_accounts`).length
+      ).toBeGreaterThan(0)
+      expect(
+        (yield* sql`select id from company.search_index_state`).length
+      ).toBe(1)
+      yield* migrateDatabaseSchema("company")
+      expect(
+        yield* sql`select migration_id from company.company_os_migrations`
+      ).toEqual([{ migration_id: 1 }])
+      yield* resetDevelopmentSchema("company")
+      expect(yield* sql`select value from untouched`).toEqual([
         { value: "keep me" },
       ])
-      expect(yield* sql`select name from company_os_migrations`).toEqual([
-        { name: "baseline_outdated" },
+      expect(yield* sql`select to_regclass('objects') as registry`).toEqual([
+        { registry: null },
       ])
     })
 )
 
-application.test(
-  "rolls back a failing whole-file migration, including function bodies",
+empty.test(
+  "rolls back all initialization when its enclosing transaction fails",
   () =>
     Effect.gen(function* () {
       const { sql } = yield* SqlDatabase
-      const result = yield* Migrator.make({})({
-        table: "test_migrations",
-        loader: Migrator.fromRecord({
-          "1_failure": Effect.gen(function* () {
-            const client = yield* SqlClient.SqlClient
-            yield* client.unsafe(`
-            -- Semicolons inside comments and function bodies are not delimiters;
-            create table migration_probe (id integer);
-            create function migration_probe() returns integer language plpgsql as $$
-            begin
-              insert into migration_probe values (1);
-              return 1;
-            end;
-            $$;
-            select migration_probe();
-            select 1 / 0;
-          `)
-          }),
-        }),
-      }).pipe(Effect.provideService(SqlClient.SqlClient, sql), Effect.exit)
+      const result = yield* sql
+        .withTransaction(
+          Effect.gen(function* () {
+            yield* migrateDatabaseSchema("rollback_probe")
+            return yield* Effect.fail(new Error("Abort initialization"))
+          })
+        )
+        .pipe(Effect.exit)
       expect(Exit.isFailure(result)).toBe(true)
       expect(
-        yield* sql`select to_regclass('migration_probe') as table_name,
-      to_regprocedure('migration_probe()') as function_name`
-      ).toEqual([{ table_name: null, function_name: null }])
+        yield* sql`select to_regnamespace('rollback_probe') as schema`
+      ).toEqual([{ schema: null }])
     })
-)
-
-empty.test("refuses to start before the committed baseline is applied", () =>
-  Effect.gen(function* () {
-    expect(Exit.isFailure(yield* verifyDatabaseModel().pipe(Effect.exit))).toBe(
-      true
-    )
-    yield* applyMigrations()
-    yield* verifyDatabaseModel()
-    const { sql } = yield* SqlDatabase
-    expect(yield* sql`select to_regclass('objects')::text as registry`).toEqual(
-      [{ registry: "objects" }]
-    )
-  })
 )

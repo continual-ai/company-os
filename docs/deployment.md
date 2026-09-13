@@ -22,10 +22,16 @@ membership checks and revocation; short token lifetimes bound the delay before r
 UI, HTTP, MCP discovery and execution, assets, search, and events require project admission. A local
 user record or a valid token for another project never grants access.
 
-Before v1, deployment initializes an empty database from one model-derived baseline. There is no
-historical upgrade chain. A changed baseline or a database from an older release is rejected before
-initialization; it is never reset automatically. Decide how to retain or discard existing data
-before replacing an outdated deployment database.
+`pnpm db:migrate` uses Effect SQL to apply pending migrations and record their completion. Before v1,
+the registry contains only one initial migration derived from the current model. Repeated runs leave
+that migration and existing data intact. A changed initial migration is rejected; use `pnpm db:reset`
+for disposable local data, or deliberately replace disposable deployment storage. Never infer permission
+to reset remote or retained data.
+
+When retained-data upgrades become necessary, freeze the SQL in
+`src/app/server/database/migrations/0001-initial.ts` and append immutable numbered migrations to the
+app-owned registry. The same runner handles upgrades; tests should verify the final structure against
+the current model and check that existing data survives.
 
 For Continual hosting:
 
@@ -33,11 +39,12 @@ For Continual hosting:
 pnpm exec continual login
 pnpm exec continual link --project <project-id-or-url>
 pnpm exec continual env pull
+pnpm db:migrate
 pnpm deploy
 ```
 
-Deploy builds `.output`, initializes or verifies the configured database baseline, then publishes.
-Other hosts must preserve that order and configure a trusted identity boundary. Keep a restore
+Deploy builds `.output` and publishes it without altering the database. Apply pending migrations before deployment. Other hosts must prepare storage before serving the app
+and configure a trusted identity boundary. Keep a restore
 point for retained data; an app rollback does not restore a database. Verify `/health` and an
 authenticated read and write after deployment. Satellites set
 `COMPANY_OS_URL` to the central app and forward verified identity headers.
