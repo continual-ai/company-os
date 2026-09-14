@@ -19,11 +19,11 @@ export function localDatabaseTarget(databaseUrl: string): LocalDatabaseTarget {
   }
 
   if (url.protocol !== "postgres:" && url.protocol !== "postgresql:") {
-    throw new Error("db:reset only supports PostgreSQL URLs.")
+    throw new Error("reset only supports PostgreSQL URLs.")
   }
   if (!localDatabaseHosts.has(url.hostname)) {
     throw new Error(
-      `db:reset refuses non-local database host '${url.hostname}'. Reset remote databases through an explicit recovery procedure.`
+      `reset refuses non-local database host '${url.hostname}'. Reset remote databases through an explicit recovery procedure.`
     )
   }
 
@@ -33,7 +33,7 @@ export function localDatabaseTarget(databaseUrl: string): LocalDatabaseTarget {
   }
   if (systemDatabaseNames.has(databaseName)) {
     throw new Error(
-      `db:reset refuses PostgreSQL system database '${databaseName}'. Use a dedicated local database.`
+      `reset refuses PostgreSQL system database '${databaseName}'. Use a dedicated local database.`
     )
   }
 

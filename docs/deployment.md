@@ -24,7 +24,7 @@ user record or a valid token for another project never grants access.
 
 `pnpm db:migrate` uses Effect SQL to apply pending migrations and record their completion. Before v1,
 the registry contains only one initial migration derived from the current model. Repeated runs leave
-that migration and existing data intact. A changed initial migration is rejected; use `pnpm db:reset`
+that migration and existing data intact. A changed initial migration is rejected; use `pnpm reset`
 for disposable local data, or deliberately replace disposable deployment storage. Never infer permission
 to reset remote or retained data.
 

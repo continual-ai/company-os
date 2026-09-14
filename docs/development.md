@@ -5,22 +5,35 @@
 Before v1, build against the current model and reset disposable development data. Update contracts
 and their callers together; backward compatibility is not a pre-release requirement.
 
-| Command                      | Purpose                                                                       |
-| ---------------------------- | ----------------------------------------------------------------------------- |
-| `pnpm db:reset`              | Rebuild the disposable local database from the model and refresh `schema.sql` |
-| `pnpm db:migrate`            | Apply pending migrations without resetting data                               |
-| `pnpm dev`                   | Run the apps                                                                  |
-| `pnpm check`                 | Lint, typecheck, generated schema/model checks, formatting, and dead code     |
-| `pnpm test`                  | Test application behavior against the current model                           |
-| `pnpm build`                 | Build the apps                                                                |
-| `pnpm format`                | Format the repository                                                         |
-| `pnpm ui:add <component>`    | Add a shadcn primitive to `packages/ui`                                       |
-| `pnpm ui:remove <component>` | Remove an unused primitive                                                    |
+| Command                      | Purpose                                                                         |
+| ---------------------------- | ------------------------------------------------------------------------------- |
+| `pnpm dev`                   | Generate the schema, prepare the database, seed the demo once, and run the apps |
+| `pnpm reset`                 | Rebuild disposable local storage and restore the demo                           |
+| `pnpm db:generate`           | Refresh `schema.sql` from the model without accessing a database                |
+| `pnpm db:migrate`            | Apply pending migrations and ensure system records and search                   |
+| `pnpm db:seed`               | Prepare the database and load demo records once                                 |
+| `pnpm check`                 | Lint, typecheck, generated schema/model checks, formatting, and dead code       |
+| `pnpm test`                  | Test application behavior against the current model                             |
+| `pnpm build`                 | Build the apps                                                                  |
+| `pnpm format`                | Format the repository                                                           |
+| `pnpm ui:add <component>`    | Add a shadcn primitive to `packages/ui`                                         |
+| `pnpm ui:remove <component>` | Remove an unused primitive                                                      |
 
-**While building:** edit the model and application, run `pnpm db:reset` after storage changes,
-and use the app. Reset discards the configured local schema's data, restores system records and
-search. It refuses remote hosts and PostgreSQL system
-databases. Run `pnpm db:seed --scenario demo` when you want fictional records.
+**Getting started:** with PostgreSQL running, use `pnpm install` and `pnpm dev`. Turbo runs
+schema generation, migrations, and demo seeding before either app starts. The local database is
+created if missing. Subsequent starts preserve existing records and your edits to the demo.
+
+**While building:** ordinary application changes use Vite's live reload. After storage model
+changes, stop dev, run `pnpm reset`, and restart `pnpm dev`. A changed pre-release schema stops
+startup with a reset instruction; startup never resets existing data automatically. Reset discards
+the configured local schema's data, restores system records, search, and demo records, and refuses
+remote hosts and PostgreSQL system databases. Use `pnpm db:generate` to refresh only the checked-in
+SQL without touching data. Pending migrations are applied at startup, not on every hot reload.
+
+**Larger datasets:** `pnpm db:seed --scenario performance --size 1000` adds performance fixtures;
+`--scenario all` runs both scenarios. Each scenario runs once per database and preserves later edits
+and deletions. Reset before changing the performance dataset size. Automatic demo seeding is for
+local development; remote seeding requires an explicit target acknowledgment.
 
 **Before delivery:** commit the model, generated `schema.sql`, and relevant tests together. Do not
 add incremental migrations or backfills for disposable pre-release data. Keep one model-derived

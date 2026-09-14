@@ -14,13 +14,13 @@ import { seedSystem } from "#/app/server/seeds/seed-system.ts"
 const { values } = parseArgs({
   options: {
     help: { type: "boolean" },
-    scenario: { type: "string", default: "all" },
+    scenario: { type: "string", default: "demo" },
     size: { type: "string", default: "1000" },
   },
 })
 if (values.help) {
   console.log(
-    "pnpm db:seed [--scenario all|demo|performance] [--size 1000]\nRun db:reset first. Defaults to connected demo records plus realistic data across every business module. Size is the number of contacts and leads (1–10000); related records scale with it. Scenarios run once and preserve subsequent edits. Use a fresh development database to change size."
+    "pnpm db:seed [--scenario all|demo|performance] [--size 1000]\nDefaults to connected demo records. The performance scenario adds realistic data across every business module. Size is the number of contacts and leads (1–10000); related records scale with it. Scenarios run once and preserve subsequent edits. Run pnpm reset to start fresh or change size."
   )
 } else {
   if (!["all", "demo", "performance"].includes(values.scenario))

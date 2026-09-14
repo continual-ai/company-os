@@ -1,13 +1,15 @@
 # Pre-release storage changes
 
 Follow the pre-release policy in [AGENTS.md](../../../../AGENTS.md). Edit the model, run
-`pnpm db:reset`, and reseed as needed. Reset regenerates `schema.sql`, rebuilds the disposable local
-database from the model, and restores system records/search.
+`pnpm reset`. Reset regenerates `schema.sql`, rebuilds the disposable local
+database from the model, and restores system records, search, and the demo.
+`pnpm db:generate` refreshes only the SQL projection without accessing a database.
+`pnpm dev` prepares storage and seeds the demo once before starting the apps.
 Commit the model, generated schema, and relevant tests together; do not draft incremental migrations
 or backfills for disposable data.
 
 The app owns `src/app/server/database/migrations.ts`, using Effect SQL's migration runner.
-`pnpm db:migrate` applies pending migrations and records them; `pnpm db:reset` drops disposable
+`pnpm db:migrate` applies pending migrations and records them; `pnpm reset` drops disposable
 storage and reapplies the same migrations. Both restore system records and search.
 
 Before v1, keep only `migrations/0001-initial.ts`, derived from the current model. Update it and reset

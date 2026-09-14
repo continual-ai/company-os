@@ -16,14 +16,6 @@
       ]
     },
     "db:check": {},
-    "db:reset": {
-      "cache": false,
-      "passThroughEnv": [
-        "DATABASE_MAX_CONNECTIONS",
-        "DATABASE_SCHEMA",
-        "DATABASE_URL"
-      ]
-    },
     "test": {
       "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/fixtures/**", ".env"],
       "passThroughEnv": [
@@ -39,6 +31,26 @@
         "DATABASE_MAX_CONNECTIONS",
         "DATABASE_SCHEMA",
         "DATABASE_URL"
+      ],
+      "dependsOn": ["db:generate"]
+    },
+    "db:generate": {
+      "cache": false
+    },
+    "db:seed": {
+      "dependsOn": ["db:migrate"]
+    },
+    "reset": {
+      "dependsOn": ["db:generate"],
+      "cache": false,
+      "passThroughEnv": [
+        "DATABASE_MAX_CONNECTIONS",
+        "DATABASE_SCHEMA",
+        "DATABASE_URL",
+        "APP_SECRET",
+        "AUTH_*",
+        "IDENTITY_PROVIDER",
+        "NODE_ENV"
       ]
     }
   }

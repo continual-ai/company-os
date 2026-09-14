@@ -39,7 +39,8 @@
         "DATABASE_SCHEMA",
         "DATABASE_URL"
       ],
-      "persistent": true
+      "persistent": true,
+      "dependsOn": ["company-os#db:seed"]
     },
     "db:seed": {
       "cache": false,

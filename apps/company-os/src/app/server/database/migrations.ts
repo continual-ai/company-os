@@ -40,7 +40,7 @@ export const migrateDatabaseSchema = Effect.fn(
       if (state?.occupied && !state.tracked)
         return yield* Effect.fail(
           new Error(
-            "This schema has existing objects but no migration history. Use pnpm db:reset for disposable local data; retained data needs an explicit upgrade plan."
+            "This schema has existing objects but no migration history. Use pnpm reset for disposable local data; retained data needs an explicit upgrade plan."
           )
         )
       // Create Effect's ledger before its missing-table probe so setup can join the atomic reset transaction.
@@ -70,7 +70,7 @@ export const migrateDatabaseSchema = Effect.fn(
       )
         return yield* Effect.fail(
           new Error(
-            "The applied migrations differ from this version. Before v1, update the initial migration and run pnpm db:reset for disposable local data. Never reset retained data without explicit authorization."
+            "The applied migrations differ from this version. Before v1, update the initial migration and run pnpm reset for disposable local data. Never reset retained data without explicit authorization."
           )
         )
       yield* seedSystem()

@@ -59,10 +59,10 @@ Revisit compatibility and migration guarantees before v1.
 
 ## Data and delivery
 
-`schema.sql` projects the model. After storage changes, run `pnpm db:reset` to regenerate it and
-rebuild disposable local data, then reseed as needed. Do not add incremental migrations or backfills
-for pre-release development. Keep one model-derived initial migration and an app-owned runner.
-`pnpm db:reset` drops disposable storage and reapplies that migration; `pnpm db:migrate` applies
+`schema.sql` projects the model. After storage changes, run `pnpm reset` to regenerate it and
+rebuild disposable local data with the demo. `pnpm db:generate` refreshes SQL without touching data.
+Do not add incremental migrations or backfills for pre-release development. Keep one model-derived initial migration and an app-owned runner.
+`pnpm reset` drops disposable storage and reapplies that migration; `pnpm db:migrate` applies
 pending migrations without resetting data. Before v1, update migration 1 and reset rather than adding
 incremental migrations. When retained-data upgrades become necessary, freeze migration 1's SQL and
 append immutable numbered migrations using the same runner. Reset is not authorization to
