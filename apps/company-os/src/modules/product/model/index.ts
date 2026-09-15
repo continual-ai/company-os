@@ -1,3 +1,4 @@
+import { IssueGreeting } from "#/modules/product/model/issue-greeting.ts"
 import {
   Issue,
   IssueAssignee,
@@ -12,6 +13,7 @@ export const ProductModule = defineModule({
   description: "Plan outcomes with projects and deliver work through issues.",
   maturity: "alpha",
   objects: [Project, Issue],
+  controllers: [IssueGreeting],
   links: [ProjectOwner, IssueProject, IssueAssignee],
 })
 

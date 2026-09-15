@@ -15,8 +15,11 @@ explains the service and layer changes.
 - The server entrypoint exposes `Database`, `OperationExecutor`, `EventJournal`, and `defineModuleServer`.
   Use `database.repository(Object)` for CRUD and atomic `links` changes; use `database.table(Object)`
   and `database.sql` for SQL. Raw storage services are kernel implementation details.
-- Bind named functions in a plain handler map with `defineModuleServer`; pass dependency Layers
-  separately. Handler requirements remain inferred until the application supplies their providers.
+- Bind server contributions with `defineModuleServer(Module, { operations, controllers, layer })`
+  in the module's `server/index.ts`, and register it once in `app.server.ts`. `operations` is the
+  client-shaped handler map; `controllers` contains `defineControllerServer` bindings; optional
+  `layer` supplies Effect services for both. Keep contracts in `model/` and matching implementations
+  in `server/`. Handler requirements remain inferred until the application supplies their providers.
   The executor checks admission, validates
   contracts, and owns Action transactions and read-only Queries. Internal composition uses repositories
   or shared functions. Use `database.transaction` for atomic work outside an operation. It joins an

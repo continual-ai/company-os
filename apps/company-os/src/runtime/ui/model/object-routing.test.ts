@@ -39,6 +39,7 @@ describe("object routes", () => {
       "user",
       "serviceAccount",
       "asset",
+      "controller",
     ])
   })
 

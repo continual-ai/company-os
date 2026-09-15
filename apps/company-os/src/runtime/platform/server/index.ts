@@ -8,11 +8,13 @@ import {
   moduleCatalog,
   setModuleEnabled,
 } from "#/runtime/platform/server/activation.ts"
+import { controllerStatus } from "#/runtime/platform/server/controller-status.ts"
+import { reconcileController } from "#/runtime/platform/server/reconcile-controller.ts"
 import { defineModuleServer } from "#/runtime/server/module-server.ts"
 
-export const PlatformServer = defineModuleServer(
-  PlatformModule,
-  {
+export const PlatformServer = defineModuleServer(PlatformModule, {
+  operations: {
+    controller: { status: controllerStatus, reconcile: reconcileController },
     asset: {
       beginUpload: Effect.fn("asset.beginUpload")(function* (
         input: Parameters<typeof AssetService.Service.beginUpload>[0]
@@ -27,11 +29,11 @@ export const PlatformServer = defineModuleServer(
     },
     moduleSetting: { catalog: moduleCatalog, setEnabled: setModuleEnabled },
   },
-  Layer.mergeAll(
+  layer: Layer.mergeAll(
     ServiceAccountService.layer,
     UserService.layer,
     AssetService.layer
-  )
-)
+  ),
+})
 export { activeModuleModel } from "#/runtime/platform/server/activation.ts"
 export { seedModuleSettings } from "#/runtime/platform/server/seed.ts"

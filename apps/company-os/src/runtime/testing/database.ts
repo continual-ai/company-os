@@ -3,9 +3,10 @@ import { Effect, Layer } from "effect"
 import type * as Scope from "effect/Scope"
 
 import type { ModelCatalog } from "#/runtime/model/index.ts"
+import { foundationLayer } from "#/runtime/server/foundation.ts"
 import { systemInvocation } from "#/runtime/server/invocation-context.ts"
 import { CurrentInvocation } from "#/runtime/server/invocation.ts"
-import { ModelContext } from "#/runtime/server/model-context.ts"
+import { PageTokens } from "#/runtime/server/page-tokens.ts"
 import { makeSchemaSql } from "#/runtime/server/schema.ts"
 import { makePostgresSchema } from "#/runtime/server/storage/schema.ts"
 import {
@@ -13,7 +14,6 @@ import {
   type TestDatabaseClone,
   type TestDatabaseTemplate,
 } from "#/runtime/server/storage/testing.ts"
-import { SqlDatabase } from "#/runtime/server/storage/transactions.ts"
 
 /** SQL applied to an empty template, or a function that prepares it through a connection URL. */
 export type DatabaseInitializer = string | ((url: string) => Promise<void>)
@@ -81,10 +81,10 @@ export function testDatabase<M extends ModelCatalog>(
       return TestDatabase.layer(cloned)
     })
   )
-  const database = SqlDatabase.layer.pipe(
-    Layer.provideMerge(ModelContext.layer(model)),
-    Layer.provide(client)
-  )
+  const database = foundationLayer(model, {
+    sql: client,
+    pageTokens: PageTokens.layerTest,
+  })
   return {
     model,
     client,

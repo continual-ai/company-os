@@ -1,3 +1,5 @@
+export { defineControllerServer } from "#/runtime/server/controllers/definition.ts"
+export type { ReconcileResult } from "#/runtime/server/controllers/definition.ts"
 export { Database } from "#/runtime/server/database.ts"
 export { EventJournal } from "#/runtime/server/events/event-journal.ts"
 export { defineModuleServer } from "#/runtime/server/module-server.ts"

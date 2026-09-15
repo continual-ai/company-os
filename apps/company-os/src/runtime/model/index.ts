@@ -1,3 +1,8 @@
+export { defineController } from "#/runtime/model/definition/controller.ts"
+export type {
+  Controller,
+  ControllerDuration,
+} from "#/runtime/model/definition/controller.ts"
 export { Actor } from "#/runtime/model/core/actor.ts"
 export type { ActorId } from "#/runtime/model/core/actor.ts"
 export { defineEvent } from "#/runtime/model/definition/event.ts"

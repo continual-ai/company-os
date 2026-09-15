@@ -185,9 +185,19 @@ export function composeModelUi(
             )
         }
       }
-      const tabs = new Set<string>(["overview", "related", ...relationships])
+      const tabs = new Set<string>([
+        "overview",
+        "related",
+        "controllers",
+        ...relationships,
+      ])
       for (const key of config.record?.relationships ?? []) {
-        if (key === "overview" || key === "related" || !tabs.has(key))
+        if (
+          key === "overview" ||
+          key === "related" ||
+          key === "controllers" ||
+          !tabs.has(key)
+        )
           throw new Error(`Unknown overview relationship '${id}.${key}'.`)
       }
       for (const tab of config.record?.additionalTabs ?? []) {

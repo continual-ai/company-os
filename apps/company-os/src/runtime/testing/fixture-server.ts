@@ -74,5 +74,5 @@ const convertProspect = Effect.fn("fixture.convertProspect")(function* (
 })
 
 export const FixtureServer = defineModuleServer(FixtureModule, {
-  prospect: { convert: convertProspect },
+  operations: { prospect: { convert: convertProspect } },
 })

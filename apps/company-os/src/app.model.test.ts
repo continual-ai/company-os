@@ -23,7 +23,7 @@ describe("model contract", () => {
     expect(description).toMatchObject({
       actor: { typeId: "actor" },
       model: { name: appMetadata.name },
-      version: "0.34",
+      version: "0.35",
     })
     expect(description).not.toHaveProperty("root")
     expect(description.queries).toContainEqual(

@@ -2,11 +2,12 @@ import { Effect, Layer } from "effect"
 
 import { bootstrapSystemActor } from "#/runtime/access/server/bootstrap.ts"
 import { seedIdentities } from "#/runtime/access/server/seed.ts"
-import type { ModelCatalog, ModuleDefinition } from "#/runtime/model/index.ts"
+import type { ModelCatalog } from "#/runtime/model/index.ts"
 import { PlatformServer } from "#/runtime/platform/server/index.ts"
 import { systemInvocation } from "#/runtime/server/invocation-context.ts"
 import { CurrentInvocation } from "#/runtime/server/invocation.ts"
 import type { ModelContext } from "#/runtime/server/model-context.ts"
+import type { ModuleServer } from "#/runtime/server/module-server.ts"
 import { PageTokens } from "#/runtime/server/page-tokens.ts"
 import { makeServicesLayer } from "#/runtime/server/services.ts"
 import type { SqlDatabase } from "#/runtime/server/storage/transactions.ts"
@@ -16,11 +17,7 @@ import {
   type DatabaseInitializer,
 } from "#/runtime/testing/database.ts"
 
-type ServerContributions = ReadonlyArray<{
-  readonly module: ModuleDefinition
-  readonly implementations: object
-  readonly layer: Layer.Layer<never, unknown, unknown>
-}>
+type ServerContributions = ReadonlyArray<ModuleServer>
 type Servers<C extends ServerContributions> = Parameters<
   typeof makeServicesLayer<C>
 >[1]

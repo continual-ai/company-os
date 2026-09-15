@@ -1,4 +1,5 @@
 import type { ModelAction } from "#/runtime/model/definition/action.ts"
+import type { Controller } from "#/runtime/model/definition/controller.ts"
 import type { InterfaceType } from "#/runtime/model/definition/interface.ts"
 import type { LinkType } from "#/runtime/model/definition/link.ts"
 import {
@@ -15,7 +16,7 @@ import type { ModuleMetadata } from "#/runtime/model/definition/module.ts"
 import type { ObjectType } from "#/runtime/model/definition/object.ts"
 import type { StandardQuery, Query } from "#/runtime/model/definition/query.ts"
 
-export const MODEL_DESCRIPTION_VERSION = "0.34" as const
+export const MODEL_DESCRIPTION_VERSION = "0.35" as const
 
 type ObjectDescription = Omit<ObjectType, "actions" | "kind">
 
@@ -25,6 +26,7 @@ export interface ModuleDescription extends ModuleMetadata {
   readonly interfaceIds: ReadonlyArray<string>
   readonly linkIds: ReadonlyArray<string>
   readonly name: string
+  readonly controllerIds: ReadonlyArray<string>
   readonly actionKeys: ReadonlyArray<string>
   readonly queryKeys: ReadonlyArray<string>
   readonly objectIds: ReadonlyArray<string>
@@ -35,6 +37,7 @@ export interface ModuleDescription extends ModuleMetadata {
  * never maintain this projection by hand.
  */
 export interface ModelDescription {
+  readonly controllers: ReadonlyArray<Controller>
   readonly actions: ReadonlyArray<ModelAction>
   readonly actor: { readonly typeId: string }
   readonly interfaces: ReadonlyArray<InterfaceType>
@@ -74,6 +77,7 @@ function describeInterface(item: ReturnType<typeof modelInterfaces>[number]) {
 export function describeModel(model: ModelCatalog): ModelDescription {
   return {
     version: MODEL_DESCRIPTION_VERSION,
+    controllers: modelModules(model).flatMap((module) => module.controllers),
     actions: modelActions(model).map((action) => ({ ...action })),
     actor: { typeId: model.actor.id },
     interfaces: modelInterfaces(model).map(describeInterface),
@@ -100,6 +104,7 @@ export function describeModel(model: ModelCatalog): ModelDescription {
       maintainer: module.maintainer ?? model.maintainer,
       origin: module.origin,
       objectIds: module.objects.map((object) => object.id),
+      controllerIds: module.controllers.map((controller) => controller.id),
       actionKeys: module.actions.map((action) => action.key),
       queryKeys: module.queries.map((query) => query.key),
     })),

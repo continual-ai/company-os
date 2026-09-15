@@ -48,6 +48,7 @@ export interface ObjectCollectionView {
 }
 
 export interface ObjectCollectionSearch {
+  readonly tab?: "controllers" | undefined
   readonly state?: ObjectCollectionViewState | undefined
   readonly view?: string | undefined
 }

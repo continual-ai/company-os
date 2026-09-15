@@ -67,14 +67,16 @@ const Samples = defineModule({
 })
 class IntentionalFailure extends Data.TaggedError("IntentionalFailure")<{}> {}
 const server = defineModuleServer(Samples, {
-  createSample: Effect.fn("sample.createSample")(function* (
-    input: ActionInput<typeof CreateSample>
-  ) {
-    const samples = (yield* Database).repository(Sample)
-    const record = yield* samples.create({ name: input.name, code: "fixed" })
-    if (input.fail) return yield* Effect.fail(new IntentionalFailure())
-    return { name: input.invalidOutput ? "" : record.name }
-  }),
+  operations: {
+    createSample: Effect.fn("sample.createSample")(function* (
+      input: ActionInput<typeof CreateSample>
+    ) {
+      const samples = (yield* Database).repository(Sample)
+      const record = yield* samples.create({ name: input.name, code: "fixed" })
+      if (input.fail) return yield* Effect.fail(new IntentionalFailure())
+      return { name: input.invalidOutput ? "" : record.name }
+    }),
+  },
 })
 
 const model = defineModel({

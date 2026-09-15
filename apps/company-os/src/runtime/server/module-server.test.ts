@@ -4,12 +4,14 @@ import { expect, it } from "vitest"
 
 import {
   defineModel,
+  defineController,
   defineModule,
   defineObject,
   schema,
   defineAction,
 } from "#/runtime/model/index.ts"
 import { PlatformModule } from "#/runtime/platform/model/index.ts"
+import { defineControllerServer } from "#/runtime/server/controllers/definition.ts"
 import {
   defineModuleServer,
   type OperationRequirements,
@@ -47,14 +49,13 @@ const Module = defineModule({
 const greet = Effect.fn(function* (_input: unknown) {
   return { greeting: (yield* Greeting).value }
 })
-const server = defineModuleServer(
-  Module,
-  { item: { greet } },
-  Layer.succeed(Greeting, { value: "hello" })
-)
+const server = defineModuleServer(Module, {
+  operations: { item: { greet } },
+  layer: Layer.succeed(Greeting, { value: "hello" }),
+})
 
 it("retains custom operation dependencies without creating another container", async () => {
-  const implementations = server.implementations
+  const implementations = server.operations
   const requirement: Effect.Effect<
     string,
     never,
@@ -82,10 +83,98 @@ const infrastructure = {
 }
 
 it("rejects assembly when an operation's service has no provider", () => {
-  const unprovided = defineModuleServer(Module, { item: { greet } })
+  const unprovided = defineModuleServer(Module, {
+    operations: { item: { greet } },
+  })
   // @ts-expect-error Greeting is required by the operation and absent from all provider layers.
   const incomplete = makeServicesLayer(model, [unprovided], infrastructure)
   const complete = makeServicesLayer(model, [server], infrastructure)
   expect(incomplete).toBeDefined()
   expect(complete).toBeDefined()
+})
+
+const Delivery = defineController({ id: "delivery", object: Item })
+const ControllerModule = defineModule({
+  id: "delivery",
+  name: "Delivery",
+  objects: [Item],
+  controllers: [Delivery],
+})
+const delivery = defineControllerServer(Delivery, {
+  reconcile: Effect.fn(function* (_key) {
+    yield* Greeting
+  }),
+})
+const deliveryServer = defineModuleServer(ControllerModule, {
+  controllers: [delivery],
+  layer: Layer.succeed(Greeting, { value: "hello" }),
+})
+const deliveryModel = defineModel({
+  name: "Controller provider test",
+  modules: [PlatformModule, ControllerModule],
+})
+
+it("retains controller dependencies in the same module provider registration", async () => {
+  const unprovided = defineModuleServer(ControllerModule, {
+    controllers: [delivery],
+  })
+  const incomplete = makeServicesLayer(
+    deliveryModel,
+    // @ts-expect-error Greeting is required by reconciliation and absent from all provider layers.
+    [unprovided],
+    infrastructure
+  )
+  const complete = makeServicesLayer(
+    deliveryModel,
+    [deliveryServer],
+    infrastructure
+  )
+  expect(incomplete).toBeDefined()
+  expect(complete).toBeDefined()
+  await Effect.runPromise(
+    deliveryServer.controllers[0]
+      .reconcile("item")
+      .pipe(Effect.provide(deliveryServer.layer))
+  )
+})
+
+it("includes event routing dependencies in module service checks", () => {
+  const eventOnly = defineControllerServer(Delivery, {
+    reconcile: () => Effect.void,
+    onEvent: () => Greeting.pipe(Effect.asVoid),
+  })
+  const unprovided = defineModuleServer(ControllerModule, {
+    controllers: [eventOnly],
+  })
+  const incomplete = makeServicesLayer(
+    deliveryModel,
+    // @ts-expect-error Greeting is required by onEvent even though reconciliation has no dependencies.
+    [unprovided],
+    infrastructure
+  )
+  expect(incomplete).toBeDefined()
+})
+
+it("rejects missing, duplicate, and foreign controller implementations", () => {
+  expect(() => defineModuleServer(ControllerModule, {})).toThrow(
+    "has no implementation"
+  )
+  expect(() =>
+    defineModuleServer(ControllerModule, {
+      controllers: [delivery, delivery],
+    })
+  ).toThrow("duplicated or not declared")
+  expect(() =>
+    defineModuleServer(Module, {
+      operations: { item: { greet } },
+      controllers: [delivery],
+    })
+  ).toThrow("duplicated or not declared")
+})
+
+it("requires operation handlers for modules that declare them", () => {
+  // @ts-expect-error This module declares an Action, so operations cannot be omitted.
+  expect(() => defineModuleServer(Module, {})).toThrow(
+    "requires operation implementations"
+  )
 })

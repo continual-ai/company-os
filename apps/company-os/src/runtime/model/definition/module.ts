@@ -1,4 +1,5 @@
 import type { Action } from "#/runtime/model/definition/action.ts"
+import type { Controller } from "#/runtime/model/definition/controller.ts"
 import type { EventType } from "#/runtime/model/definition/event.ts"
 import type {
   NoExtraKeys,
@@ -31,6 +32,7 @@ export interface ModuleMetadata {
 
 /** What `defineModule` accepts. */
 export interface ModuleDefinitionInput extends ModuleMetadata {
+  readonly controllers?: ReadonlyArray<Controller>
   readonly actions?: ReadonlyArray<Action>
   readonly queries?: ReadonlyArray<Query>
   readonly events?: ReadonlyArray<EventType>
@@ -61,6 +63,15 @@ type ModuleLinks<D extends ModuleDefinitionInput> = D extends {
 export interface ModuleDefinition<
   D extends ModuleDefinitionInput = ModuleDefinitionInput,
 > extends ModuleMetadata {
+  readonly controllers: OpenOr<
+    D,
+    ReadonlyArray<Controller>,
+    D extends {
+      readonly controllers: infer C extends ReadonlyArray<Controller>
+    }
+      ? C
+      : readonly []
+  >
   readonly actions: OpenOr<
     D,
     ReadonlyArray<Action>,
@@ -105,6 +116,7 @@ export function defineModule<const D extends ModuleDefinitionInput>(
 ): ModuleDefinition<D> {
   const input: ModuleDefinitionInput = definition
   const module: ModuleDefinition = {
+    controllers: input.controllers ?? [],
     actions: input.actions ?? [],
     queries: input.queries ?? [],
     events: input.events ?? [],

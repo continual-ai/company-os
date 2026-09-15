@@ -1,5 +1,5 @@
 import { PgClient } from "@effect/sql-pg"
-import { Effect, Exit, Layer, Redacted } from "effect"
+import { Effect, Exit, Redacted } from "effect"
 import { expect, it } from "vitest"
 
 import { Model } from "#/app.model.ts"
@@ -9,7 +9,8 @@ import {
 } from "#/app/server/database/migrations.ts"
 import { resetDevelopmentSchema } from "#/app/server/database/reset.ts"
 import { schemaSql } from "#/app/server/database/schema.ts"
-import { ModelContext } from "#/runtime/server/model-context.ts"
+import { foundationLayer } from "#/runtime/server/foundation.ts"
+import { PageTokens } from "#/runtime/server/page-tokens.ts"
 import { pgTypes } from "#/runtime/server/storage/index.ts"
 import { TestDatabase } from "#/runtime/server/storage/testing.ts"
 import { SqlDatabase } from "#/runtime/server/storage/transactions.ts"
@@ -23,12 +24,10 @@ const initialized = testDatabase(
       Effect.scoped(
         migrateDatabaseSchema("public").pipe(
           Effect.provide(
-            SqlDatabase.layer.pipe(
-              Layer.provideMerge(ModelContext.layer(Model)),
-              Layer.provide(
-                PgClient.layer({ url: Redacted.make(url), types: pgTypes })
-              )
-            )
+            foundationLayer(Model, {
+              sql: PgClient.layer({ url: Redacted.make(url), types: pgTypes }),
+              pageTokens: PageTokens.layerTest,
+            })
           )
         )
       )

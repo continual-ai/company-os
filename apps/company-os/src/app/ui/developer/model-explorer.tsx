@@ -2,6 +2,7 @@ import { Badge } from "@company/ui/badge"
 import { Button } from "@company/ui/button"
 import {
   BoxesIcon,
+  RefreshCwIcon,
   BracesIcon,
   DatabaseIcon,
   Link2Icon,
@@ -20,10 +21,12 @@ import {
   DeveloperNavigationGroup,
   DeveloperNavigationItem,
 } from "#/app/ui/developer/developer-layout.tsx"
+import { ModelControllers } from "#/app/ui/developer/model-controllers.tsx"
 import type { ModelAction } from "#/runtime/model/definition/action.ts"
 import {
   type AnySchema,
   type Choice,
+  type Controller,
   type InterfaceType,
   type ModelCatalog,
   type LinkType,
@@ -370,6 +373,9 @@ function ObjectDetail({
   )
   const relationships = relationshipsForItem(model, catalog, object)
   const implementations = Object.values(object.interfaces)
+  const controllers = modules
+    .flatMap((candidate) => candidate.controllers)
+    .filter((controller) => controller.objectType === object.id)
 
   return (
     <article className="mx-auto w-full max-w-6xl p-page-gutter">
@@ -398,6 +404,7 @@ function ObjectDetail({
             value={Object.keys(object.properties).length}
           />
           <DefinitionFact label="Actions" value={actions.length} />
+          <DefinitionFact label="Controllers" value={controllers.length} />
         </dl>
       </header>
 
@@ -420,6 +427,11 @@ function ObjectDetail({
             label: "Interfaces",
           },
           { count: actions.length, href: "#actions", label: "Actions" },
+          {
+            count: controllers.length,
+            href: "#controllers",
+            label: "Controllers",
+          },
         ]}
       />
 
@@ -501,6 +513,15 @@ function ObjectDetail({
           count={actions.length}
         >
           <ActionList actions={actions} />
+        </DetailSection>
+
+        <DetailSection
+          id="controllers"
+          icon={<RefreshCwIcon />}
+          title="Controllers"
+          count={controllers.length}
+        >
+          <ModelControllers controllers={controllers} />
         </DetailSection>
       </div>
     </article>
@@ -669,7 +690,8 @@ function DefinitionFact({
 function itemMatches(
   item: ModelItem,
   query: string,
-  actions: ReadonlyArray<ModelAction>
+  actions: ReadonlyArray<ModelAction>,
+  controllers: ReadonlyArray<Controller>
 ) {
   const normalized = query.trim().toLowerCase()
   if (normalized.length === 0) return true
@@ -690,6 +712,16 @@ function itemMatches(
       property.description,
     ]),
     ...actionText,
+    ...(item.kind === "object"
+      ? controllers
+          .filter((controller) => controller.objectType === item.id)
+          .flatMap((controller) => [
+            controller.id,
+            controller.name,
+            controller.description,
+            ...controller.watch,
+          ])
+      : []),
   ].some((value) => value?.toLowerCase().includes(normalized) === true)
 }
 
@@ -710,6 +742,10 @@ export function ModelExplorer({
   )
   const catalog = useMemo(() => modelLinks(model), [model])
   const actions = useMemo(() => modelActions(model), [model])
+  const controllers = useMemo(
+    () => modules.flatMap((module) => module.controllers),
+    [modules]
+  )
   const defaultItem = objects[0] ? itemKey(objects[0]) : ""
   const [internalSelection, setInternalSelection] = useState(defaultItem)
   const [selectedModule, setSelectedModule] = useState(allModules)
@@ -741,7 +777,7 @@ export function ModelExplorer({
       ...module.interfaces,
     ]
     const matchingItems = items.filter((item) =>
-      itemMatches(item, deferredQuery, actions)
+      itemMatches(item, deferredQuery, actions, controllers)
     )
     return matchingItems.length === 0 ? [] : [{ items: matchingItems, module }]
   })
@@ -762,6 +798,7 @@ export function ModelExplorer({
         { label: "interfaces", value: interfaces.length },
         { label: "relationships", value: catalog.length },
         { label: "actions", value: actions.length },
+        { label: "controllers", value: controllers.length },
       ]}
       sidebarLabel="Domain model definitions"
       sidebar={

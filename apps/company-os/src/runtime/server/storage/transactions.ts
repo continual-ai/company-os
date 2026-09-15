@@ -117,6 +117,9 @@ const make = Effect.gen(function* () {
               yield* sql`set transaction isolation level ${sql.literal(options.isolationLevel)}`
             if (options?.accessMode)
               yield* sql`set transaction ${sql.literal(options.accessMode)}`
+            // Each writer owns its graph validation even inside an outer SQL migration transaction.
+            if (options?.accessMode !== "read only")
+              yield* sql`set constraints all deferred`
             const value = yield* body(database)
             // Validate deferred graph constraints as typed failures before the driver commits.
             yield* sql`set constraints all immediate`

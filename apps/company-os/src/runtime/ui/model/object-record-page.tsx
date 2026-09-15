@@ -21,6 +21,7 @@ import {
   tableRecord,
   type ModelObject,
 } from "#/runtime/ui/model/object-client.ts"
+import { ObjectControllers } from "#/runtime/ui/model/object-controllers.tsx"
 import { objectFormProperties } from "#/runtime/ui/model/object-form.ts"
 import { ObjectPropertiesCard } from "#/runtime/ui/model/object-properties-card.tsx"
 import { objectPropertyValue } from "#/runtime/ui/model/object-property-value.tsx"
@@ -196,8 +197,15 @@ export function ObjectRecordPage({
       !(hasStatusControl && id === statusField) &&
       !narrative.includes(id)
   )
+  const hasControllers = Object.values(runtime.model.modules).some((module) =>
+    module.controllers.some(
+      (controller) =>
+        controller.scope === "object" && controller.objectType === object.id
+    )
+  )
   const requested = tab ?? localTab
   const active =
+    (hasControllers && requested === "controllers") ||
     related.some(({ key }) => key === requested) ||
     customTabs.some(({ id }) => id === requested)
       ? requested
@@ -337,6 +345,14 @@ export function ObjectRecordPage({
           )}
         </TabsContent>
       ))}
+      {hasControllers && (
+        <TabsContent
+          value="controllers"
+          className="min-h-0 flex-1 overflow-auto"
+        >
+          <ObjectControllers objectType={object.id} recordId={recordId} />
+        </TabsContent>
+      )}
       {customTabs.map(({ id, component: Component }) => (
         <TabsContent
           key={id}
@@ -384,6 +400,9 @@ export function ObjectRecordPage({
                       <RelationshipCount count={totals.get(key)} />
                     </TabsTrigger>
                   ))}
+                  {hasControllers && (
+                    <TabsTrigger value="controllers">Controllers</TabsTrigger>
+                  )}
                   {customTabs.map(({ id, label }) => (
                     <TabsTrigger key={id} value={id}>
                       {label}

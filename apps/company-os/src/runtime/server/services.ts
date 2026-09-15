@@ -2,12 +2,13 @@ import type { PgClient } from "@effect/sql-pg"
 import { Layer } from "effect"
 
 import { BlobStorage } from "#/runtime/assets/server/blob-storage.ts"
-import type { ModelCatalog, ModuleDefinition } from "#/runtime/model/index.ts"
+import type { ModelCatalog } from "#/runtime/model/index.ts"
 import { foundationLayer } from "#/runtime/server/foundation.ts"
-import {
-  OperationExecutor,
-  type ModuleRequirements,
-} from "#/runtime/server/operation-executor.ts"
+import type {
+  ModuleServer,
+  ModuleRequirements,
+} from "#/runtime/server/module-server.ts"
+import { OperationExecutor } from "#/runtime/server/operation-executor.ts"
 import type { PageTokens } from "#/runtime/server/page-tokens.ts"
 
 export interface ServicesInfrastructure {
@@ -17,13 +18,7 @@ export interface ServicesInfrastructure {
 }
 
 /** Composes explicit module providers with one shared foundation. */
-export function makeServicesLayer<
-  const C extends ReadonlyArray<{
-    readonly module: ModuleDefinition
-    readonly implementations: object
-    readonly layer: Layer.Layer<never, unknown, unknown>
-  }>,
->(
+export function makeServicesLayer<const C extends ReadonlyArray<ModuleServer>>(
   model: ModelCatalog,
   modules: C &
     ([
@@ -36,7 +31,7 @@ export function makeServicesLayer<
     ] extends [never]
       ? unknown
       : {
-          readonly missingOperationServices: Exclude<
+          readonly missingModuleServices: Exclude<
             ModuleRequirements<C>,
             | Layer.Success<ReturnType<typeof foundationLayer>>
             | BlobStorage

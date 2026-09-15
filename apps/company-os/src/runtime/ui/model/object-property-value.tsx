@@ -4,6 +4,7 @@ import { Score } from "@company/ui/score"
 import type { ReactNode } from "react"
 
 import { AssetPreviews } from "#/runtime/assets/ui/asset-preview.tsx"
+import type { AnySchema } from "#/runtime/model/index.ts"
 import { ObjectChoiceBadge } from "#/runtime/ui/model/object-choice-badge.tsx"
 import {
   modelObjectProperty,
@@ -50,6 +51,8 @@ export function objectPropertyValue(
     )
   }
   if (schema === undefined) return objectTableValueText(value)
+  if (schema.kind === "struct")
+    return <StructuredValue schema={schema} value={value} />
   if (
     schema.kind === "string" &&
     schema.format === "markdown" &&
@@ -163,4 +166,48 @@ export function objectPropertyValue(
     )
   }
   return objectTableValueText(value)
+}
+
+function StructuredValue({
+  schema,
+  value,
+}: {
+  readonly schema: AnySchema
+  readonly value: unknown
+}): ReactNode {
+  if (value === null || value === undefined)
+    return <span className="text-muted-foreground">Empty</span>
+  if (
+    schema.kind === "struct" &&
+    typeof value === "object" &&
+    !Array.isArray(value)
+  ) {
+    return (
+      <dl className="space-y-2 text-sm">
+        {Object.entries(schema.properties).map(([key, field]) => (
+          <div key={key}>
+            <dt className="text-muted-foreground">{field.label ?? key}</dt>
+            <dd className="break-words">
+              <StructuredValue schema={field} value={Reflect.get(value, key)} />
+            </dd>
+          </div>
+        ))}
+      </dl>
+    )
+  }
+  if (schema.kind === "array" && Array.isArray(value)) {
+    return (
+      <ul className="list-inside list-disc">
+        {value.map((item, index) => (
+          <li key={index}>
+            <StructuredValue schema={schema.items} value={item} />
+          </li>
+        ))}
+      </ul>
+    )
+  }
+  if (typeof value === "boolean") return value ? "Yes" : "No"
+  if (typeof value === "string" || typeof value === "number")
+    return String(value)
+  return JSON.stringify(value)
 }

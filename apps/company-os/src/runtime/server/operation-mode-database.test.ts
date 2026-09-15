@@ -116,7 +116,9 @@ const probe = Effect.fn(function* (input: QueryInput<typeof Probe>) {
   }
   return { count: 1 }
 })
-const server = defineModuleServer(Extension, { makeItem, item: { probe } })
+const server = defineModuleServer(Extension, {
+  operations: { makeItem, item: { probe } },
+})
 const fixture = testFoundation(model, { servers: [server] })
 fixture.test(
   "read-only Queries reject trusted writes, nested Actions, events and raw SQL while Actions remain atomic",

@@ -165,6 +165,44 @@ export const seedRuns = defineTable<{
   }
 )
 
+/** Consumer progress and diagnostic projections; Effect Cluster owns durable mailbox delivery. */
+export const controllerConsumers = defineTable<{
+  controllerId: string
+  cursor: string
+}>(
+  "controller_consumers",
+  { controllerId: { type: "text" }, cursor: { type: "text" } },
+  { constraints: ['primary key ("controller_id")'] }
+)
+export const controllerInstances = defineTable<{
+  controllerId: string
+  key: string
+  state: string
+  attempts: number
+  lastStartedAt: string | null
+  lastSucceededAt: string | null
+  requeueAt: string | null
+  lastError: string | null
+}>(
+  "controller_instances",
+  {
+    controllerId: { type: "text" },
+    key: { type: "text" },
+    state: { type: "text" },
+    attempts: { type: "integer", default: "0" },
+    lastStartedAt: { type: "timestamp with time zone", nullable: true },
+    lastSucceededAt: { type: "timestamp with time zone", nullable: true },
+    requeueAt: { type: "timestamp with time zone", nullable: true },
+    lastError: { type: "text", nullable: true },
+  },
+  {
+    constraints: [
+      'primary key ("controller_id", "key")',
+      `check ("state" in ('pending', 'running', 'idle', 'error'))`,
+    ],
+  }
+)
+
 /** Desired current DDL. Migration history and required bootstrap data have separate owners. */
 export const infrastructureStatements = [
   schemaSection("Application infrastructure"),
@@ -185,4 +223,6 @@ $$`,
   'create index "record_search_document_idx" on "record_search" using gin ("document")',
   ...searchIndexState.ddl,
   ...seedRuns.ddl,
+  ...controllerConsumers.ddl,
+  ...controllerInstances.ddl,
 ]

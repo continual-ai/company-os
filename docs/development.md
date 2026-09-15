@@ -101,8 +101,13 @@ semantic client retain them in the explicit input. `schema.id` accepts canonical
 aliases on input and emits canonical IDs on output. Module names do not appear in public operation
 names. Composition rejects duplicate names and collisions with standard methods or Link traversals.
 
-`defineModuleServer` binds methods in the same shape as the client: `{ ticket: { escalate } }`,
-or `{ reconcile }` for a global operation. Actions run in a transaction. Queries run read-only and
+`defineModuleServer(Module, { operations, controllers, layer })` is the module's server entrypoint.
+Its `operations` map mirrors the client: `{ ticket: { escalate } }`, or `{ reconcile }` for a global
+operation. Its `controllers` array binds controller definitions to their handlers. Omit unused
+contributions; `layer` optionally supplies Effect services used by either kind of handler. Register
+this one entrypoint in `app.server.ts`'s `serverModules` array. The shared model remains browser-safe;
+server handlers retain their inferred Effect service requirements, checked when composing the app.
+Actions run in a transaction. Queries run read-only and
 cannot call writers or Actions, or join a write transaction. Within an Action, read through `Database.repository(Object)`
 in the same transaction. Business operations still own admission checks, validation, invariants,
 and external-effect failure handling; read-only execution does not sandbox external services.
@@ -190,3 +195,125 @@ changes incompatibly. Reads are SSR-safe, invalid values use the default, and bl
 back to the current session. Resize controls keep live interaction state and save only on completion,
 keyboard adjustment, or explicit reset. Viewport constraints must not overwrite the saved preference.
 Keep credentials and authoritative business data out of this store.
+
+### Controllers
+
+A controller keeps a target in the desired state. Its portable declaration belongs in the owning
+module's `controllers` array. The matching file under `server/` implements it, and `server/index.ts`
+collects controllers alongside custom operations in the module's single server contribution.
+
+```ts
+// modules/product/model/issue-greeting.ts
+export const IssueGreeting = defineController({
+  id: "issue-greeting",
+  object: Issue,
+  schedule: { cron: "*/15 * * * *", timeZone: "UTC" },
+  minInterval: "1 second",
+  name: "Issue greeting",
+  description: "Ensures each issue has a Hello world note.",
+  watch: ["noteSubjects.linked", "noteSubjects.unlinked", "note.updated"],
+})
+
+// modules/product/server/issue-greeting.ts
+export const issueGreeting = defineControllerServer(IssueGreeting, {
+  reconcile: Effect.fn(function* (issueId) {
+    // Read current records and make an idempotent change through Database.
+    // Returning completes this attempt; failures are retried.
+    // Optionally return { requeueAfter: "10 minutes" } to check this key again.
+  }),
+})
+
+// modules/product/server/index.ts
+export const ProductServer = defineModuleServer(ProductModule, {
+  controllers: [issueGreeting],
+})
+```
+
+`object: Issue` reconciles each issue ID independently. `collection: Issue` reconciles once for the
+whole installation, with `reconcile()` taking no argument. These targets determine scheduling and
+where controllers appear in the UI; either controller can read or change other objects. Object handlers
+and `queue.add` use the target's branded record ID type. Collection handlers and queues take no key.
+
+The target's created/updated/deleted events are watched automatically. `watch` adds exact journal
+event types. For object controllers, target IDs in each event's subjects are queued automatically.
+An optional `onEvent(event, { queue })` can read other records and call `queue.add(issueId)` to route
+additional keys; collection controllers use `queue.add()`. This hook routes wakeups and may be
+replayed. Keep business work in `reconcile`. The greeting implementation demonstrates a note update
+being mapped back to its issues.
+
+`schedule: { cron, timeZone? }` adds periodic rescans alongside watches. The time zone defaults to UTC.
+ClusterCron persists scheduled ticks and coordinates them across replicas. A tick enqueues every current
+object key, or the single collection key; it never calls reconciliation directly. Ticks skip disabled
+modules. After downtime, an eligible overdue tick can rescan current state, then scheduling continues
+from now without replaying every missed tick. ClusterCron skips ticks more than a day old.
+
+`minInterval` optionally sets minimum spacing between attempts for each key, including event, cron,
+manual, delayed, and retry wakeups. Omission adds no throttle. It uses the persisted last-start time,
+so restarts preserve the limit. Events arriving during the wait coalesce into the next pass; they do
+not extend the deadline as a debounce would. Failure backoff still applies independently.
+
+A successful reconciliation may return `{ requeueAfter: "10 minutes" }`. This persists a delayed
+wakeup for that key before acknowledging its current work. An event can wake the key sooner, subject
+to `minInterval`. Each successful pass replaces its previous delayed follow-up; returning nothing
+cancels it. Obsolete delayed messages are acknowledged without running reconciliation. Durations must
+be positive and finite. Timers express earliest eligibility, not an exact execution guarantee.
+
+Events wake reconciliation; current durable records determine what to do. A handler may read event
+history as context, but must not depend on receiving every transition in a particular attempt.
+Effect Cluster stores wakeups in PostgreSQL and owns keyed execution. An attempt drains the current
+batch; wakeups arriving during that attempt remain for another pass. Failures retry with capped
+exponential backoff. Journal progress advances only after wakeups are durably submitted. First
+registration captures a journal cursor, scans current targets, and saves that cursor after the scan
+is durably queued. Changes during the scan are then consumed from that boundary. An interrupted
+initial scan may repeat; process restarts and module reactivation resume the saved cursor and pending
+work without rescanning. Journal polling covers missed notifications. Disabling a module pauses new
+attempts while preserving its pending work and cursor, so changes made while disabled are consumed
+on reactivation. Use manual reconciliation when an explicit rescan is needed.
+
+Delivery is at least once. Use transactions and model constraints for database effects, and provider
+idempotency keys for external effects; a process can fail after changing something but before
+acknowledging its work. Different controllers have independent queues, so shared invariants still
+need database constraints or explicit transactions. Agent calls can later be ordinary Effect services
+inside reconciliation; this first prototype is deterministic.
+
+Definitions stay in code. System bootstrap synchronizes their metadata into read-only Platform
+Controller records, linked to their owning Module. Standard list/get, links, and pages expose that
+registry even when a module is disabled. Definitions are publicly read-only; only `paused` is editable through standard update. Bootstrap updates
+changed definitions without resetting journal progress; removing a definition removes its registry
+record and internal diagnostics.
+
+Registry records have generated canonical IDs. The stable name
+`system:controller:issue-greeting` is an alias accepted by the normal record APIs.
+Internal registration uses `Database.repository(Controller).upsert({ alias, values, links })`:
+concurrent calls for an alias converge on one record, supplied values and relationships are
+validated normally, and omitted fields and other aliases are preserved. An unchanged upsert
+produces no write or event. This repository operation is internal; it does not enable public CRUD.
+
+`client.controller.status({ id, key? })` serves HTTP, MCP, and the Controllers tabs. Without a key it
+aggregates diagnostic state; with a key it reports that key, including `notStarted` if unseen.
+`requeueAt` reports the requested delayed follow-up (the earliest across keys for aggregate status);
+actual execution also depends on throttling, backoff, and availability.
+Both status and reconciliation accept target aliases and resolve them to canonical queue keys.
+`enabled` derives from module activation; `paused` is independent operator configuration. State is the last recorded observation, not a
+host-health signal. Attempts include retries; individual run history is not retained. Per-key state,
+consumer cursors, and Cluster queues remain internal. See
+[deployment](deployment.md#controller-hosting) for host requirements.
+
+`client.controller.reconcile({ id, key? })` durably requests another pass through the same keyed
+queue. Omit `key` to scan all current records of an object controller or wake the single collection
+key. The Controller detail page and object Controllers tabs provide the same action. Acceptance
+commits an attributed `controller.reconciliationRequested` event against the Controller record; it
+does not wait for execution and works while the host is stopped. Disabled controllers reject new
+manual requests. Requests may coalesce. To check idempotency, wait for completion, trigger again
+without changing business data, and verify that the result stays the same. The runtime guarantees
+scheduling, not idempotent effects.
+
+`client.controller.update({ id, paused: true })` pauses the whole controller. Admission is serialized
+with pause updates: an admitted attempt may finish, but later attempts wait. Watches keep recording
+pending work while paused; cron and manual requests use that same queue. Resume with `paused: false`
+processes retained work without an extra scan. Registration and process restarts preserve pause state.
+The UI derives applicable definitions from the model and exposes Run now and controller-wide pause/resume.
+
+Module registry records also use generated IDs and stable aliases (`system:module:product`).
+Registration uses the normal repository upsert and preserves existing activation choices. Controller-to-module
+Links resolve these aliases rather than constructing primary keys.

@@ -3,9 +3,8 @@ import { Config, Layer, Redacted } from "effect"
 
 import { Model } from "#/app.model.ts"
 import { EventNotifications } from "#/runtime/server/events/event-notifications.ts"
-import { ModelContext } from "#/runtime/server/model-context.ts"
+import { foundationLayer } from "#/runtime/server/foundation.ts"
 import { pgTypes } from "#/runtime/server/storage/index.ts"
-import { SqlDatabase } from "#/runtime/server/storage/transactions.ts"
 
 const SCHEMA_NAME_PATTERN = /^[a-z_][a-z0-9_]*$/
 
@@ -69,10 +68,7 @@ export const sqlLayer = PgClient.layerConfig({
 })
 
 /** The application-typed Effect SQL database backed by the configured PostgreSQL client. */
-export const databaseLayer = SqlDatabase.layer.pipe(
-  Layer.provideMerge(ModelContext.layer(Model)),
-  Layer.provide(sqlLayer)
-)
+export const databaseLayer = foundationLayer(Model, { sql: sqlLayer })
 
 export const eventNotificationsLayer = EventNotifications.layer.pipe(
   Layer.provide(sqlLayer)

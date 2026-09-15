@@ -4,7 +4,9 @@ import { pipelineSummary } from "#/modules/sales/server/pipeline-summary.ts"
 import { defineModuleServer } from "#/runtime/server/index.ts"
 
 export const SalesServer = defineModuleServer(SalesModule, {
-  lead: { convert: convertLead },
-  opportunity: { pipelineSummary },
+  operations: {
+    lead: { convert: convertLead },
+    opportunity: { pipelineSummary },
+  },
 })
 export { convertLead, pipelineSummary }

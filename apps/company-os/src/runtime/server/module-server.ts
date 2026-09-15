@@ -1,6 +1,8 @@
 import { type Effect, Layer } from "effect"
 
 import type { ModuleDefinition } from "#/runtime/model/index.ts"
+import type { ControllerServer } from "#/runtime/server/controllers/definition.ts"
+import type { CurrentInvocation } from "#/runtime/server/invocation.ts"
 import type { CustomOperationService } from "#/runtime/server/operation-handlers.ts"
 
 type Operations<M extends ModuleDefinition> =
@@ -36,39 +38,73 @@ export type OperationRequirements<A> = A extends unknown
     }[keyof A]
   : never
 
-/** Registers named Effect functions. Providers acquire their dependencies separately. */
-export function defineModuleServer<
-  M extends ModuleDefinition,
-  A extends ModuleHandlers<NoInfer<M>>,
->(
-  module: M,
-  implementations: A
-): {
-  readonly module: M
-  readonly implementations: A
-  readonly layer: Layer.Layer<never>
+/** Shared server composition shape; concrete registrations retain their inferred dependencies. */
+export interface ModuleServer {
+  readonly module: ModuleDefinition
+  readonly operations: object
+  readonly controllers: ReadonlyArray<ControllerServer<unknown>>
+  readonly layer: Layer.Layer<never, unknown, unknown>
 }
+
+type ControllerRequirements<C> = C extends ControllerServer<infer R> ? R : never
+
+export type ModuleRequirements<C extends ReadonlyArray<ModuleServer>> = Exclude<
+  | OperationRequirements<C[number]["operations"]>
+  | ControllerRequirements<C[number]["controllers"][number]>,
+  CurrentInvocation
+>
+
+/** Bind shared contracts to server handlers and optional Effect service providers. */
 export function defineModuleServer<
   M extends ModuleDefinition,
-  A extends ModuleHandlers<NoInfer<M>>,
-  LR,
-  LE,
-  LI,
+  A extends ModuleHandlers<NoInfer<M>> = ModuleHandlers<M>,
+  const C extends ReadonlyArray<ControllerServer<unknown>> = readonly [],
+  LR = never,
+  LE = never,
+  LI = never,
 >(
   module: M,
-  implementations: A,
-  layer: Layer.Layer<LR, LE, LI>
+  implementation: {
+    readonly controllers?: C
+    readonly layer?: Layer.Layer<LR, LE, LI>
+  } & ([Operations<M>] extends [never]
+    ? { readonly operations?: A }
+    : { readonly operations: A })
 ): {
   readonly module: M
-  readonly implementations: A
+  readonly operations: A
+  readonly controllers: C
   readonly layer: Layer.Layer<LR, LE, LI>
 }
-export function defineModuleServer<
-  M extends ModuleDefinition,
-  A extends ModuleHandlers<NoInfer<M>>,
-  LR,
-  LE,
-  LI,
->(module: M, implementations: A, layer?: Layer.Layer<LR, LE, LI>) {
-  return { module, implementations, layer: layer ?? Layer.empty }
+export function defineModuleServer(
+  module: ModuleDefinition,
+  implementation: {
+    readonly operations?: object
+    readonly controllers?: ReadonlyArray<ControllerServer<unknown>>
+    readonly layer?: Layer.Layer<never, unknown, unknown>
+  }
+) {
+  const controllers = implementation.controllers ?? []
+  const declared = new Set(module.controllers)
+  for (const server of controllers) {
+    if (!declared.delete(server.definition))
+      throw new Error(
+        `Controller '${server.definition.id}' is duplicated or not declared by module '${module.id}'.`
+      )
+  }
+  for (const definition of declared)
+    throw new Error(
+      `Controller '${definition.id}' has no implementation in module '${module.id}'.`
+    )
+  if (
+    !implementation.operations &&
+    (module.actions.length || module.queries.length)
+  )
+    throw new Error(`Module '${module.id}' requires operation implementations.`)
+  return {
+    module,
+    operations: implementation.operations ?? {},
+    controllers,
+    layer: implementation.layer ?? Layer.empty,
+  }
 }

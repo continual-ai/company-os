@@ -10,11 +10,20 @@ import {
   CompleteAssetUpload,
 } from "#/runtime/assets/model/asset.ts"
 import { defineModule, defineModel } from "#/runtime/model/index.ts"
+import { ControllerStatus } from "#/runtime/platform/model/controller-status.ts"
+import {
+  Controller,
+  ControllerModule,
+} from "#/runtime/platform/model/controller.ts"
 import {
   ModuleSetting,
   SetModuleEnabled,
   ModuleCatalog,
 } from "#/runtime/platform/model/module-setting.ts"
+import {
+  ReconcileController,
+  ControllerReconciliationRequested,
+} from "#/runtime/platform/model/reconcile-controller.ts"
 
 export const PlatformModule = defineModule({
   maturity: "alpha",
@@ -25,10 +34,24 @@ export const PlatformModule = defineModule({
   id: "platform",
   name: "Platform",
   interfaces: [Identity],
-  objects: [User, ServiceAccount, AnonymousActor, Asset, ModuleSetting],
+  objects: [
+    User,
+    ServiceAccount,
+    AnonymousActor,
+    Asset,
+    ModuleSetting,
+    Controller,
+  ],
   description: "Core identities, files, and application capabilities.",
-  queries: [ModuleCatalog],
-  actions: [BeginAssetUpload, CompleteAssetUpload, SetModuleEnabled],
+  links: [ControllerModule],
+  queries: [ModuleCatalog, ControllerStatus],
+  actions: [
+    BeginAssetUpload,
+    CompleteAssetUpload,
+    SetModuleEnabled,
+    ReconcileController,
+  ],
+  events: [ControllerReconciliationRequested],
 })
 export { ModuleSetting }
 export const requiredModuleIds = ["platform"] as const

@@ -66,6 +66,7 @@ const ObjectCollectionViewStateSchema = Schema.Struct({
 })
 
 const ObjectCollectionSearchSchema = Schema.Struct({
+  tab: Schema.optional(Schema.Literal("controllers")),
   state: Schema.optional(ObjectCollectionViewStateSchema),
   view: Schema.optional(Schema.String),
 })

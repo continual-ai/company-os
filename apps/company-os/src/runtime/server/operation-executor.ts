@@ -41,12 +41,10 @@ import { SqlDatabase } from "#/runtime/server/storage/transactions.ts"
 
 type Contribution = {
   readonly module: ModuleDefinition
-  readonly implementations: object
+  readonly operations: object
 }
-export type ModuleRequirements<C extends ReadonlyArray<Contribution>> = Exclude<
-  OperationRequirements<C[number]["implementations"]>,
-  CurrentInvocation
->
+type OperationModuleRequirements<C extends ReadonlyArray<Contribution>> =
+  Exclude<OperationRequirements<C[number]["operations"]>, CurrentInvocation>
 
 type Foundation =
   | Database
@@ -109,7 +107,7 @@ function operationExecutorLayer<
 >(
   model: ModelCatalog,
   contributions: C,
-  services: Layer.Layer<Foundation | ModuleRequirements<C>, E, R>
+  services: Layer.Layer<Foundation | OperationModuleRequirements<C>, E, R>
 ) {
   return Layer.effect(
     OperationExecutor,
@@ -128,9 +126,7 @@ function operationExecutorLayer<
             (operation) => operation.key
           )
         )
-        for (const [id, value] of Object.entries(
-          contribution.implementations
-        )) {
+        for (const [id, value] of Object.entries(contribution.operations)) {
           const entries =
             typeof value === "function"
               ? [[id, value] as const]
@@ -155,7 +151,7 @@ function operationExecutorLayer<
             ) => Effect.Effect<
               unknown,
               unknown,
-              ModuleRequirements<C> | CurrentInvocation
+              OperationModuleRequirements<C> | CurrentInvocation
             >
             customHandlers.set(key, (input) =>
               invoke(input).pipe(Effect.provideContext(context))

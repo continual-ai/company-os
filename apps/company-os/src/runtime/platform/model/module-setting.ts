@@ -1,5 +1,6 @@
 import { moduleMaturities } from "#/runtime/model/definition/module.ts"
 import {
+  RecordAlias,
   defineObject,
   schema,
   standardErrors,
@@ -70,3 +71,7 @@ export const ModuleCatalog = defineQuery({
     ),
   },
 })
+
+/** Stable registration identity, independent of the generated record ID. */
+export const moduleAlias = (moduleId: string) =>
+  RecordAlias(`system:module:${moduleId}`)

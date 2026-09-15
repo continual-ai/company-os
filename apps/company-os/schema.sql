@@ -30,6 +30,7 @@ create table "objects" (
     'anonymousActor',
     'asset',
     'moduleSetting',
+    'controller',
     'note',
     'account',
     'contact',
@@ -165,6 +166,28 @@ create table "module_settings" (
 );
 
 create unique index "module_settings_module_unique" on "module_settings" ("module_id");
+
+-- Controller (controller)
+-- A code-defined operation that continuously reconciles records toward a
+-- desired state.
+create table "controllers" (
+  "id" text not null,
+  -- Relationship reference; requiredness is checked at transaction commit.
+  "module_id" text,
+  "paused" boolean not null default false,
+  "definition_id" text not null,
+  "name" text not null,
+  "description" text not null,
+  "target_object_type" text not null,
+  "scope" text not null,
+  "watch" text[] not null,
+  "schedule" jsonb,
+  "min_interval" text,
+  primary key ("id"),
+  foreign key ("id") references "objects" ("id") on delete cascade
+);
+
+create unique index "controllers_definition_unique" on "controllers" ("definition_id");
 
 -- ===========================================================================
 -- Domain objects: Notes
@@ -569,6 +592,10 @@ create table "replies" (
 -- ===========================================================================
 -- Association pairs and cardinality constraints.
 
+create view "link_controller_module" as select "id" as forward_id, "module_id" as reverse_id from "controllers" where "module_id" is not null;
+
+create index "controller_module_target_idx" on "controllers" ("module_id");
+
 -- Note subjects (noteSubjects)
 create table "link_note_subjects" (
   -- References notes.id.
@@ -826,6 +853,54 @@ create table "link_opportunity_issues" (
 
 create index "link_opportunity_issues_forward_id_idx" on "link_opportunity_issues" ("forward_id");
 create index "link_opportunity_issues_reverse_id_idx" on "link_opportunity_issues" ("reverse_id");
+
+create function "check_controller_module"(source_id text, side text) returns void language plpgsql as $$
+declare n bigint;
+begin
+  if side = 'forward' and exists (select 1 from "controllers" where id = source_id) then
+    select count(*) into n from "link_controller_module" where "forward_id" = source_id;
+    if n < 1 or false then
+      raise exception 'Link % traversal % requires %..% targets; found %', 'controllerModule', 'module', 1, '1', n
+        using errcode = '23514', constraint = 'controllerModule.module.bounds';
+    end if;
+  end if;
+end $$;
+
+create function "validate_controller_module"() returns trigger language plpgsql as $$
+begin
+  if TG_OP <> 'INSERT' then
+    perform "check_controller_module"(OLD.id, 'forward');
+  end if;
+  if TG_OP <> 'DELETE' then
+    perform "check_controller_module"(NEW.id, 'forward');
+  end if;
+  return null;
+end $$;
+
+create constraint trigger "validate_controller_module" after insert or delete on "controllers" deferrable initially deferred for each row execute function "validate_controller_module"();
+
+create constraint trigger "validate_controller_module_update" after update on "controllers" deferrable initially deferred for each row when (OLD."module_id" is distinct from NEW."module_id") execute function "validate_controller_module"();
+
+create function "lock_controller_module"() returns trigger language plpgsql as $$
+    declare ids text[] := array[]::text[];
+    begin
+      if TG_OP <> 'INSERT' then ids := ids || array[OLD.id]; end if;
+      if TG_OP <> 'DELETE' then ids := ids || array[NEW.id]; end if;
+      perform id from objects where id = any(ids) order by id for update;
+      if TG_OP = 'DELETE' then return OLD; else return NEW; end if;
+    end $$;
+
+create trigger "lock_controller_module" before insert or delete on "controllers" for each row execute function "lock_controller_module"();
+
+create trigger "lock_controller_module_update" before update on "controllers" for each row when (OLD."module_id" is distinct from NEW."module_id") execute function "lock_controller_module"();
+
+create function "require_controller_module_forward"() returns trigger language plpgsql as $$
+begin
+  perform "check_controller_module"(NEW.id, 'forward');
+  return null;
+end $$;
+
+create constraint trigger "require_controller_module_forward" after insert on "controllers" deferrable initially deferred for each row execute function "require_controller_module_forward"();
 
 create function "check_affiliation_contact"(source_id text, side text) returns void language plpgsql as $$
 declare n bigint;
@@ -1422,6 +1497,8 @@ alter table "objects"
   foreign key ("updated_by_id") references "interface_actor" ("id")
   on delete restrict deferrable initially deferred;
 
+alter table "controllers" add constraint "controller_module_target_fk" foreign key ("module_id") references "module_settings" (id) on delete set null deferrable initially deferred;
+
 alter table "accounts" add constraint "account_owner_target_fk" foreign key ("owner_id") references "users" (id) on delete set null deferrable initially deferred;
 
 alter table "affiliations" add constraint "affiliation_contact_target_fk" foreign key ("contact_id") references "contacts" (id) on delete set null deferrable initially deferred;
@@ -1591,4 +1668,23 @@ create table "seed_runs" (
   "parameters" text not null,
   "completed_at" timestamp with time zone not null default now(),
   primary key ("name")
+);
+
+create table "controller_consumers" (
+  "controller_id" text not null,
+  "cursor" text not null,
+  primary key ("controller_id")
+);
+
+create table "controller_instances" (
+  "controller_id" text not null,
+  "key" text not null,
+  "state" text not null,
+  "attempts" integer not null default 0,
+  "last_started_at" timestamp with time zone,
+  "last_succeeded_at" timestamp with time zone,
+  "requeue_at" timestamp with time zone,
+  "last_error" text,
+  primary key ("controller_id", "key"),
+  check ("state" in ('pending', 'running', 'idle', 'error'))
 );

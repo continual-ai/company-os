@@ -1,5 +1,5 @@
 import { getRequest } from "@tanstack/react-start/server"
-import { ConfigProvider, type Effect, Layer, ManagedRuntime } from "effect"
+import { ConfigProvider, Effect, Layer, ManagedRuntime } from "effect"
 
 import { applicationLayer } from "#/app/server/application-layer.ts"
 import { developmentDefaults } from "#/app/server/config.ts"
@@ -12,8 +12,22 @@ function makeApplicationRuntime() {
   const configuration = import.meta.env.DEV
     ? ConfigProvider.layerAdd(developmentDefaults)
     : Layer.empty
+  const controllers = runningInWorkerd()
+    ? Layer.empty
+    : Layer.unwrap(
+        Effect.promise(async () => {
+          await previousRuntimeDisposal
+          return import("#/app/server/controllers.ts")
+        }).pipe(
+          Effect.map(({ controllersLayer }) =>
+            controllersLayer.pipe(Layer.provide(applicationLayer))
+          )
+        )
+      )
   return ManagedRuntime.make(
-    applicationLayer.pipe(Layer.provide(configuration))
+    Layer.merge(applicationLayer, controllers).pipe(
+      Layer.provide(configuration)
+    )
   )
 }
 
@@ -29,8 +43,10 @@ declare global {
 
 // SSR module replacement does not run browser HMR disposal hooks. A new revision
 // releases the old development runtime before constructing services with new identities.
+const previousRuntimeDisposal = import.meta.env.DEV
+  ? globalThis.appDevelopmentRuntime?.dispose()
+  : undefined
 if (import.meta.env.DEV) {
-  void globalThis.appDevelopmentRuntime?.dispose()
   globalThis.appDevelopmentRuntime = undefined
 }
 

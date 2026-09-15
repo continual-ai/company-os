@@ -7,6 +7,16 @@ import {
   SYSTEM_SERVICE_ACCOUNT_ID,
   ANONYMOUS_ACTOR_ID,
 } from "#/runtime/model/system-records.ts"
+import {
+  Controller,
+  controllerAlias,
+} from "#/runtime/platform/model/controller.ts"
+import {
+  ModuleSetting,
+  moduleAlias,
+} from "#/runtime/platform/model/module-setting.ts"
+import { ControllerStorage } from "#/runtime/server/controllers/storage.ts"
+import { Database } from "#/runtime/server/database.ts"
 import { authenticatedInvocation } from "#/runtime/server/invocation-context.ts"
 import { SqlDatabase } from "#/runtime/server/storage/transactions.ts"
 const application = testApplication()
@@ -34,5 +44,61 @@ application.test(
       expect(
         yield* sql`select id from interface_identity where id = ${SYSTEM_SERVICE_ACCOUNT_ID}`
       ).toHaveLength(1)
+    })
+)
+
+application.test(
+  "synchronizes controller definitions and links without resetting execution progress",
+  () =>
+    Effect.gen(function* () {
+      const database = yield* Database
+      const controllers = database.repository(Controller)
+      const id = controllerAlias("issue-greeting")
+      const original = yield* controllers.get({ id })
+      const storage = yield* ControllerStorage
+      yield* storage.saveCursor("issue-greeting", "saved-progress")
+      yield* seedSystem()
+      expect((yield* controllers.get({ id })).etag).toBe(original.etag)
+      yield* controllers.update({ id, name: "Stale metadata", paused: true })
+      const extra = yield* controllers.create({
+        definitionId: "removed-controller",
+        name: "Removed",
+        description: "",
+        targetObjectType: "issue",
+        scope: "object",
+        watch: [],
+        links: { module: moduleAlias("product") },
+      })
+      yield* storage.saveCursor("removed-controller", "old-progress")
+      yield* seedSystem()
+      expect(yield* controllers.get({ id })).toMatchObject({
+        name: "Issue greeting",
+        paused: true,
+      })
+      expect(yield* storage.cursor("issue-greeting")).toBe("saved-progress")
+      expect(yield* storage.cursor("removed-controller")).toBeUndefined()
+      expect(
+        yield* controllers.get({ id: extra.id }).pipe(Effect.flip)
+      ).toMatchObject({ _tag: "ObjectNotFound" })
+    }).pipe(Effect.provide(ControllerStorage.layer))
+)
+
+application.test(
+  "module registration uses stable aliases and preserves activation and record identity",
+  () =>
+    Effect.gen(function* () {
+      const modules = (yield* Database).repository(ModuleSetting)
+      const id = moduleAlias("product")
+      const original = yield* modules.get({ id })
+      expect(original.id).toMatch(/^module_setting_[0-9a-z]{26}$/)
+      expect(original.aliases).toContain(id)
+      yield* modules.update({ id, enabled: false })
+      const disabled = yield* modules.get({ id })
+      yield* Effect.all([seedSystem(), seedSystem()], { concurrency: 2 })
+      expect(yield* modules.get({ id })).toMatchObject({
+        id: original.id,
+        enabled: false,
+        etag: disabled.etag,
+      })
     })
 )

@@ -48,3 +48,23 @@ and configure a trusted identity boundary. Keep a restore
 point for retained data; an app rollback does not restore a database. Verify `/health` and an
 authenticated read and write after deployment. Satellites set
 `COMPANY_OS_URL` to the central app and forward verified identity headers.
+
+## Controller hosting
+
+The controller prototype runs inside the long-lived Node web process. It starts with the application's
+first service request and stays alive for that process's lifetime; it does not require a second worker
+command. Effect Cluster uses the application's PostgreSQL connection for persisted messages and runner
+coordination, and initializes its own `cluster_*` tables. Company OS projects the consumer-progress and
+execution-state tables into `schema.sql`.
+
+The internal runner HTTP listener defaults to `localhost:34431`. For multiple Node replicas, configure
+`CONTROLLERS_HOST` to each replica's unique, mutually reachable hostname, `CONTROLLERS_PORT` to its
+runner port, and optionally `CONTROLLERS_LISTEN_HOST` to its bind address (for example `0.0.0.0`).
+All replicas share the same database/schema and controller definitions. The runner listener is an
+internal trusted-network endpoint: keep it private. The public web port is independent.
+
+Request-scoped workerd deployments, including the current Continual hosting adapter, do **not** run
+the embedded controller host. They can expose definitions and recorded state, but 24/7 reconciliation
+requires a long-lived host. Do not interpret an old `Idle` or `Running` observation as proof a host is
+currently alive. The prototype does not yet supply a workerd alarm/queue adapter or a message-retention
+policy; plan those before operating this runtime indefinitely in production.

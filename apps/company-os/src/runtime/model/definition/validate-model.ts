@@ -325,9 +325,18 @@ export function moduleDependencies(
 ): ReadonlyArray<ModuleDependency> {
   const typeOwners = new Map<string, string>()
   const linkOwners = new Map<string, string>()
+  const eventOwners = new Map<string, string>()
   for (const candidate of modules) {
-    for (const object of candidate.objects)
+    for (const object of candidate.objects) {
       typeOwners.set(object.id, candidate.id)
+      for (const suffix of ["created", "updated", "deleted"])
+        eventOwners.set(`${object.id}.${suffix}`, candidate.id)
+    }
+    for (const link of candidate.links)
+      for (const suffix of ["linked", "unlinked"])
+        eventOwners.set(`${link.id}.${suffix}`, candidate.id)
+    for (const event of candidate.events)
+      eventOwners.set(event.type, candidate.id)
     for (const item of candidate.interfaces)
       typeOwners.set(item.id, candidate.id)
     for (const link of candidate.links) linkOwners.set(link.id, candidate.id)
@@ -350,6 +359,19 @@ export function moduleDependencies(
     ]
     for (const typeId of references)
       depend(typeOwners, typeId, `object '${object.id}' references '${typeId}'`)
+  }
+  for (const controller of module.controllers) {
+    depend(
+      typeOwners,
+      controller.objectType,
+      `controller '${controller.id}' references '${controller.objectType}'`
+    )
+    for (const type of controller.watch)
+      depend(
+        eventOwners,
+        type,
+        `controller '${controller.id}' watches '${type}'`
+      )
   }
   for (const operation of [...module.actions, ...module.queries]) {
     const types = [
@@ -398,6 +420,33 @@ function assertOperationsResolvable({
     ...objects.map((o) => o.id),
     ...interfaces.map((i) => i.id),
   ])
+  const eventTypes = new Set([
+    ...objects.flatMap((object) =>
+      ["created", "updated", "deleted"].map(
+        (suffix) => `${object.id}.${suffix}`
+      )
+    ),
+    ...links.flatMap((link) =>
+      ["linked", "unlinked"].map((suffix) => `${link.id}.${suffix}`)
+    ),
+    ...modules.flatMap((module) => module.events.map((event) => event.type)),
+  ])
+  const controllerIds = new Set<string>()
+  for (const module of modules)
+    for (const controller of module.controllers) {
+      if (controllerIds.has(controller.id))
+        throw new Error(`Duplicate controller '${controller.id}'.`)
+      controllerIds.add(controller.id)
+      for (const type of controller.watch)
+        if (!eventTypes.has(type))
+          throw new Error(
+            `Controller '${controller.id}' watches unknown event '${type}'.`
+          )
+      if (!objects.some((object) => object.id === controller.objectType))
+        throw new Error(
+          `Controller '${controller.id}' targets an unregistered object '${controller.objectType}'.`
+        )
+    }
   const keys = new Set<string>()
   for (const module of modules)
     for (const operation of [...module.actions, ...module.queries]) {
