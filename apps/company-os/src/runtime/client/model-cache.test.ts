@@ -257,3 +257,61 @@ it("refreshes other queries while a report is still running", async () => {
     dispose()
   }
 })
+
+it("refreshing controller status cancels an obsolete poll without exposing a cancellation error", async () => {
+  const { queryClient: cache, dispose } = createModelDataClient()
+  const errors: unknown[] = []
+  let calls = 0
+  let aborted = false
+  let fail = false
+  const query = modelQuery(
+    ["controller"],
+    "status",
+    { id: "controller_1" },
+    async (signal) => {
+      calls++
+      if (fail) throw new Error("Status unavailable")
+      if (calls === 2) {
+        return new Promise<string>((_resolve, reject) => {
+          signal.addEventListener(
+            "abort",
+            () => {
+              aborted = true
+              reject(signal.reason)
+            },
+            { once: true }
+          )
+        })
+      }
+      return calls === 1 ? "idle" : "pending"
+    },
+    true
+  )
+  await cache.fetchQuery(query)
+  const observer = new QueryObserver(cache, query)
+  const unsubscribe = observer.subscribe((result) => {
+    if (result.isError) errors.push(result.error)
+  })
+  try {
+    const poll = observer.refetch()
+    await vi.waitFor(() => expect(calls).toBe(2))
+    await invalidateModelQueries(cache, ["controller"])
+    await poll
+    expect(aborted).toBe(true)
+    expect(observer.getCurrentResult()).toMatchObject({
+      data: "pending",
+      status: "success",
+      fetchStatus: "idle",
+    })
+    expect(errors).toEqual([])
+    fail = true
+    await invalidateModelQueries(cache, ["controller"])
+    expect(observer.getCurrentResult()).toMatchObject({
+      status: "error",
+      error: new Error("Status unavailable"),
+    })
+  } finally {
+    unsubscribe()
+    dispose()
+  }
+})

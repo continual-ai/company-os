@@ -79,7 +79,8 @@ export async function invalidateModelQueries(
               const exact = {
                 predicate: (candidate: Query) => candidate === query,
               }
-              await cache.cancelQueries(exact, { revert: false })
+              // Cancellation replaces an obsolete read; keep its last settled state until refresh completes.
+              await cache.cancelQueries(exact)
               if (generation !== cacheGeneration(cache)) return
               await cache.invalidateQueries(exact)
             }
