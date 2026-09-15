@@ -1,3 +1,5 @@
+import { isDeepStrictEqual } from "node:util"
+
 import { Effect, Schema } from "effect"
 import { typeid } from "typeid-js"
 
@@ -28,6 +30,7 @@ import {
   MAX_BATCH_DELETE_SIZE,
   MAX_BATCH_GET_SIZE,
   RecordId,
+  RecordAlias,
   type ListRequest,
   type ObjectBatchDeleteInput,
   type ObjectBatchGetInput,
@@ -83,7 +86,8 @@ function validateBatchSize(
 
 export function makeRepository<const O extends ObjectType>(object: O) {
   return Effect.gen(function* () {
-    const { model } = yield* ModelContext
+    const context = yield* ModelContext
+    const { model } = context
     const hydration = yield* makeRecordHydration
     const identifiers = yield* RecordIdentifiers
     const repositories = yield* RecordStore
@@ -231,7 +235,8 @@ export function makeRepository<const O extends ObjectType>(object: O) {
 
     const update = Effect.fn(`${object.id}.update`)(
       function* (
-        input: ObjectWriterUpdateInput<O> & { readonly links?: LinkUpdates }
+        input: ObjectWriterUpdateInput<O> & { readonly links?: LinkUpdates },
+        skipUnchanged = false
       ) {
         yield* requireWritableOperation
         const { id: identifier, links = {}, ...changes } = input
@@ -258,6 +263,17 @@ export function makeRepository<const O extends ObjectType>(object: O) {
           resolveAliases
         )
         yield* assertImmutableFields(object, current, canonical)
+        if (
+          skipUnchanged &&
+          Object.entries(canonical).every(
+            ([key, value]) =>
+              value === undefined ||
+              isDeepStrictEqual(Reflect.get(current, key), value)
+          )
+        ) {
+          yield* plan.apply()
+          return yield* repository.get(id)
+        }
         const record = yield* repository.update({
           ...canonical,
           etag: requestedEtag ?? current.etag,
@@ -266,6 +282,44 @@ export function makeRepository<const O extends ObjectType>(object: O) {
         })
         yield* plan.apply(record.id)
         return yield* repository.get(record.id)
+      },
+      (effect) => database.transaction(() => effect)
+    )
+
+    const upsert = Effect.fn(`${object.id}.upsert`)(
+      function* (input: {
+        readonly alias: RecordAlias
+        readonly values: ObjectCreateInput<O> &
+          Partial<ObjectUpdateValues<O>> & { readonly aliases?: never }
+        readonly links?: InitialLinks
+      }) {
+        yield* requireWritableOperation
+        const alias = RecordAlias(input.alias)
+        const values: object = input.values
+        // The lock is global to the alias, including callers targeting different object types.
+        yield* database.sql`select pg_advisory_xact_lock(hashtextextended(${alias}, 0))`
+        const [existing] = yield* database.sql<{
+          id: string
+        }>`select object_id as id from ${context.storage.core.recordAliases} where alias = ${alias}`
+        if (!existing) {
+          // The concrete create schema validates this input; TS cannot reduce the generic mapped intersection.
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+          const initial = {
+            ...values,
+            aliases: [alias],
+            ...(input.links ? { links: input.links } : {}),
+          } as unknown as Parameters<typeof create>[0]
+          return yield* create(initial)
+        }
+        // Normal identifier resolution also rejects aliases belonging to another object type.
+        // Create values are a valid update subset; the normal update schema validates them again.
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+        const changes = {
+          ...values,
+          id: alias,
+          ...(input.links ? { links: input.links } : {}),
+        } as unknown as Parameters<typeof update>[0]
+        return yield* update(changes, true)
       },
       (effect) => database.transaction(() => effect)
     )
@@ -292,6 +346,7 @@ export function makeRepository<const O extends ObjectType>(object: O) {
       get,
       list,
       update,
+      upsert,
     }
   })
 }
