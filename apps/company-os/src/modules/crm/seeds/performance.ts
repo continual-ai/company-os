@@ -3,8 +3,6 @@ import { Effect } from "effect"
 import { Account } from "#/modules/crm/model/account.ts"
 import { Affiliation } from "#/modules/crm/model/affiliation.ts"
 import { Contact } from "#/modules/crm/model/contact.ts"
-import { Note } from "#/modules/notes/model/index.ts"
-import { noteSeed } from "#/modules/notes/seeds/index.ts"
 import { importSeedAsset } from "#/runtime/assets/server/seed-asset.ts"
 import {
   type RecordId,
@@ -12,6 +10,8 @@ import {
   EmailAddress,
   PhoneNumber,
 } from "#/runtime/model/index.ts"
+import { Note } from "#/runtime/platform/model/note.ts"
+import { noteSeed } from "#/runtime/platform/seeds/note.ts"
 import { Database } from "#/runtime/server/index.ts"
 import { linkSeedRecords } from "#/runtime/server/seeds.ts"
 

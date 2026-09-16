@@ -106,9 +106,15 @@ describe("makePostgresSchema", () => {
     const PermissionScope = defineLink({
       id: "permissionScope",
       name: "Permission scope",
-      from: { type: Permission, min: 1, max: 1, key: "scope", label: "Scope" },
+      from: {
+        object: Permission,
+        min: 1,
+        max: 1,
+        key: "scope",
+        label: "Scope",
+      },
       to: {
-        type: WorkspaceMarker,
+        object: WorkspaceMarker,
         min: 0,
         key: "permissions",
         label: "Permissions",
@@ -163,8 +169,8 @@ describe("makePostgresSchema", () => {
     const TeamMembership = defineLink({
       id: "teamMembership",
       name: "Team membership",
-      from: { type: Person, key: "teams", min: 0, label: "Teams" },
-      to: { type: Team, key: "members", min: 0, label: "Members" },
+      from: { object: Person, key: "teams", min: 0, label: "Teams" },
+      to: { object: Team, key: "members", min: 0, label: "Members" },
     })
     const model = defineModel({
       modules: [
@@ -217,8 +223,8 @@ describe("makePostgresSchema", () => {
     const PersonBadge = defineLink({
       id: "personBadge",
       name: "Person badge",
-      from: { type: Person, min: 0, max: 1, key: "badge", label: "Badge" },
-      to: { type: Badge, min: 0, max: 1, key: "holder", label: "Holder" },
+      from: { object: Person, min: 0, max: 1, key: "badge", label: "Badge" },
+      to: { object: Badge, min: 0, max: 1, key: "holder", label: "Holder" },
     })
     const model = defineModel({
       modules: [

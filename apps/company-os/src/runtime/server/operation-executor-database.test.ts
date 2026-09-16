@@ -63,8 +63,8 @@ const Samples = defineModule({
     defineLink({
       id: "sampleRelations",
       name: "Sample relations",
-      from: { type: Sample, key: "related" },
-      to: { type: Sample, key: "relatedBy" },
+      from: { object: Sample, key: "related" },
+      to: { object: Sample, key: "relatedBy" },
     }),
   ],
   actions: [CreateSample],

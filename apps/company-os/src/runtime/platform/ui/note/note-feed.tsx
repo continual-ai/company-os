@@ -8,7 +8,7 @@ import { functionalUpdate, type SortingState } from "@tanstack/react-table"
 import { PencilIcon, Trash2Icon, UnlinkIcon } from "lucide-react"
 import { useState } from "react"
 
-import { Note } from "#/modules/notes/model/index.ts"
+import { Note } from "#/runtime/platform/model/note.ts"
 import {
   formErrorFromCause,
   formErrorMessages,
@@ -17,7 +17,6 @@ import { CollectionQueryToolbar } from "#/runtime/ui/model/collection-query-tool
 import type { ObjectCollectionFilter } from "#/runtime/ui/model/collection-view.ts"
 import {
   clientFor,
-  tableRecord,
   type ClientRecord,
 } from "#/runtime/ui/model/object-client.ts"
 import { ObjectRecordDialog } from "#/runtime/ui/model/object-record-dialog.tsx"
@@ -92,7 +91,7 @@ export function NoteFeed({ relationship }: RelationshipOverviewProps) {
       )}
       <CollectionQueryToolbar
         object={Note}
-        records={collection.records.map((record) => tableRecord(Note, record))}
+        records={collection.records}
         columnFilters={filters}
         sorting={sorting}
         onColumnFiltersChange={(update) =>

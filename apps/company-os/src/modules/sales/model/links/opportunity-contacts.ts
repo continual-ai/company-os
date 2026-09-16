@@ -5,6 +5,6 @@ import { defineLink } from "#/runtime/model/index.ts"
 export const OpportunityContacts = defineLink({
   id: "opportunityContacts",
   name: "Opportunity contacts",
-  from: { type: Opportunity, key: "contacts", label: "Contacts" },
-  to: { type: Contact, key: "opportunities", label: "Opportunities" },
+  from: { object: Opportunity, key: "contacts", label: "Contacts" },
+  to: { object: Contact, key: "opportunities", label: "Opportunities" },
 })

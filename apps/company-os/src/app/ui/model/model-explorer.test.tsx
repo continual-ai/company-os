@@ -33,7 +33,7 @@ it("shows link traversals and inherited interface relationships on concrete obje
   expect(detail).toContain("link")
 })
 
-it("shows object and collection controllers from any module on their target's model page", () => {
+it("shows record and object controllers from any module on their target's model page", () => {
   const Task = defineObject({
     id: "task",
     collection: "tasks",
@@ -61,17 +61,17 @@ it("shows object and collection controllers from any module on their target's mo
           defineController({
             id: "deliver",
             name: "Deliver tasks",
-            object: Task,
+            record: Task,
           }),
           defineController({
             id: "prioritize",
             name: "Prioritize tasks",
-            collection: Task,
+            object: Task,
           }),
           defineController({
             id: "triage",
             name: "Triage signals",
-            object: Signal,
+            record: Signal,
           }),
         ],
       }),
@@ -90,7 +90,8 @@ it("shows object and collection controllers from any module on their target's mo
   expect(markup).toContain("Deliver tasks")
   expect(markup).toContain("Prioritize tasks")
   expect(markup).not.toContain("Triage signals")
-  expect(markup).toContain("task.created")
+  expect(markup).toContain("Watched relationships")
+  expect(markup).toContain("Target record changes are watched automatically.")
   expect(markup).toContain(
     'href="/objects/controller/system:controller:deliver"'
   )

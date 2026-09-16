@@ -4,7 +4,6 @@ import { CustomerFeedbackModule } from "#/modules/customer-feedback/model/index.
 import { EngineeringModule } from "#/modules/engineering/model/index.ts"
 import { HiringModule } from "#/modules/hiring/model/index.ts"
 import { MarketingModule } from "#/modules/marketing/model/index.ts"
-import { NotesModule } from "#/modules/notes/model/index.ts"
 import { ProductDemandModule } from "#/modules/product-demand/model/index.ts"
 import { ProductModule } from "#/modules/product/model/index.ts"
 import { SalesModule } from "#/modules/sales/model/index.ts"
@@ -24,7 +23,6 @@ export const Model = defineModel({
   maintainer: appMetadata.maintainer,
   modules: [
     PlatformModule,
-    NotesModule,
     CrmModule,
     SalesModule,
     MarketingModule,

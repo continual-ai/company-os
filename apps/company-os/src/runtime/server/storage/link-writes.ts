@@ -11,6 +11,7 @@ import {
   type RecordIdentifier,
 } from "#/runtime/model/index.ts"
 import type { LinkMutationInput } from "#/runtime/model/link-input.ts"
+import { mergeControllerKeys } from "#/runtime/server/controllers/routing.ts"
 import {
   ObjectNotFound,
   ObjectWriteConflict,
@@ -24,6 +25,7 @@ import { ModelContext } from "#/runtime/server/model-context.ts"
 import { requireWritableOperation } from "#/runtime/server/operation-mode.ts"
 import { RecordIdentifiers } from "#/runtime/server/storage/identifiers.ts"
 import {
+  linkPairEndpoints,
   makeLinkRepository,
   type LinkPair,
 } from "#/runtime/server/storage/link-repository.ts"
@@ -64,6 +66,12 @@ interface EdgeMutation {
   readonly pair: LinkPair
   readonly operation: "link" | "unlink"
 }
+
+const edgeKey = (edge: {
+  readonly linkId: string
+  readonly forwardId: string
+  readonly reverseId: string
+}) => JSON.stringify([edge.linkId, edge.forwardId, edge.reverseId])
 
 export const makeLinkWrites = Effect.gen(function* () {
   const context = yield* ModelContext
@@ -141,6 +149,14 @@ export const makeLinkWrites = Effect.gen(function* () {
     plan: ReadonlyArray<EdgeMutation>,
     attributedId?: string
   ) {
+    const before = new Map(
+      yield* Effect.forEach(plan, ({ pair }) =>
+        Effect.gen(function* () {
+          const edge = { linkId: pair.linkId, ...linkPairEndpoints(pair) }
+          return [edgeKey(edge), yield* events.linkTargets(edge)] as const
+        })
+      )
+    )
     const changes = yield* repository.apply(
       plan.map(({ pair, operation }) => ({ ...pair, operation }))
     )
@@ -162,6 +178,10 @@ export const makeLinkWrites = Effect.gen(function* () {
           ({ id }) => id === change.forwardId || id === change.reverseId
         ),
         data: { link: change.linkId },
+        controllerKeys: mergeControllerKeys(
+          before.get(edgeKey(change))!,
+          yield* events.linkTargets(change)
+        ),
       })
   })
 

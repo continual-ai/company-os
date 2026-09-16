@@ -8,6 +8,7 @@ import {
   type PropertyDefinition,
 } from "#/runtime/model/definition/property.ts"
 import { schema, type AnySchema } from "#/runtime/model/definition/schema.ts"
+import { resourceProperties } from "#/runtime/model/resource-properties.ts"
 
 export interface QueryType {
   readonly id: string
@@ -16,22 +17,15 @@ export interface QueryType {
 
 const normalized = new WeakMap<AnySchema, PropertyDefinition>()
 
-const systemFields: Readonly<Record<string, PropertyDefinition>> =
-  normalizeProperties({
-    label: schema.string(),
-    id: schema.id({ id: "object" }),
-    createdBy: schema.id({ id: "actor" }),
-    updatedBy: schema.id({ id: "actor" }),
-    createdAt: schema.timestamp(),
-    updatedAt: schema.timestamp(),
-    systemManaged: schema.boolean(),
-  })
 export function queryProperty(
   object: { readonly properties: Readonly<Record<string, AnySchema>> },
   key: string
 ): PropertyDefinition | undefined {
   const value = object.properties[key]
-  if (!value) return systemFields[key]
+  if (!value)
+    return ["aliases", "metadata", "etag", "objectType"].includes(key)
+      ? undefined
+      : resourceProperties[key]
   const cached = normalized.get(value)
   if (cached) return cached
   const property = normalizeProperties({ value }).value

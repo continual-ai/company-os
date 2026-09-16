@@ -47,7 +47,7 @@ export interface StandardAction<
   readonly id: TId
   readonly kind: "action"
   readonly objectType: TObjectType
-  readonly scope: "object" | "collection"
+  readonly scope: "record" | "object"
   readonly name: string
   readonly description: string
   readonly destructive: boolean
@@ -104,7 +104,7 @@ export function standardActions(
       id: "create",
       kind: "action",
       objectType: object.id,
-      scope: "collection",
+      scope: "object",
       name: `Create ${object.name.toLowerCase()}`,
       description: `Creates a ${object.name.toLowerCase()}.`,
       destructive: false,
@@ -114,7 +114,7 @@ export function standardActions(
       id: "update",
       kind: "action",
       objectType: object.id,
-      scope: "object",
+      scope: "record",
       name: `Update ${object.name.toLowerCase()}`,
       description: `Updates a ${object.name.toLowerCase()}.`,
       destructive: false,
@@ -124,7 +124,7 @@ export function standardActions(
       id: "delete",
       kind: "action",
       objectType: object.id,
-      scope: "object",
+      scope: "record",
       name: `Delete ${object.name.toLowerCase()}`,
       description: `Deletes a ${object.name.toLowerCase()}.`,
       destructive: true,
@@ -134,7 +134,7 @@ export function standardActions(
       id: "batchDelete",
       kind: "action",
       objectType: object.id,
-      scope: "collection",
+      scope: "object",
       name: `Batch delete ${object.pluralName.toLowerCase()}`,
       description: `Deletes multiple ${object.pluralName.toLowerCase()} atomically.`,
       destructive: true,

@@ -31,7 +31,7 @@ describe("model contract", () => {
         id: "pipelineSummary",
         kind: "query",
         objectType: "opportunity",
-        scope: "collection",
+        scope: "object",
         input: expect.objectContaining({ kind: "struct" }),
         output: expect.objectContaining({ kind: "struct" }),
       })
@@ -71,7 +71,7 @@ describe("model contract", () => {
       Object.keys(Model.modules)
     )
     expect(description.modules.map((module) => module.id)).toEqual(
-      expect.arrayContaining(["platform", "notes", "sales"])
+      expect.arrayContaining(["platform", "sales"])
     )
     expect(
       description.modules.flatMap((module) => module.objectIds).sort()

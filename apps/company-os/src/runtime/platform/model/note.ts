@@ -1,10 +1,5 @@
-import { NoteSubject } from "#/modules/notes/model/note-subject.ts"
-import {
-  defineLink,
-  defineModule,
-  defineObject,
-  schema,
-} from "#/runtime/model/index.ts"
+import { defineLink, defineObject, schema } from "#/runtime/model/index.ts"
+import { NoteSubject } from "#/runtime/platform/model/note-subject.ts"
 
 export const Note = defineObject({
   id: "note",
@@ -31,33 +26,17 @@ export const NoteSubjects = defineLink({
   name: "Note subjects",
   description: "Attaches a note to the business records it concerns.",
   from: {
-    type: Note,
+    object: Note,
     key: "subjects",
     min: 0,
     label: "Subjects",
     description: "Link the people, accounts, or work this note is about.",
   },
   to: {
-    type: NoteSubject,
+    object: NoteSubject,
     key: "notes",
     min: 0,
     label: "Notes",
     description: "Notes attached to this business record.",
   },
 })
-
-export const NotesModule = defineModule({
-  maturity: "alpha",
-  origin: {
-    name: "Company OS",
-    url: "https://github.com/continual-ai/company-os",
-  },
-  description: "Attach shared notes and activity to business records.",
-  id: "notes",
-  name: "Notes",
-  interfaces: [NoteSubject],
-  objects: [Note],
-  links: [NoteSubjects],
-})
-
-export { NoteSubject } from "#/modules/notes/model/note-subject.ts"

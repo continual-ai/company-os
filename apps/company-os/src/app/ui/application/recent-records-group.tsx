@@ -1,7 +1,6 @@
 import { CommandGroup, CommandItem } from "@company/ui/command"
 
 import { presentation } from "#/app/app-presentation.ts"
-import { tableRecord } from "#/runtime/ui/model/object-client.ts"
 import { ObjectRecordIdentity } from "#/runtime/ui/model/object-record-identity.tsx"
 import { objectHref } from "#/runtime/ui/model/object-routing.ts"
 import { useRecentRecords } from "#/runtime/ui/model/recent-records.tsx"
@@ -25,7 +24,7 @@ export function RecentRecords({
         >
           <ObjectRecordIdentity
             object={object}
-            record={tableRecord(object, record)}
+            record={record}
             className="min-w-0 flex-1"
           />
           <span className="text-xs text-muted-foreground">{object.name}</span>

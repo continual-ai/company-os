@@ -161,8 +161,7 @@ export function ModelActions({
           (action): action is Action =>
             "input" in action &&
             action.objectType === object.id &&
-            action.scope ===
-              (recordId === undefined ? "collection" : "object") &&
+            action.scope === (recordId === undefined ? "object" : "record") &&
             !exclude.includes(action.id)
         )
         .map((action) => (

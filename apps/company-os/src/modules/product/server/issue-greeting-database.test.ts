@@ -4,7 +4,6 @@ import { SingleRunner } from "effect/unstable/cluster"
 import { SqlClient } from "effect/unstable/sql"
 import { expect } from "vitest"
 
-import { Note, NotesModule } from "#/modules/notes/model/index.ts"
 import { Issue, ProductModule } from "#/modules/product/model/index.ts"
 import { ProductServer } from "#/modules/product/server/index.ts"
 import { defineModel } from "#/runtime/model/index.ts"
@@ -14,6 +13,7 @@ import {
   ModuleSetting,
 } from "#/runtime/platform/model/index.ts"
 import { moduleAlias } from "#/runtime/platform/model/module-setting.ts"
+import { Note } from "#/runtime/platform/model/note.ts"
 import { controllerStatus } from "#/runtime/platform/server/controller-status.ts"
 import { reconcileController } from "#/runtime/platform/server/reconcile-controller.ts"
 import { seedModuleSettings } from "#/runtime/platform/server/seed.ts"
@@ -24,7 +24,7 @@ import { testFoundation } from "#/runtime/testing/foundation.ts"
 
 const Model = defineModel({
   name: "Greeting test",
-  modules: [PlatformModule, NotesModule, ProductModule],
+  modules: [PlatformModule, ProductModule],
 })
 const fixture = testFoundation(Model, { servers: [ProductServer] })
 const liveClock = Context.get(Context.empty(), Clock.Clock)
@@ -91,7 +91,7 @@ fixture.test(
         }).pipe(
           Effect.repeat({
             until: (status) =>
-              status.attempts > before.attempts &&
+              status.runs > before.runs &&
               status.lastSucceededAt !== before.lastSucceededAt,
             schedule: Schedule.spaced("20 millis"),
           }),

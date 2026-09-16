@@ -20,7 +20,6 @@ import { testFoundation } from "#/runtime/testing/foundation.ts"
 // and journal when the visible side changes.
 const withoutFeedback = enableModules(Model, [
   "platform",
-  "notes",
   "crm",
   "product",
   "sales",

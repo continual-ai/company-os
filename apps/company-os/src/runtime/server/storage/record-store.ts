@@ -3,6 +3,7 @@ import { Context, Effect, Layer } from "effect"
 import { replaceAssetReferences } from "#/runtime/assets/server/asset-references.ts"
 import { compileAssetReferences } from "#/runtime/assets/server/references.ts"
 import { RecordId, type ObjectType } from "#/runtime/model/index.ts"
+import { resourceProperties } from "#/runtime/model/resource-properties.ts"
 import { makeEventWriter } from "#/runtime/server/events/event-writer.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
 import { PageTokens } from "#/runtime/server/page-tokens.ts"
@@ -38,10 +39,23 @@ function trackRepository<const O extends ObjectType>(object: O) {
     const events = makeEventWriter(database, context)
     const collectAssets = compileAssetReferences(object)
     const deleting = deletionChanges(database, context)
+    const writableFields = new Set([
+      ...Object.keys(object.properties),
+      ...Object.entries(resourceProperties)
+        .filter(([, property]) => !property.outputOnly)
+        .map(([key]) => key),
+    ])
+    const inputFields = (input: object) =>
+      Object.entries(input)
+        .filter(
+          ([key, value]) => value !== undefined && writableFields.has(key)
+        )
+        .map(([key]) => key)
 
     const track = <A extends { readonly id: string }, E, R>(
       operation: Effect.Effect<A, E, R>,
-      kind: "created" | "updated"
+      kind: "created" | "updated",
+      writtenFields?: ReadonlyArray<string>
     ) =>
       database.transaction(() =>
         Effect.gen(function* () {
@@ -57,6 +71,7 @@ function trackRepository<const O extends ObjectType>(object: O) {
             type: `${object.id}.${kind}`,
             version: 1,
             data: record,
+            ...(writtenFields === undefined ? {} : { writtenFields }),
             snapshot: repository.get(RecordId(object.id)(record.id)).pipe(
               Effect.catchTag("ObjectNotFound", () => Effect.succeed(record)),
               Effect.orDie
@@ -123,7 +138,8 @@ function trackRepository<const O extends ObjectType>(object: O) {
           limit ${1}`
           return yield* track(
             repository.upsert(input),
-            existing.length === 0 ? "created" : "updated"
+            existing.length === 0 ? "created" : "updated",
+            inputFields(input)
           )
         })
       )
@@ -133,7 +149,7 @@ function trackRepository<const O extends ObjectType>(object: O) {
       insert: (input: ObjectInsert<O>) =>
         track(repository.insert(input), "created"),
       update: (input: ObjectRepositoryUpdate<O>) =>
-        track(repository.update(input), "updated"),
+        track(repository.update(input), "updated", inputFields(input)),
       delete: (target: ObjectDeleteTarget<O>) =>
         remove([target.id], repository.delete(target)),
       batchDelete: (targets: ReadonlyArray<ObjectDeleteTarget<O>>) =>

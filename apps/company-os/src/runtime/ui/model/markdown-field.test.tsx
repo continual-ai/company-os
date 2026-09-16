@@ -25,8 +25,7 @@ it("renders prose in record fields and plain previews in cells without executing
     <>
       {objectPropertyValue(
         testPresentation(fixtureModel),
-        Article,
-        "body",
+        Article.properties.body,
         source,
         new Map()
       )}

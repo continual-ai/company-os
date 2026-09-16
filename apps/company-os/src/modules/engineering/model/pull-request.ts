@@ -1,6 +1,6 @@
 import { Repository } from "#/modules/engineering/model/repository.ts"
-import { NoteSubject } from "#/modules/notes/model/index.ts"
 import { defineLink, defineObject, schema } from "#/runtime/model/index.ts"
+import { NoteSubject } from "#/runtime/platform/model/note-subject.ts"
 
 export const PullRequest = defineObject({
   id: "pullRequest",
@@ -62,11 +62,11 @@ export const PullRequestRepository = defineLink({
   id: "pullRequestRepository",
   name: "PullRequest Repository",
   from: {
-    type: PullRequest,
+    object: PullRequest,
     key: "repository",
     label: "Repository",
     min: 1,
     max: 1,
   },
-  to: { type: Repository, key: "pullRequests", label: "Pull requests" },
+  to: { object: Repository, key: "pullRequests", label: "Pull requests" },
 })

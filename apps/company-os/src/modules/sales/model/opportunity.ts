@@ -1,4 +1,3 @@
-import { NoteSubject } from "#/modules/notes/model/index.ts"
 import { User } from "#/runtime/access/model/index.ts"
 import {
   defineLink,
@@ -6,6 +5,7 @@ import {
   schema,
   defineQuery,
 } from "#/runtime/model/index.ts"
+import { NoteSubject } from "#/runtime/platform/model/note-subject.ts"
 
 export const Opportunity = defineObject({
   id: "opportunity",
@@ -63,7 +63,7 @@ export const Opportunity = defineObject({
 })
 export const PipelineSummaryQuery = defineQuery({
   id: "pipelineSummary",
-  collection: Opportunity,
+  object: Opportunity,
   name: "Pipeline summary",
   description:
     "Summarize opportunities you can view by stage and currency. Keep currencies and unpriced opportunities separate.",
@@ -82,6 +82,6 @@ export const PipelineSummaryQuery = defineQuery({
 export const OpportunityOwner = defineLink({
   id: "opportunityOwner",
   name: "Opportunity Owner",
-  from: { type: Opportunity, key: "owner", label: "Owner", max: 1 },
-  to: { type: User, key: "opportunities", label: "Opportunities" },
+  from: { object: Opportunity, key: "owner", label: "Owner", max: 1 },
+  to: { object: User, key: "opportunities", label: "Opportunities" },
 })

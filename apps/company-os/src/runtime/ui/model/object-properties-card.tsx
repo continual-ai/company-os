@@ -4,8 +4,6 @@ import { PencilIcon } from "lucide-react"
 import { modelObjectLinkTraversals } from "#/runtime/model/index.ts"
 import { linkPreview } from "#/runtime/model/record-links.ts"
 import {
-  modelObjectProperty,
-  tableRecord,
   type ClientRecord,
   type ModelObject,
   type ObjectRecordPresentation,
@@ -34,7 +32,6 @@ export function ObjectPropertiesCard({
 }) {
   const runtime = useModelRuntime()
 
-  const projected = tableRecord(object, record)
   const editable = new Set(
     objectFormProperties(object, "edit")
       .filter(({ schema }) => isSupportedFormSchema(schema))
@@ -55,10 +52,7 @@ export function ObjectPropertiesCard({
     <section className="min-w-0">
       <dl className="-mx-2">
         {properties.map(([propertyId, property]) => {
-          const definition = modelObjectProperty(object, propertyId)
-          const schema = definition
-            ? objectTablePropertySchema(definition)
-            : undefined
+          const schema = objectTablePropertySchema(property)
           const directEdit =
             onEdit &&
             editable.has(propertyId) &&
@@ -67,9 +61,8 @@ export function ObjectPropertiesCard({
               (schema.kind === "string" && schema.format === undefined))
           const value = objectPropertyValue(
             runtime,
-            object,
-            propertyId,
-            projected[propertyId],
+            property,
+            record[propertyId],
             references
           )
           return (

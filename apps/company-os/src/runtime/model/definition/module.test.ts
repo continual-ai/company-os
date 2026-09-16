@@ -28,8 +28,8 @@ it("keeps object inference closed when composing a link-only module", () => {
       defineLink({
         id: "contactReferrals",
         name: "Contact referrals",
-        from: { type: Contact, key: "referrals", label: "Referrals" },
-        to: { type: Contact, key: "referrers", label: "Referrers" },
+        from: { object: Contact, key: "referrals", label: "Referrals" },
+        to: { object: Contact, key: "referrers", label: "Referrers" },
       }),
     ],
   })

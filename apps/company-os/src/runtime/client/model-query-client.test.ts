@@ -144,13 +144,13 @@ it("preserves required relationship capabilities when projecting the client", ()
     id: "hierarchy",
     name: "Hierarchy",
     from: {
-      type: Thing,
+      object: Thing,
       key: "parentThing",
       label: "Parent thing",
       min: 1,
       max: 1,
     },
-    to: { type: Thing, key: "children", label: "Children", min: 0 },
+    to: { object: Thing, key: "children", label: "Children", min: 0 },
   })
   const model = defineModel({
     name: "Required relationships",

@@ -3,7 +3,7 @@ import { Markdown } from "@company/ui/markdown"
 import { Link } from "@tanstack/react-router"
 import { ArrowUpRightIcon } from "lucide-react"
 
-import type { Note } from "#/modules/notes/model/index.ts"
+import type { Note } from "#/runtime/platform/model/note.ts"
 import {
   type RecordSummaryProps,
   type RecordUiProps,

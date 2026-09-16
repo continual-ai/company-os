@@ -3,7 +3,6 @@ import { expect } from "vitest"
 
 import { Account, Contact } from "#/modules/crm/model/index.ts"
 import { CrmModule } from "#/modules/crm/model/index.ts"
-import { NotesModule } from "#/modules/notes/model/index.ts"
 import { SalesModule } from "#/modules/sales/model/index.ts"
 import { Lead } from "#/modules/sales/model/lead.ts"
 import { Opportunity } from "#/modules/sales/model/opportunity.ts"
@@ -19,7 +18,7 @@ import { testFoundation } from "#/runtime/testing/foundation.ts"
 const fixture = testFoundation(
   defineModel({
     name: "Sales test",
-    modules: [PlatformModule, NotesModule, CrmModule, SalesModule],
+    modules: [PlatformModule, CrmModule, SalesModule],
   }),
   { servers: [SalesServer] }
 )

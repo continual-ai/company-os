@@ -5,9 +5,11 @@ import {
   isRecordAlias,
   RecordId,
 } from "#/runtime/model/index.ts"
+import { ControllerInstance } from "#/runtime/platform/model/controller-instance.ts"
 import { Controller } from "#/runtime/platform/model/controller.ts"
 import {
   type ReconcileController,
+  type ReconcileControllerInstance,
   ControllerReconciliationRequested,
 } from "#/runtime/platform/model/reconcile-controller.ts"
 import { activeModuleModel } from "#/runtime/platform/server/activation.ts"
@@ -43,10 +45,10 @@ export const reconcileController = Effect.fn("platform.reconcileController")(
       return yield* invalid("This controller is not enabled.")
     if (
       input.key !== undefined &&
-      (definition.scope === "collection" || !input.key)
+      (definition.scope === "object" || !input.key)
     )
       return yield* invalid(
-        "Provide a nonempty record ID only for an object controller."
+        "Provide a nonempty record ID only for a record controller."
       )
     let key = input.key
     if (key) {
@@ -64,3 +66,22 @@ export const reconcileController = Effect.fn("platform.reconcileController")(
     return { accepted: true }
   }
 )
+
+export const reconcileControllerInstance = Effect.fn(
+  "platform.reconcileControllerInstance"
+)(function* (input: ActionInput<typeof ReconcileControllerInstance>) {
+  yield* requireProjectAccess
+  const instance = yield* (yield* Database)
+    .repository(ControllerInstance)
+    .get({ id: input.id })
+  const controller = instance.links.controller
+  const record = instance.links.record
+  if (typeof controller !== "string")
+    return yield* Effect.die(
+      new Error("Controller instance is missing its controller link")
+    )
+  return yield* reconcileController({
+    id: RecordId(Controller.id)(controller),
+    ...(typeof record === "string" ? { key: record } : {}),
+  })
+})

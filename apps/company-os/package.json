@@ -29,6 +29,7 @@
     "preview": "pnpm build && vite preview --port 3102 --host 0.0.0.0",
     "reset": "tsx tools/db-reset.ts && pnpm db:seed",
     "test": "vitest run --project unit --project database",
+    "test:agents:live": "vitest run --project agents-live",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -38,6 +39,7 @@
     "@effect/platform-node": "catalog:",
     "@effect/sql-pg": "catalog:",
     "@modelcontextprotocol/server": "catalog:",
+    "@openai/codex-sdk": "catalog:",
     "@tanstack/react-form": "catalog:",
     "@tanstack/react-query": "5.102.8",
     "@tanstack/react-router": "catalog:",

@@ -1,6 +1,6 @@
-import { NoteSubject } from "#/modules/notes/model/index.ts"
 import { Ticket } from "#/modules/service/model/ticket.ts"
 import { defineLink, defineObject, schema } from "#/runtime/model/index.ts"
+import { NoteSubject } from "#/runtime/platform/model/note-subject.ts"
 
 export const Reply = defineObject({
   id: "reply",
@@ -50,6 +50,6 @@ export const Reply = defineObject({
 export const ReplyTicket = defineLink({
   id: "replyTicket",
   name: "Reply Ticket",
-  from: { type: Reply, key: "ticket", label: "Ticket", min: 1, max: 1 },
-  to: { type: Ticket, key: "replies", label: "Replies" },
+  from: { object: Reply, key: "ticket", label: "Ticket", min: 1, max: 1 },
+  to: { object: Ticket, key: "replies", label: "Replies" },
 })

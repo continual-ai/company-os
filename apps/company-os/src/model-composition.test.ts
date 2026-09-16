@@ -3,7 +3,6 @@ import { expect, it } from "vitest"
 import { CrmModule } from "#/modules/crm/model/index.ts"
 import { CrmUi } from "#/modules/crm/ui/index.ts"
 import { CustomerFeedbackModule } from "#/modules/customer-feedback/model/index.ts"
-import { NotesModule } from "#/modules/notes/model/index.ts"
 import { ProductDemandModule } from "#/modules/product-demand/model/index.ts"
 import { ProductModule } from "#/modules/product/model/index.ts"
 import { ProductUi } from "#/modules/product/ui/index.ts"
@@ -15,13 +14,15 @@ import { defineModel } from "#/runtime/model/index.ts"
 import { PlatformModule } from "#/runtime/platform/model/index.ts"
 import { composeModelUi } from "#/runtime/ui/model/module-ui.tsx"
 
-const service = [PlatformModule, NotesModule, CrmModule, ServiceModule] as const
+const service = [PlatformModule, CrmModule, ServiceModule] as const
 it("keeps a business-free starter and allows Service without Product", () => {
   const minimal = defineModel({
     name: "Minimal",
     modules: [PlatformModule],
   })
   expect(Object.keys(minimal.modules)).toEqual(["platform"])
+  expect(minimal.objects).toHaveProperty("note")
+  expect(minimal.links).toHaveProperty("noteSubjects")
   const standalone = defineModel({
     name: "Service",
     modules: service,
@@ -49,7 +50,6 @@ it("composes product demand without requiring customer service", () => {
     name: "Sales and product",
     modules: [
       PlatformModule,
-      NotesModule,
       CrmModule,
       SalesModule,
       ProductModule,
@@ -63,15 +63,15 @@ it("composes product demand without requiring customer service", () => {
 it("composes domain UIs with only their owning model dependencies", () => {
   const crm = defineModel({
     name: "CRM",
-    modules: [PlatformModule, NotesModule, CrmModule],
+    modules: [PlatformModule, CrmModule],
   })
   const product = defineModel({
     name: "Product",
-    modules: [PlatformModule, NotesModule, ProductModule],
+    modules: [PlatformModule, ProductModule],
   })
   const sales = defineModel({
     name: "Sales",
-    modules: [PlatformModule, NotesModule, CrmModule, SalesModule],
+    modules: [PlatformModule, CrmModule, SalesModule],
   })
   const serviceModel = defineModel({ name: "Service", modules: service })
   expect(composeModelUi(crm, CrmUi).account).toBeDefined()

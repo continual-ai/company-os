@@ -29,9 +29,10 @@ create table "objects" (
     'serviceAccount',
     'anonymousActor',
     'asset',
+    'note',
     'moduleSetting',
     'controller',
-    'note',
+    'controllerInstance',
     'account',
     'contact',
     'activity',
@@ -97,6 +98,14 @@ create table "interface_note_subject" (
   foreign key ("id") references "objects" ("id") on delete cascade
 );
 
+-- Controller target membership (controllerTarget)
+-- A record maintained by controllers.
+create table "interface_controller_target" (
+  "id" text not null,
+  primary key ("id"),
+  foreign key ("id") references "objects" ("id") on delete cascade
+);
+
 -- Party membership (party)
 -- An account or contact involved in your business.
 create table "interface_party" (
@@ -154,6 +163,15 @@ create table "assets" (
   foreign key ("id") references "objects" ("id") on delete cascade
 );
 
+-- Note (note)
+-- Notes on conversations, decisions, or next steps.
+create table "notes" (
+  "id" text not null,
+  "content" text not null,
+  primary key ("id"),
+  foreign key ("id") references "objects" ("id") on delete cascade
+);
+
 -- Module (moduleSetting)
 -- Activation of a capability installed in this application. Disabling
 -- preserves its records.
@@ -189,15 +207,24 @@ create table "controllers" (
 
 create unique index "controllers_definition_unique" on "controllers" ("definition_id");
 
--- ===========================================================================
--- Domain objects: Notes
--- ===========================================================================
-
--- Note (note)
--- Notes on conversations, decisions, or next steps.
-create table "notes" (
+-- Controller instance (controllerInstance)
+-- The current reconciliation state of one controller for one record, or its
+-- whole collection.
+create table "controller_instances" (
   "id" text not null,
-  "content" text not null,
+  -- Relationship reference; requiredness is checked at transaction commit.
+  "controller_id" text,
+  -- Relationship reference; requiredness is checked at transaction commit.
+  "record_id" text,
+  "state" text not null default 'pending',
+  "runs" integer not null default 0,
+  "failures" integer not null default 0,
+  "last_started_at" timestamp with time zone,
+  "last_succeeded_at" timestamp with time zone,
+  "requeue_at" timestamp with time zone,
+  "last_error" text,
+  "agent_session_id" text,
+  "agent_session_url" text,
   primary key ("id"),
   foreign key ("id") references "objects" ("id") on delete cascade
 );
@@ -231,6 +258,9 @@ create table "contacts" (
   "id" text not null,
   "photo" jsonb,
   "name" text not null,
+  -- An agent-maintained summary of this person's background and current
+  -- relationship context, with sources where available.
+  "summary" text,
   -- Manual assessment of your team’s relationship with this person, from 0
   -- (no established relationship) to 100 (strong, active relationship).
   "relationship_strength" integer,
@@ -610,6 +640,14 @@ create table "link_note_subjects" (
 create index "link_note_subjects_forward_id_idx" on "link_note_subjects" ("forward_id");
 create index "link_note_subjects_reverse_id_idx" on "link_note_subjects" ("reverse_id");
 
+create view "link_controller_instance_controller" as select "id" as forward_id, "controller_id" as reverse_id from "controller_instances" where "controller_id" is not null;
+
+create index "controller_instance_controller_target_idx" on "controller_instances" ("controller_id");
+
+create view "link_controller_instance_record" as select "id" as forward_id, "record_id" as reverse_id from "controller_instances" where "record_id" is not null;
+
+create index "controller_instance_record_target_idx" on "controller_instances" ("record_id");
+
 create view "link_account_owner" as select "id" as forward_id, "owner_id" as reverse_id from "accounts" where "owner_id" is not null;
 
 create index "account_owner_target_idx" on "accounts" ("owner_id");
@@ -901,6 +939,54 @@ begin
 end $$;
 
 create constraint trigger "require_controller_module_forward" after insert on "controllers" deferrable initially deferred for each row execute function "require_controller_module_forward"();
+
+create function "check_controller_instance_controller"(source_id text, side text) returns void language plpgsql as $$
+declare n bigint;
+begin
+  if side = 'forward' and exists (select 1 from "controller_instances" where id = source_id) then
+    select count(*) into n from "link_controller_instance_controller" where "forward_id" = source_id;
+    if n < 1 or false then
+      raise exception 'Link % traversal % requires %..% targets; found %', 'controllerInstanceController', 'controller', 1, '1', n
+        using errcode = '23514', constraint = 'controllerInstanceController.controller.bounds';
+    end if;
+  end if;
+end $$;
+
+create function "validate_controller_instance_controller"() returns trigger language plpgsql as $$
+begin
+  if TG_OP <> 'INSERT' then
+    perform "check_controller_instance_controller"(OLD.id, 'forward');
+  end if;
+  if TG_OP <> 'DELETE' then
+    perform "check_controller_instance_controller"(NEW.id, 'forward');
+  end if;
+  return null;
+end $$;
+
+create constraint trigger "validate_controller_instance_controller" after insert or delete on "controller_instances" deferrable initially deferred for each row execute function "validate_controller_instance_controller"();
+
+create constraint trigger "validate_controller_instance_controller_update" after update on "controller_instances" deferrable initially deferred for each row when (OLD."controller_id" is distinct from NEW."controller_id") execute function "validate_controller_instance_controller"();
+
+create function "lock_controller_instance_controller"() returns trigger language plpgsql as $$
+    declare ids text[] := array[]::text[];
+    begin
+      if TG_OP <> 'INSERT' then ids := ids || array[OLD.id]; end if;
+      if TG_OP <> 'DELETE' then ids := ids || array[NEW.id]; end if;
+      perform id from objects where id = any(ids) order by id for update;
+      if TG_OP = 'DELETE' then return OLD; else return NEW; end if;
+    end $$;
+
+create trigger "lock_controller_instance_controller" before insert or delete on "controller_instances" for each row execute function "lock_controller_instance_controller"();
+
+create trigger "lock_controller_instance_controller_update" before update on "controller_instances" for each row when (OLD."controller_id" is distinct from NEW."controller_id") execute function "lock_controller_instance_controller"();
+
+create function "require_controller_instance_controller_forward"() returns trigger language plpgsql as $$
+begin
+  perform "check_controller_instance_controller"(NEW.id, 'forward');
+  return null;
+end $$;
+
+create constraint trigger "require_controller_instance_controller_forward" after insert on "controller_instances" deferrable initially deferred for each row execute function "require_controller_instance_controller_forward"();
 
 create function "check_affiliation_contact"(source_id text, side text) returns void language plpgsql as $$
 declare n bigint;
@@ -1478,6 +1564,8 @@ end $$;
 
 create constraint trigger "require_reply_ticket_forward" after insert on "replies" deferrable initially deferred for each row execute function "require_reply_ticket_forward"();
 
+alter table "controller_instances" add constraint "controller_instances_target_unique" unique ("controller_id", "record_id") deferrable initially deferred;
+
 alter table "campaign_members" add constraint "campaign_members_membership_unique" unique ("campaign_id", "contact_id") deferrable initially deferred;
 
 alter table "applications" add constraint "applications_candidate_job_unique" unique ("candidate_id", "job_id") deferrable initially deferred;
@@ -1498,6 +1586,10 @@ alter table "objects"
   on delete restrict deferrable initially deferred;
 
 alter table "controllers" add constraint "controller_module_target_fk" foreign key ("module_id") references "module_settings" (id) on delete set null deferrable initially deferred;
+
+alter table "controller_instances" add constraint "controller_instance_controller_target_fk" foreign key ("controller_id") references "controllers" (id) on delete set null deferrable initially deferred;
+
+alter table "controller_instances" add constraint "controller_instance_record_target_fk" foreign key ("record_id") references "interface_controller_target" (id) on delete set null deferrable initially deferred;
 
 alter table "accounts" add constraint "account_owner_target_fk" foreign key ("owner_id") references "users" (id) on delete set null deferrable initially deferred;
 
@@ -1618,6 +1710,7 @@ create table "event_journal" (
   "subjects" jsonb not null,
   "actor_id" text not null,
   "data" jsonb not null,
+  "controller_keys" jsonb not null default '{}'::jsonb,
   "occurred_at" timestamp with time zone not null,
   "recorded_at" timestamp with time zone not null default clock_timestamp(),
   primary key ("position"),
@@ -1674,17 +1767,4 @@ create table "controller_consumers" (
   "controller_id" text not null,
   "cursor" text not null,
   primary key ("controller_id")
-);
-
-create table "controller_instances" (
-  "controller_id" text not null,
-  "key" text not null,
-  "state" text not null,
-  "attempts" integer not null default 0,
-  "last_started_at" timestamp with time zone,
-  "last_succeeded_at" timestamp with time zone,
-  "requeue_at" timestamp with time zone,
-  "last_error" text,
-  primary key ("controller_id", "key"),
-  check ("state" in ('pending', 'running', 'idle', 'error'))
 );

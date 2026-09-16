@@ -1,3 +1,9 @@
+export { Agent, AgentError, AgentSession } from "#/runtime/server/agent.ts"
+export type {
+  AgentRunOptions,
+  AgentSessionReference,
+} from "#/runtime/server/agent.ts"
+export { CodexAgent } from "#/runtime/server/codex-agent.ts"
 export { defineControllerServer } from "#/runtime/server/controllers/definition.ts"
 export type { ReconcileResult } from "#/runtime/server/controllers/definition.ts"
 export { Database } from "#/runtime/server/database.ts"

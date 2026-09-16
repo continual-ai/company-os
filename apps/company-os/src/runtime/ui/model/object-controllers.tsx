@@ -8,20 +8,14 @@ import { useClient } from "#/runtime/ui/model/use-client.ts"
 
 export function ObjectControllers({
   objectType,
-  recordId,
 }: {
   readonly objectType: string
-  readonly recordId?: string
 }) {
   const client = useClient(PlatformModel)
   const { model } = useModelRuntime()
   const definitions = Object.values(model.modules)
     .flatMap((module) => module.controllers)
-    .filter(
-      (definition) =>
-        definition.objectType === objectType &&
-        (!recordId || definition.scope === "object")
-    )
+    .filter((definition) => definition.objectType === objectType)
   const query = useInfiniteQuery(
     client.controller.list.infiniteQueryOptions({
       filter: {
@@ -54,11 +48,7 @@ export function ObjectControllers({
         </p>
       )}
       {controllers.map((controller) => (
-        <ControllerDiagnostics
-          key={controller.id}
-          controller={controller}
-          targetKey={recordId}
-        />
+        <ControllerDiagnostics key={controller.id} controller={controller} />
       ))}
       {query.hasNextPage && (
         <Button

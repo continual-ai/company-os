@@ -3,7 +3,7 @@ import { Controller } from "#/runtime/platform/model/controller.ts"
 
 export const ControllerStatus = defineQuery({
   id: "status",
-  object: Controller,
+  record: Controller,
   name: "Inspect controller status",
   description:
     "Returns aggregate or per-key diagnostics. An unseen key has state notStarted. Observations are not a host-health guarantee.",
@@ -12,6 +12,7 @@ export const ControllerStatus = defineQuery({
     key: schema.optional(schema.string({ minLength: 1 })),
   },
   output: {
+    agentSessionUrl: schema.string({ nullable: true }),
     enabled: schema.boolean(),
     paused: schema.boolean(),
     state: schema.enumeration([
@@ -22,7 +23,8 @@ export const ControllerStatus = defineQuery({
       "error",
     ]),
     instances: schema.number(),
-    attempts: schema.number(),
+    runs: schema.number(),
+    failures: schema.number(),
     pending: schema.number(),
     running: schema.number(),
     errors: schema.number(),

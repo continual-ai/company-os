@@ -33,8 +33,8 @@ const Item = defineObject({
 const Related = defineLink({
   id: "related",
   name: "Related",
-  from: { type: Item, key: "related", label: "Related" },
-  to: { type: Item, key: "relatedTo", label: "Related to" },
+  from: { object: Item, key: "related", label: "Related" },
+  to: { object: Item, key: "relatedTo", label: "Related to" },
 })
 const Fact = defineEvent({
   type: "item.checked",
@@ -58,7 +58,7 @@ const Create = defineAction({
 })
 const Probe = defineQuery({
   id: "probe",
-  object: Item,
+  record: Item,
   name: "Probe",
   description: "Tests the read boundary.",
   input: {

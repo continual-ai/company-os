@@ -11,6 +11,7 @@ import {
   defineObject,
   schema,
 } from "#/runtime/model/index.ts"
+import { ControllerTarget } from "#/runtime/platform/model/controller-instance.ts"
 import {
   Controller,
   controllerAlias,
@@ -33,23 +34,24 @@ const Item = defineObject({
   collection: "timedItems",
   name: "Timed item",
   pluralName: "Timed items",
+  implements: [{ interface: ControllerTarget }],
   properties: { title: schema.string() },
   display: { title: "title" },
 })
 const Periodic = defineController({
   id: "periodic",
-  object: Item,
+  record: Item,
   schedule: { cron: "* * * * * *" },
   minInterval: "200 millis",
 })
 const Collection = defineController({
   id: "collection-timer",
-  collection: Item,
+  object: Item,
   schedule: { cron: "* * * * * *" },
 })
 const Delayed = defineController({
   id: "delayed",
-  object: Item,
+  record: Item,
   minInterval: "800 millis",
 })
 const Model = defineModel({
@@ -299,9 +301,7 @@ fixture.test(
       yield* controllers.update({ id, paused: false })
       yield* eventually(
         controllerStatus({ id, key: first.id }).pipe(
-          Effect.map(
-            (status) => status.attempts === 2 && status.state === "idle"
-          )
+          Effect.map((status) => status.runs === 2 && status.state === "idle")
         )
       )
       yield* Effect.sleep("1000 millis")
@@ -321,16 +321,16 @@ fixture.test(
         .create({ title: "In progress" })
       const id = controllerAlias(Delayed.id)
       const release = yield* Deferred.make<void>()
-      let attempts = 0
+      let runs = 0
       const server = defineControllerServer(Delayed, {
         reconcile: () =>
           Effect.gen(function* () {
-            attempts++
+            runs++
             yield* Deferred.await(release)
           }),
       })
       yield* Layer.build(yield* host([server]))
-      yield* eventually(Effect.sync(() => attempts === 1))
+      yield* eventually(Effect.sync(() => runs === 1))
       yield* database
         .repository(Controller)
         .update({ id, paused: true })
@@ -350,6 +350,6 @@ fixture.test(
         )
       )
       yield* Effect.sleep("1200 millis")
-      expect(attempts).toBe(1)
+      expect(runs).toBe(1)
     }).pipe(Effect.scoped, Effect.provideService(Clock.Clock, liveClock))
 )

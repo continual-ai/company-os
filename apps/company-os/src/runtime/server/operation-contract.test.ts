@@ -43,7 +43,7 @@ const Tickets = defineModule({
 })
 const Escalate = defineAction({
   id: "escalate",
-  object: Ticket,
+  record: Ticket,
   name: "Escalate",
   description: "Escalate a ticket.",
   input: { id: schema.id(Ticket), reason: schema.string() },
@@ -51,7 +51,7 @@ const Escalate = defineAction({
 })
 const Summary = defineQuery({
   id: "summary",
-  collection: Ticket,
+  object: Ticket,
   name: "Summary",
   description: "Summarize tickets.",
   input: { statuses: schema.array(schema.string()) },
@@ -85,9 +85,18 @@ it("owns operations independently of attachment and removes them with their modu
   ])
   expect(modelOperation(model, "ticket.escalate")).toMatchObject({
     moduleId: "extension",
+    scope: "record",
+    object: model.objects.ticket,
+  })
+  expect(modelOperation(model, "ticket.summary")).toMatchObject({
+    moduleId: "extension",
     scope: "object",
     object: model.objects.ticket,
   })
+  expect(modelOperation(model, "reconcile")).toMatchObject({ scope: "global" })
+  expectTypeOf(Escalate.scope).toEqualTypeOf<"record">()
+  expectTypeOf(Summary.scope).toEqualTypeOf<"object">()
+  expectTypeOf(Reconcile.scope).toEqualTypeOf<"global">()
   const active = enableModules(model, ["support"])
   expect(active.objects.ticket).toBeDefined()
   expect(active.actions).not.toHaveProperty("ticket.escalate")
@@ -160,24 +169,24 @@ it("uses noun-based colon routes, typed clients and shared cache options for all
 it("rejects ambiguous attachment and missing, optional, or wrongly typed record IDs", () => {
   const base = { id: "bad", name: "Bad", description: "Invalid contract." }
   // @ts-expect-error A record action requires an explicit id input.
-  expect(() => defineAction({ ...base, object: Ticket })).toThrow(/input.id/)
+  expect(() => defineAction({ ...base, record: Ticket })).toThrow(/input.id/)
   expect(() =>
     // @ts-expect-error Attachment is exclusive.
     defineAction({
       ...base,
+      record: Ticket,
       object: Ticket,
-      collection: Ticket,
       input: { id: schema.id(Ticket) },
     })
   ).toThrow(/both/)
   expect(() =>
     // @ts-expect-error Plain strings do not declare a typed record identifier.
-    defineAction({ ...base, object: Ticket, input: { id: schema.string() } })
+    defineAction({ ...base, record: Ticket, input: { id: schema.string() } })
   ).toThrow(/input.id/)
   expect(() =>
     defineAction({
       ...base,
-      object: Ticket,
+      record: Ticket,
       // @ts-expect-error Optional IDs cannot locate the record.
       input: { id: schema.optional(schema.id(Ticket)) },
     })

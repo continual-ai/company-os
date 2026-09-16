@@ -1,6 +1,7 @@
 import { type Effect, Layer } from "effect"
 
 import type { ModuleDefinition } from "#/runtime/model/index.ts"
+import type { Agent, AgentSession } from "#/runtime/server/agent.ts"
 import type { ControllerServer } from "#/runtime/server/controllers/definition.ts"
 import type { CurrentInvocation } from "#/runtime/server/invocation.ts"
 import type { CustomOperationService } from "#/runtime/server/operation-handlers.ts"
@@ -50,7 +51,10 @@ type ControllerRequirements<C> = C extends ControllerServer<infer R> ? R : never
 
 export type ModuleRequirements<C extends ReadonlyArray<ModuleServer>> = Exclude<
   | OperationRequirements<C[number]["operations"]>
-  | ControllerRequirements<C[number]["controllers"][number]>,
+  | Exclude<
+      ControllerRequirements<C[number]["controllers"][number]>,
+      Agent | AgentSession
+    >,
   CurrentInvocation
 >
 

@@ -32,7 +32,7 @@ const Contact = defineObject({
 })
 const ContactEnroll = defineAction({
   id: "enroll",
-  object: Contact,
+  record: Contact,
   description: "Enrolls a contact.",
   input: { id: schema.id(Contact), notify: schema.optional(schema.boolean()) },
   name: "Enroll contact",

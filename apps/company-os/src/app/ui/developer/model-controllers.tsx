@@ -33,9 +33,9 @@ export function ModelControllers({
             {controller.description}
           </p>
           <p className="mt-2 text-xs text-muted-foreground">
-            {controller.scope === "object"
+            {controller.scope === "record"
               ? "One reconciliation key per record."
-              : "One reconciliation key for the entire collection."}
+              : "One reconciliation key for the Object."}
           </p>
           <p className="mt-2 text-xs text-muted-foreground">
             Rescan:{" "}
@@ -45,7 +45,10 @@ export function ModelControllers({
             {" · "}Minimum interval per key: {controller.minInterval ?? "None"}
           </p>
           <div className="mt-4">
-            <p className="text-xs font-medium">Watched events</p>
+            <p className="text-xs font-medium">Watched relationships</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Target record changes are watched automatically.
+            </p>
             <ul className="mt-2 flex flex-wrap gap-2">
               {controller.watch.map((type) => (
                 <li key={type}>

@@ -6,8 +6,8 @@ export const IssueGreeting = defineController({
   name: "Issue greeting",
   description:
     "Ensures each issue has a Hello world note. Demonstrates durable, idempotent reconciliation.",
-  object: Issue,
+  record: Issue,
   schedule: { cron: "*/15 * * * *", timeZone: "UTC" },
   minInterval: "1 second",
-  watch: ["noteSubjects.linked", "noteSubjects.unlinked", "note.updated"],
+  watch: ["notes"],
 })

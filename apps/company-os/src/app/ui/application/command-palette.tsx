@@ -69,7 +69,7 @@ function SearchRecordIdentity({ hit }: { readonly hit: RecordSummary }) {
   if (object.display.subtitle !== undefined)
     record[object.display.subtitle] = hit.subtitle
   if (object.display.image !== undefined)
-    record[object.display.image] = hit.image
+    record[object.display.image] = hit.image ? { ...hit.image } : null
   if (object.display.status !== undefined)
     record[object.display.status] = hit.status
   return (

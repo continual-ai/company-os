@@ -18,6 +18,7 @@ import {
   type PropertyDefinition,
 } from "#/runtime/model/index.ts"
 import { linkPreview } from "#/runtime/model/record-links.ts"
+import { resourceProperties } from "#/runtime/model/resource-properties.ts"
 import {
   type ObjectTableRecord,
   objectTableValueText,
@@ -294,42 +295,12 @@ export function modelObjectProperty(
   object: ModelObject,
   propertyId: string
 ): PropertyDefinition | undefined {
-  return object.properties[propertyId]
-}
-
-export function tableRecord(
-  object: ModelObject,
-  record: ClientRecord
-): ObjectTableRecord {
-  // SAFETY: the server validates responses from the same model projected by
-  // the table; only declared presentation properties cross this adapter.
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  const projected = {
-    id: record.id,
-    label: record.label,
-    systemManaged: record.systemManaged === true,
-    ...Object.fromEntries(
-      Object.entries(record.links ?? {}).flatMap(([key, value]) => [
-        [key, linkPreview(value).ids],
-        [`${key}TotalSize`, linkPreview(value).totalSize],
-      ])
-    ),
-    ...Object.fromEntries(
-      Object.keys(object.properties).map((property) => [
-        property,
-        record[property] ?? null,
-      ])
-    ),
-  } as ObjectTableRecord
-  return projected
+  return object.properties[propertyId] ?? resourceProperties[propertyId]
 }
 
 export function recordLabel(object: ModelObject, record: ClientRecord): string {
   if (typeof record.label === "string") return record.label
-  return (
-    objectTableValueText(tableRecord(object, record)[object.display.title]) ||
-    record.id
-  )
+  return objectTableValueText(record[object.display.title]) || record.id
 }
 
 export function recordObjectTypes(
@@ -354,9 +325,7 @@ export function describeReferences(
       id: record.id,
       objectType: record.objectType,
       label: object === undefined ? record.id : recordLabel(object, record),
-      ...(object === undefined
-        ? {}
-        : { presentation: { object, record: tableRecord(object, record) } }),
+      ...(object === undefined ? {} : { presentation: { object, record } }),
     }
   })
 }

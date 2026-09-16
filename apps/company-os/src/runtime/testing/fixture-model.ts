@@ -111,8 +111,8 @@ export const Person = defineObject({
 const PersonAccounts = defineLink({
   id: "personAccounts",
   name: "Person accounts",
-  from: { type: Person, key: "accounts", min: 0, label: "Accounts" },
-  to: { type: Account, key: "people", min: 0, label: "People" },
+  from: { object: Person, key: "accounts", min: 0, label: "Accounts" },
+  to: { object: Account, key: "people", min: 0, label: "People" },
 })
 
 const PersonBillingAccount = defineLink({
@@ -120,13 +120,18 @@ const PersonBillingAccount = defineLink({
   name: "Person billing account",
 
   from: {
-    type: Person,
+    object: Person,
     key: "billingAccount",
     min: 0,
     max: 1,
     label: "Billing account",
   },
-  to: { type: Account, key: "billingPeople", min: 0, label: "Billing people" },
+  to: {
+    object: Account,
+    key: "billingPeople",
+    min: 0,
+    label: "Billing people",
+  },
 })
 
 export const Prospect = defineObject({
@@ -178,7 +183,7 @@ export const Prospect = defineObject({
 })
 const ProspectConvert = defineAction({
   id: "convert",
-  object: Prospect,
+  record: Prospect,
   name: "Convert prospect",
   description:
     "Creates a person and links it to a new account named after the prospect.",
@@ -200,13 +205,13 @@ const ProspectConvertedAccount = defineLink({
   outputOnly: true,
   name: "Prospect Converted account",
   from: {
-    type: Prospect,
+    object: Prospect,
     key: "convertedAccount",
     label: "Converted account",
     max: 1,
   },
   to: {
-    type: Account,
+    object: Account,
     key: "convertedProspects",
     label: "Converted prospects",
   },
@@ -217,12 +222,16 @@ const ProspectConvertedPerson = defineLink({
   outputOnly: true,
   name: "Prospect Converted person",
   from: {
-    type: Prospect,
+    object: Prospect,
     key: "convertedPerson",
     label: "Converted person",
     max: 1,
   },
-  to: { type: Person, key: "convertedProspects", label: "Converted prospects" },
+  to: {
+    object: Person,
+    key: "convertedProspects",
+    label: "Converted prospects",
+  },
 })
 
 export const ProspectConverted = defineEvent({
@@ -272,8 +281,8 @@ export const Order = defineObject({
 const OrderOwner = defineLink({
   id: "orderOwner",
   name: "Order Owner",
-  from: { type: Order, key: "owner", label: "Owner", max: 1 },
-  to: { type: User, key: "orders", label: "Orders" },
+  from: { object: Order, key: "owner", label: "Owner", max: 1 },
+  to: { object: User, key: "orders", label: "Orders" },
 })
 
 const OrderLine = defineObject({
@@ -329,21 +338,21 @@ export const Memo = defineObject({
 const MemoTopics = defineLink({
   id: "memoTopics",
   name: "Memo topics",
-  from: { type: Memo, key: "topics", min: 0, label: "Topics" },
-  to: { type: Topic, key: "memos", min: 0, label: "Memos" },
+  from: { object: Memo, key: "topics", min: 0, label: "Topics" },
+  to: { object: Topic, key: "memos", min: 0, label: "Memos" },
 })
 
 const AccountOrders = defineLink({
   id: "accountOrders",
   name: "Account orders",
-  from: { type: Account, key: "orders", label: "Orders" },
-  to: { type: Order, key: "account", label: "Account", min: 1, max: 1 },
+  from: { object: Account, key: "orders", label: "Orders" },
+  to: { object: Order, key: "account", label: "Account", min: 1, max: 1 },
 })
 const OrderLines = defineLink({
   id: "orderLines",
   name: "Order lines",
-  from: { type: Order, key: "lines", label: "Lines", onDelete: "cascade" },
-  to: { type: OrderLine, key: "order", label: "Order", min: 1, max: 1 },
+  from: { object: Order, key: "lines", label: "Lines", onDelete: "cascade" },
+  to: { object: OrderLine, key: "order", label: "Order", min: 1, max: 1 },
 })
 
 /** A representative business domain for kernel tests: ownership, interfaces, links, and a custom action. */

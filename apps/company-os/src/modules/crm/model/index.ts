@@ -10,6 +10,7 @@ import {
   AffiliationContact,
   AffiliationAccount,
 } from "#/modules/crm/model/affiliation.ts"
+import { ContactSummary } from "#/modules/crm/model/contact-summary.ts"
 import { Contact } from "#/modules/crm/model/contact.ts"
 import { Party } from "#/modules/crm/model/interfaces/party.ts"
 import { defineModule } from "#/runtime/model/index.ts"
@@ -22,6 +23,7 @@ export const CrmModule = defineModule({
   maturity: "alpha",
   objects: [Account, Contact, Activity, Affiliation],
   interfaces: [Party],
+  controllers: [ContactSummary],
   links: [
     AccountOwner,
     AffiliationContact,

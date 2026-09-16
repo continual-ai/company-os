@@ -1,6 +1,7 @@
 import { Party } from "#/modules/crm/model/interfaces/party.ts"
-import { NoteSubject } from "#/modules/notes/model/index.ts"
 import { defineObject, schema } from "#/runtime/model/index.ts"
+import { ControllerTarget } from "#/runtime/platform/model/controller-instance.ts"
+import { NoteSubject } from "#/runtime/platform/model/note-subject.ts"
 
 export const Contact = defineObject({
   id: "contact",
@@ -9,6 +10,7 @@ export const Contact = defineObject({
   pluralName: "Contacts",
   description: "A customer, prospect, or partner you work with.",
   implements: [
+    { interface: ControllerTarget },
     { interface: NoteSubject },
     {
       interface: Party,
@@ -21,6 +23,13 @@ export const Contact = defineObject({
       label: "Name",
       minLength: 1,
       maxLength: 200,
+    }),
+    summary: schema.markdown({
+      label: "Summary",
+      nullable: true,
+      maxLength: 10_000,
+      description:
+        "An agent-maintained summary of this person's background and current relationship context, with sources where available.",
     }),
     relationshipStrength: schema.score({
       label: "Relationship strength",

@@ -47,7 +47,7 @@ const Account = defineObject({
 })
 const AccountArchive = defineAction({
   id: "archive",
-  object: Account,
+  record: Account,
   name: "Archive account",
   description: "Archives an account.",
   input: { id: schema.id(Account), note: schema.optional(schema.string()) },
@@ -56,7 +56,7 @@ const AccountArchive = defineAction({
 })
 const AccountArchiveAll = defineAction({
   id: "archiveAll",
-  collection: Account,
+  object: Account,
   name: "Archive all accounts",
   description: "Archives every eligible account.",
   output: { archivedCount: schema.number({ integer: true }) },

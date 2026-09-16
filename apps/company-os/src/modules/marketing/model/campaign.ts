@@ -1,6 +1,6 @@
-import { NoteSubject } from "#/modules/notes/model/index.ts"
 import { User } from "#/runtime/access/model/index.ts"
 import { defineLink, defineObject, schema } from "#/runtime/model/index.ts"
+import { NoteSubject } from "#/runtime/platform/model/note-subject.ts"
 
 export const Campaign = defineObject({
   id: "campaign",
@@ -58,6 +58,6 @@ export const Campaign = defineObject({
 export const CampaignOwner = defineLink({
   id: "campaignOwner",
   name: "Campaign Owner",
-  from: { type: Campaign, key: "owner", label: "Owner", max: 1 },
-  to: { type: User, key: "campaigns", label: "Campaigns" },
+  from: { object: Campaign, key: "owner", label: "Owner", max: 1 },
+  to: { object: User, key: "campaigns", label: "Campaigns" },
 })

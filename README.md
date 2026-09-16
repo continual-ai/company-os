@@ -103,11 +103,11 @@ and data. Edit it directly or work with a coding agent using the included
 ### Define your business
 
 Use `defineObject`, `defineLink`, and `defineInterface` to describe your model. For example,
-the [Notes module](apps/company-os/src/modules/notes/model/index.ts) defines a note and connects
-it to any record implementing the `NoteSubject` interface:
+the [Platform note model](apps/company-os/src/runtime/platform/model/note.ts) connects shared notes
+to any record implementing the `NoteSubject` interface:
 
 ```typescript
-import { NoteSubject } from "#/modules/notes/model/note-subject.ts"
+import { NoteSubject } from "#/runtime/platform/model/note-subject.ts"
 import { defineLink, defineObject, schema } from "#/runtime/model/index.ts"
 
 const Note = defineObject({
@@ -130,10 +130,8 @@ const Note = defineObject({
 const NoteSubjects = defineLink({
   id: "noteSubjects",
   name: "Note subjects",
-  from: Note,
-  to: NoteSubject,
-  forward: { key: "subjects", label: "Subjects" },
-  reverse: { key: "notes", label: "Notes" },
+  from: { object: Note, key: "subjects", label: "Subjects" },
+  to: { object: NoteSubject, key: "notes", label: "Notes" },
 })
 ```
 

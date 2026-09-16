@@ -2,6 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { expect, it } from "vitest"
 
 import { ServiceAccount } from "#/runtime/access/model/index.ts"
+import { objectFields } from "#/runtime/model/object-fields.ts"
 import { PlatformUi } from "#/runtime/platform/ui/index.ts"
 import {
   fixtureModel,
@@ -9,6 +10,8 @@ import {
   Account,
 } from "#/runtime/testing/fixture-model.ts"
 import { testPresentation } from "#/runtime/testing/presentation.ts"
+import type { ClientRecord } from "#/runtime/ui/model/object-client.ts"
+import { isObjectTableCellEditable } from "#/runtime/ui/model/object-table/object-table-cell-types.ts"
 import { ObjectTable } from "#/runtime/ui/model/object-table/object-table.tsx"
 import { ModelUiProvider } from "#/runtime/ui/model/runtime-context.tsx"
 
@@ -63,8 +66,7 @@ it("renders related values and counts from column accessors", () => {
           {
             id: "person_example",
             name: "Ada",
-            accounts: ["account_example"],
-            accountsTotalSize: 12,
+            links: { accounts: { ids: ["account_example"], totalSize: 12 } },
           },
         ]}
         visiblePropertyIds={["name", "accounts.name", "accounts.$count"]}
@@ -79,4 +81,62 @@ it("renders related values and counts from column accessors", () => {
   expect(html).toContain("Acme")
   expect(html).toContain("+11 more")
   expect(html).toMatch(/>12</)
+})
+
+it("renders standard resource columns from records with expanded links", () => {
+  const record: ClientRecord = {
+    id: "person_example",
+    etag: "v1",
+    name: "Ada",
+    createdAt: "2026-09-15T12:00:00.000Z",
+    updatedAt: "2026-09-16T12:00:00.000Z",
+    createdBy: "user_author",
+    updatedBy: "user_editor",
+    metadata: { source: "import" },
+    aliases: ["external:ada"],
+    links: {
+      accounts: {
+        items: [{ id: "account_example", etag: "v1", name: "Acme" }],
+        totalSize: 1,
+      },
+    },
+  }
+  const html = renderToStaticMarkup(
+    <ModelUiProvider value={presentation}>
+      <ObjectTable
+        object={Person}
+        records={[record]}
+        visiblePropertyIds={[
+          "name",
+          "createdAt",
+          "updatedAt",
+          "createdBy",
+          "updatedBy",
+          "metadata",
+          "aliases",
+        ]}
+      />
+    </ModelUiProvider>
+  )
+  for (const label of [
+    "Created at",
+    "Updated at",
+    "Created by",
+    "Updated by",
+    "Metadata",
+    "Aliases",
+    "user_author",
+    "user_editor",
+    "import",
+    "external:ada",
+  ]) {
+    expect(html).toContain(label)
+  }
+  expect(record.createdAt).toBe("2026-09-15T12:00:00.000Z")
+  expect(record.links?.accounts).toMatchObject({ totalSize: 1 })
+  for (const { id: key, property } of objectFields(Person)) {
+    if (["createdAt", "updatedAt", "createdBy", "updatedBy"].includes(key)) {
+      expect(isObjectTableCellEditable(property)).toBe(false)
+    }
+  }
 })

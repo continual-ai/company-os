@@ -1,5 +1,5 @@
-import { NoteSubject } from "#/modules/notes/model/index.ts"
 import { defineObject, schema } from "#/runtime/model/index.ts"
+import { NoteSubject } from "#/runtime/platform/model/note-subject.ts"
 
 export const Candidate = defineObject({
   id: "candidate",

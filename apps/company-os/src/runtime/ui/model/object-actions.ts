@@ -15,7 +15,7 @@ export function objectActionAvailable(
   const action = model.actions[`${object.id}.${actionId}`]
   return (
     action !== undefined &&
-    (action.scope === "collection" ||
+    (action.scope === "object" ||
       (record !== undefined && record.systemManaged !== true))
   )
 }

@@ -4,20 +4,48 @@ import { anonymousActorUi } from "#/runtime/access/ui/anonymous-actor/config.ts"
 import { serviceAccountUi } from "#/runtime/access/ui/service-account/config.ts"
 import { userUi } from "#/runtime/access/ui/user/config.ts"
 import { PlatformModule } from "#/runtime/platform/model/index.ts"
+import { NoteSubjects } from "#/runtime/platform/model/note.ts"
 import { ControllerOverview } from "#/runtime/platform/ui/controller-diagnostics.tsx"
-import { defineModuleUi } from "#/runtime/ui/module.ts"
+import { noteUi } from "#/runtime/platform/ui/note/config.ts"
+import { NoteFeed } from "#/runtime/platform/ui/note/note-feed.tsx"
+import { defineCollectionView, defineModuleUi } from "#/runtime/ui/module.ts"
 
-export const PlatformUi = defineModuleUi(PlatformModule, {
-  controller: {
-    record: {
-      overviewComponent: ControllerOverview,
+export const PlatformUi = defineModuleUi(
+  PlatformModule,
+  {
+    note: noteUi,
+    controllerInstance: {
+      record: {
+        properties: [
+          "runs",
+          "failures",
+          "lastStartedAt",
+          "lastSucceededAt",
+          "requeueAt",
+          "agentSessionId",
+          "agentSessionUrl",
+        ],
+      },
+      collection: {
+        views: [
+          defineCollectionView("all", "All instances", {
+            columns: ["label", "record", "state", "lastSucceededAt"],
+          }),
+        ],
+      },
     },
+    controller: {
+      record: {
+        overviewComponent: ControllerOverview,
+      },
+    },
+    user: userUi,
+    serviceAccount: serviceAccountUi,
+    asset: { navigation: { order: 30, icon: FilesIcon } },
+    moduleSetting: {
+      navigation: { path: "/settings/modules", hidden: true, icon: BlocksIcon },
+    },
+    anonymousActor: anonymousActorUi,
   },
-  user: userUi,
-  serviceAccount: serviceAccountUi,
-  asset: { navigation: { order: 30, icon: FilesIcon } },
-  moduleSetting: {
-    navigation: { path: "/settings/modules", hidden: true, icon: BlocksIcon },
-  },
-  anonymousActor: anonymousActorUi,
-})
+  [{ link: NoteSubjects, side: "reverse", component: NoteFeed }]
+)

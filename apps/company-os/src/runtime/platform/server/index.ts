@@ -9,11 +9,15 @@ import {
   setModuleEnabled,
 } from "#/runtime/platform/server/activation.ts"
 import { controllerStatus } from "#/runtime/platform/server/controller-status.ts"
-import { reconcileController } from "#/runtime/platform/server/reconcile-controller.ts"
+import {
+  reconcileController,
+  reconcileControllerInstance,
+} from "#/runtime/platform/server/reconcile-controller.ts"
 import { defineModuleServer } from "#/runtime/server/module-server.ts"
 
 export const PlatformServer = defineModuleServer(PlatformModule, {
   operations: {
+    controllerInstance: { reconcile: reconcileControllerInstance },
     controller: { status: controllerStatus, reconcile: reconcileController },
     asset: {
       beginUpload: Effect.fn("asset.beginUpload")(function* (

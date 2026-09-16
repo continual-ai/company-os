@@ -18,10 +18,8 @@ import {
 import {
   modelObjectProperty,
   recordLabel,
-  tableRecord,
   type ModelObject,
 } from "#/runtime/ui/model/object-client.ts"
-import { ObjectControllers } from "#/runtime/ui/model/object-controllers.tsx"
 import { objectFormProperties } from "#/runtime/ui/model/object-form.ts"
 import { ObjectPropertiesCard } from "#/runtime/ui/model/object-properties-card.tsx"
 import { objectPropertyValue } from "#/runtime/ui/model/object-property-value.tsx"
@@ -33,6 +31,7 @@ import { ObjectRelationshipCollection } from "#/runtime/ui/model/object-relation
 import { objectTablePropertySchema } from "#/runtime/ui/model/object-table/object-table-cell-types.ts"
 import { ModelActions } from "#/runtime/ui/model/operation-action.tsx"
 import { usePageChromeOverride } from "#/runtime/ui/model/page-chrome.tsx"
+import { RecordControllerStatus } from "#/runtime/ui/model/record-controller-status.tsx"
 import { useRecordNavigation } from "#/runtime/ui/model/record-navigation.tsx"
 import { RecordOptions } from "#/runtime/ui/model/record-options.tsx"
 import { RecordRelatedCreateMenu } from "#/runtime/ui/model/record-related-create-menu.tsx"
@@ -200,12 +199,11 @@ export function ObjectRecordPage({
   const hasControllers = Object.values(runtime.model.modules).some((module) =>
     module.controllers.some(
       (controller) =>
-        controller.scope === "object" && controller.objectType === object.id
+        controller.scope === "record" && controller.objectType === object.id
     )
   )
   const requested = tab ?? localTab
   const active =
-    (hasControllers && requested === "controllers") ||
     related.some(({ key }) => key === requested) ||
     customTabs.some(({ id }) => id === requested)
       ? requested
@@ -245,7 +243,7 @@ export function ObjectRecordPage({
               <div className="min-w-0 rounded-lg bg-muted/40 p-page-gutter">
                 <ObjectRecordStatusProgress
                   object={object}
-                  record={tableRecord(object, record)}
+                  record={record}
                   onChange={
                     state.can("update")
                       ? (field, value) => statusUpdate.mutate({ field, value })
@@ -294,9 +292,8 @@ export function ObjectRecordPage({
                   <div className="text-sm leading-relaxed whitespace-pre-wrap">
                     {objectPropertyValue(
                       runtime,
-                      object,
-                      id,
-                      tableRecord(object, record)[id],
+                      modelObjectProperty(object, id),
+                      record[id],
                       state.references
                     )}
                   </div>
@@ -345,14 +342,6 @@ export function ObjectRecordPage({
           )}
         </TabsContent>
       ))}
-      {hasControllers && (
-        <TabsContent
-          value="controllers"
-          className="min-h-0 flex-1 overflow-auto"
-        >
-          <ObjectControllers objectType={object.id} recordId={recordId} />
-        </TabsContent>
-      )}
       {customTabs.map(({ id, component: Component }) => (
         <TabsContent
           key={id}
@@ -400,9 +389,6 @@ export function ObjectRecordPage({
                       <RelationshipCount count={totals.get(key)} />
                     </TabsTrigger>
                   ))}
-                  {hasControllers && (
-                    <TabsTrigger value="controllers">Controllers</TabsTrigger>
-                  )}
                   {customTabs.map(({ id, label }) => (
                     <TabsTrigger key={id} value={id}>
                       {label}
@@ -450,15 +436,24 @@ export function ObjectRecordPage({
           }
         >
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h1 className="min-w-0 text-lg font-semibold tracking-tight wrap-break-word">
-              {title ?? (
-                <ObjectRecordIdentity
-                  heading
-                  object={object}
-                  record={tableRecord(object, record)}
+            <div className="flex min-w-0 flex-wrap items-center gap-3">
+              <h1 className="min-w-0 text-lg font-semibold tracking-tight wrap-break-word">
+                {title ?? (
+                  <ObjectRecordIdentity
+                    heading
+                    object={object}
+                    record={record}
+                  />
+                )}
+              </h1>
+              {hasControllers && (
+                <RecordControllerStatus
+                  objectType={object.id}
+                  recordId={record.id}
+                  onViewDetails={() => select("controllerInstances")}
                 />
               )}
-            </h1>
+            </div>
             <div className="flex shrink-0 flex-wrap items-center gap-1.5">
               {!record.systemManaged && (
                 <ModelActions

@@ -4,11 +4,12 @@ import {
   schema,
   standardErrors,
 } from "#/runtime/model/index.ts"
+import { ControllerInstance } from "#/runtime/platform/model/controller-instance.ts"
 import { Controller } from "#/runtime/platform/model/controller.ts"
 
 export const ReconcileController = defineAction({
   id: "reconcile",
-  object: Controller,
+  record: Controller,
   name: "Reconcile controller",
   description:
     "Durably requests reconciliation of a record, or every current key when key is omitted. Returns after acceptance, not completion. Requests may coalesce; reconcilers must tolerate repeated execution.",
@@ -27,4 +28,15 @@ export const ControllerReconciliationRequested = defineEvent({
   data: schema.object({
     key: schema.string({ nullable: true }),
   }),
+})
+
+export const ReconcileControllerInstance = defineAction({
+  id: "reconcile",
+  record: ControllerInstance,
+  name: "Run now",
+  description:
+    "Requests reconciliation of this instance using the latest state. Returns after acceptance, not completion.",
+  input: { id: schema.id(ControllerInstance) },
+  output: { accepted: schema.boolean() },
+  errors: [standardErrors.failedPrecondition],
 })

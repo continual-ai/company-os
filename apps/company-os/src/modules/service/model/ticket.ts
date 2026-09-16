@@ -1,7 +1,7 @@
 import { Account, Contact } from "#/modules/crm/model/index.ts"
-import { NoteSubject } from "#/modules/notes/model/index.ts"
 import { User } from "#/runtime/access/model/index.ts"
 import { defineLink, defineObject, schema } from "#/runtime/model/index.ts"
+import { NoteSubject } from "#/runtime/platform/model/note-subject.ts"
 
 export const Ticket = defineObject({
   id: "ticket",
@@ -58,20 +58,20 @@ export const Ticket = defineObject({
 export const TicketAccount = defineLink({
   id: "ticketAccount",
   name: "Ticket Account",
-  from: { type: Ticket, key: "account", label: "Account", max: 1 },
-  to: { type: Account, key: "tickets", label: "Tickets" },
+  from: { object: Ticket, key: "account", label: "Account", max: 1 },
+  to: { object: Account, key: "tickets", label: "Tickets" },
 })
 
 export const TicketRequester = defineLink({
   id: "ticketRequester",
   name: "Ticket Requester",
-  from: { type: Ticket, key: "requester", label: "Requester", max: 1 },
-  to: { type: Contact, key: "tickets", label: "Tickets" },
+  from: { object: Ticket, key: "requester", label: "Requester", max: 1 },
+  to: { object: Contact, key: "tickets", label: "Tickets" },
 })
 
 export const TicketOwner = defineLink({
   id: "ticketOwner",
   name: "Ticket Owner",
-  from: { type: Ticket, key: "owner", label: "Owner", max: 1 },
-  to: { type: User, key: "tickets", label: "Tickets" },
+  from: { object: Ticket, key: "owner", label: "Owner", max: 1 },
+  to: { object: User, key: "tickets", label: "Tickets" },
 })

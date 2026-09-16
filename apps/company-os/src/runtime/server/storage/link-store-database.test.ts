@@ -42,13 +42,13 @@ const Team = defineObject({
 const Members = defineLink({
   id: "teamMembers",
   name: "Team members",
-  from: { type: Team, key: "members", label: "Members", min: 1, max: 2 },
-  to: { type: Person, key: "teams", label: "Teams" },
+  from: { object: Team, key: "members", label: "Members", min: 1, max: 2 },
+  to: { object: Person, key: "teams", label: "Teams" },
 })
 const Partners = defineLink({
   id: "teamPartners",
-  from: { type: Team, key: "partners" },
-  to: { type: Participant, key: "partnerTeams" },
+  from: { object: Team, key: "partners" },
+  to: { object: Participant, key: "partnerTeams" },
 })
 const model = defineModel({
   name: "Links",

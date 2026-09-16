@@ -10,6 +10,12 @@ import {
   CompleteAssetUpload,
 } from "#/runtime/assets/model/asset.ts"
 import { defineModule, defineModel } from "#/runtime/model/index.ts"
+import {
+  ControllerTarget,
+  ControllerInstance,
+  ControllerInstanceController,
+  ControllerInstanceRecord,
+} from "#/runtime/platform/model/controller-instance.ts"
 import { ControllerStatus } from "#/runtime/platform/model/controller-status.ts"
 import {
   Controller,
@@ -20,8 +26,11 @@ import {
   SetModuleEnabled,
   ModuleCatalog,
 } from "#/runtime/platform/model/module-setting.ts"
+import { NoteSubject } from "#/runtime/platform/model/note-subject.ts"
+import { Note, NoteSubjects } from "#/runtime/platform/model/note.ts"
 import {
   ReconcileController,
+  ReconcileControllerInstance,
   ControllerReconciliationRequested,
 } from "#/runtime/platform/model/reconcile-controller.ts"
 
@@ -33,23 +42,32 @@ export const PlatformModule = defineModule({
   },
   id: "platform",
   name: "Platform",
-  interfaces: [Identity],
+  interfaces: [Identity, NoteSubject, ControllerTarget],
   objects: [
     User,
     ServiceAccount,
     AnonymousActor,
     Asset,
+    Note,
     ModuleSetting,
     Controller,
+    ControllerInstance,
   ],
-  description: "Core identities, files, and application capabilities.",
-  links: [ControllerModule],
+  description:
+    "Core identities, files, shared notes, and application capabilities.",
+  links: [
+    ControllerModule,
+    NoteSubjects,
+    ControllerInstanceController,
+    ControllerInstanceRecord,
+  ],
   queries: [ModuleCatalog, ControllerStatus],
   actions: [
     BeginAssetUpload,
     CompleteAssetUpload,
     SetModuleEnabled,
     ReconcileController,
+    ReconcileControllerInstance,
   ],
   events: [ControllerReconciliationRequested],
 })

@@ -13,7 +13,7 @@ export function operationFormFields(action: Action, recordId?: string) {
   return Object.entries(action.input.properties)
     .filter(
       ([id]) =>
-        !(action.scope === "object" && recordId !== undefined && id === "id")
+        !(action.scope === "record" && recordId !== undefined && id === "id")
     )
     .map(([id, definition]) => ({
       id,
@@ -103,7 +103,7 @@ export function decodeOperationForm(
 ) {
   const input = Object.fromEntries(
     Object.entries(action.input.properties).flatMap(([id, schema]) => {
-      if (action.scope === "object" && id === "id" && recordId !== undefined)
+      if (action.scope === "record" && id === "id" && recordId !== undefined)
         return [[id, recordId]]
       try {
         const value = inputValue(schema, values[id])

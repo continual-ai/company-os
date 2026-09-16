@@ -26,9 +26,9 @@ export const Controller = defineObject({
       label: "Target object type",
       outputOnly: true,
     }),
-    scope: schema.enumeration(["object", "collection"], { outputOnly: true }),
+    scope: schema.enumeration(["record", "object"], { outputOnly: true }),
     watch: schema.array(schema.string(), {
-      label: "Watched events",
+      label: "Watched relationships",
       outputOnly: true,
     }),
     schedule: schema.object(
@@ -50,8 +50,8 @@ export const ControllerModule = defineLink({
   id: "controllerModule",
   name: "Controller Module",
   outputOnly: true,
-  from: { type: Controller, key: "module", label: "Module", min: 1, max: 1 },
-  to: { type: ModuleSetting, key: "controllers", label: "Controllers" },
+  from: { object: Controller, key: "module", label: "Module", min: 1, max: 1 },
+  to: { object: ModuleSetting, key: "controllers", label: "Controllers" },
 })
 
 /** Stable identities for the code-owned registry, independent of display names. */

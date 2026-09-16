@@ -12,9 +12,9 @@ import {
 } from "#/runtime/model/definition/schema.ts"
 
 type OperationAttachment =
-  | { readonly object: ObjectType; readonly collection?: never }
-  | { readonly collection: ObjectType; readonly object?: never }
-  | { readonly object?: never; readonly collection?: never }
+  | { readonly record: ObjectType; readonly object?: never }
+  | { readonly object: ObjectType; readonly record?: never }
+  | { readonly record?: never; readonly object?: never }
 
 interface OperationFields {
   readonly id: string
@@ -29,7 +29,7 @@ export type OperationConstraints<
   D extends OperationDefinition,
   Allowed = OperationDefinition,
 > = NoExtraKeys<D, Allowed> &
-  (D extends { readonly object: infer O extends ObjectType }
+  (D extends { readonly record: infer O extends ObjectType }
     ? { readonly input: { readonly id: RecordIdSchema<O["id"]> } }
     : unknown)
 
@@ -40,17 +40,17 @@ type Output<D> = D extends { readonly output: infer O extends SchemaProperties }
   ? O
   : {}
 type OperationObjectId<D> = D extends {
-  readonly object: infer O extends ObjectType
+  readonly record: infer O extends ObjectType
 }
   ? O["id"]
-  : D extends { readonly collection: infer O extends ObjectType }
+  : D extends { readonly object: infer O extends ObjectType }
     ? O["id"]
     : undefined
 type OperationKey<D extends OperationDefinition> = D extends {
-  readonly object: infer O extends ObjectType
+  readonly record: infer O extends ObjectType
 }
   ? `${O["id"]}.${D["id"]}`
-  : D extends { readonly collection: infer O extends ObjectType }
+  : D extends { readonly object: infer O extends ObjectType }
     ? `${O["id"]}.${D["id"]}`
     : D["id"]
 
@@ -62,7 +62,7 @@ export interface CustomOperation {
   readonly name: string
   readonly description: string
   readonly objectType: string | undefined
-  readonly scope: "object" | "collection" | "global"
+  readonly scope: "record" | "object" | "global"
   readonly input: StructSchema
   readonly output: StructSchema
   readonly errors: ReadonlyArray<ErrorType>
@@ -80,10 +80,10 @@ export type DefinedOperation<D extends OperationDefinition> = Omit<
     : OperationObjectId<D>
   readonly scope: OperationDefinition extends D
     ? CustomOperation["scope"]
-    : D extends { readonly object: ObjectType }
-      ? "object"
-      : D extends { readonly collection: ObjectType }
-        ? "collection"
+    : D extends { readonly record: ObjectType }
+      ? "record"
+      : D extends { readonly object: ObjectType }
+        ? "object"
         : "global"
   readonly input: StructSchema<
     OperationDefinition extends D ? SchemaProperties : Input<D>
@@ -101,21 +101,21 @@ export type DefinedOperation<D extends OperationDefinition> = Omit<
 export function defineOperationContract(
   definition: OperationDefinition
 ): Omit<CustomOperation, "kind" | "destructive" | "idempotent"> {
-  const { object, collection } = definition
-  if (object !== undefined && collection !== undefined)
-    throw new Error("An operation cannot specify both object and collection.")
+  const { record, object } = definition
+  if (record !== undefined && object !== undefined)
+    throw new Error("An operation cannot specify both record and object.")
   const id = definitionId(definition.id)
-  const target = object ?? collection
+  const target = record ?? object
   const key = target ? `${target.id}.${id}` : id
-  if (object) {
+  if (record) {
     const inputId = definition.input?.id
     if (
       inputId?.kind !== "recordId" ||
-      inputId.typeId !== object.id ||
+      inputId.typeId !== record.id ||
       inputId.nullable === true
     )
       throw new Error(
-        `Operation '${key}' requires a non-nullable input.id declared with schema.id(${object.name}).`
+        `Operation '${key}' requires a non-nullable input.id declared with schema.id(${record.name}).`
       )
   }
   const reasons = new Set<string>()
@@ -132,7 +132,7 @@ export function defineOperationContract(
     name: definition.name,
     description: definition.description,
     objectType: target?.id,
-    scope: object ? "object" : collection ? "collection" : "global",
+    scope: record ? "record" : object ? "object" : "global",
     input: schema.object(definition.input ?? {}),
     output: schema.object(definition.output ?? {}),
     errors: definition.errors ?? [],

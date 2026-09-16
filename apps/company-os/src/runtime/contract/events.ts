@@ -68,6 +68,7 @@ export function createEventFactSchema(Model: ModelCatalog) {
  * Writers validate eventFactSchema; consumers decode versions they understand. */
 const eventSchema = Schema.Struct({
   ...envelope,
+  controllerKeys: Schema.Record(Schema.String, Schema.Array(Schema.String)),
   type: Schema.String,
   version: Schema.Number.check(Schema.isInt(), Schema.isGreaterThan(0)),
   subjects: Schema.Array(subject).check(Schema.isMinLength(1)),

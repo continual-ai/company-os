@@ -1,7 +1,7 @@
 import { Campaign } from "#/modules/marketing/model/campaign.ts"
-import { NoteSubject } from "#/modules/notes/model/index.ts"
 import { User } from "#/runtime/access/model/index.ts"
 import { defineLink, defineObject, schema } from "#/runtime/model/index.ts"
+import { NoteSubject } from "#/runtime/platform/model/note-subject.ts"
 
 export const Content = defineObject({
   id: "content",
@@ -51,13 +51,13 @@ export const Content = defineObject({
 export const ContentCampaign = defineLink({
   id: "contentCampaign",
   name: "Content Campaign",
-  from: { type: Content, key: "campaign", label: "Campaign", max: 1 },
-  to: { type: Campaign, key: "content", label: "Content" },
+  from: { object: Content, key: "campaign", label: "Campaign", max: 1 },
+  to: { object: Campaign, key: "content", label: "Content" },
 })
 
 export const ContentOwner = defineLink({
   id: "contentOwner",
   name: "Content Owner",
-  from: { type: Content, key: "owner", label: "Owner", max: 1 },
-  to: { type: User, key: "content", label: "Content" },
+  from: { object: Content, key: "owner", label: "Owner", max: 1 },
+  to: { object: User, key: "content", label: "Content" },
 })

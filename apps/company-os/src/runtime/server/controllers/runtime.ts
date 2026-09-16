@@ -20,7 +20,7 @@ import { Rpc } from "effect/unstable/rpc"
 
 import { toEffectSchema } from "#/runtime/contract/schema.ts"
 import { controllerDurationMillis } from "#/runtime/model/definition/controller.ts"
-import type { Controller, ModelCatalog } from "#/runtime/model/index.ts"
+import type { ModelCatalog } from "#/runtime/model/index.ts"
 import type { PageToken } from "#/runtime/model/index.ts"
 import {
   Controller as ControllerObject,
@@ -28,10 +28,8 @@ import {
 } from "#/runtime/platform/model/controller.ts"
 import { ControllerReconciliationRequested } from "#/runtime/platform/model/reconcile-controller.ts"
 import { activeModuleModel } from "#/runtime/platform/server/activation.ts"
-import type {
-  ControllerEvent,
-  ControllerServer,
-} from "#/runtime/server/controllers/definition.ts"
+import { AgentSession, AgentError } from "#/runtime/server/agent.ts"
+import type { ControllerServer } from "#/runtime/server/controllers/definition.ts"
 import { ControllerStorage } from "#/runtime/server/controllers/storage.ts"
 import { Database } from "#/runtime/server/database.ts"
 import { EventJournal } from "#/runtime/server/events/event-journal.ts"
@@ -44,7 +42,7 @@ const retry = Schedule.exponential("100 millis").pipe(
     Effect.succeed(Duration.min(duration, Duration.seconds(30)))
   )
 )
-const collectionKey = "collection"
+const objectKey = "object"
 
 /** Immediate and delayed wakeups use the same durable mailbox. */
 class Wakeup extends Schema.Class<Wakeup>("ControllerWakeup")({
@@ -54,15 +52,6 @@ class Wakeup extends Schema.Class<Wakeup>("ControllerWakeup")({
   [DeliverAt.symbol]() {
     return this.dateTime
   }
-}
-
-function eventKeys(definition: Controller, event: ControllerEvent) {
-  if (!definition.watch.includes(event.type)) return []
-  return definition.scope === "collection"
-    ? [collectionKey]
-    : event.subjects
-        .filter((subject) => subject.objectType === definition.objectType)
-        .map((subject) => subject.id)
 }
 
 /** Persisted envelopes remain unacknowledged until their reconciliation succeeds. */
@@ -106,6 +95,7 @@ export function controllerLayer<R>(
                 address.entityId,
                 minInterval
               )
+              if (!timing) return
               // A later successful pass replaces or cancels its predecessor's delayed follow-up.
               if (
                 !batch.some(
@@ -118,14 +108,18 @@ export function controllerLayer<R>(
                 return
               while (true) {
                 // Sleep without a SQL transaction; persisted lastStartedAt preserves the throttle on restart.
-                while (!(yield* enabled)) yield* Effect.sleep("1 second")
-                const { waitMillis } = yield* storage.timing(
+                const current = yield* storage.timing(
                   definition.id,
                   address.entityId,
                   minInterval
                 )
-                if (waitMillis > 0) {
-                  yield* Effect.sleep(waitMillis)
+                if (!current) return
+                if (!(yield* enabled)) {
+                  yield* Effect.sleep("1 second")
+                  continue
+                }
+                if (current.waitMillis > 0) {
+                  yield* Effect.sleep(current.waitMillis)
                   continue
                 }
                 // Admission and pause updates serialize on the controller row. The lock is
@@ -135,16 +129,55 @@ export function controllerLayer<R>(
                     const [controller] = yield* database.sql<{
                       paused: boolean
                     }>`select paused from ${database.table(ControllerObject)} where definition_id = ${definition.id} for share`
-                    if (!controller || controller.paused) return false
-                    yield* storage.started(definition.id, address.entityId)
-                    return true
+                    if (!controller) return "gone"
+                    if (controller.paused) return "paused"
+                    return (yield* storage.started(
+                      definition.id,
+                      address.entityId
+                    ))
+                      ? "started"
+                      : "gone"
                   })
                 )
-                if (started) break
+                if (started === "gone") return
+                if (started === "started") break
                 yield* Effect.sleep("1 second")
               }
               batch.push(...(yield* Queue.takeBetween(mailbox, 0, Infinity)))
-              const result = yield* server.reconcile(address.entityId)
+              const result = yield* server.reconcile(address.entityId).pipe(
+                Effect.provideService(AgentSession, {
+                  current: storage.get(definition.id, address.entityId).pipe(
+                    Effect.map((instance) =>
+                      instance?.agentSessionId
+                        ? {
+                            id: instance.agentSessionId,
+                            url: instance.agentSessionUrl,
+                          }
+                        : undefined
+                    ),
+                    Effect.mapError(
+                      (cause) =>
+                        new AgentError({
+                          message: "Could not load agent session",
+                          cause,
+                        })
+                    )
+                  ),
+                  save: (session) =>
+                    storage
+                      .saveSession(definition.id, address.entityId, session)
+                      .pipe(
+                        Effect.asVoid,
+                        Effect.mapError(
+                          (cause) =>
+                            new AgentError({
+                              message: "Could not save agent session",
+                              cause,
+                            })
+                        )
+                      ),
+                })
+              )
               const dateTime =
                 result?.requeueAfter === undefined
                   ? undefined
@@ -199,15 +232,15 @@ export function controllerLayer<R>(
     const sharding = yield* Sharding.Sharding
     const add = (key: string) =>
       Effect.gen(function* () {
-        yield* storage.pending(definition.id, key)
+        if (!(yield* storage.pending(definition.id, key))) return
         yield* client(key).Wake(
           new Wakeup({ dateTime: yield* DateTime.now, scheduled: false }),
           { discard: true }
         )
       })
     const scan = Effect.gen(function* () {
-      if (definition.scope === "collection") {
-        yield* add(collectionKey)
+      if (definition.scope === "object") {
+        yield* add(objectKey)
         return
       }
       const object = model.objects[definition.objectType]!
@@ -276,23 +309,9 @@ export function controllerLayer<R>(
                 }
                 continue
               }
-              if (!definition.watch.includes(event.type)) continue
-              for (const key of new Set(eventKeys(definition, event)))
-                yield* add(key)
-              if (server.onEvent)
-                yield* server.onEvent(event, {
-                  queue: {
-                    add: (key) => {
-                      if (definition.scope === "collection")
-                        return add(collectionKey)
-                      return key
-                        ? add(key)
-                        : Effect.die(
-                            "An object controller requires a record ID."
-                          )
-                    },
-                  },
-                })
+              if (Object.hasOwn(event.controllerKeys, definition.id))
+                for (const key of event.controllerKeys[definition.id]!)
+                  yield* add(key)
             }
             // A crash before this write replays events; reconciliation must tolerate duplicates.
             yield* storage.saveCursor(definition.id, page.nextCursor)

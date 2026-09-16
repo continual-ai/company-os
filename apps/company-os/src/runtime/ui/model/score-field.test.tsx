@@ -30,8 +30,7 @@ it("renders a numeric meter consistently in record properties and table cells, p
       <>
         {objectPropertyValue(
           testPresentation(fixtureModel),
-          Review,
-          "score",
+          Review.properties.score,
           value,
           new Map()
         )}

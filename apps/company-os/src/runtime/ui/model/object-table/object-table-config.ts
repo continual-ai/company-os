@@ -15,31 +15,22 @@ import {
   type ReactTable,
 } from "@tanstack/react-table"
 
-import type {
-  ImageRef,
-  Money,
-  PropertyDefinition,
-} from "#/runtime/model/index.ts"
+import type { ModelLinkTraversal } from "#/runtime/model/definition/model.ts"
+import type { ImageRef, PropertyDefinition } from "#/runtime/model/index.ts"
 import type {
   ObjectTableFilterOperator,
   ObjectTableFilterValue,
 } from "#/runtime/ui/model/collection-view.ts"
-import type { ObjectRecordPresentation } from "#/runtime/ui/model/object-client.ts"
+import type {
+  ClientRecord,
+  ClientValue,
+  ObjectRecordPresentation,
+} from "#/runtime/ui/model/object-client.ts"
 import { objectTableCellBehavior } from "#/runtime/ui/model/object-table/object-table-cell-types.ts"
 
-export type ObjectTableValue =
-  | boolean
-  | ImageRef
-  | Money
-  | null
-  | number
-  | ReadonlyArray<string>
-  | string
-
-export type ObjectTableRecord = { id: string } & Record<
-  string,
-  ObjectTableValue
->
+export type ObjectTableValue = ClientValue
+export type ObjectTableRecord = Pick<ClientRecord, "id" | "links"> &
+  Record<string, ClientValue | undefined>
 
 export type ObjectTableImageResolver = (
   image: ImageRef
@@ -53,36 +44,36 @@ export function objectTableImageValue(
   value: ObjectTableValue | undefined
 ): ImageRef | null {
   if (value === null || value === undefined) return null
-  // This is the parsed ObjectTableValue boundary; its only object member is ImageRef.
-  return typeof value === "object" && "assetId" in value ? value : null
-}
-
-function objectTableMoneyValue(
-  value: ObjectTableValue | undefined
-): Money | null {
-  if (
-    // ObjectTableValue is the parsed boundary for presentation values.
-    typeof value !== "object" ||
-    value === null ||
-    !("amount" in value) ||
-    !("currency" in value)
-  ) {
-    return null
-  }
-  return value
+  return typeof value === "object" &&
+    "assetId" in value &&
+    typeof value.assetId === "string"
+    ? {
+        assetId: value.assetId,
+        ...("alt" in value && typeof value.alt === "string"
+          ? { alt: value.alt }
+          : {}),
+      }
+    : null
 }
 
 export function objectTableValueText(
   value: ObjectTableValue | undefined
 ): string {
   if (value === null || value === undefined) return ""
-  if (Array.isArray(value)) return value.join(", ")
+  if (Array.isArray(value)) return value.map(objectTableValueText).join(", ")
   const image = objectTableImageValue(value)
   if (image !== null) return image.assetId
-  const money = objectTableMoneyValue(value)
-  if (money !== null) return `${money.amount} ${money.currency}`
+  if (typeof value === "object") {
+    if (
+      "amount" in value &&
+      "currency" in value &&
+      typeof value.amount === "string" &&
+      typeof value.currency === "string"
+    )
+      return `${value.amount} ${value.currency}`
+    return JSON.stringify(value)
+  }
 
-  // ObjectTableValue is already parsed; this exhausts its scalar members.
   switch (typeof value) {
     case "boolean":
       return value ? "true" : "false"
@@ -105,6 +96,10 @@ export function objectTableSortText(
 }
 
 export interface ObjectTableColumnMeta {
+  link?: ModelLinkTraversal
+
+  editable?: boolean
+
   relationship?: string
   displayProperty?: PropertyDefinition
   essential?: boolean

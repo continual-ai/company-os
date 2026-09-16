@@ -1,7 +1,7 @@
 import { Contact } from "#/modules/crm/model/index.ts"
 import { Campaign } from "#/modules/marketing/model/campaign.ts"
-import { NoteSubject } from "#/modules/notes/model/index.ts"
 import { defineLink, defineObject, schema } from "#/runtime/model/index.ts"
+import { NoteSubject } from "#/runtime/platform/model/note-subject.ts"
 
 export const CampaignMember = defineObject({
   id: "campaignMember",
@@ -48,24 +48,24 @@ export const CampaignMemberCampaign = defineLink({
   id: "campaignMemberCampaign",
   name: "Campaign member Campaign",
   from: {
-    type: CampaignMember,
+    object: CampaignMember,
     key: "campaign",
     label: "Campaign",
     min: 1,
     max: 1,
   },
-  to: { type: Campaign, key: "campaignMembers", label: "Campaign members" },
+  to: { object: Campaign, key: "campaignMembers", label: "Campaign members" },
 })
 
 export const CampaignMemberContact = defineLink({
   id: "campaignMemberContact",
   name: "Campaign member Contact",
   from: {
-    type: CampaignMember,
+    object: CampaignMember,
     key: "contact",
     label: "Contact",
     min: 1,
     max: 1,
   },
-  to: { type: Contact, key: "campaignMembers", label: "Campaign members" },
+  to: { object: Contact, key: "campaignMembers", label: "Campaign members" },
 })

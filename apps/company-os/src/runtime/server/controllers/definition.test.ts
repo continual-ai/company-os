@@ -18,8 +18,8 @@ const Item = defineObject({
   display: { title: "title" },
 })
 
-it("infers target record IDs for reconciliation and event routing", () => {
-  const definition = defineController({ id: "typed", object: Item })
+it("infers target record IDs for reconciliation", () => {
+  const definition = defineController({ id: "typed", record: Item })
   let observed: string | undefined
   const server = defineControllerServer(definition, {
     reconcile: (key) => {
@@ -28,29 +28,19 @@ it("infers target record IDs for reconciliation and event routing", () => {
         observed = key
       })
     },
-    onEvent: (_event, { queue }) => {
-      expectTypeOf(queue.add)
-        .parameter(0)
-        .toEqualTypeOf<RecordId<"typedItem">>()
-      return Effect.void
-    },
   })
   Effect.runSync(server.reconcile("typed_item_123"))
   expect(observed).toBe("typed_item_123")
 })
 
-it("collection reconciliation and event routing require no key", () => {
-  const definition = defineController({ id: "collection", collection: Item })
+it("object reconciliation require no key", () => {
+  const definition = defineController({ id: "object", object: Item })
   const server = defineControllerServer(definition, {
     reconcile: (...args) => {
       expectTypeOf(args).toEqualTypeOf<[]>()
       expect(args).toEqual([])
       return Effect.void
     },
-    onEvent: (_event, { queue }) => {
-      expectTypeOf(queue.add).parameters.toEqualTypeOf<[]>()
-      return queue.add()
-    },
   })
-  Effect.runSync(server.reconcile("collection"))
+  Effect.runSync(server.reconcile("object"))
 })

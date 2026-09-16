@@ -19,16 +19,19 @@ export type ControllerDefinition = {
   readonly id: string
   readonly name?: string
   readonly description?: string
+  /** Ignore target updates that write only these properties. Mixed updates still trigger. */
+  readonly ignoreUpdates?: ReadonlyArray<string>
+  /** Named relationship paths whose records and edges affect this target. */
   readonly watch?: ReadonlyArray<string>
   readonly schedule?: { readonly cron: string; readonly timeZone?: string }
   readonly minInterval?: ControllerDuration
 } & (
-  | { readonly object: ObjectType; readonly collection?: never }
-  | { readonly collection: ObjectType; readonly object?: never }
+  | { readonly record: ObjectType; readonly object?: never }
+  | { readonly object: ObjectType; readonly record?: never }
 )
 
 export interface Controller<
-  S extends "object" | "collection" = "object" | "collection",
+  S extends "record" | "object" = "record" | "object",
   T extends string = string,
 > {
   readonly kind: "controller"
@@ -37,16 +40,17 @@ export interface Controller<
   readonly description: string
   readonly objectType: T
   readonly scope: S
+  readonly ignoreUpdates?: ReadonlyArray<string>
   readonly watch: ReadonlyArray<string>
   readonly schedule?: { readonly cron: string; readonly timeZone: string }
   readonly minInterval?: ControllerDuration
 }
 
 type DefinedController<D extends ControllerDefinition> = Controller<
-  D extends { readonly object: ObjectType } ? "object" : "collection",
-  (D extends { readonly object: infer O extends ObjectType }
+  D extends { readonly record: ObjectType } ? "record" : "object",
+  (D extends { readonly record: infer O extends ObjectType }
     ? O
-    : D extends { readonly collection: infer O extends ObjectType }
+    : D extends { readonly object: infer O extends ObjectType }
       ? O
       : never)["id"]
 >
@@ -59,18 +63,22 @@ export function defineController<const D extends ControllerDefinition>(
     throw new Error(
       "Controller ids must start with a lowercase letter and contain letters, digits, or hyphens."
     )
-  const target = definition.object ?? definition.collection
-  if (!target || (definition.object && definition.collection))
+  const target = definition.record ?? definition.object
+  if (!target || (definition.record && definition.object))
     throw new Error(
-      "A controller must specify exactly one of object or collection."
+      "A controller must specify exactly one of record or object."
+    )
+  if (definition.ignoreUpdates?.some((field) => !(field in target.properties)))
+    throw new Error(
+      "Ignored update fields must belong to the controller target."
     )
   if (
     definition.watch?.some(
-      (type) => !/^[a-zA-Z][a-zA-Z0-9]*\.[a-zA-Z][a-zA-Z0-9]*$/.test(type)
+      (path) => !/^[a-zA-Z][a-zA-Z0-9]*(\.[a-zA-Z][a-zA-Z0-9]*)*$/.test(path)
     )
   )
     throw new Error(
-      "Controller watches must be explicit event types, such as issue.created."
+      "Controller watches must be relationship paths, such as affiliations.account.notes."
     )
   if (definition.minInterval !== undefined)
     controllerDurationMillis(definition.minInterval)
@@ -84,20 +92,16 @@ export function defineController<const D extends ControllerDefinition>(
     id: definition.id,
     name: definition.name ?? definition.id,
     description: definition.description ?? "",
+    ...(definition.ignoreUpdates
+      ? { ignoreUpdates: definition.ignoreUpdates }
+      : {}),
     objectType: target.id,
     ...(schedule ? { schedule } : {}),
     ...(definition.minInterval !== undefined
       ? { minInterval: definition.minInterval }
       : {}),
-    scope: definition.object ? ("object" as const) : ("collection" as const),
-    watch: [
-      ...new Set([
-        `${target.id}.created`,
-        `${target.id}.updated`,
-        `${target.id}.deleted`,
-        ...(definition.watch ?? []),
-      ]),
-    ],
+    scope: definition.record ? ("record" as const) : ("object" as const),
+    watch: [...new Set(definition.watch ?? [])],
   }
   // SAFETY: the runtime target and scope are derived from the same exclusive input union.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion

@@ -29,7 +29,7 @@ import {
 } from "react"
 
 import { modelObjectLinkTraversals } from "#/runtime/model/definition/model.ts"
-import { relationshipFields } from "#/runtime/model/relationship-fields.ts"
+import { objectFields } from "#/runtime/model/object-fields.ts"
 import {
   calendarDay,
   collectionDateWindow,
@@ -48,14 +48,9 @@ import {
 } from "#/runtime/ui/model/module-ui.tsx"
 import {
   clientFor,
-  tableRecord,
   type ClientRecord,
   type ModelObject,
 } from "#/runtime/ui/model/object-client.ts"
-import {
-  canFilterProperty,
-  canSortProperty,
-} from "#/runtime/ui/model/object-collection-query.ts"
 import {
   emptyObjectCollectionViewState,
   objectCollectionStateSearch,
@@ -172,11 +167,7 @@ export function ObjectCollection({
   }
 
   const linkColumns = modelObjectLinkTraversals(runtime.model, object)
-  const propertyIds = [
-    ...Object.keys(object.properties),
-    ...relationshipFields(runtime.model, object).map(({ id }) => id),
-    ...linkColumns.map(({ traversal }) => traversal.key),
-  ]
+  const propertyIds = objectFields(object, runtime.model).map(({ id }) => id)
   const configuredVisibility = Object.keys(viewState.visibility).length > 0
   const columnVisibility = Object.fromEntries(
     propertyIds.map((propertyId) => [
@@ -375,11 +366,7 @@ export function ObjectCollection({
         <ObjectTable
           resetKey={collection.requestKey}
           object={object}
-          records={collection.records.map((record) =>
-            tableRecord(object, record)
-          )}
-          canFilterProperty={canFilterProperty}
-          canSortProperty={canSortProperty}
+          records={collection.records}
           columnFilters={[...viewState.filters]}
           columnVisibility={columnVisibility}
           sorting={[...collection.sorting]}
@@ -454,9 +441,7 @@ export function ObjectCollection({
           </PageToolbar>
           <CollectionQueryToolbar
             object={object}
-            records={collection.records.map((record) =>
-              tableRecord(object, record)
-            )}
+            records={collection.records}
             columnFilters={[...viewState.filters]}
             sorting={[...collection.sorting]}
             onColumnFiltersChange={(update) =>

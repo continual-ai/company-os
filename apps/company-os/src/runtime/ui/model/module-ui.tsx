@@ -6,14 +6,16 @@ import {
   type ModuleDefinition,
   type ModelCatalog,
 } from "#/runtime/model/index.ts"
-import { relationshipFields } from "#/runtime/model/relationship-fields.ts"
+import {
+  objectFields,
+  requireObjectField,
+} from "#/runtime/model/object-fields.ts"
 import { collectionLayoutError } from "#/runtime/ui/model/collection-layout.ts"
 import type {
   ObjectRecordPresentation,
   ClientRecord,
   ModelObject,
 } from "#/runtime/ui/model/object-client.ts"
-import { objectTableProperties } from "#/runtime/ui/model/object-table/object-table-columns.ts"
 import type {
   ObjectUi,
   FieldEditorProps,
@@ -166,24 +168,14 @@ export function composeModelUi(
         Model,
         installedObject
       ).map(({ traversal }) => traversal.key)
-      const fields = new Set([
-        ...objectTableProperties(installedObject).map(([key]) => key),
-        ...relationships,
-        ...relationshipFields(Model, installedObject).map(
-          ({ id: field }) => field
-        ),
-      ])
+      const fields = objectFields(installedObject, Model)
       for (const view of config.collection?.views ?? []) {
-        for (const field of [
-          ...Object.keys(view.state.visibility),
-          ...view.state.filters.map((entry) => entry.id),
-          ...view.state.sorting.map((entry) => entry.id),
-        ]) {
-          if (!fields.has(field))
-            throw new Error(
-              `Unknown field '${id}.${field}' in view '${view.id}'.`
-            )
-        }
+        for (const fieldId of Object.keys(view.state.visibility))
+          requireObjectField(fields, fieldId)
+        for (const { id: fieldId } of view.state.filters)
+          requireObjectField(fields, fieldId, "filter")
+        for (const { id: fieldId } of view.state.sorting)
+          requireObjectField(fields, fieldId, "sort")
       }
       const tabs = new Set<string>([
         "overview",

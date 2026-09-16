@@ -4,13 +4,9 @@ import { Score } from "@company/ui/score"
 import type { ReactNode } from "react"
 
 import { AssetPreviews } from "#/runtime/assets/ui/asset-preview.tsx"
-import type { AnySchema } from "#/runtime/model/index.ts"
+import type { AnySchema, PropertyDefinition } from "#/runtime/model/index.ts"
 import { ObjectChoiceBadge } from "#/runtime/ui/model/object-choice-badge.tsx"
-import {
-  modelObjectProperty,
-  type ModelObject,
-  type ObjectRecordPresentation,
-} from "#/runtime/ui/model/object-client.ts"
+import type { ObjectRecordPresentation } from "#/runtime/ui/model/object-client.ts"
 import { ObjectRecordIdentity } from "#/runtime/ui/model/object-record-identity.tsx"
 import { objectRecordHref } from "#/runtime/ui/model/object-routing.ts"
 import { objectTablePropertySchema } from "#/runtime/ui/model/object-table/object-table-cell-types.ts"
@@ -22,8 +18,7 @@ import { type ModelUiRuntime } from "#/runtime/ui/model/runtime-context.tsx"
 
 export function objectPropertyValue(
   runtime: ModelUiRuntime,
-  object: ModelObject,
-  propertyId: string,
+  property: PropertyDefinition | undefined,
   value: ObjectTableValue | undefined,
   references: ReadonlyMap<string, ObjectRecordPresentation>
 ): ReactNode {
@@ -35,7 +30,6 @@ export function objectPropertyValue(
   ) {
     return <span className="text-muted-foreground/60">Empty</span>
   }
-  const property = modelObjectProperty(object, propertyId)
   const schema =
     property === undefined ? undefined : objectTablePropertySchema(property)
   if (schema?.kind === "recordId" && typeof value === "string") {

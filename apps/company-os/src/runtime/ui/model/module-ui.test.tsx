@@ -239,7 +239,7 @@ describe("module UI composition", () => {
     ] as const) {
       expect(() =>
         composeAccountView(defineCollectionView("all", "All", options))
-      ).toThrow("Unknown field 'account.removed' in view 'all'.")
+      ).toThrow("Unknown field 'removed'.")
     }
     expect(() =>
       composeAccountView(
@@ -303,4 +303,36 @@ describe("module UI composition", () => {
       })
     ).toThrow("Unknown action")
   })
+})
+
+it("allows resource columns without advertising unsupported query capabilities", () => {
+  expect(() =>
+    composeAccountView(
+      defineCollectionView("audit", "Audit", {
+        columns: ["name", "metadata", "aliases", "etag", "createdBy"],
+        sorting: [{ id: "updatedAt", desc: true }],
+      })
+    )
+  ).not.toThrow()
+  expect(() =>
+    composeAccountView(
+      defineCollectionView("invalid", "Invalid", {
+        columns: ["name"],
+        filters: [
+          {
+            id: "metadata",
+            value: { operator: "contains", values: ["import"] },
+          },
+        ],
+      })
+    )
+  ).toThrow("Field 'metadata' does not support filter.")
+  expect(() =>
+    composeAccountView(
+      defineCollectionView("invalid", "Invalid", {
+        columns: ["name"],
+        sorting: [{ id: "etag", desc: true }],
+      })
+    )
+  ).toThrow("Field 'etag' does not support sort.")
 })

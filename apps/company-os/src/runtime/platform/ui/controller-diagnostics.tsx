@@ -76,18 +76,18 @@ export function ControllerDiagnostics({
       )}
       {status && (
         <>
-          <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-4">
+          <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-5">
             <div>
-              <dt className="text-muted-foreground">Scope</dt>
+              <dt className="text-muted-foreground">Records</dt>
               <dd>
                 {targetKey ??
-                  (controller.scope === "object"
-                    ? `${status.instances} keys`
+                  (controller.scope === "record"
+                    ? `${status.instances} records`
                     : "Entire collection")}
               </dd>
             </div>
             <div>
-              <dt className="text-muted-foreground">Last attempt</dt>
+              <dt className="text-muted-foreground">Last run</dt>
               <dd>{timestamp(status.lastStartedAt)}</dd>
             </div>
             <div>
@@ -95,10 +95,22 @@ export function ControllerDiagnostics({
               <dd>{timestamp(status.lastSucceededAt)}</dd>
             </div>
             <div>
-              <dt className="text-muted-foreground">Attempts</dt>
-              <dd>{status.attempts}</dd>
+              <dt className="text-muted-foreground">Runs</dt>
+              <dd>{status.runs}</dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">Failures</dt>
+              <dd>{status.failures}</dd>
             </div>
           </dl>
+          {status.agentSessionUrl && (
+            <a
+              className="mt-3 inline-block text-sm underline underline-offset-4"
+              href={status.agentSessionUrl}
+            >
+              Open agent session
+            </a>
+          )}
           {status.requeueAt && (
             <p className="mt-3 text-xs text-muted-foreground">
               Next requested follow-up: {timestamp(status.requeueAt)}
@@ -106,7 +118,7 @@ export function ControllerDiagnostics({
           )}
           <p className="mt-3 text-xs text-muted-foreground">
             {status.pending} pending · {status.running} running ·{" "}
-            {status.errors} errors
+            {status.errors} currently in error
           </p>
           {status.lastError && (
             <div className="mt-4 text-xs text-destructive">
@@ -130,7 +142,7 @@ export function ControllerDiagnostics({
           })
         }
       >
-        {!targetKey && controller.scope === "object"
+        {!targetKey && controller.scope === "record"
           ? "Run all now"
           : "Run now"}
       </Button>
@@ -147,7 +159,7 @@ export function ControllerDiagnostics({
       </Button>
       <p className="mt-2 text-xs text-muted-foreground">
         {status?.paused
-          ? "Paused for all keys. Pending work is retained; already-started attempts may finish."
+          ? "Paused for all keys. Pending work is retained; already-started runs may finish."
           : "Run now requests reconciliation using the latest state. Pausing applies to all keys."}
       </p>
       {update.isError && (
@@ -199,7 +211,7 @@ export function ControllerOverview({
           <dd>{record.minInterval ?? "None"}</dd>
         </div>
       </dl>
-      {record.scope === "object" && (
+      {record.scope === "record" && (
         <label htmlFor={inputId} className="block text-sm">
           Inspect a key (leave empty for all keys)
           <Input

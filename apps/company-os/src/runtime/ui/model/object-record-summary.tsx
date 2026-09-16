@@ -3,7 +3,6 @@ import type { ReactNode } from "react"
 import { useObjectUi } from "#/runtime/ui/model/module-ui.tsx"
 import {
   type ObjectRecordPresentation,
-  tableRecord,
   type ClientRecord,
   type ModelObject,
 } from "#/runtime/ui/model/object-client.ts"
@@ -45,7 +44,7 @@ export function ObjectRecordSummary({
         expanded
         className="flex-1"
         object={object}
-        record={tableRecord(object, record)}
+        record={record}
         href={href}
       />
       {actions}

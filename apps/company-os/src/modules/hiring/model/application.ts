@@ -1,7 +1,7 @@
 import { Candidate } from "#/modules/hiring/model/candidate.ts"
 import { JobPosting } from "#/modules/hiring/model/job-posting.ts"
-import { NoteSubject } from "#/modules/notes/model/index.ts"
 import { defineLink, defineObject, schema } from "#/runtime/model/index.ts"
+import { NoteSubject } from "#/runtime/platform/model/note-subject.ts"
 
 export const Application = defineObject({
   id: "application",
@@ -72,19 +72,25 @@ export const Application = defineObject({
 export const ApplicationJob = defineLink({
   id: "applicationJob",
   name: "Application Job posting",
-  from: { type: Application, key: "job", label: "Job posting", min: 1, max: 1 },
-  to: { type: JobPosting, key: "applications", label: "Applications" },
+  from: {
+    object: Application,
+    key: "job",
+    label: "Job posting",
+    min: 1,
+    max: 1,
+  },
+  to: { object: JobPosting, key: "applications", label: "Applications" },
 })
 
 export const ApplicationCandidate = defineLink({
   id: "applicationCandidate",
   name: "Application Candidate",
   from: {
-    type: Application,
+    object: Application,
     key: "candidate",
     label: "Candidate",
     min: 1,
     max: 1,
   },
-  to: { type: Candidate, key: "applications", label: "Applications" },
+  to: { object: Candidate, key: "applications", label: "Applications" },
 })

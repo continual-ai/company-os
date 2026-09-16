@@ -113,14 +113,14 @@ describe("object collection queries", () => {
     })
   })
 
-  it("does not invent filters for unsupported presentation values", () => {
-    expect(
+  it("rejects filters for unsupported presentation values", () => {
+    expect(() =>
       objectListRequest(
         Account,
         [{ id: "logo", value: { operator: "contains", values: ["asset"] } }],
         []
       )
-    ).toEqual({ pageSize: 50 })
+    ).toThrow("Field 'logo' does not support filter.")
   })
 })
 
@@ -241,4 +241,48 @@ it("uses the derived label consistently for the identity column's filtering and 
     filter: { field: "label", operator: "contains", value: "Maya" },
     sort: [{ field: "label", direction: "asc" }],
   })
+})
+
+it("filters and sorts audit fields using the existing API contract", () => {
+  const request = objectListRequest(
+    Account,
+    [
+      {
+        id: "createdBy",
+        value: { operator: "equals", values: ["user_author"] },
+      },
+      {
+        id: "createdAt",
+        value: { operator: "onOrAfter", values: ["2026-09-01T00:00:00.000Z"] },
+      },
+    ],
+    [{ id: "updatedAt", desc: true }]
+  )
+  expect(request.filter).toEqual({
+    and: [
+      { field: "createdBy", operator: "eq", value: "user_author" },
+      {
+        field: "createdAt",
+        operator: "gte",
+        value: "2026-09-01T00:00:00.000Z",
+      },
+    ],
+  })
+  expect(request.sort).toEqual([
+    { field: "updatedAt", direction: "desc", nulls: "last" },
+  ])
+  expect(() => validateQuery(fixtureModel, Account, request)).not.toThrow()
+})
+
+it("rejects unsupported resource filters and sorts instead of silently removing them", () => {
+  expect(() =>
+    objectListRequest(
+      Account,
+      [{ id: "metadata", value: { operator: "contains", values: ["import"] } }],
+      []
+    )
+  ).toThrow("Field 'metadata' does not support filter.")
+  expect(() =>
+    objectListRequest(Account, [], [{ id: "etag", desc: true }])
+  ).toThrow("Field 'etag' does not support sort.")
 })

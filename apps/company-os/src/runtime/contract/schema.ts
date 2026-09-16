@@ -35,6 +35,7 @@ import type {
   ValidationError,
   Violation,
 } from "#/runtime/model/definition/standard-error.ts"
+import { resourceProperties } from "#/runtime/model/resource-properties.ts"
 
 const formatSchemaIssues = SchemaIssue.makeFormatterStandardSchemaV1()
 
@@ -532,29 +533,12 @@ export function toEffectObjectFields(object: ObjectType, model?: ModelCatalog) {
     readOnly: true,
     title: `${object.name} ID`,
   }).pipe(Schema.fromBrand(`RecordId:${object.id}`, RecordId(object.id)))
-  const createdAt = Schema.String.annotate({
-    format: "date-time",
-    readOnly: true,
-    title: "Created at",
-  }).pipe(Schema.fromBrand("Timestamp", Timestamp))
-  const updatedAt = Schema.String.annotate({
-    format: "date-time",
-    readOnly: true,
-    title: "Updated at",
-  }).pipe(Schema.fromBrand("Timestamp", Timestamp))
-  const actorId = Schema.String.annotate({ readOnly: true }).pipe(
-    Schema.fromBrand("RecordId", RecordId("actor"))
-  )
   const fields: CompiledSchemaFields = Object.fromEntries([
+    ...Object.entries(resourceProperties).map(([key, property]) =>
+      entry(key, toEffectSchema(property))
+    ),
     entry("id", id),
     entry("objectType", Schema.Literal(object.id)),
-    entry(
-      "label",
-      Schema.String.annotate({
-        readOnly: true,
-        description: "Current display label derived from the model.",
-      })
-    ),
     entry(
       "links",
       model === undefined
@@ -602,21 +586,7 @@ export function toEffectObjectFields(object: ObjectType, model?: ModelCatalog) {
     ),
     entry("aliases", recordAliasesSchema),
     entry("metadata", metadataSchema),
-    entry("createdAt", createdAt),
-    entry("createdBy", actorId),
     entry("etag", etagSchema.annotate({ readOnly: true })),
-
-    entry(
-      "systemManaged",
-      Schema.Boolean.annotate({
-        description:
-          "Whether ordinary mutations are reserved for trusted system workflows.",
-        readOnly: true,
-        title: "System managed",
-      })
-    ),
-    entry("updatedAt", updatedAt),
-    entry("updatedBy", actorId),
     ...Object.entries(compileObjectProperties(object)),
   ])
   return fields

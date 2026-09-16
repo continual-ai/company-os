@@ -80,6 +80,7 @@ export const eventJournal = defineTable<{
   subjects: ReadonlyArray<EventSubject>
   actorId: string
   data: unknown
+  controllerKeys: Readonly<Record<string, ReadonlyArray<string>>>
   occurredAt: string
   recordedAt: string
 }>(
@@ -97,6 +98,7 @@ export const eventJournal = defineTable<{
     },
     actorId: { type: "text" },
     data: { type: "jsonb" },
+    controllerKeys: { type: "jsonb", default: "'{}'::jsonb" },
     occurredAt: { type: "timestamp with time zone" },
     recordedAt: {
       type: "timestamp with time zone",
@@ -174,35 +176,6 @@ export const controllerConsumers = defineTable<{
   { controllerId: { type: "text" }, cursor: { type: "text" } },
   { constraints: ['primary key ("controller_id")'] }
 )
-export const controllerInstances = defineTable<{
-  controllerId: string
-  key: string
-  state: string
-  attempts: number
-  lastStartedAt: string | null
-  lastSucceededAt: string | null
-  requeueAt: string | null
-  lastError: string | null
-}>(
-  "controller_instances",
-  {
-    controllerId: { type: "text" },
-    key: { type: "text" },
-    state: { type: "text" },
-    attempts: { type: "integer", default: "0" },
-    lastStartedAt: { type: "timestamp with time zone", nullable: true },
-    lastSucceededAt: { type: "timestamp with time zone", nullable: true },
-    requeueAt: { type: "timestamp with time zone", nullable: true },
-    lastError: { type: "text", nullable: true },
-  },
-  {
-    constraints: [
-      'primary key ("controller_id", "key")',
-      `check ("state" in ('pending', 'running', 'idle', 'error'))`,
-    ],
-  }
-)
-
 /** Desired current DDL. Migration history and required bootstrap data have separate owners. */
 export const infrastructureStatements = [
   schemaSection("Application infrastructure"),
@@ -224,5 +197,4 @@ $$`,
   ...searchIndexState.ddl,
   ...seedRuns.ddl,
   ...controllerConsumers.ddl,
-  ...controllerInstances.ddl,
 ]

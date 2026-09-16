@@ -1,7 +1,7 @@
 import { Account } from "#/modules/crm/model/account.ts"
 import { Contact } from "#/modules/crm/model/contact.ts"
-import { NoteSubject } from "#/modules/notes/model/index.ts"
 import { defineLink, defineObject, schema } from "#/runtime/model/index.ts"
+import { NoteSubject } from "#/runtime/platform/model/note-subject.ts"
 
 export const Affiliation = defineObject({
   id: "affiliation",
@@ -38,11 +38,11 @@ export const Affiliation = defineObject({
 
 export const AffiliationContact = defineLink({
   id: "affiliationContact",
-  from: { type: Affiliation, key: "contact", min: 1, max: 1 },
-  to: { type: Contact, key: "affiliations", label: "Affiliations" },
+  from: { object: Affiliation, key: "contact", min: 1, max: 1 },
+  to: { object: Contact, key: "affiliations", label: "Affiliations" },
 })
 export const AffiliationAccount = defineLink({
   id: "affiliationAccount",
-  from: { type: Affiliation, key: "account", min: 1, max: 1 },
-  to: { type: Account, key: "affiliations", label: "Affiliations" },
+  from: { object: Affiliation, key: "account", min: 1, max: 1 },
+  to: { object: Account, key: "affiliations", label: "Affiliations" },
 })

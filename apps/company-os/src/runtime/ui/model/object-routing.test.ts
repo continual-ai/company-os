@@ -36,10 +36,12 @@ describe("object routes", () => {
       ({ id }) => id === "platform"
     )
     expect(platform?.items.map(({ object }) => object.id)).toEqual([
+      "note",
       "user",
       "serviceAccount",
       "asset",
       "controller",
+      "controllerInstance",
     ])
   })
 

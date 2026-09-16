@@ -1,7 +1,8 @@
-import { NoteSubject } from "#/modules/notes/model/index.ts"
 import { Project } from "#/modules/product/model/project.ts"
 import { User } from "#/runtime/access/model/index.ts"
 import { defineLink, defineObject, schema } from "#/runtime/model/index.ts"
+import { ControllerTarget } from "#/runtime/platform/model/controller-instance.ts"
+import { NoteSubject } from "#/runtime/platform/model/note-subject.ts"
 
 export const Issue = defineObject({
   id: "issue",
@@ -9,7 +10,7 @@ export const Issue = defineObject({
   name: "Issue",
   pluralName: "Issues",
   description: "A bug, request, or task to investigate and resolve.",
-  implements: [{ interface: NoteSubject }],
+  implements: [{ interface: ControllerTarget }, { interface: NoteSubject }],
   properties: {
     title: schema.string({ label: "Title", minLength: 1, maxLength: 300 }),
     description: schema.string({
@@ -60,13 +61,13 @@ export const Issue = defineObject({
 export const IssueProject = defineLink({
   id: "issueProject",
   name: "Issue Project",
-  from: { type: Issue, key: "project", label: "Project", max: 1 },
-  to: { type: Project, key: "issues", label: "Issues" },
+  from: { object: Issue, key: "project", label: "Project", max: 1 },
+  to: { object: Project, key: "issues", label: "Issues" },
 })
 
 export const IssueAssignee = defineLink({
   id: "issueAssignee",
   name: "Issue Assignee",
-  from: { type: Issue, key: "assignee", label: "Assignee", max: 1 },
-  to: { type: User, key: "issuesByAssignee", label: "Issues (Assignee)" },
+  from: { object: Issue, key: "assignee", label: "Assignee", max: 1 },
+  to: { object: User, key: "issuesByAssignee", label: "Issues (Assignee)" },
 })

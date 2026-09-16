@@ -1,7 +1,7 @@
 import { Party } from "#/modules/crm/model/interfaces/party.ts"
-import { NoteSubject } from "#/modules/notes/model/index.ts"
 import { User } from "#/runtime/access/model/index.ts"
 import { defineLink, defineObject, schema } from "#/runtime/model/index.ts"
+import { NoteSubject } from "#/runtime/platform/model/note-subject.ts"
 
 export const Account = defineObject({
   id: "account",
@@ -82,6 +82,6 @@ export const Account = defineObject({
 export const AccountOwner = defineLink({
   id: "accountOwner",
   name: "Account owner",
-  from: { type: Account, key: "owner", label: "Owner", max: 1 },
-  to: { type: User, key: "accounts", label: "Accounts" },
+  from: { object: Account, key: "owner", label: "Owner", max: 1 },
+  to: { object: User, key: "accounts", label: "Accounts" },
 })

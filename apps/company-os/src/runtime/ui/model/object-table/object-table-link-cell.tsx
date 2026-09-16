@@ -4,6 +4,7 @@ import { PencilIcon } from "lucide-react"
 import { useState } from "react"
 
 import type { ModelLinkTraversal, ObjectType } from "#/runtime/model/index.ts"
+import { linkPreview } from "#/runtime/model/record-links.ts"
 import { clientFor } from "#/runtime/ui/model/object-client.ts"
 import { ObjectRecordDialog } from "#/runtime/ui/model/object-record-dialog.tsx"
 import type {
@@ -30,14 +31,12 @@ export function ObjectTableLinkCell({
   const client = clientFor(runtime, object)
   const [open, setOpen] = useState(false)
   const current = useQuery({ ...client.get({ id: record.id }), enabled: open })
-  const value = record[link.traversal.key]
-  const ids = Array.isArray(value) ? value : []
-  const total = record[`${link.traversal.key}TotalSize`]
+  const { ids, totalSize } = linkPreview(record.links?.[link.traversal.key])
   return (
     <div className="group/link relative flex h-8 min-w-0 items-center px-2 pr-7 text-xs">
       <RecordLinkValue
         ids={ids}
-        totalSize={typeof total === "number" ? total : ids.length}
+        totalSize={totalSize}
         resolveRecord={resolveRecord}
       />
       {editable && link.writable && (

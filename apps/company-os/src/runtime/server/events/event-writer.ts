@@ -11,6 +11,10 @@ import {
   type RecordId,
 } from "#/runtime/model/index.ts"
 import {
+  makeControllerRouting,
+  type ControllerKeys,
+} from "#/runtime/server/controllers/routing.ts"
+import {
   stageEvent,
   type EventSubject,
 } from "#/runtime/server/events/event-buffer.ts"
@@ -32,6 +36,7 @@ export function makeEventWriter(
   const { model: Model, eventFactSchema } = context
   const objects = context.storage.core.objects
   const sql = database.sql
+  const routing = makeControllerRouting(database, context)
 
   const subjects = (ids: ReadonlyArray<string>) =>
     Effect.gen(function* () {
@@ -60,6 +65,9 @@ export function makeEventWriter(
     readonly version?: number
     readonly subjects: ReadonlyArray<EventSubject>
     readonly data: unknown
+    /** Transient property names used to route this write; never journaled. */
+    readonly writtenFields?: ReadonlyArray<string>
+    readonly controllerKeys?: ControllerKeys
     readonly snapshot?: Effect.Effect<unknown>
   }) {
     const { actorId } = yield* CurrentInvocation
@@ -79,6 +87,7 @@ export function makeEventWriter(
       actorId,
       data: structuredClone(decoded.data),
       occurredAt,
+      controllerKeys: input.controllerKeys ?? (yield* routing.record(input)),
       ...(input.snapshot === undefined ? {} : { snapshot: input.snapshot }),
     })
     return undefined
@@ -86,6 +95,7 @@ export function makeEventWriter(
   return {
     subjects,
     record,
+    linkTargets: routing.link,
     /** Related subjects constrain visibility of every identifier or sensitive fact in the payload. */
     append: <TObject extends ObjectType, TData extends AnySchema>(
       definition: {

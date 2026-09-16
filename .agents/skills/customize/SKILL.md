@@ -53,7 +53,7 @@ use `EventJournal.append` for custom facts inside the Action. Use `Database.tabl
 `Database.sql` for custom SQL. Call a repository or shared function when composing behavior inside an
 Action; a separately invoked Query cannot join its write transaction.
 Use installed Effect v4 APIs; services use `Context.Service(..., { make })` with a static `.layer`.
-Define each Link with `from: { type, key }` and `to: { type, key }`; use `max: 1` for a singular end.
+Define each Link with `from: { object, key }` and `to: { object, key }`; use `max: 1` for a singular end.
 Create and update accept singular IDs or null and plural ID arrays. On update, arrays replace the whole
 set and `[]` clears it; use `{ add, remove }` when editing a partial preview. Plural reads return three
 preview IDs plus an exact `totalSize`; use the relationship list to retrieve the full set. Reads accept

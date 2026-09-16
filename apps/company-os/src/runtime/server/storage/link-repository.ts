@@ -26,6 +26,14 @@ export interface LinkPair {
   readonly targetId: string
 }
 
+/** Normalize either traversal direction to the stored edge's endpoints. */
+export function linkPairEndpoints(pair: LinkPair) {
+  return {
+    forwardId: pair.direction === "forward" ? pair.sourceId : pair.targetId,
+    reverseId: pair.direction === "reverse" ? pair.sourceId : pair.targetId,
+  }
+}
+
 /** One edge explicitly inserted or removed by a mutation. */
 interface LinkChange {
   readonly kind: "linked" | "unlinked"
@@ -73,10 +81,7 @@ export function makeLinkRepository<const TModel extends ModelCatalog>(
     pair: LinkPair,
     operation: "link" | "unlink"
   ) {
-    const forwardId =
-      pair.direction === "forward" ? pair.sourceId : pair.targetId
-    const reverseId =
-      pair.direction === "reverse" ? pair.sourceId : pair.targetId
+    const { forwardId, reverseId } = linkPairEndpoints(pair)
     const ownerId = plan.side === "forward" ? forwardId : reverseId
     const targetId = plan.side === "forward" ? reverseId : forwardId
     const owner =
@@ -160,10 +165,7 @@ export function makeLinkRepository<const TModel extends ModelCatalog>(
         const pairs = [
           ...new Map(
             group.map((pair) => {
-              const forwardId =
-                pair.direction === "forward" ? pair.sourceId : pair.targetId
-              const reverseId =
-                pair.direction === "reverse" ? pair.sourceId : pair.targetId
+              const { forwardId, reverseId } = linkPairEndpoints(pair)
               return [
                 JSON.stringify([forwardId, reverseId]),
                 { forwardId, reverseId },

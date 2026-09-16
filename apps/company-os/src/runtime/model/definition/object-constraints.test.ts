@@ -85,11 +85,11 @@ function titledModel(title: ReadonlyArray<string>, max?: 1) {
           defineLink({
             id: "membershipTarget",
             from: {
-              type: Membership,
+              object: Membership,
               key: "target",
               ...(max === undefined ? {} : { max }),
             },
-            to: { type: Target, key: "memberships" },
+            to: { object: Target, key: "memberships" },
           }),
         ],
       }),

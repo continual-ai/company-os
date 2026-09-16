@@ -8,9 +8,7 @@ import {
   HeadsetIcon,
   LifeBuoyIcon,
   MegaphoneIcon,
-  NotebookPenIcon,
   UsersIcon,
-  FileDiffIcon,
   ScanFaceIcon,
   WrenchIcon,
   type LucideIcon,
@@ -38,16 +36,6 @@ export const toolPreviews = [
     input: "Services, quantities, and pricing rules",
     output: "An itemized quote with a margin breakdown",
   },
-  {
-    id: "document-comparison",
-    moduleId: "notes",
-    label: "Document Comparison",
-    description: "Compare two versions and review the changes that matter.",
-    category: "Productivity",
-    icon: FileDiffIcon,
-    input: "Two versions of a document",
-    output: "A comparison with highlighted changes",
-  },
 ] as const
 
 export const reportPreviews = [
@@ -70,7 +58,6 @@ export const workspaceModuleOrder = [
   "service",
   "customerFeedback",
   "productDemand",
-  "notes",
   "platform",
 ]
 
@@ -85,7 +72,6 @@ export const workspaceModuleIcons: Record<string, LucideIcon> = {
   service: HeadsetIcon,
   customerFeedback: LifeBuoyIcon,
   productDemand: HandshakeIcon,
-  notes: NotebookPenIcon,
 }
 
 export const workspaceSections = [

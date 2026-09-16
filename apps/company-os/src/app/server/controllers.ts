@@ -4,11 +4,15 @@ import { RunnerAddress } from "effect/unstable/cluster"
 
 import { Model } from "#/app.model.ts"
 import { serverModules } from "#/app.server.ts"
+import { agentLayer } from "#/app/server/agent.ts"
 import * as Postgres from "#/app/server/database/postgres.ts"
+import type { Controller } from "#/runtime/model/index.ts"
 import { controllerLayer } from "#/runtime/server/controllers/runtime.ts"
 
-const serverControllers = serverModules.flatMap((server) => server.controllers)
-const definitions = Object.values(Model.modules).flatMap(
+const serverControllers = serverModules.flatMap<
+  (typeof serverModules)[number]["controllers"][number]
+>((server) => server.controllers)
+const definitions = Object.values(Model.modules).flatMap<Controller>(
   (module) => module.controllers
 )
 for (const definition of definitions)
@@ -47,5 +51,15 @@ const cluster = Layer.unwrap(
 /** An internal RPC listener in the web process; replicas coordinate through Effect Cluster. */
 export const controllersLayer = Layer.mergeAll(
   Layer.empty,
-  ...serverControllers.map((server) => controllerLayer(Model, server))
-).pipe(Layer.provide(cluster), Layer.provide(Postgres.eventNotificationsLayer))
+  ...serverControllers.map((server) =>
+    controllerLayer<
+      Effect.Services<
+        ReturnType<(typeof serverControllers)[number]["reconcile"]>
+      >
+    >(Model, server)
+  )
+).pipe(
+  Layer.provide(cluster),
+  Layer.provide(Postgres.eventNotificationsLayer),
+  Layer.provide(agentLayer)
+)

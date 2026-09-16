@@ -17,7 +17,7 @@ export interface LinkEndpoint<
 }
 
 interface LinkEndDefinition {
-  readonly type: LinkTarget
+  readonly object: LinkTarget
   readonly key: string
   readonly label?: string
   readonly description?: string
@@ -79,12 +79,12 @@ export interface LinkType<D extends LinkDefinition = LinkDefinition> {
   forward: OpenOr<
     D,
     LinkTraversal,
-    EndOf<D["from"], D["from"]["type"], D["to"]["type"]>
+    EndOf<D["from"], D["from"]["object"], D["to"]["object"]>
   >
   reverse: OpenOr<
     D,
     LinkTraversal,
-    EndOf<D["to"], D["to"]["type"], D["from"]["type"]>
+    EndOf<D["to"], D["to"]["object"], D["from"]["object"]>
   >
 }
 
@@ -124,8 +124,8 @@ export function defineLink<const D extends LinkDefinition>(
     }
 ): LinkType<D> {
   const input: LinkDefinition = definition
-  const forward = traversal(input.from, input.from.type, input.to.type)
-  const reverse = traversal(input.to, input.to.type, input.from.type)
+  const forward = traversal(input.from, input.from.object, input.to.object)
+  const reverse = traversal(input.to, input.to.object, input.from.object)
   if (
     (forward.onDelete === "cascade" && reverse.max !== 1) ||
     (reverse.onDelete === "cascade" && forward.max !== 1) ||
@@ -137,7 +137,7 @@ export function defineLink<const D extends LinkDefinition>(
   const link: LinkType = {
     kind: "link",
     id: definitionId(input.id),
-    name: input.name ?? `${input.from.type.name} ${input.from.key}`,
+    name: input.name ?? `${input.from.object.name} ${input.from.key}`,
     outputOnly: input.outputOnly ?? false,
     forward,
     reverse,

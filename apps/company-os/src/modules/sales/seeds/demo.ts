@@ -2,11 +2,11 @@ import { DateTime, Effect } from "effect"
 
 import { Activity } from "#/modules/crm/model/activity.ts"
 import type { CrmDemoData } from "#/modules/crm/seeds/index.ts"
-import { Note } from "#/modules/notes/model/index.ts"
-import { noteSeed } from "#/modules/notes/seeds/index.ts"
 import { Lead } from "#/modules/sales/model/lead.ts"
 import { Opportunity } from "#/modules/sales/model/opportunity.ts"
 import { CurrencyCode, Decimal, Timestamp } from "#/runtime/model/index.ts"
+import { Note } from "#/runtime/platform/model/note.ts"
+import { noteSeed } from "#/runtime/platform/seeds/note.ts"
 import { Database } from "#/runtime/server/index.ts"
 import { linkSeedRecords } from "#/runtime/server/seeds.ts"
 

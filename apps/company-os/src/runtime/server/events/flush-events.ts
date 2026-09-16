@@ -43,6 +43,7 @@ export const flushEvents = (
         eventJournal,
         events.slice(offset, offset + 500).map((event, index) => ({
           ...event,
+          controllerKeys: event.controllerKeys ?? {},
           subjects: [...event.subjects],
           position: first + BigInt(offset + index),
           transactionId,

@@ -31,7 +31,7 @@ const Item = defineObject({
 })
 const ItemGreet = defineAction({
   id: "greet",
-  collection: Item,
+  object: Item,
   name: "Greet",
   description: "Returns a provider greeting.",
   input: {},
@@ -93,7 +93,7 @@ it("rejects assembly when an operation's service has no provider", () => {
   expect(complete).toBeDefined()
 })
 
-const Delivery = defineController({ id: "delivery", object: Item })
+const Delivery = defineController({ id: "delivery", record: Item })
 const ControllerModule = defineModule({
   id: "delivery",
   name: "Delivery",
@@ -136,23 +136,6 @@ it("retains controller dependencies in the same module provider registration", a
       .reconcile("item")
       .pipe(Effect.provide(deliveryServer.layer))
   )
-})
-
-it("includes event routing dependencies in module service checks", () => {
-  const eventOnly = defineControllerServer(Delivery, {
-    reconcile: () => Effect.void,
-    onEvent: () => Greeting.pipe(Effect.asVoid),
-  })
-  const unprovided = defineModuleServer(ControllerModule, {
-    controllers: [eventOnly],
-  })
-  const incomplete = makeServicesLayer(
-    deliveryModel,
-    // @ts-expect-error Greeting is required by onEvent even though reconciliation has no dependencies.
-    [unprovided],
-    infrastructure
-  )
-  expect(incomplete).toBeDefined()
 })
 
 it("rejects missing, duplicate, and foreign controller implementations", () => {

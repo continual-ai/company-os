@@ -1,6 +1,7 @@
 import { Effect } from "effect"
 
 import { type PageToken } from "#/runtime/model/index.ts"
+import { ControllerTarget } from "#/runtime/platform/model/controller-instance.ts"
 import {
   Controller,
   controllerAlias,
@@ -8,10 +9,7 @@ import {
 import { moduleAlias } from "#/runtime/platform/model/module-setting.ts"
 import { Database } from "#/runtime/server/database.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
-import {
-  controllerConsumers,
-  controllerInstances,
-} from "#/runtime/server/storage/infrastructure.ts"
+import { controllerConsumers } from "#/runtime/server/storage/infrastructure.ts"
 
 /** Definitions converge through normal repository writes; aliases preserve identity across deployments. */
 export const syncControllers = Effect.fn("platform.syncControllers")(
@@ -26,6 +24,18 @@ export const syncControllers = Effect.fn("platform.syncControllers")(
         const registered = new Set<string>()
         for (const module of Object.values(model.modules)) {
           for (const definition of module.controllers) {
+            if (
+              definition.scope === "record" &&
+              !Object.hasOwn(
+                model.objects[definition.objectType]!.interfaces,
+                ControllerTarget.id
+              )
+            )
+              return yield* Effect.die(
+                new Error(
+                  `Controller '${definition.id}' requires '${definition.objectType}' to implement ControllerTarget so its instances can link to records.`
+                )
+              )
             const record = yield* controllers.upsert({
               alias: controllerAlias(definition.id),
               values: {
@@ -55,10 +65,10 @@ export const syncControllers = Effect.fn("platform.syncControllers")(
             if (registered.has(record.id)) continue
             yield* controllers.delete({ id: record.id })
             yield* database.sql`delete from ${controllerConsumers} where controller_id = ${record.definitionId}`
-            yield* database.sql`delete from ${controllerInstances} where controller_id = ${record.definitionId}`
           }
           pageToken = page.nextPageToken ?? undefined
         } while (pageToken)
+        return undefined
       })
     )
   }

@@ -6,7 +6,6 @@ import { linkPreview } from "#/runtime/model/record-links.ts"
 import {
   recordBatchFor,
   recordLabel,
-  tableRecord,
   type ClientRecord,
   type ModelObject,
   type ObjectRecordPresentation,
@@ -121,7 +120,7 @@ function useRecordReferenceBatches(
       recordsById.set(record.id, {
         object: target,
         source: record,
-        record: tableRecord(target, record),
+        record,
       })
     }
   })

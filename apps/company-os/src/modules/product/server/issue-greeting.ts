@@ -1,32 +1,11 @@
 import { Effect } from "effect"
 
-import { Note } from "#/modules/notes/model/index.ts"
 import { IssueGreeting } from "#/modules/product/model/issue-greeting.ts"
 import { Issue } from "#/modules/product/model/issue.ts"
-import { type PageToken } from "#/runtime/model/index.ts"
+import { Note } from "#/runtime/platform/model/note.ts"
 import { Database, defineControllerServer } from "#/runtime/server/index.ts"
 
 export const issueGreeting = defineControllerServer(IssueGreeting, {
-  onEvent: Effect.fn("issueGreeting.onEvent")(function* (event, { queue }) {
-    if (event.type !== "note.updated") return
-    const database = yield* Database
-    for (const subject of event.subjects) {
-      if (subject.objectType !== Note.id) continue
-      let pageToken: PageToken | undefined
-      do {
-        const page = yield* database.repository(Issue).list({
-          filter: {
-            link: "notes",
-            some: { field: "id", operator: "eq", value: subject.id },
-          },
-          pageSize: 100,
-          ...(pageToken ? { pageToken } : {}),
-        })
-        for (const issue of page.items) yield* queue.add(issue.id)
-        pageToken = page.nextPageToken ?? undefined
-      } while (pageToken)
-    }
-  }),
   reconcile: Effect.fn("issueGreeting.reconcile")(function* (issueId) {
     const database = yield* Database
     yield* database.transaction(() =>

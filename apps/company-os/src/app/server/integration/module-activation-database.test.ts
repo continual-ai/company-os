@@ -48,7 +48,7 @@ application.test(
       const catalog = yield* operator.moduleSetting.catalog({})
       expect(catalog.modules).toHaveLength(Object.keys(Model.modules).length)
       expect(
-        catalog.modules.find((module) => module.id === "notes")
+        catalog.modules.find((module) => module.id === "platform")
       ).toMatchObject({
         maturity: "alpha",
         maintainer: Model.maintainer,
@@ -155,7 +155,7 @@ application.test("required modules and dependency closure are enforced", () =>
       fetch,
       headers: { "x-test-user": "owner" },
     })
-    for (const moduleId of ["platform", "notes", "missing"]) {
+    for (const moduleId of ["platform", "missing"]) {
       expect(
         yield* client.moduleSetting
           .setEnabled({ moduleId, enabled: false })
@@ -196,7 +196,7 @@ application.test(
       expect(
         yield* client.moduleSetting
           .setEnabled({
-            moduleId: "notes",
+            moduleId: "crm",
             enabled: false,
             disableDependents: ["sales"],
           })
@@ -204,21 +204,28 @@ application.test(
       ).toMatchObject({ status: "FAILED_PRECONDITION" })
       expect(yield* client.moduleSetting.catalog({})).toEqual(before)
       const result = yield* client.moduleSetting.setEnabled({
-        moduleId: "notes",
+        moduleId: "crm",
         enabled: false,
         disableDependents: [
-          "crm",
-          "product",
           "sales",
           "marketing",
-          "engineering",
-          "hiring",
           "service",
           "customerFeedback",
           "productDemand",
         ],
       })
-      expect(result.enabledModules).toEqual(["platform"])
+      expect(result.enabledModules).toEqual([
+        "platform",
+        "product",
+        "engineering",
+        "hiring",
+      ])
+      const note = yield* client.note.create({
+        content: "Notes stay available without CRM.",
+      })
+      expect((yield* client.note.get({ id: note.id })).content).toBe(
+        note.content
+      )
       yield* client.moduleSetting.setEnabled({
         moduleId: "service",
         enabled: true,
@@ -226,6 +233,13 @@ application.test(
       const enabled = (yield* client.moduleSetting.catalog({})).modules
         .filter((module) => module.enabled)
         .map((module) => module.id)
-      expect(enabled).toEqual(["platform", "notes", "crm", "service"])
+      expect(enabled).toEqual([
+        "platform",
+        "crm",
+        "product",
+        "engineering",
+        "hiring",
+        "service",
+      ])
     })
 )

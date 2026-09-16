@@ -28,7 +28,7 @@ const Ticket = defineObject({
 })
 const Escalate = defineAction({
   id: "escalate",
-  object: Ticket,
+  record: Ticket,
   name: "Escalate to engineering",
   description: "Escalate a ticket.",
   input: {
@@ -41,7 +41,7 @@ const Escalate = defineAction({
 })
 const Reconcile = defineAction({
   id: "reconcile",
-  collection: Ticket,
+  object: Ticket,
   name: "Reconcile tickets",
   description: "Reconcile all tickets.",
 })

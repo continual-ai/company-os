@@ -44,7 +44,7 @@ export const Asset = defineObject({
 })
 export const BeginAssetUpload = defineAction({
   id: "beginUpload",
-  collection: Asset,
+  object: Asset,
   name: "Begin upload",
   description:
     "Start a private upload and get the URL for transferring the file.",
@@ -62,7 +62,7 @@ export const BeginAssetUpload = defineAction({
 })
 export const CompleteAssetUpload = defineAction({
   id: "completeUpload",
-  object: Asset,
+  record: Asset,
   name: "Complete upload",
   description:
     "Check the upload and make the file available. Uploaded files cannot be changed.",

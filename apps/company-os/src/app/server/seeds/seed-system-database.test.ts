@@ -65,7 +65,7 @@ application.test(
         name: "Removed",
         description: "",
         targetObjectType: "issue",
-        scope: "object",
+        scope: "record",
         watch: [],
         links: { module: moduleAlias("product") },
       })

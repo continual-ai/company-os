@@ -88,7 +88,7 @@ function httpConvention(operation: OperationContract): HttpConvention {
         method: "POST",
         status: 200,
         customMethod: id,
-        collectionName: scope === "collection",
+        collectionName: scope === "object",
       }
   }
 }
@@ -103,12 +103,12 @@ export function httpOperation(
   const collection =
     `${basePath}/${object?.collection ?? (operation.builtin ? "records" : "")}` as const
   const resource =
-    scope === "object" ? (`${collection}/:id` as const) : collection
+    scope === "record" ? (`${collection}/:id` as const) : collection
   const path = linkTraversal
     ? (`${resource}/${linkTraversal.traversal.key}` as const)
     : resource
   const identifier = operation.builtin ?? operation.key
-  const pathFields = scope === "object" ? ["id"] : []
+  const pathFields = scope === "record" ? ["id"] : []
   const fields = Object.fromEntries(
     Object.entries(operation.input.fields).filter(
       ([key]) => !pathFields.includes(key)

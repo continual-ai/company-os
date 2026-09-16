@@ -111,6 +111,10 @@ export function deletionChanges(
             type: `${link.id}.unlinked`,
             subjects: yield* events.subjects([pair.forwardId, pair.reverseId]),
             data: { link: link.id },
+            controllerKeys: yield* events.linkTargets({
+              linkId: link.id,
+              ...pair,
+            }),
           })
         }
       }

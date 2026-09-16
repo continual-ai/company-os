@@ -1,8 +1,8 @@
 import { Effect } from "effect"
 
-import { Note } from "#/modules/notes/model/index.ts"
 import { Issue, Project } from "#/modules/product/model/index.ts"
 import type { RecordId } from "#/runtime/model/index.ts"
+import { Note } from "#/runtime/platform/model/note.ts"
 import { Database } from "#/runtime/server/index.ts"
 import { linkSeedRecords } from "#/runtime/server/seeds.ts"
 

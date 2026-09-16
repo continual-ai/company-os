@@ -53,6 +53,92 @@ application's configured connection. After changing the database environment,
 `pnpm --filter company-os db:dump` writes an ignored `schema.actual.sql` using `pg_dump` (the
 server's major version or newer).
 
+### Agent controllers
+
+`Agent.run` awaits one turn. Each controller/key owns one persistent agent session,
+provided by the controller runtime through `AgentSession`. Without `outputSchema`, a run
+returns `void`; with an Effect Schema, it returns decoded, validated output. Events that
+arrive during a turn queue the next reconciliation. Interruption requests cancellation;
+it cannot undo tools already executed.
+
+```ts
+const agent = yield * Agent
+// Inside a controller reconciliation; the agent can read and write through MCP.
+yield *
+  agent.run({
+    input: `Research contact ${contactId} and update their summary using Company OS tools.`,
+  })
+```
+
+The CRM contact-summary controller follows this pattern: Codex reads the current contact,
+related records and notes, optionally researches public sources, and writes the summary
+itself. Source changes enqueue another run. Its `ignoreUpdates: ["summary"]` definition
+ignores updates that write only that property, preventing feedback from its own writes.
+Mixed updates still trigger it. In the UI, open a contact to view the summary and its
+controller diagnostics or run it manually. Codex sessions have no desktop link: opening
+one in desktop can claim its writer lock and prevent the controller from resuming it.
+
+`CodexAgent.layer(client, threadOptions)` accepts the native SDK client and native thread
+options. Application configuration lives in `src/app/server/agent.ts`:
+
+```ts
+const client = new Codex({
+  config: {
+    mcp_servers: {
+      company_os: { url: companyOsMcpUrl, required: true },
+    },
+  },
+})
+const agentLayer = CodexAgent.layer(client, {
+  workingDirectory,
+  skipGitRepoCheck: true,
+  sandboxMode: "read-only",
+  approvalPolicy: "never",
+  webSearchMode: "live",
+})
+```
+
+The Node application defaults to a scratch directory and `COMPANY_OS_MCP_URL` (default
+`http://localhost:3002/api/mcp`). Codex inherits local CLI authentication and configuration.
+For a protected deployment, configure MCP credentials accepted by the application's identity
+provider using native SDK configuration; a URL alone does not grant project admission
+([MCP configuration](https://developers.openai.com/codex/mcp)). The filesystem sandbox does
+not remove the MCP identity's business access.
+
+The controller database stores the provider thread ID and user-facing URL. Codex stores
+conversation history in its configured home directory; retain both across restarts.
+The controller runtime serializes reconciliation for each key. The adapter adds no separate
+session store or locks. `idempotencyKey` is optional and ignored by Codex: retries can repeat
+tools. Structured output uses Effect's OpenAI schema converter and validates the response
+locally; unsupported schemas fail before a prompt is sent.
+
+### External agent tests
+
+`pnpm test` runs adapter unit tests and controller database tests without calling providers.
+Use native SDK instance spies for transport events, and fake the `Agent` service for
+controller behavior. Assert state transitions, session reuse, routing, and cancellation;
+avoid exact prose or prescribed tool sequences. Recorded responses can be fixtures, but
+do not establish live provider compatibility.
+
+Live tests are a separate, explicit Vitest project:
+
+```sh
+pnpm --filter company-os test:agents:live codex-live
+pnpm --filter company-os test:agents:live continual-live
+```
+
+The Codex test starts an isolated database and a loopback HTTP MCP server, then runs the
+real contact-summary controller with local Codex CLI authentication. It checks that Codex
+reads a synthetic note, saves a summary through MCP, and refreshes after the note changes
+using the same thread. It needs PostgreSQL with `CREATEDB`, but no running Company OS app.
+The scratch database and HTTP server are cleaned up; the Codex conversation remains.
+
+Continual requires `CONTINUAL_URL`, `CONTINUAL_PROJECT_ID`, and `CONTINUAL_API_KEY` for a test
+Project; it leaves a completed test Thread. These tests incur provider usage and run without
+Turbo result caching. The Continual test checks SDK execution and persisted results; a
+Continual `Agent` adapter still needs an SDK API for running another turn in an existing
+session.
+
 ## Application structure
 
 Business code lives in `apps/company-os/src/modules`; the kernel is in `src/runtime` and the shell
@@ -69,6 +155,10 @@ satellite over the central app's API; delete it if unnecessary or copy it for an
 
 ### Actions and Queries
 
+An Object defines a business record's properties; a Record is one instance. Links connect records,
+with `from.object` and `to.object` naming the allowed Objects or Interfaces. Capabilities attach to
+an `object` generally or a particular `record`; filters and batches remain explicit inputs.
+
 Objects generate `get`, `list`, `batchGet`, `create`, `update`, `delete`, and `batchDelete`.
 Disable standard writes with `actions: { delete: false }`; disabling delete also disables batch
 deletion. Custom operations are standalone `defineAction` or `defineQuery` definitions, registered
@@ -77,7 +167,7 @@ once in their owning module's `actions` or `queries` array.
 ```ts
 export const EscalateTicket = defineAction({
   id: "escalate",
-  object: Ticket,
+  record: Ticket,
   name: "Escalate to engineering",
   description: "Creates an engineering issue for an open support ticket.",
   input: { id: schema.id(Ticket) },
@@ -85,16 +175,16 @@ export const EscalateTicket = defineAction({
 })
 ```
 
-`object: Ticket` requires an explicit, non-nullable `input.id: schema.id(Ticket)`.
-`collection: Ticket` attaches to the collection and adds no parameters. Omit both for a global
+`record: Ticket` requires an explicit, non-nullable `input.id: schema.id(Ticket)`.
+`object: Ticket` attaches to the Object and adds no parameters. Omit both for a global
 operation. The module owns activation and implementation; the attachment controls discovery and
 placement. An extension module can attach an operation to another module's Object.
 
-| Attachment        | HTTP                                 | MCP               | Client                           |
-| ----------------- | ------------------------------------ | ----------------- | -------------------------------- |
-| Ticket record     | `POST /api/v1/tickets/{id}:escalate` | `ticket.escalate` | `client.ticket.escalate({ id })` |
-| Ticket collection | `POST /api/v1/tickets:summary`       | `ticket.summary`  | `client.ticket.summary({})`      |
-| Global            | `POST /api/v1/:reconcile`            | `reconcile`       | `client.reconcile({})`           |
+| Attachment    | HTTP                                 | MCP               | Client                           |
+| ------------- | ------------------------------------ | ----------------- | -------------------------------- |
+| Ticket record | `POST /api/v1/tickets/{id}:escalate` | `ticket.escalate` | `client.ticket.escalate({ id })` |
+| Ticket object | `POST /api/v1/tickets:summary`       | `ticket.summary`  | `client.ticket.summary({})`      |
+| Global        | `POST /api/v1/:reconcile`            | `reconcile`       | `client.reconcile({})`           |
 
 Custom Queries also use POST with a structured body. Record IDs go in the HTTP path; MCP and the
 semantic client retain them in the explicit input. `schema.id` accepts canonical IDs or qualified
@@ -206,12 +296,12 @@ collects controllers alongside custom operations in the module's single server c
 // modules/product/model/issue-greeting.ts
 export const IssueGreeting = defineController({
   id: "issue-greeting",
-  object: Issue,
+  record: Issue,
   schedule: { cron: "*/15 * * * *", timeZone: "UTC" },
   minInterval: "1 second",
   name: "Issue greeting",
   description: "Ensures each issue has a Hello world note.",
-  watch: ["noteSubjects.linked", "noteSubjects.unlinked", "note.updated"],
+  watch: ["notes"],
 })
 
 // modules/product/server/issue-greeting.ts
@@ -229,21 +319,32 @@ export const ProductServer = defineModuleServer(ProductModule, {
 })
 ```
 
-`object: Issue` reconciles each issue ID independently. `collection: Issue` reconciles once for the
+`record: Issue` reconciles each issue ID independently. `object: Issue` reconciles once for the
 whole installation, with `reconcile()` taking no argument. These targets determine scheduling and
-where controllers appear in the UI; either controller can read or change other objects. Object handlers
-and `queue.add` use the target's branded record ID type. Collection handlers and queues take no key.
+where controllers appear in the UI; either controller can read or change other objects. Record handlers
+use the target's branded record ID type. Object handlers take no key.
 
-The target's created/updated/deleted events are watched automatically. `watch` adds exact journal
-event types. For object controllers, target IDs in each event's subjects are queued automatically.
-An optional `onEvent(event, { queue })` can read other records and call `queue.add(issueId)` to route
-additional keys; collection controllers use `queue.add()`. This hook routes wakeups and may be
-replayed. Keep business work in `reconcile`. The greeting implementation demonstrates a note update
-being mapped back to its issues.
+Target creation, updates, and deletion request reconciliation automatically. `watch` declares named
+relationship paths, such as `notes` or `affiliations.account.notes`. Changes to related records or
+any relationship along a path request reconciliation for the affected targets. Every intermediate
+record is a dependency too: an account rename matters even when the path ends at its notes. Paths
+are validated against the composed model; event suffixes and property names are not watch paths.
+
+The writer captures affected keys in the same transaction as the change, including before removing
+links or deleting records. The journal consumer queues these saved keys without reconstructing old
+relationships. No `onEvent` handler is needed. An unrelated record change does not wake the controller.
+
+`ignoreUpdates: ["summary"]` suppresses target updates that write only those properties. Mixed
+updates still trigger, and relationship changes are independent. This is a trigger filter, not field
+ownership: human and agent summary-only edits are both ignored. A later input change or manual run
+can update the summary again. Related-record dependencies remain independent of this target filter.
+The writer uses supplied property names only while routing the write; the journal stores the resulting
+controller keys, not the property list. No record-value diff or previous-state tracking is needed.
+Changing watch definitions does not rewrite past events; manually rescan after changing dependencies.
 
 `schedule: { cron, timeZone? }` adds periodic rescans alongside watches. The time zone defaults to UTC.
 ClusterCron persists scheduled ticks and coordinates them across replicas. A tick enqueues every current
-object key, or the single collection key; it never calls reconciliation directly. Ticks skip disabled
+record key, or the single object key; it never calls reconciliation directly. Ticks skip disabled
 modules. After downtime, an eligible overdue tick can rescan current state, then scheduling continues
 from now without replaying every missed tick. ClusterCron skips ticks more than a day old.
 
@@ -270,17 +371,21 @@ work without rescanning. Journal polling covers missed notifications. Disabling 
 attempts while preserving its pending work and cursor, so changes made while disabled are consumed
 on reactivation. Use manual reconciliation when an explicit rescan is needed.
 
+Controller diagnostics count every started reconciliation as a run, including retries. Failures count
+runs that end in an error and remain counted after a successful retry. The current error count is
+separate: it counts keys presently in the error state. These counters reset with the database.
+
 Delivery is at least once. Use transactions and model constraints for database effects, and provider
 idempotency keys for external effects; a process can fail after changing something but before
 acknowledging its work. Different controllers have independent queues, so shared invariants still
-need database constraints or explicit transactions. Agent calls can later be ordinary Effect services
-inside reconciliation; this first prototype is deterministic.
+need database constraints or explicit transactions. Agent calls are ordinary Effect services inside
+reconciliation.
 
 Definitions stay in code. System bootstrap synchronizes their metadata into read-only Platform
 Controller records, linked to their owning Module. Standard list/get, links, and pages expose that
 registry even when a module is disabled. Definitions are publicly read-only; only `paused` is editable through standard update. Bootstrap updates
 changed definitions without resetting journal progress; removing a definition removes its registry
-record and internal diagnostics.
+record and its controller instances.
 
 Registry records have generated canonical IDs. The stable name
 `system:controller:issue-greeting` is an alias accepted by the normal record APIs.
@@ -295,12 +400,18 @@ aggregates diagnostic state; with a key it reports that key, including `notStart
 actual execution also depends on throttling, backoff, and availability.
 Both status and reconciliation accept target aliases and resolve them to canonical queue keys.
 `enabled` derives from module activation; `paused` is independent operator configuration. State is the last recorded observation, not a
-host-health signal. Attempts include retries; individual run history is not retained. Per-key state,
-consumer cursors, and Cluster queues remain internal. See
-[deployment](deployment.md#controller-hosting) for host requirements.
+host-health signal. Runs include retries; individual run history is not retained. Consumer cursors
+and Cluster queues remain internal. See [deployment](deployment.md#controller-hosting) for host requirements.
+
+Per-key state is stored in publicly read-only `ControllerInstance` records. Each instance links to
+its Controller and, for record controllers, its target record. Record targets implement the
+`ControllerTarget` interface. Standard list/get, expansion, relationship previews, and pages expose
+state, run and failure counts, timestamps, errors, and the agent session reference. The record header
+summarizes these instances; the Controller instances relationship tab exposes the full list.
+`client.controllerInstance.reconcile({ id })` runs a particular instance through the same queue.
 
 `client.controller.reconcile({ id, key? })` durably requests another pass through the same keyed
-queue. Omit `key` to scan all current records of an object controller or wake the single collection
+queue. Omit `key` to scan all current records of a record controller or wake the single object
 key. The Controller detail page and object Controllers tabs provide the same action. Acceptance
 commits an attributed `controller.reconciliationRequested` event against the Controller record; it
 does not wait for execution and works while the host is stopped. Disabled controllers reject new

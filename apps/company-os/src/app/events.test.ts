@@ -32,6 +32,7 @@ it("validates new facts strictly and replays them inside a stable envelope", () 
   const envelope = {
     id: "ev_conversion",
     transactionId: "transaction",
+    controllerKeys: {},
     actorId: "usr_actor",
     occurredAt: "2026-09-05T00:00:00.000Z",
     recordedAt: "2026-09-05T00:00:01.000Z",
@@ -55,6 +56,7 @@ it("preserves historical payloads after model or event definitions change", () =
   const historical = {
     id: "event_old",
     transactionId: "transaction_old",
+    controllerKeys: {},
     actorId: "user_old",
     occurredAt: "2026-01-01T00:00:00.000Z",
     recordedAt: "2026-01-01T00:00:00.000Z",

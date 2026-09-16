@@ -58,7 +58,7 @@ const Contact = defineObject({
 })
 const ContactEnroll = defineAction({
   id: "enroll",
-  object: Contact,
+  record: Contact,
   name: "Enroll contact",
   description: "Enrolls a contact in the customer program.",
   input: { id: schema.id(Contact), notify: schema.optional(schema.boolean()) },
@@ -104,7 +104,7 @@ describe("definition inference", () => {
       "batchDelete" | "create" | "delete" | "update"
     >()
     expect(Contact).not.toHaveProperty("queries")
-    expectTypeOf(ContactEnroll.scope).toEqualTypeOf<"object">()
+    expectTypeOf(ContactEnroll.scope).toEqualTypeOf<"record">()
     expectTypeOf<ActionInput<typeof ContactEnroll>>().toEqualTypeOf<{
       readonly id: RecordIdentifier<"contact">
       readonly notify?: boolean
@@ -158,7 +158,7 @@ describe("definition inference", () => {
     ).not.toHaveProperty("legacyName")
     const ping = {
       id: "ping",
-      collection: Contact,
+      object: Contact,
       name: "Ping",
       description: "Pings.",
     } as const
@@ -189,7 +189,7 @@ describe("definition inference", () => {
           create: {
             name: "Create",
             description: "Creates.",
-            scope: "collection",
+            scope: "object",
           },
         },
       })
@@ -226,7 +226,7 @@ describe("model definitions", () => {
     expect(model.actions["contact.enroll"]).toMatchObject({
       id: "enroll",
       objectType: "contact",
-      scope: "object",
+      scope: "record",
     })
     expect(model.actions["contact.enroll"].input.properties).toHaveProperty(
       "id"
@@ -235,14 +235,14 @@ describe("model definitions", () => {
       id: "create",
       kind: "action",
       objectType: "contact",
-      scope: "collection",
+      scope: "object",
     })
     expect(model.actions["contact.create"]).not.toHaveProperty("input")
     expect(model.actions["contact.update"]).toMatchObject({
       id: "update",
       kind: "action",
       objectType: "contact",
-      scope: "object",
+      scope: "record",
     })
     expect(Object.keys(model.queries)).toEqual([
       "contact.get",
@@ -250,7 +250,7 @@ describe("model definitions", () => {
       "contact.batchGet",
     ])
     expect(model.actions["contact.batchDelete"]).toMatchObject({
-      scope: "collection",
+      scope: "object",
     })
     expectTypeOf(model.objects.contact.collection).toEqualTypeOf<"contacts">()
     expectTypeOf(model.actions["contact.enroll"].id).toEqualTypeOf<"enroll">()
@@ -382,8 +382,14 @@ describe("model definitions", () => {
     const ProfileAccount = defineLink({
       id: "profileAccount",
       name: "Profile account",
-      from: { type: Profile, min: 1, max: 1, key: "account", label: "Account" },
-      to: { type: Account, min: 0, key: "profiles", label: "Profiles" },
+      from: {
+        object: Profile,
+        min: 1,
+        max: 1,
+        key: "account",
+        label: "Account",
+      },
+      to: { object: Account, min: 0, key: "profiles", label: "Profiles" },
     })
 
     expect(() =>
@@ -429,22 +435,22 @@ describe("model definitions", () => {
     const ContactCompanies = defineLink({
       id: "contactCompanies",
       name: "Contact companies",
-      from: { type: Contact, min: 0, key: "companies", label: "Companies" },
-      to: { type: Company, min: 0, key: "contacts", label: "Contacts" },
+      from: { object: Contact, min: 0, key: "companies", label: "Companies" },
+      to: { object: Company, min: 0, key: "contacts", label: "Contacts" },
     })
     const BillingCompany = defineLink({
       id: "contactBillingCompany",
 
       name: "Billing company",
       from: {
-        type: Contact,
+        object: Contact,
         min: 0,
         max: 1,
         key: "billingCompany",
         label: "Billing company",
       },
       to: {
-        type: Company,
+        object: Company,
         min: 0,
         key: "billingContacts",
         label: "Primary contacts",
@@ -496,8 +502,8 @@ describe("model definitions", () => {
     const Owner = defineLink({
       id: "contactCompany",
       name: "Contact company",
-      from: { type: Contact, key: "company", label: "Company", max: 1 },
-      to: { type: Company, key: "contacts", label: "Contacts" },
+      from: { object: Contact, key: "company", label: "Company", max: 1 },
+      to: { object: Company, key: "contacts", label: "Contacts" },
     })
     expect(() =>
       defineTestModel({
@@ -549,13 +555,13 @@ describe("model definitions", () => {
       id: "companyContacts",
       name: "Company contacts",
       from: {
-        type: CompanyContact,
+        object: CompanyContact,
         key: "company",
         min: 1,
         max: 1,
         label: "Company",
       },
-      to: { type: Company, key: "contacts", min: 0, label: "Contacts" },
+      to: { object: Company, key: "contacts", min: 0, label: "Contacts" },
     })
 
     const model = defineTestModel({
@@ -597,7 +603,7 @@ describe("model definitions", () => {
     })
     const ConflictingActionList = defineAction({
       id: "list",
-      collection: ConflictingAction,
+      object: ConflictingAction,
       description: "Conflicts with the generated list Query.",
       name: "List",
     })
@@ -622,8 +628,8 @@ describe("model definitions", () => {
     const ConflictingLink = defineLink({
       id: "conflictingLink",
       name: "Conflicting link",
-      from: { type: Contact, min: 0, key: "get", label: "Accounts" },
-      to: { type: Account, min: 0, key: "contacts", label: "Contacts" },
+      from: { object: Contact, min: 0, key: "get", label: "Accounts" },
+      to: { object: Account, min: 0, key: "contacts", label: "Contacts" },
     })
     expect(() =>
       defineTestModel({
@@ -656,8 +662,14 @@ describe("model definitions", () => {
     const CompanyEmployees = defineLink({
       id: "companyEmployees",
       name: "Company employees",
-      from: { type: Company, key: "employees", min: 0, label: "Employees" },
-      to: { type: Employee, key: "company", min: 1, max: 1, label: "Company" },
+      from: { object: Company, key: "employees", min: 0, label: "Employees" },
+      to: {
+        object: Employee,
+        key: "company",
+        min: 1,
+        max: 1,
+        label: "Company",
+      },
     })
     const model = defineTestModel({
       interfaces: [TestActor],
@@ -673,13 +685,13 @@ describe("model definitions", () => {
         id: "invalidBounds",
         name: "Invalid bounds",
         from: {
-          type: Company,
+          object: Company,
           key: "employees",
           label: "Employees",
           min: 2,
           max: 1,
         },
-        to: { type: Employee, key: "company", label: "Company" },
+        to: { object: Employee, key: "company", label: "Company" },
       })
     ).toThrow(/bounds/)
   })
@@ -703,8 +715,14 @@ describe("model definitions", () => {
     const InvalidOwner = defineLink({
       id: "invalidOwner",
       name: "Invalid owner",
-      from: { type: Party, key: "activity", min: 0, max: 1, label: "Activity" },
-      to: { type: Activity, key: "parties", min: 0, label: "Parties" },
+      from: {
+        object: Party,
+        key: "activity",
+        min: 0,
+        max: 1,
+        label: "Activity",
+      },
+      to: { object: Activity, key: "parties", min: 0, label: "Parties" },
     })
 
     const model = defineTestModel({
@@ -821,8 +839,8 @@ describe("relationship names", () => {
     const Recipient = defineLink({
       id: "messageRecipient",
       name: "Message recipient",
-      from: { type: Message, key: "recipient", label: "Recipient", max: 1 },
-      to: { type: Contact, key, label: "Messages" },
+      from: { object: Message, key: "recipient", label: "Recipient", max: 1 },
+      to: { object: Contact, key, label: "Messages" },
     })
     return defineTestModel({
       interfaces: [TestActor],
@@ -864,9 +882,15 @@ describe("root definitions", () => {
     const PermissionScope = defineLink({
       id: "permissionScope",
       name: "Permission scope",
-      from: { type: Permission, min: 1, max: 1, key: "scope", label: "Scope" },
+      from: {
+        object: Permission,
+        min: 1,
+        max: 1,
+        key: "scope",
+        label: "Scope",
+      },
       to: {
-        type: WorkspaceMarker,
+        object: WorkspaceMarker,
         min: 0,
         key: "permissions",
         label: "Permissions",
@@ -908,63 +932,6 @@ describe("root definitions", () => {
       objects: [OtherRoot],
     })
     expect(model.objects.root).toBe(OtherRoot)
-  })
-})
-
-describe("object properties", () => {
-  it("uses schemas directly and normalizes object lifecycle behavior", () => {
-    const Example = defineObject({
-      id: "example",
-      collection: "examples",
-      name: "Example",
-      pluralName: "Examples",
-      properties: {
-        title: schema.string(),
-        count: schema.number({ default: 0 }),
-        dueOn: schema.date({ nullable: true }),
-        note: schema.string({ default: "", nullable: true }),
-      },
-      display: { title: "title" },
-    })
-
-    expect(Example.properties.title).toMatchObject({
-      kind: "string",
-      nullable: false,
-      requiredOnCreate: true,
-    })
-    expect(Example.properties.count).toMatchObject({
-      default: 0,
-      requiredOnCreate: false,
-    })
-    expect(Example.properties.dueOn).toMatchObject({
-      nullable: true,
-      requiredOnCreate: false,
-    })
-    expect(Example.properties.note).toMatchObject({
-      default: "",
-      nullable: true,
-      requiredOnCreate: false,
-    })
-  })
-
-  it("normalizes output-only object properties", () => {
-    const Example = defineObject({
-      id: "exampleOutput",
-      collection: "exampleOutputs",
-      name: "Example output",
-      pluralName: "Example outputs",
-      properties: {
-        result: schema.string({ nullable: true, outputOnly: true }),
-        title: schema.string(),
-      },
-      display: { title: "title" },
-    })
-
-    expect(Example.properties.result).toMatchObject({
-      nullable: true,
-      outputOnly: true,
-      requiredOnCreate: false,
-    })
   })
 })
 

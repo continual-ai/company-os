@@ -25,7 +25,7 @@ export const ModuleSetting = defineObject({
 })
 export const SetModuleEnabled = defineAction({
   id: "setEnabled",
-  collection: ModuleSetting,
+  object: ModuleSetting,
   name: "Set module availability",
   description:
     "Enable a module and its dependencies, or disable it with explicitly confirmed dependent modules. Records are preserved.",
@@ -40,7 +40,7 @@ export const SetModuleEnabled = defineAction({
 })
 export const ModuleCatalog = defineQuery({
   id: "catalog",
-  collection: ModuleSetting,
+  object: ModuleSetting,
   name: "Browse modules",
   description:
     "Discover installed capabilities, their dependencies, and current availability.",

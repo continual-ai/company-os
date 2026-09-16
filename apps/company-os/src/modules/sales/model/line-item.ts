@@ -33,13 +33,13 @@ export const OpportunityLineItems = defineLink({
   id: "opportunityLineItems",
   name: "Opportunity line items",
   from: {
-    type: Opportunity,
+    object: Opportunity,
     key: "lineItems",
     label: "Line items",
     onDelete: "cascade",
   },
   to: {
-    type: LineItem,
+    object: LineItem,
     key: "opportunity",
     label: "Opportunity",
     min: 1,

@@ -14,15 +14,14 @@ import { useEffect, useRef, useState } from "react"
 
 import type { ListRequest } from "#/runtime/model/index.ts"
 import { queryProperty } from "#/runtime/model/query-fields.ts"
+import { fieldOperators } from "#/runtime/model/query-fields.ts"
 import {
   clientFor,
   recordLabel,
   recordObjectTypes,
-  tableRecord,
   type ModelObject,
   type ObjectRecordPresentation,
 } from "#/runtime/ui/model/object-client.ts"
-import { canSortProperty } from "#/runtime/ui/model/object-collection-query.ts"
 import { useObjectCreate } from "#/runtime/ui/model/object-create-context.ts"
 import { ObjectRecordOption } from "#/runtime/ui/model/object-record-identity.tsx"
 import { ObjectReferenceCreateActions } from "#/runtime/ui/model/object-reference-create-actions.tsx"
@@ -79,7 +78,7 @@ function findOptions(
           ? filters[0]!
           : { and: filters }
     const sort =
-      titleProperty !== undefined && canSortProperty(titleProperty)
+      titleProperty !== undefined && fieldOperators(titleProperty).length > 0
         ? [
             {
               direction: "asc" as const,
@@ -167,7 +166,7 @@ export function ObjectReferenceSelect({
     return (result.data?.items ?? []).map((record) => ({
       id: record.id,
       label: recordLabel(object, record),
-      presentation: { object, record: tableRecord(object, record) },
+      presentation: { object, record },
     }))
   })
   const loading =
@@ -190,7 +189,7 @@ export function ObjectReferenceSelect({
         const option = {
           id: record.id,
           label: recordLabel(object, record),
-          presentation: { object, record: tableRecord(object, record) },
+          presentation: { object, record },
         }
         setSelection(option)
         onValueChange(option.id, option)

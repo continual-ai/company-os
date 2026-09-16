@@ -50,7 +50,7 @@ export interface OperationContract {
   readonly key: string
   readonly id: string
   readonly kind: "query" | "action"
-  readonly scope: "object" | "collection" | "global"
+  readonly scope: "record" | "object" | "global"
   readonly name: string
   readonly description: string
   readonly moduleId: string
@@ -78,7 +78,7 @@ function operationErrors(definition: Definition): ReadonlyArray<ErrorType> {
   if ("input" in definition)
     return [
       ...universalErrors,
-      ...(definition.scope === "object" ? [NotFoundError] : []),
+      ...(definition.scope === "record" ? [NotFoundError] : []),
       ...definition.errors,
     ]
   if (definition.kind === "query")
@@ -194,7 +194,7 @@ function resolveOperations(
         )!.id,
         object,
         linkTraversal,
-        scope: "object" as const,
+        scope: "record" as const,
         idempotent: true,
       }
       const id = toEffectRecordIdentifierSchema(object.id)
@@ -282,7 +282,7 @@ function resolveOperations(
       input: recordBatchInput,
       output: recordBatchResult(model),
       kind: "query",
-      scope: "collection",
+      scope: "object",
       object: undefined,
       moduleId: "",
       destructive: false,
@@ -299,7 +299,7 @@ function resolveOperations(
       input: search.input,
       output: search.result,
       kind: "query",
-      scope: "collection",
+      scope: "object",
       object: undefined,
       moduleId: "",
       destructive: false,

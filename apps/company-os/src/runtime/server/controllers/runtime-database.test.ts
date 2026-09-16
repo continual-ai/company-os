@@ -26,12 +26,20 @@ import {
   RecordId,
   schema,
 } from "#/runtime/model/index.ts"
-import { controllerAlias } from "#/runtime/platform/model/controller.ts"
+import {
+  ControllerTarget,
+  ControllerInstance,
+} from "#/runtime/platform/model/controller-instance.ts"
+import {
+  Controller,
+  controllerAlias,
+} from "#/runtime/platform/model/controller.ts"
 import {
   ModuleSetting,
   PlatformModule,
 } from "#/runtime/platform/model/index.ts"
 import { moduleAlias } from "#/runtime/platform/model/module-setting.ts"
+import { controllerStatus } from "#/runtime/platform/server/controller-status.ts"
 import { reconcileController } from "#/runtime/platform/server/reconcile-controller.ts"
 import { seedModuleSettings } from "#/runtime/platform/server/seed.ts"
 import {
@@ -52,14 +60,15 @@ const Item = defineObject({
   collection: "workItems",
   name: "Work item",
   pluralName: "Work items",
+  implements: [{ interface: ControllerTarget }],
   properties: {
     title: schema.string(),
     done: schema.boolean({ default: false }),
   },
   display: { title: "title" },
 })
-const Delivery = defineController({ id: "delivery", object: Item })
-const Ranking = defineController({ id: "ranking", collection: Item })
+const Delivery = defineController({ id: "delivery", record: Item })
+const Ranking = defineController({ id: "ranking", object: Item })
 const Module = defineModule({
   id: "work",
   name: "Work",
@@ -72,6 +81,62 @@ const Model = defineModel({
 })
 const fixture = testFoundation(Model)
 const liveClock = Context.get(Context.empty(), Clock.Clock)
+
+fixture.test(
+  "counts runs and failures per key and retains failures after recovery",
+  () =>
+    Effect.gen(function* () {
+      yield* seedModuleSettings()
+      const database = yield* Database
+      const storage = yield* ControllerStorage
+      const first = yield* database.repository(Item).create({ title: "First" })
+      const second = yield* database
+        .repository(Item)
+        .create({ title: "Second" })
+      const id = controllerAlias(Delivery.id)
+      yield* storage.pending(Delivery.id, first.id)
+      expect(yield* controllerStatus({ id })).toMatchObject({
+        runs: 0,
+        failures: 0,
+      })
+      yield* storage.started(Delivery.id, first.id)
+      expect(yield* controllerStatus({ id })).toMatchObject({
+        runs: 1,
+        failures: 0,
+        running: 1,
+      })
+      yield* storage.failed(Delivery.id, first.id, "Temporary failure")
+      expect(yield* controllerStatus({ id, key: first.id })).toMatchObject({
+        runs: 1,
+        failures: 1,
+        errors: 1,
+        lastError: "Temporary failure",
+      })
+      yield* storage.started(Delivery.id, first.id)
+      yield* storage.succeeded(Delivery.id, first.id)
+      yield* storage.pending(Delivery.id, second.id)
+      yield* storage.started(Delivery.id, second.id)
+      yield* storage.succeeded(Delivery.id, second.id)
+      expect(yield* controllerStatus({ id, key: first.id })).toMatchObject({
+        runs: 2,
+        failures: 1,
+        errors: 0,
+        lastError: null,
+      })
+      expect(yield* controllerStatus({ id, key: second.id })).toMatchObject({
+        runs: 1,
+        failures: 0,
+        errors: 0,
+      })
+      expect(yield* controllerStatus({ id })).toMatchObject({
+        instances: 2,
+        runs: 3,
+        failures: 1,
+        errors: 0,
+        state: "idle",
+      })
+    }).pipe(Effect.provide(ControllerStorage.layer))
+)
 
 const eventually = <E, R>(check: Effect.Effect<boolean, E, R>) =>
   check.pipe(
@@ -209,7 +274,7 @@ fixture.test(
 )
 
 fixture.test(
-  "recovers unacknowledged work and events written while the host is stopped; collection scope uses one key",
+  "recovers unacknowledged work and events written while the host is stopped; object scope uses one key",
   () =>
     Effect.gen(function* () {
       yield* seedModuleSettings()
@@ -272,7 +337,7 @@ fixture.test(
               Effect.map((rows) => rows[0]!.remaining === 0)
             )
           )
-          // Explicitly rescan object keys and wake the collection key through durable requests.
+          // Explicitly rescan record keys and wake the object key through durable requests.
           completed.clear()
           const rankingsBefore = rankings
           yield* database.transaction(() =>
@@ -299,10 +364,20 @@ fixture.test(
               )
               .pipe(Effect.flip)
           ).toMatchObject({ status: "FAILED_PRECONDITION" })
-          const rows = yield* database.sql<{
-            key: string
-          }>`select key from controller_instances where controller_id = ${Ranking.id}`
-          expect(rows.map((row) => row.key)).toEqual(["collection"])
+          const instances = yield* database
+            .repository(ControllerInstance)
+            .list({
+              filter: {
+                link: "controller",
+                some: {
+                  field: "definitionId",
+                  operator: "eq",
+                  value: Ranking.id,
+                },
+              },
+            })
+          expect(instances.items).toHaveLength(1)
+          expect(instances.items[0]).toMatchObject({ links: { record: null } })
         })
       )
     }).pipe(Effect.provideService(Clock.Clock, liveClock))
@@ -506,4 +581,99 @@ it.live(
       Effect.provideService(CurrentInvocation, systemInvocation)
     ),
   60_000
+)
+
+fixture.test(
+  "serializes instance creation and counter writes without waking the target controller",
+  () =>
+    Effect.gen(function* () {
+      yield* seedModuleSettings()
+      const database = yield* Database
+      const storage = yield* ControllerStorage
+      const item = yield* database
+        .repository(Item)
+        .create({ title: "Concurrent" })
+      yield* Effect.forEach(
+        Array.from({ length: 8 }),
+        () => storage.pending(Delivery.id, item.id),
+        { concurrency: 8 }
+      )
+      const initial = yield* database.repository(Item).get({ id: item.id })
+      const journal = yield* EventJournal
+      const cursor = (yield* journal.list({ cursor: "now" })).nextCursor
+      yield* Effect.forEach(
+        Array.from({ length: 8 }),
+        () => storage.started(Delivery.id, item.id),
+        { concurrency: 8 }
+      )
+      const instances = yield* database.repository(ControllerInstance).list({})
+      expect(instances.items).toHaveLength(1)
+      expect(instances.items[0]?.runs).toBe(8)
+      expect((yield* database.repository(Item).get({ id: item.id })).etag).toBe(
+        initial.etag
+      )
+      const changes = yield* journal.list({ cursor })
+      expect(changes.items).toHaveLength(8)
+      expect(
+        changes.items.every(
+          (event) => Object.keys(event.controllerKeys).length === 0
+        )
+      ).toBe(true)
+      yield* database.repository(Item).delete({ id: item.id })
+      expect(yield* storage.pending(Delivery.id, item.id)).toBe(false)
+      expect(yield* storage.started(Delivery.id, item.id)).toBe(false)
+      yield* storage.saveSession(Delivery.id, item.id, {
+        id: "late",
+        url: null,
+      })
+      expect(
+        (yield* database.repository(ControllerInstance).list({})).items
+      ).toHaveLength(0)
+    }).pipe(Effect.provide(ControllerStorage.layer))
+)
+
+fixture.test(
+  "acknowledges queued work for a deleted record even while its controller is paused",
+  () =>
+    Effect.gen(function* () {
+      yield* seedModuleSettings()
+      const database = yield* Database
+      const storage = yield* ControllerStorage
+      yield* database
+        .repository(Controller)
+        .update({ id: controllerAlias(Delivery.id), paused: true })
+      const item = yield* database
+        .repository(Item)
+        .create({ title: "Delete before admission" })
+      let runs = 0
+      const layer = yield* host([
+        defineControllerServer(Delivery, {
+          reconcile: () =>
+            Effect.sync(() => {
+              runs++
+            }),
+        }),
+      ])
+      yield* Effect.scoped(
+        Effect.gen(function* () {
+          yield* Layer.build(layer)
+          yield* eventually(
+            storage.get(Delivery.id, item.id).pipe(Effect.map(Boolean))
+          )
+          yield* database.repository(Item).delete({ id: item.id })
+          yield* eventually(
+            database.sql<{
+              count: number
+            }>`select count(*)::int as count from cluster_messages where entity_type = 'controller/delivery' and processed = false`.pipe(
+              Effect.map((rows) => rows[0]!.count === 0)
+            )
+          )
+          expect(runs).toBe(0)
+          expect(yield* storage.get(Delivery.id, item.id)).toBeUndefined()
+        })
+      )
+    }).pipe(
+      Effect.provide(ControllerStorage.layer),
+      Effect.provideService(Clock.Clock, liveClock)
+    )
 )

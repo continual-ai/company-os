@@ -5,14 +5,14 @@ import { Link } from "@tanstack/react-router"
 import { GripVerticalIcon, PencilIcon } from "lucide-react"
 import type { ReactNode } from "react"
 
+import { objectFields } from "#/runtime/model/object-fields.ts"
 import {
-  modelObjectProperty,
   recordLabel,
-  tableRecord,
   type ClientRecord,
   type ModelObject,
   type ObjectRecordPresentation,
 } from "#/runtime/ui/model/object-client.ts"
+import { objectFieldValue } from "#/runtime/ui/model/object-field-value.ts"
 import { objectPropertyValue } from "#/runtime/ui/model/object-property-value.tsx"
 import { objectHref } from "#/runtime/ui/model/object-routing.ts"
 import { useModelRuntime } from "#/runtime/ui/model/runtime-context.tsx"
@@ -55,7 +55,15 @@ export function CollectionCard({
     disabled: !p.canMove(record),
   })
   const label = recordLabel(p.object, record)
-  const projected = tableRecord(p.object, record)
+  const fields = objectFields(p.object, runtime.model)
+  const values = p.columns.flatMap((id) => {
+    const field = fields.find((entry) => entry.id === id)
+    if (!field || id === p.object.display.title) return []
+    const value = objectFieldValue(field, record, (key) =>
+      p.references.get(key)
+    )
+    return value === null ? [] : [{ field, value }]
+  })
   return (
     <article
       ref={ref}
@@ -102,33 +110,24 @@ export function CollectionCard({
       {!compact && (
         <>
           <dl className="mt-3 space-y-2">
-            {p.columns
-              .filter(
-                (field) =>
-                  field !== p.object.display.title &&
-                  record[field] !== null &&
-                  record[field] !== undefined
-              )
-              .slice(0, 4)
-              .map((field) => (
-                <div
-                  key={field}
-                  className="flex min-w-0 items-center justify-between gap-2 text-xs"
-                >
-                  <dt className="shrink-0 text-muted-foreground">
-                    {modelObjectProperty(p.object, field)?.label ?? field}
-                  </dt>
-                  <dd className="max-w-[65%] truncate text-right">
-                    {objectPropertyValue(
-                      runtime,
-                      p.object,
-                      field,
-                      projected[field],
-                      p.references
-                    )}
-                  </dd>
-                </div>
-              ))}
+            {values.slice(0, 4).map(({ field, value }) => (
+              <div
+                key={field.id}
+                className="flex min-w-0 items-center justify-between gap-2 text-xs"
+              >
+                <dt className="shrink-0 text-muted-foreground">
+                  {field.property.label ?? field.id}
+                </dt>
+                <dd className="max-w-[65%] truncate text-right">
+                  {objectPropertyValue(
+                    runtime,
+                    field.property,
+                    value,
+                    p.references
+                  )}
+                </dd>
+              </div>
+            ))}
           </dl>
           <div className="mt-3 flex flex-wrap items-center justify-end gap-1 border-t pt-2">
             {p.renderActions(record)}

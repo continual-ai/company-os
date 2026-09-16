@@ -38,8 +38,8 @@ const Item = defineObject({
 const Membership = defineLink({
   id: "upsertMembership",
   outputOnly: true,
-  from: { type: Item, key: "group", min: 1, max: 1 },
-  to: { type: Group, key: "items" },
+  from: { object: Item, key: "group", min: 1, max: 1 },
+  to: { object: Group, key: "items" },
 })
 const model = defineModel({
   name: "Upsert test",

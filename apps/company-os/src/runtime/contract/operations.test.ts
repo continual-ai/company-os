@@ -41,7 +41,7 @@ const Contact = defineObject({
 })
 const ContactEnroll = defineAction({
   id: "enroll",
-  object: Contact,
+  record: Contact,
   name: "Enroll",
   description: "Enrolls a contact.",
   input: { id: schema.id(Contact), notify: schema.optional(schema.boolean()) },
@@ -50,20 +50,20 @@ const ContactEnroll = defineAction({
 const Membership = defineLink({
   id: "membership",
   name: "Membership",
-  from: { type: Contact, key: "account", label: "Account", min: 1, max: 1 },
-  to: { type: Account, key: "contacts", label: "Contacts" },
+  from: { object: Contact, key: "account", label: "Account", min: 1, max: 1 },
+  to: { object: Account, key: "contacts", label: "Contacts" },
 })
 const Assignment = defineLink({
   id: "assignment",
   name: "Assignment",
   outputOnly: true,
   from: {
-    type: Contact,
+    object: Contact,
     key: "assignedAccount",
     label: "Assigned account",
     max: 1,
   },
-  to: { type: Account, key: "assignedContacts", label: "Assigned contacts" },
+  to: { object: Account, key: "assignedContacts", label: "Assigned contacts" },
 })
 const model = defineModel({
   name: "Contracts",
@@ -83,6 +83,31 @@ const decode = (key: string, input: unknown) =>
   Schema.decodeUnknownSync(modelOperation(model, key).input)(input)
 
 describe("resolved operation contracts", () => {
+  it("uses record scope for individual records and Link traversals, and object scope for sets", () => {
+    for (const key of [
+      "contact.get",
+      "contact.update",
+      "contact.delete",
+      "contact.enroll",
+      "contact.account.get",
+      "account.contacts.list",
+    ]) {
+      const operation = modelOperation(model, key)
+      expect(operation.scope).toBe("record")
+      expect(httpOperation(operation).pathFields).toEqual(["id"])
+    }
+    for (const key of [
+      "contact.create",
+      "contact.list",
+      "contact.batchGet",
+      "contact.batchDelete",
+    ]) {
+      const operation = modelOperation(model, key)
+      expect(operation.scope).toBe("object")
+      expect(httpOperation(operation).pathFields).toEqual([])
+    }
+  })
+
   it("resolves standard mutations against required, bounded, and output-only Links", () => {
     const input = { name: "Ada", links: { account: "acme" } }
     expect(decode("contact.create", input)).toEqual(input)

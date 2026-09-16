@@ -34,7 +34,7 @@ export function defineQuery<const D extends QueryDefinition>(
 export interface StandardQuery<
   TId extends string = string,
   TObjectType extends string = string,
-  TScope extends "object" | "collection" = "object" | "collection",
+  TScope extends "record" | "object" = "record" | "object",
 > {
   readonly id: TId
   readonly objectType: TObjectType
@@ -44,9 +44,9 @@ export interface StandardQuery<
   readonly description: string
 }
 export type StandardQueries<O extends ObjectType> = {
-  readonly get: StandardQuery<"get", O["id"], "object">
-  readonly list: StandardQuery<"list", O["id"], "collection">
-  readonly batchGet: StandardQuery<"batchGet", O["id"], "collection">
+  readonly get: StandardQuery<"get", O["id"], "record">
+  readonly list: StandardQuery<"list", O["id"], "object">
+  readonly batchGet: StandardQuery<"batchGet", O["id"], "object">
 }
 export function queryKey(query: {
   readonly objectType: string | undefined
@@ -67,7 +67,7 @@ export function standardQueries<TObject extends ObjectType>(
       kind: "query",
       name: `Get ${object.name.toLowerCase()}`,
       objectType: object.id,
-      scope: "object",
+      scope: "record",
     },
     list: {
       description: `Lists ${object.pluralName.toLowerCase()} with filtering, sorting, and cursor pagination.`,
@@ -75,7 +75,7 @@ export function standardQueries<TObject extends ObjectType>(
       kind: "query",
       name: `List ${object.pluralName.toLowerCase()}`,
       objectType: object.id,
-      scope: "collection",
+      scope: "object",
     },
     batchGet: {
       description: `Returns ${object.pluralName.toLowerCase()} in the same order as the requested identifiers.`,
@@ -83,7 +83,7 @@ export function standardQueries<TObject extends ObjectType>(
       kind: "query",
       name: `Batch get ${object.pluralName.toLowerCase()}`,
       objectType: object.id,
-      scope: "collection",
+      scope: "object",
     },
   }
 }

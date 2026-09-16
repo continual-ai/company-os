@@ -46,12 +46,8 @@ import {
   type CSSProperties,
 } from "react"
 
-import {
-  modelObjectLinkTraversals,
-  type ObjectType,
-  type PropertyDefinition,
-} from "#/runtime/model/index.ts"
-import { relationshipFields } from "#/runtime/model/relationship-fields.ts"
+import { type ObjectType } from "#/runtime/model/index.ts"
+import { objectFields } from "#/runtime/model/object-fields.ts"
 import { CollectionPagination } from "#/runtime/ui/model/collection-pagination.tsx"
 import { ObjectIcon } from "#/runtime/ui/model/object-record-identity.tsx"
 import {
@@ -64,10 +60,7 @@ import {
 } from "#/runtime/ui/model/object-table/object-table-cell-types.ts"
 import { ObjectTableCell } from "#/runtime/ui/model/object-table/object-table-cell.tsx"
 import {
-  objectTableProperties,
-  objectTableRelationshipColumnDefs,
-  objectTableLinkColumnDef,
-  objectTablePropertyColumnDefs,
+  objectTableFieldColumnDef,
   type ObjectTableColumn,
 } from "#/runtime/ui/model/object-table/object-table-columns.ts"
 import {
@@ -94,8 +87,6 @@ import { useModelRuntime } from "#/runtime/ui/model/runtime-context.tsx"
 
 export interface ObjectTableProps {
   canDeleteRecord?: ((recordId: string) => boolean) | undefined
-  canFilterProperty?: ((property: PropertyDefinition) => boolean) | undefined
-  canSortProperty?: ((property: PropertyDefinition) => boolean) | undefined
   canUpdateRecord?: ((recordId: string) => boolean) | undefined
   columnFilters?: ColumnFiltersState | undefined
   columnVisibility?: Readonly<Record<string, boolean>> | undefined
@@ -112,7 +103,7 @@ export interface ObjectTableProps {
   onDeleteRecords?:
     | ((recordIds: ReadonlyArray<string>) => Promise<void> | void)
     | undefined
-  records: ObjectTableRecord[]
+  records: ReadonlyArray<ObjectTableRecord>
   resetKey?: string | undefined
   onColumnFiltersChange?: OnChangeFn<ColumnFiltersState> | undefined
   onColumnVisibilityChange?: OnChangeFn<Record<string, boolean>> | undefined
@@ -258,36 +249,8 @@ function SelectionCell({
   )
 }
 
-function linkColumnDefs(
-  links: ReadonlyArray<ReturnType<typeof modelObjectLinkTraversals>[number]>,
-  object: ObjectType,
-  resolveRecord: ObjectTableProps["resolveRecord"],
-  canUpdateRecord: ObjectTableProps["canUpdateRecord"]
-) {
-  return links.map((link) => ({
-    ...objectTableLinkColumnDef(link),
-    id: link.traversal.key,
-    header: () => (
-      <span className="px-2 font-medium">{link.traversal.label}</span>
-    ),
-    cell: ({
-      row,
-    }: CellContext<typeof objectTableFeatures, ObjectTableRecord>) => (
-      <ObjectTableLinkCell
-        object={object}
-        record={row.original}
-        link={link}
-        resolveRecord={resolveRecord}
-        editable={canUpdateRecord?.(row.original.id) ?? false}
-      />
-    ),
-  }))
-}
-
 export function ObjectTable({
   canDeleteRecord,
-  canFilterProperty,
-  canSortProperty,
   canUpdateRecord,
   columnFilters,
   columnVisibility,
@@ -336,18 +299,11 @@ export function ObjectTable({
   ])
   const [isHorizontallyScrolled, setIsHorizontallyScrolled] = useState(false)
   const runtime = useModelRuntime()
-  const links = useMemo(
-    () => modelObjectLinkTraversals(runtime.model, object),
-    [runtime, object]
+  const fields = useMemo(
+    () => objectFields(object, runtime.model),
+    [object, runtime.model]
   )
-  const properties = useMemo(() => objectTableProperties(object), [object])
   const columns = useMemo(() => {
-    const propertyColumns = objectTablePropertyColumnDefs({
-      object,
-      properties,
-      canFilterProperty,
-      canSortProperty,
-    })
     const selectionColumns = enableRowSelection
       ? [
           columnHelper.display({
@@ -365,34 +321,13 @@ export function ObjectTable({
         ]
       : []
 
-    const linkColumns = linkColumnDefs(
-      links,
-      object,
-      resolveRecord,
-      canUpdateRecord
-    )
-    const relatedColumns = objectTableRelationshipColumnDefs(
-      runtime.model,
-      object,
-      resolveRecord
-    )
     return columnHelper.columns([
       ...selectionColumns,
-      ...propertyColumns,
-      ...relatedColumns,
-      ...linkColumns,
+      ...fields.map((field) =>
+        objectTableFieldColumnDef(object, field, resolveRecord)
+      ),
     ])
-  }, [
-    runtime.model,
-    links,
-    resolveRecord,
-    canUpdateRecord,
-    canFilterProperty,
-    canSortProperty,
-    enableRowSelection,
-    object,
-    properties,
-  ])
+  }, [fields, object, resolveRecord, enableRowSelection])
 
   const initialState = useMemo(() => {
     const defaultPropertyIds = new Set(
@@ -401,7 +336,7 @@ export function ObjectTable({
           object.display.title,
           object.display.status,
           object.display.subtitle,
-          ...properties.map(([propertyId]) => propertyId),
+          ...Object.keys(object.properties),
         ].filter((propertyId): propertyId is string => propertyId !== undefined)
     )
 
@@ -413,33 +348,17 @@ export function ObjectTable({
         ],
         end: [],
       },
-      columnVisibility: Object.fromEntries([
-        ...relationshipFields(runtime.model, object).map(({ id }) => [
-          id,
-          visiblePropertyIds?.includes(id) ?? false,
-        ]),
-        ...properties.map(
-          ([propertyId]) =>
-            [propertyId, defaultPropertyIds.has(propertyId)] as const
-        ),
-        ...links.map(
-          ({ traversal }) =>
-            [
-              traversal.key,
-              defaultPropertyIds.has(traversal.key) ||
-                (visiblePropertyIds === undefined && traversal.max === 1),
-            ] as const
-        ),
-      ]),
+      columnVisibility: Object.fromEntries(
+        fields.map((field) => [
+          field.id,
+          defaultPropertyIds.has(field.id) ||
+            (visiblePropertyIds === undefined &&
+              field.kind === "link" &&
+              field.traversal.traversal.max === 1),
+        ])
+      ),
     }
-  }, [
-    runtime.model,
-    object,
-    enableRowSelection,
-    links,
-    properties,
-    visiblePropertyIds,
-  ])
+  }, [object, enableRowSelection, fields, visiblePropertyIds])
 
   const table = useTable({
     features: objectTableFeatures,
@@ -678,7 +597,19 @@ export function ObjectTable({
                             )}
                             style={pinnedColumnStyle(cell.column)}
                           >
-                            <table.FlexRender cell={cell} />
+                            {meta?.link ? (
+                              <ObjectTableLinkCell
+                                object={object}
+                                record={row.original}
+                                link={meta.link}
+                                resolveRecord={resolveRecord}
+                                editable={
+                                  canUpdateRecord?.(row.original.id) ?? false
+                                }
+                              />
+                            ) : (
+                              <table.FlexRender cell={cell} />
+                            )}
                           </TableCell>
                         )
                       }
@@ -709,6 +640,7 @@ export function ObjectTable({
                         onCellCommit === undefined ||
                         (canUpdateRecord !== undefined &&
                           !canUpdateRecord(row.original.id)) ||
+                        !meta.editable ||
                         !isObjectTableCellEditable(meta.property)
                           ? undefined
                           : (nextValue: ObjectTableValue) =>
@@ -843,10 +775,8 @@ export function ObjectTable({
           <div
             aria-hidden="true"
             data-object-table-scroll-shadow=""
-            className="pointer-events-none absolute top-0 z-40 w-3"
+            className="pointer-events-none absolute top-0 z-40 w-[3px] bg-foreground/5"
             style={{
-              backgroundImage:
-                "linear-gradient(to right, color-mix(in oklab, var(--foreground) 5%, transparent), transparent)",
               height: `min(100%, ${renderedTableSurfaceHeight}px)`,
               insetInlineStart: table.getStartTotalSize(),
             }}

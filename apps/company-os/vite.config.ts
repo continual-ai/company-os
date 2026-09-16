@@ -46,7 +46,10 @@ export default defineConfig({
           {
             extends: true,
             test: {
-              exclude: ["src/**/*-database.test.{ts,tsx}"],
+              exclude: [
+                "src/**/*-database.test.{ts,tsx}",
+                "tools/**/*-live.test.ts",
+              ],
               include: ["src/**/*.test.{ts,tsx}", "tools/**/*.test.ts"],
               name: "unit",
             },
@@ -59,6 +62,15 @@ export default defineConfig({
               hookTimeout: 60_000,
               name: "database",
               testTimeout: 60_000,
+            },
+          },
+          {
+            extends: true,
+            test: {
+              include: ["tools/agents/*-live.test.ts"],
+              name: "agents-live",
+              globalSetup: "./src/runtime/testing/global-setup.ts",
+              fileParallelism: false,
             },
           },
         ],

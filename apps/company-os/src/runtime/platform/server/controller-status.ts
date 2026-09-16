@@ -6,13 +6,13 @@ import {
   isRecordAlias,
   RecordId,
 } from "#/runtime/model/index.ts"
+import { ControllerInstance } from "#/runtime/platform/model/controller-instance.ts"
 import type { ControllerStatus } from "#/runtime/platform/model/controller-status.ts"
 import { Controller } from "#/runtime/platform/model/controller.ts"
 import { activeModuleModel } from "#/runtime/platform/server/activation.ts"
 import { requireProjectAccess } from "#/runtime/server/auth/project-access.ts"
 import { Database } from "#/runtime/server/database.ts"
 import { RecordIdentifiers } from "#/runtime/server/storage/identifiers.ts"
-import { controllerInstances } from "#/runtime/server/storage/infrastructure.ts"
 
 export const controllerStatus = Effect.fn("controller.status")(function* (
   input: QueryInput<typeof ControllerStatus>
@@ -38,20 +38,23 @@ export const controllerStatus = Effect.fn("controller.status")(function* (
             : RecordId(controller.targetObjectType)(input.key)
         )
   const { sql } = database
+  const controllerInstances = database.table(ControllerInstance)
   const where = sql.and([
-    sql`controller_id = ${controller.definitionId}`,
-    ...(key !== undefined ? [sql`key = ${key}`] : []),
+    sql`controller_id = ${controller.id}`,
+    ...(key !== undefined ? [sql`record_id = ${key}`] : []),
   ])
   const [summary] = yield* sql<{
     instances: number
-    attempts: number
+    runs: number
+    failures: number
     pending: number
     running: number
     errors: number
     lastStartedAt: string | null
     lastSucceededAt: string | null
     requeueAt: string | null
-  }>`select count(*)::int as instances, coalesce(sum(attempts), 0)::float8 as attempts,
+  }>`select count(*)::int as instances, coalesce(sum(runs), 0)::float8 as runs,
+      coalesce(sum(failures), 0)::float8 as failures,
       count(*) filter (where state = 'pending')::int as pending,
       count(*) filter (where state = 'running')::int as running,
       count(*) filter (where state = 'error')::int as errors,
@@ -60,8 +63,14 @@ export const controllerStatus = Effect.fn("controller.status")(function* (
   const [error] = yield* sql<{
     lastError: string
     lastErrorKey: string
-  }>`select last_error as "lastError", key as "lastErrorKey" from ${controllerInstances}
+  }>`select last_error as "lastError", coalesce(record_id, 'object') as "lastErrorKey" from ${controllerInstances}
       where ${where} and last_error is not null order by last_started_at desc nulls last limit 1`
+  const session =
+    key === undefined && controller.scope === "record"
+      ? undefined
+      : (yield* sql<{
+          url: string | null
+        }>`select agent_session_url as url from ${controllerInstances} where ${where} limit 1`)[0]
   const state: QueryOutput<typeof ControllerStatus>["state"] = summary!.errors
     ? "error"
     : summary!.running
@@ -73,6 +82,7 @@ export const controllerStatus = Effect.fn("controller.status")(function* (
           : "notStarted"
   return {
     ...summary!,
+    agentSessionUrl: session?.url ?? null,
     enabled,
     paused: controller.paused,
     state,

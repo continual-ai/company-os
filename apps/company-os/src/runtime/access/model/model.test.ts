@@ -11,7 +11,12 @@ it("composes an app with identity and no demo domains", () => {
   const model = defineModel({ name: "Minimal", modules: [PlatformModule] })
   expect(Object.keys(model.modules)).toEqual(["platform"])
   expect(Object.keys(model.objects)).not.toContain("company")
-  expect(Object.keys(model.interfaces)).toEqual(["actor", "identity"])
+  expect(Object.keys(model.interfaces)).toEqual([
+    "actor",
+    "identity",
+    "noteSubject",
+    "controllerTarget",
+  ])
 })
 
 it("implements exactly the kernel Actor union", () => {

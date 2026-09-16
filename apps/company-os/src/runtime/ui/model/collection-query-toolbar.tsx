@@ -6,19 +6,9 @@ import {
 } from "@tanstack/react-table"
 import { useMemo } from "react"
 
-import {
-  modelObjectLinkTraversals,
-  type ObjectType,
-} from "#/runtime/model/index.ts"
-import {
-  canFilterProperty,
-  canSortProperty,
-} from "#/runtime/ui/model/object-collection-query.ts"
-import {
-  objectTableProperties,
-  objectTableLinkColumnDef,
-  objectTablePropertyColumnDefs,
-} from "#/runtime/ui/model/object-table/object-table-columns.ts"
+import type { ObjectType } from "#/runtime/model/index.ts"
+import { objectFields } from "#/runtime/model/object-fields.ts"
+import { objectTableFieldColumnDef } from "#/runtime/ui/model/object-table/object-table-columns.ts"
 import {
   objectTableFeatures,
   type ObjectTableRecord,
@@ -35,7 +25,7 @@ export function CollectionQueryToolbar({
   onSortingChange,
 }: {
   object: ObjectType
-  records: ObjectTableRecord[]
+  records: ReadonlyArray<ObjectTableRecord>
   columnFilters: ColumnFiltersState
   sorting: SortingState
   onColumnFiltersChange: OnChangeFn<ColumnFiltersState>
@@ -43,17 +33,10 @@ export function CollectionQueryToolbar({
 }) {
   const runtime = useModelRuntime()
   const columns = useMemo(
-    () => [
-      ...objectTablePropertyColumnDefs({
-        object,
-        properties: objectTableProperties(object),
-        canFilterProperty,
-        canSortProperty,
-      }),
-      ...modelObjectLinkTraversals(runtime.model, object).map(
-        objectTableLinkColumnDef
+    () =>
+      objectFields(object, runtime.model).map((field) =>
+        objectTableFieldColumnDef(object, field)
       ),
-    ],
     [object, runtime.model]
   )
   // Share the table's query model and controls without rendering a table.

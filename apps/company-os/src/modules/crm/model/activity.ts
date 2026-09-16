@@ -1,8 +1,8 @@
 import { Account } from "#/modules/crm/model/account.ts"
 import { Contact } from "#/modules/crm/model/contact.ts"
-import { NoteSubject } from "#/modules/notes/model/index.ts"
 import { User } from "#/runtime/access/model/index.ts"
 import { defineLink, defineObject, schema } from "#/runtime/model/index.ts"
+import { NoteSubject } from "#/runtime/platform/model/note-subject.ts"
 
 export const Activity = defineObject({
   id: "activity",
@@ -45,20 +45,20 @@ export const Activity = defineObject({
 export const ActivityAccounts = defineLink({
   id: "activityAccounts",
   name: "Activity Account",
-  from: { type: Activity, key: "accounts", label: "Accounts" },
-  to: { type: Account, key: "activities", label: "Activities" },
+  from: { object: Activity, key: "accounts", label: "Accounts" },
+  to: { object: Account, key: "activities", label: "Activities" },
 })
 
 export const ActivityContacts = defineLink({
   id: "activityContacts",
   name: "Activity Contact",
-  from: { type: Activity, key: "contacts", label: "Contacts" },
-  to: { type: Contact, key: "activities", label: "Activities" },
+  from: { object: Activity, key: "contacts", label: "Contacts" },
+  to: { object: Contact, key: "activities", label: "Activities" },
 })
 
 export const ActivityOwner = defineLink({
   id: "activityOwner",
   name: "Activity Owner",
-  from: { type: Activity, key: "owner", label: "Owner", max: 1 },
-  to: { type: User, key: "activities", label: "Activities" },
+  from: { object: Activity, key: "owner", label: "Owner", max: 1 },
+  to: { object: User, key: "activities", label: "Activities" },
 })

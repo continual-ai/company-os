@@ -4,8 +4,11 @@ import {
   type ListRequest,
   type PropertyDefinition,
 } from "#/runtime/model/index.ts"
+import {
+  objectFields,
+  requireObjectField,
+} from "#/runtime/model/object-fields.ts"
 import { queryProperty } from "#/runtime/model/query-fields.ts"
-import { relationshipFields } from "#/runtime/model/relationship-fields.ts"
 import { type CollectionDateWindow } from "#/runtime/ui/model/collection-dates.ts"
 import type {
   ObjectCollectionFilter,
@@ -52,22 +55,6 @@ interface CollectionListRequest {
   pageSize: number
   pageToken?: ListRequest["pageToken"]
   sort?: ReadonlyArray<CollectionSort>
-}
-
-export function canFilterProperty(property: PropertyDefinition): boolean {
-  const resolved = objectTablePropertySchema(property)
-  return (
-    resolved.kind === "boolean" ||
-    resolved.kind === "decimal" ||
-    resolved.kind === "enum" ||
-    resolved.kind === "number" ||
-    resolved.kind === "recordId" ||
-    resolved.kind === "string"
-  )
-}
-
-export function canSortProperty(property: PropertyDefinition): boolean {
-  return canFilterProperty(property)
 }
 
 function filterScalar(
@@ -148,9 +135,10 @@ export function objectListRequest(
   model?: ModelCatalog,
   visibility?: Readonly<Record<string, boolean>>
 ): ListRequest {
-  const relatedFields = model ? relationshipFields(model, object) : []
+  const fields = objectFields(object, model)
   const filters = columnFilters.flatMap((columnFilter) => {
-    const related = relatedFields.find(({ id }) => id === columnFilter.id)
+    const field = requireObjectField(fields, columnFilter.id, "filter")
+    const related = field.kind === "related" ? field.related : undefined
     if (related) {
       const value = readFilterValue(columnFilter.value)
       const filter = propertyFilter(
@@ -175,14 +163,7 @@ export function objectListRequest(
                 } satisfies RuntimeFilter),
           ]
     }
-    const property = queryProperty(object, columnFilter.id)
-    if (
-      property === undefined &&
-      model &&
-      modelObjectLinkTraversals(model, object).some(
-        ({ traversal }) => traversal.key === columnFilter.id
-      )
-    ) {
+    if (field.kind === "link") {
       const { operator, values } = readFilterValue(columnFilter.value)
       if (operator === "empty")
         return [
@@ -204,10 +185,9 @@ export function objectListRequest(
       }
       return [operator === "notEquals" ? { not: matches } : matches]
     }
-    if (property === undefined || !canFilterProperty(property)) return []
     const filter = propertyFilter(
       columnFilter.id,
-      property,
+      field.property,
       readFilterValue(columnFilter.value)
     )
     return filter === undefined ? [] : [filter]
@@ -254,30 +234,15 @@ export function objectListRequest(
       filters.push({ or: alternatives })
     }
   }
-  const sort = sorting.flatMap((columnSort) => {
-    const related = relatedFields.find(({ id }) => id === columnSort.id)
-    if (related)
-      return related.count || related.traversal.traversal.max === 1
-        ? [
-            {
-              direction: columnSort.desc ? "desc" : "asc",
-              field: related.count
-                ? related.traversal.traversal.key
-                : related.id,
-              nulls: "last",
-              ...(related.count ? { aggregate: "count" as const } : {}),
-            } satisfies CollectionSort,
-          ]
-        : []
-    const property = queryProperty(object, columnSort.id)
-    if (property === undefined || !canSortProperty(property)) return []
-    return [
-      {
-        direction: columnSort.desc ? "desc" : "asc",
-        field: columnSort.id,
-        nulls: "last",
-      } satisfies CollectionSort,
-    ]
+  const sort = sorting.map((columnSort): CollectionSort => {
+    const field = requireObjectField(fields, columnSort.id, "sort")
+    const count = field.kind === "related" && field.related.count
+    return {
+      direction: columnSort.desc ? "desc" : "asc",
+      field: count ? field.related.traversal.traversal.key : field.id,
+      nulls: "last",
+      ...(count ? { aggregate: "count" } : {}),
+    }
   })
 
   const request: CollectionListRequest & {

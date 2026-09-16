@@ -1,5 +1,6 @@
 import { Context, Effect } from "effect"
 
+import type { ControllerKeys } from "#/runtime/server/controllers/routing.ts"
 import { requireWritableOperation } from "#/runtime/server/operation-mode.ts"
 
 export interface EventSubject {
@@ -14,6 +15,7 @@ export interface PendingEvent {
   readonly subjects: ReadonlyArray<EventSubject>
   readonly actorId: string
   readonly data: unknown
+  readonly controllerKeys?: ControllerKeys
   readonly occurredAt: string
   /** Standard record snapshots are resolved after all writes in the transaction. */
   readonly snapshot?: Effect.Effect<unknown>

@@ -23,7 +23,6 @@ import { CollectionVisual } from "#/runtime/ui/model/collection-visual.tsx"
 import { ObjectChoiceBadge } from "#/runtime/ui/model/object-choice-badge.tsx"
 import {
   modelObjectProperty,
-  tableRecord,
   type ClientRecord,
 } from "#/runtime/ui/model/object-client.ts"
 import type { ObjectFormInput } from "#/runtime/ui/model/object-form.ts"
@@ -76,7 +75,6 @@ function PatternExamples({
   const [anchor, setAnchor] = useState("2026-09-09")
   const first = records[0] ?? exampleRecords[0]!
   const references = new Map()
-  const projected = tableRecord(ExampleProject, first)
   const statusUpdate = useMutation({
     mutationFn: ({ field, value }: { field: string; value: string }) =>
       update(first, { [field]: value }),
@@ -124,18 +122,15 @@ function PatternExamples({
             source="runtime/ui/model/object-record-identity.tsx"
           >
             <div className="space-y-6">
-              <ObjectRecordIdentity
-                object={ExampleProject}
-                record={projected}
-              />
+              <ObjectRecordIdentity object={ExampleProject} record={first} />
               <ObjectRecordIdentity
                 expanded
                 object={ExampleProject}
-                record={projected}
+                record={first}
               />
               <ObjectRecordIdentity
                 object={ExampleProject}
-                record={{ ...projected, name: "" }}
+                record={{ ...first, name: "" }}
               />
             </div>
           </Example>
@@ -145,7 +140,7 @@ function PatternExamples({
           >
             <ObjectRecordStatusProgress
               object={ExampleProject}
-              record={projected}
+              record={first}
               onChange={(field, value) => statusUpdate.mutate({ field, value })}
               pendingValue={
                 statusUpdate.isPending
@@ -205,9 +200,8 @@ function PatternExamples({
                     <dd className="text-sm">
                       {objectPropertyValue(
                         runtime,
-                        ExampleProject,
-                        id,
-                        projected[id],
+                        modelObjectProperty(ExampleProject, id),
+                        first[id],
                         references
                       )}
                     </dd>
@@ -221,8 +215,7 @@ function PatternExamples({
                 <dd>
                   {objectPropertyValue(
                     runtime,
-                    ExampleProject,
-                    "email",
+                    ExampleProject.properties.email,
                     null,
                     references
                   )}
@@ -278,11 +271,7 @@ function PatternExamples({
             <ObjectTable
               key={state}
               object={ExampleProject}
-              records={
-                state === "empty" || state === "loading"
-                  ? []
-                  : records.map((record) => tableRecord(ExampleProject, record))
-              }
+              records={state === "empty" || state === "loading" ? [] : records}
               visiblePropertyIds={[
                 "name",
                 "status",
@@ -420,7 +409,7 @@ function PatternExamples({
             <ObjectRecordIdentity
               expanded
               object={ExampleProject}
-              record={projected}
+              record={first}
             />
           </div>
         </Example>
