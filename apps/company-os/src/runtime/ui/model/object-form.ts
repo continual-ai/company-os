@@ -20,6 +20,12 @@ import type {
   FormValueObject,
 } from "#/runtime/ui/forms/form-value.ts"
 import {
+  formValue,
+  isSupportedFormSchema,
+  schemaFormDefault,
+  schemaFormInput,
+} from "#/runtime/ui/forms/schema-form-values.ts"
+import {
   modelObjectProperty,
   type ClientRecord,
   type ClientValue,
@@ -29,8 +35,9 @@ import { objectTablePropertySchema } from "#/runtime/ui/model/object-table/objec
 import { type ModelUiRuntime } from "#/runtime/ui/model/runtime-context.tsx"
 
 export type ObjectFormMode = "create" | "edit"
+/** Runtime schemas own field types; unknown prevents TanStack from expanding recursive DeepKeys. */
 export interface ObjectFormValues {
-  readonly [property: string]: FormValue
+  readonly [property: string]: unknown
 }
 type ObjectFormInputValue =
   | boolean
@@ -45,7 +52,7 @@ export interface ObjectFormInput {
   readonly [property: string]: ObjectFormInputValue | undefined
 }
 
-interface LinkDeltaInput {
+type LinkDeltaInput = {
   add?: ReadonlyArray<string>
   remove?: ReadonlyArray<string>
 }
@@ -78,32 +85,6 @@ export function objectFormProperties(
 
 export function objectFormFieldRequired(property: PropertyDefinition): boolean {
   return !property.nullable
-}
-
-export function isSupportedFormSchema(schema: AnySchema): boolean {
-  if (
-    schema.kind === "boolean" ||
-    schema.kind === "decimal" ||
-    schema.kind === "enum" ||
-    schema.kind === "file" ||
-    schema.kind === "image" ||
-    schema.kind === "media" ||
-    schema.kind === "money" ||
-    schema.kind === "number" ||
-    schema.kind === "recordId" ||
-    schema.kind === "string"
-  ) {
-    return true
-  }
-  if (schema.kind !== "array") return false
-  const item = objectTablePropertySchema(schema.items)
-  return (
-    item.kind === "enum" ||
-    item.kind === "string" ||
-    item.kind === "file" ||
-    item.kind === "image" ||
-    item.kind === "media"
-  )
 }
 
 function semanticFormViolation(
@@ -201,67 +182,31 @@ function scalarValue(
   schema: AnySchema,
   mode: ObjectFormMode
 ): FormValue | undefined {
-  const raw = values[propertyId]
-  if (schema.kind === "boolean") return raw === true
-
-  if (schema.kind === "money") {
-    const amount = nestedString(raw, "amount").trim()
-    const currency = nestedString(raw, "currency").trim().toUpperCase()
-    if (amount === "") return blankValue(propertyId, property, mode)
-    return { amount, currency: currency || runtime.defaultCurrency }
-  }
-
+  const raw = formValue(values[propertyId])
+  const blank =
+    raw === "" ||
+    raw === undefined ||
+    (schema.kind === "money" && nestedString(raw, "amount").trim() === "") ||
+    (["file", "image", "media"].includes(schema.kind) &&
+      nestedString(raw, "assetId").trim() === "")
   if (
-    schema.kind === "file" ||
-    schema.kind === "image" ||
-    schema.kind === "media"
-  ) {
-    const assetId = nestedString(raw, "assetId").trim()
-    if (assetId === "") return blankValue(propertyId, property, mode)
-    const alt = nestedString(raw, "alt").trim()
-    return alt === "" ? { assetId } : { alt, assetId }
+    blank &&
+    schema.kind !== "array" &&
+    schema.kind !== "boolean" &&
+    !(schema.kind === "string" && schema.secret)
+  )
+    return blankValue(propertyId, property, mode)
+  try {
+    return schemaFormInput(schema, raw, runtime.defaultCurrency)
+  } catch {
+    throw new FormValidationError([
+      {
+        path: [propertyId],
+        reason: "INVALID_VALUE",
+        message: `${property.label ?? propertyId} is invalid.`,
+      },
+    ])
   }
-
-  if (schema.kind === "array") {
-    if (["file", "image", "media"].includes(schema.items.kind))
-      return Array.isArray(raw) ? raw : []
-    const value = stringValue(raw).trim()
-    if (value === "") return []
-    return value
-      .split(/[\n,]/)
-      .map((item) => item.trim())
-      .filter((item) => item.length > 0)
-  }
-
-  const value = stringValue(raw).trim()
-  if (value === "") return blankValue(propertyId, property, mode)
-  if (schema.kind === "number") {
-    const number = Number(value)
-    if (!Number.isFinite(number)) {
-      throw new FormValidationError([
-        {
-          message: `${property.label ?? propertyId} must be a number.`,
-          path: [propertyId],
-          reason: "INVALID_NUMBER",
-        },
-      ])
-    }
-    return number
-  }
-  if (schema.kind === "string" && schema.format === "timestamp") {
-    const timestamp = new Date(value)
-    if (Number.isNaN(timestamp.valueOf())) {
-      throw new FormValidationError([
-        {
-          message: `${property.label ?? propertyId} must be a valid time.`,
-          path: [propertyId],
-          reason: "INVALID_TIMESTAMP",
-        },
-      ])
-    }
-    return timestamp.toISOString()
-  }
-  return value
 }
 
 export function decodeObjectForm(
@@ -359,22 +304,20 @@ function nestedString(value: FormValue | undefined, key: string): string {
   return isObjectFormObject(value) ? stringValue(value[key]) : ""
 }
 
-function nestedFormValue(
-  value: FormValue | undefined,
-  key: string
-): FormValue | undefined {
+function nestedFormValue(value: unknown, key: string): FormValue | undefined {
   return isObjectFormObject(value) ? value[key] : undefined
 }
 
 function stringArrayValue(value: FormValue | undefined): ReadonlyArray<string> {
   return Array.isArray(value)
-    ? value.map((item) => item.trim()).filter((item) => item.length > 0)
+    ? value
+        .filter((item): item is string => typeof item === "string")
+        .map((item) => item.trim())
+        .filter((item) => item.length > 0)
     : []
 }
 
-function isObjectFormObject(
-  value: FormValue | undefined
-): value is FormValueObject {
+function isObjectFormObject(value: unknown): value is FormValueObject {
   return typeof value === "object" && value !== null && !Array.isArray(value)
 }
 
@@ -433,63 +376,7 @@ export function objectFormDefaultValues(
       initialValues?.[id] !== undefined
         ? initialValues[id]
         : initialValue(property, record, id, mode, now)
-    if (schema.kind === "boolean") {
-      values[id] = value === true
-      continue
-    }
-    if (schema.kind === "money") {
-      const money =
-        typeof value === "object" &&
-        value !== null &&
-        "amount" in value &&
-        "currency" in value
-          ? value
-          : undefined
-      values[id] = {
-        amount: stringValue(money?.amount),
-        currency: stringValue(money?.currency) || runtime.defaultCurrency,
-      }
-      continue
-    }
-    if (
-      schema.kind === "file" ||
-      schema.kind === "image" ||
-      schema.kind === "media"
-    ) {
-      const media =
-        typeof value === "object" && value !== null && "assetId" in value
-          ? value
-          : undefined
-      values[id] = {
-        alt:
-          media !== undefined && "alt" in media ? stringValue(media.alt) : "",
-        assetId: stringValue(media?.assetId),
-      }
-      continue
-    }
-    if (schema.kind === "array") {
-      if (["file", "image", "media"].includes(schema.items.kind)) {
-        values[id] = Array.isArray(value)
-          ? value
-              .filter(
-                (item) =>
-                  typeof item === "object" && item !== null && "assetId" in item
-              )
-              .map((item) => ({
-                assetId: String(item.assetId),
-                ...("alt" in item && typeof item.alt === "string"
-                  ? { alt: item.alt }
-                  : {}),
-              }))
-          : []
-      } else values[id] = Array.isArray(value) ? value.join("\n") : ""
-      continue
-    }
-    if (schema.kind === "string" && schema.format === "timestamp") {
-      values[id] = dateTimeLocalValue(value)
-      continue
-    }
-    values[id] = typeof value === "number" ? String(value) : stringValue(value)
+    values[id] = schemaFormDefault(schema, value, runtime.defaultCurrency)
   }
 
   {
@@ -520,14 +407,6 @@ export function objectFormDefaultValues(
     if (Object.keys(links).length > 0) values.links = links
   }
   return values
-}
-
-export function dateTimeLocalValue(value: ClientValue | undefined): string {
-  if (typeof value !== "string" || value === "") return ""
-  const date = new Date(value)
-  if (Number.isNaN(date.valueOf())) return ""
-  const local = new Date(date.valueOf() - date.getTimezoneOffset() * 60_000)
-  return local.toISOString().slice(0, 16)
 }
 
 export function stringValue(

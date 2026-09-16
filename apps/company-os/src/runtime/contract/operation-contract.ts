@@ -33,6 +33,7 @@ import {
 import type { ObjectType } from "#/runtime/model/definition/object.ts"
 import type { Query, StandardQuery } from "#/runtime/model/definition/query.ts"
 import { MAX_BATCH_DELETE_SIZE } from "#/runtime/model/definition/request.ts"
+import { containsSecret } from "#/runtime/model/definition/schema.ts"
 import {
   AbortedError,
   AlreadyExistsError,
@@ -46,6 +47,7 @@ import {
 
 /** Complete, protocol-independent contract resolved against one composed model. */
 export interface OperationContract {
+  readonly sensitive?: boolean
   readonly builtin?: "batchGetRecords" | "searchRecords"
   readonly key: string
   readonly id: string
@@ -182,6 +184,9 @@ function resolveOperations(
       description: definition.description,
       object,
       ...objectSchemas(model, object, definition),
+      sensitive:
+        definition.kind === "action" &&
+        Object.values(object.properties).some(containsSecret),
       errors: operationErrors(definition),
       destructive: definition.kind === "action" && definition.destructive,
       idempotent: definition.kind === "query" || definition.idempotent,
@@ -253,6 +258,8 @@ function resolveOperations(
     [...module.actions, ...module.queries].map(
       (definition): OperationContract => ({
         ...definition,
+        sensitive:
+          containsSecret(definition.input) || containsSecret(definition.output),
         moduleId: module.id,
         object:
           definition.objectType === undefined

@@ -1,13 +1,14 @@
 import { Schema } from "effect"
 
 import { toEffectOperationInput } from "#/runtime/contract/schema.ts"
-import type { Action, AnySchema } from "#/runtime/model/index.ts"
+import type { Action } from "#/runtime/model/index.ts"
 import { FormValidationError } from "#/runtime/ui/forms/form-errors.ts"
-import type { FormValue } from "#/runtime/ui/forms/form-value.ts"
 import {
-  isSupportedFormSchema,
-  type ObjectFormValues,
-} from "#/runtime/ui/model/object-form.ts"
+  formValue,
+  schemaFormDefault,
+  schemaFormInput,
+} from "#/runtime/ui/forms/schema-form-values.ts"
+import type { ObjectFormValues } from "#/runtime/ui/model/object-form.ts"
 
 export function operationFormFields(action: Action, recordId?: string) {
   return Object.entries(action.input.properties)
@@ -17,42 +18,12 @@ export function operationFormFields(action: Action, recordId?: string) {
     )
     .map(([id, definition]) => ({
       id,
-      schema: definition.kind === "optional" ? definition.value : definition,
+      schema: definition,
       required:
         definition.kind !== "optional" &&
         !definition.nullable &&
         definition.default === undefined,
     }))
-}
-function defaultValue(schema: AnySchema): FormValue {
-  const value = schema.default
-  if (schema.kind === "boolean") return value === true
-  if (
-    schema.kind === "money" ||
-    schema.kind === "file" ||
-    schema.kind === "image" ||
-    schema.kind === "media"
-  ) {
-    return typeof value === "object" && value !== null
-      ? Object.fromEntries(
-          Object.entries(value).map(([key, item]) => [
-            key,
-            typeof item === "string" ? item : "",
-          ])
-        )
-      : {}
-  }
-  if (schema.kind === "array" && isSupportedFormSchema(schema)) {
-    if (["file", "image", "media"].includes(schema.items.kind)) return []
-    return Array.isArray(value) ? value.join("\n") : ""
-  }
-  if (!isSupportedFormSchema(schema))
-    return value === undefined ? "" : JSON.stringify(value)
-  return typeof value === "string"
-    ? value
-    : typeof value === "number"
-      ? String(value)
-      : ""
 }
 export function operationFormDefaults(
   action: Action,
@@ -67,34 +38,14 @@ export function operationFormDefaults(
           definition.value.default !== undefined
         )
       })
-      .map(({ id, schema }) => [id, defaultValue(schema)])
+      .map(({ id, schema }) => [
+        id,
+        schemaFormDefault(
+          schema,
+          schema.kind === "optional" ? schema.value.default : schema.default
+        ),
+      ])
   )
-}
-function inputValue(schema: AnySchema, raw: FormValue | undefined): unknown {
-  if (schema.kind === "optional")
-    return raw === "" || raw === undefined
-      ? undefined
-      : inputValue(schema.value, raw)
-  if (raw === "" || raw === undefined) {
-    if (schema.default !== undefined) return schema.default
-    if (schema.nullable) return null
-  }
-  if (!isSupportedFormSchema(schema))
-    return typeof raw === "string" ? JSON.parse(raw) : raw
-  if (schema.kind === "number") return raw === "" ? raw : Number(raw)
-  if (schema.kind === "array" && typeof raw === "string")
-    return raw
-      .split(/[\n,]/)
-      .map((value) => value.trim())
-      .filter(Boolean)
-  if (
-    schema.kind === "string" &&
-    schema.format === "timestamp" &&
-    typeof raw === "string" &&
-    raw !== ""
-  )
-    return new Date(raw).toISOString()
-  return raw
 }
 export function decodeOperationForm(
   action: Action,
@@ -106,7 +57,7 @@ export function decodeOperationForm(
       if (action.scope === "record" && id === "id" && recordId !== undefined)
         return [[id, recordId]]
       try {
-        const value = inputValue(schema, values[id])
+        const value = schemaFormInput(schema, formValue(values[id]))
         return value === undefined ? [] : [[id, value]]
       } catch {
         throw new FormValidationError([

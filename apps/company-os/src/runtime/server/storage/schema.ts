@@ -1,3 +1,4 @@
+import { containsSecret } from "#/runtime/model/definition/schema.ts"
 import type {
   AnySchema,
   InferSchema,
@@ -82,6 +83,7 @@ function nativeArray(schema: AnySchema): boolean {
   )
 }
 function propertySqlType(property: AnySchema): string {
+  if (containsSecret(property)) return "jsonb"
   switch (property.kind) {
     case "boolean":
       return "boolean"

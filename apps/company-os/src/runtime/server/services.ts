@@ -3,6 +3,7 @@ import { Layer } from "effect"
 
 import { BlobStorage } from "#/runtime/assets/server/blob-storage.ts"
 import type { ModelCatalog } from "#/runtime/model/index.ts"
+import type { ApplicationKeys } from "#/runtime/server/application-keys.ts"
 import { foundationLayer } from "#/runtime/server/foundation.ts"
 import type {
   ModuleServer,
@@ -12,6 +13,7 @@ import { OperationExecutor } from "#/runtime/server/operation-executor.ts"
 import type { PageTokens } from "#/runtime/server/page-tokens.ts"
 
 export interface ServicesInfrastructure {
+  readonly applicationKeys?: Layer.Layer<ApplicationKeys, unknown>
   readonly blobStorage?: Layer.Layer<BlobStorage, unknown>
   readonly pageTokens?: Layer.Layer<PageTokens, unknown>
   readonly sql: Layer.Layer<PgClient.PgClient, unknown>

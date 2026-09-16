@@ -1,6 +1,6 @@
 import type {
   AnySchema,
-  InferSchema,
+  InferRecordSchema,
   SchemaDefinition,
 } from "#/runtime/model/definition/schema.ts"
 
@@ -36,7 +36,7 @@ export type PropertyDefinition = AnySchema extends infer TSchema
 
 type NormalizedProperty<TSchema extends AnySchema> = TSchema extends AnySchema
   ? TSchema & {
-      readonly _Value?: InferSchema<TSchema>
+      readonly _Value?: InferRecordSchema<TSchema>
       immutable: HasTrue<TSchema, "immutable">
       nullable: HasTrue<TSchema, "nullable">
       outputOnly: HasTrue<TSchema, "outputOnly">

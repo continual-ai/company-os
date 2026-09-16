@@ -15,14 +15,17 @@ import {
 } from "#/runtime/contract/object-input.ts"
 import { validateQuery } from "#/runtime/contract/query-validation.ts"
 import {
+  toEffectInputSchema,
   toEffectObjectWriterCreateSchema,
   toEffectObjectWriterUpdateSchema,
 } from "#/runtime/contract/schema.ts"
+import { preserveSecretInputs } from "#/runtime/contract/secret-update.ts"
 import type { Expansion } from "#/runtime/model/definition/model-record.ts"
 import type {
   ObjectWriterUpdateInput,
   ObjectUpdateValues,
 } from "#/runtime/model/definition/object.ts"
+import { containsSecret } from "#/runtime/model/definition/schema.ts"
 import {
   type ObjectCreateInput,
   type ObjectRecord,
@@ -257,18 +260,42 @@ export function makeRepository<const O extends ObjectType>(object: O) {
         // oxlint-disable-next-line typescript/no-unsafe-type-assertion
         const actorId = invocation.actorId as ObjectRecord<O>["updatedBy"]
         const current = yield* repository.get(id)
+        const secretFields = Object.keys(values).filter(
+          (key) =>
+            object.properties[key] && containsSecret(object.properties[key])
+        )
+        const previous = {
+          ...current,
+          ...(yield* repository.secretValues(id, secretFields)),
+        }
+        const completed = { ...values }
+        for (const key of secretFields) {
+          const property = object.properties[key]!
+          const value = yield* Schema.decodeUnknownEffect(
+            toEffectInputSchema(property)
+          )(
+            preserveSecretInputs(
+              property,
+              values[key],
+              Reflect.get(previous, key)
+            )
+          )
+          // SAFETY: portable property input has just been validated against its own schema.
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+          completed[key] = value as DecodedInput[string]
+        }
         const canonical = yield* resolveUpdateIdentifiers(
           object,
-          values,
+          completed,
           resolveAliases
         )
-        yield* assertImmutableFields(object, current, canonical)
+        yield* assertImmutableFields(object, previous, canonical)
         if (
           skipUnchanged &&
           Object.entries(canonical).every(
             ([key, value]) =>
               value === undefined ||
-              isDeepStrictEqual(Reflect.get(current, key), value)
+              isDeepStrictEqual(Reflect.get(previous, key), value)
           )
         ) {
           yield* plan.apply()
@@ -374,7 +401,10 @@ function assertImmutableFields<O extends ObjectType>(
     if (
       property.immutable &&
       inputValues.has(propertyId) &&
-      !Object.is(currentValues.get(propertyId), inputValues.get(propertyId))
+      !isDeepStrictEqual(
+        currentValues.get(propertyId),
+        inputValues.get(propertyId)
+      )
     ) {
       return Effect.fail(
         new ImmutablePropertyError({

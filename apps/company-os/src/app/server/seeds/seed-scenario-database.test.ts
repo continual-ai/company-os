@@ -11,6 +11,7 @@ import {
 } from "#/app/server/application-services.ts"
 import { Storage } from "#/app/server/database/schema.ts"
 import { testApplication } from "#/app/server/test-application.ts"
+import { ApplicationKeys } from "#/runtime/server/application-keys.ts"
 import type { CurrentInvocation } from "#/runtime/server/invocation.ts"
 import { PageTokens } from "#/runtime/server/page-tokens.ts"
 import {
@@ -35,7 +36,10 @@ application.test(
     Effect.gen(function* () {
       const database = yield* SqlDatabase
       const sql = database.sql
-      const infrastructure = { pageTokens: PageTokens.layerTest }
+      const infrastructure = {
+        pageTokens: PageTokens.layerTest,
+        applicationKeys: ApplicationKeys.layerTest,
+      }
       expect(yield* runSeedScenario(demoScenario, infrastructure)).toBe(
         "seeded"
       )
@@ -141,7 +145,10 @@ application.test(
 
 application.test("supports a paginated, repeatable performance dataset", () =>
   Effect.gen(function* () {
-    const infrastructure = { pageTokens: PageTokens.layerTest }
+    const infrastructure = {
+      pageTokens: PageTokens.layerTest,
+      applicationKeys: ApplicationKeys.layerTest,
+    }
     yield* runSeedScenario(performanceScenario(60), infrastructure)
     expect(
       yield* runSeedScenario(performanceScenario(60), infrastructure)

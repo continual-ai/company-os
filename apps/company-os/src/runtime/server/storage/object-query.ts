@@ -5,6 +5,7 @@ import type { Constructor, Fragment } from "effect/unstable/sql/Statement"
 
 import { decodeQueryValue } from "#/runtime/contract/query-validation.ts"
 import type { LinkFilter } from "#/runtime/model/definition/request.ts"
+import { containsSecret } from "#/runtime/model/definition/schema.ts"
 import {
   type ObjectSort,
   type ObjectType,
@@ -229,6 +230,14 @@ export function makeObjectQueryCompiler(
   ) => QueryField
 ) {
   const columnFor = (field: string): Column => {
+    const property = field.includes(".")
+      ? relatedField?.(field).property
+      : object.properties[field]
+    if (property && containsSecret(property))
+      throw invalidListRequest(
+        object,
+        `Field '${field}' cannot be filtered or sorted.`
+      )
     const column =
       queryColumns[field] ??
       (field.includes(".") ? relatedField?.(field).column : undefined)
@@ -371,14 +380,15 @@ export function makeObjectQueryCompiler(
       const property = object.properties[sort.field]
       if (
         property !== undefined &&
-        !new Set([
-          "boolean",
-          "decimal",
-          "enum",
-          "number",
-          "recordId",
-          "string",
-        ]).has(property.kind)
+        (containsSecret(property) ||
+          !new Set([
+            "boolean",
+            "decimal",
+            "enum",
+            "number",
+            "recordId",
+            "string",
+          ]).has(property.kind))
       ) {
         throw invalidListRequest(
           object,

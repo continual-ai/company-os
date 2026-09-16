@@ -160,7 +160,7 @@ function compileString(
   mode: CompileMode
 ): Schema.Codec<string> {
   let value: Schema.Codec<string> =
-    mode === "input" &&
+    (mode === "input" || mode === "update") &&
     (definition.format === "domain" || definition.format === "email")
       ? Schema.String.pipe(
           Schema.decode(
@@ -177,6 +177,14 @@ function compileString(
   if (definition.maxLength !== undefined) {
     value = value.check(Schema.isMaxLength(definition.maxLength))
   }
+
+  if (definition.secret)
+    return value.annotate({
+      ...(mode === "input" || mode === "update" ? { writeOnly: true } : {}),
+      format: "password",
+      message: "Invalid secret.",
+      parseOptions: { reportInput: false },
+    })
 
   switch (definition.format) {
     case "markdown":
@@ -254,7 +262,7 @@ function compileDecimal(definition: DecimalSchema): Schema.Codec<string> {
   return value
 }
 
-type CompileMode = "input" | "output"
+type CompileMode = "input" | "output" | "record" | "update"
 
 function recordIdSchema(typeId: string) {
   return Schema.String.pipe(
@@ -278,7 +286,9 @@ function compileBase(
 ): Schema.Codec<unknown, unknown> {
   switch (definition.kind) {
     case "array":
-      return Schema.Array(compile(definition.items, mode))
+      return Schema.Array(
+        compile(definition.items, mode === "update" ? "input" : mode)
+      )
     case "boolean":
       return Schema.Boolean
     case "decimal":
@@ -296,7 +306,10 @@ function compileBase(
         ? Schema.Null
         : Schema.Literal(definition.value)
     case "map":
-      return Schema.Record(Schema.String, compile(definition.values, mode))
+      return Schema.Record(
+        Schema.String,
+        compile(definition.values, mode === "update" ? "input" : mode)
+      )
     case "media":
       return mediaRefSchema
     case "money":
@@ -306,15 +319,22 @@ function compileBase(
     case "optional":
       return Schema.optionalKey(compile(definition.value, mode))
     case "recordId":
-      return mode === "input"
+      return mode === "input" || mode === "update"
         ? toEffectRecordIdentifierSchema(definition.typeId)
         : recordIdSchema(definition.typeId)
     case "string":
-      return compileString(definition, mode)
+      return definition.secret && mode === "record"
+        ? Schema.Struct({ hint: Schema.NullOr(Schema.String) })
+        : compileString(definition, mode)
     case "struct": {
       const fields: CompiledSchemaFields = Object.fromEntries(
         Object.entries(definition.properties).map(([id, member]) =>
-          entry(id, compile(member, mode))
+          entry(
+            id,
+            mode === "update" && member.kind === "string" && member.secret
+              ? Schema.optionalKey(compile(member, "input"))
+              : compile(member, mode)
+          )
         )
       )
       return Schema.Struct(fields)
@@ -430,7 +450,7 @@ function compileObjectProperties(object: ObjectType): CompiledSchemaFields {
     Object.entries(object.properties).map(([propertyId, property]) =>
       entry(
         propertyId,
-        compilePropertyValue(object, propertyId, property, "output")
+        compilePropertyValue(object, propertyId, property, "record")
       )
     )
   )
@@ -467,7 +487,7 @@ function compileUpdateProperties(
         entry(
           propertyId,
           Schema.optionalKey(
-            compilePropertyValue(object, propertyId, property, "input")
+            compilePropertyValue(object, propertyId, property, "update")
           )
         )
       )

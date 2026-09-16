@@ -1,25 +1,19 @@
-export interface FormLinkDeltaValue {
+export type FormLinkDeltaValue = {
   readonly add?: ReadonlyArray<string> | undefined
   readonly remove?: ReadonlyArray<string> | undefined
 }
 
 export interface FormValueObject {
-  readonly [property: string]:
-    | FormLinkDeltaValue
-    | ReadonlyArray<string>
-    | string
-    | undefined
+  readonly [property: string]: FormValue | undefined
 }
 
 /** Raw controlled values accepted by application form fields before decoding. */
 export type FormValue =
   | boolean
-  | FormLinkDeltaValue
   | null
   | number
   | string
-  | ReadonlyArray<string>
-  | ReadonlyArray<FormValueObject>
+  | ReadonlyArray<FormValue>
   | FormValueObject
 
 /** The controlled-input contract a form field hands to whichever control renders it. */

@@ -10,12 +10,14 @@ import { FieldError } from "@company/ui/field"
 import { useMutation } from "@tanstack/react-query"
 import { useState } from "react"
 
+import { containsSecret } from "#/runtime/model/definition/schema.ts"
 import type { Action, ObjectType } from "#/runtime/model/index.ts"
 import { useAppForm } from "#/runtime/ui/forms/app-form.ts"
 import {
   formErrorFromCause,
   formErrorMessages,
 } from "#/runtime/ui/forms/form-errors.ts"
+import { OperationResult } from "#/runtime/ui/forms/operation-result.tsx"
 import { SchemaFormField } from "#/runtime/ui/forms/schema-form-field.tsx"
 import { actionOptions } from "#/runtime/ui/model/object-client.ts"
 import {
@@ -38,7 +40,17 @@ function ActionForm({
   readonly onComplete: () => void
 }) {
   const runtime = useModelRuntime()
-  const mutation = useMutation(actionOptions(runtime, action))
+  const [result, setResult] = useState<{ value: unknown }>()
+  const options = actionOptions(runtime, action)
+  const sensitiveOutput = containsSecret(action.output)
+  const mutation = useMutation({
+    ...options,
+    mutationFn: async (input, context) => {
+      const value = await options.mutationFn!(input, context)
+      if (sensitiveOutput) setResult({ value })
+      return sensitiveOutput ? undefined : value
+    },
+  })
   const form = useAppForm({
     defaultValues: operationFormDefaults(action, recordId),
     validators: {
@@ -55,7 +67,9 @@ function ActionForm({
       onPendingChange(true)
       try {
         await mutation.mutateAsync(decodeOperationForm(action, value, recordId))
-        onComplete()
+        mutation.reset()
+        formApi.reset()
+        if (!sensitiveOutput) onComplete()
       } catch (cause) {
         formApi.setErrorMap({
           onSubmit: formErrorFromCause(cause, "The operation failed."),
@@ -65,6 +79,19 @@ function ActionForm({
       }
     },
   })
+  if (result)
+    return (
+      <div className="space-y-4">
+        <DialogHeader>
+          <DialogTitle>{action.name}</DialogTitle>
+          <DialogDescription>
+            Copy any credentials you need before closing this dialog.
+          </DialogDescription>
+        </DialogHeader>
+        <OperationResult schema={action.output} value={result.value} />
+        <Button onClick={onComplete}>Done</Button>
+      </div>
+    )
   return (
     <form.AppForm>
       <form

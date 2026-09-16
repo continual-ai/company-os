@@ -5,6 +5,7 @@ import {
   type OperationConstraints,
   type OperationDefinition,
 } from "#/runtime/model/definition/operation.ts"
+import { assertNoSecrets, schema } from "#/runtime/model/definition/schema.ts"
 import type {
   InferInputSchema,
   InferSchema,
@@ -22,6 +23,8 @@ export type QueryOutput<Q extends Query> = InferSchema<Q["output"]>
 export function defineQuery<const D extends QueryDefinition>(
   definition: D & OperationConstraints<D>
 ): Query<D> {
+  assertNoSecrets(schema.object(definition.input ?? {}), "Query input")
+  assertNoSecrets(schema.object(definition.output ?? {}), "Query output")
   // SAFETY: the constructor preserves each literal field and validates record attachment.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   return {

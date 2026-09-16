@@ -5,6 +5,7 @@ import type { ReactNode } from "react"
 
 import { AssetPreviews } from "#/runtime/assets/ui/asset-preview.tsx"
 import type { AnySchema, PropertyDefinition } from "#/runtime/model/index.ts"
+import { unionMember } from "#/runtime/ui/forms/schema-form-values.ts"
 import { ObjectChoiceBadge } from "#/runtime/ui/model/object-choice-badge.tsx"
 import type { ObjectRecordPresentation } from "#/runtime/ui/model/object-client.ts"
 import { ObjectRecordIdentity } from "#/runtime/ui/model/object-record-identity.tsx"
@@ -45,7 +46,11 @@ export function objectPropertyValue(
     )
   }
   if (schema === undefined) return objectTableValueText(value)
-  if (schema.kind === "struct")
+  if (
+    schema.kind === "struct" ||
+    schema.kind === "union" ||
+    (schema.kind === "string" && schema.secret)
+  )
     return <StructuredValue schema={schema} value={value} />
   if (
     schema.kind === "string" &&
@@ -171,6 +176,18 @@ function StructuredValue({
 }): ReactNode {
   if (value === null || value === undefined)
     return <span className="text-muted-foreground">Empty</span>
+  if (schema.kind === "string" && schema.secret)
+    return typeof value === "object" &&
+      "hint" in value &&
+      typeof value.hint === "string"
+      ? value.hint
+      : "Set"
+  if (schema.kind === "optional")
+    return <StructuredValue schema={schema.value} value={value} />
+  if (schema.kind === "union") {
+    const member = unionMember(schema, value)
+    if (member) return <StructuredValue schema={member} value={value} />
+  }
   if (
     schema.kind === "struct" &&
     typeof value === "object" &&

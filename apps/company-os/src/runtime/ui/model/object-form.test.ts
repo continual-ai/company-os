@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 
+import { schema } from "#/runtime/model/index.ts"
 import {
   Account,
   fixtureModel,
@@ -9,8 +10,8 @@ import {
 } from "#/runtime/testing/fixture-model.ts"
 import { testPresentation } from "#/runtime/testing/presentation.ts"
 import { FormValidationError } from "#/runtime/ui/forms/form-errors.ts"
+import { schemaFormDefault } from "#/runtime/ui/forms/schema-form-values.ts"
 import {
-  dateTimeLocalValue,
   decodeObjectForm,
   objectFormFieldRequired,
   objectFormDefaultValues,
@@ -219,9 +220,9 @@ describe("object forms", () => {
   })
 
   it("formats timestamps for datetime-local in local time", () => {
-    expect(dateTimeLocalValue("2026-08-25T18:30:00.000Z")).toMatch(
-      /^2026-08-25T\d{2}:30$/
-    )
+    expect(
+      schemaFormDefault(schema.timestamp(), "2026-08-25T18:30:00.000Z")
+    ).toMatch(/^2026-08-25T\d{2}:30$/)
   })
 
   it("derives writable memo topics from the model", () => {

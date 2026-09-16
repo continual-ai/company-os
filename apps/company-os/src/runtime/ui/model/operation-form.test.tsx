@@ -65,7 +65,7 @@ it("prefills the record target, preserves optional inputs, and validates structu
       ...defaults,
       reason: "Customer blocked",
       urgency: "3",
-      options: '{"team":"Engineering"}',
+      options: { team: "Engineering" },
     },
     "external:ticket"
   )

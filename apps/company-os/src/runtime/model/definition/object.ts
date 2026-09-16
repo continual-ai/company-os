@@ -28,7 +28,6 @@ import type { ModelRecord } from "#/runtime/model/definition/model-record.ts"
 import type { ModelCatalog } from "#/runtime/model/definition/model.ts"
 import {
   type InferProperties,
-  type InferProperty,
   type NormalizeProperties,
   type Properties,
   normalizeProperties,
@@ -38,6 +37,9 @@ import {
   type EnumSchema,
   type ImageSchema,
   type InferInputSchema,
+  type InferUpdateSchema,
+  type InferSchema,
+  containsSecret,
   type RecordAlias,
   type RecordId,
   type RecordIdentifier,
@@ -242,7 +244,7 @@ export type ObjectRecord<
   : BaseRecord<TObject["id"]> & InferProperties<TObject["properties"]>
 
 type PropertyValue<TProperty extends Properties[string]> =
-  InferProperty<TProperty>
+  InferSchema<TProperty>
 
 type PropertyInputValue<TProperty extends Properties[string]> =
   InferInputSchema<TProperty>
@@ -272,7 +274,7 @@ type UpdatePropertyKeys<TProperties extends Properties> = {
 
 type ObjectWriterUpdateChanges<TObject extends ObjectType> = Simplify<
   BaseUpdateProperties & {
-    readonly [TKey in keyof TObject["properties"]]?: PropertyInputValue<
+    readonly [TKey in keyof TObject["properties"]]?: InferUpdateSchema<
       TObject["properties"][TKey]
     >
   }
@@ -314,7 +316,7 @@ type ObjectUpdateChanges<TObject extends ObjectType> = Simplify<
   BaseUpdateProperties & {
     readonly [
       TKey in UpdatePropertyKeys<TObject["properties"]>
-    ]?: PropertyInputValue<TObject["properties"][TKey]>
+    ]?: InferUpdateSchema<TObject["properties"][TKey]>
   }
 >
 
@@ -416,6 +418,14 @@ export function defineObject<const D extends ObjectDefinition>(
     }
   }
   const uniqueBy = input.uniqueBy ?? {}
+  for (const fields of Object.values(uniqueBy))
+    if (
+      fields.some(
+        (field) =>
+          input.properties[field] && containsSecret(input.properties[field])
+      )
+    )
+      throw new Error("Secret fields cannot be unique keys.")
   for (const [ruleId, fields] of Object.entries(uniqueBy)) {
     definitionId(ruleId)
     if (fields.length === 0) {
@@ -477,6 +487,7 @@ export function defineObject<const D extends ObjectDefinition>(
       const property = properties[field]
       if (
         property?.kind !== "string" ||
+        containsSecret(property) ||
         property.format === "date" ||
         property.format === "timestamp"
       )
@@ -505,6 +516,8 @@ export function defineObject<const D extends ObjectDefinition>(
         `Object '${input.id}' display ${role} references unknown property '${propertyId}'.`
       )
     }
+    if (containsSecret(property))
+      throw new Error("Secret fields cannot supply record display labels.")
     if (role === "image" && property.kind !== "image") {
       throw new Error(
         `Object '${input.id}' display image must reference an image property.`

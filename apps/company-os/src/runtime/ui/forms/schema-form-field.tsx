@@ -1,3 +1,4 @@
+import { Button } from "@company/ui/button"
 import { Checkbox } from "@company/ui/checkbox"
 import { DateTimePicker } from "@company/ui/date-time-picker"
 import { FieldError } from "@company/ui/field"
@@ -15,15 +16,20 @@ import {
 import { Textarea } from "@company/ui/textarea"
 
 import { FileField } from "#/runtime/assets/ui/file-field.tsx"
+import { containsSecret } from "#/runtime/model/definition/schema.ts"
 import type { AnySchema } from "#/runtime/model/index.ts"
 import { useTypedAppFormContext } from "#/runtime/ui/forms/app-form.ts"
 import type {
   FormValue,
   FormValueObject,
 } from "#/runtime/ui/forms/form-value.ts"
+import { isSupportedFormSchema } from "#/runtime/ui/forms/schema-form-values.ts"
+import {
+  schemaFormDefault,
+  unionMember,
+} from "#/runtime/ui/forms/schema-form-values.ts"
 import type { ResolvedObjectUi } from "#/runtime/ui/model/module-ui.tsx"
 import {
-  isSupportedFormSchema,
   stringValue,
   type ObjectFormValues,
 } from "#/runtime/ui/model/object-form.ts"
@@ -69,7 +75,10 @@ export function SchemaFormField({
 }) {
   const form = useTypedAppFormContext(objectFormContextOptions)
   const property = schema
-  const label = property.label ?? id
+  const label =
+    property.label ??
+    (schema.kind === "optional" ? schema.value.label : undefined) ??
+    id
   const Editor = fieldEditors?.[id]
   if (Editor)
     return (
@@ -84,8 +93,217 @@ export function SchemaFormField({
       </form.AppField>
     )
 
+  if (schema.kind === "string" && schema.secret) {
+    return (
+      <form.AppField name={id}>
+        {(field) => (
+          <field.FormField
+            id={fieldId}
+            label={label}
+            description={schema.description}
+          >
+            {({ value, onValueChange, onBlur, invalid, ariaDescribedBy }) => {
+              const present = isFormValueObject(value) && "hint" in value
+              return (
+                <div className="flex items-center gap-2">
+                  {present ? (
+                    <>
+                      <span className="flex-1 text-sm">
+                        {typeof value.hint === "string" ? value.hint : "Set"}
+                      </span>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => onValueChange("")}
+                      >
+                        Replace
+                      </Button>
+                    </>
+                  ) : (
+                    <Input
+                      id={fieldId}
+                      name={id}
+                      type="password"
+                      autoComplete="new-password"
+                      value={stringValue(value)}
+                      required={required}
+                      onBlur={onBlur}
+                      aria-invalid={invalid}
+                      aria-describedby={ariaDescribedBy}
+                      onChange={(event) =>
+                        onValueChange(event.currentTarget.value)
+                      }
+                    />
+                  )}
+                  {schema.nullable && value !== null ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => onValueChange(null)}
+                    >
+                      Remove
+                    </Button>
+                  ) : null}
+                </div>
+              )
+            }}
+          </field.FormField>
+        )}
+      </form.AppField>
+    )
+  }
+
+  if (schema.kind === "literal") return null
+
+  if (
+    schema.kind === "optional" ||
+    (schema.nullable && (schema.kind === "struct" || schema.kind === "union"))
+  ) {
+    const inner =
+      schema.kind === "optional" ? schema.value : { ...schema, nullable: false }
+    return (
+      <form.AppField name={id}>
+        {(field) => (
+          <div className="space-y-3">
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox
+                checked={
+                  field.state.value !== null && field.state.value !== undefined
+                }
+                onCheckedChange={(checked) => {
+                  form.setErrorMap({ onSubmit: undefined })
+                  field.handleChange(checked ? schemaFormDefault(inner) : null)
+                }}
+              />
+              {label}
+            </label>
+            {field.state.value !== null && field.state.value !== undefined ? (
+              <SchemaFormField
+                id={id}
+                schema={inner}
+                fieldId={fieldId}
+                required={true}
+                referenceLabels={referenceLabels}
+                json={json}
+                fieldEditors={fieldEditors}
+              />
+            ) : null}
+          </div>
+        )}
+      </form.AppField>
+    )
+  }
+
+  if (
+    schema.kind === "struct" ||
+    (schema.kind === "union" && schema.discriminator !== undefined)
+  ) {
+    return (
+      <form.AppField name={id}>
+        {(field) => {
+          const member =
+            schema.kind === "struct"
+              ? schema
+              : unionMember(schema, field.state.value)
+          const tagField =
+            schema.kind === "union" && schema.discriminator
+              ? member?.properties[schema.discriminator]
+              : undefined
+          const discriminator =
+            schema.kind === "union" ? schema.discriminator : undefined
+          return (
+            <fieldset className="min-w-0 space-y-3 rounded-md border p-3">
+              <legend className="px-1 text-sm font-medium">{label}</legend>
+              {schema.description ? (
+                <p className="text-muted-foreground text-sm">
+                  {schema.description}
+                </p>
+              ) : null}
+              {schema.kind === "union" ? (
+                <Select
+                  value={
+                    tagField?.kind === "literal" ? String(tagField.value) : null
+                  }
+                  onValueChange={(tag) => {
+                    const next = unionMember(schema, { [discriminator!]: tag })
+                    if (next) {
+                      form.setErrorMap({ onSubmit: undefined })
+                      field.handleChange(schemaFormDefault(next))
+                    }
+                  }}
+                >
+                  <SelectTrigger id={fieldId} aria-label={label}>
+                    <SelectValue>
+                      {member?.label ??
+                        (tagField?.kind === "literal"
+                          ? String(tagField.value)
+                          : undefined)}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {schema.members.map((variant) => {
+                      if (variant.kind !== "struct") return null
+                      const tag = variant.properties[discriminator!]
+                      if (tag?.kind !== "literal") return null
+                      return (
+                        <SelectItem
+                          key={String(tag.value)}
+                          value={String(tag.value)}
+                        >
+                          {variant.label ?? String(tag.value)}
+                        </SelectItem>
+                      )
+                    })}
+                  </SelectContent>
+                </Select>
+              ) : null}
+              {schema.kind === "union" && member?.description ? (
+                <p className="text-muted-foreground text-sm">
+                  {member.description}
+                </p>
+              ) : null}
+              {member
+                ? Object.entries(member.properties)
+                    .filter(
+                      ([key, child]) =>
+                        key !== discriminator && !child.outputOnly
+                    )
+                    .map(([key, child]) => (
+                      <SchemaFormField
+                        key={`${tagField?.kind === "literal" ? tagField.value : ""}:${key}`}
+                        id={`${id}.${key}`}
+                        schema={{
+                          ...child,
+                          label:
+                            child.label ??
+                            (child.kind === "optional"
+                              ? child.value.label
+                              : undefined) ??
+                            key,
+                        }}
+                        fieldId={`${fieldId}-${key}`}
+                        required={
+                          child.kind !== "optional" &&
+                          !child.nullable &&
+                          child.default === undefined
+                        }
+                        referenceLabels={referenceLabels}
+                        json={json}
+                        fieldEditors={fieldEditors}
+                      />
+                    ))
+                : null}
+            </fieldset>
+          )
+        }}
+      </form.AppField>
+    )
+  }
+
   if (!isSupportedFormSchema(schema)) {
-    if (!json)
+    if (!json || containsSecret(schema))
       return (
         <FieldError>
           {label} uses the unsupported {schema.kind} form type.
@@ -472,6 +690,7 @@ export function SchemaFormField({
                 id={fieldId}
                 name={id}
                 type={inputType}
+                autoComplete={undefined}
                 required={required}
                 value={stringValue(value)}
                 max={schema.kind === "number" ? schema.maximum : undefined}

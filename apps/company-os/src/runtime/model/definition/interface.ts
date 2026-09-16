@@ -10,6 +10,7 @@ import {
   type ImageSchema,
   type SchemaDefinition,
   assertStoredProperty,
+  containsSecret,
 } from "#/runtime/model/definition/schema.ts"
 
 export interface InterfaceDisplay<
@@ -150,6 +151,8 @@ function compatibleProperty(
   objectProperty: AnySchema
 ) {
   if (interfaceProperty.kind !== objectProperty.kind) return false
+  if (containsSecret(interfaceProperty) !== containsSecret(objectProperty))
+    return false
   const interfaceMetadata: SchemaDefinition = interfaceProperty
   const objectMetadata: SchemaDefinition = objectProperty
   if (interfaceMetadata.nullable !== true && objectMetadata.nullable === true) {

@@ -32,6 +32,7 @@ import {
 import { httpOperation } from "#/runtime/contract/http-operation.ts"
 import { operationContracts } from "#/runtime/contract/operation-contract.ts"
 import { RecordAlias } from "#/runtime/model/index.ts"
+import { ApplicationKeys } from "#/runtime/server/application-keys.ts"
 import { makeApplicationKeys } from "#/runtime/server/application-keys.ts"
 import {
   makeEncryptedPageTokenCodec,
@@ -104,6 +105,7 @@ describe("application HTTP server", () => {
               makeApplicationLayer({
                 sql: Layer.succeed(PgClient.PgClient, database.sql),
                 pageTokens: Layer.succeed(PageTokens, testPageTokens),
+                applicationKeys: ApplicationKeys.layerTest,
               }).pipe(
                 Layer.provide(logging),
                 Layer.provide(

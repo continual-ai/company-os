@@ -5,6 +5,7 @@ import {
 } from "#/runtime/model/definition/identity.ts"
 import type { ObjectType } from "#/runtime/model/definition/object.ts"
 import {
+  assertNoSecrets,
   schema,
   type RecordIdSchema,
   type SchemaProperties,
@@ -101,6 +102,8 @@ export type DefinedOperation<D extends OperationDefinition> = Omit<
 export function defineOperationContract(
   definition: OperationDefinition
 ): Omit<CustomOperation, "kind" | "destructive" | "idempotent"> {
+  for (const error of definition.errors ?? [])
+    assertNoSecrets(error.details, "Operation error")
   const { record, object } = definition
   if (record !== undefined && object !== undefined)
     throw new Error("An operation cannot specify both record and object.")

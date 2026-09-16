@@ -3,15 +3,13 @@ import { PencilIcon } from "lucide-react"
 
 import { modelObjectLinkTraversals } from "#/runtime/model/index.ts"
 import { linkPreview } from "#/runtime/model/record-links.ts"
+import { isSupportedFormSchema } from "#/runtime/ui/forms/schema-form-values.ts"
 import {
   type ClientRecord,
   type ModelObject,
   type ObjectRecordPresentation,
 } from "#/runtime/ui/model/object-client.ts"
-import {
-  isSupportedFormSchema,
-  objectFormProperties,
-} from "#/runtime/ui/model/object-form.ts"
+import { objectFormProperties } from "#/runtime/ui/model/object-form.ts"
 import { objectPropertyValue } from "#/runtime/ui/model/object-property-value.tsx"
 import { objectTablePropertySchema } from "#/runtime/ui/model/object-table/object-table-cell-types.ts"
 import { RecordLinkValue } from "#/runtime/ui/model/record-link-value.tsx"

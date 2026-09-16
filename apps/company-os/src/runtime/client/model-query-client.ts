@@ -146,8 +146,10 @@ export type ModelQueries<M extends ModelCatalog> = {
 
 /** Mutations record the server-reported change set and apply it to the cache that ran them. */
 const mutation = (
-  fn: (input: unknown) => Effect.Effect<unknown, unknown>
+  fn: (input: unknown) => Effect.Effect<unknown, unknown>,
+  sensitive = false
 ): UseMutationOptions<unknown, unknown, unknown> => ({
+  ...(sensitive ? { gcTime: 0, meta: { sensitive: true } } : {}),
   mutationFn: async (input, { client: cache }) => {
     const generation = cacheGeneration(cache)
     const changes = new Set<string>()
@@ -170,7 +172,7 @@ export function createModelQueries<M extends ModelCatalog>(
   const result = mapModelClient(model, client, (contract, fn) => {
     const path = contract.key.split(".")
     if (contract.kind === "action")
-      return { mutationOptions: () => mutation(fn) }
+      return { mutationOptions: () => mutation(fn, contract.sensitive) }
     const queryOptions = (input: unknown = {}) => {
       const traversal = contract.linkTraversal
       const targets = traversal

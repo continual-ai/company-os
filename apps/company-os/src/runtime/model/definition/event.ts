@@ -1,5 +1,8 @@
 import type { ObjectType } from "#/runtime/model/definition/object.ts"
-import type { AnySchema } from "#/runtime/model/definition/schema.ts"
+import {
+  assertNoSecrets,
+  type AnySchema,
+} from "#/runtime/model/definition/schema.ts"
 
 /** A declared business fact: its versioned type, the object it concerns, and its payload schema. */
 export interface EventType<
@@ -23,6 +26,7 @@ export function defineEvent<
 >(
   definition: EventType<TType, TVersion, TObject, TData>
 ): EventType<TType, TVersion, TObject, TData> {
+  assertNoSecrets(definition.data, "Event data")
   if (
     !definition.type.startsWith(`${definition.subject.id}.`) ||
     ["created", "updated", "deleted"].some(

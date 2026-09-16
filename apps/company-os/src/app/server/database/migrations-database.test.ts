@@ -9,6 +9,7 @@ import {
 } from "#/app/server/database/migrations.ts"
 import { resetDevelopmentSchema } from "#/app/server/database/reset.ts"
 import { schemaSql } from "#/app/server/database/schema.ts"
+import { ApplicationKeys } from "#/runtime/server/application-keys.ts"
 import { foundationLayer } from "#/runtime/server/foundation.ts"
 import { PageTokens } from "#/runtime/server/page-tokens.ts"
 import { pgTypes } from "#/runtime/server/storage/index.ts"
@@ -27,6 +28,7 @@ const initialized = testDatabase(
             foundationLayer(Model, {
               sql: PgClient.layer({ url: Redacted.make(url), types: pgTypes }),
               pageTokens: PageTokens.layerTest,
+              applicationKeys: ApplicationKeys.layerTest,
             })
           )
         )

@@ -45,6 +45,10 @@ import {
   type ResolvedSort,
 } from "#/runtime/server/storage/object-query.ts"
 import { recordLabelSql } from "#/runtime/server/storage/record-label.ts"
+import {
+  RecordSecrets,
+  redactRecordSecrets,
+} from "#/runtime/server/storage/record-secrets.ts"
 import { relationalQuery } from "#/runtime/server/storage/relational-query.ts"
 import type { PostgresStorage } from "#/runtime/server/storage/schema.ts"
 import {
@@ -217,17 +221,13 @@ function makeRepository<
     )
     const columns = { id: idColumn, ...propertyColumns }
     const toStorageProperties = (
-      properties: CanonicalStoragePropertyValues<TObject>
+      properties: CanonicalStoragePropertyValues<TObject>,
+      id: string
     ): StoragePropertyValues<TObject> =>
-      // SAFETY: every input key is drawn from this object's declared
-      // properties and map directly to stored columns.
+      // SAFETY: the schema-directed codec retains column keys and substitutes JSONB envelopes for secret leaves.
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-      Object.fromEntries(
-        Object.entries(properties).map(([propertyId, value]) => [
-          propertyId,
-          value,
-        ])
-      ) as StoragePropertyValues<TObject>
+      secrets.encrypt(object, id, properties) as StoragePropertyValues<TObject>
+    const secrets = yield* RecordSecrets
     const RecordSchema = toEffectObjectSchema(object)
     const RecordsSchema = Schema.Array(RecordSchema)
     const linkPreviews = modelObjectLinkTraversals(storage.model, object).map(
@@ -323,8 +323,12 @@ function makeRepository<
 
           where ${where ?? sql.literal("true")}`
 
-    const decodeRecord = Schema.decodeUnknownEffect(RecordSchema)
-    const decodeRecords = Schema.decodeUnknownEffect(RecordsSchema)
+    const decodeRecord = (row: object) =>
+      Schema.decodeUnknownEffect(RecordSchema)(redactRecordSecrets(object, row))
+    const decodeRecords = (rows: ReadonlyArray<object>) =>
+      Schema.decodeUnknownEffect(RecordsSchema)(
+        rows.map((row) => redactRecordSecrets(object, row))
+      )
 
     const get = Effect.fn(`${object.id}.repository.get`)(function* (
       id: RecordId<TObject["id"]>
@@ -510,7 +514,7 @@ function makeRepository<
         }
         const objectValues = {
           id,
-          ...toStorageProperties(properties),
+          ...toStorageProperties(properties, id),
         }
         yield* sql`insert into ${table} ${insertValues(sql, table, objectValues)}`
         for (const interfaceTable of interfaceTables) {
@@ -599,7 +603,7 @@ function makeRepository<
           where ${recordAliases.columns.objectId} = ${id}
             and ${inValues(sql, recordAliases.columns.alias, aliases, true)}`
 
-        const storageProperties = toStorageProperties(properties)
+        const storageProperties = toStorageProperties(properties, id)
         const objectValues = { id, ...storageProperties }
         const onConflict =
           Object.keys(storageProperties).length === 0
@@ -625,7 +629,7 @@ function makeRepository<
       updatedBy,
       ...properties
     }: ObjectRepositoryUpdate<TObject>) {
-      const storageProperties = toStorageProperties(properties)
+      const storageProperties = toStorageProperties(properties, id)
       yield* Effect.gen(function* () {
         const updatedFields = { id: objects.columns.id }
         const updated = yield* sql<
@@ -766,6 +770,19 @@ function makeRepository<
     )
 
     return {
+      secretValues: Effect.fn(function* (
+        id: string,
+        keys: ReadonlyArray<string>
+      ) {
+        if (keys.length === 0) return {}
+        const selected = Object.fromEntries(
+          keys.map((key) => [key, propertyColumns[key]!])
+        )
+        const rows = yield* sql<
+          Record<string, unknown>
+        >`select ${projection(selected)} from ${table} where ${idColumn} = ${id}`
+        return secrets.reveal(object, id, rows[0] ?? {})
+      }),
       batchDelete,
       batchGet,
       delete: deleteObject,

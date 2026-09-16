@@ -4,12 +4,14 @@ import { bootstrapSystemActor } from "#/runtime/access/server/bootstrap.ts"
 import { seedIdentities } from "#/runtime/access/server/seed.ts"
 import type { ModelCatalog } from "#/runtime/model/index.ts"
 import { PlatformServer } from "#/runtime/platform/server/index.ts"
+import { ApplicationKeys } from "#/runtime/server/application-keys.ts"
 import { systemInvocation } from "#/runtime/server/invocation-context.ts"
 import { CurrentInvocation } from "#/runtime/server/invocation.ts"
 import type { ModelContext } from "#/runtime/server/model-context.ts"
 import type { ModuleServer } from "#/runtime/server/module-server.ts"
 import { PageTokens } from "#/runtime/server/page-tokens.ts"
 import { makeServicesLayer } from "#/runtime/server/services.ts"
+import type { RecordSecrets } from "#/runtime/server/storage/record-secrets.ts"
 import type { SqlDatabase } from "#/runtime/server/storage/transactions.ts"
 import {
   layerTest,
@@ -33,11 +35,11 @@ const bootstrapIdentities = bootstrapSystemActor().pipe(
 
 /** Runs `seed` once per built `services` under the system invocation, alongside the services themselves. */
 export function seededLayer<R, E>(
-  services: Layer.Layer<R | SqlDatabase | ModelContext, E>,
+  services: Layer.Layer<R | SqlDatabase | ModelContext | RecordSecrets, E>,
   seed: Effect.Effect<
     unknown,
     unknown,
-    R | SqlDatabase | ModelContext | CurrentInvocation
+    R | SqlDatabase | ModelContext | RecordSecrets | CurrentInvocation
   > = bootstrapIdentities
 ) {
   return Layer.merge(
@@ -85,6 +87,7 @@ export function testFoundation<
     {
       sql: fixture.client,
       pageTokens: PageTokens.layerTest,
+      applicationKeys: ApplicationKeys.layerTest,
     }
   )
   const layer = seededLayer(services, options.seed)

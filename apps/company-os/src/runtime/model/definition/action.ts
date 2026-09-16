@@ -5,6 +5,7 @@ import {
   type OperationConstraints,
   type OperationDefinition,
 } from "#/runtime/model/definition/operation.ts"
+import { assertSecretInput, schema } from "#/runtime/model/definition/schema.ts"
 import type {
   InferInputSchema,
   InferSchema,
@@ -30,6 +31,8 @@ export type ActionError<A extends Action> = ApiError<A["errors"][number]>
 export function defineAction<const D extends ActionDefinition>(
   definition: D & OperationConstraints<D, ActionDefinition>
 ): Action<D> {
+  assertSecretInput(schema.object(definition.input ?? {}))
+  assertSecretInput(schema.object(definition.output ?? {}))
   // SAFETY: the constructor preserves each literal field and validates record attachment.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   return {

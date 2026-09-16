@@ -25,6 +25,7 @@ import {
   formErrorFromCause,
   formErrorMessages,
 } from "#/runtime/ui/forms/form-errors.ts"
+import { isSupportedFormSchema } from "#/runtime/ui/forms/schema-form-values.ts"
 import { useObjectUi } from "#/runtime/ui/model/module-ui.tsx"
 import {
   modelObjectProperty,
@@ -34,7 +35,6 @@ import {
 import { ObjectFormFields } from "#/runtime/ui/model/object-form-fields.tsx"
 import {
   decodeObjectForm,
-  isSupportedFormSchema,
   objectFormDefaultValues,
   objectFormProperties,
   type ObjectFormInput,

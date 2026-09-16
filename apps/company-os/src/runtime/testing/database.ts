@@ -3,6 +3,7 @@ import { Effect, Layer } from "effect"
 import type * as Scope from "effect/Scope"
 
 import type { ModelCatalog } from "#/runtime/model/index.ts"
+import { ApplicationKeys } from "#/runtime/server/application-keys.ts"
 import { foundationLayer } from "#/runtime/server/foundation.ts"
 import { systemInvocation } from "#/runtime/server/invocation-context.ts"
 import { CurrentInvocation } from "#/runtime/server/invocation.ts"
@@ -84,6 +85,7 @@ export function testDatabase<M extends ModelCatalog>(
   const database = foundationLayer(model, {
     sql: client,
     pageTokens: PageTokens.layerTest,
+    applicationKeys: ApplicationKeys.layerTest,
   })
   return {
     model,

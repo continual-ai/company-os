@@ -108,6 +108,53 @@ export type InferSchema<TSchema extends AnySchema> =
     ? SchemaValue<TSchema> | null
     : SchemaValue<TSchema>
 
+/** Record reads expose presence, while explicit operation outputs retain their declared value type. */
+type SecretPresence = { readonly hint: string | null }
+type RecordSchemaValue<S extends AnySchema> = AnySchema extends S
+  ? SchemaValue<S>
+  : S extends { readonly secret: true }
+    ? SecretPresence
+    : S extends ArraySchema<infer I>
+      ? ReadonlyArray<InferRecordSchema<I>>
+      : S extends MapSchema<infer V>
+        ? Readonly<Record<string, InferRecordSchema<V>>>
+        : S extends OptionalSchema<infer V>
+          ? InferRecordSchema<V> | undefined
+          : S extends StructSchema<infer P>
+            ? { readonly [K in RequiredKeys<P>]: InferRecordSchema<P[K]> } & {
+                readonly [K in OptionalKeys<P>]?: InferRecordSchema<P[K]>
+              }
+            : S extends UnionSchema<infer M>
+              ? InferRecordSchema<M[number]>
+              : SchemaValue<S>
+export type InferRecordSchema<S extends AnySchema> = S["nullable"] extends true
+  ? RecordSchemaValue<S> | null
+  : RecordSchemaValue<S>
+
+type SecretKeys<P extends SchemaProperties> = {
+  [K in keyof P]: P[K] extends { readonly secret: true } ? K : never
+}[keyof P]
+type UpdateSchemaValue<S extends AnySchema> = AnySchema extends S
+  ? SchemaValue<S>
+  : S extends StructSchema<infer P>
+    ? {
+        readonly [
+          K in Exclude<RequiredKeys<P>, SecretKeys<P>>
+        ]: InferUpdateSchema<P[K]>
+      } & {
+        readonly [K in OptionalKeys<P> | SecretKeys<P>]?: InferUpdateSchema<
+          P[K]
+        >
+      }
+    : S extends OptionalSchema<infer V>
+      ? InferUpdateSchema<V> | undefined
+      : S extends UnionSchema<infer M>
+        ? InferUpdateSchema<M[number]>
+        : InputSchemaValue<S>
+export type InferUpdateSchema<S extends AnySchema> = S["nullable"] extends true
+  ? UpdateSchemaValue<S> | null
+  : UpdateSchemaValue<S>
+
 interface ArraySchema<
   TItem extends AnySchema = AnySchema,
 > extends SchemaDefinition<ReadonlyArray<InferSchema<TItem>>> {
@@ -258,6 +305,8 @@ export interface RecordIdSchema<
 export interface StringSchema<
   TValue extends string = string,
 > extends SchemaDefinition<TValue> {
+  /** Sensitive string: encrypted in records, redacted on record reads, masked in forms. */
+  secret?: true
   format?:
     | "date"
     | "domain"
@@ -317,6 +366,7 @@ interface UnionSchema<
   TMembers extends ReadonlyArray<AnySchema> = ReadonlyArray<AnySchema>,
 > extends SchemaDefinition<InferSchema<TMembers[number]>> {
   kind: "union"
+  discriminator?: string
   members: TMembers
 }
 
@@ -364,10 +414,69 @@ export function assertStoredProperty(
   key: string,
   value: AnySchema
 ): void {
+  assertSecretInput(value)
+  assertSecretStorage(value)
   if (containsRecordId(value))
     throw new Error(
       `${owner} property '${key}' stores a record relationship. Use defineLink instead.`
     )
+}
+
+export function containsSecret(value: AnySchema): boolean {
+  switch (value.kind) {
+    case "string":
+      return value.secret === true
+    case "array":
+      return containsSecret(value.items)
+    case "optional":
+      return containsSecret(value.value)
+    case "map":
+      return containsSecret(value.values)
+    case "struct":
+      return Object.values(value.properties).some(containsSecret)
+    case "union":
+      return value.members.some(containsSecret)
+    default:
+      return false
+  }
+}
+
+/** Secret-bearing stored unions must identify a single variant before encryption. */
+function assertSecretStorage(value: AnySchema): void {
+  if (!containsSecret(value)) return
+  if (value.kind === "union") {
+    if (!value.discriminator)
+      throw new Error("Stored secrets require discriminated unions.")
+    value.members.forEach(assertSecretStorage)
+  } else if (value.kind === "struct")
+    Object.values(value.properties).forEach(assertSecretStorage)
+  else if (value.kind === "array") assertSecretStorage(value.items)
+  else if (value.kind === "map") assertSecretStorage(value.values)
+  else if (value.kind === "optional") assertSecretStorage(value.value)
+}
+
+/** Secrets are forbidden in durable events, query parameters, and public error details. */
+export function assertNoSecrets(value: AnySchema, location: string): void {
+  if (containsSecret(value))
+    throw new Error(`${location} cannot contain secrets.`)
+}
+
+export function assertSecretInput(value: AnySchema): void {
+  if (value.default !== undefined) assertNoSecrets(value, "Schema defaults")
+  switch (value.kind) {
+    case "array":
+      return assertSecretInput(value.items)
+    case "optional":
+      return assertSecretInput(value.value)
+    case "map":
+      return assertSecretInput(value.values)
+    case "struct":
+      for (const child of Object.values(value.properties))
+        assertSecretInput(child)
+      return
+    case "union":
+      for (const child of value.members) assertSecretInput(child)
+  }
 }
 
 type InputSchemaValue<TSchema extends AnySchema> =
@@ -747,12 +856,48 @@ function union<
   return { kind: "union", members }
 }
 
+function discriminatedUnion<
+  const TMembers extends readonly [StructSchema, ...Array<StructSchema>],
+  const TOptions extends SchemaAnnotations<InferSchema<TMembers[number]>> = {},
+>(
+  discriminator: string,
+  members: TMembers,
+  options?: TOptions
+): UnionSchema<TMembers> & TOptions {
+  definitionId(discriminator)
+  const tags = new Set<string>()
+  for (const member of members) {
+    const tag = member.properties[discriminator]
+    if (
+      member.nullable ||
+      tag?.kind !== "literal" ||
+      typeof tag.value !== "string" ||
+      tag.nullable ||
+      tags.has(tag.value)
+    )
+      throw new Error(
+        "Discriminated union members require unique, non-nullable string literal tags."
+      )
+    tags.add(tag.value)
+  }
+  return { kind: "union", discriminator, members, ...configured(options) }
+}
+
+function secret<
+  const TOptions extends Omit<StringSchemaOptions, "default"> = {},
+>(options?: TOptions): StringSchema & { secret: true } & TOptions {
+  if (options && "default" in options)
+    throw new Error("Secrets cannot have defaults.")
+  return { minLength: 1, ...string(options), secret: true }
+}
+
 /** Portable schema builders shared by object properties and action values. */
 export const schema = {
   array,
   boolean,
   date,
   decimal,
+  discriminatedUnion,
   domain,
   email,
   enumeration,
@@ -770,6 +915,7 @@ export const schema = {
   phone,
   id,
   score,
+  secret,
   select,
   string,
   timestamp,

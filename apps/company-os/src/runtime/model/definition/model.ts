@@ -20,6 +20,7 @@ import {
   type Query,
   type StandardQueries,
 } from "#/runtime/model/definition/query.ts"
+import { containsSecret } from "#/runtime/model/definition/schema.ts"
 import type {
   RecordId,
   RecordIdSchema,
@@ -371,6 +372,7 @@ export function defineModel<
         (field.key !== "id" &&
           !Object.hasOwn(field.target.properties, field.key)) ||
         field.count ||
+        containsSecret(field.property) ||
         !["string", "enum", "number", "decimal", "recordId"].includes(
           field.property.kind
         )

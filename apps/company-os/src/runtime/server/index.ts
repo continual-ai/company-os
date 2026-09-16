@@ -13,3 +13,4 @@ export {
   OperationExecutor,
   operationsFor,
 } from "#/runtime/server/operation-executor.ts"
+export { Credentials, CredentialError } from "#/runtime/server/credentials.ts"

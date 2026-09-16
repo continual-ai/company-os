@@ -3,6 +3,7 @@ import { expect } from "vitest"
 
 import { defineModel, type ModuleDefinition } from "#/runtime/model/index.ts"
 import { PlatformModule } from "#/runtime/platform/model/index.ts"
+import { ApplicationKeys } from "#/runtime/server/application-keys.ts"
 import { Database } from "#/runtime/server/database.ts"
 import { foundationLayer } from "#/runtime/server/foundation.ts"
 import type { CurrentInvocation } from "#/runtime/server/invocation.ts"
@@ -41,6 +42,7 @@ export function expectModuleStandsAlone(
     foundationLayer(fixture.model, {
       sql: fixture.client,
       pageTokens: PageTokens.layerTest,
+      applicationKeys: ApplicationKeys.layerTest,
     })
   )
   fixture.test("persists its own model with only declared dependencies", () =>

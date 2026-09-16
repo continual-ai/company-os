@@ -7,7 +7,11 @@ import {
   normalizeProperties,
   type PropertyDefinition,
 } from "#/runtime/model/definition/property.ts"
-import { schema, type AnySchema } from "#/runtime/model/definition/schema.ts"
+import {
+  schema,
+  containsSecret,
+  type AnySchema,
+} from "#/runtime/model/definition/schema.ts"
 import { resourceProperties } from "#/runtime/model/resource-properties.ts"
 
 export interface QueryType {
@@ -33,6 +37,7 @@ export function queryProperty(
   return property
 }
 export function fieldOperators(property: AnySchema): ReadonlyArray<string> {
+  if (containsSecret(property)) return []
   const metadata: { readonly kind: string; readonly nullable?: boolean } =
     property
   const nullable = metadata.nullable ? ["isNull"] : []
@@ -55,6 +60,7 @@ export function fieldOperators(property: AnySchema): ReadonlyArray<string> {
 
 /** PostgreSQL min/max operate on ordered scalar values, excluding booleans. */
 function canAggregateField(property: AnySchema): boolean {
+  if (containsSecret(property)) return false
   return ["decimal", "enum", "number", "recordId", "string"].includes(
     property.kind
   )

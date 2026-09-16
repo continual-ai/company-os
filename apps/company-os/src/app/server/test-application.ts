@@ -7,6 +7,7 @@ import {
 } from "#/app/server/application-layer.ts"
 import { makeApplicationServicesLayer } from "#/app/server/application-services.ts"
 import { seedSystem } from "#/app/server/seeds/seed-system.ts"
+import { ApplicationKeys } from "#/runtime/server/application-keys.ts"
 import { IdentityProvider } from "#/runtime/server/auth/identity-provider.ts"
 import { PageTokens } from "#/runtime/server/page-tokens.ts"
 import { layerTest, testDatabase } from "#/runtime/testing/database.ts"
@@ -32,6 +33,7 @@ export function testApplication({
   const services = makeApplicationServicesLayer({
     sql: fixture.client,
     pageTokens: PageTokens.layerTest,
+    applicationKeys: ApplicationKeys.layerTest,
   })
   const application = makeApplicationLayer(
     {
@@ -39,6 +41,7 @@ export function testApplication({
       ...infrastructure,
       sql: fixture.client,
       pageTokens: PageTokens.layerTest,
+      applicationKeys: ApplicationKeys.layerTest,
     },
     services
   ).pipe(
