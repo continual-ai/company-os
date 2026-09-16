@@ -1,5 +1,9 @@
 # Pinned dependency fixes
 
+- `@effect/sql-pg@4.0.0-beta.107`: register pooled-client cleanup before queueing a
+  reservation. Cancellation returns promptly; a client delivered afterwards is released immediately.
+  The one-connection regression test interrupts the waiter before releasing the held connection,
+  then verifies the late delivery cannot exhaust the pool.
 - `effect@4.0.0-beta.107`: release PostgreSQL nested savepoints after success or rollback. Without
   release, large atomic governed operations accumulate subtransaction locks and exhaust PostgreSQL
   shared memory. Other SQL dialects keep their existing behavior. The application transaction and

@@ -345,6 +345,7 @@ catalogs:
       version: 4.4.3
 
 patchedDependencies:
+  '@effect/sql-pg@4.0.0-beta.107': 7d51e79b560346b4f60f78e1706135b59f3ca4b3299ba422628a6df23adbc17e
   effect@4.0.0-beta.107: 92cb2a27b506b1a3d2829269a208c41c387f1a6dfdddcfb2b8c147980f33e91d
   nitro@3.0.260610-beta: 917cda3723793126896a6882bd33d94cc915797af4424f2cc57351cdf73cf02f
 
@@ -436,7 +437,7 @@ importers:
         version: 4.0.0-beta.107(effect@4.0.0-beta.107(patch_hash=92cb2a27b506b1a3d2829269a208c41c387f1a6dfdddcfb2b8c147980f33e91d))(ioredis@5.11.1)
       '@effect/sql-pg':
         specifier: 'catalog:'
-        version: 4.0.0-beta.107(effect@4.0.0-beta.107(patch_hash=92cb2a27b506b1a3d2829269a208c41c387f1a6dfdddcfb2b8c147980f33e91d))
+        version: 4.0.0-beta.107(patch_hash=7d51e79b560346b4f60f78e1706135b59f3ca4b3299ba422628a6df23adbc17e)(effect@4.0.0-beta.107(patch_hash=92cb2a27b506b1a3d2829269a208c41c387f1a6dfdddcfb2b8c147980f33e91d))
       '@modelcontextprotocol/server':
         specifier: 'catalog:'
         version: 2.0.0
@@ -6052,7 +6053,7 @@ snapshots:
       - bufferutil
       - utf-8-validate
 
-  '@effect/sql-pg@4.0.0-beta.107(effect@4.0.0-beta.107(patch_hash=92cb2a27b506b1a3d2829269a208c41c387f1a6dfdddcfb2b8c147980f33e91d))':
+  '@effect/sql-pg@4.0.0-beta.107(patch_hash=7d51e79b560346b4f60f78e1706135b59f3ca4b3299ba422628a6df23adbc17e)(effect@4.0.0-beta.107(patch_hash=92cb2a27b506b1a3d2829269a208c41c387f1a6dfdddcfb2b8c147980f33e91d))':
     dependencies:
       effect: 4.0.0-beta.107(patch_hash=92cb2a27b506b1a3d2829269a208c41c387f1a6dfdddcfb2b8c147980f33e91d)
       pg: 8.23.0

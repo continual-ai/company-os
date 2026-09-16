@@ -1,0 +1,164 @@
+diff --git a/dist/PgClient.js b/dist/PgClient.js
+index c22ec9dc600dbb0048a80fd6e8d4b1ed0555db31..9987cb2613c3c107114c0a5a36e36f50fc05826d 100644
+--- a/dist/PgClient.js
++++ b/dist/PgClient.js
+@@ -217,34 +217,42 @@ export const fromPool = /*#__PURE__*/Effect.fnUntraced(function* (options) {
+       });
+     });
+   }, client ? Effect.succeed(client) : reserveRaw);
+-  const reserveRaw = Effect.callback(resume => {
+-    const fiber = Fiber.getCurrent();
+-    const scope = Context.getUnsafe(fiber.context, Scope.Scope);
+-    let cause = undefined;
+-    function onError(cause_) {
+-      cause = cause_;
+-    }
+-    pool.connect((err, client, release) => {
+-      if (err) {
+-        return resume(Effect.fail(new SqlError({
+-          reason: classifyError(err, "Failed to acquire connection for transaction", "acquireConnection")
+-        })));
+-      } else if (!client) {
+-        return resume(Effect.fail(new SqlError({
+-          reason: new ConnectionError({
+-            message: "Failed to acquire connection for transaction",
+-            cause: new Error("No client returned"),
+-            operation: "acquireConnection"
+-          })
+-        })));
+-      }
+-      client.on("error", onError);
+-      resume(Effect.as(Scope.addFinalizer(scope, Effect.sync(() => {
+-        client.off("error", onError);
+-        release(cause);
+-      })), client));
+-    });
+-  });
++  // Register ownership before queueing: cancellation stays prompt and late clients are released.
++  const reserveRaw = Effect.gen(function*() {
++    const scope = yield* Scope.Scope
++    let cancelled = false
++    let releaseClient
++    const cleanup = Effect.sync(() => {
++      cancelled = true
++      releaseClient?.()
++      releaseClient = undefined
++    })
++    yield* Scope.addFinalizer(scope, cleanup)
++    return yield* Effect.callback((resume) => {
++      pool.connect((err, client, release) => {
++        if (err || !client) {
++          return resume(Effect.fail(new SqlError({
++            reason: err
++              ? classifyError(err, "Failed to acquire connection for transaction", "acquireConnection")
++              : new ConnectionError({ message: "Failed to acquire connection for transaction", cause: new Error("No client returned"), operation: "acquireConnection" })
++          })))
++        }
++        if (cancelled) {
++          release()
++          return
++        }
++        let cause
++        const onError = (error) => { cause = error }
++        client.on("error", onError)
++        releaseClient = () => {
++          client.off("error", onError)
++          release(cause)
++        }
++        resume(Effect.succeed(client))
++      })
++      return cleanup
++    })
++  })
+   const reserve = Effect.map(reserveRaw, makeConection);
+   const onListenClientError = _ => {};
+   const listenAcquirer = yield* RcRef.make({
+diff --git a/src/PgClient.ts b/src/PgClient.ts
+index 8fae62d0c81cf1c86a681a3f4b0c9fd42366945e..98a79d3a730084d0047f74fec1bf234aefd3f3c7 100644
+--- a/src/PgClient.ts
++++ b/src/PgClient.ts
+@@ -359,50 +359,40 @@ export const fromPool = Effect.fnUntraced(function*(
+       client ? Effect.succeed(client) : reserveRaw
+     )
+ 
+-  const reserveRaw = Effect.callback<Pg.PoolClient, SqlError, Scope.Scope>((resume) => {
+-    const fiber = Fiber.getCurrent()!
+-    const scope = Context.getUnsafe(fiber.context, Scope.Scope)
+-    let cause: Error | undefined = undefined
+-    function onError(cause_: Error) {
+-      cause = cause_
+-    }
+-    pool.connect((err, client, release) => {
+-      if (err) {
+-        return resume(
+-          Effect.fail(
+-            new SqlError({
+-              reason: classifyError(
+-                err,
+-                "Failed to acquire connection for transaction",
+-                "acquireConnection"
+-              )
+-            })
+-          )
+-        )
+-      } else if (!client) {
+-        return resume(
+-          Effect.fail(
+-            new SqlError({
+-              reason: new ConnectionError({
+-                message: "Failed to acquire connection for transaction",
+-                cause: new Error("No client returned"),
+-                operation: "acquireConnection"
+-              })
+-            })
+-          )
+-        )
+-      }
+-      client.on("error", onError)
+-      resume(Effect.as(
+-        Scope.addFinalizer(
+-          scope,
+-          Effect.sync(() => {
+-            client.off("error", onError)
+-            release(cause)
+-          })
+-        ),
+-        client
+-      ))
++  // Register ownership before queueing: cancellation stays prompt and late clients are released.
++  const reserveRaw = Effect.gen(function*() {
++    const scope = yield* Scope.Scope
++    let cancelled = false
++    let releaseClient: (() => void) | undefined
++    const cleanup = Effect.sync(() => {
++      cancelled = true
++      releaseClient?.()
++      releaseClient = undefined
++    })
++    yield* Scope.addFinalizer(scope, cleanup)
++    return yield* Effect.callback<Pg.PoolClient, SqlError>((resume) => {
++      pool.connect((err, client, release) => {
++        if (err || !client) {
++          return resume(Effect.fail(new SqlError({
++            reason: err
++              ? classifyError(err, "Failed to acquire connection for transaction", "acquireConnection")
++              : new ConnectionError({ message: "Failed to acquire connection for transaction", cause: new Error("No client returned"), operation: "acquireConnection" })
++          })))
++        }
++        if (cancelled) {
++          release()
++          return
++        }
++        let cause: Error | undefined
++        const onError = (error: Error) => { cause = error }
++        client.on("error", onError)
++        releaseClient = () => {
++          client.off("error", onError)
++          release(cause)
++        }
++        resume(Effect.succeed(client))
++      })
++      return cleanup
+     })
+   })
+   const reserve = Effect.map(reserveRaw, makeConection)
