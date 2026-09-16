@@ -1,26 +1,36 @@
-import { DateTime, Effect } from "effect"
+import { Effect } from "effect"
 
-import { PullRequest, Repository } from "#/modules/engineering/model/index.ts"
-import { Issue } from "#/modules/product/model/index.ts"
+import {
+  GitHubConnection,
+  GitHubIssue,
+  GitHubPullRequest,
+  GitHubRepository,
+} from "#/modules/engineering/model/index.ts"
 import type { ProductSeedData } from "#/modules/product/seeds/index.ts"
-import { Timestamp, WebUrl } from "#/runtime/model/index.ts"
+import { WebUrl } from "#/runtime/model/index.ts"
 import { Database } from "#/runtime/server/index.ts"
-import { linkSeedRecords } from "#/runtime/server/seeds.ts"
 
 export const seedEngineeringPerformance = Effect.fn(
   "@company/seedEngineeringPerformance"
 )(function* ({ projects, issues, owners }: ProductSeedData) {
-  const now = yield* DateTime.now
   const records = yield* Database
+  const connection = yield* records
+    .repository(GitHubConnection)
+    .create({ accountLogin: "demo-company" })
   const repositories = yield* Effect.forEach(
     ["Platform", "Customer portal"],
     (name, index) =>
-      records.repository(Repository).create({
-        name,
-        url: WebUrl(`https://code.example.test/engineering/service-${index}`),
+      records.repository(GitHubRepository).create({
+        nodeId: `performance-repository-${index}`,
+        fullName: `demo-company/service-${index}`,
+        description: name,
+        visibility: "private",
+        defaultBranch: "main",
+        url: WebUrl(`https://github.com/demo-company/service-${index}`),
         links: {
           projects: projects.map(({ id }) => id),
-          owner: owners[index % owners.length]!,
+          connection: connection.id,
+          maintainer: owners[index % owners.length]!,
         },
       })
   )
@@ -31,11 +41,22 @@ export const seedEngineeringPerformance = Effect.fn(
       status === "done"
         ? "merged"
         : (["draft", "open", "open", "closed"] as const)[index % 4]!
-    const pr = yield* records.repository(PullRequest).create({
+    const githubIssue = yield* records.repository(GitHubIssue).create({
+      nodeId: `performance-issue-${index}`,
+      title,
+      number: 10000 + index,
+      url: WebUrl(
+        `https://github.com/demo-company/service-${index % repositories.length}/issues/${10000 + index}`
+      ),
+      state: status === "done" ? "closed" : "open",
+      links: { repository: repository.id, productIssues: [issue.id] },
+    })
+    yield* records.repository(GitHubPullRequest).create({
+      nodeId: `performance-pr-${index}`,
       title,
       number: 100 + index,
       url: WebUrl(
-        `https://code.example.test/engineering/service-${index % repositories.length}/pull/${100 + index}`
+        `https://github.com/demo-company/service-${index % repositories.length}/pull/${100 + index}`
       ),
       status: prStatus,
       review:
@@ -48,11 +69,11 @@ export const seedEngineeringPerformance = Effect.fn(
           : (["pending", "passing", "failing"] as const)[
               Math.floor(index / 2) % 3
             ]!,
-      observedAt: Timestamp(
-        DateTime.formatIso(DateTime.subtract(now, { hours: index % 48 }))
-      ),
-      links: { repository: repository.id },
+      links: {
+        repository: repository.id,
+        productIssues: [issue.id],
+        githubIssues: [githubIssue.id],
+      },
     })
-    yield* linkSeedRecords(Issue, "pullRequests", issue.id, pr.id)
   }
 })

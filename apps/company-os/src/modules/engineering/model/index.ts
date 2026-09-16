@@ -1,30 +1,46 @@
-import { IssuePullRequests } from "#/modules/engineering/model/links/issue-pull-requests.ts"
+import { GitHubConnection } from "#/modules/engineering/model/github-connection.ts"
 import {
-  PullRequest,
-  PullRequestRepository,
-} from "#/modules/engineering/model/pull-request.ts"
+  GitHubIssue,
+  GitHubIssueRepository,
+} from "#/modules/engineering/model/github-issue.ts"
 import {
-  Repository,
-  RepositoryOwner,
-  RepositoryProjects,
-} from "#/modules/engineering/model/repository.ts"
+  GitHubPullRequest,
+  GitHubPullRequestRepository,
+} from "#/modules/engineering/model/github-pull-request.ts"
+import {
+  GitHubRepository,
+  GitHubRepositoryConnection,
+  GitHubRepositoryProjects,
+  GitHubRepositoryMaintainer,
+} from "#/modules/engineering/model/github-repository.ts"
+import { GitHubIssuePullRequests } from "#/modules/engineering/model/links/github-issue-pull-requests.ts"
+import {
+  IssueGitHubIssues,
+  IssueGitHubPullRequests,
+} from "#/modules/engineering/model/links/product-issues.ts"
 import { defineModule } from "#/runtime/model/index.ts"
+
 export const EngineeringModule = defineModule({
   maturity: "alpha",
   origin: {
     name: "Company OS",
     url: "https://github.com/continual-ai/company-os",
   },
-  description: "Connect repositories and pull requests to product delivery.",
+  description:
+    "Connect GitHub repositories, issues, and pull requests to product delivery.",
   id: "engineering",
   name: "Engineering",
   links: [
-    IssuePullRequests,
-    PullRequestRepository,
-    RepositoryProjects,
-    RepositoryOwner,
+    GitHubRepositoryConnection,
+    GitHubRepositoryProjects,
+    GitHubRepositoryMaintainer,
+    GitHubIssueRepository,
+    GitHubPullRequestRepository,
+    GitHubIssuePullRequests,
+    IssueGitHubIssues,
+    IssueGitHubPullRequests,
   ],
-  objects: [Repository, PullRequest],
+  objects: [GitHubConnection, GitHubRepository, GitHubPullRequest, GitHubIssue],
 })
 
-export { PullRequest, Repository }
+export { GitHubConnection, GitHubRepository, GitHubPullRequest, GitHubIssue }

@@ -46,8 +46,10 @@ create table "objects" (
     'outreach',
     'project',
     'issue',
-    'repository',
-    'pullRequest',
+    'githubConnection',
+    'githubRepository',
+    'githubPullRequest',
+    'githubIssue',
     'jobPosting',
     'candidate',
     'application',
@@ -487,37 +489,79 @@ create table "issues" (
 -- Domain objects: Engineering
 -- ===========================================================================
 
--- Repository (repository)
--- A codebase connected to your projects, issues, and pull requests.
-create table "repositories" (
+-- GitHub connection (githubConnection)
+-- A GitHub account selected for synchronization, with an optional GitHub App
+-- installation.
+create table "github_connections" (
   "id" text not null,
-  -- Relationship reference; requiredness is checked at transaction commit.
-  "owner_id" text,
-  "name" text not null,
-  "url" text,
-  "default_branch" text not null default 'main',
+  "account_login" text not null,
+  "installation_id" text,
   primary key ("id"),
   foreign key ("id") references "objects" ("id") on delete cascade
 );
 
--- Pull request (pullRequest)
--- Track a code change, its reviews, and checks. Merge it in your code hosting
--- service.
-create table "pull_requests" (
+create unique index "github_connections_installation_unique" on "github_connections" ("installation_id");
+
+-- GitHub repository (githubRepository)
+-- A GitHub repository connected to internal projects and its imported issues
+-- and pull requests.
+create table "github_repositories" (
+  "id" text not null,
+  -- Relationship reference; requiredness is checked at transaction commit.
+  "connection_id" text,
+  -- Relationship reference; requiredness is checked at transaction commit.
+  "maintainer_id" text,
+  "node_id" text not null,
+  "full_name" text not null,
+  "url" text not null,
+  "description" text,
+  "default_branch" text,
+  "visibility" text not null,
+  "archived" boolean not null default false,
+  primary key ("id"),
+  foreign key ("id") references "objects" ("id") on delete cascade
+);
+
+create unique index "github_repositories_github_unique" on "github_repositories" ("node_id");
+
+-- GitHub pull request (githubPullRequest)
+-- Track a code change, its reviews, and checks. Merge it in GitHub.
+create table "github_pull_requests" (
   "id" text not null,
   -- Relationship reference; requiredness is checked at transaction commit.
   "repository_id" text,
+  "node_id" text not null,
+  "body" text,
   "title" text not null,
-  "number" integer,
-  "url" text,
+  "number" integer not null,
+  "url" text not null,
   "status" text not null default 'draft',
   "review" text not null default 'pending',
   "checks" text not null default 'pending',
   "head_commit" text,
-  "observed_at" timestamp with time zone,
   primary key ("id"),
   foreign key ("id") references "objects" ("id") on delete cascade
 );
+
+create unique index "github_pull_requests_github_unique" on "github_pull_requests" ("node_id");
+
+-- GitHub issue (githubIssue)
+-- An issue tracked in GitHub, separate from internal product planning.
+create table "github_issues" (
+  "id" text not null,
+  -- Relationship reference; requiredness is checked at transaction commit.
+  "repository_id" text,
+  "node_id" text not null,
+  "number" integer not null,
+  "title" text not null,
+  "body" text,
+  "url" text not null,
+  "state" text not null default 'open',
+  primary key ("id"),
+  foreign key ("id") references "objects" ("id") on delete cascade
+);
+
+create unique index "github_issues_github_unique" on "github_issues" ("node_id");
 
 -- ===========================================================================
 -- Domain objects: Hiring
@@ -800,41 +844,77 @@ create view "link_issue_assignee" as select "id" as forward_id, "assignee_id" as
 
 create index "issue_assignee_target_idx" on "issues" ("assignee_id");
 
--- Pull requests (issuePullRequests)
-create table "link_issue_pull_requests" (
-  -- References issues.id.
-  "forward_id" text not null,
-  -- References pull_requests.id.
-  "reverse_id" text not null,
-  primary key ("forward_id", "reverse_id"),
-  foreign key ("forward_id") references "issues" ("id") on delete cascade,
-  foreign key ("reverse_id") references "pull_requests" ("id") on delete cascade
-);
+create view "link_github_repository_connection" as select "id" as forward_id, "connection_id" as reverse_id from "github_repositories" where "connection_id" is not null;
 
-create index "link_issue_pull_requests_forward_id_idx" on "link_issue_pull_requests" ("forward_id");
-create index "link_issue_pull_requests_reverse_id_idx" on "link_issue_pull_requests" ("reverse_id");
+create index "github_repository_connection_target_idx" on "github_repositories" ("connection_id");
 
-create view "link_pull_request_repository" as select "id" as forward_id, "repository_id" as reverse_id from "pull_requests" where "repository_id" is not null;
-
-create index "pull_request_repository_target_idx" on "pull_requests" ("repository_id");
-
--- Repository projects (repositoryProjects)
-create table "link_repository_projects" (
-  -- References repositories.id.
+-- GitHub repository projects (githubRepositoryProjects)
+create table "link_github_repository_projects" (
+  -- References github_repositories.id.
   "forward_id" text not null,
   -- References projects.id.
   "reverse_id" text not null,
   primary key ("forward_id", "reverse_id"),
-  foreign key ("forward_id") references "repositories" ("id") on delete cascade,
+  foreign key ("forward_id") references "github_repositories" ("id") on delete cascade,
   foreign key ("reverse_id") references "projects" ("id") on delete cascade
 );
 
-create index "link_repository_projects_forward_id_idx" on "link_repository_projects" ("forward_id");
-create index "link_repository_projects_reverse_id_idx" on "link_repository_projects" ("reverse_id");
+create index "link_github_repository_projects_forward_id_idx" on "link_github_repository_projects" ("forward_id");
+create index "link_github_repository_projects_reverse_id_idx" on "link_github_repository_projects" ("reverse_id");
 
-create view "link_repository_owner" as select "id" as forward_id, "owner_id" as reverse_id from "repositories" where "owner_id" is not null;
+create view "link_github_repository_maintainer" as select "id" as forward_id, "maintainer_id" as reverse_id from "github_repositories" where "maintainer_id" is not null;
 
-create index "repository_owner_target_idx" on "repositories" ("owner_id");
+create index "github_repository_maintainer_target_idx" on "github_repositories" ("maintainer_id");
+
+create view "link_github_issue_repository" as select "id" as forward_id, "repository_id" as reverse_id from "github_issues" where "repository_id" is not null;
+
+create index "github_issue_repository_target_idx" on "github_issues" ("repository_id");
+
+create view "link_github_pull_request_repository" as select "id" as forward_id, "repository_id" as reverse_id from "github_pull_requests" where "repository_id" is not null;
+
+create index "github_pull_request_repository_target_idx" on "github_pull_requests" ("repository_id");
+
+-- GitHub issue pull requests (githubIssuePullRequests)
+create table "link_github_issue_pull_requests" (
+  -- References github_issues.id.
+  "forward_id" text not null,
+  -- References github_pull_requests.id.
+  "reverse_id" text not null,
+  primary key ("forward_id", "reverse_id"),
+  foreign key ("forward_id") references "github_issues" ("id") on delete cascade,
+  foreign key ("reverse_id") references "github_pull_requests" ("id") on delete cascade
+);
+
+create index "link_github_issue_pull_requests_forward_id_idx" on "link_github_issue_pull_requests" ("forward_id");
+create index "link_github_issue_pull_requests_reverse_id_idx" on "link_github_issue_pull_requests" ("reverse_id");
+
+-- Product issue GitHub issues (issueGithubIssues)
+create table "link_issue_github_issues" (
+  -- References issues.id.
+  "forward_id" text not null,
+  -- References github_issues.id.
+  "reverse_id" text not null,
+  primary key ("forward_id", "reverse_id"),
+  foreign key ("forward_id") references "issues" ("id") on delete cascade,
+  foreign key ("reverse_id") references "github_issues" ("id") on delete cascade
+);
+
+create index "link_issue_github_issues_forward_id_idx" on "link_issue_github_issues" ("forward_id");
+create index "link_issue_github_issues_reverse_id_idx" on "link_issue_github_issues" ("reverse_id");
+
+-- Product issue GitHub pull requests (issueGithubPullRequests)
+create table "link_issue_github_pull_requests" (
+  -- References issues.id.
+  "forward_id" text not null,
+  -- References github_pull_requests.id.
+  "reverse_id" text not null,
+  primary key ("forward_id", "reverse_id"),
+  foreign key ("forward_id") references "issues" ("id") on delete cascade,
+  foreign key ("reverse_id") references "github_pull_requests" ("id") on delete cascade
+);
+
+create index "link_issue_github_pull_requests_forward_id_idx" on "link_issue_github_pull_requests" ("forward_id");
+create index "link_issue_github_pull_requests_reverse_id_idx" on "link_issue_github_pull_requests" ("reverse_id");
 
 create view "link_application_job" as select "id" as forward_id, "job_id" as reverse_id from "applications" where "job_id" is not null;
 
@@ -1372,34 +1452,34 @@ end $$;
 
 create constraint trigger "require_outreach_contact_forward" after insert on "outreaches" deferrable initially deferred for each row execute function "require_outreach_contact_forward"();
 
-create function "check_pull_request_repository"(source_id text, side text) returns void language plpgsql as $$
+create function "check_github_repository_connection"(source_id text, side text) returns void language plpgsql as $$
 declare n bigint;
 begin
-  if side = 'forward' and exists (select 1 from "pull_requests" where id = source_id) then
-    select count(*) into n from "link_pull_request_repository" where "forward_id" = source_id;
+  if side = 'forward' and exists (select 1 from "github_repositories" where id = source_id) then
+    select count(*) into n from "link_github_repository_connection" where "forward_id" = source_id;
     if n < 1 or false then
-      raise exception 'Link % traversal % requires %..% targets; found %', 'pullRequestRepository', 'repository', 1, '1', n
-        using errcode = '23514', constraint = 'pullRequestRepository.repository.bounds';
+      raise exception 'Link % traversal % requires %..% targets; found %', 'githubRepositoryConnection', 'connection', 1, '1', n
+        using errcode = '23514', constraint = 'githubRepositoryConnection.connection.bounds';
     end if;
   end if;
 end $$;
 
-create function "validate_pull_request_repository"() returns trigger language plpgsql as $$
+create function "validate_github_repository_connection"() returns trigger language plpgsql as $$
 begin
   if TG_OP <> 'INSERT' then
-    perform "check_pull_request_repository"(OLD.id, 'forward');
+    perform "check_github_repository_connection"(OLD.id, 'forward');
   end if;
   if TG_OP <> 'DELETE' then
-    perform "check_pull_request_repository"(NEW.id, 'forward');
+    perform "check_github_repository_connection"(NEW.id, 'forward');
   end if;
   return null;
 end $$;
 
-create constraint trigger "validate_pull_request_repository" after insert or delete on "pull_requests" deferrable initially deferred for each row execute function "validate_pull_request_repository"();
+create constraint trigger "validate_github_repository_connection" after insert or delete on "github_repositories" deferrable initially deferred for each row execute function "validate_github_repository_connection"();
 
-create constraint trigger "validate_pull_request_repository_update" after update on "pull_requests" deferrable initially deferred for each row when (OLD."repository_id" is distinct from NEW."repository_id") execute function "validate_pull_request_repository"();
+create constraint trigger "validate_github_repository_connection_update" after update on "github_repositories" deferrable initially deferred for each row when (OLD."connection_id" is distinct from NEW."connection_id") execute function "validate_github_repository_connection"();
 
-create function "lock_pull_request_repository"() returns trigger language plpgsql as $$
+create function "lock_github_repository_connection"() returns trigger language plpgsql as $$
     declare ids text[] := array[]::text[];
     begin
       if TG_OP <> 'INSERT' then ids := ids || array[OLD.id]; end if;
@@ -1408,17 +1488,113 @@ create function "lock_pull_request_repository"() returns trigger language plpgsq
       if TG_OP = 'DELETE' then return OLD; else return NEW; end if;
     end $$;
 
-create trigger "lock_pull_request_repository" before insert or delete on "pull_requests" for each row execute function "lock_pull_request_repository"();
+create trigger "lock_github_repository_connection" before insert or delete on "github_repositories" for each row execute function "lock_github_repository_connection"();
 
-create trigger "lock_pull_request_repository_update" before update on "pull_requests" for each row when (OLD."repository_id" is distinct from NEW."repository_id") execute function "lock_pull_request_repository"();
+create trigger "lock_github_repository_connection_update" before update on "github_repositories" for each row when (OLD."connection_id" is distinct from NEW."connection_id") execute function "lock_github_repository_connection"();
 
-create function "require_pull_request_repository_forward"() returns trigger language plpgsql as $$
+create function "require_github_repository_connection_forward"() returns trigger language plpgsql as $$
 begin
-  perform "check_pull_request_repository"(NEW.id, 'forward');
+  perform "check_github_repository_connection"(NEW.id, 'forward');
   return null;
 end $$;
 
-create constraint trigger "require_pull_request_repository_forward" after insert on "pull_requests" deferrable initially deferred for each row execute function "require_pull_request_repository_forward"();
+create constraint trigger "require_github_repository_connection_forward" after insert on "github_repositories" deferrable initially deferred for each row execute function "require_github_repository_connection_forward"();
+
+create function "check_github_issue_repository"(source_id text, side text) returns void language plpgsql as $$
+declare n bigint;
+begin
+  if side = 'forward' and exists (select 1 from "github_issues" where id = source_id) then
+    select count(*) into n from "link_github_issue_repository" where "forward_id" = source_id;
+    if n < 1 or false then
+      raise exception 'Link % traversal % requires %..% targets; found %', 'githubIssueRepository', 'repository', 1, '1', n
+        using errcode = '23514', constraint = 'githubIssueRepository.repository.bounds';
+    end if;
+  end if;
+end $$;
+
+create function "validate_github_issue_repository"() returns trigger language plpgsql as $$
+begin
+  if TG_OP <> 'INSERT' then
+    perform "check_github_issue_repository"(OLD.id, 'forward');
+  end if;
+  if TG_OP <> 'DELETE' then
+    perform "check_github_issue_repository"(NEW.id, 'forward');
+  end if;
+  return null;
+end $$;
+
+create constraint trigger "validate_github_issue_repository" after insert or delete on "github_issues" deferrable initially deferred for each row execute function "validate_github_issue_repository"();
+
+create constraint trigger "validate_github_issue_repository_update" after update on "github_issues" deferrable initially deferred for each row when (OLD."repository_id" is distinct from NEW."repository_id") execute function "validate_github_issue_repository"();
+
+create function "lock_github_issue_repository"() returns trigger language plpgsql as $$
+    declare ids text[] := array[]::text[];
+    begin
+      if TG_OP <> 'INSERT' then ids := ids || array[OLD.id]; end if;
+      if TG_OP <> 'DELETE' then ids := ids || array[NEW.id]; end if;
+      perform id from objects where id = any(ids) order by id for update;
+      if TG_OP = 'DELETE' then return OLD; else return NEW; end if;
+    end $$;
+
+create trigger "lock_github_issue_repository" before insert or delete on "github_issues" for each row execute function "lock_github_issue_repository"();
+
+create trigger "lock_github_issue_repository_update" before update on "github_issues" for each row when (OLD."repository_id" is distinct from NEW."repository_id") execute function "lock_github_issue_repository"();
+
+create function "require_github_issue_repository_forward"() returns trigger language plpgsql as $$
+begin
+  perform "check_github_issue_repository"(NEW.id, 'forward');
+  return null;
+end $$;
+
+create constraint trigger "require_github_issue_repository_forward" after insert on "github_issues" deferrable initially deferred for each row execute function "require_github_issue_repository_forward"();
+
+create function "check_github_pull_request_repository"(source_id text, side text) returns void language plpgsql as $$
+declare n bigint;
+begin
+  if side = 'forward' and exists (select 1 from "github_pull_requests" where id = source_id) then
+    select count(*) into n from "link_github_pull_request_repository" where "forward_id" = source_id;
+    if n < 1 or false then
+      raise exception 'Link % traversal % requires %..% targets; found %', 'githubPullRequestRepository', 'repository', 1, '1', n
+        using errcode = '23514', constraint = 'githubPullRequestRepository.repository.bounds';
+    end if;
+  end if;
+end $$;
+
+create function "validate_github_pull_request_repository"() returns trigger language plpgsql as $$
+begin
+  if TG_OP <> 'INSERT' then
+    perform "check_github_pull_request_repository"(OLD.id, 'forward');
+  end if;
+  if TG_OP <> 'DELETE' then
+    perform "check_github_pull_request_repository"(NEW.id, 'forward');
+  end if;
+  return null;
+end $$;
+
+create constraint trigger "validate_github_pull_request_repository" after insert or delete on "github_pull_requests" deferrable initially deferred for each row execute function "validate_github_pull_request_repository"();
+
+create constraint trigger "validate_github_pull_request_repository_update" after update on "github_pull_requests" deferrable initially deferred for each row when (OLD."repository_id" is distinct from NEW."repository_id") execute function "validate_github_pull_request_repository"();
+
+create function "lock_github_pull_request_repository"() returns trigger language plpgsql as $$
+    declare ids text[] := array[]::text[];
+    begin
+      if TG_OP <> 'INSERT' then ids := ids || array[OLD.id]; end if;
+      if TG_OP <> 'DELETE' then ids := ids || array[NEW.id]; end if;
+      perform id from objects where id = any(ids) order by id for update;
+      if TG_OP = 'DELETE' then return OLD; else return NEW; end if;
+    end $$;
+
+create trigger "lock_github_pull_request_repository" before insert or delete on "github_pull_requests" for each row execute function "lock_github_pull_request_repository"();
+
+create trigger "lock_github_pull_request_repository_update" before update on "github_pull_requests" for each row when (OLD."repository_id" is distinct from NEW."repository_id") execute function "lock_github_pull_request_repository"();
+
+create function "require_github_pull_request_repository_forward"() returns trigger language plpgsql as $$
+begin
+  perform "check_github_pull_request_repository"(NEW.id, 'forward');
+  return null;
+end $$;
+
+create constraint trigger "require_github_pull_request_repository_forward" after insert on "github_pull_requests" deferrable initially deferred for each row execute function "require_github_pull_request_repository_forward"();
 
 create function "check_application_job"(source_id text, side text) returns void language plpgsql as $$
 declare n bigint;
@@ -1568,6 +1744,10 @@ alter table "controller_instances" add constraint "controller_instances_target_u
 
 alter table "campaign_members" add constraint "campaign_members_membership_unique" unique ("campaign_id", "contact_id") deferrable initially deferred;
 
+alter table "github_pull_requests" add constraint "github_pull_requests_number_unique" unique ("repository_id", "number") deferrable initially deferred;
+
+alter table "github_issues" add constraint "github_issues_number_unique" unique ("repository_id", "number") deferrable initially deferred;
+
 alter table "applications" add constraint "applications_candidate_job_unique" unique ("candidate_id", "job_id") deferrable initially deferred;
 
 -- ===========================================================================
@@ -1635,9 +1815,13 @@ alter table "issues" add constraint "issue_project_target_fk" foreign key ("proj
 
 alter table "issues" add constraint "issue_assignee_target_fk" foreign key ("assignee_id") references "users" (id) on delete set null deferrable initially deferred;
 
-alter table "pull_requests" add constraint "pull_request_repository_target_fk" foreign key ("repository_id") references "repositories" (id) on delete set null deferrable initially deferred;
+alter table "github_repositories" add constraint "github_repository_connection_target_fk" foreign key ("connection_id") references "github_connections" (id) on delete set null deferrable initially deferred;
 
-alter table "repositories" add constraint "repository_owner_target_fk" foreign key ("owner_id") references "users" (id) on delete set null deferrable initially deferred;
+alter table "github_repositories" add constraint "github_repository_maintainer_target_fk" foreign key ("maintainer_id") references "users" (id) on delete set null deferrable initially deferred;
+
+alter table "github_issues" add constraint "github_issue_repository_target_fk" foreign key ("repository_id") references "github_repositories" (id) on delete set null deferrable initially deferred;
+
+alter table "github_pull_requests" add constraint "github_pull_request_repository_target_fk" foreign key ("repository_id") references "github_repositories" (id) on delete set null deferrable initially deferred;
 
 alter table "applications" add constraint "application_job_target_fk" foreign key ("job_id") references "job_postings" (id) on delete set null deferrable initially deferred;
 

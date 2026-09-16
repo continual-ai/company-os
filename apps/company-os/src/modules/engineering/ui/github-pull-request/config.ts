@@ -1,7 +1,7 @@
-import type { PullRequest } from "#/modules/engineering/model/pull-request.ts"
+import type { GitHubPullRequest } from "#/modules/engineering/model/github-pull-request.ts"
 import { defineCollectionView, type ObjectUi } from "#/runtime/ui/module.ts"
 
-export const pullRequestUi = {
+export const githubPullRequestUi = {
   collection: {
     views: [
       defineCollectionView("all", "All pull requests", {
@@ -24,4 +24,4 @@ export const pullRequestUi = {
       }),
     ],
   },
-} satisfies ObjectUi<typeof PullRequest>
+} satisfies ObjectUi<typeof GitHubPullRequest>

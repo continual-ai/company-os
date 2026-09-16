@@ -5,6 +5,7 @@ import { Model } from "#/app.model.ts"
 import { testApplication } from "#/app/server/test-application.ts"
 import { HttpTransport } from "#/app/server/transport/http-transport.ts"
 import { createEffectClient } from "#/runtime/client/create-client.ts"
+import { WebUrl } from "#/runtime/model/index.ts"
 import { linkPreview } from "#/runtime/model/record-links.ts"
 import { IdentityProvider } from "#/runtime/server/auth/identity-provider.ts"
 
@@ -95,14 +96,25 @@ application.test(
           opportunities: [opportunity.id],
         },
       })
-      const repository = yield* client.repository.create({
-        name: "Customer platform",
-        links: { projects: [project.id, nextProject.id] },
+      const connection = yield* client.githubConnection.create({
+        accountLogin: "example",
       })
-      const pullRequest = yield* client.pullRequest.create({
+      const repository = yield* client.githubRepository.create({
+        nodeId: "repo-1",
+        fullName: "example/platform",
+        visibility: "private",
+        url: WebUrl("https://github.com/example/platform"),
+        links: {
+          connection: connection.id,
+          projects: [project.id, nextProject.id],
+        },
+      })
+      const pullRequest = yield* client.githubPullRequest.create({
+        nodeId: "pr-1",
+        url: WebUrl("https://github.com/example/platform/pull/42"),
         title: "Checkpoint import batches",
         number: 42,
-        links: { repository: repository.id, issues: [issue.id] },
+        links: { repository: repository.id, productIssues: [issue.id] },
       })
       const expanded = yield* client.issue.get({ id: issue.id, expand: true })
       expect(expanded.links.tickets).toMatchObject({ totalSize: 2 })
@@ -110,13 +122,15 @@ application.test(
         items: [{ id: opportunity.id }],
         totalSize: 1,
       })
-      expect(expanded.links.pullRequests).toMatchObject({
+      expect(expanded.links.githubPullRequests).toMatchObject({
         items: [{ id: pullRequest.id }],
         totalSize: 1,
       })
       expect(
-        (yield* client.repository.get({ id: repository.id, expand: true }))
-          .links.projects.totalSize
+        (yield* client.githubRepository.get({
+          id: repository.id,
+          expand: true,
+        })).links.projects.totalSize
       ).toBe(2)
       expect(
         (yield* client.issue.list({

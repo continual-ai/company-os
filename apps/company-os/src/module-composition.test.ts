@@ -16,8 +16,10 @@ it("composes Notes with Engineering without installing Sales", () => {
       "note",
       "issue",
       "project",
-      "repository",
-      "pullRequest",
+      "githubConnection",
+      "githubRepository",
+      "githubIssue",
+      "githubPullRequest",
     ])
   )
   for (const id of ["account", "contact", "opportunity"]) {

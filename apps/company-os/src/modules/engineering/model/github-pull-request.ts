@@ -1,24 +1,30 @@
-import { Repository } from "#/modules/engineering/model/repository.ts"
+import { GitHubRepository } from "#/modules/engineering/model/github-repository.ts"
 import { defineLink, defineObject, schema } from "#/runtime/model/index.ts"
+import { ControllerTarget } from "#/runtime/platform/model/controller-instance.ts"
 import { NoteSubject } from "#/runtime/platform/model/note-subject.ts"
 
-export const PullRequest = defineObject({
-  id: "pullRequest",
-  collection: "pullRequests",
-  name: "Pull request",
-  pluralName: "Pull requests",
+export const GitHubPullRequest = defineObject({
+  id: "githubPullRequest",
+  collection: "githubPullRequests",
+  name: "GitHub pull request",
+  pluralName: "GitHub pull requests",
   description:
-    "Track a code change, its reviews, and checks. Merge it in your code hosting service.",
-  implements: [{ interface: NoteSubject }],
+    "Track a code change, its reviews, and checks. Merge it in GitHub.",
+  implements: [{ interface: ControllerTarget }, { interface: NoteSubject }],
   properties: {
+    nodeId: schema.string({
+      label: "GitHub node ID",
+      minLength: 1,
+      maxLength: 200,
+    }),
+    body: schema.string({ label: "Body", nullable: true, maxLength: 100000 }),
     title: schema.string({ label: "Title", maxLength: 300, minLength: 1 }),
     number: schema.number({
       label: "Number",
-      nullable: true,
       integer: true,
       minimum: 1,
     }),
-    url: schema.url({ label: "URL", nullable: true }),
+    url: schema.url({ label: "URL" }),
     status: schema.select({
       label: "Status",
       default: "draft",
@@ -52,21 +58,21 @@ export const PullRequest = defineObject({
       maxLength: 300,
       nullable: true,
     }),
-    observedAt: schema.timestamp({ label: "Last observed", nullable: true }),
   },
+  uniqueBy: { github: ["nodeId"], number: ["repository", "number"] },
   search: { fields: ["title", "url", "headCommit"] },
   display: { title: "title", icon: "gitPullRequest", status: "status" },
 })
 
-export const PullRequestRepository = defineLink({
-  id: "pullRequestRepository",
-  name: "PullRequest Repository",
+export const GitHubPullRequestRepository = defineLink({
+  id: "githubPullRequestRepository",
+  name: "GitHub pull request repository",
   from: {
-    object: PullRequest,
+    object: GitHubPullRequest,
     key: "repository",
     label: "Repository",
     min: 1,
     max: 1,
   },
-  to: { object: Repository, key: "pullRequests", label: "Pull requests" },
+  to: { object: GitHubRepository, key: "pullRequests", label: "Pull requests" },
 })
