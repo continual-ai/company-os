@@ -219,19 +219,27 @@ function translateApiError(error: unknown): ApiError | undefined {
   return constraintApiError(error)
 }
 
+/** Only declared, recognized failures may cross the public operation boundary. */
+export function declaredApiError(
+  error: unknown,
+  operation?: OperationContract
+): ApiError | undefined {
+  const mapped = translateApiError(error)
+  return mapped &&
+    (operation === undefined ||
+      operation.errors.some(({ reason }) => reason === mapped.reason))
+    ? mapped
+    : undefined
+}
+
 /** Expected failures retain their public meaning; unexpected failures are logged and sanitized. */
 export function withApiErrors<A, E, R>(
   effect: Effect.Effect<A, E, R>,
   operation?: OperationContract
 ): Effect.Effect<A, ApiError, R> {
   return Effect.catch(effect, (error) => {
-    const mapped = translateApiError(error)
-    if (
-      mapped &&
-      (operation === undefined ||
-        operation.errors.some(({ reason }) => reason === mapped.reason))
-    )
-      return Effect.fail(mapped)
+    const mapped = declaredApiError(error, operation)
+    if (mapped) return Effect.fail(mapped)
     return Effect.logError("Unhandled API failure", error).pipe(
       Effect.andThen(Effect.fail(internalApiError()))
     )

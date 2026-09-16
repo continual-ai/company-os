@@ -1,5 +1,5 @@
 import { getRequest } from "@tanstack/react-start/server"
-import { ConfigProvider, Effect, Layer, ManagedRuntime } from "effect"
+import { ConfigProvider, Effect, Layer, Logger, ManagedRuntime } from "effect"
 
 import { applicationLayer } from "#/app/server/application-layer.ts"
 import { developmentDefaults } from "#/app/server/config.ts"
@@ -26,7 +26,12 @@ function makeApplicationRuntime() {
       )
   return ManagedRuntime.make(
     Layer.merge(applicationLayer, controllers).pipe(
-      Layer.provide(configuration)
+      Layer.provide(configuration),
+      Layer.provideMerge(
+        Logger.layer([
+          import.meta.env.DEV ? Logger.consolePretty() : Logger.consoleJson,
+        ])
+      )
     )
   )
 }

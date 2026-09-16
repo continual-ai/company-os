@@ -59,6 +59,12 @@ Revisit compatibility and migration guarantees before v1.
 
 ## Data and delivery
 
+OperationExecutor logs each dispatched HTTP/MCP operation once after completion, with operation,
+actor, request ID, duration, outcome, and structured error causes. Use Effect logging for other
+server diagnostics; keep field names stable and omit request bodies, credentials, and full records.
+Expected rejections and cancellations are Info; unexpected operation failures are Error. The app
+configures readable development logs and JSON production logs. Keep public errors sanitized.
+
 `schema.sql` projects the model. After storage changes, run `pnpm reset` to regenerate it and
 rebuild disposable local data with the demo. `pnpm db:generate` refreshes SQL without touching data.
 Do not add incremental migrations or backfills for pre-release development. Keep one model-derived initial migration and an app-owned runner.

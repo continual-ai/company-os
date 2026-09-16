@@ -19,13 +19,13 @@ import {
   activeModuleModel,
   requireModuleOperation,
 } from "#/runtime/platform/server/activation.ts"
-import { withApiErrors } from "#/runtime/server/api-error.ts"
 import { requireProjectAccess } from "#/runtime/server/auth/project-access.ts"
 import { Database } from "#/runtime/server/database.ts"
 import {
   CurrentInvocation,
   type InvocationContext,
 } from "#/runtime/server/invocation.ts"
+import { withOperationLogging } from "#/runtime/server/logging.ts"
 import type { ModelContext } from "#/runtime/server/model-context.ts"
 import type { OperationRequirements } from "#/runtime/server/module-server.ts"
 import { type OperationServices } from "#/runtime/server/operation-handlers.ts"
@@ -276,10 +276,8 @@ function operationExecutorLayer<
           input: unknown
         ) => {
           const handler = handlers.get(contract.key)
-          if (!handler)
-            return Effect.die(`Operation '${contract.key}' is not installed.`)
           const changes = new Set<string>()
-          return withApiErrors(
+          return withOperationLogging(
             requireProjectAccess.pipe(
               Effect.andThen(
                 (contract.builtin
@@ -287,9 +285,14 @@ function operationExecutorLayer<
                   : requireModuleOperation(contract)
                 ).pipe(Effect.provideContext(foundationContext))
               ),
-              Effect.andThen(handler(input))
+              Effect.andThen(() =>
+                handler
+                  ? handler(input)
+                  : Effect.die(`Operation '${contract.key}' is not installed.`)
+              )
             ),
-            contract
+            contract,
+            invocation
           ).pipe(
             Effect.provideService(CurrentInvocation, invocation),
             Effect.provideService(CommittedChanges, changes),

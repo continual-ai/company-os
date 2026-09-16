@@ -31,6 +31,7 @@ import {
   type ModelHttpRequest,
 } from "#/runtime/server/http.ts"
 import { CurrentInvocation } from "#/runtime/server/invocation.ts"
+import { loggingContext } from "#/runtime/server/logging.ts"
 import { OperationExecutor } from "#/runtime/server/operation-executor.ts"
 
 class HttpTransportFailure extends Data.TaggedError("HttpTransportFailure")<{
@@ -47,6 +48,7 @@ const make = Effect.gen(function* () {
   const authentication = yield* Authentication
   const notifications = yield* EventNotifications
   const events = yield* EventJournal
+  const logging = yield* loggingContext
 
   const active = operations.activeModel
   const filterActiveEvents = (page: EventPage) =>
@@ -94,7 +96,8 @@ const make = Effect.gen(function* () {
           return result
         })
       ),
-      (effect) => withApiErrors(effect, descriptor)
+      (effect) => withApiErrors(effect, descriptor),
+      Effect.annotateLogs({ transport: "http", requestId: crypto.randomUUID() })
     )
 
   const objectGroupsLayer = createModelHttpHandlers(
@@ -191,7 +194,7 @@ const make = Effect.gen(function* () {
       request: Request
     ) {
       return yield* Effect.tryPromise({
-        try: () => webHandler.handler(request),
+        try: () => webHandler.handler(request, logging),
         catch: (cause) => new HttpTransportFailure({ cause }),
       }).pipe(
         Effect.catch(({ cause }) =>

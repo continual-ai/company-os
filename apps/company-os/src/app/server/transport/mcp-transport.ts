@@ -8,6 +8,7 @@ import {
   unauthenticatedApiError,
 } from "#/runtime/server/api-error.ts"
 import { Authentication } from "#/runtime/server/auth/authentication.ts"
+import { loggingContext } from "#/runtime/server/logging.ts"
 import {
   createModelMcpHandler,
   validateModelMcpRequest,
@@ -37,7 +38,7 @@ const invocationContextSchema = Schema.Struct({
 
 const make = Effect.gen(function* () {
   const operations = yield* OperationExecutor
-  const runPromise = Effect.runPromise
+  const runPromise = Effect.runPromiseWith(yield* loggingContext)
   const authentication = yield* Authentication
   const requestPolicy = { allowedHostnames: allowedMcpHostnames() }
   const handler = yield* Effect.acquireRelease(
@@ -61,6 +62,10 @@ const make = Effect.gen(function* () {
           run: (descriptor, operation) =>
             runPromise(
               operations.run(invocation, descriptor, operation).pipe(
+                Effect.annotateLogs({
+                  transport: "mcp",
+                  requestId: crypto.randomUUID(),
+                }),
                 Effect.match({
                   onFailure: (error) => ({ error, success: false as const }),
                   onSuccess: ({ value }) => ({ success: true as const, value }),

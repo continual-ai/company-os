@@ -1,4 +1,4 @@
-import { Data, Effect, Exit } from "effect"
+import { Data, Effect, Exit, Logger } from "effect"
 import { expect } from "vitest"
 
 import { UserService } from "#/runtime/access/server/user-service.ts"
@@ -13,7 +13,10 @@ import {
   EmailAddress,
   type ActionInput,
 } from "#/runtime/model/index.ts"
-import { PlatformModule } from "#/runtime/platform/model/index.ts"
+import {
+  ModuleSetting,
+  PlatformModule,
+} from "#/runtime/platform/model/index.ts"
 import {
   Database,
   defineModuleServer,
@@ -23,6 +26,7 @@ import {
 import {
   authenticatedInvocation,
   anonymousInvocation,
+  systemInvocation,
 } from "#/runtime/server/invocation-context.ts"
 import { CurrentInvocation } from "#/runtime/server/invocation.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
@@ -84,6 +88,52 @@ const model = defineModel({
   modules: [PlatformModule, Samples],
 })
 const fixture = testFoundation(model, { servers: [server] })
+
+fixture.test(
+  "logs committed actions and rolled-back failures once at the executor",
+  () =>
+    Effect.gen(function* () {
+      const executor = yield* OperationExecutor
+      const database = yield* Database
+      yield* database
+        .repository(ModuleSetting)
+        .create({ moduleId: "samples", enabled: true })
+      const logs: Array<ReturnType<typeof Logger.formatStructured.log>> = []
+      const logging = Logger.layer([
+        Logger.map(Logger.formatStructured, (log) => logs.push(log)),
+      ])
+      const contract = modelOperation(model, "createSample")
+      for (const input of [
+        { name: "committed", fail: false, invalidOutput: false },
+        { name: "rolled back", fail: true, invalidOutput: false },
+        { name: "invalid output", fail: false, invalidOutput: true },
+      ]) {
+        yield* executor
+          .run(systemInvocation, contract, input)
+          .pipe(Effect.exit, Effect.provide(logging))
+      }
+      expect(logs).toHaveLength(3)
+      expect(logs.map((log) => log.annotations.outcome)).toEqual([
+        "success",
+        "failure",
+        "failure",
+      ])
+      expect(logs.map((log) => log.level)).toEqual(["INFO", "ERROR", "ERROR"])
+      expect(logs[1]?.annotations.error).toMatchObject({
+        reason: "INTERNAL",
+        causes: [{ kind: "Fail", type: "IntentionalFailure" }],
+      })
+      expect(logs[2]?.annotations.error).toMatchObject({
+        reason: "INTERNAL",
+        causes: [{ kind: "Die" }],
+      })
+      expect(
+        (yield* database.repository(Sample).list({})).items.map(
+          (row) => row.name
+        )
+      ).toEqual(["committed"])
+    })
+)
 
 fixture.test(
   "admission and output validation surround custom writes and roll back their journal entries",

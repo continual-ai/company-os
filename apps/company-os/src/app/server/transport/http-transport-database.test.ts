@@ -3,6 +3,7 @@ import {
   ConfigProvider,
   Effect,
   Layer,
+  Logger,
   ManagedRuntime,
   Schema,
   Stream,
@@ -92,6 +93,10 @@ describe("application HTTP server", () => {
         )
         const database = yield* SqlDatabase
         const sql = database.sql
+        const logs: Array<ReturnType<typeof Logger.formatStructured.log>> = []
+        const logging = Logger.layer([
+          Logger.map(Logger.formatStructured, (log) => logs.push(log)),
+        ])
 
         const runtime = yield* Effect.acquireRelease(
           Effect.sync(() =>
@@ -100,6 +105,7 @@ describe("application HTTP server", () => {
                 sql: Layer.succeed(PgClient.PgClient, database.sql),
                 pageTokens: Layer.succeed(PageTokens, testPageTokens),
               }).pipe(
+                Layer.provide(logging),
                 Layer.provide(
                   ConfigProvider.layer(
                     ConfigProvider.fromEnvRecord({
@@ -439,6 +445,21 @@ describe("application HTTP server", () => {
         })
 
         const created = yield* model.account.create({ name: "Northstar" })
+        expect(
+          logs.filter((log) => log.annotations.operation === "account.create")
+        ).toMatchObject([
+          {
+            level: "INFO",
+            annotations: {
+              transport: "http",
+              operationKind: "action",
+              actorId: "us_test",
+              requestId: expect.any(String),
+              durationMs: expect.any(Number),
+              outcome: "success",
+            },
+          },
+        ])
 
         expect(created).toMatchObject({
           lifecycleStage: "prospect",
@@ -466,6 +487,44 @@ describe("application HTTP server", () => {
             objectType: "activity",
           },
         })
+        expect(
+          logs.filter((log) => log.annotations.operation === "activity.create")
+        ).toMatchObject([
+          {
+            annotations: {
+              transport: "http",
+              outcome: "failure",
+              error: { reason: "NOT_FOUND" },
+            },
+          },
+          {
+            annotations: {
+              transport: "mcp",
+              outcome: "success",
+              actorId: "us_test",
+              requestId: expect.any(String),
+            },
+          },
+        ])
+        expect(
+          yield* callMcp("activity.get", { id: "test:contract:missing" })
+        ).toMatchObject({ isError: true })
+        expect(
+          logs.filter((log) => log.annotations.operation === "activity.get")
+        ).toMatchObject([
+          {
+            level: "INFO",
+            annotations: {
+              transport: "mcp",
+              outcome: "failure",
+              error: { reason: "NOT_FOUND" },
+            },
+          },
+        ])
+        const requestIds = logs
+          .filter((log) => log.message === "Operation completed")
+          .map((log) => log.annotations.requestId)
+        expect(new Set(requestIds).size).toBe(requestIds.length)
         expect(
           yield* model.activity.accounts.list({ id: contractAlias })
         ).toMatchObject({ items: [{ id: created.id }], totalSize: 1 })
