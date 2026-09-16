@@ -1,8 +1,10 @@
+import { DateTimeProvider } from "@company/ui/date-time"
 import { Toaster } from "@company/ui/toast"
 import { initDesignMode, initTelemetry } from "@continual/sdk/app-preview"
 import type { QueryClient } from "@tanstack/react-query"
 import {
   HeadContent,
+  Outlet,
   Scripts,
   createRootRouteWithContext,
 } from "@tanstack/react-router"
@@ -27,6 +29,8 @@ const rootDocument = {
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   {
+    beforeLoad: () => ({ now: Date.now() }),
+    component: RootContent,
     errorComponent: ({ error, reset }) => (
       <main className="mx-auto flex min-h-svh max-w-lg flex-col justify-center p-6">
         <p className="text-sm font-medium text-destructive">
@@ -82,6 +86,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     shellComponent: RootDocument,
   }
 )
+
+function RootContent() {
+  const { now } = Route.useRouteContext()
+  return (
+    <DateTimeProvider initialNow={now}>
+      <Outlet />
+    </DateTimeProvider>
+  )
+}
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   // Hosted previews drive design feedback and telemetry through these hooks;

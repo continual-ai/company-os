@@ -1,18 +1,31 @@
-import { useSyncExternalStore, type ComponentProps } from "react"
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useSyncExternalStore,
+  type ComponentProps,
+  type ReactNode,
+} from "react"
 
 import { formatDateTime, type DateTimeFormatOptions } from "#/lib/date-time.ts"
 
 const listeners = new Set<() => void>()
-let now = Date.now()
+interface ClockSnapshot {
+  readonly now: number
+  readonly timeZone: string
+}
+const InitialClock = createContext<ClockSnapshot | undefined>(undefined)
+const localTimeZone = new Intl.DateTimeFormat().resolvedOptions().timeZone
+let current: ClockSnapshot = { now: Date.now(), timeZone: localTimeZone }
 let timer: ReturnType<typeof setInterval> | undefined
-const snapshot = () => now
-const serverSnapshot = () => undefined
+const snapshot = () => current
 function subscribe(listener: () => void) {
   listeners.add(listener)
   if (timer === undefined) {
-    now = Date.now()
+    current = { now: Date.now(), timeZone: localTimeZone }
     timer = setInterval(() => {
-      now = Date.now()
+      current = { now: Date.now(), timeZone: localTimeZone }
       for (const notify of listeners) notify()
     }, 60_000)
   }
@@ -25,7 +38,22 @@ function subscribe(listener: () => void) {
   }
 }
 
-/** One shared clock refreshes relative labels. SSR uses an absolute UTC label until hydration. */
+/** Supply the same serialized request time on the server and during hydration. */
+export function DateTimeProvider({
+  initialNow,
+  children,
+}: {
+  readonly initialNow: number
+  readonly children: ReactNode
+}) {
+  const initial = useMemo(
+    () => ({ now: initialNow, timeZone: "UTC" }),
+    [initialNow]
+  )
+  return <InitialClock value={initial}>{children}</InitialClock>
+}
+
+/** One shared browser clock refreshes relative labels; hydration starts from the request snapshot. */
 export function DateTime({
   value,
   kind,
@@ -39,17 +67,15 @@ export function DateTime({
     readonly value: string | number | Date | null | undefined
     readonly fallback?: string | undefined
   }) {
-  const current = useSyncExternalStore(subscribe, snapshot, serverSnapshot)
+  const initial = useContext(InitialClock)
+  const serverSnapshot = useCallback(() => initial, [initial])
+  const clock = useSyncExternalStore(subscribe, snapshot, serverSnapshot)
   const display = formatDateTime(value, {
     kind,
     format,
     locale,
-    timeZone:
-      timeZone ??
-      (current === undefined
-        ? "UTC"
-        : new Intl.DateTimeFormat().resolvedOptions().timeZone),
-    now: current,
+    timeZone: timeZone ?? clock?.timeZone ?? "UTC",
+    now: clock?.now,
   })
   if (display === undefined) return <span {...props}>{fallback}</span>
   return (
