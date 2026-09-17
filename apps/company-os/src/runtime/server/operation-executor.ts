@@ -31,6 +31,7 @@ import type { OperationRequirements } from "#/runtime/server/module-server.ts"
 import { type OperationServices } from "#/runtime/server/operation-handlers.ts"
 import { runOperation } from "#/runtime/server/operation-mode.ts"
 import { assertRecordWritable } from "#/runtime/server/operation-policy.ts"
+import type { PageTokens } from "#/runtime/server/page-tokens.ts"
 import { createRecordBatchGet } from "#/runtime/server/record-batch.ts"
 import { createRecordSearch } from "#/runtime/server/record-search.ts"
 import { CommittedChanges } from "#/runtime/server/storage/committed-changes.ts"
@@ -47,6 +48,7 @@ type OperationModuleRequirements<C extends ReadonlyArray<Contribution>> =
   Exclude<OperationRequirements<C[number]["operations"]>, CurrentInvocation>
 
 type Foundation =
+  | PageTokens
   | Database
   | ModelContext
   | RecordStore

@@ -78,7 +78,7 @@ application.test(
         yield* client.jobPosting.get({ id: job.id }).pipe(Effect.flip)
       ).toMatchObject({ status: "PERMISSION_DENIED" })
       expect(
-        (yield* client.records.search({ query: "Retained" })).hits.some(
+        (yield* client.records.search({ query: "Retained" })).items.some(
           (hit) => hit.id === job.id
         )
       ).toBe(false)

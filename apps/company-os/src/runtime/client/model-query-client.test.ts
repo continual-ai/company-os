@@ -19,6 +19,10 @@ import {
   modelQuery,
   executeMutation,
 } from "#/runtime/client/model-query-client.ts"
+import type {
+  RecordSearchOutput,
+  SearchResult,
+} from "#/runtime/contract/record-search.ts"
 import type { ObjectRecord } from "#/runtime/model/definition/object.ts"
 import {
   RecordId,
@@ -35,6 +39,77 @@ import {
   type Person,
   type Account,
 } from "#/runtime/testing/fixture-model.ts"
+
+it("paginates search summaries with shared query options and invalidation", async () => {
+  expectTypeOf<RecordSearchOutput>().toEqualTypeOf<Page<SearchResult>>()
+  const calls: unknown[] = []
+  const queries = createModelQueries(
+    fixtureModel,
+    createEffectClient(fixtureModel, {
+      baseUrl: "https://company.test",
+      fetch: async (url, init) => {
+        const request = new Request(url, init)
+        expect(new URL(request.url).pathname).toBe("/api/v1/records:search")
+        const input: unknown = await request.json()
+        calls.push(input)
+        return Response.json({
+          items: [
+            {
+              id: calls.length === 1 ? "account_first" : "account_second",
+              objectType: "account",
+              title: "Search summary",
+              subtitle: null,
+              image: null,
+              status: null,
+              snippets: [{ field: "website", text: "Matching context" }],
+            },
+          ],
+          nextPageToken: calls.length === 1 ? "next" : null,
+          totalSize: 2,
+        })
+      },
+    })
+  )
+  const { queryClient: cache, dispose } = createModelDataClient()
+  try {
+    const input = { query: "context", objectTypes: ["account"], pageSize: 1 }
+    const options = queries.records.search.infiniteQueryOptions(input)
+    const result = await cache.fetchInfiniteQuery({ ...options, pages: 2 })
+    expectTypeOf(result).toEqualTypeOf<
+      InfiniteData<RecordSearchOutput, PageToken | undefined>
+    >()
+    expect(calls).toEqual([input, { ...input, pageToken: "next" }])
+    expect(
+      result.pages.flatMap((page) => page.items.map((hit) => hit.id))
+    ).toEqual(["account_first", "account_second"])
+    expect(result.pageParams).toEqual([undefined, "next"])
+    expect(
+      cache.getQueryData(queries.records.search.queryOptions(input).queryKey)
+    ).toBeUndefined()
+    expect(
+      cache.getQueryData(
+        queries.account.get.queryOptions({
+          id: RecordId("account")("account_first"),
+        }).queryKey
+      )
+    ).toBeUndefined()
+    await invalidateModelQueries(cache, ["account"])
+    expect(cache.getQueryState(options.queryKey)?.isInvalidated).toBe(true)
+  } finally {
+    dispose()
+  }
+})
+
+it("rejects incomplete ordinary record responses", async () => {
+  const client = createClient(fixtureModel, {
+    baseUrl: "https://company.test",
+    fetch: async () =>
+      Response.json({ id: "account_incomplete", objectType: "account" }),
+  })
+  await expect(
+    client.account.get({ id: RecordId("account")("account_incomplete") })
+  ).rejects.toBeDefined()
+})
 
 it("generates native pagination options for collections and relationships", async () => {
   const calls: Array<{ path: string; input: unknown }> = []

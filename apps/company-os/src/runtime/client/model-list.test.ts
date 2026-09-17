@@ -6,7 +6,10 @@ import {
   resetModelCache,
   invalidateModelQueries,
 } from "#/runtime/client/model-cache.ts"
-import { modelQuery, modelList } from "#/runtime/client/model-query-client.ts"
+import {
+  modelQuery,
+  modelPagedQuery,
+} from "#/runtime/client/model-query-client.ts"
 import { PageToken, type ListRequest } from "#/runtime/model/index.ts"
 
 it("reuses the loader, retains pages on failure, and rebuilds cursors on refresh", async () => {
@@ -28,7 +31,7 @@ it("reuses the loader, retains pages on failure, and rebuilds cursors on refresh
           items.at(-1) === rows.at(-1) ? null : PageToken(String(items.at(-1))),
       }
     })
-  const query = modelList(list).infiniteQueryOptions({ pageSize: 2 })
+  const query = modelPagedQuery(list).infiniteQueryOptions({ pageSize: 2 })
   try {
     await cache.ensureInfiniteQueryData(query)
     const observer = new InfiniteQueryObserver(cache, query)
@@ -68,7 +71,7 @@ const fixedList = (request: ListRequest) =>
 
 it("invalidates loaded pages without reconstructing their contents and drops pages on permission reset", async () => {
   const { queryClient: cache, dispose } = createModelDataClient()
-  const query = modelList(fixedList).infiniteQueryOptions({})
+  const query = modelPagedQuery(fixedList).infiniteQueryOptions({})
   try {
     await cache.fetchInfiniteQuery({ ...query, pages: 2 })
     await invalidateModelQueries(cache, ["company"])

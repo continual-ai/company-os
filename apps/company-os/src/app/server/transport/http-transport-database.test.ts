@@ -447,6 +447,19 @@ describe("application HTTP server", () => {
         })
 
         const created = yield* model.account.create({ name: "Northstar" })
+        expect(yield* model.account.get({ id: created.id })).toEqual(created)
+        expect(yield* callMcp("account.get", { id: created.id })).toMatchObject(
+          {
+            structuredContent: created,
+          }
+        )
+        expect((yield* model.account.list()).items).toEqual([created])
+        expect(
+          (yield* model.account.batchGet({ ids: [created.id] })).items
+        ).toEqual([created])
+        expect(
+          (yield* model.records.batchGet({ ids: [created.id] })).items
+        ).toEqual([created])
         expect(
           logs.filter((log) => log.annotations.operation === "account.create")
         ).toMatchObject([
@@ -576,10 +589,10 @@ describe("application HTTP server", () => {
           objectTypes: ["account"],
         })
 
-        expect(search.hits).toMatchObject([
+        expect(search.items).toMatchObject([
           { id: created.id, objectType: "account", title: "Northstar" },
         ])
-        expect(search.hasMore).toBe(false)
+        expect(search.nextPageToken).toBeNull()
         const note = yield* model.note.create({
           content: "Introductory call",
           links: { subjects: [created.id] },

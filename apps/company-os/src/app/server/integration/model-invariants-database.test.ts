@@ -60,13 +60,13 @@ application.test(
         (yield* client.records.search({
           query: "Renamed",
           objectTypes: ["affiliation"],
-        })).hits
+        })).items
       ).toMatchObject([{ id: affiliation.id, title: renamed }])
       expect(
         (yield* client.records.search({
           query: "Northstar",
           objectTypes: ["affiliation"],
-        })).hits
+        })).items
       ).toEqual([])
       const campaign = yield* client.campaign.create({ name: "Roundtable" })
       const member = yield* client.campaignMember.create({

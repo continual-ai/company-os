@@ -4,7 +4,7 @@ import { modelData } from "#/runtime/client/model-cache.ts"
 import {
   executeMutation,
   modelQuery,
-  modelList,
+  modelPagedQuery,
   type ModelQueryOptions,
 } from "#/runtime/client/model-query-client.ts"
 import {
@@ -80,7 +80,7 @@ export interface DynamicObjectClient {
     input: Readonly<Record<string, ClientValue | undefined>>
   ) => Promise<ClientRecord>
   readonly get: (input: DynamicRecordInput) => ModelQueryOptions<ClientRecord>
-  readonly list: ReturnType<typeof modelList<ClientRecord>>
+  readonly list: ReturnType<typeof modelPagedQuery<Page<ClientRecord>>>
   readonly update?: (
     input: Readonly<Record<string, ClientValue | undefined>> & {
       readonly etag?: string
@@ -92,7 +92,11 @@ export interface DynamicObjectClient {
 export interface DynamicLinkClient {
   readonly link?: (input: DynamicLinkMutationInput) => Promise<void>
   readonly list: ReturnType<
-    typeof modelList<ClientRecord & ObjectRef, unknown, DynamicLinkListInput>
+    typeof modelPagedQuery<
+      Page<ClientRecord & ObjectRef>,
+      unknown,
+      DynamicLinkListInput
+    >
   >
   readonly unlink?: (input: DynamicLinkMutationInput) => Promise<void>
 }
@@ -163,7 +167,7 @@ export function clientFor(
   const batchGet = operation(group, "batchGet")
   return {
     get: (input) => queryMethod(get({ expand: true, ...input })),
-    list: modelList((input: ListRequest) =>
+    list: modelPagedQuery((input: ListRequest) =>
       queryMethod<Page<ClientRecord>>(list(input))
     ),
     batchGet: (input) => queryMethod(batchGet(input)),
@@ -232,7 +236,7 @@ export function linkClientFor(
       })
     }
     return {
-      list: modelList(({ id }: DynamicLinkListInput) => {
+      list: modelPagedQuery(({ id }: DynamicLinkListInput) => {
         const query = queryMethod<{ item: (ClientRecord & ObjectRef) | null }>(
           operation(group, "get")({ id })
         )
@@ -265,7 +269,7 @@ export function linkClientFor(
     }
   }
   return {
-    list: modelList((input: DynamicLinkListInput) =>
+    list: modelPagedQuery((input: DynamicLinkListInput) =>
       queryMethod<Page<ClientRecord & ObjectRef>>(
         operation(group, "list")(input)
       )

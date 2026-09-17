@@ -9,7 +9,7 @@ import {
 } from "@company/ui/command"
 import { useKeyboardShortcuts } from "@company/ui/keyboard-shortcuts"
 import { SidebarMenuButton } from "@company/ui/sidebar"
-import { useQuery } from "@tanstack/react-query"
+import { useInfiniteQuery } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
 import { CodeIcon, HomeIcon, PlusIcon, SearchIcon } from "lucide-react"
 import {
@@ -29,7 +29,7 @@ import {
   workspaceSections,
 } from "#/app/customization/workspace.ts"
 import { RecentRecords } from "#/app/ui/application/recent-records-group.tsx"
-import type { RecordSummary } from "#/runtime/contract/record-search.ts"
+import type { SearchResult } from "#/runtime/contract/record-search.ts"
 import { useModelNavigation } from "#/runtime/ui/model/module-navigation.tsx"
 import { useObjectCreate } from "#/runtime/ui/model/object-create-context.ts"
 import { ObjectRecordIdentity } from "#/runtime/ui/model/object-record-identity.tsx"
@@ -60,7 +60,7 @@ const utilityCommands = [
   { label: "Developer Center", to: "/developer", icon: CodeIcon },
 ]
 
-function SearchRecordIdentity({ hit }: { readonly hit: RecordSummary }) {
+function SearchRecordIdentity({ hit }: { readonly hit: SearchResult }) {
   const object = presentation.model.objects[hit.objectType]!
   const record: ObjectTableRecord = {
     id: hit.id,
@@ -93,12 +93,15 @@ function PaletteContent({ close }: { readonly close: () => void }) {
     const timer = setTimeout(() => setQuery(trimmed), 150)
     return () => clearTimeout(timer)
   }, [trimmed])
-  const result = useQuery({
-    ...client.records.search.queryOptions({ query }),
+  const result = useInfiniteQuery({
+    ...client.records.search.infiniteQueryOptions({ query }),
     enabled: query.length > 0,
   })
   const current = query === trimmed
-  const hits = current && trimmed.length > 0 ? (result.data?.hits ?? []) : []
+  const hits =
+    current && trimmed.length > 0
+      ? (result.data?.pages.flatMap((page) => page.items) ?? [])
+      : []
   const searching = trimmed.length > 0 && (!current || result.isFetching)
   const failed = current && query.length > 0 && result.isError
   const matches = (text: string) =>
@@ -161,6 +164,11 @@ function PaletteContent({ close }: { readonly close: () => void }) {
               >
                 <div className="min-w-0 flex-1">
                   <SearchRecordIdentity hit={hit} />
+                  {hit.snippets[0] && (
+                    <p className="line-clamp-2 pl-6.5 text-xs text-muted-foreground">
+                      {hit.snippets[0].text}
+                    </p>
+                  )}
                   {hit.subtitle && (
                     <p className="truncate pl-6.5 text-xs text-muted-foreground">
                       {hit.subtitle}
@@ -199,10 +207,16 @@ function PaletteContent({ close }: { readonly close: () => void }) {
             No results. Try another name or keyword.
           </output>
         )}
-        {current && result.data?.hasMore && (
-          <p className="px-3 py-2 text-xs text-muted-foreground">
-            More records match. Keep typing to narrow your search.
-          </p>
+        {current && result.hasNextPage && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="m-2"
+            disabled={result.isFetchingNextPage}
+            onClick={() => void result.fetchNextPage()}
+          >
+            {result.isFetchingNextPage ? "Loading…" : "Load more results"}
+          </Button>
         )}
         {tools.length > 0 && (
           <CommandGroup heading="Tools">

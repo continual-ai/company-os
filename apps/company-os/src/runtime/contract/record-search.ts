@@ -1,5 +1,9 @@
 import { Schema } from "effect"
 
+import {
+  paginationInputFields,
+  pageSchema,
+} from "#/runtime/contract/pagination.ts"
 import { toEffectSchema } from "#/runtime/contract/schema.ts"
 import { schema, type ModelCatalog } from "#/runtime/model/index.ts"
 
@@ -15,28 +19,23 @@ export function createRecordSearchContract(Model: ModelCatalog) {
         Schema.Literals(searchableObjects.map((object) => object.id))
       ).check(Schema.isMaxLength(50))
     ),
-    limit: Schema.optionalKey(
-      Schema.Number.check(
-        Schema.isInt(),
-        Schema.isBetween({ minimum: 1, maximum: 50 })
-      )
-    ),
+    ...paginationInputFields,
   })
 
   /** A display projection, never a partial canonical record to merge into the record cache. */
-  const recordSummary = Schema.Struct({
+  const searchResult = Schema.Struct({
     id: Schema.String,
     objectType: Schema.Literals(searchableObjects.map((object) => object.id)),
     title: Schema.String,
     subtitle: Schema.NullOr(Schema.String),
     image: toEffectSchema(schema.image({ nullable: true })),
     status: Schema.NullOr(Schema.String),
-  })
+    snippets: Schema.Array(
+      Schema.Struct({ field: Schema.String, text: Schema.String })
+    ).check(Schema.isMaxLength(3)),
+  }).annotate({ identifier: "SearchResult" })
 
-  const recordSearchResult = Schema.Struct({
-    hits: Schema.Array(recordSummary),
-    hasMore: Schema.Boolean,
-  })
+  const recordSearchResult = pageSchema(searchResult)
 
   return {
     searchableObjects,
@@ -48,7 +47,7 @@ export function createRecordSearchContract(Model: ModelCatalog) {
 type RecordSearchContract = ReturnType<typeof createRecordSearchContract>
 export type RecordSearchInput = RecordSearchContract["input"]["Type"]
 /** A display projection, never a partial canonical record to merge into the record cache. */
-export type RecordSummary =
-  RecordSearchContract["result"]["Type"]["hits"][number]
+export type SearchResult =
+  RecordSearchContract["result"]["Type"]["items"][number]
 
 export type RecordSearchOutput = RecordSearchContract["result"]["Type"]

@@ -4,6 +4,10 @@ import {
   expansionInputSchema,
   expandableRecordSchema,
 } from "#/runtime/contract/expansion.ts"
+import {
+  paginationInputFields,
+  pageSchema,
+} from "#/runtime/contract/pagination.ts"
 import { validateQuery } from "#/runtime/contract/query-validation.ts"
 import {
   toEffectRecordIdentifierSchema,
@@ -17,12 +21,9 @@ import {
 } from "#/runtime/model/definition/model.ts"
 import type { ObjectType } from "#/runtime/model/definition/object.ts"
 import {
-  DEFAULT_PAGE_SIZE,
   filterOperators,
   MAX_BATCH_GET_SIZE,
-  MAX_PAGE_SIZE,
   nullPlacements,
-  PageToken,
   sortDirections,
 } from "#/runtime/model/definition/request.ts"
 import type { AnySchema } from "#/runtime/model/definition/schema.ts"
@@ -34,26 +35,6 @@ function pascalCase(value: string): string {
     )
     .replace(/[^a-zA-Z0-9]/g, "")
 }
-
-const pageTokenSchema = Schema.String.pipe(
-  Schema.fromBrand("PageToken", PageToken)
-)
-const pageTotalSizeSchema = Schema.Number.check(
-  Schema.isInt(),
-  Schema.isGreaterThanOrEqualTo(0)
-).annotate({
-  description:
-    "Exact number of matching items visible to the caller before pagination.",
-  identifier: "PageTotalSize",
-})
-const pageSizeSchema = Schema.Number.check(
-  Schema.isInt(),
-  Schema.isGreaterThanOrEqualTo(0)
-).annotate({
-  default: DEFAULT_PAGE_SIZE,
-  description: `Maximum number of records to return. Zero uses the default of ${DEFAULT_PAGE_SIZE}; values above ${MAX_PAGE_SIZE} are capped.`,
-  identifier: "PageSize",
-})
 
 export function objectGetInputSchema(object: ObjectType, model: ModelCatalog) {
   return Schema.Struct({
@@ -142,8 +123,7 @@ export function objectListInputSchema(
   return Schema.Struct({
     expand: Schema.optionalKey(expansionInputSchema(model, object)),
     filter: Schema.optionalKey(filter),
-    pageSize: Schema.optionalKey(pageSizeSchema),
-    pageToken: Schema.optionalKey(pageTokenSchema),
+    ...paginationInputFields,
     sort: Schema.optionalKey(
       Schema.Array(
         Schema.Struct({
@@ -207,13 +187,9 @@ export function objectPageOutputSchema(
   object: ObjectType,
   model: ModelCatalog
 ) {
-  return Schema.Struct({
-    items: Schema.Array(expandableRecordSchema(object, model)),
-    nextPageToken: Schema.NullOr(pageTokenSchema).annotate({
-      identifier: "PageContinuation",
-    }),
-    totalSize: pageTotalSizeSchema,
-  }).annotate({ identifier: `${pascalCase(object.id)}Page` })
+  return pageSchema(expandableRecordSchema(object, model)).annotate({
+    identifier: `${pascalCase(object.id)}Page`,
+  })
 }
 
 /** Relationship pages contain discriminated, complete target records. */
@@ -225,9 +201,5 @@ export function linkPageOutputSchema(
     modelTypeAccepts(model, object.id, traversal.target.from.typeId)
   )
   const records = targets.map((object) => expandableRecordSchema(object, model))
-  return Schema.Struct({
-    items: Schema.Array(Schema.Union(records)),
-    nextPageToken: Schema.NullOr(pageTokenSchema),
-    totalSize: pageTotalSizeSchema,
-  })
+  return pageSchema(Schema.Union(records))
 }

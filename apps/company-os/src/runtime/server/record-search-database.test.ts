@@ -39,15 +39,20 @@ fixture.test(
         accountName: "Quasar laboratories connection",
       })
       const found = yield* searchRecords({ query: "quas" })
-      expect(found.hits.map((hit) => hit.id)).toEqual(
+      expect(found.items.map((hit) => hit.id)).toEqual(
         expect.arrayContaining([account.id, person.id, prospect.id])
       )
-      expect(found.hits[0]?.id).toBe(account.id)
+      expect(found.items[0]?.id).toBe(account.id)
+      expect(found.totalSize).toBe(3)
       expect(
-        (yield* searchRecords({ query: "QUAS LAB" })).hits.map((hit) => hit.id)
+        (yield* searchRecords({ query: "quas", objectTypes: ["prospect"] }))
+          .totalSize
+      ).toBe(1)
+      expect(
+        (yield* searchRecords({ query: "QUAS LAB" })).items.map((hit) => hit.id)
       ).toEqual([account.id, prospect.id])
       expect(
-        (yield* searchRecords({ query: "ada@quasar.test" })).hits.map(
+        (yield* searchRecords({ query: "ada@quasar.test" })).items.map(
           (hit) => hit.id
         )
       ).toEqual([person.id])
@@ -55,16 +60,16 @@ fixture.test(
         (yield* searchRecords({
           query: "quas",
           objectTypes: ["prospect"],
-        })).hits.map((hit) => hit.id)
+        })).items.map((hit) => hit.id)
       ).toEqual([prospect.id])
-      expect((yield* searchRecords({ query: "quas", limit: 1 })).hasMore).toBe(
-        true
-      )
       expect(
-        (yield* searchRecords({ query: "quas", objectTypes: [] })).hits
+        (yield* searchRecords({ query: "quas", pageSize: 1 })).nextPageToken
+      ).not.toBeNull()
+      expect(
+        (yield* searchRecords({ query: "quas", objectTypes: [] })).items
       ).toEqual([])
       for (const query of ["", "  ", "' & | :* ()", "quasar nonexistentword"])
-        expect((yield* searchRecords({ query })).hits).toEqual([])
+        expect((yield* searchRecords({ query })).items).toEqual([])
 
       yield* database
         .transaction(() =>
@@ -85,10 +90,10 @@ fixture.test(
           })
         )
         .pipe(Effect.catch(() => Effect.void))
-      expect((yield* searchRecords({ query: "renamed" })).hits).toEqual([])
+      expect((yield* searchRecords({ query: "renamed" })).items).toEqual([])
       expect(
         (yield* searchRecords({ query: "quasar", objectTypes: ["account"] }))
-          .hits[0]?.id
+          .items[0]?.id
       ).toBe(account.id)
       yield* services.account.update({
         id: account.id,
@@ -96,17 +101,17 @@ fixture.test(
       })
       expect(
         (yield* searchRecords({ query: "quasar", objectTypes: ["account"] }))
-          .hits
+          .items
       ).toEqual([])
       yield* services.account.delete({ id: account.id })
-      expect((yield* searchRecords({ query: "renamed" })).hits).toEqual([])
+      expect((yield* searchRecords({ query: "renamed" })).items).toEqual([])
 
       yield* sql`delete
           from ${recordSearch}`
-      expect((yield* searchRecords({ query: "quas" })).hits).toEqual([])
+      expect((yield* searchRecords({ query: "quas" })).items).toEqual([])
       yield* ensureSearchIndex(database, yield* ModelContext, true)
       expect(
-        (yield* searchRecords({ query: "quas" })).hits.map((hit) => hit.id)
+        (yield* searchRecords({ query: "quas" })).items.map((hit) => hit.id)
       ).toEqual(expect.arrayContaining([person.id, prospect.id]))
       const plan = yield* database.transaction(() =>
         Effect.gen(function* () {

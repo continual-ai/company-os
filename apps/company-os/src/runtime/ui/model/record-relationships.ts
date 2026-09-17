@@ -1,5 +1,5 @@
-import { modelList } from "#/runtime/client/model-query-client.ts"
-import { modelObjectLinkTraversals } from "#/runtime/model/index.ts"
+import { modelPagedQuery } from "#/runtime/client/model-query-client.ts"
+import { modelObjectLinkTraversals, type Page } from "#/runtime/model/index.ts"
 import {
   clientFor,
   linkClientFor,
@@ -65,7 +65,7 @@ export function recordRelationships(
       featured: targets.some(
         (item) => runtime.ui[item.id]?.navigation?.hidden !== true
       ),
-      list: modelList<ClientRecord>((request) =>
+      list: modelPagedQuery<Page<ClientRecord>>((request) =>
         client.list.queryOptions({ ...request, id: record.id })
       ),
       creates: targets.flatMap((item) => {

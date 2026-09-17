@@ -79,7 +79,7 @@ fixture.test(
           expect(
             (yield* createRecordSearch(fixtureModel)({
               query: "Shared access",
-            })).hits.some(({ id }) => id === account.id)
+            })).items.some(({ id }) => id === account.id)
           ).toBe(true)
           expect(
             (yield* journal.list({ pageSize: 500 })).items.some(

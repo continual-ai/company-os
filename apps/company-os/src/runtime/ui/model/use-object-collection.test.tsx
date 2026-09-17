@@ -6,7 +6,10 @@ import {
 import { renderToStaticMarkup } from "react-dom/server"
 import { expect, it } from "vitest"
 
-import { modelQuery, modelList } from "#/runtime/client/model-query-client.ts"
+import {
+  modelQuery,
+  modelPagedQuery,
+} from "#/runtime/client/model-query-client.ts"
 import type { ListRequest, Page } from "#/runtime/model/index.ts"
 import { Account, fixtureModel } from "#/runtime/testing/fixture-model.ts"
 import { testPresentation } from "#/runtime/testing/presentation.ts"
@@ -16,7 +19,7 @@ import { preloadCollection } from "#/runtime/ui/model/object-routing.ts"
 import { ModelUiProvider } from "#/runtime/ui/model/runtime-context.tsx"
 import { useObjectCollection } from "#/runtime/ui/model/use-object-collection.ts"
 
-const list = modelList((request: ListRequest) =>
+const list = modelPagedQuery((request: ListRequest) =>
   modelQuery<Page<ClientRecord>>(["account"], "list", request, async () => ({
     items: [],
     totalSize: 2,

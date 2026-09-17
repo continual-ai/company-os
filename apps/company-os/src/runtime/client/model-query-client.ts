@@ -14,6 +14,7 @@ import {
   runClientEffect,
 } from "#/runtime/client/create-client.ts"
 import {
+  type ModelClientError,
   mapModelClient,
   type ModelClient,
   type CustomOperations,
@@ -26,6 +27,10 @@ import type {
   ReadProjection,
   PolymorphicReads,
 } from "#/runtime/client/read-types.ts"
+import type {
+  RecordSearchInput,
+  RecordSearchOutput,
+} from "#/runtime/contract/record-search.ts"
 import {
   modelObjects,
   modelTypeAccepts,
@@ -60,20 +65,24 @@ export function modelQuery<A, E = unknown>(
 export type ModelQueryOptions<A, E = unknown> = ReturnType<
   typeof modelQuery<A, E>
 >
-/** The cursor adapter lives on collection operations, alongside their ordinary query options. */
-export function modelList<A, E = unknown, Input extends object = ListRequest>(
+/** Lists and search share the standard Page contract and cursor handling. */
+export function modelPagedQuery<
+  A extends Page<unknown>,
+  E = unknown,
+  Input extends object = ListRequest,
+>(
   queryOptions: (
     input: Input
-  ) => Pick<ModelQueryOptions<Page<A>, E>, "queryKey" | "queryFn" | "meta">
+  ) => Pick<ModelQueryOptions<A, E>, "queryKey" | "queryFn" | "meta">
 ) {
   return {
     queryOptions,
     infiniteQueryOptions: (input: Input) => {
       const first = queryOptions(input)
       return infiniteQueryOptions<
-        Page<A>,
+        A,
         E,
-        InfiniteData<Page<A>, PageToken | undefined>,
+        InfiniteData<A, PageToken | undefined>,
         ReadonlyArray<unknown>,
         PageToken | undefined
       >({
@@ -92,7 +101,7 @@ export function modelList<A, E = unknown, Input extends object = ListRequest>(
 }
 
 export type ModelInfiniteQueryOptions<A, E = unknown> = ReturnType<
-  ReturnType<typeof modelList<A, E>>["infiniteQueryOptions"]
+  ReturnType<typeof modelPagedQuery<Page<A>, E>>["infiniteQueryOptions"]
 >
 
 type QueryMethod<T> = T extends (
@@ -140,7 +149,13 @@ export type ModelQueries<M extends ModelCatalog> = {
     : MutationMethod<ModelClient<M>[O["id"]]>
 } & {
   readonly records: PolymorphicReads<M, "query"> & {
-    readonly search: QueryMethod<EffectClient<M>["records"]["search"]>
+    readonly search: ReturnType<
+      typeof modelPagedQuery<
+        RecordSearchOutput,
+        ModelClientError,
+        RecordSearchInput
+      >
+    >
   }
 }
 
@@ -202,11 +217,14 @@ export function createModelQueries<M extends ModelCatalog>(
         custom
       )
     }
-    if (contract.object !== undefined && contract.id === "list") {
-      // SAFETY: these standard collection contracts decode a Page before returning from the transport.
-      return modelList(
+    if (
+      contract.builtin === "searchRecords" ||
+      (contract.object !== undefined && contract.id === "list")
+    ) {
+      // SAFETY: these standard read contracts decode a Page before the transport returns it.
+      return modelPagedQuery(
         // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-        queryOptions as (input: ListRequest) => ModelQueryOptions<Page<unknown>>
+        queryOptions as (input: object) => ModelQueryOptions<Page<unknown>>
       )
     }
     return { queryOptions }

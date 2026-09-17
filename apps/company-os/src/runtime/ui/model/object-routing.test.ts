@@ -42,6 +42,8 @@ describe("object routes", () => {
       "asset",
       "controller",
       "controllerInstance",
+      "connector",
+      "connection",
     ])
   })
 

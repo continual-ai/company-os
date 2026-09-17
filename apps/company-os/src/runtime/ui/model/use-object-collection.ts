@@ -2,11 +2,12 @@ import { hashKey, useInfiniteQuery } from "@tanstack/react-query"
 import { useMemo } from "react"
 
 import { isNewerOrEqualRecord } from "#/runtime/client/model-cache.ts"
-import type { modelList } from "#/runtime/client/model-query-client.ts"
+import type { modelPagedQuery } from "#/runtime/client/model-query-client.ts"
 import {
   isUnavailable,
   queryErrorMessage,
 } from "#/runtime/client/query-errors.ts"
+import type { Page } from "#/runtime/model/index.ts"
 import type { CollectionDateWindow } from "#/runtime/ui/model/collection-dates.ts"
 import type {
   ObjectCollectionFilter,
@@ -24,7 +25,9 @@ import { useObjectReferencePages } from "#/runtime/ui/model/object-references.ts
 import type { ObjectTableValue } from "#/runtime/ui/model/object-table/object-table-config.ts"
 import { useModelRuntime } from "#/runtime/ui/model/runtime-context.tsx"
 
-export type ObjectCollectionList = ReturnType<typeof modelList<ClientRecord>>
+export type ObjectCollectionList = ReturnType<
+  typeof modelPagedQuery<Page<ClientRecord>>
+>
 const noRecords: ReadonlyArray<ClientRecord> = []
 
 export function useObjectCollection(
