@@ -7,6 +7,7 @@ import { HttpTransport } from "#/app/server/transport/http-transport.ts"
 import { createEffectClient } from "#/runtime/client/create-client.ts"
 import { WebUrl } from "#/runtime/model/index.ts"
 import { linkPreview } from "#/runtime/model/record-links.ts"
+import { connectorAlias } from "#/runtime/platform/model/connector.ts"
 import { IdentityProvider } from "#/runtime/server/auth/identity-provider.ts"
 
 const application = testApplication({
@@ -96,8 +97,9 @@ application.test(
           opportunities: [opportunity.id],
         },
       })
-      const connection = yield* client.githubConnection.create({
-        accountLogin: "example",
+      const connection = yield* client.connection.create({
+        account: "example",
+        links: { connector: connectorAlias("github") },
       })
       const repository = yield* client.githubRepository.create({
         nodeId: "repo-1",

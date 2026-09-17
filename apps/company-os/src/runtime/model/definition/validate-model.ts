@@ -419,6 +419,13 @@ function assertOperationsResolvable({
     ...objects.map((o) => o.id),
     ...interfaces.map((i) => i.id),
   ])
+  const connectorIds = new Set<string>()
+  for (const module of modules)
+    for (const connector of module.connectors) {
+      if (connectorIds.has(connector.id))
+        throw new Error(`Duplicate connector '${connector.id}'.`)
+      connectorIds.add(connector.id)
+    }
   const controllerIds = new Set<string>()
   for (const module of modules)
     for (const controller of module.controllers) {

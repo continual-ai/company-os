@@ -1,4 +1,4 @@
-import { GitHubConnection } from "#/modules/engineering/model/github-connection.ts"
+import { GitHub } from "#/modules/engineering/model/github-connector.ts"
 import {
   GitHubIssue,
   GitHubIssueRepository,
@@ -13,6 +13,10 @@ import {
   GitHubRepositoryProjects,
   GitHubRepositoryMaintainer,
 } from "#/modules/engineering/model/github-repository.ts"
+import {
+  GitHubDiscovery,
+  GitHubRepositorySync,
+} from "#/modules/engineering/model/github-sync.ts"
 import { GitHubIssuePullRequests } from "#/modules/engineering/model/links/github-issue-pull-requests.ts"
 import {
   IssueGitHubIssues,
@@ -40,7 +44,9 @@ export const EngineeringModule = defineModule({
     IssueGitHubIssues,
     IssueGitHubPullRequests,
   ],
-  objects: [GitHubConnection, GitHubRepository, GitHubPullRequest, GitHubIssue],
+  objects: [GitHubRepository, GitHubPullRequest, GitHubIssue],
+  connectors: [GitHub],
+  controllers: [GitHubDiscovery, GitHubRepositorySync],
 })
 
-export { GitHubConnection, GitHubRepository, GitHubPullRequest, GitHubIssue }
+export { GitHubRepository, GitHubPullRequest, GitHubIssue }

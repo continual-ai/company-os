@@ -17,7 +17,7 @@ export const GitHubPullRequest = defineObject({
       minLength: 1,
       maxLength: 200,
     }),
-    body: schema.string({ label: "Body", nullable: true, maxLength: 100000 }),
+    body: schema.markdown({ label: "Body", nullable: true, maxLength: 100000 }),
     title: schema.string({ label: "Title", maxLength: 300, minLength: 1 }),
     number: schema.number({
       label: "Number",
@@ -37,8 +37,9 @@ export const GitHubPullRequest = defineObject({
     }),
     review: schema.select({
       label: "Review",
-      default: "pending",
+      default: "unknown",
       options: [
+        { value: "unknown", label: "Not fetched" },
         { value: "pending", label: "Pending" },
         { value: "changesRequested", label: "Changes requested" },
         { value: "approved", label: "Approved" },
@@ -46,8 +47,9 @@ export const GitHubPullRequest = defineObject({
     }),
     checks: schema.select({
       label: "Checks",
-      default: "pending",
+      default: "unknown",
       options: [
+        { value: "unknown", label: "Not fetched" },
         { value: "pending", label: "Pending" },
         { value: "passing", label: "Passing" },
         { value: "failing", label: "Failing" },
@@ -60,7 +62,7 @@ export const GitHubPullRequest = defineObject({
     }),
   },
   uniqueBy: { github: ["nodeId"], number: ["repository", "number"] },
-  search: { fields: ["title", "url", "headCommit"] },
+  search: { fields: ["title", "body", "url", "headCommit"] },
   display: { title: "title", icon: "gitPullRequest", status: "status" },
 })
 

@@ -2,7 +2,6 @@ import { Effect } from "effect"
 
 import { Model } from "#/app.model.ts"
 import { seedCrmDemo } from "#/modules/crm/seeds/index.ts"
-import { seedEngineeringDemo } from "#/modules/engineering/seeds/index.ts"
 import { seedMarketingDemo } from "#/modules/marketing/seeds/index.ts"
 import { Issue } from "#/modules/product/model/index.ts"
 import { seedProductDemo } from "#/modules/product/seeds/index.ts"
@@ -24,7 +23,6 @@ export const demoScenario = {
       contacts: crm.contacts.map(({ id }) => id),
     }
     const product = yield* seedProductDemo(customer)
-    yield* seedEngineeringDemo(product)
     const support = yield* seedServiceDemo(customer)
     yield* linkSeedRecords(
       Ticket,

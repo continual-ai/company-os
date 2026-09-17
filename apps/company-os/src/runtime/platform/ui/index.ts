@@ -14,6 +14,36 @@ export const PlatformUi = defineModuleUi(
   PlatformModule,
   {
     note: noteUi,
+    connector: {
+      collection: {
+        views: [
+          defineCollectionView("all", "All connectors", {
+            columns: [
+              "name",
+              "authentication",
+              "available",
+              "module",
+              "connections",
+            ],
+          }),
+        ],
+      },
+    },
+    connection: {
+      collection: {
+        views: [
+          defineCollectionView("all", "All connections", {
+            columns: [
+              "account",
+              "connector",
+              "status",
+              "lastError",
+              "discoveredAt",
+            ],
+          }),
+        ],
+      },
+    },
     controllerInstance: {
       record: {
         properties: [

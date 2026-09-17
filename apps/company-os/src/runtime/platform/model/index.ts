@@ -11,6 +11,14 @@ import {
 } from "#/runtime/assets/model/asset.ts"
 import { defineModule, defineModel } from "#/runtime/model/index.ts"
 import {
+  Connection,
+  ConnectionConnector,
+} from "#/runtime/platform/model/connection.ts"
+import {
+  Connector,
+  ConnectorModule,
+} from "#/runtime/platform/model/connector.ts"
+import {
   ControllerTarget,
   ControllerInstance,
   ControllerInstanceController,
@@ -52,11 +60,15 @@ export const PlatformModule = defineModule({
     ModuleSetting,
     Controller,
     ControllerInstance,
+    Connector,
+    Connection,
   ],
   description:
     "Core identities, files, shared notes, and application capabilities.",
   links: [
     ControllerModule,
+    ConnectorModule,
+    ConnectionConnector,
     NoteSubjects,
     ControllerInstanceController,
     ControllerInstanceRecord,
@@ -81,3 +93,5 @@ export const PlatformModel = defineModel({
   name: "Platform",
   modules: [PlatformModule],
 })
+
+export { Connection, Connector }

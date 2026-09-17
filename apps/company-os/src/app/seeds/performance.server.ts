@@ -4,7 +4,6 @@ import { Model } from "#/app.model.ts"
 import { seedDevelopmentTeam } from "#/app/seeds/team.server.ts"
 import { applicationOperations } from "#/app/server/application-services.ts"
 import { seedCrmPerformance } from "#/modules/crm/seeds/index.ts"
-import { seedEngineeringPerformance } from "#/modules/engineering/seeds/index.ts"
 import { seedHiringPerformance } from "#/modules/hiring/seeds/index.ts"
 import { seedMarketingPerformance } from "#/modules/marketing/seeds/index.ts"
 import { seedProductPerformance } from "#/modules/product/seeds/index.ts"
@@ -27,7 +26,6 @@ export function performanceScenario(size: number) {
       yield* seedSalesPerformance(crm)
       yield* seedHiringPerformance(size, owners)
       const product = yield* seedProductPerformance(crm)
-      yield* seedEngineeringPerformance(product)
       yield* seedMarketingPerformance(crm)
       const tickets = yield* seedServicePerformance(crm)
       const services = yield* applicationOperations

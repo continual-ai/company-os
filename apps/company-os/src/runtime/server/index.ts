@@ -14,3 +14,7 @@ export {
   operationsFor,
 } from "#/runtime/server/operation-executor.ts"
 export { Credentials, CredentialError } from "#/runtime/server/credentials.ts"
+export {
+  defineConnectorServer,
+  ConnectionError,
+} from "#/runtime/server/connector.ts"

@@ -1,7 +1,7 @@
-import { GitHubConnection } from "#/modules/engineering/model/github-connection.ts"
 import { Project } from "#/modules/product/model/project.ts"
 import { User } from "#/runtime/access/model/index.ts"
 import { defineLink, defineObject, schema } from "#/runtime/model/index.ts"
+import { Connection } from "#/runtime/platform/model/connection.ts"
 import { ControllerTarget } from "#/runtime/platform/model/controller-instance.ts"
 import { NoteSubject } from "#/runtime/platform/model/note-subject.ts"
 
@@ -14,6 +14,38 @@ export const GitHubRepository = defineObject({
     "A GitHub repository connected to internal projects and its imported issues and pull requests.",
   implements: [{ interface: ControllerTarget }, { interface: NoteSubject }],
   properties: {
+    syncError: schema.string({
+      label: "Sync error",
+      nullable: true,
+      outputOnly: true,
+    }),
+    syncPage: schema.number({
+      label: "Sync page",
+      integer: true,
+      minimum: 1,
+      nullable: true,
+      outputOnly: true,
+    }),
+    syncStartedAt: schema.timestamp({
+      label: "Import started",
+      nullable: true,
+      outputOnly: true,
+    }),
+    syncSinceAt: schema.timestamp({
+      label: "Import changes since",
+      nullable: true,
+      outputOnly: true,
+    }),
+    syncedAt: schema.timestamp({
+      label: "Last completed sync",
+      nullable: true,
+      outputOnly: true,
+    }),
+    fullSyncedAt: schema.timestamp({
+      label: "Last full sync",
+      nullable: true,
+      outputOnly: true,
+    }),
     nodeId: schema.string({
       label: "GitHub node ID",
       minLength: 1,
@@ -60,7 +92,7 @@ export const GitHubRepositoryConnection = defineLink({
     min: 1,
     max: 1,
   },
-  to: { object: GitHubConnection, key: "repositories", label: "Repositories" },
+  to: { object: Connection, key: "repositories", label: "Repositories" },
 })
 
 export const GitHubRepositoryProjects = defineLink({

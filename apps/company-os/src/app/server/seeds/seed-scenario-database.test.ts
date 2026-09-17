@@ -61,6 +61,10 @@ application.test(
       >`select ${projection(originalEventsFields)}
           from ${eventJournal}`
       const services = yield* applicationOperations
+      expect((yield* services.connection.list({})).totalSize).toBe(0)
+      expect((yield* services.githubRepository.list({})).totalSize).toBe(0)
+      expect((yield* services.githubIssue.list({})).totalSize).toBe(0)
+      expect((yield* services.githubPullRequest.list({})).totalSize).toBe(0)
       const record = (yield* services.account.list({
         filter: { field: "name", operator: "eq", value: "Northstar Robotics" },
       })).items[0]!
@@ -159,6 +163,10 @@ application.test("supports a paginated, repeatable performance dataset", () =>
       ))._tag
     ).toBe("Failure")
     const services = yield* applicationOperations
+    expect((yield* services.connection.list({})).totalSize).toBe(0)
+    expect((yield* services.githubRepository.list({})).totalSize).toBe(0)
+    expect((yield* services.githubIssue.list({})).totalSize).toBe(0)
+    expect((yield* services.githubPullRequest.list({})).totalSize).toBe(0)
     const first = yield* services.contact.list({ pageSize: 50 })
     expect(first.totalSize).toBe(60)
     expect(first.items).toHaveLength(50)
@@ -173,10 +181,10 @@ application.test("supports a paginated, repeatable performance dataset", () =>
     ).toBe(60)
     expect((yield* services.lead.list({})).totalSize).toBe(60)
     expect((yield* services.note.list({})).totalSize).toBe(120)
-    // Every shipped business object must have examples; this catches forgotten modules and new objects.
+    // Integration records come from real connections, never synthetic seed data.
     const sql = (yield* SqlDatabase).sql
     for (const module of Object.values(Model.modules)) {
-      if (module.id === "platform") continue
+      if (module.id === "platform" || module.id === "engineering") continue
       for (const object of module.objects) {
         const table = Storage.objects[object.id]
         const [row] = yield* sql<{

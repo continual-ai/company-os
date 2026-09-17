@@ -16,7 +16,7 @@ it("composes Notes with Engineering without installing Sales", () => {
       "note",
       "issue",
       "project",
-      "githubConnection",
+      "connection",
       "githubRepository",
       "githubIssue",
       "githubPullRequest",

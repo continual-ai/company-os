@@ -3,14 +3,16 @@ import { expect } from "vitest"
 
 import {
   EngineeringModule,
-  GitHubConnection,
   GitHubIssue,
   GitHubPullRequest,
   GitHubRepository,
 } from "#/modules/engineering/model/index.ts"
 import { Issue, ProductModule } from "#/modules/product/model/index.ts"
 import { defineModel, WebUrl } from "#/runtime/model/index.ts"
+import { Connection } from "#/runtime/platform/model/connection.ts"
+import { connectorAlias } from "#/runtime/platform/model/connector.ts"
 import { PlatformModule } from "#/runtime/platform/model/index.ts"
+import { seedModuleSettings } from "#/runtime/platform/server/seed.ts"
 import { Database } from "#/runtime/server/index.ts"
 import { testFoundation } from "#/runtime/testing/foundation.ts"
 
@@ -32,10 +34,12 @@ fixture.test(
   "keeps GitHub issues distinct from product planning and expands their links",
   () =>
     Effect.gen(function* () {
+      yield* seedModuleSettings()
       const records = yield* Database
-      const connection = yield* records
-        .repository(GitHubConnection)
-        .create({ accountLogin: "example" })
+      const connection = yield* records.repository(Connection).create({
+        account: "example",
+        links: { connector: connectorAlias("github") },
+      })
       const repository = yield* records.repository(GitHubRepository).create({
         ...repositoryInput,
         links: { connection: connection.id },
@@ -64,7 +68,7 @@ fixture.test(
       })
       expect(
         (yield* records
-          .repository(GitHubConnection)
+          .repository(Connection)
           .get({ id: connection.id, expand: true })).links.repositories
       ).toMatchObject({ items: [{ id: repository.id }], totalSize: 1 })
       const expanded = yield* records
@@ -103,15 +107,19 @@ fixture.test(
   "enforces stable GitHub identities and repository-local issue and PR numbers",
   () =>
     Effect.gen(function* () {
+      yield* seedModuleSettings()
       const records = yield* Database
-      const connections = records.repository(GitHubConnection)
+      const connections = records.repository(Connection)
       const connection = yield* connections.create({
-        accountLogin: "example",
-        installationId: "123",
+        account: "example",
+        links: { connector: connectorAlias("github") },
       })
       expect(
         yield* connections
-          .create({ accountLogin: "renamed", installationId: "123" })
+          .create({
+            account: "example",
+            links: { connector: connectorAlias("github") },
+          })
           .pipe(Effect.flip)
       ).toMatchObject({ _tag: "ObjectUniqueConflict" })
       const repos = records.repository(GitHubRepository)
@@ -186,6 +194,7 @@ fixture.test(
   "requires a connection for repositories and a repository for imported issues and PRs",
   () =>
     Effect.gen(function* () {
+      yield* seedModuleSettings()
       const records = yield* Database
       expect(
         yield* records

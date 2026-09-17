@@ -19,7 +19,7 @@ export const GitHubIssue = defineObject({
     }),
     number: schema.number({ label: "Number", integer: true, minimum: 1 }),
     title: schema.string({ label: "Title", minLength: 1, maxLength: 300 }),
-    body: schema.string({ label: "Body", nullable: true, maxLength: 100000 }),
+    body: schema.markdown({ label: "Body", nullable: true, maxLength: 100000 }),
     url: schema.url({ label: "URL" }),
     state: schema.select({
       label: "State",

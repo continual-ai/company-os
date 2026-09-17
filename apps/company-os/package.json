@@ -39,6 +39,8 @@
     "@effect/platform-node": "catalog:",
     "@effect/sql-pg": "catalog:",
     "@modelcontextprotocol/server": "catalog:",
+    "@octokit/plugin-throttling": "^11.0.5",
+    "@octokit/rest": "^22.0.1",
     "@openai/codex-sdk": "catalog:",
     "@tanstack/react-form": "catalog:",
     "@tanstack/react-query": "5.102.8",

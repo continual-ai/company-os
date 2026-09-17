@@ -33,6 +33,8 @@ create table "objects" (
     'moduleSetting',
     'controller',
     'controllerInstance',
+    'connector',
+    'connection',
     'account',
     'contact',
     'activity',
@@ -46,7 +48,6 @@ create table "objects" (
     'outreach',
     'project',
     'issue',
-    'githubConnection',
     'githubRepository',
     'githubPullRequest',
     'githubIssue',
@@ -227,6 +228,45 @@ create table "controller_instances" (
   "last_error" text,
   "agent_session_id" text,
   "agent_session_url" text,
+  primary key ("id"),
+  foreign key ("id") references "objects" ("id") on delete cascade
+);
+
+-- Connector (connector)
+-- A code-defined integration available to configured connections.
+create table "connectors" (
+  "id" text not null,
+  -- Relationship reference; requiredness is checked at transaction commit.
+  "module_id" text,
+  "definition_id" text not null,
+  "name" text not null,
+  "description" text not null,
+  "authentication" text not null,
+  "available" boolean not null,
+  primary key ("id"),
+  foreign key ("id") references "objects" ("id") on delete cascade
+);
+
+create unique index "connectors_definition_unique" on "connectors" ("definition_id");
+
+-- Connection (connection)
+-- Select a connector and enter the organization or username and access token.
+-- Sync starts automatically and imports only data owned by that account and
+-- accessible to the token.
+create table "connections" (
+  "id" text not null,
+  -- Relationship reference; requiredness is checked at transaction commit.
+  "connector_id" text,
+  -- Enter the account's username or organization slug, not a display name or
+  -- URL.
+  "account" text not null,
+  -- The token must have read access to the data you want to sync. Stored
+  -- securely; never returned in record reads.
+  "token" jsonb,
+  "status" text,
+  "last_error" text,
+  "discovery_cursor" text,
+  "discovered_at" timestamp with time zone,
   primary key ("id"),
   foreign key ("id") references "objects" ("id") on delete cascade
 );
@@ -489,19 +529,6 @@ create table "issues" (
 -- Domain objects: Engineering
 -- ===========================================================================
 
--- GitHub connection (githubConnection)
--- A GitHub account selected for synchronization, with an optional GitHub App
--- installation.
-create table "github_connections" (
-  "id" text not null,
-  "account_login" text not null,
-  "installation_id" text,
-  primary key ("id"),
-  foreign key ("id") references "objects" ("id") on delete cascade
-);
-
-create unique index "github_connections_installation_unique" on "github_connections" ("installation_id");
-
 -- GitHub repository (githubRepository)
 -- A GitHub repository connected to internal projects and its imported issues
 -- and pull requests.
@@ -511,6 +538,12 @@ create table "github_repositories" (
   "connection_id" text,
   -- Relationship reference; requiredness is checked at transaction commit.
   "maintainer_id" text,
+  "sync_error" text,
+  "sync_page" integer,
+  "sync_started_at" timestamp with time zone,
+  "sync_since_at" timestamp with time zone,
+  "synced_at" timestamp with time zone,
+  "full_synced_at" timestamp with time zone,
   "node_id" text not null,
   "full_name" text not null,
   "url" text not null,
@@ -536,8 +569,8 @@ create table "github_pull_requests" (
   "number" integer not null,
   "url" text not null,
   "status" text not null default 'draft',
-  "review" text not null default 'pending',
-  "checks" text not null default 'pending',
+  "review" text not null default 'unknown',
+  "checks" text not null default 'unknown',
   "head_commit" text,
   primary key ("id"),
   foreign key ("id") references "objects" ("id") on delete cascade
@@ -669,6 +702,14 @@ create table "replies" (
 create view "link_controller_module" as select "id" as forward_id, "module_id" as reverse_id from "controllers" where "module_id" is not null;
 
 create index "controller_module_target_idx" on "controllers" ("module_id");
+
+create view "link_connector_module" as select "id" as forward_id, "module_id" as reverse_id from "connectors" where "module_id" is not null;
+
+create index "connector_module_target_idx" on "connectors" ("module_id");
+
+create view "link_connection_connector" as select "id" as forward_id, "connector_id" as reverse_id from "connections" where "connector_id" is not null;
+
+create index "connection_connector_target_idx" on "connections" ("connector_id");
 
 -- Note subjects (noteSubjects)
 create table "link_note_subjects" (
@@ -1019,6 +1060,102 @@ begin
 end $$;
 
 create constraint trigger "require_controller_module_forward" after insert on "controllers" deferrable initially deferred for each row execute function "require_controller_module_forward"();
+
+create function "check_connector_module"(source_id text, side text) returns void language plpgsql as $$
+declare n bigint;
+begin
+  if side = 'forward' and exists (select 1 from "connectors" where id = source_id) then
+    select count(*) into n from "link_connector_module" where "forward_id" = source_id;
+    if n < 1 or false then
+      raise exception 'Link % traversal % requires %..% targets; found %', 'connectorModule', 'module', 1, '1', n
+        using errcode = '23514', constraint = 'connectorModule.module.bounds';
+    end if;
+  end if;
+end $$;
+
+create function "validate_connector_module"() returns trigger language plpgsql as $$
+begin
+  if TG_OP <> 'INSERT' then
+    perform "check_connector_module"(OLD.id, 'forward');
+  end if;
+  if TG_OP <> 'DELETE' then
+    perform "check_connector_module"(NEW.id, 'forward');
+  end if;
+  return null;
+end $$;
+
+create constraint trigger "validate_connector_module" after insert or delete on "connectors" deferrable initially deferred for each row execute function "validate_connector_module"();
+
+create constraint trigger "validate_connector_module_update" after update on "connectors" deferrable initially deferred for each row when (OLD."module_id" is distinct from NEW."module_id") execute function "validate_connector_module"();
+
+create function "lock_connector_module"() returns trigger language plpgsql as $$
+    declare ids text[] := array[]::text[];
+    begin
+      if TG_OP <> 'INSERT' then ids := ids || array[OLD.id]; end if;
+      if TG_OP <> 'DELETE' then ids := ids || array[NEW.id]; end if;
+      perform id from objects where id = any(ids) order by id for update;
+      if TG_OP = 'DELETE' then return OLD; else return NEW; end if;
+    end $$;
+
+create trigger "lock_connector_module" before insert or delete on "connectors" for each row execute function "lock_connector_module"();
+
+create trigger "lock_connector_module_update" before update on "connectors" for each row when (OLD."module_id" is distinct from NEW."module_id") execute function "lock_connector_module"();
+
+create function "require_connector_module_forward"() returns trigger language plpgsql as $$
+begin
+  perform "check_connector_module"(NEW.id, 'forward');
+  return null;
+end $$;
+
+create constraint trigger "require_connector_module_forward" after insert on "connectors" deferrable initially deferred for each row execute function "require_connector_module_forward"();
+
+create function "check_connection_connector"(source_id text, side text) returns void language plpgsql as $$
+declare n bigint;
+begin
+  if side = 'forward' and exists (select 1 from "connections" where id = source_id) then
+    select count(*) into n from "link_connection_connector" where "forward_id" = source_id;
+    if n < 1 or false then
+      raise exception 'Link % traversal % requires %..% targets; found %', 'connectionConnector', 'connector', 1, '1', n
+        using errcode = '23514', constraint = 'connectionConnector.connector.bounds';
+    end if;
+  end if;
+end $$;
+
+create function "validate_connection_connector"() returns trigger language plpgsql as $$
+begin
+  if TG_OP <> 'INSERT' then
+    perform "check_connection_connector"(OLD.id, 'forward');
+  end if;
+  if TG_OP <> 'DELETE' then
+    perform "check_connection_connector"(NEW.id, 'forward');
+  end if;
+  return null;
+end $$;
+
+create constraint trigger "validate_connection_connector" after insert or delete on "connections" deferrable initially deferred for each row execute function "validate_connection_connector"();
+
+create constraint trigger "validate_connection_connector_update" after update on "connections" deferrable initially deferred for each row when (OLD."connector_id" is distinct from NEW."connector_id") execute function "validate_connection_connector"();
+
+create function "lock_connection_connector"() returns trigger language plpgsql as $$
+    declare ids text[] := array[]::text[];
+    begin
+      if TG_OP <> 'INSERT' then ids := ids || array[OLD.id]; end if;
+      if TG_OP <> 'DELETE' then ids := ids || array[NEW.id]; end if;
+      perform id from objects where id = any(ids) order by id for update;
+      if TG_OP = 'DELETE' then return OLD; else return NEW; end if;
+    end $$;
+
+create trigger "lock_connection_connector" before insert or delete on "connections" for each row execute function "lock_connection_connector"();
+
+create trigger "lock_connection_connector_update" before update on "connections" for each row when (OLD."connector_id" is distinct from NEW."connector_id") execute function "lock_connection_connector"();
+
+create function "require_connection_connector_forward"() returns trigger language plpgsql as $$
+begin
+  perform "check_connection_connector"(NEW.id, 'forward');
+  return null;
+end $$;
+
+create constraint trigger "require_connection_connector_forward" after insert on "connections" deferrable initially deferred for each row execute function "require_connection_connector_forward"();
 
 create function "check_controller_instance_controller"(source_id text, side text) returns void language plpgsql as $$
 declare n bigint;
@@ -1742,6 +1879,8 @@ create constraint trigger "require_reply_ticket_forward" after insert on "replie
 
 alter table "controller_instances" add constraint "controller_instances_target_unique" unique ("controller_id", "record_id") deferrable initially deferred;
 
+alter table "connections" add constraint "connections_account_unique" unique ("connector_id", "account") deferrable initially deferred;
+
 alter table "campaign_members" add constraint "campaign_members_membership_unique" unique ("campaign_id", "contact_id") deferrable initially deferred;
 
 alter table "github_pull_requests" add constraint "github_pull_requests_number_unique" unique ("repository_id", "number") deferrable initially deferred;
@@ -1766,6 +1905,10 @@ alter table "objects"
   on delete restrict deferrable initially deferred;
 
 alter table "controllers" add constraint "controller_module_target_fk" foreign key ("module_id") references "module_settings" (id) on delete set null deferrable initially deferred;
+
+alter table "connectors" add constraint "connector_module_target_fk" foreign key ("module_id") references "module_settings" (id) on delete set null deferrable initially deferred;
+
+alter table "connections" add constraint "connection_connector_target_fk" foreign key ("connector_id") references "connectors" (id) on delete set null deferrable initially deferred;
 
 alter table "controller_instances" add constraint "controller_instance_controller_target_fk" foreign key ("controller_id") references "controllers" (id) on delete set null deferrable initially deferred;
 
@@ -1815,7 +1958,7 @@ alter table "issues" add constraint "issue_project_target_fk" foreign key ("proj
 
 alter table "issues" add constraint "issue_assignee_target_fk" foreign key ("assignee_id") references "users" (id) on delete set null deferrable initially deferred;
 
-alter table "github_repositories" add constraint "github_repository_connection_target_fk" foreign key ("connection_id") references "github_connections" (id) on delete set null deferrable initially deferred;
+alter table "github_repositories" add constraint "github_repository_connection_target_fk" foreign key ("connection_id") references "connections" (id) on delete set null deferrable initially deferred;
 
 alter table "github_repositories" add constraint "github_repository_maintainer_target_fk" foreign key ("maintainer_id") references "users" (id) on delete set null deferrable initially deferred;
 

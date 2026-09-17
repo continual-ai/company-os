@@ -225,7 +225,12 @@ application.test(
         (yield* client.controller.list({})).items
           .map((controller) => controller.definitionId)
           .sort()
-      ).toEqual(["contact-summary", "issue-greeting"])
+      ).toEqual([
+        "contact-summary",
+        "github-discovery",
+        "github-repository-sync",
+        "issue-greeting",
+      ])
       expect(
         yield* client.controller.reconcile({ id }).pipe(Effect.flip)
       ).toMatchObject({ status: "FAILED_PRECONDITION" })

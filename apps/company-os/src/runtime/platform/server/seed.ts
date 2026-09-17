@@ -5,6 +5,7 @@ import {
   requiredModuleIds,
 } from "#/runtime/platform/model/index.ts"
 import { moduleAlias } from "#/runtime/platform/model/module-setting.ts"
+import { syncConnectors } from "#/runtime/platform/server/sync-connectors.ts"
 import { syncControllers } from "#/runtime/platform/server/sync-controllers.ts"
 import { Database } from "#/runtime/server/database.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
@@ -36,5 +37,6 @@ export const seedModuleSettings = Effect.fn("platform.seedModuleSettings")(
       })
     )
     yield* syncControllers()
+    yield* syncConnectors()
   }
 )

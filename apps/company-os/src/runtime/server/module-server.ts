@@ -1,6 +1,9 @@
 import { type Effect, Layer } from "effect"
 
-import type { ModuleDefinition } from "#/runtime/model/index.ts"
+import type {
+  ConnectorDefinition,
+  ModuleDefinition,
+} from "#/runtime/model/index.ts"
 import type { Agent, AgentSession } from "#/runtime/server/agent.ts"
 import type { ControllerServer } from "#/runtime/server/controllers/definition.ts"
 import type { CurrentInvocation } from "#/runtime/server/invocation.ts"
@@ -43,6 +46,9 @@ export type OperationRequirements<A> = A extends unknown
 export interface ModuleServer {
   readonly module: ModuleDefinition
   readonly operations: object
+  readonly connectors: ReadonlyArray<{
+    readonly definition: ConnectorDefinition
+  }>
   readonly controllers: ReadonlyArray<ControllerServer<unknown>>
   readonly layer: Layer.Layer<never, unknown, unknown>
 }
@@ -69,6 +75,9 @@ export function defineModuleServer<
 >(
   module: M,
   implementation: {
+    readonly connectors?: ReadonlyArray<{
+      readonly definition: ConnectorDefinition
+    }>
     readonly controllers?: C
     readonly layer?: Layer.Layer<LR, LE, LI>
   } & ([Operations<M>] extends [never]
@@ -77,6 +86,9 @@ export function defineModuleServer<
 ): {
   readonly module: M
   readonly operations: A
+  readonly connectors: ReadonlyArray<{
+    readonly definition: ConnectorDefinition
+  }>
   readonly controllers: C
   readonly layer: Layer.Layer<LR, LE, LI>
 }
@@ -84,10 +96,24 @@ export function defineModuleServer(
   module: ModuleDefinition,
   implementation: {
     readonly operations?: object
+    readonly connectors?: ReadonlyArray<{
+      readonly definition: ConnectorDefinition
+    }>
     readonly controllers?: ReadonlyArray<ControllerServer<unknown>>
     readonly layer?: Layer.Layer<never, unknown, unknown>
   }
 ) {
+  const connectors = implementation.connectors ?? []
+  const connectorDefinitions = new Set(module.connectors)
+  for (const connector of connectors)
+    if (!connectorDefinitions.delete(connector.definition))
+      throw new Error(
+        `Connector '${connector.definition.id}' is duplicated or not declared by module '${module.id}'.`
+      )
+  for (const definition of connectorDefinitions)
+    throw new Error(
+      `Connector '${definition.id}' has no server binding in module '${module.id}'.`
+    )
   const controllers = implementation.controllers ?? []
   const declared = new Set(module.controllers)
   for (const server of controllers) {
@@ -108,6 +134,7 @@ export function defineModuleServer(
   return {
     module,
     operations: implementation.operations ?? {},
+    connectors,
     controllers,
     layer: implementation.layer ?? Layer.empty,
   }

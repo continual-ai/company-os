@@ -202,3 +202,5 @@ export type {
   Expansion,
   ModelExpansion,
 } from "#/runtime/model/definition/model-record.ts"
+export { defineConnector } from "#/runtime/model/definition/connector.ts"
+export type { ConnectorDefinition } from "#/runtime/model/definition/connector.ts"

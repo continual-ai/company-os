@@ -8,6 +8,8 @@ export const githubRepositoryUi = {
         columns: [
           "fullName",
           "connection",
+          "syncedAt",
+          "syncError",
           "visibility",
           "projects",
           "defaultBranch",

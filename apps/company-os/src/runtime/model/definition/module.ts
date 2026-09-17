@@ -1,4 +1,5 @@
 import type { Action } from "#/runtime/model/definition/action.ts"
+import type { ConnectorDefinition } from "#/runtime/model/definition/connector.ts"
 import type { Controller } from "#/runtime/model/definition/controller.ts"
 import type { EventType } from "#/runtime/model/definition/event.ts"
 import type {
@@ -32,6 +33,7 @@ export interface ModuleMetadata {
 
 /** What `defineModule` accepts. */
 export interface ModuleDefinitionInput extends ModuleMetadata {
+  readonly connectors?: ReadonlyArray<ConnectorDefinition>
   readonly controllers?: ReadonlyArray<Controller>
   readonly actions?: ReadonlyArray<Action>
   readonly queries?: ReadonlyArray<Query>
@@ -63,6 +65,7 @@ type ModuleLinks<D extends ModuleDefinitionInput> = D extends {
 export interface ModuleDefinition<
   D extends ModuleDefinitionInput = ModuleDefinitionInput,
 > extends ModuleMetadata {
+  readonly connectors: ReadonlyArray<ConnectorDefinition>
   readonly controllers: OpenOr<
     D,
     ReadonlyArray<Controller>,
@@ -116,6 +119,7 @@ export function defineModule<const D extends ModuleDefinitionInput>(
 ): ModuleDefinition<D> {
   const input: ModuleDefinitionInput = definition
   const module: ModuleDefinition = {
+    connectors: input.connectors ?? [],
     controllers: input.controllers ?? [],
     actions: input.actions ?? [],
     queries: input.queries ?? [],

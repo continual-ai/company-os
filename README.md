@@ -77,6 +77,27 @@ tickets and opportunities**. Record creation and relationship changes commit tog
 Company OS provides the data and operations; your chosen agent runtime handles reasoning,
 scheduling, and execution.
 
+## Sync GitHub work
+
+In **Platform → Connectors**, GitHub appears in the code-defined connector catalog. In
+**Platform → Connections**, select GitHub, enter the **Organization or username** (for example,
+`continual-ai` or `tristanz`), and provide a fine-grained **Personal access token**. Grant the token
+access to the repositories you want and read access to **Metadata**, **Issues**, and **Pull requests**.
+Only repositories owned by that organization or user and accessible to the token are discovered.
+Secrets are encrypted and ordinary record reads show only whether a token is present.
+
+Sync starts automatically when you save the token. Repository discovery repeats every 15 minutes.
+All discovered repositories appear in **Engineering → GitHub repositories** and automatically import
+issues and pull requests, including closed and merged work, then check for changes every five minutes.
+Imports resume page by page; a daily full scan repairs missed changes. GitHub fields are refreshed
+without replacing internal project and product-issue links. Review and check results show
+**Not fetched** until a future integration imports that evidence.
+
+Each connection and repository exposes its controller activity, including **Run now** for a manual
+run. Connection status identifies discovery failures; each repository shows its own sync errors. Replace the token through the same
+connection form. Clearing the token stops authenticated requests; imported records remain.
+This first integration uses token authentication and polling, with no writes back to GitHub.
+
 ## The Company Model
 
 The Company Model describes **what your business works with, how it connects, and what can

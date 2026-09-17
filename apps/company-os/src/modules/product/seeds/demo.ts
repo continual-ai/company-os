@@ -44,4 +44,3 @@ export const seedProductDemo = Effect.fn("@company/seedProductDemo")(
     return { project, issues, owner }
   }
 )
-export type ProductDemoData = Effect.Success<ReturnType<typeof seedProductDemo>>

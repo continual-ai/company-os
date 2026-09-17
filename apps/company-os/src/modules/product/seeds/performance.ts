@@ -92,6 +92,3 @@ export const seedProductPerformance = Effect.fn(
   }
   return { projects, issues, owners }
 })
-export type ProductSeedData = Effect.Success<
-  ReturnType<typeof seedProductPerformance>
->
