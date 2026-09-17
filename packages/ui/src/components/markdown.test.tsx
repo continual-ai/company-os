@@ -47,3 +47,22 @@ it("flattens headings, lists, tables, and links into a noninteractive text previ
   expect(html).toContain("Ana")
   expect(html).not.toMatch(/<(h1|p|ul|li|table|a|input|strong)\b/)
 })
+
+it("uses shared code blocks for fences, preserving source and escaping HTML during SSR", () => {
+  const source = 'const html = "<script>alert(1)</script>"\n  next()'
+  const html = renderToStaticMarkup(
+    <Markdown>
+      {"Inline `value`\n\n```ts\n" +
+        source +
+        "\n```\n\n```unknown-language\nplain code\n```"}
+    </Markdown>
+  )
+  expect(html).toContain('data-slot="code-block"')
+  expect(html).toContain('aria-label="Copy ts"')
+  expect(html).toContain('aria-label="Copy unknown-language"')
+  expect(html).toContain("<code>value</code>")
+  expect(html).toContain("&lt;script&gt;alert(1)&lt;/script&gt;")
+  expect(html).toContain("\n  next()")
+  expect(html).not.toContain("<script>")
+  expect(html).not.toMatch(/<pre[^>]*>\s*<div/)
+})

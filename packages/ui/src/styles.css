@@ -28,18 +28,23 @@ html:has(
 
 @custom-variant dark (&:is(.dark *));
 
-[data-slot="code-block"] code span {
-  color: var(--shiki-light);
-  font-style: var(--shiki-light-font-style, normal);
-  font-weight: var(--shiki-light-font-weight, normal);
-  text-decoration: var(--shiki-light-text-decoration, none);
+[data-slot="code-block"],
+[data-slot="code-diff"] {
+  --code-color-scheme: light;
 }
-
-.dark [data-slot="code-block"] code span {
-  color: var(--shiki-dark);
-  font-style: var(--shiki-dark-font-style, normal);
-  font-weight: var(--shiki-dark-font-weight, normal);
-  text-decoration: var(--shiki-dark-text-decoration, none);
+.dark [data-slot="code-block"],
+.dark [data-slot="code-diff"] {
+  --code-color-scheme: dark;
+}
+.code-fallback {
+  margin: 0;
+  overflow-x: auto;
+  padding: 1rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  line-height: 1.25rem;
+  white-space: pre;
+  overflow-wrap: normal;
 }
 @source "./components/**/*.tsx";
 
@@ -314,7 +319,7 @@ html:has(
       background: var(--muted);
       padding: 0.125rem 0.25rem;
     }
-    & pre {
+    & pre:not(.code-fallback) {
       max-width: 100%;
       overflow-x: auto;
       border: 1px solid var(--border);

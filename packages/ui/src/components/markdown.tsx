@@ -2,9 +2,32 @@ import type { ReactNode } from "react"
 import ReactMarkdown, { type Components } from "react-markdown"
 import remarkGfm from "remark-gfm"
 
+import { CodeBlock } from "#/components/code-block.tsx"
 import { cn } from "#/lib/utils.ts"
 
 const components: Components = {
+  pre: ({ node, children }) => {
+    const code = node?.children[0]
+    if (code?.type !== "element" || code.tagName !== "code")
+      return <pre>{children}</pre>
+    const source = code.children
+      .map((child) => (child.type === "text" ? child.value : ""))
+      .join("")
+    const languageClass = Array.isArray(code.properties.className)
+      ? code.properties.className.find(
+          (name) => typeof name === "string" && name.startsWith("language-")
+        )
+      : undefined
+    const language =
+      typeof languageClass === "string" ? languageClass.slice(9) : "text"
+    return (
+      <CodeBlock
+        code={source.replace(/\n$/, "")}
+        language={language}
+        label={language === "text" ? "Code" : language}
+      />
+    )
+  },
   a: ({ href, children: label }) => (
     <a href={href} target="_blank" rel="noopener noreferrer">
       {label}

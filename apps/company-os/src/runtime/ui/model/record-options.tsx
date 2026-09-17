@@ -18,16 +18,18 @@ import {
 } from "@company/ui/dropdown-menu"
 import { toast } from "@company/ui/toast"
 import { useMutation } from "@tanstack/react-query"
-import { CopyIcon, EllipsisIcon, Trash2Icon } from "lucide-react"
+import { BracesIcon, CopyIcon, EllipsisIcon, Trash2Icon } from "lucide-react"
 import { useState } from "react"
 
+import type { ClientRecord } from "#/runtime/ui/model/object-client.ts"
+
 export function RecordOptions({
-  value,
+  record,
   label,
   objectName,
   onDelete,
 }: {
-  readonly value: string
+  readonly record: ClientRecord
   readonly label: string
   readonly objectName: string
   readonly onDelete?: (() => Promise<void>) | undefined
@@ -57,7 +59,7 @@ export function RecordOptions({
         <DropdownMenuContent align="end">
           <DropdownMenuItem
             onClick={() => {
-              void navigator.clipboard.writeText(value).then(
+              void navigator.clipboard.writeText(record.id).then(
                 () => toast.success("Record ID copied"),
                 () => toast.error("Could not copy record ID")
               )
@@ -65,6 +67,19 @@ export function RecordOptions({
           >
             <CopyIcon />
             Copy record ID
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => {
+              void navigator.clipboard
+                .writeText(JSON.stringify(record, null, 2))
+                .then(
+                  () => toast.success("Record JSON copied"),
+                  () => toast.error("Could not copy record JSON")
+                )
+            }}
+          >
+            <BracesIcon />
+            Copy as JSON
           </DropdownMenuItem>
           {onDelete && (
             <>

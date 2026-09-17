@@ -12,6 +12,7 @@ const sandboxPreviewHosts = [
 
 export default defineConfig({
   vite: {
+    resolve: { alias: { "shiki/wasm": "shiki/dist/wasm.mjs" } },
     server: {
       strictPort: true,
       allowedHosts: sandboxPreviewHosts,

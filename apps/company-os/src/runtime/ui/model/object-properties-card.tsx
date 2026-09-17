@@ -51,6 +51,12 @@ export function ObjectPropertiesCard({
       <dl className="-mx-2">
         {properties.map(([propertyId, property]) => {
           const schema = objectTablePropertySchema(property)
+          const grouped =
+            schema.kind === "struct" ||
+            (schema.kind === "union" &&
+              schema.members.some(
+                (member) => objectTablePropertySchema(member).kind === "struct"
+              ))
           const directEdit =
             onEdit &&
             editable.has(propertyId) &&
@@ -67,12 +73,28 @@ export function ObjectPropertiesCard({
             <div
               key={propertyId}
               data-record-field={propertyId}
-              className="group relative grid min-h-8 grid-cols-[7.5rem_minmax(0,1fr)] items-center gap-x-2 rounded-md px-2 py-1.5 hover:bg-muted/40"
+              className={
+                grouped
+                  ? "group relative space-y-2 px-2 py-3"
+                  : "group relative grid min-h-8 grid-cols-[7.5rem_minmax(0,1fr)] items-center gap-x-2 rounded-md px-2 py-1.5 hover:bg-muted/40"
+              }
             >
-              <dt className="text-xs text-muted-foreground">
+              <dt
+                className={
+                  grouped
+                    ? "pr-6 text-sm font-medium"
+                    : "text-xs text-muted-foreground"
+                }
+              >
                 {property.label ?? propertyId}
               </dt>
-              <dd className="min-w-0 pr-3 text-xs wrap-break-word whitespace-pre-wrap [&_a]:max-w-full [&_a]:truncate">
+              <dd
+                className={
+                  grouped
+                    ? "min-w-0"
+                    : "min-w-0 pr-3 text-xs wrap-break-word whitespace-pre-wrap [&_a]:max-w-full [&_a]:truncate"
+                }
+              >
                 {directEdit ? (
                   <button
                     type="button"

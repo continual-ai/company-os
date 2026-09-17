@@ -486,7 +486,7 @@ export function ObjectRecordPage({
               )}
               <RecordOptions
                 key={record.id}
-                value={record.id}
+                record={record}
                 label={recordLabel(object, record)}
                 objectName={object.name}
                 onDelete={

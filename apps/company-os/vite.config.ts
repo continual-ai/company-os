@@ -27,6 +27,8 @@ export default defineConfig({
           loadEnvFile(new URL(file, import.meta.url))
 
     return {
+      // Use Shiki's portable WASM entry; Nitro's unwasm condition selects a raw file.
+      resolve: { alias: { "shiki/wasm": "shiki/dist/wasm.mjs" } },
       server: {
         // A moved port breaks VITE_APP_URL, MCP origin checks, and muscle memory; fail instead.
         strictPort: true,

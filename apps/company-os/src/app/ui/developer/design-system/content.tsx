@@ -8,6 +8,7 @@ import {
   CardTitle,
 } from "@company/ui/card"
 import { CodeBlock } from "@company/ui/code-block"
+import { CodeDiff } from "@company/ui/code-diff"
 import {
   Empty,
   EmptyContent,
@@ -98,6 +99,15 @@ export const contentSections: ReadonlyArray<ComponentSection> = [
     component: MarkdownEditorExamples,
     usage:
       'import { useState } from "react"\nimport { MarkdownEditor } from "@company/ui/markdown-editor"\n\nfunction NotesDraft() {\n  const [value, setValue] = useState("")\n  return <MarkdownEditor aria-label="Notes" value={value} onValueChange={setValue} />\n}',
+  },
+  {
+    id: "code-diff",
+    title: "Code diff",
+    description:
+      "Review changes with unified or split syntax-highlighted diffs.",
+    component: CodeDiffExamples,
+    usage:
+      'import { CodeDiff } from "@company/ui/code-diff"\n\n<CodeDiff oldFile={{ name: "value.ts", contents: "const value = 1" }} newFile={{ name: "value.ts", contents: "const value = 2" }} />',
   },
   {
     id: "code-block",
@@ -292,6 +302,44 @@ function CodeExamples() {
       </Example>
       <Example title="Plain text" source="@company/ui/code-block">
         <CodeBlock label="Install a primitive" code="pnpm ui:add accordion" />
+      </Example>
+      <Example title="Dark theme" source="@company/ui/code-block">
+        <div className="dark rounded-lg bg-background p-4 text-foreground">
+          <CodeBlock
+            language="python"
+            label="sync.py"
+            code={'def sync():\n    return {"status": "complete"}'}
+          />
+        </div>
+      </Example>
+      <Example title="Unsupported language" source="@company/ui/code-block">
+        <CodeBlock
+          language="custom-dsl"
+          label="Plain-text fallback"
+          code="sync repository every 5 minutes"
+        />
+      </Example>
+    </>
+  )
+}
+
+const oldCodeFile = {
+  name: "sync.ts",
+  contents: "export const pageSize = 25\nexport const retryDelay = 5000\n",
+}
+const newCodeFile = {
+  name: "sync.ts",
+  contents: "export const pageSize = 100\nexport const retryDelay = 10000\n",
+}
+
+function CodeDiffExamples() {
+  return (
+    <>
+      <Example title="Unified" source="@company/ui/code-diff">
+        <CodeDiff oldFile={oldCodeFile} newFile={newCodeFile} />
+      </Example>
+      <Example title="Split" source="@company/ui/code-diff">
+        <CodeDiff oldFile={oldCodeFile} newFile={newCodeFile} layout="split" />
       </Example>
     </>
   )

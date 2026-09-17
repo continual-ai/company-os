@@ -4,7 +4,7 @@ import { Score } from "@company/ui/score"
 import type { ReactNode } from "react"
 
 import { AssetPreviews } from "#/runtime/assets/ui/asset-preview.tsx"
-import type { AnySchema, PropertyDefinition } from "#/runtime/model/index.ts"
+import type { AnySchema } from "#/runtime/model/index.ts"
 import { unionMember } from "#/runtime/ui/forms/schema-form-values.ts"
 import { ObjectChoiceBadge } from "#/runtime/ui/model/object-choice-badge.tsx"
 import type { ObjectRecordPresentation } from "#/runtime/ui/model/object-client.ts"
@@ -19,7 +19,7 @@ import { type ModelUiRuntime } from "#/runtime/ui/model/runtime-context.tsx"
 
 export function objectPropertyValue(
   runtime: ModelUiRuntime,
-  property: PropertyDefinition | undefined,
+  property: AnySchema | undefined,
   value: ObjectTableValue | undefined,
   references: ReadonlyMap<string, ObjectRecordPresentation>
 ): ReactNode {
@@ -46,12 +46,47 @@ export function objectPropertyValue(
     )
   }
   if (schema === undefined) return objectTableValueText(value)
+  if (schema.kind === "string" && schema.secret)
+    return typeof value === "object" &&
+      "hint" in value &&
+      typeof value.hint === "string"
+      ? value.hint
+      : "Set"
+  if (schema.kind === "union") {
+    const member = unionMember(schema, value)
+    return member ? (
+      objectPropertyValue(runtime, member, value, references)
+    ) : (
+      <span className="text-muted-foreground">Unavailable</span>
+    )
+  }
   if (
-    schema.kind === "struct" ||
-    schema.kind === "union" ||
-    (schema.kind === "string" && schema.secret)
+    schema.kind === "struct" &&
+    typeof value === "object" &&
+    !Array.isArray(value)
   )
-    return <StructuredValue schema={schema} value={value} />
+    return (
+      <dl className="@container min-w-0 divide-y rounded-lg border bg-background text-sm whitespace-normal">
+        {Object.entries(schema.properties).map(([key, field]) => (
+          <div
+            key={key}
+            className="grid min-w-0 gap-1 px-3 py-2.5 @sm:grid-cols-[minmax(8rem,1fr)_minmax(0,2fr)] @sm:gap-4"
+          >
+            <dt className="text-xs leading-5 text-muted-foreground">
+              {field.label ?? key}
+            </dt>
+            <dd className="min-w-0 text-sm leading-5 wrap-anywhere">
+              {objectPropertyValue(
+                runtime,
+                field,
+                Reflect.get(value, key),
+                references
+              )}
+            </dd>
+          </div>
+        ))}
+      </dl>
+    )
   if (
     schema.kind === "string" &&
     schema.format === "markdown" &&
@@ -164,61 +199,16 @@ export function objectPropertyValue(
       </a>
     )
   }
-  return objectTableValueText(value)
-}
-
-function StructuredValue({
-  schema,
-  value,
-}: {
-  readonly schema: AnySchema
-  readonly value: unknown
-}): ReactNode {
-  if (value === null || value === undefined)
-    return <span className="text-muted-foreground">Empty</span>
-  if (schema.kind === "string" && schema.secret)
-    return typeof value === "object" &&
-      "hint" in value &&
-      typeof value.hint === "string"
-      ? value.hint
-      : "Set"
-  if (schema.kind === "optional")
-    return <StructuredValue schema={schema.value} value={value} />
-  if (schema.kind === "union") {
-    const member = unionMember(schema, value)
-    if (member) return <StructuredValue schema={member} value={value} />
-  }
-  if (
-    schema.kind === "struct" &&
-    typeof value === "object" &&
-    !Array.isArray(value)
-  ) {
+  if (schema.kind === "array" && Array.isArray(value))
     return (
-      <dl className="space-y-2 text-sm">
-        {Object.entries(schema.properties).map(([key, field]) => (
-          <div key={key}>
-            <dt className="text-muted-foreground">{field.label ?? key}</dt>
-            <dd className="break-words">
-              <StructuredValue schema={field} value={Reflect.get(value, key)} />
-            </dd>
-          </div>
-        ))}
-      </dl>
-    )
-  }
-  if (schema.kind === "array" && Array.isArray(value)) {
-    return (
-      <ul className="list-inside list-disc">
+      <ul className="space-y-2">
         {value.map((item, index) => (
-          <li key={index}>
-            <StructuredValue schema={schema.items} value={item} />
+          <li key={index} className="min-w-0">
+            {objectPropertyValue(runtime, schema.items, item, references)}
           </li>
         ))}
       </ul>
     )
-  }
   if (typeof value === "boolean") return value ? "Yes" : "No"
-  if (typeof value === "string" || typeof value === "number")
-    return String(value)
-  return JSON.stringify(value)
+  return objectTableValueText(value)
 }
