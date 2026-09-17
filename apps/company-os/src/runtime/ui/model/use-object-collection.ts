@@ -57,7 +57,7 @@ export function useObjectCollection(
   const requestKey = hashKey(query.queryKey)
   const page = useInfiniteQuery(query)
   const data = isUnavailable(page.error) ? undefined : page.data
-  const records = useMemo(() => {
+  const recordsById = useMemo(() => {
     const unique = new Map<string, ClientRecord>()
     for (const result of data?.pages ?? [])
       for (const record of result.items ?? noRecords) {
@@ -65,8 +65,9 @@ export function useObjectCollection(
         if (previous === undefined || isNewerOrEqualRecord(record, previous))
           unique.set(record.id, record)
       }
-    return [...unique.values()]
+    return unique
   }, [data])
+  const records = useMemo(() => [...recordsById.values()], [recordsById])
   const recordPages = useMemo(
     () => data?.pages.map((batch) => batch.items) ?? [],
     [data]
@@ -89,7 +90,7 @@ export function useObjectCollection(
     propertyId: string,
     value: ObjectTableValue
   ) => {
-    const record = records.find((candidate) => candidate.id === recordId)
+    const record = recordsById.get(recordId)
     if (record === undefined) throw new Error("The record is no longer loaded.")
     await update(record, { [propertyId]: value })
   }
@@ -108,7 +109,7 @@ export function useObjectCollection(
       runtime.model,
       object,
       actionId,
-      records.find((record) => record.id === target)
+      target === undefined ? undefined : recordsById.get(target)
     )
 
   return {

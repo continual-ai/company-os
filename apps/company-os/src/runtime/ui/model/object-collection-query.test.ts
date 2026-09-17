@@ -42,7 +42,7 @@ describe("object collection queries", () => {
           },
         ],
       },
-      pageSize: 50,
+      pageSize: 100,
       pageToken: "account_cursor",
       sort: [{ direction: "asc", field: "name", nulls: "last" }],
     })
@@ -74,7 +74,7 @@ describe("object collection queries", () => {
         fixtureModel
       )
     ).toEqual({
-      pageSize: 50,
+      pageSize: 100,
       filter: {
         and: [
           {
@@ -103,7 +103,7 @@ describe("object collection queries", () => {
         fixtureModel
       )
     ).toEqual({
-      pageSize: 50,
+      pageSize: 100,
       filter: {
         and: [
           { not: { or: [{ link: "accounts", contains: "account_a" }] } },
@@ -140,7 +140,7 @@ it("uses quantified related filters and exact count sorts in table requests", ()
       fixtureModel
     )
   ).toEqual({
-    pageSize: 50,
+    pageSize: 100,
     filter: {
       link: "accounts",
       some: { field: "name", operator: "contains", value: "Acme" },

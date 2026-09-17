@@ -27,10 +27,7 @@ export function ObjectTableLinkCell({
   readonly resolveRecord: ObjectTableRecordResolver | undefined
   readonly editable: boolean
 }) {
-  const runtime = useModelRuntime()
-  const client = clientFor(runtime, object)
   const [open, setOpen] = useState(false)
-  const current = useQuery({ ...client.get({ id: record.id }), enabled: open })
   const { ids, totalSize } = linkPreview(record.links?.[link.traversal.key])
   return (
     <div className="group/link relative flex h-8 min-w-0 items-center px-2 pr-7 text-xs">
@@ -50,21 +47,49 @@ export function ObjectTableLinkCell({
           <PencilIcon />
         </Button>
       )}
-      {open && current.data && (
+      {open && (
+        <ObjectTableLinkEditor
+          object={object}
+          recordId={record.id}
+          relationship={link.traversal.key}
+          onOpenChange={setOpen}
+        />
+      )}
+    </div>
+  )
+}
+
+function ObjectTableLinkEditor({
+  object,
+  recordId,
+  relationship,
+  onOpenChange,
+}: {
+  object: ObjectType
+  recordId: string
+  relationship: string
+  onOpenChange: (open: boolean) => void
+}) {
+  const runtime = useModelRuntime()
+  const client = clientFor(runtime, object)
+  const current = useQuery(client.get({ id: recordId }))
+  return (
+    <>
+      {current.data && (
         <ObjectRecordDialog
           mode="edit"
           object={object}
           record={current.data}
-          fields={[link.traversal.key]}
+          fields={[relationship]}
           referenceLabels={new Map()}
           open
-          onOpenChange={setOpen}
+          onOpenChange={onOpenChange}
           onSave={async (input) => {
-            await client.update?.({ ...input, id: record.id })
+            await client.update?.({ ...input, id: recordId })
           }}
         />
       )}
-      {open && current.isError && (
+      {current.isError && (
         <button
           type="button"
           className="text-destructive"
@@ -73,6 +98,6 @@ export function ObjectTableLinkCell({
           Retry loading
         </button>
       )}
-    </div>
+    </>
   )
 }

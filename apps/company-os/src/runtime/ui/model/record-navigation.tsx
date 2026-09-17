@@ -4,6 +4,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useEffectEvent,
   useMemo,
   useState,
   type ReactNode,
@@ -70,9 +71,14 @@ export function CollectionNavigationProvider({
 export function useRememberCollection(source: CollectionSource | undefined) {
   const context = useContext(CollectionNavigationContext)
   const remember = context?.remember
-  useEffect(() => {
+  // Requests are rebuilt during render; publishing them must not trigger another render loop.
+  const sourceKey = hashKey([source])
+  const rememberSource = useEffectEvent(() => {
     if (source) remember?.(source)
-  }, [source, remember])
+  })
+  useEffect(() => {
+    rememberSource()
+  }, [sourceKey, remember])
 }
 
 export function useRecordNavigation(

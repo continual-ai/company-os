@@ -45,7 +45,7 @@ application.test(
         view.state.sorting
       )
       const request = {
-        pageSize: 50,
+        pageSize: 100,
         filter: {
           and: [
             { field: "marketingStatus", operator: "eq", value: "marketing" },

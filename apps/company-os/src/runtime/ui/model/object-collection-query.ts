@@ -247,7 +247,7 @@ export function objectListRequest(
 
   const request: CollectionListRequest & {
     expand?: Readonly<Record<string, true>>
-  } = { pageSize: 50 }
+  } = { pageSize: 100 }
   if (model && visibility !== undefined) {
     const configured = Object.keys(visibility).length > 0
     request.expand = Object.fromEntries(
