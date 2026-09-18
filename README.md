@@ -204,11 +204,13 @@ The shell, navigation, and branding are editable source too.
 ## Run locally
 
 For local development, clone the repo. No Continual account required. You need **Node.js
-24.14+ (or 25.4+), pnpm 11, and PostgreSQL 18+**, with a local role that can create databases.
+24.14+ (or 25.4+), pnpm 11, and Docker** (Engine or Desktop). Compose runs PostgreSQL 18 + pgvector
+on host port **5433**; the Node app stays on the host with `pnpm`.
 
 ```sh
 git clone https://github.com/continual-ai/company-os.git
 cd company-os
+docker compose up -d
 pnpm install --frozen-lockfile
 pnpm dev
 ```
@@ -216,9 +218,9 @@ pnpm dev
 Open **[localhost:3002](http://localhost:3002)** and try **Service → Tickets**.
 Dev prepares the local database, loads demo records once, and signs you in automatically.
 Subsequent starts preserve your edits. Run `pnpm reset` to rebuild disposable local storage and
-restore the demo, including after storage model changes. PostgreSQL must already be running.
+restore the demo, including after storage model changes.
 
-The default database is `postgresql://localhost:5432/company_os`. Configure overrides in
+The default database is `postgresql://localhost:5433/company_os`. Configure overrides in
 `.env.local` using [`.env.example`](apps/company-os/.env.example). See the
 [development guide](docs/development.md) for making changes and the
 [deployment guide](docs/deployment.md) for database initialization, retained data, and production setup.

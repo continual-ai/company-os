@@ -7,6 +7,7 @@ and their callers together; backward compatibility is not a pre-release requirem
 
 | Command                      | Purpose                                                                         |
 | ---------------------------- | ------------------------------------------------------------------------------- |
+| `docker compose up -d`       | Start local PostgreSQL 18 + pgvector on host port 5433                          |
 | `pnpm dev`                   | Generate the schema, prepare the database, seed the demo once, and run the apps |
 | `pnpm reset`                 | Rebuild disposable local storage and restore the demo                           |
 | `pnpm db:generate`           | Refresh `schema.sql` from the model without accessing a database                |
@@ -19,9 +20,10 @@ and their callers together; backward compatibility is not a pre-release requirem
 | `pnpm ui:add <component>`    | Add a shadcn primitive to `packages/ui`                                         |
 | `pnpm ui:remove <component>` | Remove an unused primitive                                                      |
 
-**Getting started:** with PostgreSQL running, use `pnpm install` and `pnpm dev`. Turbo runs
-schema generation, migrations, and demo seeding before either app starts. The local database is
-created if missing. Subsequent starts preserve existing records and your edits to the demo.
+**Getting started:** run `docker compose up -d` for PostgreSQL 18 on host port 5433, then use
+`pnpm install` and `pnpm dev`. Turbo runs schema generation, migrations, and demo seeding
+before either app starts. The local database is created if missing. Subsequent starts preserve
+existing records and your edits to the demo.
 
 **While building:** ordinary application changes use Vite's live reload. After storage model
 changes, stop dev, run `pnpm reset`, and restart `pnpm dev`. A changed pre-release schema stops
@@ -47,7 +49,7 @@ already supports pending migrations; the generated schema remains the expected f
 Revisit compatibility guarantees before v1.
 
 Database tests need a PostgreSQL role with `CREATEDB`. Scratch databases
-are removed afterward. Tests default to `postgresql://localhost:5432/postgres`; commands use the
+are removed afterward. Tests default to `postgresql://localhost:5433/postgres`; commands use the
 application's configured connection. After changing the database environment,
 `pnpm turbo run test --force` bypasses cached test results. For inspecting a retained database,
 `pnpm --filter company-os db:dump` writes an ignored `schema.actual.sql` using `pg_dump` (the
