@@ -64,6 +64,80 @@ const Connect = defineAction({
   input: { authentication: Authentication },
 })
 
+it("edits arbitrary JSON as JSON text and preserves null, primitives, and nested values", () => {
+  const field = schema.json({ label: "Payload" })
+  const object = defineObject({
+    id: "jsonForm",
+    collection: "jsonForms",
+    name: "JSON form",
+    pluralName: "JSON forms",
+    properties: { name: schema.string(), payload: field },
+    display: { title: "name" },
+  })
+  const runtime = testPresentation(
+    defineModel({
+      name: "JSON form",
+      modules: [
+        defineModule({
+          id: "jsonFormTest",
+          name: "JSON form test",
+          objects: [object],
+        }),
+      ],
+    })
+  )
+  for (const value of [
+    null,
+    false,
+    0,
+    "",
+    "text",
+    [],
+    { nested: [null, true] },
+  ]) {
+    const raw = schemaFormDefault(field, value)
+    expect(raw).toBe(JSON.stringify(value, null, 2))
+    expect(
+      decodeObjectForm(
+        runtime,
+        object,
+        { name: "Example", payload: raw },
+        "create"
+      )
+    ).toEqual({ name: "Example", payload: value })
+  }
+  expect(schemaFormDefault(schema.json({ default: null }))).toBe("null")
+  expect(() =>
+    decodeObjectForm(
+      runtime,
+      object,
+      { name: "Example", payload: "{" },
+      "create"
+    )
+  ).toThrow()
+  function Example() {
+    const defaultValues: ObjectFormValues = {
+      payload: schemaFormDefault(field, { count: 0 }),
+    }
+    const form = useAppForm({ defaultValues })
+    return (
+      <form.AppForm>
+        <SchemaFormField
+          id="payload"
+          schema={field}
+          fieldId="payload"
+          required
+          referenceLabels={new Map()}
+        />
+      </form.AppForm>
+    )
+  }
+  const html = renderToStaticMarkup(<Example />)
+  expect(html).toContain("<textarea")
+  expect(html).toContain("Payload")
+  expect(html).toContain("count")
+})
+
 it("initializes nested defaults, preserves absence, and submits only the selected variant", () => {
   expect(operationFormDefaults(Connect)).toEqual({
     authentication: { type: "apiKey", key: "" },

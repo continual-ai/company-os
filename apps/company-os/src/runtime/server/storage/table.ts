@@ -4,6 +4,7 @@ import * as Statement from "effect/unstable/sql/Statement"
 export interface Column<A = unknown> extends Statement.Fragment {
   readonly name: string
   readonly type: string
+  readonly nullable?: boolean
   readonly valueType?: A
 }
 export type Table<Row extends object = Record<string, unknown>> =
@@ -94,6 +95,7 @@ export function defineTable<Row extends object>(
         ]),
         name: snakeCase(key),
         type: definition.type,
+        nullable: definition.nullable === true,
       },
     ])
   )

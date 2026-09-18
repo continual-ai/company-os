@@ -35,7 +35,7 @@ export function projection(
 export const tableProjection = <R extends object>(table: Table<R>) =>
   projection(tableColumns(table))
 
-/** Field codecs are derived once from physical storage; JSON arrays never become PostgreSQL arrays. */
+/** JSON arrays stay JSON; null in a required JSONB column is JSON null, not SQL NULL. */
 function encodeRow<R extends object>(
   table: Table<R>,
   row: { [K in keyof R]?: Input<NoInfer<R[K]>> | Statement.Fragment }
@@ -48,7 +48,7 @@ function encodeRow<R extends object>(
       return [
         column.name,
         column.type === "jsonb" &&
-        value !== null &&
+        (value !== null || !column.nullable) &&
         !Statement.isFragment(value)
           ? JSON.stringify(value)
           : value,

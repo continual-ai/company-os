@@ -302,8 +302,8 @@ export function SchemaFormField({
     )
   }
 
-  if (!isSupportedFormSchema(schema)) {
-    if (!json || containsSecret(schema))
+  if (schema.kind === "json" || !isSupportedFormSchema(schema)) {
+    if (schema.kind !== "json" && (!json || containsSecret(schema)))
       return (
         <FieldError>
           {label} uses the unsupported {schema.kind} form type.

@@ -54,6 +54,75 @@ const Account = defineObject({
 })
 
 describe("Effect Schema projection", () => {
+  it("preserves arbitrary JSON while rejecting values JSON cannot represent", () => {
+    const field = schema.json({ description: "Provider payload" })
+    const decode = Schema.decodeUnknownSync(toEffectInputSchema(field))
+    const values: ReadonlyArray<Schema.Json> = [
+      null,
+      false,
+      0,
+      "",
+      "null",
+      [],
+      {},
+      {
+        type: "custom",
+        arguments: { values: [1, true, null, { snake_key: "kept" }] },
+      },
+    ]
+    for (const value of values) expect(decode(value)).toEqual(value)
+    const circular: Record<string, unknown> = {}
+    circular.self = circular
+    for (const value of [
+      undefined,
+      NaN,
+      Infinity,
+      1n,
+      () => undefined,
+      new Date(),
+      new Map(),
+      { nested: undefined },
+      [undefined],
+      circular,
+    ])
+      expect(() => decode(value)).toThrow()
+    expectTypeOf<InferSchema<typeof field>>().toEqualTypeOf<Schema.Json>()
+    const json = Schema.toStandardJSONSchemaV1(toEffectInputSchema(field))[
+      "~standard"
+    ].jsonSchema.input({ target: "draft-2020-12" })
+    expect(json).toMatchObject({ description: "Provider payload" })
+    expect(json).not.toHaveProperty("type")
+  })
+
+  it("keeps JSON fields required and known enclosing fields typed", () => {
+    const object = defineObject({
+      id: "jsonExample",
+      collection: "jsonExamples",
+      name: "JSON example",
+      pluralName: "JSON examples",
+      properties: {
+        name: schema.string(),
+        payload: schema.json(),
+        call: schema.object({
+          name: schema.string(),
+          arguments: schema.json(),
+        }),
+      },
+      display: { title: "name" },
+    })
+    const decode = Schema.decodeUnknownSync(toEffectObjectCreateSchema(object))
+    const input = {
+      name: "Example",
+      payload: null,
+      call: { name: "lookup", arguments: [1, null] },
+    }
+    expect(decode(input)).toEqual(input)
+    expect(() => decode({ name: "Example", call: input.call })).toThrow()
+    expect(() =>
+      decode({ ...input, call: { name: 123, arguments: {} } })
+    ).toThrow()
+  })
+
   it("projects scores as bounded integers with format metadata and validates every caller", () => {
     const field = schema.score({ nullable: true })
     const input = toEffectInputSchema(field)

@@ -111,6 +111,7 @@ function propertySqlType(property: AnySchema): string {
     case "file":
     case "geoPoint":
     case "image":
+    case "json":
     case "literal":
     case "map":
     case "media":
@@ -124,8 +125,8 @@ function propertySqlType(property: AnySchema): string {
       )
   }
 }
-function defaultSql(type: string, value: unknown): string {
-  if (value === null) return "null"
+function defaultSql(type: string, value: unknown, nullable = false): string {
+  if (value === null && (type !== "jsonb" || nullable)) return "null"
   if (type === "jsonb") return `${literal(JSON.stringify(value))}::jsonb`
   if (Array.isArray(value))
     return `array[${value.map((v) => defaultSql(type.slice(0, -2), v)).join(", ")}]::${type}`
@@ -278,7 +279,7 @@ export function makePostgresSchema<const M extends ModelCatalog>(
         type,
         nullable: property.nullable,
         default: Object.hasOwn(property, "default")
-          ? defaultSql(type, property.default)
+          ? defaultSql(type, property.default, property.nullable)
           : undefined,
         description:
           property.kind === "recordId"

@@ -23,6 +23,14 @@ export function objectPropertyValue(
   value: ObjectTableValue | undefined,
   references: ReadonlyMap<string, ObjectRecordPresentation>
 ): ReactNode {
+  const schema =
+    property === undefined ? undefined : objectTablePropertySchema(property)
+  if (schema?.kind === "json" && value !== undefined)
+    return (
+      <pre className="whitespace-pre-wrap wrap-anywhere text-sm">
+        {JSON.stringify(value, null, 2)}
+      </pre>
+    )
   if (
     value === null ||
     value === undefined ||
@@ -31,8 +39,6 @@ export function objectPropertyValue(
   ) {
     return <span className="text-muted-foreground/60">Empty</span>
   }
-  const schema =
-    property === undefined ? undefined : objectTablePropertySchema(property)
   if (schema?.kind === "recordId" && typeof value === "string") {
     const reference = references.get(value)
     return reference === undefined ? (

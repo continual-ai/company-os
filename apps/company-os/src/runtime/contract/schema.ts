@@ -301,6 +301,8 @@ function compileBase(
       return geoPointSchema
     case "image":
       return imageRefSchema
+    case "json":
+      return Schema.Json
     case "literal":
       return definition.value === null
         ? Schema.Null

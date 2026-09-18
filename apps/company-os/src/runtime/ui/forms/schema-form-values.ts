@@ -21,6 +21,7 @@ export function isSupportedFormSchema(schema: AnySchema): boolean {
     schema.kind === "enum" ||
     schema.kind === "file" ||
     schema.kind === "image" ||
+    schema.kind === "json" ||
     schema.kind === "media" ||
     schema.kind === "money" ||
     schema.kind === "number" ||
@@ -69,14 +70,19 @@ export function unionMember(
 /** Converts nested values to controlled inputs without losing booleans, zero, or absence. */
 export function schemaFormDefault(
   schema: AnySchema,
-  value: unknown = schema.default ??
-    (schema.kind === "optional" ? schema.value.default : undefined),
+  value: unknown = schema.default !== undefined
+    ? schema.default
+    : schema.kind === "optional"
+      ? schema.value.default
+      : undefined,
   currency = "USD"
 ): FormValue {
   if (schema.kind === "optional")
     return value === undefined
       ? null
       : schemaFormDefault(schema.value, value, currency)
+  if (schema.kind === "json")
+    return value === undefined ? "" : JSON.stringify(value, null, 2)
   if (schema.kind === "string" && schema.secret)
     return value !== null && typeof value === "object" && "hint" in value
       ? { hint: typeof value.hint === "string" ? value.hint : null }
@@ -184,7 +190,7 @@ export function schemaFormInput(
     const member = unionMember(schema, raw)
     return member ? schemaFormInput(member, raw, currency) : raw
   }
-  if (!isSupportedFormSchema(schema))
+  if (schema.kind === "json" || !isSupportedFormSchema(schema))
     return typeof raw === "string" ? formValue(JSON.parse(raw)) : raw
   if (schema.kind === "literal") return schema.value
   if (schema.kind === "number") return raw === "" ? raw : Number(raw)

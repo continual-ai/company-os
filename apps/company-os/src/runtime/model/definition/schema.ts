@@ -1,4 +1,4 @@
-import { Brand } from "effect"
+import { Brand, type Schema } from "effect"
 
 import { definitionId } from "#/runtime/model/definition/identity.ts"
 
@@ -362,6 +362,10 @@ export interface StructSchema<
   properties: TProperties
 }
 
+interface JsonSchema extends SchemaDefinition<Schema.Json> {
+  kind: "json"
+}
+
 interface UnionSchema<
   TMembers extends ReadonlyArray<AnySchema> = ReadonlyArray<AnySchema>,
 > extends SchemaDefinition<InferSchema<TMembers[number]>> {
@@ -378,6 +382,7 @@ export type AnySchema =
   | FileSchema
   | GeoPointSchema
   | ImageSchema
+  | JsonSchema
   | LiteralSchema
   | MapSchema
   | MediaSchema
@@ -856,6 +861,13 @@ function union<
   return { kind: "union", members }
 }
 
+/** Opaque JSON payloads. Prefer objects and discriminated unions for known shapes. */
+function json<const TOptions extends SchemaAnnotations<Schema.Json> = {}>(
+  options?: TOptions
+): JsonSchema & TOptions {
+  return { kind: "json", ...configured(options) }
+}
+
 function discriminatedUnion<
   const TMembers extends readonly [StructSchema, ...Array<StructSchema>],
   const TOptions extends SchemaAnnotations<InferSchema<TMembers[number]>> = {},
@@ -904,6 +916,7 @@ export const schema = {
   file,
   geoPoint,
   image,
+  json,
   literal,
   map,
   markdown,

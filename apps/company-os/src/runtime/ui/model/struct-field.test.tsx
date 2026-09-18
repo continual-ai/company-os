@@ -9,6 +9,29 @@ import { objectPropertyValue } from "#/runtime/ui/model/object-property-value.ts
 import { ModelUiProvider } from "#/runtime/ui/model/runtime-context.tsx"
 
 const runtime = testPresentation(fixtureModel)
+
+it("renders JSON values without treating null and empty collections as absent", () => {
+  for (const value of [null, [], {}, false, 0]) {
+    const html = renderToStaticMarkup(
+      <>{objectPropertyValue(runtime, schema.json(), value, new Map())}</>
+    )
+    expect(html).toContain(JSON.stringify(value))
+    expect(html).not.toContain("Empty")
+  }
+  expect(
+    renderToStaticMarkup(
+      <>
+        {objectPropertyValue(
+          runtime,
+          schema.optional(schema.json()),
+          null,
+          new Map()
+        )}
+      </>
+    )
+  ).toContain("null")
+})
+
 const Example = defineObject({
   id: "structExample",
   collection: "structExamples",
