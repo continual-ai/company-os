@@ -22,8 +22,9 @@ no `public.` qualification and no cross-schema references.
 
 ## Local development
 
-From the repository root, `pnpm install` and `pnpm dev` prepare storage and demo records, then start
-the App on port 3002. Turbo orders generation, migration, and seeding before startup.
+From the repository root, `docker compose up -d` starts PostgreSQL 18 on host port 5433;
+`pnpm install` and `pnpm dev` prepare storage and demo records, then start the App on port 3002.
+Turbo orders generation, migration, and seeding before startup.
 `pnpm reset` rebuilds disposable local storage with the demo after storage changes;
 `pnpm db:generate` refreshes the checked-in SQL without accessing a database.
 Ordinary dev serves SSR from Node; `pnpm --dir apps/company-os preview` rebuilds and serves the production artifact locally.

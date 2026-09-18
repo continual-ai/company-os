@@ -6,7 +6,7 @@ import { Client } from "pg"
 
 import { pgTypes } from "#/runtime/server/storage/pg-types.ts"
 
-const defaultAdminUrl = "postgresql://localhost:5432/postgres"
+const defaultAdminUrl = "postgresql://localhost:5433/postgres"
 
 export interface TestDatabaseTemplate {
   readonly adminUrl: string
