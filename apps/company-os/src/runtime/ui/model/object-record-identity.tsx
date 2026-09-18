@@ -8,6 +8,7 @@ import {
 } from "@company/ui/preview-card"
 import { Link } from "@tanstack/react-router"
 import { XIcon } from "lucide-react"
+import { memo } from "react"
 
 import { assetContentUrl } from "#/runtime/assets/ui/content-url.ts"
 import type { ObjectType } from "#/runtime/model/index.ts"
@@ -109,7 +110,7 @@ function ObjectMark({
   )
 }
 
-export function ObjectRecordIdentity({
+export const ObjectRecordIdentity = memo(function ObjectRecordIdentity({
   className,
   expanded = false,
   heading = false,
@@ -153,6 +154,7 @@ export function ObjectRecordIdentity({
             <Link
               to={href}
               data-record-id={record.id}
+              data-object-id={object.id}
               className={cn(
                 "group/record-link inline-flex min-w-0 items-center gap-1.5 text-foreground focus-visible:outline-none",
                 className
@@ -211,7 +213,7 @@ export function ObjectRecordIdentity({
       </PreviewCardContent>
     </PreviewCard>
   )
-}
+})
 
 export function ObjectRecordPill({
   label,

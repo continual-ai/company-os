@@ -17,6 +17,31 @@ import { ModelUiProvider } from "#/runtime/ui/model/runtime-context.tsx"
 
 const presentation = testPresentation(fixtureModel, PlatformUi)
 
+it("keeps a screen of rows rendered ahead while sizing the scrollbar to the full collection", () => {
+  const records = Array.from({ length: 100 }, (_, index) => ({
+    id: `service_account_${index}`,
+    name: `Automation ${index}`,
+    status: "active",
+  }))
+  const html = renderToStaticMarkup(
+    <ModelUiProvider value={presentation}>
+      <ObjectTable
+        object={ServiceAccount}
+        records={records}
+        viewport={{
+          totalSize: 10_000,
+          loading: false,
+          indices: new Map(records.map((record, index) => [record.id, index])),
+          onRangeChange: () => {},
+        }}
+      />
+    </ModelUiProvider>
+  )
+  expect(html).toContain("Automation 35")
+  expect(html).not.toContain("Automation 60")
+  expect(html).toContain('aria-rowcount="10001"')
+})
+
 it("renders a service account using its display name", () => {
   const html = renderToStaticMarkup(
     <ModelUiProvider value={presentation}>

@@ -13,6 +13,11 @@ import {
 import type { ListRequest, Page } from "#/runtime/model/index.ts"
 import { Account, fixtureModel } from "#/runtime/testing/fixture-model.ts"
 import { testPresentation } from "#/runtime/testing/presentation.ts"
+import {
+  useInfiniteCollectionPages,
+  ViewportCollectionPages,
+  InfiniteCollectionPages,
+} from "#/runtime/ui/model/collection-pages.tsx"
 import type { ClientRecord } from "#/runtime/ui/model/object-client.ts"
 import { objectListRequest } from "#/runtime/ui/model/object-collection-query.ts"
 import { preloadCollection } from "#/runtime/ui/model/object-routing.ts"
@@ -31,7 +36,9 @@ const unused = {
     modelQuery(["account"], "unused", {}, async () => undefined),
 }
 function Preview() {
-  const collection = useObjectCollection(Account, [], [])
+  const request = { ...objectListRequest(Account, [], []), expand: {} }
+  const pages = useInfiniteCollectionPages(list, request)
+  const collection = useObjectCollection(Account, request, pages)
   return (
     <output>
       {JSON.stringify({
@@ -139,5 +146,29 @@ it("retains actions and reference labels as pages append, and disables editing w
     expect(render()).toContain("&quot;edit&quot;:false")
   } finally {
     cache.clear()
+  }
+})
+
+it("mounts only the paging mode used by the collection", () => {
+  const request = objectListRequest(Account, [], [])
+  for (const [Component, infinite] of [
+    [ViewportCollectionPages, false],
+    [InfiniteCollectionPages, true],
+  ] as const) {
+    const cache = new QueryClient()
+    try {
+      renderToStaticMarkup(
+        <QueryClientProvider client={cache}>
+          <Component list={list} request={request}>
+            {(pages) => <output>{pages.totalSize}</output>}
+          </Component>
+        </QueryClientProvider>
+      )
+      const queries = cache.getQueryCache().getAll()
+      expect(queries).toHaveLength(1)
+      expect(queries[0]!.queryKey.at(-1) === "pages").toBe(infinite)
+    } finally {
+      cache.clear()
+    }
   }
 })

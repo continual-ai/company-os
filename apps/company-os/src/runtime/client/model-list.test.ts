@@ -69,6 +69,33 @@ const fixedList = (request: ListRequest) =>
     totalSize: 2,
   }))
 
+it("continues from an offset page using only its returned cursor", async () => {
+  const { queryClient: cache, dispose } = createModelDataClient()
+  const calls: Array<ListRequest> = []
+  const list = modelPagedQuery((request: ListRequest) =>
+    modelQuery(["company"], "list", request, async () => {
+      calls.push(request)
+      return {
+        items: [],
+        totalSize: 500,
+        nextPageToken: request.pageToken ? null : PageToken("next"),
+      }
+    })
+  )
+  try {
+    await cache.fetchInfiniteQuery({
+      ...list.infiniteQueryOptions({ pageSize: 100, pageOffset: 200 }),
+      pages: 2,
+    })
+    expect(calls).toEqual([
+      { pageSize: 100, pageOffset: 200 },
+      { pageSize: 100, pageToken: "next" },
+    ])
+  } finally {
+    dispose()
+  }
+})
+
 it("invalidates loaded pages without reconstructing their contents and drops pages on permission reset", async () => {
   const { queryClient: cache, dispose } = createModelDataClient()
   const query = modelPagedQuery(fixedList).infiniteQueryOptions({})

@@ -255,6 +255,8 @@ export interface ListRequest<TObject extends ObjectType = ObjectType> {
 
   readonly filter?: ObjectFilter<TObject>
   readonly pageSize?: number
+  /** Zero-based row position for direct access; cannot be combined with pageToken. */
+  readonly pageOffset?: number
   readonly pageToken?: PageToken
   readonly sort?: ReadonlyArray<ObjectSort<TObject>>
 }
@@ -262,6 +264,8 @@ export interface ListRequest<TObject extends ObjectType = ObjectType> {
 export interface CanonicalListRequest<TObject extends ObjectType> {
   readonly filter?: CanonicalObjectFilter<TObject>
   readonly pageSize?: number
+  /** Zero-based row position for direct access; cannot be combined with pageToken. */
+  readonly pageOffset?: number
   readonly pageToken?: PageToken
   readonly sort?: ReadonlyArray<ObjectSort<TObject>>
 }

@@ -22,6 +22,7 @@ import {
 import {
   lazy,
   Suspense,
+  useCallback,
   useMemo,
   useState,
   type ComponentType,
@@ -29,12 +30,18 @@ import {
 } from "react"
 
 import { modelObjectLinkTraversals } from "#/runtime/model/definition/model.ts"
+import type { ListRequest } from "#/runtime/model/index.ts"
 import { objectFields } from "#/runtime/model/object-fields.ts"
 import {
   calendarDay,
   collectionDateWindow,
 } from "#/runtime/ui/model/collection-dates.ts"
 import { CollectionLayoutControl } from "#/runtime/ui/model/collection-layout-control.tsx"
+import {
+  ViewportCollectionPages,
+  InfiniteCollectionPages,
+  type CollectionPages,
+} from "#/runtime/ui/model/collection-pages.tsx"
 import { CollectionPagination } from "#/runtime/ui/model/collection-pagination.tsx"
 import { CollectionQueryToolbar } from "#/runtime/ui/model/collection-query-toolbar.tsx"
 import {
@@ -51,6 +58,7 @@ import {
   type ClientRecord,
   type ModelObject,
 } from "#/runtime/ui/model/object-client.ts"
+import { objectListRequest } from "#/runtime/ui/model/object-collection-query.ts"
 import {
   emptyObjectCollectionViewState,
   objectCollectionStateSearch,
@@ -68,7 +76,7 @@ import { readFilterValue } from "#/runtime/ui/model/object-table/object-table-co
 import { ObjectTable } from "#/runtime/ui/model/object-table/object-table.tsx"
 import { type CollectionToolbarProps } from "#/runtime/ui/model/object-ui.ts"
 import { ModelActions } from "#/runtime/ui/model/operation-action.tsx"
-import { useRememberCollection } from "#/runtime/ui/model/record-navigation.tsx"
+import { useCaptureCollectionNavigation } from "#/runtime/ui/model/record-navigation.tsx"
 import { useModelRuntime } from "#/runtime/ui/model/runtime-context.tsx"
 import {
   useObjectCollection,
@@ -107,7 +115,65 @@ interface ObjectCollectionProps {
   readonly toolbarComponent?: ComponentType<CollectionToolbarProps> | undefined
 }
 
-export function ObjectCollection({
+export function ObjectCollection(props: ObjectCollectionProps) {
+  const { object, views, search, onSearchChange, source } = props
+  const runtime = useModelRuntime()
+  const [localSearch, setLocalSearch] = useState<ObjectCollectionSearch>(
+    search ?? {}
+  )
+  const activeSearch =
+    onSearchChange === undefined ? localSearch : (search ?? {})
+  const availableViews = useMemo(
+    () =>
+      views ?? [
+        {
+          id: "all",
+          label: `All ${object.pluralName.toLowerCase()}`,
+          state: emptyObjectCollectionViewState,
+        },
+      ],
+    [views, object.pluralName]
+  )
+  const { state } = resolveObjectCollectionView(availableViews, activeSearch)
+  const anchor =
+    calendarDay(state.date) ?? new Date().toISOString().slice(0, 10)
+  const request = useMemo(
+    () =>
+      objectListRequest(
+        object,
+        state.filters,
+        state.sorting,
+        undefined,
+        collectionDateWindow(state.layout, anchor),
+        runtime.model,
+        state.visibility
+      ),
+    [object, state, anchor, runtime.model]
+  )
+  const client = useMemo(() => clientFor(runtime, object), [runtime, object])
+  const Pages =
+    !state.layout || state.layout.type === "table"
+      ? ViewportCollectionPages
+      : InfiniteCollectionPages
+  return (
+    <Pages list={source?.list ?? client.list} request={request}>
+      {(pages) => (
+        <ObjectCollectionContent
+          {...props}
+          views={availableViews}
+          search={activeSearch}
+          onSearchChange={onSearchChange ?? setLocalSearch}
+          request={request}
+          pages={pages}
+        />
+      )}
+    </Pages>
+  )
+}
+
+function ObjectCollectionContent({
+  request,
+  pages,
   object,
   source: suppliedSource,
   onSearchChange,
@@ -116,47 +182,33 @@ export function ObjectCollection({
   recordHref,
   search,
   views,
-}: ObjectCollectionProps) {
+}: ObjectCollectionProps & {
+  request: ListRequest
+  pages: CollectionPages
+  views: ReadonlyArray<ObjectCollectionView>
+  onSearchChange: (search: ObjectCollectionSearch) => void
+}) {
   const runtime = useModelRuntime()
 
-  const fallbackView = useMemo<ObjectCollectionView>(
-    () => ({
-      id: "all",
-      label: `All ${object.pluralName.toLowerCase()}`,
-      state: emptyObjectCollectionViewState,
-    }),
-    [object.pluralName]
-  )
-  const availableViews = views ?? [fallbackView]
-  const [localSearch, setLocalSearch] = useState<ObjectCollectionSearch>(
-    search ?? {}
-  )
-  const activeSearch =
-    onSearchChange === undefined ? localSearch : (search ?? {})
+  const availableViews = views
+  const activeSearch = search ?? {}
   const resolved = resolveObjectCollectionView(availableViews, activeSearch)
   const viewState = resolved.state
-  const filters = viewState.filters
   const layout = viewState.layout ?? { type: "table" as const }
   const anchor =
     calendarDay(viewState.date) ?? new Date().toISOString().slice(0, 10)
-  const window = collectionDateWindow(viewState.layout, anchor)
-  const collection = useObjectCollection(
-    object,
-    filters,
-    viewState.sorting,
-    suppliedSource?.list,
-    { window, visibility: viewState.visibility }
-  )
+  const collection = useObjectCollection(object, request, pages)
   const openObjectCreate = useObjectCreate()
-  useRememberCollection(
+  const captureNavigation = useCaptureCollectionNavigation(
     suppliedSource === undefined
       ? {
           objectId: object.id,
-          request: collection.request,
+          request,
           href:
             objectHref(runtime, object) + defaultStringifySearch(activeSearch),
         }
-      : undefined
+      : undefined,
+    pages
   )
   const [editing, setEditing] = useState<ClientRecord>()
   const [mutationError, setMutationError] = useState<string>()
@@ -166,25 +218,38 @@ export function ObjectCollection({
     deleteRecords: collection.deleteRecords,
   }
 
-  const linkColumns = modelObjectLinkTraversals(runtime.model, object)
-  const propertyIds = objectFields(object, runtime.model).map(({ id }) => id)
-  const configuredVisibility = Object.keys(viewState.visibility).length > 0
-  const columnVisibility = Object.fromEntries(
-    propertyIds.map((propertyId) => [
-      propertyId,
-      configuredVisibility
-        ? viewState.visibility[propertyId] === true
-        : object.properties[propertyId] !== undefined ||
-          linkColumns.some(
-            ({ traversal }) =>
-              traversal.key === propertyId && traversal.max === 1
-          ),
-    ])
+  const columnVisibility = useMemo(() => {
+    const linkColumns = modelObjectLinkTraversals(runtime.model, object)
+    const propertyIds = objectFields(object, runtime.model).map(({ id }) => id)
+    const configuredVisibility = Object.keys(viewState.visibility).length > 0
+    return Object.fromEntries(
+      propertyIds.map((propertyId) => [
+        propertyId,
+        configuredVisibility
+          ? viewState.visibility[propertyId] === true
+          : object.properties[propertyId] !== undefined ||
+            linkColumns.some(
+              ({ traversal }) =>
+                traversal.key === propertyId && traversal.max === 1
+            ),
+      ])
+    )
+  }, [runtime.model, object, viewState.visibility])
+  const resolveRecord = useCallback(
+    (recordId: string) => collection.references.get(recordId),
+    [collection.references]
+  )
+  const tableFilters = useMemo(
+    () => [...viewState.filters],
+    [viewState.filters]
+  )
+  const tableSorting = useMemo(
+    () => [...viewState.sorting],
+    [viewState.sorting]
   )
   const updateState = (next: ObjectCollectionViewState) => {
     const nextSearch = objectCollectionStateSearch(resolved.view, next)
-    if (onSearchChange === undefined) setLocalSearch(nextSearch)
-    else onSearchChange(nextSearch)
+    onSearchChange(nextSearch)
   }
   const onColumnVisibilityChange: OnChangeFn<Record<string, boolean>> = (
     update
@@ -195,8 +260,7 @@ export function ObjectCollection({
     })
 
   const selectView = (viewId: string) => {
-    if (onSearchChange === undefined) setLocalSearch({ view: viewId })
-    else onSearchChange({ view: viewId })
+    onSearchChange({ view: viewId })
   }
   const create =
     collection.canCreate && source.create
@@ -367,9 +431,10 @@ export function ObjectCollection({
           resetKey={collection.requestKey}
           object={object}
           records={collection.records}
-          columnFilters={[...viewState.filters]}
+          viewport={collection.viewport}
+          columnFilters={tableFilters}
           columnVisibility={columnVisibility}
-          sorting={[...collection.sorting]}
+          sorting={tableSorting}
           onColumnFiltersChange={(update) =>
             updateState({
               ...viewState,
@@ -389,7 +454,7 @@ export function ObjectCollection({
             })
           }
           recordHref={recordHref}
-          resolveRecord={(recordId) => collection.references.get(recordId)}
+          resolveRecord={resolveRecord}
           onCellCommit={collection.updateCell}
           canUpdateRecord={collection.canUpdate}
           onCreateRecord={create === undefined ? undefined : () => create()}
@@ -401,14 +466,6 @@ export function ObjectCollection({
           }
           canDeleteRecord={collection.canDelete}
           toolbarActions={source.renderLink?.(collection.records)}
-          pagination={{
-            hasNextPage: collection.hasNextPage,
-            error: collection.error,
-            loading: collection.isFetching,
-            onNextPage: collection.nextPage,
-            totalSize: collection.totalSize,
-          }}
-
           tableTitle={
             <div className="flex flex-wrap items-center gap-2">
               {viewSelector}
@@ -442,8 +499,8 @@ export function ObjectCollection({
           <CollectionQueryToolbar
             object={object}
             records={collection.records}
-            columnFilters={[...viewState.filters]}
-            sorting={[...collection.sorting]}
+            columnFilters={tableFilters}
+            sorting={tableSorting}
             onColumnFiltersChange={(update) =>
               updateState({
                 ...viewState,
@@ -504,10 +561,10 @@ export function ObjectCollection({
           <CollectionPagination
             loaded={collection.records.length}
             totalSize={collection.totalSize}
-            hasNextPage={collection.hasNextPage}
+            hasNextPage={collection.pagination?.hasNextPage ?? false}
             loading={collection.isFetching}
             error={collection.error}
-            onNextPage={collection.nextPage}
+            onNextPage={() => collection.pagination?.onNextPage()}
           />
         </>
       )}
@@ -526,5 +583,9 @@ export function ObjectCollection({
       )}
     </>
   )
-  return content
+  return (
+    <div className="contents" onClickCapture={captureNavigation}>
+      {content}
+    </div>
+  )
 }

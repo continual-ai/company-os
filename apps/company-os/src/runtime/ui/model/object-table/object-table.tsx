@@ -14,7 +14,6 @@ import { Table, TableHead, TableHeader, TableRow } from "@company/ui/table"
 import {
   createColumnHelper,
   useTable,
-  type CellContext,
   type ColumnFiltersState,
   type HeaderContext,
   type OnChangeFn,
@@ -43,7 +42,10 @@ import { objectFields } from "#/runtime/model/object-fields.ts"
 import { CollectionPagination } from "#/runtime/ui/model/collection-pagination.tsx"
 import { ObjectIcon } from "#/runtime/ui/model/object-record-identity.tsx"
 import { ObjectTableBody } from "#/runtime/ui/model/object-table/object-table-body.tsx"
-import { objectTablePinnedColumnStyle } from "#/runtime/ui/model/object-table/object-table-cell-styles.ts"
+import {
+  objectTablePinnedColumnStyle,
+  useObjectTableColumnLayout,
+} from "#/runtime/ui/model/object-table/object-table-cell-styles.ts"
 import { objectTableFieldColumnDef } from "#/runtime/ui/model/object-table/object-table-columns.ts"
 import {
   objectTableFeatures,
@@ -63,8 +65,17 @@ import {
   tableRowHeight,
 } from "#/runtime/ui/model/object-table/object-table-virtualization.ts"
 import { useModelRuntime } from "#/runtime/ui/model/runtime-context.tsx"
+import type { TableRange } from "#/runtime/ui/model/use-viewport-pages.ts"
+
+interface ObjectTableViewport {
+  readonly loading: boolean
+  readonly totalSize: number
+  readonly indices: ReadonlyMap<string, number>
+  readonly onRangeChange: (range: TableRange) => void
+}
 
 export interface ObjectTableProps {
+  viewport?: ObjectTableViewport | undefined
   canDeleteRecord?: ((recordId: string) => boolean) | undefined
   canUpdateRecord?: ((recordId: string) => boolean) | undefined
   columnFilters?: ColumnFiltersState | undefined
@@ -200,23 +211,6 @@ function SelectionHeader({
   )
 }
 
-function SelectionCell({
-  row,
-}: Pick<CellContext<typeof objectTableFeatures, ObjectTableRecord>, "row">) {
-  return (
-    <div className="flex size-full items-center pl-3 sm:pl-5">
-      <Checkbox
-        aria-label={`Select row ${row.getDisplayIndex() + 1}`}
-        checked={row.getIsSelected()}
-        disabled={!row.getCanSelect()}
-        onClick={(event) => event.stopPropagation()}
-        onDoubleClick={(event) => event.stopPropagation()}
-        onCheckedChange={(checked) => row.toggleSelected(checked)}
-      />
-    </div>
-  )
-}
-
 export function ObjectTable({
   canDeleteRecord,
   canUpdateRecord,
@@ -241,6 +235,7 @@ export function ObjectTable({
   sorting,
   tableTitle,
   visiblePropertyIds,
+  viewport,
 }: ObjectTableProps) {
   useKeyboardShortcuts([
     {
@@ -284,7 +279,6 @@ export function ObjectTable({
             minSize: selectionControlWidth,
             maxSize: selectionControlWidth,
             header: SelectionHeader,
-            cell: SelectionCell,
           }),
         ]
       : []
@@ -328,6 +322,10 @@ export function ObjectTable({
     }
   }, [object, enableRowSelection, fields, visiblePropertyIds])
 
+  const mergedVisibility = useMemo(
+    () => ({ ...initialState.columnVisibility, ...columnVisibility }),
+    [initialState.columnVisibility, columnVisibility]
+  )
   const table = useTable({
     features: objectTableFeatures,
     columns,
@@ -350,10 +348,7 @@ export function ObjectTable({
       ...(columnVisibility === undefined
         ? {}
         : {
-            columnVisibility: {
-              ...initialState.columnVisibility,
-              ...columnVisibility,
-            },
+            columnVisibility: mergedVisibility,
           }),
       ...(sorting === undefined ? {} : { sorting }),
     },
@@ -361,16 +356,32 @@ export function ObjectTable({
 
   const visibleRows = table.getRowModel().rows
   const rowIds = useMemo(() => visibleRows.map((row) => row.id), [visibleRows])
+  const rowsByIndex = useMemo(
+    () =>
+      new Map(
+        rowIds.map((id, index) => [viewport?.indices.get(id) ?? index, id])
+      ),
+    [rowIds, viewport?.indices]
+  )
   const hasActiveFilters = table.state.columnFilters.length > 0
   const hasNoVisibleRows = visibleRows.length === 0
-  const isInitialLoading = pagination?.loading === true && records.length === 0
+  const isInitialLoading =
+    (viewport?.loading === true || pagination?.loading === true) &&
+    records.length === 0
   const visibleColumns = table.getVisibleLeafColumns()
-  const navigableColumns = visibleColumns.filter(
-    (column) => column.columnDef.meta?.property !== undefined
+  const navigableColumnIds = useMemo(
+    () =>
+      visibleColumns
+        .filter((column) => column.columnDef.meta?.property !== undefined)
+        .map((column) => column.id),
+    [visibleColumns]
   )
+  const rowLayout = useObjectTableColumnLayout(table)
   const navigation = useObjectTableNavigation({
-    columnIds: navigableColumns.map((column) => column.id),
+    columnIds: navigableColumnIds,
     rowIds,
+    rowsByIndex,
+    rowCount: viewport?.totalSize ?? rowIds.length,
   })
   const scrollRef = useRef<HTMLDivElement>(null)
   const resetViewport = useEffectEvent(() => {
@@ -383,7 +394,8 @@ export function ObjectTable({
   }, [resetKey])
   const renderedTableWidth = table.getTotalSize() + addColumnWidth
   const renderedTableSurfaceHeight =
-    tableHeaderHeight + tableRowHeight * visibleRows.length
+    tableHeaderHeight +
+    tableRowHeight * (viewport?.totalSize ?? visibleRows.length)
 
   return (
     <section
@@ -413,7 +425,11 @@ export function ObjectTable({
           className="table-fixed border-separate border-spacing-0"
           role="grid"
           aria-colcount={visibleColumns.length + 1}
-          aria-rowcount={(pagination?.totalSize ?? visibleRows.length) + 1}
+          aria-rowcount={
+            (viewport?.totalSize ??
+              pagination?.totalSize ??
+              visibleRows.length) + 1
+          }
           style={{ minWidth: "100%", width: renderedTableWidth }}
           onContainerScroll={(event) =>
             setIsHorizontallyScrolled(event.currentTarget.scrollLeft !== 0)
@@ -508,6 +524,8 @@ export function ObjectTable({
           </TableHeader>
           <ObjectTableBody
             rowIds={rowIds}
+            rowsByIndex={rowsByIndex}
+            viewport={viewport}
             retainedRowIds={[
               navigation.activeCell?.rowId ?? visibleRows[0]?.id,
               navigation.editingCell?.rowId,
@@ -515,13 +533,14 @@ export function ObjectTable({
             scrollRef={scrollRef}
             columnCount={visibleColumns.length + 1}
             pagination={pagination}
+            table={table}
+            navigation={navigation}
+            canUpdateRecord={canUpdateRecord}
             rowProps={{
-              table,
-              tableState: table.state,
+              FlexRender: table.FlexRender,
+              layout: rowLayout,
               object,
-              navigation,
-              navigableColumns,
-              canUpdateRecord,
+              navigableColumnIds,
               onCellCommit,
               recordHref,
               resolveRecord,
@@ -552,6 +571,11 @@ export function ObjectTable({
           />
         ) : null}
       </div>
+      {viewport && (
+        <div className="flex h-9 shrink-0 items-center border-t px-page-gutter text-xs text-muted-foreground">
+          {viewport.totalSize.toLocaleString()} records
+        </div>
+      )}
       {pagination && (
         <CollectionPagination loaded={records.length} {...pagination} />
       )}

@@ -1,18 +1,18 @@
+import { Checkbox } from "@company/ui/checkbox"
 import { cn } from "@company/ui/lib/utils"
 import { TableCell, TableRow } from "@company/ui/table"
-import { memo } from "react"
+import { memo, type CSSProperties } from "react"
 
 import {
   objectTableCellSelectionClassName,
   objectTablePinnedCellClassName,
-  objectTablePinnedColumnStyle,
+  objectTableRowClassName,
 } from "#/runtime/ui/model/object-table/object-table-cell-styles.ts"
 import {
   isObjectTableCellEditable,
   objectTableCellShouldExpand,
 } from "#/runtime/ui/model/object-table/object-table-cell-types.ts"
 import { ObjectTableCell } from "#/runtime/ui/model/object-table/object-table-cell.tsx"
-import type { ObjectTableColumn } from "#/runtime/ui/model/object-table/object-table-columns.ts"
 import {
   objectTableValueText,
   type ObjectTableInstance,
@@ -24,31 +24,40 @@ import type { ObjectTableProps } from "#/runtime/ui/model/object-table/object-ta
 
 export interface ObjectTableRowProps extends Pick<
   ObjectTableProps,
-  | "object"
-  | "canUpdateRecord"
-  | "onCellCommit"
-  | "recordHref"
-  | "resolveRecord"
-  | "resolveImageSrc"
+  "object" | "onCellCommit" | "recordHref" | "resolveRecord" | "resolveImageSrc"
 > {
   row: ReturnType<ObjectTableInstance["getRowModel"]>["rows"][number]
   rowIndex: number
-  table: ObjectTableInstance
-  // Table instances are mutable; the snapshot also invalidates memoized column layout.
-  tableState: ObjectTableInstance["state"]
-  navigation: ReturnType<typeof useObjectTableNavigation>
-  navigableColumns: ReadonlyArray<ObjectTableColumn>
+  selected: boolean
+  canUpdate: boolean | undefined
+  FlexRender: ObjectTableInstance["FlexRender"]
+  // Only column layout changes invalidate every row; selection and focus are row-local.
+  layout: ReadonlyMap<
+    string,
+    { readonly pinned: boolean; readonly style: CSSProperties }
+  >
+  activeColumn?: string | undefined
+  tabbableColumn?: string | undefined
+  editingColumn?: string | undefined
+  initialEditValue?: string | undefined
+  navigation: ReturnType<typeof useObjectTableNavigation>["actions"]
+  navigableColumnIds: ReadonlyArray<string>
 }
 
 export const ObjectTableRow = memo(function ObjectTableRow({
   row,
   rowIndex,
-  table,
-  tableState,
+  selected,
+  canUpdate,
+  FlexRender,
+  layout,
+  activeColumn,
+  tabbableColumn,
+  editingColumn,
+  initialEditValue,
   object,
   navigation,
-  navigableColumns,
-  canUpdateRecord,
+  navigableColumnIds,
   onCellCommit,
   recordHref,
   resolveRecord,
@@ -57,12 +66,12 @@ export const ObjectTableRow = memo(function ObjectTableRow({
   return (
     <TableRow
       aria-rowindex={rowIndex + 2}
-      data-state={tableState.rowSelection[row.id] ? "selected" : undefined}
-      className="group h-8 hover:bg-muted/30 [&>td]:inset-shadow-[0_-1px_var(--border)]"
+      data-state={selected ? "selected" : undefined}
+      className={objectTableRowClassName}
     >
       {row.getVisibleCells().map((cell) => {
         const meta = cell.column.columnDef.meta
-        const pinned = cell.column.getIsPinned()
+        const { pinned, style } = layout.get(cell.column.id)!
         if (meta?.property === undefined || meta.propertyId === undefined) {
           return (
             <TableCell
@@ -72,18 +81,29 @@ export const ObjectTableRow = memo(function ObjectTableRow({
                 cell.column.id !== "selection" && "border-r",
                 pinned && objectTablePinnedCellClassName
               )}
-              style={objectTablePinnedColumnStyle(cell.column)}
+              style={style}
             >
-              {meta?.link ? (
+              {cell.column.id === "selection" ? (
+                <div className="flex size-full items-center pl-3 sm:pl-5">
+                  <Checkbox
+                    aria-label={`Select row ${rowIndex + 1}`}
+                    checked={selected}
+                    disabled={!row.getCanSelect()}
+                    onClick={(event) => event.stopPropagation()}
+                    onDoubleClick={(event) => event.stopPropagation()}
+                    onCheckedChange={(checked) => row.toggleSelected(checked)}
+                  />
+                </div>
+              ) : meta?.link ? (
                 <ObjectTableLinkCell
                   object={object}
                   record={row.original}
                   link={meta.link}
                   resolveRecord={resolveRecord}
-                  editable={canUpdateRecord?.(row.original.id) ?? false}
+                  editable={canUpdate ?? false}
                 />
               ) : (
-                <table.FlexRender cell={cell} />
+                <FlexRender cell={cell} />
               )}
             </TableCell>
           )
@@ -95,9 +115,9 @@ export const ObjectTableRow = memo(function ObjectTableRow({
         }
         const propertyId = meta.propertyId
         const cellValue = cell.getValue<ObjectTableValue>() ?? null
-        const active = navigation.isActive(address)
-        const tabbable = navigation.isTabbable(address)
-        const editing = navigation.isEditing(address)
+        const active = activeColumn === cell.column.id
+        const tabbable = tabbableColumn === cell.column.id
+        const editing = editingColumn === cell.column.id
         const expandActive =
           active &&
           !editing &&
@@ -105,13 +125,10 @@ export const ObjectTableRow = memo(function ObjectTableRow({
             displayLength: objectTableValueText(cellValue).length,
             valueCount: Array.isArray(cellValue) ? cellValue.length : 0,
           })
-        const columnIndex = navigableColumns.findIndex(
-          (column) => column.id === cell.column.id
-        )
+        const columnIndex = navigableColumnIds.indexOf(cell.column.id)
         const commitCell =
           onCellCommit === undefined ||
-          (canUpdateRecord !== undefined &&
-            !canUpdateRecord(row.original.id)) ||
+          canUpdate === false ||
           !meta.editable ||
           !isObjectTableCellEditable(meta.property)
             ? undefined
@@ -136,7 +153,7 @@ export const ObjectTableRow = memo(function ObjectTableRow({
                   )
                 : "overflow-hidden outline-none"
             )}
-            style={objectTablePinnedColumnStyle(cell.column)}
+            style={style}
             onClick={(event) => {
               if (editing) return
               if (event.detail > 1 && editable) {
@@ -162,7 +179,8 @@ export const ObjectTableRow = memo(function ObjectTableRow({
                 rowIndex,
                 columnIndex,
                 editable,
-                address
+                address,
+                editing
               )
             }
           >
@@ -172,9 +190,7 @@ export const ObjectTableRow = memo(function ObjectTableRow({
                   active={active}
                   editing={editing}
                   expandActive={expandActive}
-                  initialEditValue={
-                    editing ? navigation.editingCell?.initialValue : undefined
-                  }
+                  initialEditValue={editing ? initialEditValue : undefined}
                   identity={
                     meta.propertyId === object.display.title
                       ? {

@@ -145,7 +145,7 @@ export function interfaceQuery(
       id: string
       objectType: string
       values: ReadonlyArray<string | null>
-    }>`select ${columns.id}, ${columns.objectType}, jsonb_build_array(${sql.csv(compiled.sort.map(({ column }) => sql`${column}::text`))}) as values from ${from} where ${compiled.filter} and ${compiled.after} order by ${sql.csv(compiled.sort.map((sort) => orderExpression(sql, sort)))} limit ${pageSize + 1}`
+    }>`select ${columns.id}, ${columns.objectType}, jsonb_build_array(${sql.csv(compiled.sort.map(({ column }) => sql`${column}::text`))}) as values from ${from} where ${compiled.filter} and ${compiled.after} order by ${sql.csv(compiled.sort.map((sort) => orderExpression(sql, sort)))} limit ${pageSize + 1} offset ${request.pageOffset ?? 0}`
     const items = rows.slice(0, pageSize)
     const count = yield* sql<{
       totalSize: number

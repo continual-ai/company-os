@@ -28,6 +28,15 @@ const pageSizeSchema = Schema.Number.check(
 
 export const paginationInputFields = {
   pageSize: Schema.optionalKey(pageSizeSchema),
+  pageOffset: Schema.optionalKey(
+    Schema.Number.check(
+      Schema.isInt(),
+      Schema.isBetween({ minimum: 0, maximum: Number.MAX_SAFE_INTEGER })
+    ).annotate({
+      description:
+        "Zero-based row position for direct access. Cannot be combined with pageToken.",
+    })
+  ),
   pageToken: Schema.optionalKey(pageTokenSchema),
 }
 

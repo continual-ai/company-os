@@ -89,11 +89,12 @@ export function modelPagedQuery<
         queryKey: [...first.queryKey, "pages"],
         meta: { ...first.meta, paginated: true },
         initialPageParam: undefined as PageToken | undefined,
-        queryFn: ({ pageParam, signal }) =>
-          queryOptions({
-            ...input,
-            ...(pageParam === undefined ? {} : { pageToken: pageParam }),
-          }).queryFn({ signal }),
+        queryFn: ({ pageParam, signal }) => {
+          if (pageParam === undefined) return first.queryFn({ signal })
+          const next = { ...input, pageToken: pageParam }
+          Reflect.deleteProperty(next, "pageOffset")
+          return queryOptions(next).queryFn({ signal })
+        },
         getNextPageParam: (page) => page.nextPageToken ?? undefined,
       })
     },

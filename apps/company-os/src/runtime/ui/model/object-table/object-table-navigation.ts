@@ -1,4 +1,10 @@
-import { useCallback, useReducer, useRef, type KeyboardEvent } from "react"
+import {
+  useCallback,
+  useMemo,
+  useReducer,
+  useRef,
+  type KeyboardEvent,
+} from "react"
 
 export interface ObjectTableCellAddress {
   columnId: string
@@ -33,13 +39,6 @@ function cellKey({ columnId, rowId }: ObjectTableCellAddress): string {
   return `${rowId}\u0000${columnId}`
 }
 
-function isSameCell(
-  first: ObjectTableCellAddress | null,
-  second: ObjectTableCellAddress | null
-): boolean {
-  return first?.columnId === second?.columnId && first?.rowId === second?.rowId
-}
-
 export function reduceObjectTableNavigationState(
   state: ObjectTableNavigationState,
   action: ObjectTableNavigationAction
@@ -66,9 +65,13 @@ export function reduceObjectTableNavigationState(
 export function useObjectTableNavigation({
   columnIds,
   rowIds,
+  rowsByIndex,
+  rowCount,
 }: {
   columnIds: ReadonlyArray<string>
   rowIds: ReadonlyArray<string>
+  rowsByIndex: ReadonlyMap<number, string>
+  rowCount: number
 }) {
   const [cellState, dispatch] = useReducer(
     reduceObjectTableNavigationState,
@@ -138,12 +141,12 @@ export function useObjectTableNavigation({
 
   const moveCellFocus = useCallback(
     (rowIndex: number, columnIndex: number) => {
-      const rowId = rowIds[rowIndex]
+      const rowId = rowsByIndex.get(rowIndex)
       const columnId = columnIds[columnIndex]
       if (rowId === undefined || columnId === undefined) return
       activateCell({ rowId, columnId }, true)
     },
-    [activateCell, columnIds, rowIds]
+    [activateCell, columnIds, rowsByIndex]
   )
 
   const handleCellKeyDown = useCallback(
@@ -152,7 +155,8 @@ export function useObjectTableNavigation({
       rowIndex: number,
       columnIndex: number,
       editable: boolean,
-      address: ObjectTableCellAddress
+      address: ObjectTableCellAddress,
+      editing: boolean
     ) => {
       if (event.key === "Escape" && event.target === event.currentTarget) {
         event.preventDefault()
@@ -160,10 +164,7 @@ export function useObjectTableNavigation({
         event.currentTarget.blur()
         return
       }
-      if (
-        resolvedEditingCell !== null ||
-        event.target !== event.currentTarget
-      ) {
+      if (editing || event.target !== event.currentTarget) {
         return
       }
 
@@ -179,7 +180,7 @@ export function useObjectTableNavigation({
         return
       }
 
-      const lastRow = rowIds.length - 1
+      const lastRow = rowCount - 1
       const lastColumn = columnIds.length - 1
       let nextRow = rowIndex
       let nextColumn = columnIndex
@@ -211,7 +212,7 @@ export function useObjectTableNavigation({
           const nextFlatIndex = flatIndex + direction
           if (
             nextFlatIndex < 0 ||
-            nextFlatIndex >= rowIds.length * columnIds.length
+            nextFlatIndex >= rowCount * columnIds.length
           ) {
             return
           }
@@ -233,38 +234,38 @@ export function useObjectTableNavigation({
       event.preventDefault()
       moveCellFocus(nextRow, nextColumn)
     },
-    [
-      clearCell,
-      columnIds.length,
-      moveCellFocus,
-      resolvedEditingCell,
-      rowIds.length,
-      setCellEditing,
-    ]
+    [clearCell, columnIds.length, moveCellFocus, rowCount, setCellEditing]
   )
 
-  return {
-    activeCell: resolvedActiveCell,
-    activateCell,
-    cancelCellEditing,
-    clearCell,
-    editingCell: resolvedEditingCell,
-    handleCellKeyDown,
-    isActive: (address: ObjectTableCellAddress) =>
-      isSameCell(resolvedActiveCell, address),
-    isEditing: (address: ObjectTableCellAddress) =>
-      isSameCell(resolvedEditingCell, address),
-    isTabbable: (address: ObjectTableCellAddress) =>
-      isSameCell(resolvedActiveCell, address) ||
-      (resolvedActiveCell === null && isSameCell(firstCell, address)),
-    registerCell: (
-      address: ObjectTableCellAddress,
-      element: HTMLTableCellElement | null
-    ) => {
+  const registerCell = useCallback(
+    (address: ObjectTableCellAddress, element: HTMLTableCellElement | null) => {
       const key = cellKey(address)
       if (element === null) cellElements.current.delete(key)
       else cellElements.current.set(key, element)
     },
-    setCellEditing,
+    []
+  )
+  const actions = useMemo(
+    () => ({
+      activateCell,
+      cancelCellEditing,
+      handleCellKeyDown,
+      registerCell,
+      setCellEditing,
+    }),
+    [
+      activateCell,
+      cancelCellEditing,
+      handleCellKeyDown,
+      registerCell,
+      setCellEditing,
+    ]
+  )
+  return {
+    activeCell: resolvedActiveCell,
+    editingCell: resolvedEditingCell,
+    tabbableCell: resolvedActiveCell ?? firstCell,
+    clearCell,
+    actions,
   }
 }

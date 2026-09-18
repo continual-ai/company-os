@@ -300,7 +300,8 @@ function makeRepository<
       where?: Fragment,
       orderBy: ReadonlyArray<Fragment> = [sql`${idColumn} asc`],
       limit?: number,
-      cursorSort: ReadonlyArray<ResolvedSort> = []
+      cursorSort: ReadonlyArray<ResolvedSort> = [],
+      offset = 0
     ) =>
       sql<
         SelectionRow<typeof selection> & {
@@ -313,7 +314,7 @@ function makeRepository<
 
           where ${where ?? sql.literal("true")}
           order by ${sql.csv(orderBy)}
-        ${limit === undefined ? sql.literal("") : sql`limit ${limit}`}`
+        ${limit === undefined ? sql.literal("") : sql`limit ${limit}`} offset ${offset}`
     const countMatching = (where?: Fragment, includeCoreObjects = true) =>
       sql<{
         totalSize: number
@@ -362,6 +363,18 @@ function makeRepository<
         Page<ObjectRecord<TObject>>,
         PostgresRepositoryError
       > {
+        if (
+          request.pageOffset !== undefined &&
+          (!Number.isSafeInteger(request.pageOffset) ||
+            request.pageOffset < 0 ||
+            request.pageToken !== undefined)
+        )
+          return yield* Effect.fail(
+            invalidListRequest(
+              object,
+              "pageOffset must be a non-negative safe integer and cannot be combined with pageToken."
+            )
+          )
         const size = yield* Effect.try({
           try: () => normalizePageSize(request.pageSize),
           catch: () =>
@@ -436,14 +449,17 @@ function makeRepository<
           sql.and([matching, after].filter((part) => part !== undefined)),
           resolvedSort.map((sort) => orderExpression(sql, sort)),
           size + 1,
-          resolvedSort
+          resolvedSort,
+          request.pageOffset ?? 0
         )
         const records = yield* decodeRecords(rows)
         const hasNextPage = records.length > size
         const items = hasNextPage ? records.slice(0, size) : records
         const last = items.at(-1)
         const totalSize =
-          request.pageToken === undefined && !hasNextPage
+          request.pageToken === undefined &&
+          (request.pageOffset ?? 0) === 0 &&
+          !hasNextPage
             ? items.length
             : ((yield* countMatching(
                 matching,

@@ -98,20 +98,20 @@ export async function preloadCollection(
     views === undefined
       ? (search.state ?? emptyObjectCollectionViewState)
       : resolveObjectCollectionView(views, search).state
-  await cache.ensureInfiniteQueryData(
-    clientFor(runtime, object).list.infiniteQueryOptions(
-      objectListRequest(
-        object,
-        state.filters,
-        state.sorting,
-        undefined,
-        collectionDateWindow(
-          state.layout,
-          calendarDay(state.date) ?? new Date().toISOString().slice(0, 10)
-        ),
-        runtime.model,
-        state.visibility
-      )
-    )
+  const request = objectListRequest(
+    object,
+    state.filters,
+    state.sorting,
+    undefined,
+    collectionDateWindow(
+      state.layout,
+      calendarDay(state.date) ?? new Date().toISOString().slice(0, 10)
+    ),
+    runtime.model,
+    state.visibility
   )
+  const list = clientFor(runtime, object).list
+  if (!state.layout || state.layout.type === "table")
+    await cache.ensureQueryData(list.queryOptions(request))
+  else await cache.ensureInfiniteQueryData(list.infiniteQueryOptions(request))
 }

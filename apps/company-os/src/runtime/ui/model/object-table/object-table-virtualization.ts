@@ -7,20 +7,30 @@ export const tableRowHeight = 32
 /** Materialize Virtual's mutable instance into values that the compiled table can safely consume. */
 export function useObjectTableRows(
   rowIds: ReadonlyArray<string>,
+  rowsByIndex: ReadonlyMap<number, string>,
   retainedRowIds: ReadonlyArray<string | undefined>,
-  scrollRef: RefObject<HTMLDivElement | null>
+  scrollRef: RefObject<HTMLDivElement | null>,
+  viewport?: { totalSize: number; indices: ReadonlyMap<string, number> }
 ) {
   "use no memo"
   // Virtual v3's mutable getters are incompatible with React Compiler memoization.
-  const getItemKey = useCallback((index: number) => rowIds[index]!, [rowIds])
+  const getItemKey = useCallback(
+    (index: number) => rowsByIndex.get(index) ?? index,
+    [rowsByIndex]
+  )
   const retainedRows = retainedRowIds.flatMap((id) => {
-    const index = id === undefined ? -1 : rowIds.indexOf(id)
+    const index =
+      id === undefined
+        ? -1
+        : viewport
+          ? (viewport.indices.get(id) ?? -1)
+          : rowIds.indexOf(id)
     return index < 0 ? [] : [index]
   })
   // This uncompiled boundary exposes values, never the mutable instance or its getters.
   // oxlint-disable-next-line react/incompatible-library
   const virtualizer = useVirtualizer({
-    count: rowIds.length,
+    count: viewport?.totalSize ?? rowIds.length,
     getScrollElement: () => scrollRef.current,
     getItemKey,
     estimateSize: () => tableRowHeight,
@@ -46,6 +56,8 @@ export function useObjectTableRows(
   })
   const items = virtualizer.getVirtualItems()
   return {
+    retainedIndices: retainedRows,
+    firstVisibleIndex: virtualizer.range?.startIndex ?? 0,
     lastVisibleIndex: virtualizer.range?.endIndex ?? -1,
     // Keep data farther ahead than the render buffer so page loads overlap scrolling.
     prefetchRowCount:

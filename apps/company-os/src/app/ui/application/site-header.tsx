@@ -127,11 +127,8 @@ function RecordPager({ navigation }: { navigation: RecordNavigation }) {
   const pending = useRef(false)
   const [navigating, setNavigating] = useState(false)
   const previousDisabled =
-    !navigation.previousHref || navigation.loading || navigating
-  const nextDisabled =
-    navigation.loading ||
-    navigating ||
-    (!navigation.nextHref && !navigation.hasNextPage)
+    !navigation.hasPrevious || navigation.loading || navigating
+  const nextDisabled = navigation.loading || navigating || !navigation.hasNext
   const move = async (direction: "previous" | "next") => {
     if (
       pending.current ||
@@ -142,10 +139,7 @@ function RecordPager({ navigation }: { navigation: RecordNavigation }) {
     setNavigating(true)
     try {
       const location = router.state.location.href
-      const href =
-        direction === "previous"
-          ? navigation.previousHref
-          : (navigation.nextHref ?? (await navigation.loadNext()))
+      const href = navigation.move(direction)
       if (href && router.state.location.href === location)
         await router.navigate({ to: href, replace: true })
     } finally {

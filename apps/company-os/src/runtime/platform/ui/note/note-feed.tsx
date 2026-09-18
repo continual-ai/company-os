@@ -13,12 +13,14 @@ import {
   formErrorFromCause,
   formErrorMessages,
 } from "#/runtime/ui/forms/form-errors.ts"
+import { useInfiniteCollectionPages } from "#/runtime/ui/model/collection-pages.tsx"
 import { CollectionQueryToolbar } from "#/runtime/ui/model/collection-query-toolbar.tsx"
 import type { ObjectCollectionFilter } from "#/runtime/ui/model/collection-view.ts"
 import {
   clientFor,
   type ClientRecord,
 } from "#/runtime/ui/model/object-client.ts"
+import { objectListRequest } from "#/runtime/ui/model/object-collection-query.ts"
 import { ObjectRecordDialog } from "#/runtime/ui/model/object-record-dialog.tsx"
 import { ObjectRecordSummary } from "#/runtime/ui/model/object-record-summary.tsx"
 import { ObjectReferenceSelect } from "#/runtime/ui/model/object-reference-select.tsx"
@@ -38,12 +40,9 @@ export function NoteFeed({ relationship }: RelationshipOverviewProps) {
   const [sorting, setSorting] = useState<SortingState>([
     { id: "createdAt", desc: true },
   ])
-  const collection = useObjectCollection(
-    Note,
-    filters,
-    sorting,
-    relationship.list
-  )
+  const request = objectListRequest(Note, filters, sorting)
+  const pages = useInfiniteCollectionPages(relationship.list, request)
+  const collection = useObjectCollection(Note, request, pages)
   const [editing, setEditing] = useState<ClientRecord>()
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string>()
@@ -176,11 +175,11 @@ export function NoteFeed({ relationship }: RelationshipOverviewProps) {
               : "No notes yet."}
         </p>
       )}
-      {collection.hasNextPage && (
+      {collection.pagination?.hasNextPage && (
         <Button
           variant="ghost"
           disabled={collection.isFetching}
-          onClick={collection.nextPage}
+          onClick={collection.pagination?.onNextPage}
         >
           Load more notes
         </Button>

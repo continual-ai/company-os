@@ -187,6 +187,22 @@ describe("Effect SQL object repository", () => {
           pageToken: tiedFirst.nextPageToken,
         })
         expect(tiedSecond.items.map(({ id }) => id)).toEqual([first.id])
+        const directSecond = yield* service.list({ pageSize: 1, pageOffset: 1 })
+        expect(directSecond.items.map(({ id }) => id)).toEqual([first.id])
+        expect(directSecond.totalSize).toBe(2)
+        expect(directSecond.nextPageToken).toBeNull()
+        const beyond = yield* service.list({ pageSize: 1, pageOffset: 20 })
+        expect(beyond.items).toEqual([])
+        expect(beyond.totalSize).toBe(2)
+        for (const pageOffset of [-1, 1.5, Number.MAX_SAFE_INTEGER + 1])
+          expect(
+            yield* service.list({ pageOffset }).pipe(Effect.flip)
+          ).toBeInstanceOf(Schema.SchemaError)
+        expect(
+          yield* service
+            .list({ pageOffset: 1, pageToken: tiedFirst.nextPageToken })
+            .pipe(Effect.flip)
+        ).toBeInstanceOf(Schema.SchemaError)
         const zeroPageSize = yield* service.list({ pageSize: 0 })
         const oversizedPage = yield* service.list({ pageSize: 10_000 })
         const tamperedCursor = yield* service

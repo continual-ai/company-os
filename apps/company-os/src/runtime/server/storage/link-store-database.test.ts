@@ -430,6 +430,13 @@ fixture.test(
         sort: [{ field: "name", direction: "asc" }],
         pageToken: first.nextPageToken!,
       })
+      const direct = yield* links.list(relation, {
+        id: team.id,
+        pageSize: 1,
+        pageOffset: 1,
+        sort: [{ field: "name", direction: "asc" }],
+      })
+      expect(direct).toEqual(next)
       expect(next.items[0]).toMatchObject({
         id: person.id,
         objectType: "person",

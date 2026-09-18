@@ -37,6 +37,8 @@ export function validateQuery(
   model: ModelCatalog,
   object: QueryType,
   input: {
+    readonly pageOffset?: number
+    readonly pageToken?: string
     readonly filter?: unknown
     readonly sort?: ReadonlyArray<{
       readonly field: string
@@ -44,6 +46,15 @@ export function validateQuery(
     }>
   }
 ) {
+  if (
+    input.pageOffset !== undefined &&
+    (!Number.isSafeInteger(input.pageOffset) ||
+      input.pageOffset < 0 ||
+      input.pageToken !== undefined)
+  )
+    throw new Error(
+      "pageOffset must be a non-negative safe integer and cannot be combined with pageToken."
+    )
   let nodes = 0
   const visit = (
     type: QueryType,
