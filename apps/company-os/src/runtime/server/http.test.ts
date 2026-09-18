@@ -121,7 +121,12 @@ describe("Effect HTTP projection", () => {
     )
     expect(document.components?.schemas.AccountPage).toHaveProperty(
       "required",
-      expect.arrayContaining(["items", "nextPageToken", "totalSize"])
+      expect.arrayContaining([
+        "items",
+        "nextPageToken",
+        "totalSize",
+        "totalSizeExact",
+      ])
     )
     expect(document.components?.schemas).toHaveProperty("NotFoundError")
     expect(document.components?.schemas).toHaveProperty("ValidationFailedError")

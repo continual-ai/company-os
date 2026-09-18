@@ -14,7 +14,7 @@ const objectNames = Object.values(Model.objects)
   .sort()
 
 function Home() {
-  const { people, total, error } = Route.useLoaderData()
+  const { people, totalSize, totalSizeExact, error } = Route.useLoaderData()
   return (
     <main className="grid min-h-svh place-items-center px-6">
       <div className="w-full max-w-md space-y-8">
@@ -41,9 +41,10 @@ function Home() {
               {people.map((person) => (
                 <li key={person.id}>{person.name}</li>
               ))}
-              {total > people.length && (
+              {totalSize > people.length && (
                 <li className="text-muted-foreground">
-                  and {total - people.length} more
+                  and {(totalSize - people.length).toLocaleString()}
+                  {totalSizeExact ? "" : "+"} more
                 </li>
               )}
             </ul>

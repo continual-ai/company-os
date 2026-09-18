@@ -100,6 +100,7 @@ export interface ObjectTableColumnMeta {
 
   editable?: boolean
 
+  countRelationship?: string
   relationship?: string
   displayProperty?: PropertyDefinition
   essential?: boolean

@@ -3,6 +3,8 @@ import { cn } from "@company/ui/lib/utils"
 import { TableCell, TableRow } from "@company/ui/table"
 import { memo, type CSSProperties } from "react"
 
+import { linkPreview } from "#/runtime/model/record-links.ts"
+import { formatTotalSize } from "#/runtime/ui/model/format-total-size.ts"
 import {
   objectTableCellSelectionClassName,
   objectTablePinnedCellClassName,
@@ -203,7 +205,15 @@ export const ObjectTableRow = memo(function ObjectTableRow({
                   property={meta.displayProperty ?? meta.property}
                   resolveImageSrc={resolveImageSrc}
                   resolveRecord={resolveRecord}
-                  value={cellValue}
+                  value={
+                    meta.countRelationship
+                      ? formatTotalSize(
+                          linkPreview(
+                            row.original.links?.[meta.countRelationship]
+                          )
+                        )
+                      : cellValue
+                  }
                   onCancelEditing={() => navigation.cancelCellEditing(address)}
                   onEditingChange={(nextEditing) =>
                     navigation.setCellEditing(address, nextEditing)

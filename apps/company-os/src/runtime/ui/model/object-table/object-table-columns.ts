@@ -81,6 +81,9 @@ export function objectTableFieldColumnDef(
         ...(field.kind === "link"
           ? { link: field.traversal }
           : { propertyId: id }),
+        ...(field.kind === "related" && field.related.count
+          ? { countRelationship: field.related.traversal.traversal.key }
+          : {}),
         ...(plural
           ? {
               relationship: field.related.traversal.traversal.label,

@@ -277,8 +277,10 @@ export interface Page<TItem> {
   readonly items: ReadonlyArray<TItem>
   /** Null when there is no next page. */
   readonly nextPageToken: PageToken | null
-  /** Exact number of matching items visible to the caller before pagination. */
+  /** Number of matching items before pagination; a lower bound when totalSizeExact is false. */
   readonly totalSize: number
+  /** True means exact; false means at least totalSize, never an estimate. */
+  readonly totalSizeExact: boolean
 }
 
 export interface Batch<TItem> {

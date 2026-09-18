@@ -318,6 +318,7 @@ function PatternExamples({
                           ? "Could not load more example records."
                           : undefined,
                       totalSize: 12,
+                      totalSizeExact: true,
                       onNextPage: () => setState("populated"),
                     }
                   : undefined

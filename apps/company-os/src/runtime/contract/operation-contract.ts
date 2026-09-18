@@ -302,7 +302,7 @@ function resolveOperations(
       key: "records.search",
       name: "Search records",
       description:
-        "Searches indexed fields across active object types. Returns a standard page (items, nextPageToken, totalSize) of ranked SearchResult summaries with up to three plain-text snippets each. Continue with the same query and objectTypes; snippets are previews, not complete record fields.",
+        "Searches indexed fields across active object types. Returns a standard page (items, nextPageToken, totalSize, totalSizeExact) of ranked SearchResult summaries with up to three plain-text snippets each. Continue with the same query and objectTypes; snippets are previews, not complete record fields.",
       input: search.input,
       output: search.result,
       kind: "query",

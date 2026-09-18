@@ -87,7 +87,12 @@ export function interfaceQuery(
         return sql`select ${sql.csv(Object.entries(fields).map(([key, field]) => sql`${field} as ${sql.literal(q(key))}`))} from ${table} join ${core} on ${table.columns.id} = ${core.columns.id} where exists (select 1 from ${edge} where ${source} = ${relatedTo.sourceId} and ${destination} = ${core.columns.id})`
       })
     if (branches.length === 0)
-      return { items: [], nextPageToken: null, totalSize: 0 }
+      return {
+        items: [],
+        nextPageToken: null,
+        totalSize: 0,
+        totalSizeExact: true,
+      }
     const request = yield* resolveListRequest(
       target,
       input,
@@ -157,6 +162,7 @@ export function interfaceQuery(
     return {
       items: items.map(({ id, objectType }) => ({ id, objectType })),
       totalSize: count[0]!.totalSize,
+      totalSizeExact: true,
       nextPageToken:
         rows.length > pageSize && last
           ? encodeCursor(pageTokens, {

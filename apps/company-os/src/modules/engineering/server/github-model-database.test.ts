@@ -70,17 +70,23 @@ fixture.test(
         (yield* records
           .repository(Connection)
           .get({ id: connection.id, expand: true })).links.repositories
-      ).toMatchObject({ items: [{ id: repository.id }], totalSize: 1 })
+      ).toMatchObject({
+        items: [{ id: repository.id }],
+        totalSize: 1,
+        totalSizeExact: true,
+      })
       const expanded = yield* records
         .repository(GitHubRepository)
         .get({ id: repository.id, expand: true })
       expect(expanded.links.issues).toMatchObject({
         items: [{ id: githubIssue.id }],
         totalSize: 1,
+        totalSizeExact: true,
       })
       expect(expanded.links.pullRequests).toMatchObject({
         items: [{ id: pr.id }],
         totalSize: 1,
+        totalSizeExact: true,
       })
       const internal = yield* records
         .repository(Issue)
@@ -89,10 +95,12 @@ fixture.test(
       expect(internal.links.githubIssues).toMatchObject({
         items: [{ id: githubIssue.id }],
         totalSize: 1,
+        totalSizeExact: true,
       })
       expect(internal.links.githubPullRequests).toMatchObject({
         items: [{ id: pr.id }],
         totalSize: 1,
+        totalSizeExact: true,
       })
       yield* records
         .repository(GitHubIssue)

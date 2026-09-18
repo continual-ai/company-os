@@ -29,13 +29,15 @@ export const listPeople = createServerFn({ method: "GET" }).handler(
       const page = await client.user.list({ pageSize: 5 })
       return {
         people: page.items.map(({ id, name }) => ({ id, name })),
-        total: page.totalSize,
+        totalSize: page.totalSize,
+        totalSizeExact: page.totalSizeExact,
         error: null,
       }
     } catch (error) {
       return {
         people: [],
-        total: 0,
+        totalSize: 0,
+        totalSizeExact: true,
         error: error instanceof Error ? error.message : String(error),
       }
     }

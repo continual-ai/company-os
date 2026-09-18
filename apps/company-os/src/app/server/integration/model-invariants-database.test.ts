@@ -50,6 +50,7 @@ application.test(
       ).toMatchObject({
         items: [{ id: affiliation.id, label: affiliation.label }],
         totalSize: 1,
+        totalSizeExact: true,
       })
       yield* client.account.update({ id: account.id, name: "Renamed Robotics" })
       const renamed = "Maya Chen · Renamed Robotics"

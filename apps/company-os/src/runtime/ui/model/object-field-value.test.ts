@@ -16,8 +16,8 @@ it("reads relationship previews and expansions without flattening or colliding w
   const fields = objectFields(Person, fixtureModel)
   const account = { id: "account_example", etag: "1", name: "Acme" }
   for (const accounts of [
-    { ids: [account.id], totalSize: 12 },
-    { items: [account], totalSize: 12 },
+    { ids: [account.id], totalSize: 12, totalSizeExact: true },
+    { items: [account], totalSize: 12, totalSizeExact: true },
   ]) {
     const record: ClientRecord = {
       id: "person_example",

@@ -244,7 +244,7 @@ function makeRepository<
             : edges.columns.forwardId
         if (traversal.max === 1)
           return sql`${traversal.key}::text, (select ${target} from ${edges} where ${source} = ${objects.columns.id})`
-        return sql`${traversal.key}::text, jsonb_build_object('ids', array(select ${target} from ${edges} where ${source} = ${objects.columns.id} order by ${target} limit 3), 'totalSize', (select count(*) from ${edges} where ${source} = ${objects.columns.id}))`
+        return sql`${traversal.key}::text, jsonb_build_object('ids', array(select ${target} from ${edges} where ${source} = ${objects.columns.id} order by ${target} limit 3), 'totalSize', (select count(*) from ${edges} where ${source} = ${objects.columns.id}), 'totalSizeExact', true)`
       }
     )
     const label = recordLabelSql(sql, storage, object)
@@ -478,6 +478,7 @@ function makeRepository<
                 })
               : null,
           totalSize,
+          totalSizeExact: true,
         }
       })
 

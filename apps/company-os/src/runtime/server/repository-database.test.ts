@@ -162,6 +162,7 @@ fixture.test(
         expect(after.links.accounts).toEqual({
           ids: [account.id],
           totalSize: 1,
+          totalSizeExact: true,
         })
         expect(yield* services.person.get({ id: before.id })).toEqual(after)
       }

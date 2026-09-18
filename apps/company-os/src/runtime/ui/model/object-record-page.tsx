@@ -119,7 +119,7 @@ export function ObjectRecordPage({
     state.record,
     state.references
   )
-  const totals = new Map(previews.map(({ key, total }) => [key, total]))
+  const totals = new Map(previews.map(({ key, totalSize }) => [key, totalSize]))
   const select = (value: string) => {
     // Let the router commit routed tabs inside its view transition.
     if (onTabChange) onTabChange(value)
@@ -386,7 +386,11 @@ export function ObjectRecordPage({
                   {relationshipTabs.map(({ key, label }) => (
                     <TabsTrigger key={key} value={key}>
                       {label}
-                      <RelationshipCount count={totals.get(key)} />
+                      <RelationshipCount
+                        count={previews.find(
+                          (preview) => preview.key === key && !preview.pending
+                        )}
+                      />
                     </TabsTrigger>
                   ))}
                   {customTabs.map(({ id, label }) => (

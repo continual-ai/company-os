@@ -56,9 +56,10 @@ Use installed Effect v4 APIs; services use `Context.Service(..., { make })` with
 Define each Link with `from: { object, key }` and `to: { object, key }`; use `max: 1` for a singular end.
 Create and update accept singular IDs or null and plural ID arrays. On update, arrays replace the whole
 set and `[]` clears it; use `{ add, remove }` when editing a partial preview. Plural reads return three
-preview IDs plus an exact `totalSize`; use the relationship list to retrieve the full set. Reads accept
+preview IDs plus `totalSize` and `totalSizeExact`; use the relationship list to retrieve the full set. Reads accept
 `expand: true` or a map of relationship keys set to `true`. Expansion hydrates one hop: singular IDs
-become records and plural previews become `{ items, totalSize }`. Use the model-aware client for inferred
+become records and plural previews become `{ items, totalSize, totalSizeExact }`. Counts are currently
+exact; false means a guaranteed lower bound, never an estimate. Use the model-aware client for inferred
 result types. Collection views request expansion for visible relationship columns. Related filters use
 `some`, `none`, or `every`; `relationship.$count` supports count filtering.
 Use `display.title: ["contact.name", "account.name"]` for derived record labels. Paths may cross one

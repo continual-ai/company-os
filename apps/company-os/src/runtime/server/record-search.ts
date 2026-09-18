@@ -70,7 +70,12 @@ export function createRecordSearch(model: ModelCatalog) {
         })
       : undefined
     if (request.query.trim().length === 0 || objectTypes.length === 0)
-      return { items: [], nextPageToken: null, totalSize: 0 }
+      return {
+        items: [],
+        nextPageToken: null,
+        totalSize: 0,
+        totalSizeExact: true,
+      }
     const objects = (yield* ModelContext).storage.core.objects
     const { sql } = yield* SqlDatabase
     const visible = objectTypes.map(
@@ -116,6 +121,7 @@ export function createRecordSearch(model: ModelCatalog) {
     const last = page.at(-1)
     return yield* Schema.decodeUnknownEffect(recordSearchResult)({
       totalSize: total!.totalSize,
+      totalSizeExact: true,
       items: page.map(({ rank: _rank, query: _query, ...hit }) => ({
         ...hit,
         snippets: snippets.get(hit.id) ?? [],

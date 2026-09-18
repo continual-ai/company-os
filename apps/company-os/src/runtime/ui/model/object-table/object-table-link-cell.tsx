@@ -28,14 +28,10 @@ export function ObjectTableLinkCell({
   readonly editable: boolean
 }) {
   const [open, setOpen] = useState(false)
-  const { ids, totalSize } = linkPreview(record.links?.[link.traversal.key])
+  const preview = linkPreview(record.links?.[link.traversal.key])
   return (
     <div className="group/link relative flex h-8 min-w-0 items-center px-2 pr-7 text-xs">
-      <RecordLinkValue
-        ids={ids}
-        totalSize={totalSize}
-        resolveRecord={resolveRecord}
-      />
+      <RecordLinkValue {...preview} resolveRecord={resolveRecord} />
       {editable && link.writable && (
         <Button
           size="icon-xs"

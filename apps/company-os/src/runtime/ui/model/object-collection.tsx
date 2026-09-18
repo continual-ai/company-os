@@ -578,6 +578,7 @@ function ObjectCollectionContent({
           <CollectionPagination
             loaded={collection.records.length}
             totalSize={collection.totalSize}
+            totalSizeExact={collection.totalSizeExact}
             hasNextPage={collection.pagination?.hasNextPage ?? false}
             loading={collection.isFetching}
             error={collection.error}

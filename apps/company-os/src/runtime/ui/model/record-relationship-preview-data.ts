@@ -17,7 +17,8 @@ export function recordRelationshipPreviews(
       relationship,
       key: relationship.key,
       label: relationship.label,
-      total: preview.totalSize,
+      totalSize: preview.totalSize,
+      totalSizeExact: preview.totalSizeExact,
       pending: record === undefined,
       items: preview.ids.flatMap((id) => {
         const value = references.get(id)

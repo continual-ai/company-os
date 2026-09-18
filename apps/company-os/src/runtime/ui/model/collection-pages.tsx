@@ -14,6 +14,7 @@ export interface CollectionPages {
   readonly recordsById: ReadonlyMap<string, ClientRecord>
   readonly recordPages: ReadonlyArray<ReadonlyArray<ClientRecord>>
   readonly totalSize: number
+  readonly totalSizeExact: boolean
   readonly error: unknown
   readonly isPending: boolean
   readonly isFetching: boolean
@@ -43,6 +44,7 @@ export function ViewportCollectionPages({
     load: pages.refetch,
     viewport: {
       totalSize: pages.totalSize,
+      totalSizeExact: pages.totalSizeExact,
       loading: pages.isFetching,
       indices: pages.indices,
       onRangeChange: pages.onRangeChange,
@@ -78,6 +80,7 @@ export function useInfiniteCollectionPages(
   return {
     ...records,
     totalSize: data?.pages[0]?.totalSize ?? 0,
+    totalSizeExact: data?.pages[0]?.totalSizeExact ?? true,
     error: page.error,
     isPending: page.isPending,
     isFetching: page.isFetching,

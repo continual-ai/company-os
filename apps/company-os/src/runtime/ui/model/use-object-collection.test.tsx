@@ -28,6 +28,7 @@ const list = modelPagedQuery((request: ListRequest) =>
   modelQuery<Page<ClientRecord>>(["account"], "list", request, async () => ({
     items: [],
     totalSize: 2,
+    totalSizeExact: true,
     nextPageToken: null,
   }))
 )
@@ -91,11 +92,13 @@ it("retains actions and reference labels as pages append, and disables editing w
   const first = {
     items: [{ id: "account_one", etag: "1", name: "One", createdBy: "user_z" }],
     totalSize: 2,
+    totalSizeExact: true,
     nextPageToken: null,
   }
   const second = {
     items: [{ id: "account_two", etag: "1", name: "Two", createdBy: "user_a" }],
     totalSize: 2,
+    totalSizeExact: true,
     nextPageToken: null,
   }
   const render = () =>

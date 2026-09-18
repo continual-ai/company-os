@@ -180,8 +180,9 @@ HTTP paths below are relative to `/api/v1`.
 
 Lists accept `query` for indexed word-prefix search on objects with `search` configured:
 `client.lead.list({ query: "acme", pageSize: 50 })`. Combine it with `filter`, `sort`,
-and `expand`; the result is the usual page of complete records, with `totalSize` and
-`nextPageToken`. Search narrows the list without changing its sort order. Global
+and `expand`; the result is the usual page of complete records, with `totalSize`, `totalSizeExact`, and
+`nextPageToken`. Counts are currently exact; `totalSizeExact: false` denotes a guaranteed
+lower bound, displayed as “10,000+”. Pagination always follows `nextPageToken`. Search narrows the list without changing its sort order. Global
 `client.records.search({ query: "acme" })` returns ranked results across object types.
 
 Explore the contracts in **Developer Center → API**. OpenAPI is at `/api/openapi`;

@@ -107,7 +107,11 @@ application.test(
         })
       ).toMatchObject({
         links: {
-          connections: { totalSize: 1, items: [{ id: connection.id }] },
+          connections: {
+            totalSize: 1,
+            totalSizeExact: true,
+            items: [{ id: connection.id }],
+          },
         },
       })
       const missingConnector = yield* http.handle(

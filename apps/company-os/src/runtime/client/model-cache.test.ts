@@ -42,9 +42,13 @@ it("marks inactive results stale without changing their shape or inventing membe
   const { queryClient: cache, dispose } = createModelDataClient()
   const value = {
     items: [
-      { id: "person_1", links: { accounts: { items: [], totalSize: 8 } } },
+      {
+        id: "person_1",
+        links: { accounts: { items: [], totalSize: 8, totalSizeExact: true } },
+      },
     ],
     totalSize: 20,
+    totalSizeExact: true,
   }
   const query = modelQuery(
     ["person", "account"],

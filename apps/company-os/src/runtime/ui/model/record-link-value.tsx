@@ -1,3 +1,4 @@
+import { formatTotalSize } from "#/runtime/ui/model/format-total-size.ts"
 import type { ObjectRecordPresentation } from "#/runtime/ui/model/object-client.ts"
 import { ObjectRecordIdentity } from "#/runtime/ui/model/object-record-identity.tsx"
 import { objectRecordHref } from "#/runtime/ui/model/object-routing.ts"
@@ -7,10 +8,12 @@ import { useModelRuntime } from "#/runtime/ui/model/runtime-context.tsx"
 export function RecordLinkValue({
   ids,
   totalSize,
+  totalSizeExact,
   resolveRecord,
 }: {
   readonly ids: ReadonlyArray<string>
   readonly totalSize: number
+  readonly totalSizeExact: boolean
   readonly resolveRecord?:
     | ((id: string) => ObjectRecordPresentation | undefined)
     | undefined
@@ -35,7 +38,11 @@ export function RecordLinkValue({
       })}
       {totalSize > ids.length && (
         <span className="shrink-0 text-muted-foreground">
-          +{totalSize - ids.length}
+          +
+          {formatTotalSize({
+            totalSize: totalSize - ids.length,
+            totalSizeExact,
+          })}
         </span>
       )}
     </span>

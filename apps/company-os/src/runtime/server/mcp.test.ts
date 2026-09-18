@@ -78,7 +78,12 @@ function services(): OperationServices<typeof TestModel> {
       enroll: () => Effect.succeed({ enrolled: true }),
       get: unused,
       list: () =>
-        Effect.succeed({ items: [], nextPageToken: null, totalSize: 0 }),
+        Effect.succeed({
+          items: [],
+          nextPageToken: null,
+          totalSize: 0,
+          totalSizeExact: true,
+        }),
       update: unused,
     },
   }
@@ -154,6 +159,7 @@ describe("model MCP projection", () => {
           items: [],
           nextPageToken: PageToken("unused"),
           totalSize: 0,
+          totalSizeExact: true,
         }),
       unlink: () => Effect.succeed(undefined),
     }
@@ -276,6 +282,7 @@ describe("model MCP projection", () => {
         items: [],
         nextPageToken: null,
         totalSize: 0,
+        totalSizeExact: true,
       },
     })
 

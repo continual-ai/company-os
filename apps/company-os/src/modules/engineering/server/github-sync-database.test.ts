@@ -319,6 +319,7 @@ fixture.test(
       expect(updated.links.productIssues).toMatchObject({
         items: [{ id: internal.id }],
         totalSize: 1,
+        totalSizeExact: true,
       })
       const etag = updated.etag
       yield* run

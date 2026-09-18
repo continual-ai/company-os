@@ -102,6 +102,7 @@ fixture.test(
           .sort()
           .slice(0, 3),
         totalSize: 5,
+        totalSizeExact: true,
       })
       expect(record.objectType).toBe("account")
       expect(
@@ -547,7 +548,11 @@ fixture.test(
       })
       expect(expanded.links.billingAccount?.name).toBe("Account 0")
       expect(expanded.links.accounts.items).toHaveLength(3)
-      expect(expanded.links.accounts.totalSize).toBe(4)
+      expect(expanded.links.accounts).toMatchObject({
+        totalSize: 4,
+        totalSizeExact: true,
+      })
+      expect(plain.links.accounts.totalSizeExact).toBe(true)
       expect(expanded.links.accounts.items.map((record) => record.id)).toEqual(
         plain.links.accounts.ids
       )
@@ -602,6 +607,7 @@ fixture.test(
                       RecordId("account")(`account_missing${index}`)
                     ),
                     totalSize: size,
+                    totalSizeExact: true,
                   },
                 },
               },
@@ -704,9 +710,9 @@ fixture.test("concurrent changes from opposite ends keep a single edge", () =>
     )
     expect(
       (yield* services.person.get({ id: person.id })).links.accounts
-    ).toEqual({ ids: [account.id], totalSize: 1 })
+    ).toEqual({ ids: [account.id], totalSize: 1, totalSizeExact: true })
     expect(
       (yield* services.account.get({ id: account.id })).links.people
-    ).toEqual({ ids: [person.id], totalSize: 1 })
+    ).toEqual({ ids: [person.id], totalSize: 1, totalSizeExact: true })
   })
 )

@@ -26,12 +26,14 @@ interface CollectionSource {
 interface RecordOrigin extends CollectionSource {
   readonly recordId: string
   readonly position: number
-  readonly total: number
+  readonly totalSize: number
+  readonly totalSizeExact: boolean
 }
 
 export interface RecordNavigation {
   readonly position: number
-  readonly total: number
+  readonly totalSize: number
+  readonly totalSizeExact: boolean
   readonly hasPrevious: boolean
   readonly hasNext: boolean
   readonly loading: boolean
@@ -95,7 +97,13 @@ export function useCaptureCollectionNavigation(
         pages.viewport?.indices.get(recordId) ??
         pages.records.findIndex((record) => record.id === recordId)
       if (position >= 0)
-        remember({ ...source, recordId, position, total: pages.totalSize })
+        remember({
+          ...source,
+          recordId,
+          position,
+          totalSize: pages.totalSize,
+          totalSizeExact: pages.totalSizeExact,
+        })
     },
     [source, pages, remember]
   )
@@ -129,7 +137,8 @@ export function useRecordNavigation(
       ? undefined
       : {
           position: index < 0 ? source.position + 1 : offset + index + 1,
-          total: nearby.data?.totalSize ?? source.total,
+          totalSize: nearby.data?.totalSize ?? source.totalSize,
+          totalSizeExact: nearby.data?.totalSizeExact ?? source.totalSizeExact,
           hasPrevious: index > 0,
           hasNext: index >= 0 && index + 1 < records.length,
           loading: nearby.isFetching,

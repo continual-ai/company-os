@@ -131,10 +131,7 @@ export function ObjectPropertiesCard({
             <dt className="text-xs text-muted-foreground">{traversal.label}</dt>
             <dd className="min-w-0 pr-5 text-xs">
               <RecordLinkValue
-                ids={linkPreview(record.links?.[traversal.key]).ids ?? []}
-                totalSize={
-                  linkPreview(record.links?.[traversal.key]).totalSize ?? 0
-                }
+                {...linkPreview(record.links?.[traversal.key])}
                 resolveRecord={(id) => references.get(id)}
               />
             </dd>

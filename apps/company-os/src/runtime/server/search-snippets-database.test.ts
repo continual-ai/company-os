@@ -50,6 +50,7 @@ fixture.test(
       const page = yield* search({ query: "metronome", pageSize: 2 })
       expect(page.items).toHaveLength(2)
       expect(page.totalSize).toBe(5)
+      expect(page.totalSizeExact).toBe(true)
       for (const hit of page.items) {
         expect(hit.snippets).toHaveLength(1)
         expect(hit.snippets[0]?.field).toBe("content")
@@ -90,6 +91,7 @@ fixture.test(
           items: [],
           nextPageToken: null,
           totalSize: 0,
+          totalSizeExact: true,
         })
       }
       expect(

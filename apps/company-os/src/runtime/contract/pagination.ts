@@ -9,14 +9,21 @@ import {
 const pageTokenSchema = Schema.String.pipe(
   Schema.fromBrand("PageToken", PageToken)
 )
-const pageTotalSizeSchema = Schema.Number.check(
+const totalSizeSchema = Schema.Number.check(
   Schema.isInt(),
   Schema.isGreaterThanOrEqualTo(0)
 ).annotate({
   description:
-    "Exact number of matching items visible to the caller before pagination.",
-  identifier: "PageTotalSize",
+    "Number of matching items before pagination; a lower bound when totalSizeExact is false.",
+  identifier: "TotalSize",
 })
+export const totalSizeFields = {
+  totalSize: totalSizeSchema,
+  totalSizeExact: Schema.Boolean.annotate({
+    description:
+      "True means exact; false means at least totalSize, never an estimate.",
+  }),
+}
 const pageSizeSchema = Schema.Number.check(
   Schema.isInt(),
   Schema.isGreaterThanOrEqualTo(0)
@@ -46,6 +53,6 @@ export function pageSchema<S extends Schema.Top>(item: S) {
     nextPageToken: Schema.NullOr(pageTokenSchema).annotate({
       identifier: "PageContinuation",
     }),
-    totalSize: pageTotalSizeSchema,
+    ...totalSizeFields,
   })
 }

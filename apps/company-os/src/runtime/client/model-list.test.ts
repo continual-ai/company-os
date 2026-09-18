@@ -27,6 +27,7 @@ it("reuses the loader, retains pages on failure, and rebuilds cursors on refresh
       return {
         items: items.map((id) => ({ id: `company_${id}`, etag: "1" })),
         totalSize: rows.length,
+        totalSizeExact: true,
         nextPageToken:
           items.at(-1) === rows.at(-1) ? null : PageToken(String(items.at(-1))),
       }
@@ -67,34 +68,39 @@ const fixedList = (request: ListRequest) =>
     items: [{ id: request.pageToken ? "company_2" : "company_1", etag: "1" }],
     nextPageToken: request.pageToken ? null : PageToken("next"),
     totalSize: 2,
+    totalSizeExact: true,
   }))
 
-it("continues from an offset page using only its returned cursor", async () => {
-  const { queryClient: cache, dispose } = createModelDataClient()
-  const calls: Array<ListRequest> = []
-  const list = modelPagedQuery((request: ListRequest) =>
-    modelQuery(["company"], "list", request, async () => {
-      calls.push(request)
-      return {
-        items: [],
-        totalSize: 500,
-        nextPageToken: request.pageToken ? null : PageToken("next"),
-      }
-    })
-  )
-  try {
-    await cache.fetchInfiniteQuery({
-      ...list.infiniteQueryOptions({ pageSize: 100, pageOffset: 200 }),
-      pages: 2,
-    })
-    expect(calls).toEqual([
-      { pageSize: 100, pageOffset: 200 },
-      { pageSize: 100, pageToken: "next" },
-    ])
-  } finally {
-    dispose()
+it.each([true, false])(
+  "continues from an offset page using only its returned cursor regardless of count accuracy (%s)",
+  async (totalSizeExact) => {
+    const { queryClient: cache, dispose } = createModelDataClient()
+    const calls: Array<ListRequest> = []
+    const list = modelPagedQuery((request: ListRequest) =>
+      modelQuery(["company"], "list", request, async () => {
+        calls.push(request)
+        return {
+          items: [],
+          totalSize: 500,
+          totalSizeExact,
+          nextPageToken: request.pageToken ? null : PageToken("next"),
+        }
+      })
+    )
+    try {
+      await cache.fetchInfiniteQuery({
+        ...list.infiniteQueryOptions({ pageSize: 100, pageOffset: 200 }),
+        pages: 2,
+      })
+      expect(calls).toEqual([
+        { pageSize: 100, pageOffset: 200 },
+        { pageSize: 100, pageToken: "next" },
+      ])
+    } finally {
+      dispose()
+    }
   }
-})
+)
 
 it("invalidates loaded pages without reconstructing their contents and drops pages on permission reset", async () => {
   const { queryClient: cache, dispose } = createModelDataClient()

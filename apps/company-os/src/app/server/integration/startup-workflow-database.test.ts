@@ -119,14 +119,19 @@ application.test(
         links: { repository: repository.id, productIssues: [issue.id] },
       })
       const expanded = yield* client.issue.get({ id: issue.id, expand: true })
-      expect(expanded.links.tickets).toMatchObject({ totalSize: 2 })
+      expect(expanded.links.tickets).toMatchObject({
+        totalSize: 2,
+        totalSizeExact: true,
+      })
       expect(expanded.links.opportunities).toMatchObject({
         items: [{ id: opportunity.id }],
         totalSize: 1,
+        totalSizeExact: true,
       })
       expect(expanded.links.githubPullRequests).toMatchObject({
         items: [{ id: pullRequest.id }],
         totalSize: 1,
+        totalSizeExact: true,
       })
       expect(
         (yield* client.githubRepository.get({
@@ -143,7 +148,11 @@ application.test(
       yield* client.ticket.update({ id: ticket.id, links: { issues: [] } })
       expect(
         (yield* client.issue.get({ id: issue.id })).links.tickets
-      ).toMatchObject({ ids: [secondTicket.id], totalSize: 1 })
+      ).toMatchObject({
+        ids: [secondTicket.id],
+        totalSize: 1,
+        totalSizeExact: true,
+      })
       expect(
         (yield* client.opportunity.get({ id: opportunity.id })).links.issues
       ).toMatchObject({ ids: [issue.id] })
@@ -208,6 +217,7 @@ application.test(
       ).toMatchObject({
         items: [{ id: issue.id, objectType: "issue" }],
         totalSize: 1,
+        totalSizeExact: true,
       })
     })
 )

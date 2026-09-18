@@ -133,6 +133,7 @@ export function useViewportPages(
   return {
     ...data,
     totalSize,
+    totalSizeExact: firstData?.totalSizeExact ?? true,
     onRangeChange,
     error: first.error ?? others.error,
     isPending: first.isPending,

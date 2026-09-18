@@ -194,6 +194,9 @@ describe("Effect SQL object repository", () => {
         const beyond = yield* service.list({ pageSize: 1, pageOffset: 20 })
         expect(beyond.items).toEqual([])
         expect(beyond.totalSize).toBe(2)
+        for (const page of [firstPage, secondPage, directSecond, beyond]) {
+          expect(page.totalSizeExact).toBe(true)
+        }
         for (const pageOffset of [-1, 1.5, Number.MAX_SAFE_INTEGER + 1])
           expect(
             yield* service.list({ pageOffset }).pipe(Effect.flip)

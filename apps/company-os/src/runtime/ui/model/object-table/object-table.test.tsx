@@ -17,30 +17,39 @@ import { ModelUiProvider } from "#/runtime/ui/model/runtime-context.tsx"
 
 const presentation = testPresentation(fixtureModel, PlatformUi)
 
-it("keeps a screen of rows rendered ahead while sizing the scrollbar to the full collection", () => {
-  const records = Array.from({ length: 100 }, (_, index) => ({
-    id: `service_account_${index}`,
-    name: `Automation ${index}`,
-    status: "active",
-  }))
-  const html = renderToStaticMarkup(
-    <ModelUiProvider value={presentation}>
-      <ObjectTable
-        object={ServiceAccount}
-        records={records}
-        viewport={{
-          totalSize: 10_000,
-          loading: false,
-          indices: new Map(records.map((record, index) => [record.id, index])),
-          onRangeChange: () => {},
-        }}
-      />
-    </ModelUiProvider>
-  )
-  expect(html).toContain("Automation 35")
-  expect(html).not.toContain("Automation 60")
-  expect(html).toContain('aria-rowcount="10001"')
-})
+it.each([true, false])(
+  "sizes the known scrollable range and labels count accuracy (%s)",
+  (totalSizeExact) => {
+    const records = Array.from({ length: 100 }, (_, index) => ({
+      id: `service_account_${index}`,
+      name: `Automation ${index}`,
+      status: "active",
+    }))
+    const html = renderToStaticMarkup(
+      <ModelUiProvider value={presentation}>
+        <ObjectTable
+          object={ServiceAccount}
+          records={records}
+          viewport={{
+            totalSize: 10_000,
+            totalSizeExact,
+            loading: false,
+            indices: new Map(
+              records.map((record, index) => [record.id, index])
+            ),
+            onRangeChange: () => {},
+          }}
+        />
+      </ModelUiProvider>
+    )
+    expect(html).toContain("Automation 35")
+    expect(html).not.toContain("Automation 60")
+    expect(html).toContain(`aria-rowcount="${totalSizeExact ? 10001 : -1}"`)
+    expect(html).toContain(
+      `${(10_000).toLocaleString()}${totalSizeExact ? "" : "+"} records`
+    )
+  }
+)
 
 it("renders a service account using its display name", () => {
   const html = renderToStaticMarkup(
@@ -96,31 +105,40 @@ it("keeps row selection in its own pinned column", () => {
   )
 })
 
-it("renders related values and counts from column accessors", () => {
-  const html = renderToStaticMarkup(
-    <ModelUiProvider value={presentation}>
-      <ObjectTable
-        object={Person}
-        records={[
-          {
-            id: "person_example",
-            name: "Ada",
-            links: { accounts: { ids: ["account_example"], totalSize: 12 } },
-          },
-        ]}
-        visiblePropertyIds={["name", "accounts.name", "accounts.$count"]}
-        resolveRecord={() => ({
-          object: Account,
-          record: { id: "account_example", name: "Acme" },
-        })}
-      />
-    </ModelUiProvider>
-  )
-  expect(html).toContain("Accounts → Count")
-  expect(html).toContain("Acme")
-  expect(html).toContain("+11 more")
-  expect(html).toMatch(/>12</)
-})
+it.each([true, false])(
+  "renders related values and count accuracy (%s) from column accessors",
+  (totalSizeExact) => {
+    const html = renderToStaticMarkup(
+      <ModelUiProvider value={presentation}>
+        <ObjectTable
+          object={Person}
+          records={[
+            {
+              id: "person_example",
+              name: "Ada",
+              links: {
+                accounts: {
+                  ids: ["account_example"],
+                  totalSize: 12,
+                  totalSizeExact,
+                },
+              },
+            },
+          ]}
+          visiblePropertyIds={["name", "accounts.name", "accounts.$count"]}
+          resolveRecord={() => ({
+            object: Account,
+            record: { id: "account_example", name: "Acme" },
+          })}
+        />
+      </ModelUiProvider>
+    )
+    expect(html).toContain("Accounts → Count")
+    expect(html).toContain("Acme")
+    expect(html).toContain(`+11${totalSizeExact ? "" : "+"} more`)
+    expect(html).toContain(`>12${totalSizeExact ? "" : "+"}<`)
+  }
+)
 
 it("renders standard resource columns from records with expanded links", () => {
   const record: ClientRecord = {
@@ -137,6 +155,7 @@ it("renders standard resource columns from records with expanded links", () => {
       accounts: {
         items: [{ id: "account_example", etag: "v1", name: "Acme" }],
         totalSize: 1,
+        totalSizeExact: true,
       },
     },
   }
@@ -172,7 +191,10 @@ it("renders standard resource columns from records with expanded links", () => {
     expect(html).toContain(label)
   }
   expect(record.createdAt).toBe("2026-09-15T12:00:00.000Z")
-  expect(record.links?.accounts).toMatchObject({ totalSize: 1 })
+  expect(record.links?.accounts).toMatchObject({
+    totalSize: 1,
+    totalSizeExact: true,
+  })
   for (const { id: key, property } of objectFields(Person)) {
     if (["createdAt", "updatedAt", "createdBy", "updatedBy"].includes(key)) {
       expect(isObjectTableCellEditable(property)).toBe(false)

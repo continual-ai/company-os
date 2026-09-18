@@ -56,10 +56,12 @@ application.test(
       expect(opportunity.links.accounts).toMatchObject({
         items: [{ id: account.id }],
         totalSize: 1,
+        totalSizeExact: true,
       })
       expect(opportunity.links.contacts).toMatchObject({
         items: [{ id: contact.id }],
         totalSize: 1,
+        totalSizeExact: true,
       })
       expect(opportunity.stage).toBe("qualified")
       changes.clear()

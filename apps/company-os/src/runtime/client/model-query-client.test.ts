@@ -66,6 +66,7 @@ it("paginates search summaries with shared query options and invalidation", asyn
           ],
           nextPageToken: calls.length === 1 ? "next" : null,
           totalSize: 2,
+          totalSizeExact: true,
         })
       },
     })
@@ -125,6 +126,7 @@ it("generates native pagination options for collections and relationships", asyn
         return Response.json({
           items: [],
           totalSize: 0,
+          totalSizeExact: true,
           nextPageToken: calls.length % 2 === 1 ? "next" : null,
         })
       },
@@ -313,11 +315,21 @@ it("invalidates reads for related filters, nested quantifiers, sorts and selecte
   try {
     await queryClient.fetchQuery({
       ...filtered,
-      queryFn: async () => ({ items: [], totalSize: 0, nextPageToken: null }),
+      queryFn: async () => ({
+        items: [],
+        totalSize: 0,
+        totalSizeExact: true,
+        nextPageToken: null,
+      }),
     })
     await queryClient.fetchQuery({
       ...expanded,
-      queryFn: async () => ({ items: [], totalSize: 0, nextPageToken: null }),
+      queryFn: async () => ({
+        items: [],
+        totalSize: 0,
+        totalSizeExact: true,
+        nextPageToken: null,
+      }),
     })
     void invalidateModelQueries(queryClient, ["account"])
     expect(queryClient.getQueryState(filtered.queryKey)?.isInvalidated).toBe(

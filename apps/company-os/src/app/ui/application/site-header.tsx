@@ -25,6 +25,7 @@ import {
 import { Fragment, useRef, useState } from "react"
 
 import { pageMetadataForMatch } from "#/app/ui/route-metadata.ts"
+import { formatTotalSize } from "#/runtime/ui/model/format-total-size.ts"
 import { usePageChrome } from "#/runtime/ui/model/page-chrome.tsx"
 import type { RecordNavigation } from "#/runtime/ui/model/record-navigation.tsx"
 
@@ -185,8 +186,7 @@ function RecordPager({ navigation }: { navigation: RecordNavigation }) {
         className="mr-2 whitespace-nowrap text-xs text-muted-foreground tabular-nums"
         aria-live="polite"
       >
-        {navigation.position.toLocaleString()} of{" "}
-        {navigation.total.toLocaleString()}
+        {navigation.position.toLocaleString()} of {formatTotalSize(navigation)}
       </span>
       <Button
         variant="ghost"

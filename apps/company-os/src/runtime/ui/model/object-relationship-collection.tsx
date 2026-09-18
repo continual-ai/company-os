@@ -195,6 +195,7 @@ function RelatedRecordFeed({
       <CollectionPagination
         loaded={records.length}
         totalSize={page.data?.pages[0]?.totalSize ?? 0}
+        totalSizeExact={page.data?.pages[0]?.totalSizeExact ?? true}
         hasNextPage={page.hasNextPage}
         loading={page.isFetching}
         onNextPage={() => {

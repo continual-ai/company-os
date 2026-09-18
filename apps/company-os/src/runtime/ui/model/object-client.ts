@@ -45,9 +45,14 @@ export interface ClientRecord {
       | {
           readonly items: ReadonlyArray<ClientRecord>
           readonly totalSize: number
+          readonly totalSizeExact: boolean
         }
       | null
-      | { readonly ids: ReadonlyArray<string>; readonly totalSize: number }
+      | {
+          readonly ids: ReadonlyArray<string>
+          readonly totalSize: number
+          readonly totalSizeExact: boolean
+        }
     >
   >
   readonly etag: string
@@ -250,6 +255,7 @@ export function linkClientFor(
               items: item === null ? [] : [item],
               nextPageToken: null,
               totalSize: item === null ? 0 : 1,
+              totalSizeExact: true,
             }
           }
         )

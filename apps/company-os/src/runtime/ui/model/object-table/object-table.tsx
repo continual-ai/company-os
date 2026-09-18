@@ -40,6 +40,7 @@ import {
 import { type ObjectType } from "#/runtime/model/index.ts"
 import { objectFields } from "#/runtime/model/object-fields.ts"
 import { CollectionPagination } from "#/runtime/ui/model/collection-pagination.tsx"
+import { formatTotalSize } from "#/runtime/ui/model/format-total-size.ts"
 import { ObjectIcon } from "#/runtime/ui/model/object-record-identity.tsx"
 import { ObjectTableBody } from "#/runtime/ui/model/object-table/object-table-body.tsx"
 import {
@@ -70,6 +71,7 @@ import type { TableRange } from "#/runtime/ui/model/use-viewport-pages.ts"
 interface ObjectTableViewport {
   readonly loading: boolean
   readonly totalSize: number
+  readonly totalSizeExact: boolean
   readonly indices: ReadonlyMap<string, number>
   readonly onRangeChange: (range: TableRange) => void
 }
@@ -106,6 +108,7 @@ export interface ObjectTableProps {
         readonly loading: boolean
         readonly onNextPage: () => void
         readonly totalSize: number
+        readonly totalSizeExact: boolean
       }
     | undefined
   recordHref?: ((recordId: string) => string) | undefined
@@ -430,9 +433,11 @@ export function ObjectTable({
           role="grid"
           aria-colcount={visibleColumns.length + 1}
           aria-rowcount={
-            (viewport?.totalSize ??
-              pagination?.totalSize ??
-              visibleRows.length) + 1
+            (viewport?.totalSizeExact ?? pagination?.totalSizeExact) === false
+              ? -1
+              : (viewport?.totalSize ??
+                  pagination?.totalSize ??
+                  visibleRows.length) + 1
           }
           style={{ minWidth: "100%", width: renderedTableWidth }}
           onContainerScroll={(event) =>
@@ -580,7 +585,7 @@ export function ObjectTable({
       </div>
       {viewport && (
         <div className="flex h-9 shrink-0 items-center border-t px-page-gutter text-xs text-muted-foreground">
-          {viewport.totalSize.toLocaleString()} records
+          {formatTotalSize(viewport)} records
         </div>
       )}
       {pagination && (

@@ -58,6 +58,7 @@ type Raw<
   : {
       readonly ids: ReadonlyArray<RecordId<Target<M, T>["id"]>>
       readonly totalSize: number
+      readonly totalSizeExact: boolean
     }
 type Expanded<
   M extends ModelCatalog,
@@ -68,6 +69,7 @@ type Expanded<
   : {
       readonly items: ReadonlyArray<ModelRecord<M, Target<M, T>>>
       readonly totalSize: number
+      readonly totalSizeExact: boolean
     }
 type Value<
   M extends ModelCatalog,

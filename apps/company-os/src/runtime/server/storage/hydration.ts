@@ -117,6 +117,7 @@ export const makeRecordHydration = Effect.gen(function* () {
             {
               items: preview.ids.map((id) => byId.get(id)!),
               totalSize: preview.totalSize,
+              totalSizeExact: preview.totalSizeExact,
             },
           ]
         })

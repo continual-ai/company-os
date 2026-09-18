@@ -24,21 +24,31 @@ export function linkPreview(
     | {
         readonly items: ReadonlyArray<{ readonly id: string }>
         readonly totalSize: number
+        readonly totalSizeExact: boolean
       }
     | null
-    | { readonly ids: ReadonlyArray<string>; readonly totalSize: number }
+    | {
+        readonly ids: ReadonlyArray<string>
+        readonly totalSize: number
+        readonly totalSizeExact: boolean
+      }
     | undefined
 ): {
   readonly ids: ReadonlyArray<string>
   readonly totalSize: number
+  readonly totalSizeExact: boolean
 } {
-  if (value === null || value === undefined) return { ids: [], totalSize: 0 }
-  if (typeof value === "string") return { ids: [value], totalSize: 1 }
-  if ("id" in value) return { ids: [value.id], totalSize: 1 }
+  if (value === null || value === undefined)
+    return { ids: [], totalSize: 0, totalSizeExact: true }
+  if (typeof value === "string")
+    return { ids: [value], totalSize: 1, totalSizeExact: true }
+  if ("id" in value)
+    return { ids: [value.id], totalSize: 1, totalSizeExact: true }
   if ("items" in value)
     return {
       ids: value.items.map((item) => item.id),
       totalSize: value.totalSize,
+      totalSizeExact: value.totalSizeExact,
     }
   return value
 }

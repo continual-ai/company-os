@@ -1,5 +1,6 @@
 import { Predicate, Schema, SchemaIssue, SchemaTransformation } from "effect"
 
+import { totalSizeFields } from "#/runtime/contract/pagination.ts"
 import type { ApiError, ErrorType } from "#/runtime/model/definition/error.ts"
 import {
   type ModelCatalog,
@@ -575,10 +576,7 @@ export function toEffectObjectFields(object: ObjectType, model?: ModelCatalog) {
                     Schema.fromBrand("RecordId", RecordId("object"))
                   )
                 ),
-                totalSize: Schema.Number.check(
-                  Schema.isInt(),
-                  Schema.isGreaterThanOrEqualTo(0)
-                ),
+                ...totalSizeFields,
               }).annotate({ identifier: "LinkPreview" }),
             ])
           ).annotate({ identifier: "RecordLinks" })
@@ -595,10 +593,7 @@ export function toEffectObjectFields(object: ObjectType, model?: ModelCatalog) {
                           ids: Schema.Array(targetId).check(
                             Schema.isMaxLength(3)
                           ),
-                          totalSize: Schema.Number.check(
-                            Schema.isInt(),
-                            Schema.isGreaterThanOrEqualTo(0)
-                          ),
+                          ...totalSizeFields,
                         }),
                   ]
                 }

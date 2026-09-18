@@ -111,6 +111,7 @@ application.test(
       expect(yield* Effect.promise(() => filtered.json())).toMatchObject({
         items: [{ id: lead.id }],
         totalSize: 1,
+        totalSizeExact: true,
         nextPageToken: null,
       })
       yield* Effect.gen(function* () {
@@ -175,6 +176,7 @@ application.test(
       expect(yield* Effect.promise(() => remaining.json())).toMatchObject({
         items: [],
         totalSize: 0,
+        totalSizeExact: true,
       })
       const batchAccountResponse = yield* send("accounts", {
         name: "Batch cascade",

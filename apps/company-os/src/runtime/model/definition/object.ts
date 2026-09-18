@@ -68,9 +68,14 @@ export interface BaseRecord<TObjectType extends string = string> {
       | {
           readonly items: ReadonlyArray<ObjectRecord<ObjectType>>
           readonly totalSize: number
+          readonly totalSizeExact: boolean
         }
       | null
-      | { readonly ids: ReadonlyArray<RecordId>; readonly totalSize: number }
+      | {
+          readonly ids: ReadonlyArray<RecordId>
+          readonly totalSize: number
+          readonly totalSizeExact: boolean
+        }
     >
   >
   readonly aliases: ReadonlyArray<RecordAlias>

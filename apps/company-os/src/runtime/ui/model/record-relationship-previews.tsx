@@ -1,6 +1,8 @@
 import { Button } from "@company/ui/button"
 import { PageSectionHeader } from "@company/ui/page"
 
+import type { Page } from "#/runtime/model/definition/request.ts"
+import { formatTotalSize } from "#/runtime/ui/model/format-total-size.ts"
 import { ObjectRecordSummary } from "#/runtime/ui/model/object-record-summary.tsx"
 import { useRecordReferences } from "#/runtime/ui/model/object-references.ts"
 import { objectHref } from "#/runtime/ui/model/object-routing.ts"
@@ -11,11 +13,13 @@ import { useModelRuntime } from "#/runtime/ui/model/runtime-context.tsx"
 export function RelationshipCount({
   count,
 }: {
-  readonly count: number | undefined
+  readonly count:
+    | Pick<Page<unknown>, "totalSize" | "totalSizeExact">
+    | undefined
 }) {
   return count === undefined ? null : (
     <span className="rounded-sm bg-muted px-1.5 py-0.5 text-[10px] leading-none font-medium text-muted-foreground tabular-nums">
-      {count.toLocaleString()}
+      {formatTotalSize(count)}
     </span>
   )
 }
@@ -42,7 +46,9 @@ export function RecordRelationshipPreviews({
           <PageSectionHeader className="flex-wrap">
             <h2 className="flex items-center gap-2 text-sm font-semibold">
               {preview.label}
-              <RelationshipCount count={preview.total} />
+              <RelationshipCount
+                count={preview.pending ? undefined : preview}
+              />
             </h2>
             <div className="ml-auto flex shrink-0 items-center gap-1">
               <Button
@@ -55,7 +61,7 @@ export function RecordRelationshipPreviews({
               <RecordRelatedCreateMenu
                 compact
                 relationships={[preview.relationship]}
-                totals={new Map([[preview.key, preview.total]])}
+                totals={new Map([[preview.key, preview.totalSize]])}
               />
             </div>
           </PageSectionHeader>

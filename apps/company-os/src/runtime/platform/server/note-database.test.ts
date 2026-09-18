@@ -65,14 +65,17 @@ fixture.test(
       })
       expect((yield* notes.get({ id: note.id })).links.subjects).toMatchObject({
         totalSize: 2,
+        totalSizeExact: true,
       })
       expect((yield* topics.get({ id: topic.id })).links.notes).toMatchObject({
         totalSize: 1,
+        totalSizeExact: true,
       })
       expect(
         (yield* decisions.get({ id: decision.id })).links.notes
       ).toMatchObject({
         totalSize: 1,
+        totalSizeExact: true,
       })
 
       yield* notes.update({
@@ -81,18 +84,22 @@ fixture.test(
       })
       expect((yield* topics.get({ id: topic.id })).links.notes).toMatchObject({
         totalSize: 0,
+        totalSizeExact: true,
       })
       expect((yield* notes.get({ id: note.id })).links.subjects).toMatchObject({
         totalSize: 1,
+        totalSizeExact: true,
       })
       yield* decisions.delete({ id: decision.id })
       expect((yield* notes.get({ id: note.id })).links.subjects).toMatchObject({
         totalSize: 0,
+        totalSizeExact: true,
       })
       yield* notes.update({ id: note.id, links: { subjects: [topic.id] } })
       yield* notes.delete({ id: note.id })
       expect((yield* topics.get({ id: topic.id })).links.notes).toMatchObject({
         totalSize: 0,
+        totalSizeExact: true,
       })
     })
 )

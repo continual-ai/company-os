@@ -444,6 +444,7 @@ describe("application HTTP server", () => {
           items: [],
           nextPageToken: null,
           totalSize: 0,
+          totalSizeExact: true,
         })
 
         const created = yield* model.account.create({ name: "Northstar" })
@@ -542,7 +543,11 @@ describe("application HTTP server", () => {
         expect(new Set(requestIds).size).toBe(requestIds.length)
         expect(
           yield* model.activity.accounts.list({ id: contractAlias })
-        ).toMatchObject({ items: [{ id: created.id }], totalSize: 1 })
+        ).toMatchObject({
+          items: [{ id: created.id }],
+          totalSize: 1,
+          totalSizeExact: true,
+        })
         expect(
           yield* callMcp("activity.update", {
             id: contractAlias,
@@ -557,7 +562,7 @@ describe("application HTTP server", () => {
         })
         expect(
           yield* model.activity.accounts.list({ id: contractAlias })
-        ).toMatchObject({ items: [], totalSize: 0 })
+        ).toMatchObject({ items: [], totalSize: 0, totalSizeExact: true })
         expect(
           yield* callMcp("activity.list", {
             filter: {
@@ -570,6 +575,7 @@ describe("application HTTP server", () => {
           structuredContent: {
             items: [{ title: "Updated contract activity" }],
             totalSize: 1,
+            totalSizeExact: true,
           },
         })
         expect(
@@ -602,6 +608,7 @@ describe("application HTTP server", () => {
           items: [{ id: created.id, objectType: "account" }],
           nextPageToken: null,
           totalSize: 1,
+          totalSizeExact: true,
         })
         const activity = yield* model.activity.create({
           links: { accounts: [created.id] },
@@ -638,6 +645,7 @@ describe("application HTTP server", () => {
           items: [{ id: secondActivity.id, objectType: "activity" }],
           nextPageToken: null,
           totalSize: 1,
+          totalSizeExact: true,
         })
         expect(
           yield* Effect.flip(
@@ -667,6 +675,7 @@ describe("application HTTP server", () => {
           items: [{ id: secondActivity.id, objectType: "activity" }],
           nextPageToken: null,
           totalSize: 1,
+          totalSizeExact: true,
         })
         yield* model.account.activities.link({
           id: created.id,
@@ -684,6 +693,7 @@ describe("application HTTP server", () => {
           items: [{ id: created.id, objectType: "account" }],
           nextPageToken: null,
           totalSize: 1,
+          totalSizeExact: true,
         })
 
         yield* sql`update ${objects} set ${assignments(sql, objects, { createdAt: "2001-01-01T00:00:00.000123Z" })}
@@ -775,6 +785,7 @@ describe("application HTTP server", () => {
           items: [{ id: destination.id, objectType: "account" }],
           nextPageToken: null,
           totalSize: 1,
+          totalSizeExact: true,
         })
         expect(
           yield* model.account.activities.list({ id: created.id })
@@ -787,6 +798,7 @@ describe("application HTTP server", () => {
           ]),
           nextPageToken: null,
           totalSize: 1,
+          totalSizeExact: true,
         })
 
         yield* model.account.delete({
@@ -798,6 +810,7 @@ describe("application HTTP server", () => {
           items: [],
           nextPageToken: null,
           totalSize: 0,
+          totalSizeExact: true,
         })
         const history = yield* Effect.promise(() =>
           runtime.runPromise(

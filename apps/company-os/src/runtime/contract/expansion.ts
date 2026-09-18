@@ -1,5 +1,6 @@
 import { Schema } from "effect"
 
+import { totalSizeFields } from "#/runtime/contract/pagination.ts"
 import {
   toEffectObjectFields,
   toEffectObjectSchema,
@@ -47,7 +48,7 @@ export function expansionInputSchema(
   ]).annotate({
     identifier: `${type.id[0]!.toUpperCase()}${type.id.slice(1)}Expansion`,
     description:
-      "Expand all immediate relationships with true, or select keys. Plural expansion hydrates up to three preview records and retains totalSize; nested records remain unexpanded. At most 1000 distinct targets per request.",
+      "Expand all immediate relationships with true, or select keys. Plural expansion hydrates up to three preview records and retains totalSize and totalSizeExact; nested records remain unexpanded. At most 1000 distinct targets per request.",
   })
 }
 
@@ -89,11 +90,11 @@ export function expandableRecordSchema(
                 : Schema.Union([
                     Schema.Struct({
                       ids: Schema.Array(ids).check(Schema.isMaxLength(3)),
-                      totalSize: Schema.Number,
+                      ...totalSizeFields,
                     }),
                     Schema.Struct({
                       items: Schema.Array(records).check(Schema.isMaxLength(3)),
-                      totalSize: Schema.Number,
+                      ...totalSizeFields,
                     }),
                   ]),
             ]
