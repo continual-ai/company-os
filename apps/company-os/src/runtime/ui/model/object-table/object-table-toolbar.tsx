@@ -38,6 +38,7 @@ import {
   MAX_BATCH_DELETE_SIZE,
   type ObjectType,
 } from "#/runtime/model/index.ts"
+import { CollectionSearch } from "#/runtime/ui/model/collection-search.tsx"
 import {
   objectTableColumnMeta,
   objectTablePropertyColumns,
@@ -45,9 +46,9 @@ import {
 import { type ObjectTableInstance } from "#/runtime/ui/model/object-table/object-table-config.ts"
 import { ObjectTableFilters } from "#/runtime/ui/model/object-table/object-table-filter.tsx"
 import { ObjectTableProperty } from "#/runtime/ui/model/object-table/object-table-property.tsx"
-import { ObjectTableSearch } from "#/runtime/ui/model/object-table/object-table-search.tsx"
 
 interface ObjectTableToolbarProps {
+  search?: { value: string; onChange: (value: string) => void } | undefined
   canDeleteRecord?: ((recordId: string) => boolean) | undefined
   renderSelectedRecordActions?: ((recordId: string) => ReactNode) | undefined
   object: ObjectType
@@ -209,6 +210,7 @@ export function ObjectTableColumnMenu({
 }
 
 export function ObjectTableToolbar({
+  search,
   canDeleteRecord,
   renderSelectedRecordActions,
   object,
@@ -229,7 +231,7 @@ export function ObjectTableToolbar({
   const canSort = table
     .getAllLeafColumns()
     .some((column) => column.getCanSort())
-  const hasQueryControls = canSort || canFilter
+  const hasQueryControls = canSort || canFilter || search !== undefined
   const [deleteError, setDeleteError] = useState<string>()
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deletePending, setDeletePending] = useState(false)
@@ -346,7 +348,7 @@ export function ObjectTableToolbar({
         </div>
       </PageToolbar>
       {hasQueryControls && (
-        <ObjectTableQueryToolbar object={object} table={table}>
+        <ObjectTableQueryToolbar object={object} table={table} search={search}>
           <ObjectTableColumnMenu table={table} />
         </ObjectTableQueryToolbar>
       )}
@@ -355,6 +357,7 @@ export function ObjectTableToolbar({
 }
 
 export function ObjectTableQueryToolbar({
+  search,
   object,
   table,
   children,
@@ -362,22 +365,19 @@ export function ObjectTableQueryToolbar({
   object: ObjectType
   table: ObjectTableInstance
   children?: ReactNode
+  search?: ObjectTableToolbarProps["search"]
 }) {
   const columns = table.getAllLeafColumns()
   const canSort = columns.some((column) => column.getCanSort())
   const canFilter = columns.some((column) => column.getCanFilter())
-  if (!canSort && !canFilter) return null
+  if (!canSort && !canFilter && !search) return null
   return (
     <PageToolbar>
       <div className="no-scrollbar flex min-w-0 flex-1 basis-full items-center gap-1.5 overflow-x-auto sm:basis-auto">
         {canSort ? <ObjectTableSortMenu table={table} /> : null}
         {canFilter ? <ObjectTableFilters table={table} /> : null}
       </div>
-      <ObjectTableSearch
-        table={table}
-        property={object.display.title}
-        label={object.pluralName}
-      />
+      {search && <CollectionSearch label={object.pluralName} {...search} />}
       {children ? <div className="shrink-0">{children}</div> : null}
     </PageToolbar>
   )

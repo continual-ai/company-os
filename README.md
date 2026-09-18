@@ -178,6 +178,12 @@ HTTP paths below are relative to `/api/v1`.
 | `client.lead.convert({ id })`            | `POST /leads/{id}:convert`            | `lead.convert`                |
 | `client.opportunity.pipelineSummary({})` | `POST /opportunities:pipelineSummary` | `opportunity.pipelineSummary` |
 
+Lists accept `query` for indexed word-prefix search on objects with `search` configured:
+`client.lead.list({ query: "acme", pageSize: 50 })`. Combine it with `filter`, `sort`,
+and `expand`; the result is the usual page of complete records, with `totalSize` and
+`nextPageToken`. Search narrows the list without changing its sort order. Global
+`client.records.search({ query: "acme" })` returns ranked results across object types.
+
 Explore the contracts in **Developer Center → API**. OpenAPI is at `/api/openapi`;
 MCP is at `/api/mcp` and requires a client with Streamable HTTP support and credentials
 accepted by your deployment.

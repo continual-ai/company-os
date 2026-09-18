@@ -253,6 +253,8 @@ export type ObjectSort<TObject extends ObjectType = ObjectType> = {
 export interface ListRequest<TObject extends ObjectType = ObjectType> {
   readonly expand?: Expansion
 
+  /** Full-text word-prefix matching across the object's indexed search fields; preserves list ordering. */
+  readonly query?: string
   readonly filter?: ObjectFilter<TObject>
   readonly pageSize?: number
   /** Zero-based row position for direct access; cannot be combined with pageToken. */
@@ -262,6 +264,7 @@ export interface ListRequest<TObject extends ObjectType = ObjectType> {
 }
 
 export interface CanonicalListRequest<TObject extends ObjectType> {
+  readonly query?: string
   readonly filter?: CanonicalObjectFilter<TObject>
   readonly pageSize?: number
   /** Zero-based row position for direct access; cannot be combined with pageToken. */

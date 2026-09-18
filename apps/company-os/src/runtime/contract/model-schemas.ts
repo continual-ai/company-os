@@ -123,6 +123,12 @@ export function objectListInputSchema(
   return Schema.Struct({
     expand: Schema.optionalKey(expansionInputSchema(model, object)),
     filter: Schema.optionalKey(filter),
+    query: Schema.optionalKey(
+      Schema.String.check(Schema.isMaxLength(200))
+    ).annotate({
+      description:
+        "Full-text word-prefix search across indexed fields. Combined with filters; preserves list ordering.",
+    }),
     ...paginationInputFields,
     sort: Schema.optionalKey(
       Schema.Array(

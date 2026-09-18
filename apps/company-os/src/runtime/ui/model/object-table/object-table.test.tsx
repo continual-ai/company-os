@@ -58,7 +58,21 @@ it("renders a service account using its display name", () => {
     </ModelUiProvider>
   )
   expect(html).toContain("Automation")
+  expect(html).not.toContain("Search Service accounts")
+})
+
+it("renders indexed search separately from column filters", () => {
+  const html = renderToStaticMarkup(
+    <ModelUiProvider value={presentation}>
+      <ObjectTable
+        object={ServiceAccount}
+        records={[]}
+        search={{ value: "automation", onChange: () => {} }}
+      />
+    </ModelUiProvider>
+  )
   expect(html).toContain("Search Service accounts")
+  expect(html).toContain('value="automation"')
 })
 
 it("keeps row selection in its own pinned column", () => {

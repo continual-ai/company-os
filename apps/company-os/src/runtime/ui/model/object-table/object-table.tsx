@@ -75,6 +75,7 @@ interface ObjectTableViewport {
 }
 
 export interface ObjectTableProps {
+  search?: { value: string; onChange: (value: string) => void } | undefined
   viewport?: ObjectTableViewport | undefined
   canDeleteRecord?: ((recordId: string) => boolean) | undefined
   canUpdateRecord?: ((recordId: string) => boolean) | undefined
@@ -212,6 +213,7 @@ function SelectionHeader({
 }
 
 export function ObjectTable({
+  search,
   canDeleteRecord,
   canUpdateRecord,
   columnFilters,
@@ -363,7 +365,8 @@ export function ObjectTable({
       ),
     [rowIds, viewport?.indices]
   )
-  const hasActiveFilters = table.state.columnFilters.length > 0
+  const hasActiveFilters =
+    table.state.columnFilters.length > 0 || !!search?.value
   const hasNoVisibleRows = visibleRows.length === 0
   const isInitialLoading =
     (viewport?.loading === true || pagination?.loading === true) &&
@@ -403,6 +406,7 @@ export function ObjectTable({
       className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden bg-background"
     >
       <ObjectTableToolbar
+        search={search}
         object={object}
         table={table}
         tableTitle={tableTitle}
@@ -554,7 +558,10 @@ export function ObjectTable({
             filtered={hasActiveFilters}
             loading={isInitialLoading}
             object={object}
-            onClearFilters={() => table.resetColumnFilters(true)}
+            onClearFilters={() => {
+              table.resetColumnFilters(true)
+              search?.onChange("")
+            }}
             onCreate={onCreateRecord}
           />
         ) : null}

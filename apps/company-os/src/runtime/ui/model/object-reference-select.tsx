@@ -40,6 +40,7 @@ const noConstraints: ReadonlyArray<ReferenceConstraint> = []
 const noSelectedValues: ReadonlyArray<string> = []
 
 interface ReferenceListRequest {
+  query?: string
   filter?: Exclude<ListRequest["filter"], undefined>
   pageSize: number
   sort?: Exclude<ListRequest["sort"], undefined>
@@ -56,7 +57,9 @@ function findOptions(
     const title = "label"
     const titleProperty = queryProperty(object, title)
     const titleFilter =
-      normalizedQuery !== "" && titleProperty?.kind === "string"
+      !object.search &&
+      normalizedQuery !== "" &&
+      titleProperty?.kind === "string"
         ? {
             field: title,
             operator: "contains" as const,
@@ -88,6 +91,7 @@ function findOptions(
           ]
         : undefined
     const request: ReferenceListRequest = { pageSize: 20 }
+    if (object.search && normalizedQuery) request.query = normalizedQuery
     if (filter !== undefined) {
       request.filter = filter
     }

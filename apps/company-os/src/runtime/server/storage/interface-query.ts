@@ -20,6 +20,7 @@ import {
 } from "#/runtime/server/storage/object-query.ts"
 import { relationalQuery } from "#/runtime/server/storage/relational-query.ts"
 import type { PostgresStorage } from "#/runtime/server/storage/schema.ts"
+import { searchMatch } from "#/runtime/server/storage/search-query.ts"
 import {
   tableColumns,
   quoteIdentifier as q,
@@ -122,10 +123,12 @@ export function interfaceQuery(
         return {
           sort,
           fingerprint,
-          filter:
+          filter: sql.and([
             request.filter === undefined
               ? sql`true`
               : compiler.compileFilter(request.filter),
+            searchMatch(sql, columns.id!, request.query) ?? sql`true`,
+          ]),
           after:
             cursor === undefined
               ? sql`true`

@@ -413,6 +413,27 @@ fixture.test(
         links: { members: [person.id], partners: [person.id, account.id] },
       })
       const relation = traversal(Team, "partners")
+      yield* services.account.create({ name: "Alpha outside the team" })
+      const searched = yield* links.list(relation, {
+        id: team.id,
+        query: "alp",
+        filter: { field: "name", operator: "eq", value: "Alpha" },
+      })
+      expect(searched.totalSize).toBe(1)
+      expect(searched.items).toEqual([
+        yield* services.account.get({ id: account.id }),
+      ])
+      expect(
+        (yield* links.list(relation, { id: team.id, query: "outside" }))
+          .totalSize
+      ).toBe(0)
+      expect(
+        (yield* links.list(relation, {
+          id: team.id,
+          query: "alp",
+          filter: { field: "name", operator: "eq", value: "Beta" },
+        })).totalSize
+      ).toBe(0)
       const first = yield* links.list(relation, {
         id: team.id,
         pageSize: 1,

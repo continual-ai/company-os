@@ -22,11 +22,7 @@ import {
   searchIndexState,
 } from "#/runtime/server/storage/infrastructure.ts"
 import { recordLabelSql } from "#/runtime/server/storage/record-label.ts"
-
-/** Shared tokenization makes email domains, URLs, hyphens, and names searchable as word prefixes. */
-export function searchVector(sql: Constructor, text: Fragment) {
-  return sql`to_tsvector('simple', regexp_replace(coalesce(${text}, ''), '[^[:alnum:]_]+', ' ', 'g'))`
-}
+import { searchVector } from "#/runtime/server/storage/search-query.ts"
 
 function project(
   sql: Constructor,

@@ -1,7 +1,7 @@
 import { Effect } from "effect"
 import { expect } from "vitest"
 
-import { EmailAddress } from "#/runtime/model/index.ts"
+import { EmailAddress, WebUrl } from "#/runtime/model/index.ts"
 import { Database } from "#/runtime/server/database.ts"
 import { makeEventWriter } from "#/runtime/server/events/event-writer.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
@@ -44,6 +44,20 @@ fixture.test(
       )
       expect(found.items[0]?.id).toBe(account.id)
       expect(found.totalSize).toBe(3)
+      const direct = yield* searchRecords({
+        query: "quas",
+        pageOffset: 1,
+        pageSize: 1,
+      })
+      expect(direct.items).toEqual(found.items.slice(1, 2))
+      expect(direct.totalSize).toBe(3)
+      expect(
+        yield* searchRecords({
+          query: "quas",
+          pageOffset: 1,
+          pageToken: direct.nextPageToken!,
+        }).pipe(Effect.flip)
+      ).toMatchObject({ _tag: "InvalidListRequest" })
       expect(
         (yield* searchRecords({ query: "quas", objectTypes: ["prospect"] }))
           .totalSize
@@ -122,5 +136,71 @@ fixture.test(
         })
       )
       expect(JSON.stringify(plan)).toContain("record_search_document_idx")
+    })
+)
+
+fixture.test(
+  "collection search shares the index and composes with filters, sorting, offsets, and cursors",
+  () =>
+    Effect.gen(function* () {
+      const services = yield* implementation
+      const alpha = yield* services.account.create({
+        name: "Alpha",
+        website: WebUrl("https://quasar.test/alpha"),
+      })
+      const beta = yield* services.account.create({
+        name: "Beta",
+        website: WebUrl("https://quasar.test/beta"),
+      })
+      yield* services.account.create({
+        name: "Gamma",
+        website: WebUrl("https://other.test"),
+      })
+      const request = {
+        query: "QUAS",
+        sort: [{ field: "name" as const, direction: "asc" as const }],
+        pageSize: 1,
+      }
+      const first = yield* services.account.list(request)
+      expect(first.items.map((record) => record.id)).toEqual([alpha.id])
+      expect(first.totalSize).toBe(2)
+      expect(first.nextPageToken).not.toBeNull()
+      const second = yield* services.account.list({
+        ...request,
+        pageToken: first.nextPageToken!,
+      })
+      expect(second.items.map((record) => record.id)).toEqual([beta.id])
+      expect(second.totalSize).toBe(2)
+      expect(second.nextPageToken).toBeNull()
+      const direct = yield* services.account.list({ ...request, pageOffset: 1 })
+      expect(direct.items).toEqual(second.items)
+      expect(direct.totalSize).toBe(2)
+      const filtered = yield* services.account.list({
+        ...request,
+        filter: { field: "name", operator: "eq", value: "Beta" },
+      })
+      expect(filtered.items.map((record) => record.id)).toEqual([beta.id])
+      expect(filtered.totalSize).toBe(1)
+      expect(
+        (yield* services.account.list({ ...request, query: "  " })).totalSize
+      ).toBe(3)
+      expect(
+        (yield* services.account.list({ query: "' & | :* ()" })).items
+      ).toEqual([])
+      expect(
+        (yield* services.account.list({ query: "quas alp" })).items.map(
+          (record) => record.id
+        )
+      ).toEqual([alpha.id])
+      expect(
+        yield* services.account
+          .list({ ...request, query: "other", pageToken: first.nextPageToken! })
+          .pipe(Effect.flip)
+      ).toMatchObject({ _tag: "InvalidListRequest" })
+      yield* services.account.update({
+        id: beta.id,
+        website: WebUrl("https://changed.test"),
+      })
+      expect((yield* services.account.list(request)).totalSize).toBe(1)
     })
 )

@@ -6,6 +6,7 @@ import { createRecordSearchContract } from "#/runtime/contract/record-search.ts"
 import { normalizePageSize } from "#/runtime/model/definition/request.ts"
 import type { ModelCatalog } from "#/runtime/model/index.ts"
 import { requireProjectAccess } from "#/runtime/server/auth/project-access.ts"
+import { InvalidListRequest } from "#/runtime/server/errors.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
 import { PageTokens } from "#/runtime/server/page-tokens.ts"
 import { searchSnippets } from "#/runtime/server/search-snippets.ts"
@@ -14,7 +15,7 @@ import {
   decodeCursor,
   encodeCursor,
 } from "#/runtime/server/storage/object-query.ts"
-import { searchVector } from "#/runtime/server/storage/search-index.ts"
+import { searchQuery } from "#/runtime/server/storage/search-query.ts"
 import { SqlDatabase } from "#/runtime/server/storage/transactions.ts"
 
 export function createRecordSearch(model: ModelCatalog) {
@@ -29,6 +30,13 @@ export function createRecordSearch(model: ModelCatalog) {
   ) {
     yield* requireProjectAccess
     const request = yield* Schema.decodeUnknownEffect(recordSearchInput)(input)
+    if (request.pageOffset !== undefined && request.pageToken !== undefined)
+      return yield* Effect.fail(
+        new InvalidListRequest({
+          objectType: "records.search",
+          message: "pageOffset cannot be combined with pageToken.",
+        })
+      )
     const objectTypes = searchableObjects
       .filter(
         (object) =>
@@ -76,8 +84,7 @@ export function createRecordSearch(model: ModelCatalog) {
       from ${recordSearch}
       join ${objects} on ${objects.columns.id} = ${recordSearch.columns.id}
       cross join (
-        select to_tsquery('simple', coalesce(string_agg(quote_literal(lexeme) || ':*', ' & '), '')) as query
-        from unnest(tsvector_to_array(${searchVector(sql, sql`${request.query}`)})) as lexeme
+        select ${searchQuery(sql, request.query)} as query
       ) q
       where ${recordSearch.columns.document} @@ q.query and (${sql.join(" OR ")(visible)})`
     const [total] = yield* sql<{
@@ -102,7 +109,7 @@ export function createRecordSearch(model: ModelCatalog) {
     )
     select * from ranked where ${after}
     order by rank desc, title, id
-    limit ${limit + 1}
+    limit ${limit + 1} offset ${request.pageOffset ?? 0}
   `
     const page = rows.slice(0, limit)
     const snippets = yield* searchSnippets(model, page, page[0]?.query ?? "")

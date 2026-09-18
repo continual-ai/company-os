@@ -17,6 +17,7 @@ import { ObjectTableQueryToolbar } from "#/runtime/ui/model/object-table/object-
 import { useModelRuntime } from "#/runtime/ui/model/runtime-context.tsx"
 
 export function CollectionQueryToolbar({
+  search,
   object,
   records,
   columnFilters,
@@ -24,6 +25,7 @@ export function CollectionQueryToolbar({
   onColumnFiltersChange,
   onSortingChange,
 }: {
+  search?: { value: string; onChange: (value: string) => void } | undefined
   object: ObjectType
   records: ReadonlyArray<ObjectTableRecord>
   columnFilters: ColumnFiltersState
@@ -53,5 +55,7 @@ export function CollectionQueryToolbar({
     onSortingChange,
     state: { columnFilters, sorting },
   })
-  return <ObjectTableQueryToolbar object={object} table={table} />
+  return (
+    <ObjectTableQueryToolbar object={object} table={table} search={search} />
+  )
 }

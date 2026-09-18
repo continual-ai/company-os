@@ -51,6 +51,7 @@ import {
 } from "#/runtime/server/storage/record-secrets.ts"
 import { relationalQuery } from "#/runtime/server/storage/relational-query.ts"
 import type { PostgresStorage } from "#/runtime/server/storage/schema.ts"
+import { searchMatch } from "#/runtime/server/storage/search-query.ts"
 import {
   assignments,
   conflictColumns,
@@ -442,8 +443,9 @@ function makeRepository<
           from ${edge}
           where ${source} = ${sourceId} and ${target} = ${idColumn})`
         }
+        const search = searchMatch(sql, idColumn, request.query)
         const matching = sql.and(
-          [filter, related].filter((part) => part !== undefined)
+          [filter, related, search].filter((part) => part !== undefined)
         )
         const rows = yield* select(
           sql.and([matching, after].filter((part) => part !== undefined)),

@@ -164,6 +164,7 @@ export function cursorFingerprint<TObject extends ObjectType>(
         filter:
           request.filter === undefined ? null : cursorFilter(request.filter),
         objectType: object.id,
+        query: request.query?.trim() || undefined,
         relatedTo: request.relatedTo,
         sort: sort.map(({ direction, field, nulls, aggregate }) => [
           field,

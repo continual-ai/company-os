@@ -133,7 +133,8 @@ export function objectListRequest(
   pageToken?: ListRequest["pageToken"],
   window?: CollectionDateWindow,
   model?: ModelCatalog,
-  visibility?: Readonly<Record<string, boolean>>
+  visibility?: Readonly<Record<string, boolean>>,
+  query?: string
 ): ListRequest {
   const fields = objectFields(object, model)
   const filters = columnFilters.flatMap((columnFilter) => {
@@ -246,6 +247,7 @@ export function objectListRequest(
   })
 
   const request: CollectionListRequest & {
+    query?: string
     expand?: Readonly<Record<string, true>>
   } = { pageSize: 100 }
   if (model && visibility !== undefined) {
@@ -266,6 +268,7 @@ export function objectListRequest(
         .map(({ traversal }) => [traversal.key, true])
     )
   }
+  if (query?.trim()) request.query = query.trim()
   if (filters.length > 0) {
     request.filter = filters.length === 1 ? filters[0]! : { and: filters }
   }

@@ -36,11 +36,15 @@ import {
 
 /** The same linked notes live in each subject's overview; posting creates and links atomically. */
 export function NoteFeed({ relationship }: RelationshipOverviewProps) {
+  const [query, setQuery] = useState("")
   const [filters, setFilters] = useState<ObjectCollectionFilter[]>([])
   const [sorting, setSorting] = useState<SortingState>([
     { id: "createdAt", desc: true },
   ])
-  const request = objectListRequest(Note, filters, sorting)
+  const request = {
+    ...objectListRequest(Note, filters, sorting),
+    ...(query.trim() ? { query: query.trim() } : {}),
+  }
   const pages = useInfiniteCollectionPages(relationship.list, request)
   const collection = useObjectCollection(Note, request, pages)
   const [editing, setEditing] = useState<ClientRecord>()
@@ -89,6 +93,7 @@ export function NoteFeed({ relationship }: RelationshipOverviewProps) {
         <NoteComposer relationship={relationship} />
       )}
       <CollectionQueryToolbar
+        search={{ value: query, onChange: setQuery }}
         object={Note}
         records={collection.records}
         columnFilters={filters}
@@ -170,8 +175,8 @@ export function NoteFeed({ relationship }: RelationshipOverviewProps) {
         <p className="py-4 text-sm text-muted-foreground">
           {collection.isFetching
             ? "Loading notes…"
-            : filters.length > 0
-              ? "No notes match your filters."
+            : filters.length > 0 || query.trim()
+              ? "No notes match your search or filters."
               : "No notes yet."}
         </p>
       )}

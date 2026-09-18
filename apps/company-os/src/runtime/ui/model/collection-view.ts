@@ -34,6 +34,7 @@ export interface ObjectCollectionSort {
 }
 
 export interface ObjectCollectionViewState {
+  readonly query?: string
   readonly layout?: CollectionLayout
   readonly date?: string
   readonly filters: ReadonlyArray<ObjectCollectionFilter>

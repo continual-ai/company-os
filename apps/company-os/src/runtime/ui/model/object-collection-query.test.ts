@@ -286,3 +286,33 @@ it("rejects unsupported resource filters and sorts instead of silently removing 
     objectListRequest(Account, [], [{ id: "etag", desc: true }])
   ).toThrow("Field 'etag' does not support sort.")
 })
+
+it("keeps indexed text search separate from column filters and list sorting", () => {
+  const request = objectListRequest(
+    Account,
+    [{ id: "name", value: { operator: "contains", values: ["labs"] } }],
+    [{ id: "name", desc: false }],
+    undefined,
+    undefined,
+    fixtureModel,
+    {},
+    "  quasar  "
+  )
+  expect(request).toMatchObject({
+    query: "quasar",
+    filter: { field: "name", operator: "contains", value: "labs" },
+    sort: [{ field: "name", direction: "asc" }],
+  })
+  expect(
+    objectListRequest(
+      Account,
+      [],
+      [],
+      undefined,
+      undefined,
+      fixtureModel,
+      {},
+      "  "
+    )
+  ).not.toHaveProperty("query")
+})

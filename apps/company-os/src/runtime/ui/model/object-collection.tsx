@@ -146,7 +146,8 @@ export function ObjectCollection(props: ObjectCollectionProps) {
         undefined,
         collectionDateWindow(state.layout, anchor),
         runtime.model,
-        state.visibility
+        state.visibility,
+        state.query
       ),
     [object, state, anchor, runtime.model]
   )
@@ -432,6 +433,14 @@ function ObjectCollectionContent({
           object={object}
           records={collection.records}
           viewport={collection.viewport}
+          search={
+            object.search
+              ? {
+                  value: viewState.query ?? "",
+                  onChange: (query) => updateState({ ...viewState, query }),
+                }
+              : undefined
+          }
           columnFilters={tableFilters}
           columnVisibility={columnVisibility}
           sorting={tableSorting}
@@ -499,6 +508,14 @@ function ObjectCollectionContent({
           <CollectionQueryToolbar
             object={object}
             records={collection.records}
+            search={
+              object.search
+                ? {
+                    value: viewState.query ?? "",
+                    onChange: (query) => updateState({ ...viewState, query }),
+                  }
+                : undefined
+            }
             columnFilters={tableFilters}
             sorting={tableSorting}
             onColumnFiltersChange={(update) =>

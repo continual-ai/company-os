@@ -39,6 +39,7 @@ const filterOperators = [
 ] as const satisfies ReadonlyArray<ObjectTableFilterOperator>
 
 const ObjectCollectionViewStateSchema = Schema.Struct({
+  query: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(200))),
   layout: Schema.optionalKey(CollectionLayoutSchema),
   date: Schema.optionalKey(
     Schema.String.check(
