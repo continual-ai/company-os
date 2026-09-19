@@ -373,19 +373,17 @@ export function makePostgresSchema<const M extends ModelCatalog>(
         )
       else
         ddl.push(
-          `create index ${q(`${snakeCase(link.id)}_target_idx`)} on ${owner} (${column})`
+          `create index ${q(`${snakeCase(link.id)}_target_idx`)} on ${owner} (${column}, "id")`
         )
       continue
     }
     ddl.push(...table.ddl(documentation))
 
-    for (const [side, definition] of [
-      ["forward", link.forward],
-      ["reverse", link.reverse],
-    ] as const)
-      ddl.push(
-        `create ${definition.max !== 1 ? "" : "unique "}index ${q(`${table.name}_${side}_id_${definition.max !== 1 ? "idx" : "unique"}`)} on ${q(table.name)} (${q(`${side}_id`)})`
-      )
+    // The primary key covers forward traversal. Reverse traversal needs the
+    // same ordering with its endpoints swapped, including bounded previews.
+    ddl.push(
+      `create index ${q(`${table.name}_reverse_id_idx`)} on ${q(table.name)} ("reverse_id", "forward_id")`
+    )
   }
   // The closed model supplies every table and its exact physical row type.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion

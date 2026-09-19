@@ -201,6 +201,10 @@ describe("makePostgresSchema", () => {
       'foreign key ("reverse_id") references "teams" ("id") on delete cascade'
     )
     expect(ddl).toContain('primary key ("forward_id", "reverse_id")')
+    expect(ddl).toContain(
+      'create index "link_team_membership_reverse_id_idx" on "link_team_membership" ("reverse_id", "forward_id")'
+    )
+    expect(ddl).not.toContain('"link_team_membership_forward_id_idx"')
   })
 
   it("derives one-to-one uniqueness from link cardinality", () => {

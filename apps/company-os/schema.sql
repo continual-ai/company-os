@@ -713,15 +713,15 @@ create table "replies" (
 
 create view "link_controller_module" as select "id" as forward_id, "module_id" as reverse_id from "controllers" where "module_id" is not null;
 
-create index "controller_module_target_idx" on "controllers" ("module_id");
+create index "controller_module_target_idx" on "controllers" ("module_id", "id");
 
 create view "link_connector_module" as select "id" as forward_id, "module_id" as reverse_id from "connectors" where "module_id" is not null;
 
-create index "connector_module_target_idx" on "connectors" ("module_id");
+create index "connector_module_target_idx" on "connectors" ("module_id", "id");
 
 create view "link_connection_connector" as select "id" as forward_id, "connector_id" as reverse_id from "connections" where "connector_id" is not null;
 
-create index "connection_connector_target_idx" on "connections" ("connector_id");
+create index "connection_connector_target_idx" on "connections" ("connector_id", "id");
 
 -- Note subjects (noteSubjects)
 create table "link_note_subjects" (
@@ -734,28 +734,27 @@ create table "link_note_subjects" (
   foreign key ("reverse_id") references "interface_note_subject" ("id") on delete cascade
 );
 
-create index "link_note_subjects_forward_id_idx" on "link_note_subjects" ("forward_id");
-create index "link_note_subjects_reverse_id_idx" on "link_note_subjects" ("reverse_id");
+create index "link_note_subjects_reverse_id_idx" on "link_note_subjects" ("reverse_id", "forward_id");
 
 create view "link_controller_instance_controller" as select "id" as forward_id, "controller_id" as reverse_id from "controller_instances" where "controller_id" is not null;
 
-create index "controller_instance_controller_target_idx" on "controller_instances" ("controller_id");
+create index "controller_instance_controller_target_idx" on "controller_instances" ("controller_id", "id");
 
 create view "link_controller_instance_record" as select "id" as forward_id, "record_id" as reverse_id from "controller_instances" where "record_id" is not null;
 
-create index "controller_instance_record_target_idx" on "controller_instances" ("record_id");
+create index "controller_instance_record_target_idx" on "controller_instances" ("record_id", "id");
 
 create view "link_account_owner" as select "id" as forward_id, "owner_id" as reverse_id from "accounts" where "owner_id" is not null;
 
-create index "account_owner_target_idx" on "accounts" ("owner_id");
+create index "account_owner_target_idx" on "accounts" ("owner_id", "id");
 
 create view "link_affiliation_contact" as select "id" as forward_id, "contact_id" as reverse_id from "affiliations" where "contact_id" is not null;
 
-create index "affiliation_contact_target_idx" on "affiliations" ("contact_id");
+create index "affiliation_contact_target_idx" on "affiliations" ("contact_id", "id");
 
 create view "link_affiliation_account" as select "id" as forward_id, "account_id" as reverse_id from "affiliations" where "account_id" is not null;
 
-create index "affiliation_account_target_idx" on "affiliations" ("account_id");
+create index "affiliation_account_target_idx" on "affiliations" ("account_id", "id");
 
 -- Activity Account (activityAccounts)
 create table "link_activity_accounts" (
@@ -768,8 +767,7 @@ create table "link_activity_accounts" (
   foreign key ("reverse_id") references "accounts" ("id") on delete cascade
 );
 
-create index "link_activity_accounts_forward_id_idx" on "link_activity_accounts" ("forward_id");
-create index "link_activity_accounts_reverse_id_idx" on "link_activity_accounts" ("reverse_id");
+create index "link_activity_accounts_reverse_id_idx" on "link_activity_accounts" ("reverse_id", "forward_id");
 
 -- Activity Contact (activityContacts)
 create table "link_activity_contacts" (
@@ -782,16 +780,15 @@ create table "link_activity_contacts" (
   foreign key ("reverse_id") references "contacts" ("id") on delete cascade
 );
 
-create index "link_activity_contacts_forward_id_idx" on "link_activity_contacts" ("forward_id");
-create index "link_activity_contacts_reverse_id_idx" on "link_activity_contacts" ("reverse_id");
+create index "link_activity_contacts_reverse_id_idx" on "link_activity_contacts" ("reverse_id", "forward_id");
 
 create view "link_activity_owner" as select "id" as forward_id, "owner_id" as reverse_id from "activities" where "owner_id" is not null;
 
-create index "activity_owner_target_idx" on "activities" ("owner_id");
+create index "activity_owner_target_idx" on "activities" ("owner_id", "id");
 
 create view "link_opportunity_line_items" as select "opportunity_id" as forward_id, "id" as reverse_id from "line_items" where "opportunity_id" is not null;
 
-create index "opportunity_line_items_target_idx" on "line_items" ("opportunity_id");
+create index "opportunity_line_items_target_idx" on "line_items" ("opportunity_id", "id");
 
 -- Opportunity accounts (opportunityAccounts)
 create table "link_opportunity_accounts" (
@@ -804,8 +801,7 @@ create table "link_opportunity_accounts" (
   foreign key ("reverse_id") references "accounts" ("id") on delete cascade
 );
 
-create index "link_opportunity_accounts_forward_id_idx" on "link_opportunity_accounts" ("forward_id");
-create index "link_opportunity_accounts_reverse_id_idx" on "link_opportunity_accounts" ("reverse_id");
+create index "link_opportunity_accounts_reverse_id_idx" on "link_opportunity_accounts" ("reverse_id", "forward_id");
 
 -- Opportunity contacts (opportunityContacts)
 create table "link_opportunity_contacts" (
@@ -818,8 +814,7 @@ create table "link_opportunity_contacts" (
   foreign key ("reverse_id") references "contacts" ("id") on delete cascade
 );
 
-create index "link_opportunity_contacts_forward_id_idx" on "link_opportunity_contacts" ("forward_id");
-create index "link_opportunity_contacts_reverse_id_idx" on "link_opportunity_contacts" ("reverse_id");
+create index "link_opportunity_contacts_reverse_id_idx" on "link_opportunity_contacts" ("reverse_id", "forward_id");
 
 -- Activity Opportunity (activityOpportunities)
 create table "link_activity_opportunities" (
@@ -832,74 +827,73 @@ create table "link_activity_opportunities" (
   foreign key ("reverse_id") references "opportunities" ("id") on delete cascade
 );
 
-create index "link_activity_opportunities_forward_id_idx" on "link_activity_opportunities" ("forward_id");
-create index "link_activity_opportunities_reverse_id_idx" on "link_activity_opportunities" ("reverse_id");
+create index "link_activity_opportunities_reverse_id_idx" on "link_activity_opportunities" ("reverse_id", "forward_id");
 
 create view "link_opportunity_owner" as select "id" as forward_id, "owner_id" as reverse_id from "opportunities" where "owner_id" is not null;
 
-create index "opportunity_owner_target_idx" on "opportunities" ("owner_id");
+create index "opportunity_owner_target_idx" on "opportunities" ("owner_id", "id");
 
 create view "link_lead_account" as select "id" as forward_id, "account_id" as reverse_id from "leads" where "account_id" is not null;
 
-create index "lead_account_target_idx" on "leads" ("account_id");
+create index "lead_account_target_idx" on "leads" ("account_id", "id");
 
 create view "link_lead_owner" as select "id" as forward_id, "owner_id" as reverse_id from "leads" where "owner_id" is not null;
 
-create index "lead_owner_target_idx" on "leads" ("owner_id");
+create index "lead_owner_target_idx" on "leads" ("owner_id", "id");
 
 create view "link_lead_contact" as select "id" as forward_id, "contact_id" as reverse_id from "leads" where "contact_id" is not null;
 
-create index "lead_contact_target_idx" on "leads" ("contact_id");
+create index "lead_contact_target_idx" on "leads" ("contact_id", "id");
 
 create view "link_lead_opportunity" as select "id" as forward_id, "opportunity_id" as reverse_id from "leads" where "opportunity_id" is not null;
 
 create view "link_campaign_owner" as select "id" as forward_id, "owner_id" as reverse_id from "campaigns" where "owner_id" is not null;
 
-create index "campaign_owner_target_idx" on "campaigns" ("owner_id");
+create index "campaign_owner_target_idx" on "campaigns" ("owner_id", "id");
 
 create view "link_content_campaign" as select "id" as forward_id, "campaign_id" as reverse_id from "contents" where "campaign_id" is not null;
 
-create index "content_campaign_target_idx" on "contents" ("campaign_id");
+create index "content_campaign_target_idx" on "contents" ("campaign_id", "id");
 
 create view "link_content_owner" as select "id" as forward_id, "owner_id" as reverse_id from "contents" where "owner_id" is not null;
 
-create index "content_owner_target_idx" on "contents" ("owner_id");
+create index "content_owner_target_idx" on "contents" ("owner_id", "id");
 
 create view "link_campaign_member_campaign" as select "id" as forward_id, "campaign_id" as reverse_id from "campaign_members" where "campaign_id" is not null;
 
-create index "campaign_member_campaign_target_idx" on "campaign_members" ("campaign_id");
+create index "campaign_member_campaign_target_idx" on "campaign_members" ("campaign_id", "id");
 
 create view "link_campaign_member_contact" as select "id" as forward_id, "contact_id" as reverse_id from "campaign_members" where "contact_id" is not null;
 
-create index "campaign_member_contact_target_idx" on "campaign_members" ("contact_id");
+create index "campaign_member_contact_target_idx" on "campaign_members" ("contact_id", "id");
 
 create view "link_outreach_campaign" as select "id" as forward_id, "campaign_id" as reverse_id from "outreaches" where "campaign_id" is not null;
 
-create index "outreach_campaign_target_idx" on "outreaches" ("campaign_id");
+create index "outreach_campaign_target_idx" on "outreaches" ("campaign_id", "id");
 
 create view "link_outreach_contact" as select "id" as forward_id, "contact_id" as reverse_id from "outreaches" where "contact_id" is not null;
 
-create index "outreach_contact_target_idx" on "outreaches" ("contact_id");
+create index "outreach_contact_target_idx" on "outreaches" ("contact_id", "id");
 
 create view "link_outreach_owner" as select "id" as forward_id, "owner_id" as reverse_id from "outreaches" where "owner_id" is not null;
 
-create index "outreach_owner_target_idx" on "outreaches" ("owner_id");
+create index "outreach_owner_target_idx" on "outreaches" ("owner_id", "id");
 
 create view "link_project_owner" as select "id" as forward_id, "owner_id" as reverse_id from "projects" where "owner_id" is not null;
 
-create index "project_owner_target_idx" on "projects" ("owner_id");
+create index "project_owner_target_idx" on "projects" ("owner_id", "id");
 
 create view "link_issue_project" as select "id" as forward_id, "project_id" as reverse_id from "issues" where "project_id" is not null;
 
-create index "issue_project_target_idx" on "issues" ("project_id");
+create index "issue_project_target_idx" on "issues" ("project_id", "id");
 
 create view "link_issue_assignee" as select "id" as forward_id, "assignee_id" as reverse_id from "issues" where "assignee_id" is not null;
 
-create index "issue_assignee_target_idx" on "issues" ("assignee_id");
+create index "issue_assignee_target_idx" on "issues" ("assignee_id", "id");
 
 create view "link_github_repository_connection" as select "id" as forward_id, "connection_id" as reverse_id from "github_repositories" where "connection_id" is not null;
 
-create index "github_repository_connection_target_idx" on "github_repositories" ("connection_id");
+create index "github_repository_connection_target_idx" on "github_repositories" ("connection_id", "id");
 
 -- GitHub repository projects (githubRepositoryProjects)
 create table "link_github_repository_projects" (
@@ -912,20 +906,19 @@ create table "link_github_repository_projects" (
   foreign key ("reverse_id") references "projects" ("id") on delete cascade
 );
 
-create index "link_github_repository_projects_forward_id_idx" on "link_github_repository_projects" ("forward_id");
-create index "link_github_repository_projects_reverse_id_idx" on "link_github_repository_projects" ("reverse_id");
+create index "link_github_repository_projects_reverse_id_idx" on "link_github_repository_projects" ("reverse_id", "forward_id");
 
 create view "link_github_repository_maintainer" as select "id" as forward_id, "maintainer_id" as reverse_id from "github_repositories" where "maintainer_id" is not null;
 
-create index "github_repository_maintainer_target_idx" on "github_repositories" ("maintainer_id");
+create index "github_repository_maintainer_target_idx" on "github_repositories" ("maintainer_id", "id");
 
 create view "link_github_issue_repository" as select "id" as forward_id, "repository_id" as reverse_id from "github_issues" where "repository_id" is not null;
 
-create index "github_issue_repository_target_idx" on "github_issues" ("repository_id");
+create index "github_issue_repository_target_idx" on "github_issues" ("repository_id", "id");
 
 create view "link_github_pull_request_repository" as select "id" as forward_id, "repository_id" as reverse_id from "github_pull_requests" where "repository_id" is not null;
 
-create index "github_pull_request_repository_target_idx" on "github_pull_requests" ("repository_id");
+create index "github_pull_request_repository_target_idx" on "github_pull_requests" ("repository_id", "id");
 
 -- GitHub issue pull requests (githubIssuePullRequests)
 create table "link_github_issue_pull_requests" (
@@ -938,8 +931,7 @@ create table "link_github_issue_pull_requests" (
   foreign key ("reverse_id") references "github_pull_requests" ("id") on delete cascade
 );
 
-create index "link_github_issue_pull_requests_forward_id_idx" on "link_github_issue_pull_requests" ("forward_id");
-create index "link_github_issue_pull_requests_reverse_id_idx" on "link_github_issue_pull_requests" ("reverse_id");
+create index "link_github_issue_pull_requests_reverse_id_idx" on "link_github_issue_pull_requests" ("reverse_id", "forward_id");
 
 -- Product issue GitHub issues (issueGithubIssues)
 create table "link_issue_github_issues" (
@@ -952,8 +944,7 @@ create table "link_issue_github_issues" (
   foreign key ("reverse_id") references "github_issues" ("id") on delete cascade
 );
 
-create index "link_issue_github_issues_forward_id_idx" on "link_issue_github_issues" ("forward_id");
-create index "link_issue_github_issues_reverse_id_idx" on "link_issue_github_issues" ("reverse_id");
+create index "link_issue_github_issues_reverse_id_idx" on "link_issue_github_issues" ("reverse_id", "forward_id");
 
 -- Product issue GitHub pull requests (issueGithubPullRequests)
 create table "link_issue_github_pull_requests" (
@@ -966,36 +957,35 @@ create table "link_issue_github_pull_requests" (
   foreign key ("reverse_id") references "github_pull_requests" ("id") on delete cascade
 );
 
-create index "link_issue_github_pull_requests_forward_id_idx" on "link_issue_github_pull_requests" ("forward_id");
-create index "link_issue_github_pull_requests_reverse_id_idx" on "link_issue_github_pull_requests" ("reverse_id");
+create index "link_issue_github_pull_requests_reverse_id_idx" on "link_issue_github_pull_requests" ("reverse_id", "forward_id");
 
 create view "link_application_job" as select "id" as forward_id, "job_id" as reverse_id from "applications" where "job_id" is not null;
 
-create index "application_job_target_idx" on "applications" ("job_id");
+create index "application_job_target_idx" on "applications" ("job_id", "id");
 
 create view "link_application_candidate" as select "id" as forward_id, "candidate_id" as reverse_id from "applications" where "candidate_id" is not null;
 
-create index "application_candidate_target_idx" on "applications" ("candidate_id");
+create index "application_candidate_target_idx" on "applications" ("candidate_id", "id");
 
 create view "link_job_posting_hiring_manager" as select "id" as forward_id, "hiring_manager_id" as reverse_id from "job_postings" where "hiring_manager_id" is not null;
 
-create index "job_posting_hiring_manager_target_idx" on "job_postings" ("hiring_manager_id");
+create index "job_posting_hiring_manager_target_idx" on "job_postings" ("hiring_manager_id", "id");
 
 create view "link_reply_ticket" as select "id" as forward_id, "ticket_id" as reverse_id from "replies" where "ticket_id" is not null;
 
-create index "reply_ticket_target_idx" on "replies" ("ticket_id");
+create index "reply_ticket_target_idx" on "replies" ("ticket_id", "id");
 
 create view "link_ticket_account" as select "id" as forward_id, "account_id" as reverse_id from "tickets" where "account_id" is not null;
 
-create index "ticket_account_target_idx" on "tickets" ("account_id");
+create index "ticket_account_target_idx" on "tickets" ("account_id", "id");
 
 create view "link_ticket_requester" as select "id" as forward_id, "requester_id" as reverse_id from "tickets" where "requester_id" is not null;
 
-create index "ticket_requester_target_idx" on "tickets" ("requester_id");
+create index "ticket_requester_target_idx" on "tickets" ("requester_id", "id");
 
 create view "link_ticket_owner" as select "id" as forward_id, "owner_id" as reverse_id from "tickets" where "owner_id" is not null;
 
-create index "ticket_owner_target_idx" on "tickets" ("owner_id");
+create index "ticket_owner_target_idx" on "tickets" ("owner_id", "id");
 
 -- Customer reported issues (ticketIssues)
 create table "link_ticket_issues" (
@@ -1008,8 +998,7 @@ create table "link_ticket_issues" (
   foreign key ("reverse_id") references "issues" ("id") on delete cascade
 );
 
-create index "link_ticket_issues_forward_id_idx" on "link_ticket_issues" ("forward_id");
-create index "link_ticket_issues_reverse_id_idx" on "link_ticket_issues" ("reverse_id");
+create index "link_ticket_issues_reverse_id_idx" on "link_ticket_issues" ("reverse_id", "forward_id");
 
 -- Opportunity product needs (opportunityIssues)
 create table "link_opportunity_issues" (
@@ -1022,8 +1011,7 @@ create table "link_opportunity_issues" (
   foreign key ("reverse_id") references "issues" ("id") on delete cascade
 );
 
-create index "link_opportunity_issues_forward_id_idx" on "link_opportunity_issues" ("forward_id");
-create index "link_opportunity_issues_reverse_id_idx" on "link_opportunity_issues" ("reverse_id");
+create index "link_opportunity_issues_reverse_id_idx" on "link_opportunity_issues" ("reverse_id", "forward_id");
 
 -- ===========================================================================
 -- Cross-table constraints
