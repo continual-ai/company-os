@@ -31,7 +31,10 @@ fixture.test(
         { description: "A table's description.\r\nselect 1;" }
       )
       yield* sql.unsafe(
-        table.ddl.map((statement) => `${statement};`).join("\n\n")
+        table
+          .ddl(true)
+          .map((statement) => `${statement};`)
+          .join("\n\n")
       )
       yield* sql`insert into documented_record values (1)`
       expect(yield* sql`select id from documented_record`).toEqual([{ id: 1 }])

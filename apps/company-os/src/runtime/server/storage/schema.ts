@@ -140,8 +140,11 @@ function defaultSql(type: string, value: unknown, nullable = false): string {
 
 /** Compiles the portable model into PostgreSQL tables and documented current-state DDL. */
 export function makePostgresSchema<const M extends ModelCatalog>(
-  model: M
+  model: M,
+  documentation = false
 ): PostgresStorage<M> {
+  const section = (title: string, description?: string) =>
+    documentation ? [schemaSection(title, description)] : []
   const q = quoteIdentifier
   const objectTypeIds = Object.keys(model.objects)
   const objectTypeCheck =
@@ -211,12 +214,12 @@ export function makePostgresSchema<const M extends ModelCatalog>(
     return snakeCase(object.collection)
   }
   const ddl = [
-    schemaSection("Core record storage"),
-    ...core.objects.ddl,
+    ...section("Core record storage"),
+    ...core.objects.ddl(documentation),
     'create index "objects_object_type_idx" on "objects" ("object_type")',
-    ...core.recordAliases.ddl,
+    ...core.recordAliases.ddl(documentation),
     'create index "record_aliases_object_id_idx" on "record_aliases" ("object_id")',
-    schemaSection(
+    ...section(
       "Interface membership",
       "Each row identifies an implementing record. Properties remain in the domain tables."
     ),
@@ -246,7 +249,7 @@ export function makePostgresSchema<const M extends ModelCatalog>(
       }
     )
     interfaces[item.id] = table
-    ddl.push(...table.ddl)
+    ddl.push(...table.ddl(documentation))
   }
   for (const field of ["created_by_id", "updated_by_id"])
     constraints.push(
@@ -259,7 +262,7 @@ export function makePostgresSchema<const M extends ModelCatalog>(
       item.objects.some((member) => member.id === object.id)
     )
     if (module?.id !== previousModule) {
-      ddl.push(schemaSection(`Domain objects: ${module?.name ?? model.name}`))
+      ddl.push(...section(`Domain objects: ${module?.name ?? model.name}`))
       previousModule = module?.id
     }
     const fields: Record<string, ColumnDefinition> = {
@@ -295,7 +298,7 @@ export function makePostgresSchema<const M extends ModelCatalog>(
     objects[object.id] = table
     const name = q(table.name)
     const columns = tableColumns(table)
-    ddl.push(...table.ddl)
+    ddl.push(...table.ddl(documentation))
 
     for (const [rule, check] of Object.entries(object.checks)) {
       const operators = { lt: "<", lte: "<=", gt: ">", gte: ">=" }
@@ -322,7 +325,7 @@ export function makePostgresSchema<const M extends ModelCatalog>(
     }
   }
   ddl.push(
-    schemaSection(
+    ...section(
       "Relationships",
       "Association pairs and cardinality constraints."
     )
@@ -374,7 +377,7 @@ export function makePostgresSchema<const M extends ModelCatalog>(
         )
       continue
     }
-    ddl.push(...table.ddl)
+    ddl.push(...table.ddl(documentation))
 
     for (const [side, definition] of [
       ["forward", link.forward],
@@ -394,7 +397,7 @@ export function makePostgresSchema<const M extends ModelCatalog>(
     linkTables,
     ddl: [
       ...ddl,
-      schemaSection(
+      ...section(
         "Cross-table constraints",
         "Declared after all domain tables to support cyclic references."
       ),

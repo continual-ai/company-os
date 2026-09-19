@@ -9,7 +9,7 @@ import {
   type RecordId,
   schema,
 } from "#/runtime/model/index.ts"
-import { makeSchemaSql } from "#/runtime/server/schema.ts"
+import { makeSchemaSql, makeSchemaStatements } from "#/runtime/server/schema.ts"
 import { makePostgresSchema } from "#/runtime/server/storage/schema.ts"
 import type { TableRow } from "#/runtime/server/storage/statement.ts"
 import {
@@ -335,4 +335,108 @@ it("enforces required references with native constraints and no graph-count trig
   expect(ddl).not.toContain('create constraint trigger "require_')
   expect(ddl).toContain('"account_id" text not null')
   expect(ddl).toContain("on delete no action deferrable initially deferred")
+})
+
+const schemaIdentityModel = (
+  options: {
+    description?: string
+    integer?: boolean
+    defaultValue?: string
+    required?: boolean
+    unique?: boolean
+    check?: boolean
+  } = {}
+) => {
+  const description = options.description ?? "Original documentation"
+  const Group = defineObject({
+    id: "group",
+    collection: "groups",
+    name: description,
+    pluralName: "Groups",
+    description,
+    properties: { name: schema.string({ description }) },
+    display: { title: "name" },
+  })
+  const Entry = defineObject({
+    id: "entry",
+    collection: "entries",
+    name: "Entry",
+    pluralName: "Entries",
+    description,
+    properties: {
+      name: schema.string({
+        description,
+        default: options.defaultValue ?? "literal -- text\n/* still a value */",
+      }),
+      lower: schema.number({ integer: options.integer ?? false }),
+      upper: schema.number(),
+    },
+    display: { title: "name" },
+    uniqueBy: options.unique ? { name: ["name"] } : {},
+    checks: options.check
+      ? {
+          ordered: {
+            left: "lower",
+            operator: "lte",
+            right: "upper",
+            message: "Lower cannot exceed upper.",
+          },
+        }
+      : {},
+  })
+  const GroupEntries = defineLink({
+    id: "groupEntries",
+    name: description,
+    description,
+    from: {
+      object: Entry,
+      key: "group",
+      label: description,
+      min: options.required ? 1 : 0,
+      max: 1,
+    },
+    to: { object: Group, key: "entries" },
+  })
+  return defineModel({
+    name: description,
+    modules: [
+      defineModule({
+        id: "entries",
+        name: description,
+        objects: [Group, Entry],
+        links: [GroupEntries],
+      }),
+    ],
+  })
+}
+
+describe("executable schema identity", () => {
+  it("excludes documentation from migration statements while preserving SQL literals", () => {
+    const original = schemaIdentityModel()
+    const edited = schemaIdentityModel({
+      description: "Updated documentation\nwith another line",
+    })
+    expect(makeSchemaSql(original)).not.toBe(makeSchemaSql(edited))
+    expect(makeSchemaStatements(original)).toEqual(makeSchemaStatements(edited))
+    expect(
+      makeSchemaStatements(original).some((statement) =>
+        statement.startsWith("--")
+      )
+    ).toBe(false)
+    expect(makeSchemaStatements(original).join("\n")).toContain(
+      "literal -- text\n/* still a value */"
+    )
+  })
+
+  it.each([
+    { integer: true },
+    { defaultValue: "different -- literal" },
+    { required: true },
+    { unique: true },
+    { check: true },
+  ])("changes migration identity for structural changes: %j", (options) => {
+    expect(makeSchemaStatements(schemaIdentityModel(options))).not.toEqual(
+      makeSchemaStatements(schemaIdentityModel())
+    )
+  })
 })

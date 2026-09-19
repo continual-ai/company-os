@@ -7,8 +7,14 @@ export const initialJournalSql =
   "insert into event_journal_state (id, position) values (1, 0)"
 
 /** Keep statements separate so drivers can use the extended query protocol. */
-export function makeSchemaStatements(model: ModelCatalog) {
-  return [...makePostgresSchema(model).ddl, ...infrastructureStatements]
+export function makeSchemaStatements(
+  model: ModelCatalog,
+  documentation = false
+) {
+  return [
+    ...makePostgresSchema(model, documentation).ddl,
+    ...infrastructureStatements(documentation),
+  ]
 }
 
 /** Deterministic SQL projection used by initialization, resets, and isolated test databases. */
@@ -19,7 +25,7 @@ export function makeSchemaSql(model: ModelCatalog) {
     "-- then run pnpm db:generate.\n" +
     "-- Domain tables share their record identity with objects.\n" +
     "-- Descriptions are documentation only; they are not stored in PostgreSQL.\n\n" +
-    makeSchemaStatements(model)
+    makeSchemaStatements(model, true)
       .map((statement, index, statements) => {
         const previous = statements[index - 1]
         const adjacent =

@@ -6,7 +6,7 @@ import * as SqlClient from "effect/unstable/sql/SqlClient"
 
 import {
   initialMigration,
-  initialSql,
+  initialStatements,
 } from "#/app/server/database/migrations/0001-initial.ts"
 import { assertDatabaseSchemaName } from "#/app/server/database/postgres.ts"
 import { seedSystem } from "#/app/server/seeds/seed-system.ts"
@@ -15,7 +15,7 @@ import { ensureSearchIndex } from "#/runtime/server/storage/search-index.ts"
 import { SqlDatabase } from "#/runtime/server/storage/transactions.ts"
 
 // Until v1 the initial migration follows the model. Its fingerprint prevents silent reuse of an old schema.
-const initialName = `initial_${createHash("sha256").update(initialSql).digest("hex")}`
+const initialName = `initial_${createHash("sha256").update(JSON.stringify(initialStatements)).digest("hex")}`
 export const migrations = Migrator.fromRecord({
   [`1_${initialName}`]: initialMigration,
 })

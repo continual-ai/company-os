@@ -177,14 +177,14 @@ export const controllerConsumers = defineTable<{
   { constraints: ['primary key ("controller_id")'] }
 )
 /** Desired current DDL. Migration history and required bootstrap data have separate owners. */
-export const infrastructureStatements = [
-  schemaSection("Application infrastructure"),
-  ...identityBindings.ddl,
-  ...assetBlobs.ddl,
-  ...assetReferences.ddl,
+export const infrastructureStatements = (documentation = false) => [
+  ...(documentation ? [schemaSection("Application infrastructure")] : []),
+  ...identityBindings.ddl(documentation),
+  ...assetBlobs.ddl(documentation),
+  ...assetReferences.ddl(documentation),
   'create index "asset_references_asset_id_idx" on "asset_references" ("asset_id")',
-  ...eventJournalState.ddl,
-  ...eventJournal.ddl,
+  ...eventJournalState.ddl(documentation),
+  ...eventJournal.ddl(documentation),
   'create index "event_journal_type_position_idx" on "event_journal" ("type", "position")',
   `create function "reject_event_journal_mutation"()\nreturns trigger\nlanguage plpgsql as $$
 begin
@@ -192,9 +192,9 @@ begin
 end;
 $$`,
   `create trigger "event_journal_append_only"\n  before update or delete on "event_journal"\n  for each statement execute function "reject_event_journal_mutation"()`,
-  ...recordSearch.ddl,
+  ...recordSearch.ddl(documentation),
   'create index "record_search_document_idx" on "record_search" using gin ("document")',
-  ...searchIndexState.ddl,
-  ...seedRuns.ddl,
-  ...controllerConsumers.ddl,
+  ...searchIndexState.ddl(documentation),
+  ...seedRuns.ddl(documentation),
+  ...controllerConsumers.ddl(documentation),
 ]

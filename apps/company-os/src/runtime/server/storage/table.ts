@@ -11,7 +11,7 @@ export type Table<Row extends object = Record<string, unknown>> =
   Statement.Fragment & {
     readonly name: string
     readonly columns: { readonly [K in keyof Row]: Column<Row[K]> }
-    readonly ddl: ReadonlyArray<string>
+    readonly ddl: (documentation?: boolean) => ReadonlyArray<string>
   }
 
 /** SQL expressions in defaults and constraints are trusted, source-owned DDL. */
@@ -99,17 +99,21 @@ export function defineTable<Row extends object>(
       },
     ])
   )
-  const entries = definitions.map(([key, field]) => {
-    const column = `${quoteIdentifier(snakeCase(key))} ${field.type}${field.nullable ? "" : " not null"}${field.default === undefined ? "" : ` default ${field.default}`}`
-    return field.description
-      ? `${sqlComment(field.description, 76).replaceAll("\n", "\n  ")}\n  ${column}`
-      : column
-  })
-  entries.push(...(options.constraints ?? []))
-  const ddl = [
-    ...(options.description ? [sqlComment(options.description)] : []),
-    `create table ${quoteIdentifier(name)} (\n  ${entries.join(",\n  ")}\n)`,
-  ]
+  const ddl = (documentation = false) => {
+    const entries = definitions.map(([key, field]) => {
+      const column = `${quoteIdentifier(snakeCase(key))} ${field.type}${field.nullable ? "" : " not null"}${field.default === undefined ? "" : ` default ${field.default}`}`
+      return documentation && field.description
+        ? `${sqlComment(field.description, 76).replaceAll("\n", "\n  ")}\n  ${column}`
+        : column
+    })
+    entries.push(...(options.constraints ?? []))
+    return [
+      ...(documentation && options.description
+        ? [sqlComment(options.description)]
+        : []),
+      `create table ${quoteIdentifier(name)} (\n  ${entries.join(",\n  ")}\n)`,
+    ]
+  }
   // Every input field produces one column; the row type is the caller's storage contract.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   return Object.assign(Statement.fragment([Statement.identifier(name)]), {
