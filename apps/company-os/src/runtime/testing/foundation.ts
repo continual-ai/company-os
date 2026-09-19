@@ -12,12 +12,9 @@ import type { ModuleServer } from "#/runtime/server/module-server.ts"
 import { PageTokens } from "#/runtime/server/page-tokens.ts"
 import { makeServicesLayer } from "#/runtime/server/services.ts"
 import type { RecordSecrets } from "#/runtime/server/storage/record-secrets.ts"
+import type { DatabaseInitializer } from "#/runtime/server/storage/testing.ts"
 import type { SqlDatabase } from "#/runtime/server/storage/transactions.ts"
-import {
-  layerTest,
-  testDatabase,
-  type DatabaseInitializer,
-} from "#/runtime/testing/database.ts"
+import { layerTest, testDatabase } from "#/runtime/testing/database.ts"
 
 type ServerContributions = ReadonlyArray<ModuleServer>
 type Servers<C extends ServerContributions> = Parameters<
@@ -54,8 +51,8 @@ export function seededLayer<R, E>(
  * The kernel's execution foundation over an isolated database: standard services
  * for every object in `model`, the kernel module servers, the given module
  * servers, and a seeded system actor. Every custom action in `model` needs a
- * server. Call at test-file top level; `test` runs each case on a fresh clone
- * under the system invocation.
+ * server. Call at test-file top level; `test` resets the file's clone before each case
+ * and runs under the system invocation.
  */
 export function testFoundation<
   M extends ModelCatalog,

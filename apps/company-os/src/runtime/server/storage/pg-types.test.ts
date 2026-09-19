@@ -35,3 +35,10 @@ it("keeps timestamp arrays on the same codec and preserves null elements", () =>
     )
   ).toEqual(["2026-09-12T17:00:00.000Z", null])
 })
+
+it("decodes regclass catalog identifiers as unsigned OIDs", () => {
+  const bytes = Result.getOrThrow(PgTypes.encode(4294967294, PgTypes.OID.oid))
+  expect(Result.getOrThrow(PgTypes.decode(bytes, 2205, 1, pgTypes))).toBe(
+    4294967294
+  )
+})

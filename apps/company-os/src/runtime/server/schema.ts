@@ -2,6 +2,10 @@ import type { ModelCatalog } from "#/runtime/model/index.ts"
 import { infrastructureStatements } from "#/runtime/server/storage/infrastructure.ts"
 import { makePostgresSchema } from "#/runtime/server/storage/schema.ts"
 
+/** Every initialized database starts its durable journal at position zero. */
+export const initialJournalSql =
+  "insert into event_journal_state (id, position) values (1, 0)"
+
 /** Keep statements separate so drivers can use the extended query protocol. */
 export function makeSchemaStatements(model: ModelCatalog) {
   return [...makePostgresSchema(model).ddl, ...infrastructureStatements]

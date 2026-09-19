@@ -55,3 +55,36 @@ fixture.test("nested transaction calls join the enclosing transaction", () =>
     expect(yield* names(database)).toEqual(["one", "three", "two"])
   })
 )
+
+fixture.test("releases completed nested PostgreSQL savepoints", () =>
+  Effect.gen(function* () {
+    const { sql } = yield* SqlDatabase
+    yield* sql`create temporary table savepoint_probe (value integer)`
+    yield* sql.withTransaction(
+      Effect.gen(function* () {
+        yield* sql`insert into savepoint_probe values (0)`
+        const locks = () => sql<{
+          count: number
+        }>`select count(*)::integer as count
+        from pg_locks where pid = pg_backend_pid() and locktype = 'transactionid'`
+        const before = yield* locks()
+        for (let value = 1; value <= 100; value++)
+          yield* sql.withTransaction(
+            sql`insert into savepoint_probe values (${value})`
+          )
+        expect(yield* locks()).toEqual(before)
+        yield* sql
+          .withTransaction(
+            sql`insert into savepoint_probe values (-1)`.pipe(
+              Effect.andThen(Effect.fail("rollback nested"))
+            )
+          )
+          .pipe(Effect.result)
+        expect(yield* locks()).toEqual(before)
+        expect(
+          yield* sql`select count(*)::integer as count from savepoint_probe`
+        ).toEqual([{ count: 101 }])
+      })
+    )
+  })
+)

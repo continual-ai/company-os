@@ -1,16 +1,3 @@
-diff --git a/dist/unstable/sql/Migrator.js b/dist/unstable/sql/Migrator.js
-index 67e035b80240e60e28c9683b07fb54d3bc39e54e..1a7993b910171e0a37684ff3b499a2e9c60d2b2a 100644
---- a/dist/unstable/sql/Migrator.js
-+++ b/dist/unstable/sql/Migrator.js
-@@ -61,7 +61,7 @@ export const make = ({
-   name VARCHAR(255) NOT NULL,
-   PRIMARY KEY (migration_id)
- )`,
--    pg: () => Effect.catch(sql`select ${table}::regclass`, () => sql`CREATE TABLE ${sql(table)} (
-+    pg: () => Effect.catch(sql`select ${table}::regclass::text`, () => sql`CREATE TABLE ${sql(table)} (
-   migration_id integer primary key,
-   created_at timestamp with time zone not null default now(),
-   name text not null
 diff --git a/dist/unstable/sql/SqlClient.d.ts b/dist/unstable/sql/SqlClient.d.ts
 index f266c7d7d96ab642c9e95ebb5fc9781fc2a5605c..b76aaf648d38f01eddc34f2595d0d29b28120390 100644
 --- a/dist/unstable/sql/SqlClient.d.ts
@@ -47,19 +34,6 @@ index f9bfd9e3cbb60d69b508aa8ae85ae1d64c20ccf3..94b520db72e1a33107307db4171c1916
        return Effect.flatMap(effect, () => exit);
      }, true)), scope ? eff => Effect.onExitPrimitive(eff, exit => Scope.close(scope, exit), true) : identity));
      return id === 0 ? transaction : Context.getUnsafe(services, transactionSemaphore).withPermit(transaction);
-diff --git a/src/unstable/sql/Migrator.ts b/src/unstable/sql/Migrator.ts
-index c0635b64d302c204e6c6c4a1c8d493c6def8f25b..7d5ddad109c2f231098a875b26ac1b208e2b7714 100644
---- a/src/unstable/sql/Migrator.ts
-+++ b/src/unstable/sql/Migrator.ts
-@@ -134,7 +134,7 @@ export const make = <RD = never>({
- )`,
-       pg: () =>
-         Effect.catch(
--          sql`select ${table}::regclass`,
-+          sql`select ${table}::regclass::text`,
-           () =>
-             sql`CREATE TABLE ${sql(table)} (
-   migration_id integer primary key,
 diff --git a/src/unstable/sql/SqlClient.ts b/src/unstable/sql/SqlClient.ts
 index 6682f69b410971f5410f81348fa338368925e488..02f29aa3dd3d098a7f78139593a5f56ab4439c02 100644
 --- a/src/unstable/sql/SqlClient.ts

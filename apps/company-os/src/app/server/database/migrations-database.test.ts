@@ -1,6 +1,7 @@
 import { PgClient } from "@effect/sql-pg"
+import { it } from "@effect/vitest"
 import { Effect, Exit, Redacted } from "effect"
-import { expect, it } from "vitest"
+import { expect } from "vitest"
 
 import { Model } from "#/app.model.ts"
 import {
@@ -12,6 +13,7 @@ import { schemaSql } from "#/app/server/database/schema.ts"
 import { ApplicationKeys } from "#/runtime/server/application-keys.ts"
 import { foundationLayer } from "#/runtime/server/foundation.ts"
 import { PageTokens } from "#/runtime/server/page-tokens.ts"
+import { makeSchemaStatements } from "#/runtime/server/schema.ts"
 import { pgTypes } from "#/runtime/server/storage/index.ts"
 import { TestDatabase } from "#/runtime/server/storage/testing.ts"
 import { SqlDatabase } from "#/runtime/server/storage/transactions.ts"
@@ -20,24 +22,19 @@ import { readSchemaCatalog } from "#/runtime/testing/schema-catalog.ts"
 
 const initialized = testDatabase(
   Model,
-  async (url) => {
-    await Effect.runPromise(
-      Effect.scoped(
-        migrateDatabaseSchema("public").pipe(
-          Effect.provide(
-            foundationLayer(Model, {
-              sql: PgClient.layer({ url: Redacted.make(url), types: pgTypes }),
-              pageTokens: PageTokens.layerTest,
-              applicationKeys: ApplicationKeys.layerTest,
-            })
-          )
-        )
+  (url) =>
+    migrateDatabaseSchema("public").pipe(
+      Effect.provide(
+        foundationLayer(Model, {
+          sql: PgClient.layer({ url: Redacted.make(url), types: pgTypes }),
+          pageTokens: PageTokens.layerTest,
+          applicationKeys: ApplicationKeys.layerTest,
+        })
       )
-    )
-  },
+    ),
   `migrations:${schemaSql}`
 )
-const empty = testDatabase(Model, "")
+const empty = testDatabase(Model, [])
 
 initialized.test("keeps data and records the initial migration only once", () =>
   Effect.gen(function* () {
@@ -81,17 +78,27 @@ initialized.test(
     })
 )
 
-it("initializes exactly the current model structure, including functions, triggers, and indexes", async () => {
-  const declared = await TestDatabase.createTemplate(schemaSql)
-  const [actual, expected] = await Promise.all([
-    readSchemaCatalog(TestDatabase.url(await initialized.template()), {
-      exclude: ["company_os_migrations"],
-    }),
-    readSchemaCatalog(TestDatabase.url(declared)),
-  ])
-  expect(actual.tables.length).toBeGreaterThan(10)
-  expect(actual).toEqual(expected)
-})
+it.live(
+  "initializes exactly the current model structure, including functions, triggers, and indexes",
+  () =>
+    Effect.gen(function* () {
+      const declared = yield* TestDatabase.createTemplate(
+        makeSchemaStatements(Model)
+      )
+      const template = yield* initialized.template
+      const [actual, expected] = yield* Effect.all(
+        [
+          readSchemaCatalog(TestDatabase.url(template), {
+            exclude: ["company_os_migrations"],
+          }),
+          readSchemaCatalog(TestDatabase.url(declared)),
+        ],
+        { concurrency: 2 }
+      )
+      expect(actual.tables.length).toBeGreaterThan(10)
+      expect(actual).toEqual(expected)
+    })
+)
 
 empty.test("refuses an occupied schema without changing its contents", () =>
   Effect.gen(function* () {

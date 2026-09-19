@@ -10,10 +10,8 @@ it.live(
   "does not leak a pool connection when a queued reservation is interrupted",
   () =>
     Effect.gen(function* () {
-      const template = yield* Effect.promise(() =>
-        TestDatabase.createTemplate("")
-      )
-      const database = yield* Effect.promise(() => TestDatabase.clone(template))
+      const template = yield* TestDatabase.createTemplate([])
+      const database = yield* TestDatabase.clone(template)
       const sql = yield* PgClient.make({
         url: Redacted.make(database.url),
         maxConnections: 1,

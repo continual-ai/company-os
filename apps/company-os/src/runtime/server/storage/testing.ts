@@ -1,18 +1,21 @@
 import { createHash, randomUUID } from "node:crypto"
 
 import { PgClient } from "@effect/sql-pg"
-import { Config, Data, Effect, Redacted } from "effect"
-import { Client } from "pg"
+import { Config, ConfigProvider, Data, Effect, Redacted } from "effect"
 
+import { initialJournalSql } from "#/runtime/server/schema.ts"
 import { pgTypes } from "#/runtime/server/storage/pg-types.ts"
 
 const defaultAdminUrl = "postgresql://localhost:5433/postgres"
 
-export interface TestDatabaseTemplate {
+/** Individual statements or an Effect that prepares a database through its connection URL. */
+export type DatabaseInitializer =
+  | ReadonlyArray<string>
+  | ((url: string) => Effect.Effect<void, unknown>)
+
+interface TestDatabaseTemplate {
   readonly adminUrl: string
   readonly databaseName: string
-  /** Shared templates are keyed by their content and dropped by the global teardown, not per file. */
-  readonly shared: boolean
 }
 
 class TestDatabaseError extends Data.TaggedError("TestDatabaseError")<{
@@ -20,36 +23,21 @@ class TestDatabaseError extends Data.TaggedError("TestDatabaseError")<{
   readonly message: string
 }> {}
 
-function databaseCreationError(cause: unknown): TestDatabaseError {
-  return new TestDatabaseError({
+const databaseCreationError = (cause: unknown) =>
+  new TestDatabaseError({
     cause,
     message:
       "Could not create an isolated PostgreSQL test database. Ensure DATABASE_URL includes any required username and password, reaches PostgreSQL, and uses a role with CREATEDB.",
   })
-}
 
 function databaseName(kind: "database" | "template"): string {
-  const id = randomUUID().replaceAll("-", "").slice(0, 20)
-  return `company_os_test_${kind}_${id}`
+  return `company_os_test_${kind}_${randomUUID().replaceAll("-", "").slice(0, 20)}`
 }
 
-/** The same initializer always yields the same template name, so files that share a schema share one template. */
-function sharedTemplateName(key: string): string {
-  const digest = createHash("sha1").update(key).digest("hex").slice(0, 20)
-  return `company_os_test_template_${digest}`
-}
-
-async function databaseExists(
-  adminUrl: string,
-  name: string
-): Promise<boolean> {
-  return withAdminClient(adminUrl, async (client) => {
-    const result = await client.query(
-      "select 1 from pg_database where datname = $1",
-      [name]
-    )
-    return result.rowCount === 1
-  })
+function assertTestDatabaseName(name: string): string {
+  if (!/^company_os_test_(?:database|template)_[a-f0-9]{20}$/.test(name))
+    throw new Error(`Invalid generated test database name '${name}'.`)
+  return name
 }
 
 function databaseUrl(adminUrl: string, name: string): string {
@@ -58,234 +46,131 @@ function databaseUrl(adminUrl: string, name: string): string {
   return url.toString()
 }
 
-function quotedIdentifier(identifier: string): string {
-  if (
-    !/^company_os_test_(?:database|template)_[a-f0-9]{20}$/.test(identifier)
-  ) {
-    throw new Error(`Invalid generated test database name '${identifier}'.`)
-  }
-  return `"${identifier}"`
-}
-
-function quotedTemplateIdentifier(identifier: string): string {
-  return identifier === "template0"
-    ? `"template0"`
-    : quotedIdentifier(identifier)
-}
-
-async function withAdminClient<A>(
-  adminUrl: string,
-  use: (client: Client) => Promise<A>
-): Promise<A> {
-  // This client is test-harness control-plane access only; application queries use Database.
-  const client = new Client({
-    connectionString: adminUrl,
-    connectionTimeoutMillis: 5_000,
-  })
-  try {
-    await client.connect()
-    return await use(client)
-  } finally {
-    await client.end().catch(() => undefined)
-  }
-}
-
-async function createDatabase(
-  adminUrl: string,
-  name: string,
-  template: string
-): Promise<void> {
-  await withAdminClient(adminUrl, async (client) => {
-    await client.query(
-      `create database ${quotedIdentifier(name)} template ${quotedTemplateIdentifier(template)}`
-    )
-  })
-}
-
-async function dropDatabase(adminUrl: string, name: string): Promise<void> {
-  await withAdminClient(adminUrl, async (client) => {
-    await client.query(
-      "select pg_terminate_backend(pid) from pg_stat_activity where datname = $1 and pid <> pg_backend_pid()",
-      [name]
-    )
-    await client.query(`drop database if exists ${quotedIdentifier(name)}`)
-  })
-}
-
-function postgresDatabaseLayer(url: string) {
-  return PgClient.layer({
-    types: pgTypes,
-    applicationName: "company-os-test",
-    connectTimeout: "5 seconds",
-    maxConnections: 10,
-    url: Redacted.make(url),
-  })
-}
-
-async function adminUrlFromConfig(): Promise<string> {
-  return Effect.runPromise(
-    Config.String("DATABASE_URL").pipe(Config.withDefault(defaultAdminUrl))
+/** A single scoped session for setup and catalog reads; session locks close with it. */
+export const testDatabaseClient = (url: string) =>
+  PgClient.layerFrom(
+    PgClient.makeClient({
+      url: Redacted.make(url),
+      types: pgTypes,
+      applicationName: "company-os-test-setup",
+      connectTimeout: "5 seconds",
+    })
   )
-}
 
-/**
- * Creates a template database. A string initializer, or a function with an
- * explicit `key`, produces a shared template named by its content: the first
- * caller builds it under a staging name and renames it into place, later
- * callers reuse it, and a concurrent builder that loses the rename drops its
- * staging copy. Templates without a key are private to the caller.
- */
-async function createTemplate(
-  initialize: string | ((url: string) => Promise<void>),
-  key: string | undefined = typeof initialize === "string"
-    ? initialize
-    : undefined
-): Promise<TestDatabaseTemplate> {
-  const adminUrl = await adminUrlFromConfig()
-  const shared = key === undefined ? undefined : sharedTemplateName(key)
-  if (shared === undefined)
-    return buildTemplate(adminUrl, initialize, undefined)
-  // One builder per template: parallel test files wait for the first build
-  // instead of each running the schema DDL against PostgreSQL at once.
-  return withAdminClient(adminUrl, async (lock) => {
-    await lock.query("select pg_advisory_lock(hashtext($1))", [shared])
-    try {
-      if (await databaseExists(adminUrl, shared))
-        return { adminUrl, databaseName: shared, shared: true }
-      return await buildTemplate(adminUrl, initialize, shared)
-    } finally {
-      await lock.query("select pg_advisory_unlock(hashtext($1))", [shared])
-    }
-  })
-}
+const createDatabase = (adminUrl: string, name: string, template: string) =>
+  Effect.gen(function* () {
+    const sql = yield* PgClient.PgClient
+    yield* sql`create database ${sql(assertTestDatabaseName(name))} template ${sql(template === "template0" ? template : assertTestDatabaseName(template))}`
+  }).pipe(
+    Effect.provide(testDatabaseClient(adminUrl)),
+    Effect.mapError(databaseCreationError)
+  )
 
-async function buildTemplate(
-  adminUrl: string,
-  initialize: string | ((url: string) => Promise<void>),
-  shared: string | undefined
-): Promise<TestDatabaseTemplate> {
-  const staging = databaseName("template")
-  try {
-    await createDatabase(adminUrl, staging, "template0")
-  } catch (cause) {
-    throw databaseCreationError(cause)
+const dropDatabase = (adminUrl: string, name: string) =>
+  Effect.gen(function* () {
+    const sql = yield* PgClient.PgClient
+    yield* sql`drop database if exists ${sql(assertTestDatabaseName(name))} with (force)`
+  }).pipe(Effect.provide(testDatabaseClient(adminUrl)))
+
+// Test infrastructure uses process configuration, independent of application overrides under test.
+const adminUrlFromConfig = Config.String("DATABASE_URL").pipe(
+  Config.withDefault(defaultAdminUrl),
+  Effect.provideService(ConfigProvider.ConfigProvider, ConfigProvider.fromEnv())
+)
+
+/** One builder per content-addressed template; its scoped session owns the advisory lock. */
+const createTemplate = Effect.fn("@company/TestDatabase.createTemplate")(
+  function* (
+    initialize: DatabaseInitializer,
+    key: string | undefined = typeof initialize === "function"
+      ? undefined
+      : JSON.stringify(initialize)
+  ) {
+    const adminUrl = yield* adminUrlFromConfig
+    const name =
+      key === undefined
+        ? databaseName("template")
+        : `company_os_test_template_${createHash("sha1").update(key).digest("hex").slice(0, 20)}`
+    return yield* Effect.gen(function* () {
+      const sql = yield* PgClient.PgClient
+      yield* sql`select pg_advisory_lock(hashtext(${name}))`
+      const existing =
+        yield* sql`select 1 from pg_database where datname = ${name}`
+      if (existing.length === 0) {
+        yield* createDatabase(adminUrl, name, "template0")
+        const url = databaseUrl(adminUrl, name)
+        const initializeDatabase =
+          typeof initialize === "function"
+            ? initialize(url)
+            : Effect.gen(function* () {
+                const client = yield* PgClient.PgClient
+                for (const statement of initialize) {
+                  if (!statement.startsWith("--"))
+                    yield* client.unsafe(statement)
+                }
+              }).pipe(Effect.provide(testDatabaseClient(url)))
+        // Failed initialization must never leave a reusable partial template.
+        yield* initializeDatabase.pipe(
+          Effect.onError(() => dropDatabase(adminUrl, name).pipe(Effect.orDie))
+        )
+      }
+      return { adminUrl, databaseName: name }
+    }).pipe(Effect.provide(testDatabaseClient(adminUrl)))
   }
-  try {
-    const url = databaseUrl(adminUrl, staging)
-    if (typeof initialize === "function") await initialize(url)
-    else await withAdminClient(url, (client) => client.query(initialize))
-  } catch (error) {
-    await dropDatabase(adminUrl, staging)
-    throw error
-  }
-  if (shared === undefined)
-    return { adminUrl, databaseName: staging, shared: false }
-  const renamed = await withAdminClient(adminUrl, async (client) => {
-    await client.query(
-      "select pg_terminate_backend(pid) from pg_stat_activity where datname = $1 and pid <> pg_backend_pid()",
-      [staging]
-    )
-    try {
-      await client.query(
-        `alter database ${quotedIdentifier(staging)} rename to ${quotedIdentifier(shared)}`
-      )
-      return true
-    } catch (cause) {
-      // 42P04: another worker renamed its copy first; theirs is identical.
-      if (
-        typeof cause === "object" &&
-        cause !== null &&
-        "code" in cause &&
-        cause.code === "42P04"
-      )
-        return false
-      throw cause
-    }
-  })
-  if (!renamed) await dropDatabase(adminUrl, staging)
-  return { adminUrl, databaseName: shared, shared: true }
-}
+)
 
 /** Removes every test database and template left by this or an earlier run. */
-async function dropAll(): Promise<void> {
-  const adminUrl = await adminUrlFromConfig()
-  const names = await withAdminClient(adminUrl, async (client) => {
-    const result = await client.query<{ datname: string }>(
-      "select datname from pg_database where datname like 'company_os_test_%'"
-    )
-    return result.rows.map((row) => row.datname)
-  })
-  for (const name of names) await dropDatabase(adminUrl, name)
-}
+const dropAll = Effect.gen(function* () {
+  const adminUrl = yield* adminUrlFromConfig
+  const names = yield* Effect.gen(function* () {
+    const sql = yield* PgClient.PgClient
+    return yield* sql<{
+      datname: string
+    }>`select datname from pg_database where datname like 'company_os_test_%'`
+  }).pipe(Effect.provide(testDatabaseClient(adminUrl)))
+  for (const { datname } of names) yield* dropDatabase(adminUrl, datname)
+})
 
-export interface TestDatabaseClone {
-  readonly adminUrl: string
-  readonly name: string
+interface TestDatabaseClone {
   readonly url: string
 }
 
-/** Copies a template into a database the caller owns until `dropClone`. */
-async function clone(
+/** Clones live until global teardown; resetting data makes a clone reusable within a test file. */
+const clone = Effect.fn("@company/TestDatabase.clone")(function* (
   template: TestDatabaseTemplate
-): Promise<TestDatabaseClone> {
+) {
   const name = databaseName("database")
-  try {
-    await createDatabase(template.adminUrl, name, template.databaseName)
-  } catch (cause) {
-    throw databaseCreationError(cause)
-  }
-  return {
-    adminUrl: template.adminUrl,
-    name,
-    url: databaseUrl(template.adminUrl, name),
-  }
-}
+  yield* createDatabase(template.adminUrl, name, template.databaseName)
+  return { url: databaseUrl(template.adminUrl, name) }
+})
 
-async function dropClone(database: TestDatabaseClone): Promise<void> {
-  await dropDatabase(database.adminUrl, database.name)
-}
-
-/** Migration history and index definitions describe the schema rather than test data and survive a reset. */
-const PRESERVED_TABLES = ["company_os_migrations", "search_index_state"]
-
-/**
- * Returns a clone to its initialized state: every data table is truncated
- * with identities restarted, and the journal position row is restored. Much
- * cheaper than cloning again, which is what makes one clone per file viable.
- */
-async function reset(database: TestDatabaseClone): Promise<void> {
-  await withAdminClient(database.url, async (client) => {
-    const tables = await client.query<{ tablename: string }>(
-      "select tablename from pg_tables where schemaname = current_schema() and tablename <> all($1::text[])",
-      [PRESERVED_TABLES]
-    )
-    if (tables.rowCount === 0) return
-    const names = tables.rows.map((row) => `"${row.tablename}"`).join(", ")
-    await client.query(`truncate table ${names} restart identity cascade`)
-    if (tables.rows.some((row) => row.tablename === "event_journal_state"))
-      await client.query(
-        "insert into event_journal_state (id, position) values (1, 0)"
-      )
-  })
-}
-
-/** A pooled client for a clone; the pool closes with the scope so the next reset finds no sessions. */
-function layer(database: TestDatabaseClone) {
-  return postgresDatabaseLayer(database.url)
-}
+/** Migration history and index definitions survive resets; business rows do not. */
+const reset = (database: TestDatabaseClone) =>
+  Effect.gen(function* () {
+    const sql = yield* PgClient.PgClient
+    const tables = yield* sql<{ tablename: string }>`
+      select tablename from pg_tables where schemaname = current_schema()
+      and tablename not in ('company_os_migrations', 'search_index_state')`
+    if (tables.length === 0) return
+    yield* sql`truncate table ${sql.csv(tables.map(({ tablename }) => sql`${sql(tablename)}`))} restart identity cascade`
+    if (tables.some(({ tablename }) => tablename === "event_journal_state"))
+      yield* sql.unsafe(initialJournalSql)
+  }).pipe(Effect.provide(testDatabaseClient(database.url)))
 
 export const TestDatabase = {
   clone,
   createTemplate,
   dropAll,
-  dropClone,
   reset,
   url: (template: TestDatabaseTemplate) =>
     databaseUrl(template.adminUrl, template.databaseName),
-  /** Private templates drop with their file; shared ones wait for the global teardown. */
-  drop: (template: TestDatabaseTemplate) =>
-    template.shared
-      ? Promise.resolve()
-      : dropDatabase(template.adminUrl, template.databaseName),
-  layer,
+  /** Runtime queries use a pool; setup and cleanup use a single scoped session. */
+  layer: (database: TestDatabaseClone) =>
+    PgClient.layer({
+      url: Redacted.make(database.url),
+      types: pgTypes,
+      applicationName: "company-os-test",
+      connectTimeout: "5 seconds",
+      maxConnections: 10,
+    }),
 } as const

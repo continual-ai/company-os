@@ -1,3 +1,5 @@
+import { Effect } from "effect"
+
 import { TestDatabase } from "#/runtime/server/storage/testing.ts"
 
 /**
@@ -6,6 +8,6 @@ import { TestDatabase } from "#/runtime/server/storage/testing.ts"
  * templates this run creates.
  */
 export default async function setup() {
-  await TestDatabase.dropAll()
-  return () => TestDatabase.dropAll()
+  await Effect.runPromise(TestDatabase.dropAll)
+  return () => Effect.runPromise(TestDatabase.dropAll)
 }

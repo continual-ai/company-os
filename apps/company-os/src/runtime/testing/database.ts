@@ -8,24 +8,15 @@ import { foundationLayer } from "#/runtime/server/foundation.ts"
 import { systemInvocation } from "#/runtime/server/invocation-context.ts"
 import { CurrentInvocation } from "#/runtime/server/invocation.ts"
 import { PageTokens } from "#/runtime/server/page-tokens.ts"
-import { makeSchemaSql } from "#/runtime/server/schema.ts"
+import {
+  makeSchemaStatements,
+  initialJournalSql,
+} from "#/runtime/server/schema.ts"
 import { makePostgresSchema } from "#/runtime/server/storage/schema.ts"
 import {
   TestDatabase,
-  type TestDatabaseClone,
-  type TestDatabaseTemplate,
+  type DatabaseInitializer,
 } from "#/runtime/server/storage/testing.ts"
-
-/** SQL applied to an empty template, or a function that prepares it through a connection URL. */
-export type DatabaseInitializer = string | ((url: string) => Promise<void>)
-
-/** The projected schema plus the journal state row every runtime write expects. */
-function schemaTemplateSql(model: ModelCatalog) {
-  return (
-    makeSchemaSql(model) +
-    "\ninsert into event_journal_state (id, position) values (1, 0);"
-  )
-}
 
 /**
  * Cloning a template and running a scenario takes seconds when every test file
@@ -64,21 +55,24 @@ export function layerTest<R, E>(layer: Layer.Layer<R, E>) {
  */
 export function testDatabase<M extends ModelCatalog>(
   model: M,
-  initialize: DatabaseInitializer = schemaTemplateSql(model),
-  /** Names the template for sharing when `initialize` is a function; string initializers share by content. */
+  initialize: DatabaseInitializer = [
+    ...makeSchemaStatements(model),
+    initialJournalSql,
+  ],
+  /** Names the template for sharing when `initialize` is a function; statement arrays share by content. */
   key?: string
 ) {
-  let template: Promise<TestDatabaseTemplate> | undefined
-  let clone: Promise<TestDatabaseClone> | undefined
-  const acquire = () =>
-    (template ??= TestDatabase.createTemplate(initialize, key))
-  // Clones and templates are dropped once by the global teardown; per-file drops
-  // would race each other on DROP DATABASE and time out their hooks.
-  const acquireClone = () => (clone ??= acquire().then(TestDatabase.clone))
+  const template = Effect.runSync(
+    Effect.cached(TestDatabase.createTemplate(initialize, key))
+  )
+  // Cache only identifiers; each test acquires and closes its own database connections.
+  const clone = Effect.runSync(
+    Effect.cached(template.pipe(Effect.flatMap(TestDatabase.clone)))
+  )
   const client = Layer.unwrap(
-    Effect.promise(async () => {
-      const cloned = await acquireClone()
-      await TestDatabase.reset(cloned)
+    Effect.gen(function* () {
+      const cloned = yield* clone
+      yield* TestDatabase.reset(cloned)
       return TestDatabase.layer(cloned)
     })
   )
@@ -91,7 +85,7 @@ export function testDatabase<M extends ModelCatalog>(
     model,
     client,
     storage: makePostgresSchema(model),
-    template: acquire,
+    template,
     database,
     test: layerTest(database),
   }

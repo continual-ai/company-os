@@ -36,3 +36,13 @@ pgTypes.register(
   },
   { arrayOid: PgTypes.OID.timestamptzArray }
 )
+
+// regclass uses PostgreSQL's OID binary representation; callers wanting names cast to text.
+pgTypes.register(
+  2205,
+  {
+    encode: (value) => PgTypes.encode(value, PgTypes.OID.oid),
+    decode: (bytes) => PgTypes.decode(bytes, PgTypes.OID.oid, 1),
+  },
+  { arrayOid: 2210 }
+)

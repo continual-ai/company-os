@@ -1,5 +1,5 @@
-import { Effect } from "effect"
-import { Client } from "pg"
+import { PgClient } from "@effect/sql-pg"
+import { Effect, Redacted } from "effect"
 
 const localDatabaseHosts = new Set(["127.0.0.1", "[::1]", "localhost"])
 
@@ -27,35 +27,33 @@ export const ensureLocalDatabase = Effect.fn("@company/ensureLocalDatabase")(
     ) {
       const adminUrl = new URL(target)
       adminUrl.pathname = "/postgres"
-      yield* Effect.tryPromise({
-        try: async () => {
-          const client = new Client({
-            connectionString: adminUrl.toString(),
-            connectionTimeoutMillis: 5_000,
-          })
-          try {
-            await client.connect()
-            const existing = await client.query<{ exists: boolean }>(
-              "select exists(select from pg_database where datname = $1)",
-              [databaseName]
+      yield* Effect.gen(function* () {
+        const sql = yield* PgClient.PgClient
+        const [existing] = yield* sql<{ exists: boolean }>`
+          select exists(select from pg_database where datname = ${databaseName})`
+        if (!existing?.exists) {
+          yield* sql`create database ${sql(databaseName)}`
+          yield* Effect.logInfo(
+            `Created local PostgreSQL database '${databaseName}'.`
+          )
+        }
+      }).pipe(
+        Effect.provide(
+          PgClient.layerFrom(
+            PgClient.makeClient({
+              url: Redacted.make(adminUrl.toString()),
+              connectTimeout: "5 seconds",
+            })
+          )
+        ),
+        Effect.mapError(
+          (cause) =>
+            new Error(
+              "Could not create the local PostgreSQL database. Ensure DATABASE_URL includes any required username and password, reaches PostgreSQL, and uses a role that can create the database.",
+              { cause }
             )
-            if (!existing.rows[0]?.exists) {
-              const identifier = `"${databaseName.replaceAll('"', '""')}"`
-              await client.query(`create database ${identifier}`)
-              console.log(
-                `Created local PostgreSQL database '${databaseName}'.`
-              )
-            }
-          } finally {
-            await client.end().catch(() => undefined)
-          }
-        },
-        catch: (cause) =>
-          new Error(
-            "Could not create the local PostgreSQL database. Ensure DATABASE_URL includes any required username and password, reaches PostgreSQL, and uses a role that can create the database.",
-            { cause }
-          ),
-      })
+        )
+      )
     }
   }
 )
