@@ -21,8 +21,8 @@ interface LinkEndDefinition {
   readonly key: string
   readonly label?: string
   readonly description?: string
-  readonly min?: number
-  readonly max?: number
+  readonly min?: 0 | 1
+  readonly max?: 1
   /** Deleting the source deletes these targets. Ordinary unlinking never deletes records. */
   readonly onDelete?: "unlink" | "restrict" | "cascade"
 }
@@ -96,12 +96,12 @@ function traversal(
   const min = end.min ?? 0
   const max = end.max
   if (
-    !Number.isSafeInteger(min) ||
-    min < 0 ||
-    (max !== undefined && (!Number.isSafeInteger(max) || max < min))
+    (min !== 0 && min !== 1) ||
+    (max !== undefined && max !== 1) ||
+    (min === 1 && max !== 1)
   )
     throw new Error(
-      `Link traversal '${end.key}' requires integer bounds with 0 <= min <= max.`
+      `Link traversal '${end.key}' supports only optional singular, required singular, or unbounded plural bounds.`
     )
   return {
     label: end.label ?? (max === 1 ? to.name : to.pluralName),
@@ -126,6 +126,8 @@ export function defineLink<const D extends LinkDefinition>(
   const input: LinkDefinition = definition
   const forward = traversal(input.from, input.from.object, input.to.object)
   const reverse = traversal(input.to, input.to.object, input.from.object)
+  if (forward.min === 1 && reverse.min === 1)
+    throw new Error(`Link '${input.id}' cannot require existence on both ends.`)
   if (
     (forward.onDelete === "cascade" && reverse.max !== 1) ||
     (reverse.onDelete === "cascade" && forward.max !== 1) ||
@@ -150,13 +152,15 @@ export function defineLink<const D extends LinkDefinition>(
   return link as LinkType<D>
 }
 
-/** The singular end stores the reference; one-to-one ties use the authored from end. */
+/** The singular end stores the reference; a required end takes precedence over the authored from end. */
 export function linkReferenceSide(
   link: LinkType
 ): "forward" | "reverse" | undefined {
-  return link.forward.max === 1
-    ? "forward"
-    : link.reverse.max === 1
-      ? "reverse"
-      : undefined
+  return link.reverse.min === 1
+    ? "reverse"
+    : link.forward.max === 1
+      ? "forward"
+      : link.reverse.max === 1
+        ? "reverse"
+        : undefined
 }

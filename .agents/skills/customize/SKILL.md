@@ -54,6 +54,8 @@ use `EventJournal.append` for custom facts inside the Action. Use `Database.tabl
 Action; a separately invoked Query cannot join its write transaction.
 Use installed Effect v4 APIs; services use `Context.Service(..., { make })` with a static `.layer`.
 Define each Link with `from: { object, key }` and `to: { object, key }`; use `max: 1` for a singular end.
+Use `min: 1, max: 1` for required references; plural traversals are always optional and unbounded.
+At most one end can be required. `uniqueBy` accepts stored fields and references on the object’s own table.
 Create and update accept singular IDs or null and plural ID arrays. On update, arrays replace the whole
 set and `[]` clears it; use `{ add, remove }` when editing a partial preview. Plural reads return three
 preview IDs plus `totalSize` and `totalSizeExact`; use the relationship list to retrieve the full set. Reads accept

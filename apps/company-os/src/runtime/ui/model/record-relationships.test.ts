@@ -32,17 +32,25 @@ it("does not offer creation through an action-owned relationship", () => {
   expect(converted.connect).toBeUndefined()
 })
 
-it("uses all cardinality bounds when offering local changes", () => {
-  expect(relationshipCapabilities({ min: 2, max: 4 }, undefined)).toEqual({
+it("offers changes for optional, required, and plural relationships", () => {
+  expect(relationshipCapabilities({ min: 1, max: 1 }, undefined)).toEqual({
     canAdd: false,
     canRemove: false,
   })
-  expect(relationshipCapabilities({ min: 2, max: 4 }, 2)).toEqual({
+  expect(relationshipCapabilities({ min: 0, max: 1 }, 0)).toEqual({
     canAdd: true,
     canRemove: false,
   })
-  expect(relationshipCapabilities({ min: 2, max: 4 }, 4)).toEqual({
+  expect(relationshipCapabilities({ min: 0, max: 1 }, 1)).toEqual({
     canAdd: false,
+    canRemove: true,
+  })
+  expect(relationshipCapabilities({ min: 1, max: 1 }, 1)).toEqual({
+    canAdd: false,
+    canRemove: false,
+  })
+  expect(relationshipCapabilities({ min: 0, max: undefined }, 10)).toEqual({
+    canAdd: true,
     canRemove: true,
   })
 })

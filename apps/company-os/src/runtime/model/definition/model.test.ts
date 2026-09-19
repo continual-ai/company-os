@@ -428,6 +428,7 @@ describe("model definitions", () => {
     expect(() =>
       defineTestModel({
         name: "Inverse uniqueness",
+        interfaces: [TestActor],
         objects: [Account, Profile],
         links: [link],
       })
@@ -720,10 +721,36 @@ describe("model definitions", () => {
           object: Company,
           key: "employees",
           label: "Employees",
+          // @ts-expect-error Arbitrary bounds are rejected for untyped callers too.
           min: 2,
           max: 1,
         },
         to: { object: Employee, key: "company", label: "Company" },
+      })
+    ).toThrow(/bounds/)
+  })
+
+  it("rejects required collections and mutually required one-to-one links", () => {
+    expect(() =>
+      defineLink({
+        id: "requiredContacts",
+        from: { object: Contact, key: "peers", min: 1 },
+        to: { object: Contact, key: "backlinks" },
+      })
+    ).toThrow(/bounds/)
+    expect(() =>
+      defineLink({
+        id: "mutualContacts",
+        from: { object: Contact, key: "peer", min: 1, max: 1 },
+        to: { object: Contact, key: "backlink", min: 1, max: 1 },
+      })
+    ).toThrow(/both ends/)
+    expect(() =>
+      defineLink({
+        id: "boundedContacts",
+        // @ts-expect-error Collections cannot have finite bounds.
+        from: { object: Contact, key: "peers", max: 2 },
+        to: { object: Contact, key: "backlinks" },
       })
     ).toThrow(/bounds/)
   })

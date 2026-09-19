@@ -257,8 +257,8 @@ function assertUniqueRulesResolvable({
     for (const [ruleId, fields] of Object.entries(object.uniqueBy)) {
       for (const field of fields) {
         if (Object.hasOwn(object.properties, field)) continue
-        const link = links.find((link) =>
-          [link.forward, link.reverse].some(
+        const link = links.find((candidate) =>
+          [candidate.forward, candidate.reverse].some(
             (end) =>
               (end.from.typeId === object.id ||
                 Object.hasOwn(object.interfaces, end.from.typeId)) &&

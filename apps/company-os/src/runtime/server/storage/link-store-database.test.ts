@@ -18,7 +18,6 @@ import { createRecordBatchGet } from "#/runtime/server/record-batch.ts"
 import { makeRecordHydration } from "#/runtime/server/storage/hydration.ts"
 import { eventJournal } from "#/runtime/server/storage/infrastructure.ts"
 import { Links } from "#/runtime/server/storage/link-store.ts"
-import { RecordStore } from "#/runtime/server/storage/record-store.ts"
 import { SqlDatabase } from "#/runtime/server/storage/transactions.ts"
 import {
   FixtureModule,
@@ -42,7 +41,7 @@ const Team = defineObject({
 const Members = defineLink({
   id: "teamMembers",
   name: "Team members",
-  from: { object: Team, key: "members", label: "Members", min: 1, max: 2 },
+  from: { object: Team, key: "members", label: "Members" },
   to: { object: Person, key: "teams", label: "Teams" },
 })
 const Partners = defineLink({
@@ -136,7 +135,7 @@ fixture.test(
 )
 
 fixture.test(
-  "enforces final bounds and atomic replacement without coupling independent links",
+  "replaces plural relationships without coupling independent links",
   () =>
     Effect.gen(function* () {
       const services = yield* implementation
@@ -151,14 +150,6 @@ fixture.test(
         name: "Small team",
         links: { members: [first.id] },
       })
-      expect(
-        yield* withApiErrors(
-          links.unlink(traversal(Team, "members"), {
-            id: team.id,
-            target: first.id,
-          })
-        ).pipe(Effect.flip)
-      ).toMatchObject({ status: "FAILED_PRECONDITION" })
       yield* services.team.update({
         id: team.id,
         links: { members: [second.id] },
@@ -167,19 +158,10 @@ fixture.test(
         linkPreview((yield* services.team.get({ id: team.id })).links.members)
           .ids
       ).toEqual([second.id])
-      // Adding through the reverse traversal observes the forward maximum too.
       yield* links.link(traversal(Person, "teams"), {
-        id: first.id,
+        id: third.id,
         target: team.id,
       })
-      expect(
-        yield* withApiErrors(
-          links.link(traversal(Person, "teams"), {
-            id: third.id,
-            target: team.id,
-          })
-        ).pipe(Effect.flip)
-      ).toMatchObject({ status: "FAILED_PRECONDITION" })
       const account = yield* services.account.create({ name: "Membership" })
       yield* services.person.update({
         id: first.id,
@@ -273,20 +255,17 @@ fixture.test("serializes competing additions without exceeding a maximum", () =>
       expect(
         yield* withApiErrors(links.link(link, { id, target })).pipe(Effect.flip)
       ).toMatchObject({ status: "INVALID_ARGUMENT" })
-    const people = yield* Effect.forEach([1, 2, 3], (n) =>
-      services.person.create({ name: `Concurrent ${n}` })
+    const person = yield* services.person.create({ name: "Concurrent" })
+    const accounts = yield* Effect.forEach([1, 2], (n) =>
+      services.account.create({ name: `Account ${n}` })
     )
-    const team = yield* services.team.create({
-      name: "Capacity",
-      links: { members: [people[0]!.id] },
-    })
     const results = yield* Effect.forEach(
-      people.slice(1),
-      (person) =>
+      accounts,
+      (account) =>
         withApiErrors(
-          links.link(traversal(Team, "members"), {
-            id: team.id,
-            target: person.id,
+          links.link(traversal(Person, "billingAccount"), {
+            id: person.id,
+            target: account.id,
           })
         ).pipe(Effect.result),
       { concurrency: 2 }
@@ -294,33 +273,9 @@ fixture.test("serializes competing additions without exceeding a maximum", () =>
     expect(results.filter((result) => result._tag === "Success")).toHaveLength(
       1
     )
-    expect(
-      linkPreview((yield* services.team.get({ id: team.id })).links.members)
-        .totalSize
-    ).toBe(2)
-    // A transaction may replace a required edge by deleting then inserting it.
-    const database = yield* SqlDatabase
-    yield* database.transaction(() =>
-      Effect.gen(function* () {
-        yield* services.team.update({
-          id: team.id,
-          links: { members: [people[0]!.id] },
-        })
-        yield* links.unlink(traversal(Team, "members"), {
-          id: team.id,
-          target: people[0]!.id,
-        })
-        yield* links.link(traversal(Team, "members"), {
-          id: team.id,
-          target: people[1]!.id,
-        })
-      })
+    expect(accounts.map((account) => account.id)).toContain(
+      (yield* services.person.get({ id: person.id })).links.billingAccount
     )
-    expect(
-      linkPreview(
-        (yield* (yield* RecordStore).get(Team).get(team.id)).links.members
-      ).ids
-    ).toEqual([people[1]!.id])
   })
 )
 
