@@ -78,13 +78,13 @@ function localDevelopmentIdentity(): AuthenticatedSubject | null {
 
 export const makeContinualIdentityProvider = Effect.gen(function* () {
   const config = {
-    executionToken: yield* Config.string("CONTINUAL_EXECUTION_TOKEN").pipe(
+    executionToken: yield* Config.String("CONTINUAL_EXECUTION_TOKEN").pipe(
       Config.withDefault("")
     ),
-    projectId: yield* Config.string("CONTINUAL_PROJECT_ID").pipe(
+    projectId: yield* Config.String("CONTINUAL_PROJECT_ID").pipe(
       Config.withDefault("")
     ),
-    origin: yield* Config.string("CONTINUAL_URL").pipe(Config.withDefault("")),
+    origin: yield* Config.String("CONTINUAL_URL").pipe(Config.withDefault("")),
   }
 
   const identify = Effect.fn("@company/IdentityProvider.identify")(function* (

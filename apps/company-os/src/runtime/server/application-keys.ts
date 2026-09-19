@@ -45,7 +45,7 @@ export function makeApplicationKeys(secret: string): ApplicationKeyDeriver {
 }
 
 const make = Effect.gen(function* () {
-  const secret = yield* Config.redacted("APP_SECRET")
+  const secret = yield* Config.Redacted("APP_SECRET")
   return makeApplicationKeys(Redacted.value(secret))
 })
 

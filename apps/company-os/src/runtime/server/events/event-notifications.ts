@@ -8,7 +8,9 @@ export class EventNotifications extends Context.Service<EventNotifications>()(
     make: Effect.gen(function* () {
       const postgres = yield* PgClient.PgClient
       const notifications = yield* PubSub.sliding<void>(1)
-      yield* postgres.listen("company_events").pipe(
+      yield* Stream.unwrap(
+        postgres.listen("company_events").pipe(Effect.map(Stream.fromQueue))
+      ).pipe(
         // Renew even a silently disconnected listener; durable reads cover every gap.
         Stream.interruptWhen(Effect.sleep("60 seconds")),
         Stream.runForEach(() => PubSub.publish(notifications, undefined)),

@@ -42,14 +42,14 @@ export function withSearchPath(url: string, schema: string): string {
 }
 
 /** Schema that unqualified names resolve to; the deployment platform supplies it, local development defaults to public. */
-export const databaseSchemaConfig = Config.string("DATABASE_SCHEMA").pipe(
+export const databaseSchemaConfig = Config.String("DATABASE_SCHEMA").pipe(
   Config.withDefault("public"),
   Config.map(assertDatabaseSchemaName)
 )
 
 const connectionUrlConfig = Config.all({
   schema: databaseSchemaConfig,
-  url: Config.redacted("DATABASE_URL"),
+  url: Config.Redacted("DATABASE_URL"),
 }).pipe(
   Config.map(({ schema, url }) =>
     Redacted.make(withSearchPath(Redacted.value(url), schema))
@@ -61,7 +61,7 @@ export const sqlLayer = PgClient.layerConfig({
   types: Config.succeed(pgTypes),
   applicationName: Config.succeed("company-os"),
   connectTimeout: Config.succeed("5 seconds"),
-  maxConnections: Config.int("DATABASE_MAX_CONNECTIONS").pipe(
+  maxConnections: Config.Int("DATABASE_MAX_CONNECTIONS").pipe(
     Config.withDefault(2)
   ),
   url: connectionUrlConfig,

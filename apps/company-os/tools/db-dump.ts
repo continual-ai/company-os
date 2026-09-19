@@ -9,7 +9,7 @@ import { databaseSchemaConfig } from "#/app/server/database/postgres.ts"
 import { localConfigLayer } from "#/app/server/local-config.ts"
 
 Effect.gen(function* () {
-  const url = yield* Config.redacted("DATABASE_URL")
+  const url = yield* Config.Redacted("DATABASE_URL")
   const schema = yield* databaseSchemaConfig
   const target = fileURLToPath(new URL("../schema.actual.sql", import.meta.url))
   yield* Effect.try(() => {

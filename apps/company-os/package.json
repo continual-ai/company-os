@@ -54,7 +54,6 @@
     "image-size": "^2.0.2",
     "jose": "6.2.12",
     "lucide-react": "catalog:",
-    "pg": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "typeid-js": "catalog:"
@@ -66,6 +65,7 @@
     "@types/pg": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
+    "pg": "catalog:",
     "tsx": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",

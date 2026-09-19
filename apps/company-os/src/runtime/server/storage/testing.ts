@@ -124,7 +124,7 @@ function postgresDatabaseLayer(url: string) {
 
 async function adminUrlFromConfig(): Promise<string> {
   return Effect.runPromise(
-    Config.string("DATABASE_URL").pipe(Config.withDefault(defaultAdminUrl))
+    Config.String("DATABASE_URL").pipe(Config.withDefault(defaultAdminUrl))
   )
 }
 

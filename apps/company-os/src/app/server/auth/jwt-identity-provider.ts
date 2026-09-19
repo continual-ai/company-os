@@ -74,10 +74,10 @@ export function makeJwtIdentityProvider(config: {
 export const jwtIdentityProviderLayer = Layer.effect(
   IdentityProvider,
   Effect.gen(function* () {
-    const issuer = yield* Config.string("AUTH_JWT_ISSUER")
-    const audience = yield* Config.string("AUTH_JWT_AUDIENCE")
-    const projectId = yield* Config.string("AUTH_PROJECT_ID")
-    const jwksUrl = yield* Config.string("AUTH_JWT_JWKS_URL")
+    const issuer = yield* Config.String("AUTH_JWT_ISSUER")
+    const audience = yield* Config.String("AUTH_JWT_AUDIENCE")
+    const projectId = yield* Config.String("AUTH_PROJECT_ID")
+    const jwksUrl = yield* Config.String("AUTH_JWT_JWKS_URL")
     const url = yield* Effect.try(() => new URL(jwksUrl))
     if (url.protocol !== "https:" || !issuer.trim() || !audience.trim())
       return yield* Effect.fail(

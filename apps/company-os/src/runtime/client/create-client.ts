@@ -19,7 +19,6 @@ import {
   type ApplicationHttpApi,
   createApplicationHttpApi,
 } from "#/runtime/contract/application-http-api.ts"
-import { customMethodParams } from "#/runtime/contract/http-custom-method.ts"
 import type { ModelObject } from "#/runtime/model/definition/model.ts"
 import type { ModelCatalog } from "#/runtime/model/index.ts"
 
@@ -174,7 +173,7 @@ export function createEffectClient<M extends ModelCatalog>(
       list: (query = {}) => nativeClient.events.listChanges({ query }),
       stream: (cursor) =>
         nativeClient.events.streamChanges({
-          params: customMethodParams("stream"),
+          params: {},
           query: { cursor },
         }),
     },

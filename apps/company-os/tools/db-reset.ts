@@ -12,7 +12,7 @@ import { localConfigLayer } from "#/app/server/local-config.ts"
 parseArgs({ options: {} })
 
 Effect.gen(function* () {
-  const databaseUrl = yield* Config.redacted("DATABASE_URL")
+  const databaseUrl = yield* Config.Redacted("DATABASE_URL")
   const schema = yield* Postgres.databaseSchemaConfig
   const target = yield* Effect.try(() =>
     localDatabaseTarget(Redacted.value(databaseUrl))

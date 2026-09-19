@@ -1,43 +1,38 @@
-import { types, type CustomTypesConfig } from "pg"
-
-// node-postgres accepts all PostgreSQL OIDs; its TypeId enum omits array types.
-// oxlint-disable-next-line typescript/no-unsafe-type-assertion
-const textArrayOid = 1009 as Parameters<typeof types.getTypeParser>[0]
-const parseTextArray: (value: string) => ReadonlyArray<string | null> =
-  types.getTypeParser(textArrayOid, "text")
-
-/** Preserve PostgreSQL microseconds while normalizing the timezone; Date alone truncates them. */
-function timestamp(value: string): string {
-  const iso = new Date(value).toISOString()
-  const fraction = /\.(\d+)(?:[+-]|$)/.exec(value)?.[1] ?? ""
-  return fraction.length > 3 ? `${iso.slice(0, -1)}${fraction.slice(3)}Z` : iso
-}
+import { PgTypes } from "@effect/sql-pg"
+import { Result } from "effect"
 
 /** Match portable model values at the driver boundary; nested JSON stays untouched. */
-export const pgTypes: CustomTypesConfig = {
-  getTypeParser: (oid, format) => {
-    const typeId: number = oid
-    if (format === "binary") return types.getTypeParser(oid, format)
-    switch (typeId) {
-      case 1184:
-        return timestamp
-      case 1082:
-        return (value: string) => value
-      case 1182: // date[]
-      case 1231: // numeric[] must retain decimal precision
-        return parseTextArray
-      case 1185:
-        return (value: string) =>
-          parseTextArray(value).map((item) =>
-            item === null ? null : timestamp(item)
+export const pgTypes = PgTypes.makeRegistry()
+
+// PostgreSQL timestamps are signed microseconds since 2000-01-01; Date truncates them.
+pgTypes.register(
+  PgTypes.OID.timestamptz,
+  {
+    encode: (value) => PgTypes.encode(value, PgTypes.OID.timestamptz),
+    decode: (bytes) =>
+      Result.flatMap(
+        PgTypes.decode(bytes, PgTypes.OID.timestamptz, 1),
+        (value) => {
+          if (!(value instanceof Date) || !Number.isFinite(value.getTime()))
+            return Result.fail(
+              new PgTypes.CodecError({ message: "Expected a finite timestamp" })
+            )
+          const micros = new DataView(
+            bytes.buffer,
+            bytes.byteOffset,
+            bytes.byteLength
+          ).getBigInt64(0)
+          const remainder = ((micros % 1000n) + 1000n) % 1000n
+          const iso = new Date(
+            Number((micros - remainder) / 1000n) + 946684800000
+          ).toISOString()
+          return Result.succeed(
+            remainder === 0n
+              ? iso
+              : `${iso.slice(0, -1)}${String(remainder).padStart(3, "0")}Z`
           )
-      case 17:
-        return (value: string) =>
-          new Uint8Array(types.getTypeParser(oid, "text")(value))
-      case 20:
-        return (value: string) => BigInt(value)
-      default:
-        return types.getTypeParser(oid, format)
-    }
+        }
+      ),
   },
-}
+  { arrayOid: PgTypes.OID.timestamptzArray }
+)

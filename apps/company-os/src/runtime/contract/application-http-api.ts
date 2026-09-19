@@ -15,11 +15,6 @@ import {
   createModelHttpApi,
   type HttpApiOptions,
 } from "#/runtime/contract/http-api.ts"
-import {
-  customMethodApi,
-  customMethodParameter,
-  customMethodPath,
-} from "#/runtime/contract/http-custom-method.ts"
 import { toEffectErrorSchema } from "#/runtime/contract/schema.ts"
 import {
   type ModelCatalog,
@@ -99,16 +94,12 @@ export function createApplicationHttpApi(
       )
     )
     .add(
-      HttpApiEndpoint.get(
-        "streamChanges",
-        customMethodPath("/api/v1/changes", "stream"),
-        {
-          params: { stream: customMethodParameter("stream") },
-          query: Schema.Struct({ cursor: Schema.optionalKey(Schema.String) }),
-          success: changeStreamSchema,
-          error: standardErrors,
-        }
-      ).annotateMerge(
+      HttpApiEndpoint.get("streamChanges", "/api/v1/changes:stream", {
+        params: {},
+        query: Schema.Struct({ cursor: Schema.optionalKey(Schema.String) }),
+        success: changeStreamSchema,
+        error: standardErrors,
+      }).annotateMerge(
         OpenApi.annotations({
           summary: "Subscribe to committed changes",
           description:
@@ -117,9 +108,7 @@ export function createApplicationHttpApi(
       )
     )
 
-  const api = customMethodApi(
-    createModelHttpApi(model, options).add(eventGroup)
-  )
+  const api = createModelHttpApi(model, options).add(eventGroup)
 
   return { api, eventGroup }
 }

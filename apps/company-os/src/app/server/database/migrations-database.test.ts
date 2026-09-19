@@ -76,7 +76,7 @@ initialized.test(
         yield* sql`select migration_id as id, name from company_os_migrations`
       ).toEqual(expected.map(([id, name]) => ({ id, name })))
       expect(
-        yield* sql`select to_regclass('baseline_probe') as discarded`
+        yield* sql`select to_regclass('baseline_probe')::text as discarded`
       ).toEqual([{ discarded: null }])
     })
 )
@@ -104,9 +104,9 @@ empty.test("refuses an occupied schema without changing its contents", () =>
     expect(yield* sql`select value from retained_probe`).toEqual([
       { value: "keep me" },
     ])
-    expect(yield* sql`select to_regclass('objects') as registry`).toEqual([
-      { registry: null },
-    ])
+    expect(yield* sql`select to_regclass('objects')::text as registry`).toEqual(
+      [{ registry: null }]
+    )
   })
 )
 
@@ -135,9 +135,9 @@ empty.test(
       expect(yield* sql`select value from untouched`).toEqual([
         { value: "keep me" },
       ])
-      expect(yield* sql`select to_regclass('objects') as registry`).toEqual([
-        { registry: null },
-      ])
+      expect(
+        yield* sql`select to_regclass('objects')::text as registry`
+      ).toEqual([{ registry: null }])
     })
 )
 

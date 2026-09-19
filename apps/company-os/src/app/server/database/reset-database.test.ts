@@ -17,7 +17,7 @@ fixture.test(
       yield* sql`insert into discarded_local_data values (1)`
       yield* resetDevelopmentSchema("public")
       expect(
-        yield* sql`select to_regclass('discarded_local_data') as old`
+        yield* sql`select to_regclass('discarded_local_data')::text as old`
       ).toEqual([{ old: null }])
       expect(
         yield* sql`select migration_id from company_os_migrations`

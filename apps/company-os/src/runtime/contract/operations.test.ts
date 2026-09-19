@@ -94,7 +94,9 @@ describe("resolved operation contracts", () => {
     ]) {
       const operation = modelOperation(model, key)
       expect(operation.scope).toBe("record")
-      expect(httpOperation(operation).pathFields).toEqual(["id"])
+      expect(Object.keys(httpOperation(operation).params.fields)).toEqual([
+        "id",
+      ])
     }
     for (const key of [
       "contact.create",
@@ -104,7 +106,7 @@ describe("resolved operation contracts", () => {
     ]) {
       const operation = modelOperation(model, key)
       expect(operation.scope).toBe("object")
-      expect(httpOperation(operation).pathFields).toEqual([])
+      expect(Object.keys(httpOperation(operation).params.fields)).toEqual([])
     }
   })
 

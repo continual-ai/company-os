@@ -27,11 +27,11 @@ if (values.help) {
     throw new Error("Scenario must be all, demo, or performance.")
   const performance = performanceScenario(Number(values.size))
   Effect.gen(function* () {
-    const url = yield* Config.redacted("DATABASE_URL")
-    const confirmation = yield* Config.string(
+    const url = yield* Config.Redacted("DATABASE_URL")
+    const confirmation = yield* Config.String(
       "CONFIRM_DEVELOPMENT_DATABASE"
     ).pipe(Config.withDefault(""))
-    const environment = yield* Config.string("NODE_ENV").pipe(
+    const environment = yield* Config.String("NODE_ENV").pipe(
       Config.withDefault("development")
     )
     const target = yield* Effect.try(() =>

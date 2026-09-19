@@ -14,7 +14,6 @@ import type {
   ApiReference,
   DynamicHttpApi,
 } from "#/runtime/contract/http-api.ts"
-import { customMethodServerApi } from "#/runtime/contract/http-custom-method.ts"
 import {
   httpOperationGroups,
   httpOperationInput,
@@ -60,10 +59,9 @@ export function createModelHttpHandlers(
   // model; the dynamic compiler validates those same keys.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const dynamicApi = api as DynamicHttpApi
-  const ServerApi = customMethodServerApi(dynamicApi)
 
   const groupLayers = httpOperationGroups(model).map((group) =>
-    HttpApiBuilder.group(ServerApi, group.id, (initialHandlers) => {
+    HttpApiBuilder.group(dynamicApi, group.id, (initialHandlers) => {
       // SAFETY: every endpoint comes from this same closed operation catalog.
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion
       let handlers = initialHandlers as unknown as DynamicHandlers

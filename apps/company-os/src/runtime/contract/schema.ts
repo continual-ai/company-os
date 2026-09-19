@@ -165,7 +165,8 @@ function compileString(
     (definition.format === "domain" || definition.format === "email")
       ? Schema.String.pipe(
           Schema.decode(
-            SchemaTransformation.trim().compose(
+            SchemaTransformation.composeTransformation(
+              SchemaTransformation.trim(),
               SchemaTransformation.toLowerCase()
             )
           )
@@ -184,7 +185,6 @@ function compileString(
       ...(mode === "input" || mode === "update" ? { writeOnly: true } : {}),
       format: "password",
       message: "Invalid secret.",
-      parseOptions: { reportInput: false },
     })
 
   switch (definition.format) {

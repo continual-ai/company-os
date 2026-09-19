@@ -37,6 +37,7 @@ export const tableProjection = <R extends object>(table: Table<R>) =>
 
 /** JSON arrays stay JSON; null in a required JSONB column is JSON null, not SQL NULL. */
 function encodeRow<R extends object>(
+  sql: Statement.Constructor,
   table: Table<R>,
   row: { [K in keyof R]?: Input<NoInfer<R[K]>> | Statement.Fragment }
 ): Record<string, unknown> {
@@ -45,6 +46,12 @@ function encodeRow<R extends object>(
     Object.entries(row).map(([key, value]) => {
       const column = columns[key]
       if (!column) throw new Error(`Unknown storage field '${key}'.`)
+      // Cast from the model's SQL type, including empty arrays and timestamp strings.
+      if (column.type.endsWith("[]") && Array.isArray(value))
+        return [
+          column.name,
+          sql`array[${sql.csv(value.map((item) => sql`${item}`))}]::${sql.literal(column.type)}`,
+        ]
       return [
         column.name,
         column.type === "jsonb" &&
@@ -86,7 +93,7 @@ export function assignments<R extends object>(
   values: { [K in keyof R]?: Input<NoInfer<R[K]>> | Statement.Fragment }
 ) {
   return sql.csv(
-    Object.entries(encodeRow(table, values)).map(
+    Object.entries(encodeRow(sql, table, values)).map(
       ([key, value]) => sql`${sql(key)} = ${value}`
     )
   )
@@ -101,7 +108,7 @@ export function insertValues<R extends object>(
       }>
 ) {
   const rows = (Array.isArray(values) ? values : [values]).map((row) =>
-    encodeRow(table, row)
+    encodeRow(sql, table, row)
   )
   if (rows.length === 0) throw new Error("Cannot insert an empty batch.")
   const keys = [...new Set(rows.flatMap(Object.keys))]

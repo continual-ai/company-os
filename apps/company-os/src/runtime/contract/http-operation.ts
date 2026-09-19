@@ -1,11 +1,6 @@
 import { Schema } from "effect"
 
 import {
-  customMethodParameter,
-  customMethodParams,
-  customMethodPath,
-} from "#/runtime/contract/http-custom-method.ts"
-import {
   operationContracts,
   type OperationContract,
 } from "#/runtime/contract/operation-contract.ts"
@@ -25,8 +20,6 @@ export interface HttpOperation {
   >
   readonly inputLocation: "query" | "payload"
   readonly status: 200 | 201 | 204
-  readonly customMethod?: string
-  readonly pathFields: ReadonlyArray<string>
 }
 
 function pascalCase(value: string) {
@@ -37,11 +30,8 @@ function pascalCase(value: string) {
     .replace(/[^a-zA-Z0-9]/g, "")
 }
 
-type HttpConvention = Pick<
-  HttpOperation,
-  "method" | "status" | "customMethod"
-> & {
-  readonly collectionName: boolean
+type HttpConvention = Pick<HttpOperation, "method" | "status"> & {
+  readonly customMethod?: string
 }
 
 function httpConvention(operation: OperationContract): HttpConvention {
@@ -51,44 +41,33 @@ function httpConvention(operation: OperationContract): HttpConvention {
       method: "POST",
       status: 200,
       customMethod: id,
-      collectionName: false,
     }
   if (linkTraversal !== undefined) {
     return id === "list" || id === "get"
-      ? { method: "GET", status: 200, collectionName: false }
-      : { method: "POST", status: 204, customMethod: id, collectionName: false }
+      ? { method: "GET", status: 200 }
+      : { method: "POST", status: 204, customMethod: id }
   }
   switch (id) {
     case "get":
-      return { method: "GET", status: 200, collectionName: false }
     case "list":
-      return { method: "GET", status: 200, collectionName: true }
+      return { method: "GET", status: 200 }
     case "create":
-      return { method: "POST", status: 201, collectionName: false }
+      return { method: "POST", status: 201 }
     case "update":
-      return { method: "PATCH", status: 200, collectionName: false }
+      return { method: "PATCH", status: 200 }
     case "delete":
-      return { method: "DELETE", status: 204, collectionName: false }
-    case "batchGet":
-      return {
-        method: "POST",
-        status: 200,
-        customMethod: id,
-        collectionName: true,
-      }
+      return { method: "DELETE", status: 204 }
     case "batchDelete":
       return {
         method: "POST",
         status: 204,
         customMethod: id,
-        collectionName: true,
       }
     default:
       return {
         method: "POST",
         status: 200,
         customMethod: id,
-        collectionName: scope === "object",
       }
   }
 }
@@ -128,16 +107,12 @@ export function httpOperation(
     group: object?.id ?? (operation.builtin ? "records" : "$global"),
     identifier,
     method,
-    path:
-      customMethod === undefined ? path : customMethodPath(path, customMethod),
-    params: Schema.Struct({
-      ...Object.fromEntries(
+    path: customMethod === undefined ? path : `${path}:${customMethod}`,
+    params: Schema.Struct(
+      Object.fromEntries(
         pathFields.map((key) => [key, operation.input.fields[key]!])
-      ),
-      ...(customMethod === undefined
-        ? {}
-        : { [customMethod]: customMethodParameter(customMethod) }),
-    }),
+      )
+    ),
     input:
       pathFields.length === 0 && inputLocation === "payload"
         ? operation.input
@@ -146,8 +121,6 @@ export function httpOperation(
           }),
     inputLocation,
     status,
-    pathFields,
-    ...(customMethod === undefined ? {} : { customMethod }),
   }
 }
 
@@ -156,21 +129,17 @@ export function httpOperationRequest(
   http: HttpOperation,
   input: Readonly<Record<string, unknown>>
 ) {
-  const params = Object.fromEntries(
-    http.pathFields.map((key) => [key, input[key]])
-  )
+  const pathFields = Object.keys(http.params.fields)
+  const params = Object.fromEntries(pathFields.map((key) => [key, input[key]]))
   return {
-    params:
-      http.customMethod === undefined
-        ? params
-        : customMethodParams(http.customMethod, params),
+    params,
     [http.inputLocation]: Object.fromEntries(
-      Object.entries(input).filter(([key]) => !http.pathFields.includes(key))
+      Object.entries(input).filter(([key]) => !pathFields.includes(key))
     ),
   }
 }
 
-/** Reassembles canonical arguments, excluding adapter-only route parameters. */
+/** Reassembles canonical arguments from the decoded HTTP request. */
 export function httpOperationInput(
   http: HttpOperation,
   request: {
@@ -181,9 +150,7 @@ export function httpOperationInput(
 ) {
   return {
     ...request[http.inputLocation],
-    ...Object.fromEntries(
-      http.pathFields.map((key) => [key, request.params?.[key]])
-    ),
+    ...request.params,
   }
 }
 

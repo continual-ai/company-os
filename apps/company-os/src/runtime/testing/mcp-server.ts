@@ -49,7 +49,7 @@ export const serveTestMcp = Effect.gen(function* () {
       return HttpServerResponse.fromWeb(response)
     })
   )
-  if (server.address._tag !== "TcpAddress")
+  if (server.address._tag === "UnixPathAddress")
     return yield* Effect.die("Expected a TCP test server")
   return { url: `http://127.0.0.1:${server.address.port}/mcp`, calls }
 })

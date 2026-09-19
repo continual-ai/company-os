@@ -26,13 +26,13 @@ for (const definition of definitions)
 
 const cluster = Layer.unwrap(
   Effect.gen(function* () {
-    const host = yield* Config.string("CONTROLLERS_HOST").pipe(
+    const host = yield* Config.String("CONTROLLERS_HOST").pipe(
       Config.withDefault("localhost")
     )
-    const port = yield* Config.int("CONTROLLERS_PORT").pipe(
+    const port = yield* Config.Int("CONTROLLERS_PORT").pipe(
       Config.withDefault(34431)
     )
-    const listenHost = yield* Config.string("CONTROLLERS_LISTEN_HOST").pipe(
+    const listenHost = yield* Config.String("CONTROLLERS_LISTEN_HOST").pipe(
       Config.withDefault(host)
     )
     return NodeClusterHttp.layer({

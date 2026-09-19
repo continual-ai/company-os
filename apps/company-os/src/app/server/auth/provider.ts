@@ -6,7 +6,7 @@ import { jwtIdentityProviderLayer } from "#/app/server/auth/jwt-identity-provide
 /** Credentials vary by deployment; project admission and business rules stay the same. */
 export const identityProviderLayer = Layer.unwrap(
   Effect.gen(function* () {
-    const provider = yield* Config.string("IDENTITY_PROVIDER").pipe(
+    const provider = yield* Config.String("IDENTITY_PROVIDER").pipe(
       Config.withDefault("continual")
     )
     if (provider === "continual") return continualIdentityProviderLayer

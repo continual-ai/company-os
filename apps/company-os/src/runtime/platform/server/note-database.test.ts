@@ -109,7 +109,7 @@ fixture.test("persists platform notes without the demo domains", () =>
     const records = yield* Database
     const { sql } = yield* Database
     expect(
-      yield* sql`select to_regclass('accounts') as accounts, to_regclass(${tableName(fixture.storage.linkTables.noteSubjects)}) as subjects`
+      yield* sql`select to_regclass('accounts')::text as accounts, to_regclass(${tableName(fixture.storage.linkTables.noteSubjects)})::text as subjects`
     ).toEqual([{ accounts: null, subjects: expect.any(String) }])
 
     const notes = records.repository(Note)

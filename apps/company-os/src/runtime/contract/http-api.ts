@@ -8,7 +8,6 @@ import {
   OpenApi,
 } from "effect/unstable/httpapi"
 
-import { customMethodApi } from "#/runtime/contract/http-custom-method.ts"
 import { httpOperationGroups } from "#/runtime/contract/http-operation.ts"
 import {
   schemaErrorToApiError,
@@ -147,9 +146,7 @@ export function createModelHttpApi(
     }
     api = api.add(group)
   }
-  return customMethodApi(
-    // SAFETY: middleware changes only Effect's phantom requirements; every server supplies the layer.
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-    api.middleware(HttpValidationMiddleware) as unknown as DynamicHttpApi
-  )
+  // SAFETY: middleware changes only Effect's phantom requirements; every server supplies the layer.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  return api.middleware(HttpValidationMiddleware) as unknown as DynamicHttpApi
 }

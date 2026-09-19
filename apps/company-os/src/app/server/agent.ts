@@ -13,7 +13,7 @@ export const agentLayer = Layer.unwrap(
     const fs = yield* FileSystem.FileSystem
     const workingDirectory = join(tmpdir(), "company-os-agent")
     yield* fs.makeDirectory(workingDirectory, { recursive: true })
-    const url = yield* Config.string("COMPANY_OS_MCP_URL").pipe(
+    const url = yield* Config.String("COMPANY_OS_MCP_URL").pipe(
       Config.withDefault("http://localhost:3002/api/mcp")
     )
     return CodexAgent.layer(

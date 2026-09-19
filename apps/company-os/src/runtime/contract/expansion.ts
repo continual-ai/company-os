@@ -40,11 +40,14 @@ export function expansionInputSchema(
     .map((end) => end.key)
   return Schema.Union([
     Schema.Boolean,
-    Schema.Struct(
-      Object.fromEntries(
-        keys.map((key) => [key, Schema.optionalKey(Schema.Literal(true))])
-      )
-    ).annotate({ parseOptions: { onExcessProperty: "error" } }),
+    Schema.StructWithRest(
+      Schema.Struct(
+        Object.fromEntries(
+          keys.map((key) => [key, Schema.optionalKey(Schema.Literal(true))])
+        )
+      ),
+      [Schema.Record(Schema.String, Schema.Literal(true))]
+    ).check(Schema.isPropertyNames(Schema.Literals(keys))),
   ]).annotate({
     identifier: `${type.id[0]!.toUpperCase()}${type.id.slice(1)}Expansion`,
     description:

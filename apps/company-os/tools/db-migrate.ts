@@ -11,7 +11,7 @@ import { localConfigLayer } from "#/app/server/local-config.ts"
 parseArgs({ options: {} })
 
 Effect.gen(function* () {
-  const url = yield* Config.redacted("DATABASE_URL")
+  const url = yield* Config.Redacted("DATABASE_URL")
   const schema = yield* Postgres.databaseSchemaConfig
   yield* ensureLocalDatabase(Redacted.value(url))
   yield* migrateDatabaseSchema(schema).pipe(
