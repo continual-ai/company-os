@@ -8,7 +8,7 @@ catalog:
   "@base-ui/react": 1.7.0
   "@continual/cli": 0.5.8
   "@continual/sdk": 0.5.6
-  "@continual/tanstack-start": 0.1.3
+  "@continual/tanstack-start": 0.1.4
   "@effect/platform-node": 4.0.0-rc.116
   "@effect/sql-pg": 4.0.0-rc.116
   "@effect/vitest": 4.0.0-rc.116
@@ -59,9 +59,8 @@ allowBuilds:
 minimumReleaseAgeExclude:
   - "@continual/cli@0.5.8"
   - "@continual/sdk@0.1.5"
-  - "@continual/tanstack-start@0.1.3"
+  - "@continual/tanstack-start@0.1.4"
 
 patchedDependencies:
   # PostgreSQL retains completed nested savepoints unless they are explicitly released.
   effect@4.0.0-rc.116: patches/effect@4.0.0-rc.116.patch
-  nitro@3.0.260610-beta: patches/nitro@3.0.260610-beta.patch
