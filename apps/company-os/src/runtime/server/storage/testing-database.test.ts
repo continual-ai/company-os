@@ -85,3 +85,30 @@ it.live(
       expect(new URL(template.adminUrl).port).not.toBe("1")
     })
 )
+
+it.live("cleanup leaves databases from another run intact", () =>
+  Effect.gen(function* () {
+    const template = yield* TestDatabase.createTemplate([])
+    const first = randomUUID().replaceAll("-", "").slice(0, 12)
+    const second = randomUUID().replaceAll("-", "").slice(0, 12)
+    const firstName = `company_os_test_${first}_database_00000000000000000000`
+    const secondName = `company_os_test_${second}_database_00000000000000000000`
+    yield* Effect.gen(function* () {
+      const sql = yield* PgClient.PgClient
+      yield* sql`create database ${sql(firstName)} template template0`
+      yield* sql`create database ${sql(secondName)} template template0`
+      yield* TestDatabase.dropAll(first)
+      expect(
+        yield* sql`select datname from pg_database where datname in (${firstName}, ${secondName})`
+      ).toEqual([{ datname: secondName }])
+    }).pipe(
+      Effect.provide(testDatabaseClient(template.adminUrl)),
+      Effect.ensuring(
+        Effect.all([
+          TestDatabase.dropAll(first),
+          TestDatabase.dropAll(second),
+        ]).pipe(Effect.orDie)
+      )
+    )
+  })
+)

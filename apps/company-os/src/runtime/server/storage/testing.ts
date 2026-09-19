@@ -30,12 +30,32 @@ const databaseCreationError = (cause: unknown) =>
       "Could not create an isolated PostgreSQL test database. Ensure DATABASE_URL includes any required username and password, reaches PostgreSQL, and uses a role with CREATEDB.",
   })
 
-function databaseName(kind: "database" | "template"): string {
-  return `company_os_test_${kind}_${randomUUID().replaceAll("-", "").slice(0, 20)}`
+function runPrefix(runId: string): string {
+  if (!/^[a-f0-9]{12}$/.test(runId)) throw new Error("Invalid test run ID.")
+  return `company_os_test_${runId}_`
 }
 
+const databaseName = (
+  kind: "database" | "template",
+  key: string = randomUUID()
+) =>
+  Config.String("COMPANY_OS_TEST_RUN_ID").pipe(
+    Effect.map(
+      (runId) =>
+        `${runPrefix(runId)}${kind}_${createHash("sha1").update(key).digest("hex").slice(0, 20)}`
+    ),
+    Effect.provideService(
+      ConfigProvider.ConfigProvider,
+      ConfigProvider.fromEnv()
+    )
+  )
+
 function assertTestDatabaseName(name: string): string {
-  if (!/^company_os_test_(?:database|template)_[a-f0-9]{20}$/.test(name))
+  if (
+    !/^company_os_test_[a-f0-9]{12}_(?:database|template)_[a-f0-9]{20}$/.test(
+      name
+    )
+  )
     throw new Error(`Invalid generated test database name '${name}'.`)
   return name
 }
@@ -87,10 +107,7 @@ const createTemplate = Effect.fn("@company/TestDatabase.createTemplate")(
       : JSON.stringify(initialize)
   ) {
     const adminUrl = yield* adminUrlFromConfig
-    const name =
-      key === undefined
-        ? databaseName("template")
-        : `company_os_test_template_${createHash("sha1").update(key).digest("hex").slice(0, 20)}`
+    const name = yield* databaseName("template", key)
     return yield* Effect.gen(function* () {
       const sql = yield* PgClient.PgClient
       yield* sql`select pg_advisory_lock(hashtext(${name}))`
@@ -119,17 +136,19 @@ const createTemplate = Effect.fn("@company/TestDatabase.createTemplate")(
   }
 )
 
-/** Removes every test database and template left by this or an earlier run. */
-const dropAll = Effect.gen(function* () {
-  const adminUrl = yield* adminUrlFromConfig
-  const names = yield* Effect.gen(function* () {
-    const sql = yield* PgClient.PgClient
-    return yield* sql<{
-      datname: string
-    }>`select datname from pg_database where datname like 'company_os_test_%'`
-  }).pipe(Effect.provide(testDatabaseClient(adminUrl)))
-  for (const { datname } of names) yield* dropDatabase(adminUrl, datname)
-})
+/** Removes only the templates and clones owned by one test run. */
+const dropAll = (runId: string) =>
+  Effect.gen(function* () {
+    const prefix = runPrefix(runId)
+    const adminUrl = yield* adminUrlFromConfig
+    const names = yield* Effect.gen(function* () {
+      const sql = yield* PgClient.PgClient
+      return yield* sql<{
+        datname: string
+      }>`select datname from pg_database where starts_with(datname, ${prefix})`
+    }).pipe(Effect.provide(testDatabaseClient(adminUrl)))
+    for (const { datname } of names) yield* dropDatabase(adminUrl, datname)
+  })
 
 interface TestDatabaseClone {
   readonly url: string
@@ -139,7 +158,7 @@ interface TestDatabaseClone {
 const clone = Effect.fn("@company/TestDatabase.clone")(function* (
   template: TestDatabaseTemplate
 ) {
-  const name = databaseName("database")
+  const name = yield* databaseName("database")
   yield* createDatabase(template.adminUrl, name, template.databaseName)
   return { url: databaseUrl(template.adminUrl, name) }
 })
