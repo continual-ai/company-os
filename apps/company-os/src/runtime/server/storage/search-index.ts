@@ -6,6 +6,7 @@ import {
   modelTypeAccepts,
   type ObjectType,
 } from "#/runtime/model/index.ts"
+import type { EventSubject } from "#/runtime/server/events/event-buffer.ts"
 import type { ModelContext } from "#/runtime/server/model-context.ts"
 import {
   insertValues,
@@ -60,7 +61,10 @@ function project(
 /** Called inside the writing transaction, including custom SQL facts. Deletions cascade from objects. */
 export function updateSearchIndex(
   database: PostgresDatabase,
-  subjects: ReadonlyArray<{ readonly id: string; readonly objectType: string }>,
+  changes: {
+    readonly records: ReadonlyArray<EventSubject>
+    readonly relationships?: ReadonlyArray<EventSubject>
+  },
   context: typeof ModelContext.Service
 ) {
   const sql = database.sql
@@ -70,7 +74,20 @@ export function updateSearchIndex(
   )
 
   return Effect.gen(function* () {
-    const affected = [...subjects]
+    const subjects = [
+      ...new Map(
+        changes.records.map((subject) => [subject.id, subject])
+      ).values(),
+    ]
+    // Link changes affect the endpoint's own derived title, not every sibling that refers to it.
+    const affected = [
+      ...subjects,
+      ...(changes.relationships ?? []).filter((subject) =>
+        context.model.objects[subject.objectType]?.display.titleFields?.some(
+          (path) => path.includes(".")
+        )
+      ),
+    ]
     // Derived titles depend only on direct singular links. Refresh those index rows when a target changes.
     for (const object of searchableObjects) {
       const keys = new Set(

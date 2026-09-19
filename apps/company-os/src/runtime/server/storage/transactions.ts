@@ -8,6 +8,7 @@ import {
 } from "#/runtime/server/errors.ts"
 import {
   type PendingEvent,
+  type EventSubject,
   PendingEvents,
 } from "#/runtime/server/events/event-buffer.ts"
 import { flushEvents } from "#/runtime/server/events/flush-events.ts"
@@ -59,6 +60,12 @@ export interface PostgresDatabase {
 const make = Effect.gen(function* () {
   const context = yield* ModelContext
   const sql = yield* PgClient.PgClient
+  const linkEvents = new Set(
+    Object.keys(context.model.links).flatMap((id) => [
+      `${id}.linked`,
+      `${id}.unlinked`,
+    ])
+  )
   const uniqueConstraints = new Map(
     Object.values(context.model.objects).flatMap((object) =>
       Object.entries(object.uniqueBy).map(
@@ -117,15 +124,21 @@ const make = Effect.gen(function* () {
               yield* sql`set transaction isolation level ${sql.literal(options.isolationLevel)}`
             if (options?.accessMode)
               yield* sql`set transaction ${sql.literal(options.accessMode)}`
-            // Each writer owns its graph validation even inside an outer SQL migration transaction.
+            // Each writer owns its constraint validation even inside an outer SQL migration transaction.
             if (options?.accessMode !== "read only")
               yield* sql`set constraints all deferred`
             const value = yield* body(database)
-            // Validate deferred graph constraints as typed failures before the driver commits.
+            // Validate deferred constraints as typed failures before the driver commits.
             yield* sql`set constraints all immediate`
+            const records: EventSubject[] = []
+            const relationships: EventSubject[] = []
+            for (const event of events)
+              (linkEvents.has(event.type) ? relationships : records).push(
+                ...event.subjects
+              )
             yield* updateSearchIndex(
               database,
-              events.flatMap((event) => event.subjects),
+              { records, relationships },
               context
             )
             for (let i = 0; i < events.length; i++) {

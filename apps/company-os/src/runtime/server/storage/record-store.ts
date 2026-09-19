@@ -215,7 +215,7 @@ export function makeObjectSeedRepository<const O extends ObjectType>(
             const record = yield* repository.upsert(input)
             yield* updateSearchIndex(
               database,
-              [{ id: input.id, objectType: object.id }],
+              { records: [{ id: input.id, objectType: object.id }] },
               context
             )
             return record

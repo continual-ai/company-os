@@ -57,11 +57,21 @@ export function makeControllerRouting(
     })
   )
 
+  // Share identical path lookups between controllers only within one routing call.
+  // A later call must observe intervening relationship writes.
   const roots = (
+    cache: Map<string, ReadonlyArray<string>>,
     objectType: string,
     path: ReadonlyArray<ControllerWatchStep>,
     ids: ReadonlyArray<string>
   ) => {
+    const key = JSON.stringify([
+      objectType,
+      path.map(({ link, direction }) => [link.id, direction]),
+      ids,
+    ])
+    const cached = cache.get(key)
+    if (cached !== undefined) return Effect.succeed(cached)
     let query = sql`select unnest(${ids}::text[]) as id`
     for (let index = path.length - 1; index >= 0; index--) {
       const step = path[index]!
@@ -79,7 +89,11 @@ export function makeControllerRouting(
     return sql<{
       id: string
     }>`select id from ${storage.core.objects} where object_type = ${objectType} and id in (${query})`.pipe(
-      Effect.map((rows) => rows.map(({ id }) => id))
+      Effect.map((rows) => {
+        const result = rows.map(({ id }) => id)
+        cache.set(key, result)
+        return result
+      })
     )
   }
 
@@ -90,6 +104,7 @@ export function makeControllerRouting(
       readonly writtenFields?: ReadonlyArray<string>
     }) {
       const result: Record<string, string[]> = {}
+      const cache = new Map<string, ReadonlyArray<string>>()
       for (const { definition, prefixes } of controllers) {
         const keys = new Set<string>()
         const ignored =
@@ -121,7 +136,12 @@ export function makeControllerRouting(
             )
             .map(({ id }) => id)
           if (ids.length > 0)
-            for (const id of yield* roots(definition.objectType, prefix, ids))
+            for (const id of yield* roots(
+              cache,
+              definition.objectType,
+              prefix,
+              ids
+            ))
               keys.add(id)
         }
         if (keys.size > 0)
@@ -138,6 +158,7 @@ export function makeControllerRouting(
     readonly reverseId: string
   }) {
     const result: Record<string, string[]> = {}
+    const cache = new Map<string, ReadonlyArray<string>>()
     for (const { definition, prefixes } of controllers) {
       const keys = new Set<string>()
       for (const prefix of prefixes) {
@@ -146,6 +167,7 @@ export function makeControllerRouting(
         const sourceId =
           last.direction === "forward" ? change.forwardId : change.reverseId
         for (const id of yield* roots(
+          cache,
           definition.objectType,
           prefix.slice(0, -1),
           [sourceId]

@@ -114,6 +114,7 @@ export const makeLinkWrites = Effect.gen(function* () {
         ...plan.map(({ pair }) => pair.targetId),
       ]),
     ].sort()
+    if (ids.length === 0) return undefined
     const selection = {
       id: objects.columns.id,
       objectType: objects.columns.objectType,
