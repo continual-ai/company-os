@@ -92,6 +92,11 @@ type CanonicalStoragePropertyValues<TObject extends ObjectType> =
   | ObjectInsertPropertyValues<TObject>
   | ObjectUpdatePropertyValues<TObject>
 
+/** Resolved reference columns keyed by their physical object or interface table. */
+export type InitialReferences = Readonly<
+  Record<string, Readonly<Record<string, string>>>
+>
+
 /** Canonical insert values; persistence supplies the tag and timestamps. */
 export type ObjectInsert<TObject extends ObjectType> = Omit<
   BaseRecord<TObject["id"]>,
@@ -483,7 +488,8 @@ function makeRepository<
       })
 
     const insert = Effect.fn(`${object.id}.repository.insert`)(function* (
-      record: ObjectInsert<TObject>
+      record: ObjectInsert<TObject>,
+      references: InitialReferences = {}
     ) {
       const {
         aliases,
@@ -534,10 +540,11 @@ function makeRepository<
         const objectValues = {
           id,
           ...toStorageProperties(properties, id),
+          ...references[table.name],
         }
         yield* sql`insert into ${table} ${insertValues(sql, table, objectValues)}`
         for (const interfaceTable of interfaceTables) {
-          yield* sql`insert into ${interfaceTable} ${insertValues(sql, interfaceTable, { id })}`
+          yield* sql`insert into ${interfaceTable} ${insertValues(sql, interfaceTable, { id, ...references[interfaceTable.name] })}`
         }
         return undefined
       })

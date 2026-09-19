@@ -11,7 +11,7 @@ interface ForeignKeyLink {
 }
 export type LinkStorage = ForeignKeyLink | { readonly kind: "join" }
 
-/** The singular end owns the FK; ties deliberately use the authored from end. */
+/** Store singular references on the owning object or interface table. */
 export function linkStorage(link: LinkType): LinkStorage {
   const side = linkReferenceSide(link)
   if (side === undefined) return { kind: "join" }

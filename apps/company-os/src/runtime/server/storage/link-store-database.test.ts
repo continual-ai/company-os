@@ -25,7 +25,7 @@ import {
   Participant,
   Account,
   Prospect,
-  type Order,
+  Order,
 } from "#/runtime/testing/fixture-model.ts"
 import { FixtureServer } from "#/runtime/testing/fixture-server.ts"
 import { testFoundation } from "#/runtime/testing/foundation.ts"
@@ -196,6 +196,84 @@ fixture.test(
           (yield* services.person.get({ id: first.id })).links.accounts
         ).totalSize
       ).toBe(0)
+    })
+)
+
+fixture.test(
+  "inserts required references and replaces them without clearing, preserving events and versions",
+  () =>
+    Effect.gen(function* () {
+      const services = yield* implementation
+      const links = yield* Links
+      const database = yield* SqlDatabase
+      const { sql } = database
+      const first = yield* services.account.create({ name: "First" })
+      const second = yield* services.account.create({ name: "Second" })
+      const order = yield* services.order.create({
+        name: "Required",
+        links: { account: first.id },
+      })
+      expect(order.links.account).toBe(first.id)
+      const beforeFirst = yield* services.account.get({ id: first.id })
+      const beforeSecond = yield* services.account.get({ id: second.id })
+      const replaced = yield* services.order.update({
+        id: order.id,
+        etag: order.etag,
+        links: { account: second.id },
+      })
+      expect(replaced.links.account).toBe(second.id)
+      expect(BigInt(replaced.etag)).toBe(BigInt(order.etag) + 1n)
+      for (const before of [beforeFirst, beforeSecond])
+        expect(
+          BigInt((yield* services.account.get({ id: before.id })).etag)
+        ).toBe(BigInt(before.etag) + 1n)
+      const facts = yield* sql<{
+        type: string
+        data: { links?: { account: string } }
+      }>`select type, data from ${eventJournal} where subjects @> ${JSON.stringify([{ id: order.id, objectType: "order" }])}::jsonb order by position`
+      expect(facts.map((fact) => fact.type)).toEqual([
+        "order.created",
+        "accountOrders.linked",
+        "order.updated",
+        "accountOrders.unlinked",
+        "accountOrders.linked",
+      ])
+      expect(facts[0]!.data.links?.account).toBe(first.id)
+      expect(facts[2]!.data.links?.account).toBe(second.id)
+      expect(
+        (yield* services.order.list({
+          query: "Required",
+          filter: { link: "account", contains: second.id },
+        })).items.map((item) => item.id)
+      ).toEqual([order.id])
+      // Even inside a transaction, unlink-then-link is rejected; replacement is one update.
+      const rejected = yield* database
+        .transaction(() =>
+          Effect.gen(function* () {
+            yield* links.unlink(traversal(Account, "orders"), {
+              id: second.id,
+              target: order.id,
+            })
+            yield* links.link(traversal(Order, "account"), {
+              id: order.id,
+              target: first.id,
+            })
+          })
+        )
+        .pipe(withApiErrors, Effect.flip)
+      expect(rejected.status).toBe("INVALID_ARGUMENT")
+      expect((yield* services.order.get({ id: order.id })).links.account).toBe(
+        second.id
+      )
+      const raw = yield* database
+        .transaction(
+          () => sql`update orders set account_id = null where id = ${order.id}`
+        )
+        .pipe(Effect.exit)
+      expect(raw._tag).toBe("Failure")
+      expect((yield* services.order.get({ id: order.id })).links.account).toBe(
+        second.id
+      )
     })
 )
 

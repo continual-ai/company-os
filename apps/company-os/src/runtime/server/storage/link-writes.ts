@@ -6,7 +6,6 @@ import {
 } from "#/runtime/model/definition/model.ts"
 import {
   modelTypeAccepts,
-  RecordId,
   type ObjectType,
   type RecordIdentifier,
 } from "#/runtime/model/index.ts"
@@ -29,6 +28,7 @@ import {
   makeLinkRepository,
   type LinkPair,
 } from "#/runtime/server/storage/link-repository.ts"
+import { linkStorage } from "#/runtime/server/storage/link-storage.ts"
 import {
   inValues,
   projection,
@@ -99,14 +99,19 @@ export const makeLinkWrites = Effect.gen(function* () {
     } satisfies LinkPair
   })
   const lock = Effect.fn("@company/Links.lock")(function* (
-    source: { objectType: string; id: string; etag?: string },
+    source: {
+      objectType: string
+      id: string
+      etag?: string
+      creating?: boolean
+    },
     plan: ReadonlyArray<EdgeMutation>
   ) {
     yield* requireWritableOperation
     const ids = [
       ...new Set([
-        source.id,
-        ...plan.flatMap(({ pair }) => [pair.sourceId, pair.targetId]),
+        ...(source.creating ? [] : [source.id]),
+        ...plan.map(({ pair }) => pair.targetId),
       ]),
     ].sort()
     const selection = {
@@ -119,7 +124,7 @@ export const makeLinkWrites = Effect.gen(function* () {
     >`select ${projection(selection)} from ${objects} where ${inValues(sql, objects.columns.id, ids)} order by ${objects.columns.id} for update`
     const records = new Map(locked.map((record) => [record.id, record]))
     const expected = [
-      { id: source.id, type: source.objectType },
+      ...(source.creating ? [] : [{ id: source.id, type: source.objectType }]),
       ...plan.map(({ pair, traversal }) => ({
         id: pair.targetId,
         type: traversal.target.from.typeId,
@@ -147,7 +152,8 @@ export const makeLinkWrites = Effect.gen(function* () {
 
   const apply = Effect.fn("@company/Links.apply")(function* (
     plan: ReadonlyArray<EdgeMutation>,
-    attributedId?: string
+    attributedId?: string,
+    inserted: ReadonlyArray<EdgeMutation> = []
   ) {
     const before = new Map(
       yield* Effect.forEach(plan, ({ pair }) =>
@@ -157,9 +163,19 @@ export const makeLinkWrites = Effect.gen(function* () {
         })
       )
     )
-    const changes = yield* repository.apply(
-      plan.map(({ pair, operation }) => ({ ...pair, operation }))
-    )
+    const insertedSet = new Set(inserted)
+    const changes = [
+      ...inserted.map(({ pair }) => ({
+        ...linkPairEndpoints(pair),
+        linkId: pair.linkId,
+        kind: "linked" as const,
+      })),
+      ...(yield* repository.apply(
+        plan
+          .filter((edge) => !insertedSet.has(edge))
+          .map(({ pair, operation }) => ({ ...pair, operation }))
+      )),
+    ]
     const ids = [
       ...new Set(
         changes.flatMap((change) => [change.forwardId, change.reverseId])
@@ -186,13 +202,23 @@ export const makeLinkWrites = Effect.gen(function* () {
   })
 
   /** Resolve complete replacements before locking; revalidate after locking to avoid acquiring new locks out of order. */
-  const prepareUpdate = Effect.fn("@company/Links.prepareUpdate")(function* (
+  const prepare = Effect.fn("@company/Links.prepare")(function* (
     object: ObjectType,
     sourceId: RecordIdentifier,
-    changes: LinkUpdates
+    changes: LinkUpdates,
+    creating = false
   ) {
     const source = yield* identifiers.resolve(object.id, sourceId)
     const traversals = modelObjectLinkTraversals(model, object)
+    if (creating)
+      for (const { traversal } of traversals)
+        if (traversal.min === 1 && typeof changes[traversal.key] !== "string")
+          return yield* Effect.fail(
+            new RequiredLinkMissing({
+              objectType: object.id,
+              traversal: traversal.key,
+            })
+          )
     const known = new Map(
       traversals.map((traversal) => [traversal.traversal.key, traversal])
     )
@@ -243,8 +269,8 @@ export const makeLinkWrites = Effect.gen(function* () {
         sourceId: source,
       }
       const current =
-        replacement === undefined ? [] : yield* repository.ids(base)
-      if (replacement !== undefined)
+        creating || replacement === undefined ? [] : yield* repository.ids(base)
+      if (!creating && replacement !== undefined)
         replacements.push({ pair: base, ids: current })
       const requested =
         replacement === undefined
@@ -278,7 +304,7 @@ export const makeLinkWrites = Effect.gen(function* () {
         for (const targetId of new Set(targets))
           plan.push({ traversal, pair: { ...base, targetId }, operation })
     }
-    yield* lock({ objectType: object.id, id: source }, plan)
+    yield* lock({ objectType: object.id, id: source, creating }, plan)
     for (const replacement of replacements) {
       const current = yield* repository.ids(replacement.pair)
       if (
@@ -289,35 +315,28 @@ export const makeLinkWrites = Effect.gen(function* () {
           new ObjectWriteConflict({ objectType: object.id, recordId: source })
         )
     }
-    return { apply: (attributedId?: string) => apply(plan, attributedId) }
-  })
-  const initialize = Effect.fn("@company/Links.initialize")(
-    function* (object: ObjectType, sourceId: string, initial: InitialLinks) {
-      for (const { traversal } of modelObjectLinkTraversals(model, object)) {
-        const value = initial[traversal.key]
-        if (
-          traversal.min > 0 &&
-          (value === undefined ||
-            value === null ||
-            (Array.isArray(value) && value.length === 0))
-        )
-          return yield* Effect.fail(
-            new RequiredLinkMissing({
-              objectType: object.id,
-              traversal: traversal.key,
-            })
+    const references: Record<string, Record<string, string>> = {}
+    const inserted = creating
+      ? plan.filter(({ traversal, pair }) => {
+          const physical = linkStorage(traversal.link)
+          if (
+            physical.kind !== "foreignKey" ||
+            physical.side !== pair.direction
           )
-      }
-      const plan = yield* prepareUpdate(
-        object,
-        RecordId(object.id)(sourceId),
-        initial
-      )
-      yield* plan.apply(sourceId)
-      return undefined
-    },
-    (effect) => database.transaction(() => effect)
-  )
+            return false
+          const table =
+            storage.objects[physical.ownerType] ??
+            storage.interfaces[physical.ownerType]!
+          const columns = (references[table.name] ??= {})
+          columns[physical.column] = pair.targetId
+          return true
+        })
+      : []
+    return {
+      references,
+      apply: (attributedId?: string) => apply(plan, attributedId, inserted),
+    }
+  })
 
   const mutate = Effect.fn("@company/Links.mutate")(
     function* (
@@ -354,7 +373,15 @@ export const makeLinkWrites = Effect.gen(function* () {
       mutate(traversal, input, "link"),
     unlink: (traversal: ModelLinkTraversal, input: LinkMutationInput) =>
       mutate(traversal, input, "unlink"),
-    initialize,
-    prepareUpdate,
+    prepareCreate: (
+      object: ObjectType,
+      sourceId: RecordIdentifier,
+      initial: InitialLinks
+    ) => prepare(object, sourceId, initial, true),
+    prepareUpdate: (
+      object: ObjectType,
+      sourceId: RecordIdentifier,
+      changes: LinkUpdates
+    ) => prepare(object, sourceId, changes),
   }
 })

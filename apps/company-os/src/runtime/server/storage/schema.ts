@@ -8,7 +8,6 @@ import type {
   RecordId,
   RecordIdOf,
 } from "#/runtime/model/index.ts"
-import { linkConstraintDdl } from "#/runtime/server/storage/link-constraints.ts"
 import {
   foreignKeys,
   linkStorage,
@@ -225,13 +224,12 @@ export function makePostgresSchema<const M extends ModelCatalog>(
   const constraints: string[] = []
   const referenceFields = (typeId: string): Record<string, ColumnDefinition> =>
     Object.fromEntries(
-      foreignKeys(model, typeId).map(({ storage }) => [
+      foreignKeys(model, typeId).map(({ storage, link }) => [
         storage.column,
         {
           type: "text",
-          nullable: true,
-          description:
-            "Relationship reference; requiredness is checked at transaction commit.",
+          nullable: link[storage.side].min === 0,
+          description: "Relationship reference.",
         },
       ])
     )
@@ -305,11 +303,23 @@ export function makePostgresSchema<const M extends ModelCatalog>(
         `alter table ${name} add constraint ${q(`${table.name}_check_${rule}`)} check (${q(columns[check.left]!.name)} ${operators[check.operator]} ${q(columns[check.right]!.name)})`
       )
     }
-    for (const [rule, keys] of Object.entries(object.uniqueBy))
-      if (keys.every((key) => object.properties[key] !== undefined))
-        ddl.push(
-          `create unique index ${q(objectUniqueConstraintName(table.name, rule))} on ${name} (${keys.map((key) => q(columns[key]!.name)).join(", ")})`
-        )
+    for (const [rule, keys] of Object.entries(object.uniqueBy)) {
+      const references = foreignKeys(model, object.id)
+      const nativeColumns = keys.map(
+        (key) =>
+          columns[key]?.name ??
+          references.find(
+            ({ link, storage }) => link[storage.side].key === key
+          )!.storage.column
+      )
+      const constraint = q(objectUniqueConstraintName(table.name, rule))
+      const unique = nativeColumns.map(q).join(", ")
+      ddl.push(
+        keys.every((key) => object.properties[key] !== undefined)
+          ? `create unique index ${constraint} on ${name} (${unique})`
+          : `alter table ${name} add constraint ${constraint} unique (${unique}) deferrable initially deferred`
+      )
+    }
   }
   ddl.push(
     schemaSection(
@@ -351,7 +361,7 @@ export function makePostgresSchema<const M extends ModelCatalog>(
         `create view ${q(table.name)} as select ${forward} as forward_id, ${reverse} as reverse_id from ${owner} where ${column} is not null`
       )
       constraints.push(
-        `alter table ${owner} add constraint ${q(`${snakeCase(link.id)}_target_fk`)} foreign key (${column}) references ${q(tableFor(plan.targetType))} (id) on delete set null deferrable initially deferred`
+        `alter table ${owner} add constraint ${q(`${snakeCase(link.id)}_target_fk`)} foreign key (${column}) references ${q(tableFor(plan.targetType))} (id) on delete ${link[plan.side].min === 1 ? "no action" : "set null"} deferrable initially deferred`
       )
       const opposite = link[plan.side === "forward" ? "reverse" : "forward"]
       if (opposite.max === 1)
@@ -375,7 +385,6 @@ export function makePostgresSchema<const M extends ModelCatalog>(
       )
   }
   // The closed model supplies every table and its exact physical row type.
-  ddl.push(...linkConstraintDdl(model, tableFor))
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   return {
     model,

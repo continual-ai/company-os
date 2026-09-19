@@ -222,16 +222,16 @@ not stored relationships.
 const DealOwner = defineLink({
   id: "dealOwner",
   name: "Deal owner",
-  from: Deal,
-  to: User,
-  forward: { key: "owner", label: "Owner", max: 1 },
-  reverse: { key: "ownedDeals", label: "Owned deals" },
+  from: { object: Deal, key: "owner", label: "Owner", max: 1 },
+  to: { object: User, key: "ownedDeals", label: "Owned deals" },
 })
 ```
 
-`min` defaults to zero; omitted `max` means unbounded. Bounds are enforced in both directions.
-A single link renders as one identity and a single-select editor; a collection renders a preview
-and a multi-select editor. Changing cardinality does not change the wire shape.
+Links support optional singular (`max: 1`), required singular (`min: 1, max: 1`),
+and optional unbounded plural traversals (no bounds). At most one end can be required.
+Singular references use foreign keys; many-to-many associations use join tables. Both
+traversals address the same relationship. `uniqueBy` can combine ordinary fields with
+references stored on the object's own table; it cannot impose uniqueness through joins.
 
 Get, list, and batch-get return scalar properties alongside `objectType` and `links`:
 
@@ -241,24 +241,29 @@ Get, list, and batch-get return scalar properties alongside `objectType` and `li
   "objectType": "deal",
   "name": "Expansion",
   "links": {
-    "owner": { "ids": ["user_…"], "totalSize": 1 },
-    "companies": { "ids": ["company_…"], "totalSize": 1 }
+    "owner": "user_…",
+    "companies": {
+      "ids": ["company_…"],
+      "totalSize": 1,
+      "totalSizeExact": true
+    }
   }
 }
 ```
 
-Each link includes at most three IDs and an exact `totalSize`. Use the traversal's paginated
-`list` operation for the complete collection. Hydrate previews with `records.batchGet({ ids })`
-(HTTP `POST /api/v1/records:batchGet`, MCP `records.batchGet`). It deduplicates input, preserves
-input order, and returns `missingIds` for missing or inactive records. Hydration returns the same
-canonical record shape without recursively expanding linked records.
+Singular links return an ID or null. Plural links include at most three IDs and a count;
+use the traversal's paginated `list` operation for the complete collection. Request
+`expand: true` or a map such as `expand: { owner: true }` to hydrate one hop. Alternatively,
+use `records.batchGet({ ids })` (HTTP `POST /api/v1/records:batchGet`, MCP `records.batchGet`).
+It deduplicates input, preserves input order, and returns `missingIds` for missing or
+inactive records.
 
-Create accepts `links: { owner: [userId] }`. Update accepts
-`links: { owner: { replace: [userId] }, companies: { add: [companyId], remove: [oldId] } }`.
-`replace` cannot be combined with `add` or `remove`. Linking a second target to a `max: 1`
-relationship fails; use explicit replacement. Subset links require membership in their base
-link; changing a selection does not silently add or remove base membership. Multi-link writes
-validate the final transaction state and commit together.
+Create accepts `links: { owner: userId, companies: [companyId] }`. Update accepts singular
+IDs or null, plural arrays to replace the whole set, or `{ add, remove }` for partial edits.
+Required references must be supplied at creation and replaced directly; they cannot be
+cleared temporarily, even inside a transaction. Linking a second target to a singular
+relationship fails; use explicit replacement. Record and relationship changes, search
+updates, and journal events commit together.
 
 Ownership is a link traversal with `onDelete: "cascade"`; its opposite direction must have
 `max: 1`. Deleting the source then deletes its linked targets. The default only removes edges,

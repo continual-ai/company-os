@@ -328,16 +328,11 @@ describe("makePostgresSchema", () => {
   })
 })
 
-it("generates cardinality triggers only for non-native bounds and changed relationships", () => {
+it("enforces required references with native constraints and no graph-count triggers", () => {
   const ddl = makePostgresSchema(fixtureModel).ddl.join("\n")
-  expect(ddl).not.toContain('create function "check_person_accounts"')
-  expect(ddl).not.toContain('create function "lock_person_accounts"')
-  expect(ddl).not.toContain('create function "check_person_billing_account"')
-  expect(ddl).toContain('create function "check_account_orders"')
-  expect(ddl).toContain(
-    'when (OLD."account_id" is distinct from NEW."account_id")'
-  )
-  expect(ddl).toContain(
-    'create constraint trigger "require_account_orders_reverse"'
-  )
+  expect(ddl).not.toContain('create function "check_')
+  expect(ddl).not.toContain('create function "lock_')
+  expect(ddl).not.toContain('create constraint trigger "require_')
+  expect(ddl).toContain('"account_id" text not null')
+  expect(ddl).toContain("on delete no action deferrable initially deferred")
 })

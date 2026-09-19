@@ -221,16 +221,21 @@ export function makeRepository<const O extends ObjectType>(object: O) {
         // the closed model before server services execute.
         // oxlint-disable-next-line typescript/no-unsafe-type-assertion
         const actorId = invocation.actorId as ObjectRecord<O>["createdBy"]
-        const record = yield* repository.insert({
-          ...canonical,
-          aliases: canonical.aliases ?? [],
-          metadata: canonical.metadata ?? {},
-          createdBy: actorId,
-          id: RecordId(object.id)(generateRecordId(object.id)),
-          systemManaged: false,
-          updatedBy: actorId,
-        })
-        yield* graph.initialize(object, record.id, links)
+        const id = RecordId(object.id)(generateRecordId(object.id))
+        const plan = yield* graph.prepareCreate(object, id, links)
+        const record = yield* repository.insert(
+          {
+            ...canonical,
+            aliases: canonical.aliases ?? [],
+            metadata: canonical.metadata ?? {},
+            createdBy: actorId,
+            id,
+            systemManaged: false,
+            updatedBy: actorId,
+          },
+          plan.references
+        )
+        yield* plan.apply(record.id)
         return yield* repository.get(record.id)
       },
       (effect) => database.transaction(() => effect)

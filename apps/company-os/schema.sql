@@ -193,8 +193,8 @@ create unique index "module_settings_module_unique" on "module_settings" ("modul
 -- desired state.
 create table "controllers" (
   "id" text not null,
-  -- Relationship reference; requiredness is checked at transaction commit.
-  "module_id" text,
+  -- Relationship reference.
+  "module_id" text not null,
   "paused" boolean not null default false,
   "definition_id" text not null,
   "name" text not null,
@@ -215,9 +215,9 @@ create unique index "controllers_definition_unique" on "controllers" ("definitio
 -- whole collection.
 create table "controller_instances" (
   "id" text not null,
-  -- Relationship reference; requiredness is checked at transaction commit.
-  "controller_id" text,
-  -- Relationship reference; requiredness is checked at transaction commit.
+  -- Relationship reference.
+  "controller_id" text not null,
+  -- Relationship reference.
   "record_id" text,
   "state" text not null default 'pending',
   "runs" integer not null default 0,
@@ -232,12 +232,14 @@ create table "controller_instances" (
   foreign key ("id") references "objects" ("id") on delete cascade
 );
 
+alter table "controller_instances" add constraint "controller_instances_target_unique" unique ("controller_id", "record_id") deferrable initially deferred;
+
 -- Connector (connector)
 -- A code-defined integration available to configured connections.
 create table "connectors" (
   "id" text not null,
-  -- Relationship reference; requiredness is checked at transaction commit.
-  "module_id" text,
+  -- Relationship reference.
+  "module_id" text not null,
   "definition_id" text not null,
   "name" text not null,
   "description" text not null,
@@ -255,8 +257,8 @@ create unique index "connectors_definition_unique" on "connectors" ("definition_
 -- accessible to the token.
 create table "connections" (
   "id" text not null,
-  -- Relationship reference; requiredness is checked at transaction commit.
-  "connector_id" text,
+  -- Relationship reference.
+  "connector_id" text not null,
   -- Enter the account's username or organization slug, not a display name or
   -- URL.
   "account" text not null,
@@ -271,6 +273,8 @@ create table "connections" (
   foreign key ("id") references "objects" ("id") on delete cascade
 );
 
+alter table "connections" add constraint "connections_account_unique" unique ("connector_id", "account") deferrable initially deferred;
+
 -- ===========================================================================
 -- Domain objects: CRM
 -- ===========================================================================
@@ -279,7 +283,7 @@ create table "connections" (
 -- A customer, prospect, or partner organization.
 create table "accounts" (
   "id" text not null,
-  -- Relationship reference; requiredness is checked at transaction commit.
+  -- Relationship reference.
   "owner_id" text,
   "name" text not null,
   "logo" jsonb,
@@ -321,7 +325,7 @@ create table "contacts" (
 -- A task, call, or meeting with a customer or prospect.
 create table "activities" (
   "id" text not null,
-  -- Relationship reference; requiredness is checked at transaction commit.
+  -- Relationship reference.
   "owner_id" text,
   "title" text not null,
   "kind" text not null default 'task',
@@ -337,10 +341,10 @@ create table "activities" (
 -- different roles or periods.
 create table "affiliations" (
   "id" text not null,
-  -- Relationship reference; requiredness is checked at transaction commit.
-  "contact_id" text,
-  -- Relationship reference; requiredness is checked at transaction commit.
-  "account_id" text,
+  -- Relationship reference.
+  "contact_id" text not null,
+  -- Relationship reference.
+  "account_id" text not null,
   "job_title" text,
   "start_date" date,
   "end_date" date,
@@ -359,13 +363,13 @@ alter table "affiliations" add constraint "affiliations_check_dates" check ("sta
 -- live on the linked CRM records.
 create table "leads" (
   "id" text not null,
-  -- Relationship reference; requiredness is checked at transaction commit.
-  "account_id" text,
-  -- Relationship reference; requiredness is checked at transaction commit.
+  -- Relationship reference.
+  "account_id" text not null,
+  -- Relationship reference.
   "owner_id" text,
-  -- Relationship reference; requiredness is checked at transaction commit.
-  "contact_id" text,
-  -- Relationship reference; requiredness is checked at transaction commit.
+  -- Relationship reference.
+  "contact_id" text not null,
+  -- Relationship reference.
   "opportunity_id" text,
   "name" text not null,
   "source" text not null default 'unknown',
@@ -378,7 +382,7 @@ create table "leads" (
 -- A sales opportunity with its value, stage, and next steps.
 create table "opportunities" (
   "id" text not null,
-  -- Relationship reference; requiredness is checked at transaction commit.
+  -- Relationship reference.
   "owner_id" text,
   "name" text not null,
   "stage" text not null default 'discovery',
@@ -398,8 +402,8 @@ create table "opportunities" (
 -- A product or service included in a opportunity.
 create table "line_items" (
   "id" text not null,
-  -- Relationship reference; requiredness is checked at transaction commit.
-  "opportunity_id" text,
+  -- Relationship reference.
+  "opportunity_id" text not null,
   "name" text not null,
   "quantity" integer not null default 1,
   "unit_price" jsonb,
@@ -415,7 +419,7 @@ create table "line_items" (
 -- Plan a marketing campaign and track its budget, dates, and audience.
 create table "campaigns" (
   "id" text not null,
-  -- Relationship reference; requiredness is checked at transaction commit.
+  -- Relationship reference.
   "owner_id" text,
   "name" text not null,
   "objective" text,
@@ -434,9 +438,9 @@ alter table "campaigns" add constraint "campaigns_check_dates" check ("start_dat
 -- Track an article, post, or ad. Saving does not publish it.
 create table "contents" (
   "id" text not null,
-  -- Relationship reference; requiredness is checked at transaction commit.
+  -- Relationship reference.
   "campaign_id" text,
-  -- Relationship reference; requiredness is checked at transaction commit.
+  -- Relationship reference.
   "owner_id" text,
   "title" text not null,
   "format" text not null default 'article',
@@ -454,10 +458,10 @@ create table "contents" (
 -- Track a contact's progress and next follow-up in a campaign.
 create table "campaign_members" (
   "id" text not null,
-  -- Relationship reference; requiredness is checked at transaction commit.
-  "campaign_id" text,
-  -- Relationship reference; requiredness is checked at transaction commit.
-  "contact_id" text,
+  -- Relationship reference.
+  "campaign_id" text not null,
+  -- Relationship reference.
+  "contact_id" text not null,
   "status" text not null default 'queued',
   "step" integer not null default 0,
   "next_touch_at" timestamp with time zone,
@@ -466,15 +470,17 @@ create table "campaign_members" (
   foreign key ("id") references "objects" ("id") on delete cascade
 );
 
+alter table "campaign_members" add constraint "campaign_members_membership_unique" unique ("campaign_id", "contact_id") deferrable initially deferred;
+
 -- Outreach (outreach)
 -- Track a message and its delivery status. Saving does not send it.
 create table "outreaches" (
   "id" text not null,
-  -- Relationship reference; requiredness is checked at transaction commit.
+  -- Relationship reference.
   "campaign_id" text,
-  -- Relationship reference; requiredness is checked at transaction commit.
-  "contact_id" text,
-  -- Relationship reference; requiredness is checked at transaction commit.
+  -- Relationship reference.
+  "contact_id" text not null,
+  -- Relationship reference.
   "owner_id" text,
   "subject" text not null,
   "channel" text not null default 'email',
@@ -496,7 +502,7 @@ create table "outreaches" (
 -- Related work organized around a goal and target date.
 create table "projects" (
   "id" text not null,
-  -- Relationship reference; requiredness is checked at transaction commit.
+  -- Relationship reference.
   "owner_id" text,
   "name" text not null,
   "objective" text,
@@ -510,9 +516,9 @@ create table "projects" (
 -- A bug, request, or task to investigate and resolve.
 create table "issues" (
   "id" text not null,
-  -- Relationship reference; requiredness is checked at transaction commit.
+  -- Relationship reference.
   "project_id" text,
-  -- Relationship reference; requiredness is checked at transaction commit.
+  -- Relationship reference.
   "assignee_id" text,
   "title" text not null,
   "description" text,
@@ -534,9 +540,9 @@ create table "issues" (
 -- and pull requests.
 create table "github_repositories" (
   "id" text not null,
-  -- Relationship reference; requiredness is checked at transaction commit.
-  "connection_id" text,
-  -- Relationship reference; requiredness is checked at transaction commit.
+  -- Relationship reference.
+  "connection_id" text not null,
+  -- Relationship reference.
   "maintainer_id" text,
   "sync_error" text,
   "sync_page" integer,
@@ -561,8 +567,8 @@ create unique index "github_repositories_github_unique" on "github_repositories"
 -- Track a code change, its reviews, and checks. Merge it in GitHub.
 create table "github_pull_requests" (
   "id" text not null,
-  -- Relationship reference; requiredness is checked at transaction commit.
-  "repository_id" text,
+  -- Relationship reference.
+  "repository_id" text not null,
   "node_id" text not null,
   "body" text,
   "title" text not null,
@@ -578,12 +584,14 @@ create table "github_pull_requests" (
 
 create unique index "github_pull_requests_github_unique" on "github_pull_requests" ("node_id");
 
+alter table "github_pull_requests" add constraint "github_pull_requests_number_unique" unique ("repository_id", "number") deferrable initially deferred;
+
 -- GitHub issue (githubIssue)
 -- An issue tracked in GitHub, separate from internal product planning.
 create table "github_issues" (
   "id" text not null,
-  -- Relationship reference; requiredness is checked at transaction commit.
-  "repository_id" text,
+  -- Relationship reference.
+  "repository_id" text not null,
   "node_id" text not null,
   "number" integer not null,
   "title" text not null,
@@ -596,6 +604,8 @@ create table "github_issues" (
 
 create unique index "github_issues_github_unique" on "github_issues" ("node_id");
 
+alter table "github_issues" add constraint "github_issues_number_unique" unique ("repository_id", "number") deferrable initially deferred;
+
 -- ===========================================================================
 -- Domain objects: Hiring
 -- ===========================================================================
@@ -604,7 +614,7 @@ create unique index "github_issues_github_unique" on "github_issues" ("node_id")
 -- A role your account is hiring for.
 create table "job_postings" (
   "id" text not null,
-  -- Relationship reference; requiredness is checked at transaction commit.
+  -- Relationship reference.
   "hiring_manager_id" text,
   "title" text not null,
   "description" text not null,
@@ -638,10 +648,10 @@ create unique index "candidates_email_unique" on "candidates" ("email");
 -- A candidate's application for a specific job posting.
 create table "applications" (
   "id" text not null,
-  -- Relationship reference; requiredness is checked at transaction commit.
-  "job_id" text,
-  -- Relationship reference; requiredness is checked at transaction commit.
-  "candidate_id" text,
+  -- Relationship reference.
+  "job_id" text not null,
+  -- Relationship reference.
+  "candidate_id" text not null,
   "stage" text not null default 'new',
   "source" text not null default 'unknown',
   "cover_letter" text,
@@ -652,6 +662,8 @@ create table "applications" (
   foreign key ("id") references "objects" ("id") on delete cascade
 );
 
+alter table "applications" add constraint "applications_candidate_job_unique" unique ("candidate_id", "job_id") deferrable initially deferred;
+
 -- ===========================================================================
 -- Domain objects: Service
 -- ===========================================================================
@@ -660,11 +672,11 @@ create table "applications" (
 -- A customer request or problem to investigate and resolve.
 create table "tickets" (
   "id" text not null,
-  -- Relationship reference; requiredness is checked at transaction commit.
+  -- Relationship reference.
   "account_id" text,
-  -- Relationship reference; requiredness is checked at transaction commit.
+  -- Relationship reference.
   "requester_id" text,
-  -- Relationship reference; requiredness is checked at transaction commit.
+  -- Relationship reference.
   "owner_id" text,
   "subject" text not null,
   "description" text,
@@ -681,8 +693,8 @@ create table "tickets" (
 -- A message about a support ticket. Saving does not send it.
 create table "replies" (
   "id" text not null,
-  -- Relationship reference; requiredness is checked at transaction commit.
-  "ticket_id" text,
+  -- Relationship reference.
+  "ticket_id" text not null,
   "subject" text not null,
   "direction" text not null default 'inbound',
   "status" text not null default 'draft',
@@ -1013,882 +1025,6 @@ create table "link_opportunity_issues" (
 create index "link_opportunity_issues_forward_id_idx" on "link_opportunity_issues" ("forward_id");
 create index "link_opportunity_issues_reverse_id_idx" on "link_opportunity_issues" ("reverse_id");
 
-create function "check_controller_module"(source_id text, side text) returns void language plpgsql as $$
-declare n bigint;
-begin
-  if side = 'forward' and exists (select 1 from "controllers" where id = source_id) then
-    select count(*) into n from "link_controller_module" where "forward_id" = source_id;
-    if n < 1 or false then
-      raise exception 'Link % traversal % requires %..% targets; found %', 'controllerModule', 'module', 1, '1', n
-        using errcode = '23514', constraint = 'controllerModule.module.bounds';
-    end if;
-  end if;
-end $$;
-
-create function "validate_controller_module"() returns trigger language plpgsql as $$
-begin
-  if TG_OP <> 'INSERT' then
-    perform "check_controller_module"(OLD.id, 'forward');
-  end if;
-  if TG_OP <> 'DELETE' then
-    perform "check_controller_module"(NEW.id, 'forward');
-  end if;
-  return null;
-end $$;
-
-create constraint trigger "validate_controller_module" after insert or delete on "controllers" deferrable initially deferred for each row execute function "validate_controller_module"();
-
-create constraint trigger "validate_controller_module_update" after update on "controllers" deferrable initially deferred for each row when (OLD."module_id" is distinct from NEW."module_id") execute function "validate_controller_module"();
-
-create function "lock_controller_module"() returns trigger language plpgsql as $$
-    declare ids text[] := array[]::text[];
-    begin
-      if TG_OP <> 'INSERT' then ids := ids || array[OLD.id]; end if;
-      if TG_OP <> 'DELETE' then ids := ids || array[NEW.id]; end if;
-      perform id from objects where id = any(ids) order by id for update;
-      if TG_OP = 'DELETE' then return OLD; else return NEW; end if;
-    end $$;
-
-create trigger "lock_controller_module" before insert or delete on "controllers" for each row execute function "lock_controller_module"();
-
-create trigger "lock_controller_module_update" before update on "controllers" for each row when (OLD."module_id" is distinct from NEW."module_id") execute function "lock_controller_module"();
-
-create function "require_controller_module_forward"() returns trigger language plpgsql as $$
-begin
-  perform "check_controller_module"(NEW.id, 'forward');
-  return null;
-end $$;
-
-create constraint trigger "require_controller_module_forward" after insert on "controllers" deferrable initially deferred for each row execute function "require_controller_module_forward"();
-
-create function "check_connector_module"(source_id text, side text) returns void language plpgsql as $$
-declare n bigint;
-begin
-  if side = 'forward' and exists (select 1 from "connectors" where id = source_id) then
-    select count(*) into n from "link_connector_module" where "forward_id" = source_id;
-    if n < 1 or false then
-      raise exception 'Link % traversal % requires %..% targets; found %', 'connectorModule', 'module', 1, '1', n
-        using errcode = '23514', constraint = 'connectorModule.module.bounds';
-    end if;
-  end if;
-end $$;
-
-create function "validate_connector_module"() returns trigger language plpgsql as $$
-begin
-  if TG_OP <> 'INSERT' then
-    perform "check_connector_module"(OLD.id, 'forward');
-  end if;
-  if TG_OP <> 'DELETE' then
-    perform "check_connector_module"(NEW.id, 'forward');
-  end if;
-  return null;
-end $$;
-
-create constraint trigger "validate_connector_module" after insert or delete on "connectors" deferrable initially deferred for each row execute function "validate_connector_module"();
-
-create constraint trigger "validate_connector_module_update" after update on "connectors" deferrable initially deferred for each row when (OLD."module_id" is distinct from NEW."module_id") execute function "validate_connector_module"();
-
-create function "lock_connector_module"() returns trigger language plpgsql as $$
-    declare ids text[] := array[]::text[];
-    begin
-      if TG_OP <> 'INSERT' then ids := ids || array[OLD.id]; end if;
-      if TG_OP <> 'DELETE' then ids := ids || array[NEW.id]; end if;
-      perform id from objects where id = any(ids) order by id for update;
-      if TG_OP = 'DELETE' then return OLD; else return NEW; end if;
-    end $$;
-
-create trigger "lock_connector_module" before insert or delete on "connectors" for each row execute function "lock_connector_module"();
-
-create trigger "lock_connector_module_update" before update on "connectors" for each row when (OLD."module_id" is distinct from NEW."module_id") execute function "lock_connector_module"();
-
-create function "require_connector_module_forward"() returns trigger language plpgsql as $$
-begin
-  perform "check_connector_module"(NEW.id, 'forward');
-  return null;
-end $$;
-
-create constraint trigger "require_connector_module_forward" after insert on "connectors" deferrable initially deferred for each row execute function "require_connector_module_forward"();
-
-create function "check_connection_connector"(source_id text, side text) returns void language plpgsql as $$
-declare n bigint;
-begin
-  if side = 'forward' and exists (select 1 from "connections" where id = source_id) then
-    select count(*) into n from "link_connection_connector" where "forward_id" = source_id;
-    if n < 1 or false then
-      raise exception 'Link % traversal % requires %..% targets; found %', 'connectionConnector', 'connector', 1, '1', n
-        using errcode = '23514', constraint = 'connectionConnector.connector.bounds';
-    end if;
-  end if;
-end $$;
-
-create function "validate_connection_connector"() returns trigger language plpgsql as $$
-begin
-  if TG_OP <> 'INSERT' then
-    perform "check_connection_connector"(OLD.id, 'forward');
-  end if;
-  if TG_OP <> 'DELETE' then
-    perform "check_connection_connector"(NEW.id, 'forward');
-  end if;
-  return null;
-end $$;
-
-create constraint trigger "validate_connection_connector" after insert or delete on "connections" deferrable initially deferred for each row execute function "validate_connection_connector"();
-
-create constraint trigger "validate_connection_connector_update" after update on "connections" deferrable initially deferred for each row when (OLD."connector_id" is distinct from NEW."connector_id") execute function "validate_connection_connector"();
-
-create function "lock_connection_connector"() returns trigger language plpgsql as $$
-    declare ids text[] := array[]::text[];
-    begin
-      if TG_OP <> 'INSERT' then ids := ids || array[OLD.id]; end if;
-      if TG_OP <> 'DELETE' then ids := ids || array[NEW.id]; end if;
-      perform id from objects where id = any(ids) order by id for update;
-      if TG_OP = 'DELETE' then return OLD; else return NEW; end if;
-    end $$;
-
-create trigger "lock_connection_connector" before insert or delete on "connections" for each row execute function "lock_connection_connector"();
-
-create trigger "lock_connection_connector_update" before update on "connections" for each row when (OLD."connector_id" is distinct from NEW."connector_id") execute function "lock_connection_connector"();
-
-create function "require_connection_connector_forward"() returns trigger language plpgsql as $$
-begin
-  perform "check_connection_connector"(NEW.id, 'forward');
-  return null;
-end $$;
-
-create constraint trigger "require_connection_connector_forward" after insert on "connections" deferrable initially deferred for each row execute function "require_connection_connector_forward"();
-
-create function "check_controller_instance_controller"(source_id text, side text) returns void language plpgsql as $$
-declare n bigint;
-begin
-  if side = 'forward' and exists (select 1 from "controller_instances" where id = source_id) then
-    select count(*) into n from "link_controller_instance_controller" where "forward_id" = source_id;
-    if n < 1 or false then
-      raise exception 'Link % traversal % requires %..% targets; found %', 'controllerInstanceController', 'controller', 1, '1', n
-        using errcode = '23514', constraint = 'controllerInstanceController.controller.bounds';
-    end if;
-  end if;
-end $$;
-
-create function "validate_controller_instance_controller"() returns trigger language plpgsql as $$
-begin
-  if TG_OP <> 'INSERT' then
-    perform "check_controller_instance_controller"(OLD.id, 'forward');
-  end if;
-  if TG_OP <> 'DELETE' then
-    perform "check_controller_instance_controller"(NEW.id, 'forward');
-  end if;
-  return null;
-end $$;
-
-create constraint trigger "validate_controller_instance_controller" after insert or delete on "controller_instances" deferrable initially deferred for each row execute function "validate_controller_instance_controller"();
-
-create constraint trigger "validate_controller_instance_controller_update" after update on "controller_instances" deferrable initially deferred for each row when (OLD."controller_id" is distinct from NEW."controller_id") execute function "validate_controller_instance_controller"();
-
-create function "lock_controller_instance_controller"() returns trigger language plpgsql as $$
-    declare ids text[] := array[]::text[];
-    begin
-      if TG_OP <> 'INSERT' then ids := ids || array[OLD.id]; end if;
-      if TG_OP <> 'DELETE' then ids := ids || array[NEW.id]; end if;
-      perform id from objects where id = any(ids) order by id for update;
-      if TG_OP = 'DELETE' then return OLD; else return NEW; end if;
-    end $$;
-
-create trigger "lock_controller_instance_controller" before insert or delete on "controller_instances" for each row execute function "lock_controller_instance_controller"();
-
-create trigger "lock_controller_instance_controller_update" before update on "controller_instances" for each row when (OLD."controller_id" is distinct from NEW."controller_id") execute function "lock_controller_instance_controller"();
-
-create function "require_controller_instance_controller_forward"() returns trigger language plpgsql as $$
-begin
-  perform "check_controller_instance_controller"(NEW.id, 'forward');
-  return null;
-end $$;
-
-create constraint trigger "require_controller_instance_controller_forward" after insert on "controller_instances" deferrable initially deferred for each row execute function "require_controller_instance_controller_forward"();
-
-create function "check_affiliation_contact"(source_id text, side text) returns void language plpgsql as $$
-declare n bigint;
-begin
-  if side = 'forward' and exists (select 1 from "affiliations" where id = source_id) then
-    select count(*) into n from "link_affiliation_contact" where "forward_id" = source_id;
-    if n < 1 or false then
-      raise exception 'Link % traversal % requires %..% targets; found %', 'affiliationContact', 'contact', 1, '1', n
-        using errcode = '23514', constraint = 'affiliationContact.contact.bounds';
-    end if;
-  end if;
-end $$;
-
-create function "validate_affiliation_contact"() returns trigger language plpgsql as $$
-begin
-  if TG_OP <> 'INSERT' then
-    perform "check_affiliation_contact"(OLD.id, 'forward');
-  end if;
-  if TG_OP <> 'DELETE' then
-    perform "check_affiliation_contact"(NEW.id, 'forward');
-  end if;
-  return null;
-end $$;
-
-create constraint trigger "validate_affiliation_contact" after insert or delete on "affiliations" deferrable initially deferred for each row execute function "validate_affiliation_contact"();
-
-create constraint trigger "validate_affiliation_contact_update" after update on "affiliations" deferrable initially deferred for each row when (OLD."contact_id" is distinct from NEW."contact_id") execute function "validate_affiliation_contact"();
-
-create function "lock_affiliation_contact"() returns trigger language plpgsql as $$
-    declare ids text[] := array[]::text[];
-    begin
-      if TG_OP <> 'INSERT' then ids := ids || array[OLD.id]; end if;
-      if TG_OP <> 'DELETE' then ids := ids || array[NEW.id]; end if;
-      perform id from objects where id = any(ids) order by id for update;
-      if TG_OP = 'DELETE' then return OLD; else return NEW; end if;
-    end $$;
-
-create trigger "lock_affiliation_contact" before insert or delete on "affiliations" for each row execute function "lock_affiliation_contact"();
-
-create trigger "lock_affiliation_contact_update" before update on "affiliations" for each row when (OLD."contact_id" is distinct from NEW."contact_id") execute function "lock_affiliation_contact"();
-
-create function "require_affiliation_contact_forward"() returns trigger language plpgsql as $$
-begin
-  perform "check_affiliation_contact"(NEW.id, 'forward');
-  return null;
-end $$;
-
-create constraint trigger "require_affiliation_contact_forward" after insert on "affiliations" deferrable initially deferred for each row execute function "require_affiliation_contact_forward"();
-
-create function "check_affiliation_account"(source_id text, side text) returns void language plpgsql as $$
-declare n bigint;
-begin
-  if side = 'forward' and exists (select 1 from "affiliations" where id = source_id) then
-    select count(*) into n from "link_affiliation_account" where "forward_id" = source_id;
-    if n < 1 or false then
-      raise exception 'Link % traversal % requires %..% targets; found %', 'affiliationAccount', 'account', 1, '1', n
-        using errcode = '23514', constraint = 'affiliationAccount.account.bounds';
-    end if;
-  end if;
-end $$;
-
-create function "validate_affiliation_account"() returns trigger language plpgsql as $$
-begin
-  if TG_OP <> 'INSERT' then
-    perform "check_affiliation_account"(OLD.id, 'forward');
-  end if;
-  if TG_OP <> 'DELETE' then
-    perform "check_affiliation_account"(NEW.id, 'forward');
-  end if;
-  return null;
-end $$;
-
-create constraint trigger "validate_affiliation_account" after insert or delete on "affiliations" deferrable initially deferred for each row execute function "validate_affiliation_account"();
-
-create constraint trigger "validate_affiliation_account_update" after update on "affiliations" deferrable initially deferred for each row when (OLD."account_id" is distinct from NEW."account_id") execute function "validate_affiliation_account"();
-
-create function "lock_affiliation_account"() returns trigger language plpgsql as $$
-    declare ids text[] := array[]::text[];
-    begin
-      if TG_OP <> 'INSERT' then ids := ids || array[OLD.id]; end if;
-      if TG_OP <> 'DELETE' then ids := ids || array[NEW.id]; end if;
-      perform id from objects where id = any(ids) order by id for update;
-      if TG_OP = 'DELETE' then return OLD; else return NEW; end if;
-    end $$;
-
-create trigger "lock_affiliation_account" before insert or delete on "affiliations" for each row execute function "lock_affiliation_account"();
-
-create trigger "lock_affiliation_account_update" before update on "affiliations" for each row when (OLD."account_id" is distinct from NEW."account_id") execute function "lock_affiliation_account"();
-
-create function "require_affiliation_account_forward"() returns trigger language plpgsql as $$
-begin
-  perform "check_affiliation_account"(NEW.id, 'forward');
-  return null;
-end $$;
-
-create constraint trigger "require_affiliation_account_forward" after insert on "affiliations" deferrable initially deferred for each row execute function "require_affiliation_account_forward"();
-
-create function "check_opportunity_line_items"(source_id text, side text) returns void language plpgsql as $$
-declare n bigint;
-begin
-  if side = 'reverse' and exists (select 1 from "line_items" where id = source_id) then
-    select count(*) into n from "link_opportunity_line_items" where "reverse_id" = source_id;
-    if n < 1 or false then
-      raise exception 'Link % traversal % requires %..% targets; found %', 'opportunityLineItems', 'opportunity', 1, '1', n
-        using errcode = '23514', constraint = 'opportunityLineItems.opportunity.bounds';
-    end if;
-  end if;
-end $$;
-
-create function "validate_opportunity_line_items"() returns trigger language plpgsql as $$
-begin
-  if TG_OP <> 'INSERT' then
-    perform "check_opportunity_line_items"(OLD.id, 'reverse');
-  end if;
-  if TG_OP <> 'DELETE' then
-    perform "check_opportunity_line_items"(NEW.id, 'reverse');
-  end if;
-  return null;
-end $$;
-
-create constraint trigger "validate_opportunity_line_items" after insert or delete on "line_items" deferrable initially deferred for each row execute function "validate_opportunity_line_items"();
-
-create constraint trigger "validate_opportunity_line_items_update" after update on "line_items" deferrable initially deferred for each row when (OLD."opportunity_id" is distinct from NEW."opportunity_id") execute function "validate_opportunity_line_items"();
-
-create function "lock_opportunity_line_items"() returns trigger language plpgsql as $$
-    declare ids text[] := array[]::text[];
-    begin
-      if TG_OP <> 'INSERT' then ids := ids || array[OLD.id]; end if;
-      if TG_OP <> 'DELETE' then ids := ids || array[NEW.id]; end if;
-      perform id from objects where id = any(ids) order by id for update;
-      if TG_OP = 'DELETE' then return OLD; else return NEW; end if;
-    end $$;
-
-create trigger "lock_opportunity_line_items" before insert or delete on "line_items" for each row execute function "lock_opportunity_line_items"();
-
-create trigger "lock_opportunity_line_items_update" before update on "line_items" for each row when (OLD."opportunity_id" is distinct from NEW."opportunity_id") execute function "lock_opportunity_line_items"();
-
-create function "require_opportunity_line_items_reverse"() returns trigger language plpgsql as $$
-begin
-  perform "check_opportunity_line_items"(NEW.id, 'reverse');
-  return null;
-end $$;
-
-create constraint trigger "require_opportunity_line_items_reverse" after insert on "line_items" deferrable initially deferred for each row execute function "require_opportunity_line_items_reverse"();
-
-create function "check_lead_account"(source_id text, side text) returns void language plpgsql as $$
-declare n bigint;
-begin
-  if side = 'forward' and exists (select 1 from "leads" where id = source_id) then
-    select count(*) into n from "link_lead_account" where "forward_id" = source_id;
-    if n < 1 or false then
-      raise exception 'Link % traversal % requires %..% targets; found %', 'leadAccount', 'account', 1, '1', n
-        using errcode = '23514', constraint = 'leadAccount.account.bounds';
-    end if;
-  end if;
-end $$;
-
-create function "validate_lead_account"() returns trigger language plpgsql as $$
-begin
-  if TG_OP <> 'INSERT' then
-    perform "check_lead_account"(OLD.id, 'forward');
-  end if;
-  if TG_OP <> 'DELETE' then
-    perform "check_lead_account"(NEW.id, 'forward');
-  end if;
-  return null;
-end $$;
-
-create constraint trigger "validate_lead_account" after insert or delete on "leads" deferrable initially deferred for each row execute function "validate_lead_account"();
-
-create constraint trigger "validate_lead_account_update" after update on "leads" deferrable initially deferred for each row when (OLD."account_id" is distinct from NEW."account_id") execute function "validate_lead_account"();
-
-create function "lock_lead_account"() returns trigger language plpgsql as $$
-    declare ids text[] := array[]::text[];
-    begin
-      if TG_OP <> 'INSERT' then ids := ids || array[OLD.id]; end if;
-      if TG_OP <> 'DELETE' then ids := ids || array[NEW.id]; end if;
-      perform id from objects where id = any(ids) order by id for update;
-      if TG_OP = 'DELETE' then return OLD; else return NEW; end if;
-    end $$;
-
-create trigger "lock_lead_account" before insert or delete on "leads" for each row execute function "lock_lead_account"();
-
-create trigger "lock_lead_account_update" before update on "leads" for each row when (OLD."account_id" is distinct from NEW."account_id") execute function "lock_lead_account"();
-
-create function "require_lead_account_forward"() returns trigger language plpgsql as $$
-begin
-  perform "check_lead_account"(NEW.id, 'forward');
-  return null;
-end $$;
-
-create constraint trigger "require_lead_account_forward" after insert on "leads" deferrable initially deferred for each row execute function "require_lead_account_forward"();
-
-create function "check_lead_contact"(source_id text, side text) returns void language plpgsql as $$
-declare n bigint;
-begin
-  if side = 'forward' and exists (select 1 from "leads" where id = source_id) then
-    select count(*) into n from "link_lead_contact" where "forward_id" = source_id;
-    if n < 1 or false then
-      raise exception 'Link % traversal % requires %..% targets; found %', 'leadContact', 'contact', 1, '1', n
-        using errcode = '23514', constraint = 'leadContact.contact.bounds';
-    end if;
-  end if;
-end $$;
-
-create function "validate_lead_contact"() returns trigger language plpgsql as $$
-begin
-  if TG_OP <> 'INSERT' then
-    perform "check_lead_contact"(OLD.id, 'forward');
-  end if;
-  if TG_OP <> 'DELETE' then
-    perform "check_lead_contact"(NEW.id, 'forward');
-  end if;
-  return null;
-end $$;
-
-create constraint trigger "validate_lead_contact" after insert or delete on "leads" deferrable initially deferred for each row execute function "validate_lead_contact"();
-
-create constraint trigger "validate_lead_contact_update" after update on "leads" deferrable initially deferred for each row when (OLD."contact_id" is distinct from NEW."contact_id") execute function "validate_lead_contact"();
-
-create function "lock_lead_contact"() returns trigger language plpgsql as $$
-    declare ids text[] := array[]::text[];
-    begin
-      if TG_OP <> 'INSERT' then ids := ids || array[OLD.id]; end if;
-      if TG_OP <> 'DELETE' then ids := ids || array[NEW.id]; end if;
-      perform id from objects where id = any(ids) order by id for update;
-      if TG_OP = 'DELETE' then return OLD; else return NEW; end if;
-    end $$;
-
-create trigger "lock_lead_contact" before insert or delete on "leads" for each row execute function "lock_lead_contact"();
-
-create trigger "lock_lead_contact_update" before update on "leads" for each row when (OLD."contact_id" is distinct from NEW."contact_id") execute function "lock_lead_contact"();
-
-create function "require_lead_contact_forward"() returns trigger language plpgsql as $$
-begin
-  perform "check_lead_contact"(NEW.id, 'forward');
-  return null;
-end $$;
-
-create constraint trigger "require_lead_contact_forward" after insert on "leads" deferrable initially deferred for each row execute function "require_lead_contact_forward"();
-
-create function "check_campaign_member_campaign"(source_id text, side text) returns void language plpgsql as $$
-declare n bigint;
-begin
-  if side = 'forward' and exists (select 1 from "campaign_members" where id = source_id) then
-    select count(*) into n from "link_campaign_member_campaign" where "forward_id" = source_id;
-    if n < 1 or false then
-      raise exception 'Link % traversal % requires %..% targets; found %', 'campaignMemberCampaign', 'campaign', 1, '1', n
-        using errcode = '23514', constraint = 'campaignMemberCampaign.campaign.bounds';
-    end if;
-  end if;
-end $$;
-
-create function "validate_campaign_member_campaign"() returns trigger language plpgsql as $$
-begin
-  if TG_OP <> 'INSERT' then
-    perform "check_campaign_member_campaign"(OLD.id, 'forward');
-  end if;
-  if TG_OP <> 'DELETE' then
-    perform "check_campaign_member_campaign"(NEW.id, 'forward');
-  end if;
-  return null;
-end $$;
-
-create constraint trigger "validate_campaign_member_campaign" after insert or delete on "campaign_members" deferrable initially deferred for each row execute function "validate_campaign_member_campaign"();
-
-create constraint trigger "validate_campaign_member_campaign_update" after update on "campaign_members" deferrable initially deferred for each row when (OLD."campaign_id" is distinct from NEW."campaign_id") execute function "validate_campaign_member_campaign"();
-
-create function "lock_campaign_member_campaign"() returns trigger language plpgsql as $$
-    declare ids text[] := array[]::text[];
-    begin
-      if TG_OP <> 'INSERT' then ids := ids || array[OLD.id]; end if;
-      if TG_OP <> 'DELETE' then ids := ids || array[NEW.id]; end if;
-      perform id from objects where id = any(ids) order by id for update;
-      if TG_OP = 'DELETE' then return OLD; else return NEW; end if;
-    end $$;
-
-create trigger "lock_campaign_member_campaign" before insert or delete on "campaign_members" for each row execute function "lock_campaign_member_campaign"();
-
-create trigger "lock_campaign_member_campaign_update" before update on "campaign_members" for each row when (OLD."campaign_id" is distinct from NEW."campaign_id") execute function "lock_campaign_member_campaign"();
-
-create function "require_campaign_member_campaign_forward"() returns trigger language plpgsql as $$
-begin
-  perform "check_campaign_member_campaign"(NEW.id, 'forward');
-  return null;
-end $$;
-
-create constraint trigger "require_campaign_member_campaign_forward" after insert on "campaign_members" deferrable initially deferred for each row execute function "require_campaign_member_campaign_forward"();
-
-create function "check_campaign_member_contact"(source_id text, side text) returns void language plpgsql as $$
-declare n bigint;
-begin
-  if side = 'forward' and exists (select 1 from "campaign_members" where id = source_id) then
-    select count(*) into n from "link_campaign_member_contact" where "forward_id" = source_id;
-    if n < 1 or false then
-      raise exception 'Link % traversal % requires %..% targets; found %', 'campaignMemberContact', 'contact', 1, '1', n
-        using errcode = '23514', constraint = 'campaignMemberContact.contact.bounds';
-    end if;
-  end if;
-end $$;
-
-create function "validate_campaign_member_contact"() returns trigger language plpgsql as $$
-begin
-  if TG_OP <> 'INSERT' then
-    perform "check_campaign_member_contact"(OLD.id, 'forward');
-  end if;
-  if TG_OP <> 'DELETE' then
-    perform "check_campaign_member_contact"(NEW.id, 'forward');
-  end if;
-  return null;
-end $$;
-
-create constraint trigger "validate_campaign_member_contact" after insert or delete on "campaign_members" deferrable initially deferred for each row execute function "validate_campaign_member_contact"();
-
-create constraint trigger "validate_campaign_member_contact_update" after update on "campaign_members" deferrable initially deferred for each row when (OLD."contact_id" is distinct from NEW."contact_id") execute function "validate_campaign_member_contact"();
-
-create function "lock_campaign_member_contact"() returns trigger language plpgsql as $$
-    declare ids text[] := array[]::text[];
-    begin
-      if TG_OP <> 'INSERT' then ids := ids || array[OLD.id]; end if;
-      if TG_OP <> 'DELETE' then ids := ids || array[NEW.id]; end if;
-      perform id from objects where id = any(ids) order by id for update;
-      if TG_OP = 'DELETE' then return OLD; else return NEW; end if;
-    end $$;
-
-create trigger "lock_campaign_member_contact" before insert or delete on "campaign_members" for each row execute function "lock_campaign_member_contact"();
-
-create trigger "lock_campaign_member_contact_update" before update on "campaign_members" for each row when (OLD."contact_id" is distinct from NEW."contact_id") execute function "lock_campaign_member_contact"();
-
-create function "require_campaign_member_contact_forward"() returns trigger language plpgsql as $$
-begin
-  perform "check_campaign_member_contact"(NEW.id, 'forward');
-  return null;
-end $$;
-
-create constraint trigger "require_campaign_member_contact_forward" after insert on "campaign_members" deferrable initially deferred for each row execute function "require_campaign_member_contact_forward"();
-
-create function "check_outreach_contact"(source_id text, side text) returns void language plpgsql as $$
-declare n bigint;
-begin
-  if side = 'forward' and exists (select 1 from "outreaches" where id = source_id) then
-    select count(*) into n from "link_outreach_contact" where "forward_id" = source_id;
-    if n < 1 or false then
-      raise exception 'Link % traversal % requires %..% targets; found %', 'outreachContact', 'contact', 1, '1', n
-        using errcode = '23514', constraint = 'outreachContact.contact.bounds';
-    end if;
-  end if;
-end $$;
-
-create function "validate_outreach_contact"() returns trigger language plpgsql as $$
-begin
-  if TG_OP <> 'INSERT' then
-    perform "check_outreach_contact"(OLD.id, 'forward');
-  end if;
-  if TG_OP <> 'DELETE' then
-    perform "check_outreach_contact"(NEW.id, 'forward');
-  end if;
-  return null;
-end $$;
-
-create constraint trigger "validate_outreach_contact" after insert or delete on "outreaches" deferrable initially deferred for each row execute function "validate_outreach_contact"();
-
-create constraint trigger "validate_outreach_contact_update" after update on "outreaches" deferrable initially deferred for each row when (OLD."contact_id" is distinct from NEW."contact_id") execute function "validate_outreach_contact"();
-
-create function "lock_outreach_contact"() returns trigger language plpgsql as $$
-    declare ids text[] := array[]::text[];
-    begin
-      if TG_OP <> 'INSERT' then ids := ids || array[OLD.id]; end if;
-      if TG_OP <> 'DELETE' then ids := ids || array[NEW.id]; end if;
-      perform id from objects where id = any(ids) order by id for update;
-      if TG_OP = 'DELETE' then return OLD; else return NEW; end if;
-    end $$;
-
-create trigger "lock_outreach_contact" before insert or delete on "outreaches" for each row execute function "lock_outreach_contact"();
-
-create trigger "lock_outreach_contact_update" before update on "outreaches" for each row when (OLD."contact_id" is distinct from NEW."contact_id") execute function "lock_outreach_contact"();
-
-create function "require_outreach_contact_forward"() returns trigger language plpgsql as $$
-begin
-  perform "check_outreach_contact"(NEW.id, 'forward');
-  return null;
-end $$;
-
-create constraint trigger "require_outreach_contact_forward" after insert on "outreaches" deferrable initially deferred for each row execute function "require_outreach_contact_forward"();
-
-create function "check_github_repository_connection"(source_id text, side text) returns void language plpgsql as $$
-declare n bigint;
-begin
-  if side = 'forward' and exists (select 1 from "github_repositories" where id = source_id) then
-    select count(*) into n from "link_github_repository_connection" where "forward_id" = source_id;
-    if n < 1 or false then
-      raise exception 'Link % traversal % requires %..% targets; found %', 'githubRepositoryConnection', 'connection', 1, '1', n
-        using errcode = '23514', constraint = 'githubRepositoryConnection.connection.bounds';
-    end if;
-  end if;
-end $$;
-
-create function "validate_github_repository_connection"() returns trigger language plpgsql as $$
-begin
-  if TG_OP <> 'INSERT' then
-    perform "check_github_repository_connection"(OLD.id, 'forward');
-  end if;
-  if TG_OP <> 'DELETE' then
-    perform "check_github_repository_connection"(NEW.id, 'forward');
-  end if;
-  return null;
-end $$;
-
-create constraint trigger "validate_github_repository_connection" after insert or delete on "github_repositories" deferrable initially deferred for each row execute function "validate_github_repository_connection"();
-
-create constraint trigger "validate_github_repository_connection_update" after update on "github_repositories" deferrable initially deferred for each row when (OLD."connection_id" is distinct from NEW."connection_id") execute function "validate_github_repository_connection"();
-
-create function "lock_github_repository_connection"() returns trigger language plpgsql as $$
-    declare ids text[] := array[]::text[];
-    begin
-      if TG_OP <> 'INSERT' then ids := ids || array[OLD.id]; end if;
-      if TG_OP <> 'DELETE' then ids := ids || array[NEW.id]; end if;
-      perform id from objects where id = any(ids) order by id for update;
-      if TG_OP = 'DELETE' then return OLD; else return NEW; end if;
-    end $$;
-
-create trigger "lock_github_repository_connection" before insert or delete on "github_repositories" for each row execute function "lock_github_repository_connection"();
-
-create trigger "lock_github_repository_connection_update" before update on "github_repositories" for each row when (OLD."connection_id" is distinct from NEW."connection_id") execute function "lock_github_repository_connection"();
-
-create function "require_github_repository_connection_forward"() returns trigger language plpgsql as $$
-begin
-  perform "check_github_repository_connection"(NEW.id, 'forward');
-  return null;
-end $$;
-
-create constraint trigger "require_github_repository_connection_forward" after insert on "github_repositories" deferrable initially deferred for each row execute function "require_github_repository_connection_forward"();
-
-create function "check_github_issue_repository"(source_id text, side text) returns void language plpgsql as $$
-declare n bigint;
-begin
-  if side = 'forward' and exists (select 1 from "github_issues" where id = source_id) then
-    select count(*) into n from "link_github_issue_repository" where "forward_id" = source_id;
-    if n < 1 or false then
-      raise exception 'Link % traversal % requires %..% targets; found %', 'githubIssueRepository', 'repository', 1, '1', n
-        using errcode = '23514', constraint = 'githubIssueRepository.repository.bounds';
-    end if;
-  end if;
-end $$;
-
-create function "validate_github_issue_repository"() returns trigger language plpgsql as $$
-begin
-  if TG_OP <> 'INSERT' then
-    perform "check_github_issue_repository"(OLD.id, 'forward');
-  end if;
-  if TG_OP <> 'DELETE' then
-    perform "check_github_issue_repository"(NEW.id, 'forward');
-  end if;
-  return null;
-end $$;
-
-create constraint trigger "validate_github_issue_repository" after insert or delete on "github_issues" deferrable initially deferred for each row execute function "validate_github_issue_repository"();
-
-create constraint trigger "validate_github_issue_repository_update" after update on "github_issues" deferrable initially deferred for each row when (OLD."repository_id" is distinct from NEW."repository_id") execute function "validate_github_issue_repository"();
-
-create function "lock_github_issue_repository"() returns trigger language plpgsql as $$
-    declare ids text[] := array[]::text[];
-    begin
-      if TG_OP <> 'INSERT' then ids := ids || array[OLD.id]; end if;
-      if TG_OP <> 'DELETE' then ids := ids || array[NEW.id]; end if;
-      perform id from objects where id = any(ids) order by id for update;
-      if TG_OP = 'DELETE' then return OLD; else return NEW; end if;
-    end $$;
-
-create trigger "lock_github_issue_repository" before insert or delete on "github_issues" for each row execute function "lock_github_issue_repository"();
-
-create trigger "lock_github_issue_repository_update" before update on "github_issues" for each row when (OLD."repository_id" is distinct from NEW."repository_id") execute function "lock_github_issue_repository"();
-
-create function "require_github_issue_repository_forward"() returns trigger language plpgsql as $$
-begin
-  perform "check_github_issue_repository"(NEW.id, 'forward');
-  return null;
-end $$;
-
-create constraint trigger "require_github_issue_repository_forward" after insert on "github_issues" deferrable initially deferred for each row execute function "require_github_issue_repository_forward"();
-
-create function "check_github_pull_request_repository"(source_id text, side text) returns void language plpgsql as $$
-declare n bigint;
-begin
-  if side = 'forward' and exists (select 1 from "github_pull_requests" where id = source_id) then
-    select count(*) into n from "link_github_pull_request_repository" where "forward_id" = source_id;
-    if n < 1 or false then
-      raise exception 'Link % traversal % requires %..% targets; found %', 'githubPullRequestRepository', 'repository', 1, '1', n
-        using errcode = '23514', constraint = 'githubPullRequestRepository.repository.bounds';
-    end if;
-  end if;
-end $$;
-
-create function "validate_github_pull_request_repository"() returns trigger language plpgsql as $$
-begin
-  if TG_OP <> 'INSERT' then
-    perform "check_github_pull_request_repository"(OLD.id, 'forward');
-  end if;
-  if TG_OP <> 'DELETE' then
-    perform "check_github_pull_request_repository"(NEW.id, 'forward');
-  end if;
-  return null;
-end $$;
-
-create constraint trigger "validate_github_pull_request_repository" after insert or delete on "github_pull_requests" deferrable initially deferred for each row execute function "validate_github_pull_request_repository"();
-
-create constraint trigger "validate_github_pull_request_repository_update" after update on "github_pull_requests" deferrable initially deferred for each row when (OLD."repository_id" is distinct from NEW."repository_id") execute function "validate_github_pull_request_repository"();
-
-create function "lock_github_pull_request_repository"() returns trigger language plpgsql as $$
-    declare ids text[] := array[]::text[];
-    begin
-      if TG_OP <> 'INSERT' then ids := ids || array[OLD.id]; end if;
-      if TG_OP <> 'DELETE' then ids := ids || array[NEW.id]; end if;
-      perform id from objects where id = any(ids) order by id for update;
-      if TG_OP = 'DELETE' then return OLD; else return NEW; end if;
-    end $$;
-
-create trigger "lock_github_pull_request_repository" before insert or delete on "github_pull_requests" for each row execute function "lock_github_pull_request_repository"();
-
-create trigger "lock_github_pull_request_repository_update" before update on "github_pull_requests" for each row when (OLD."repository_id" is distinct from NEW."repository_id") execute function "lock_github_pull_request_repository"();
-
-create function "require_github_pull_request_repository_forward"() returns trigger language plpgsql as $$
-begin
-  perform "check_github_pull_request_repository"(NEW.id, 'forward');
-  return null;
-end $$;
-
-create constraint trigger "require_github_pull_request_repository_forward" after insert on "github_pull_requests" deferrable initially deferred for each row execute function "require_github_pull_request_repository_forward"();
-
-create function "check_application_job"(source_id text, side text) returns void language plpgsql as $$
-declare n bigint;
-begin
-  if side = 'forward' and exists (select 1 from "applications" where id = source_id) then
-    select count(*) into n from "link_application_job" where "forward_id" = source_id;
-    if n < 1 or false then
-      raise exception 'Link % traversal % requires %..% targets; found %', 'applicationJob', 'job', 1, '1', n
-        using errcode = '23514', constraint = 'applicationJob.job.bounds';
-    end if;
-  end if;
-end $$;
-
-create function "validate_application_job"() returns trigger language plpgsql as $$
-begin
-  if TG_OP <> 'INSERT' then
-    perform "check_application_job"(OLD.id, 'forward');
-  end if;
-  if TG_OP <> 'DELETE' then
-    perform "check_application_job"(NEW.id, 'forward');
-  end if;
-  return null;
-end $$;
-
-create constraint trigger "validate_application_job" after insert or delete on "applications" deferrable initially deferred for each row execute function "validate_application_job"();
-
-create constraint trigger "validate_application_job_update" after update on "applications" deferrable initially deferred for each row when (OLD."job_id" is distinct from NEW."job_id") execute function "validate_application_job"();
-
-create function "lock_application_job"() returns trigger language plpgsql as $$
-    declare ids text[] := array[]::text[];
-    begin
-      if TG_OP <> 'INSERT' then ids := ids || array[OLD.id]; end if;
-      if TG_OP <> 'DELETE' then ids := ids || array[NEW.id]; end if;
-      perform id from objects where id = any(ids) order by id for update;
-      if TG_OP = 'DELETE' then return OLD; else return NEW; end if;
-    end $$;
-
-create trigger "lock_application_job" before insert or delete on "applications" for each row execute function "lock_application_job"();
-
-create trigger "lock_application_job_update" before update on "applications" for each row when (OLD."job_id" is distinct from NEW."job_id") execute function "lock_application_job"();
-
-create function "require_application_job_forward"() returns trigger language plpgsql as $$
-begin
-  perform "check_application_job"(NEW.id, 'forward');
-  return null;
-end $$;
-
-create constraint trigger "require_application_job_forward" after insert on "applications" deferrable initially deferred for each row execute function "require_application_job_forward"();
-
-create function "check_application_candidate"(source_id text, side text) returns void language plpgsql as $$
-declare n bigint;
-begin
-  if side = 'forward' and exists (select 1 from "applications" where id = source_id) then
-    select count(*) into n from "link_application_candidate" where "forward_id" = source_id;
-    if n < 1 or false then
-      raise exception 'Link % traversal % requires %..% targets; found %', 'applicationCandidate', 'candidate', 1, '1', n
-        using errcode = '23514', constraint = 'applicationCandidate.candidate.bounds';
-    end if;
-  end if;
-end $$;
-
-create function "validate_application_candidate"() returns trigger language plpgsql as $$
-begin
-  if TG_OP <> 'INSERT' then
-    perform "check_application_candidate"(OLD.id, 'forward');
-  end if;
-  if TG_OP <> 'DELETE' then
-    perform "check_application_candidate"(NEW.id, 'forward');
-  end if;
-  return null;
-end $$;
-
-create constraint trigger "validate_application_candidate" after insert or delete on "applications" deferrable initially deferred for each row execute function "validate_application_candidate"();
-
-create constraint trigger "validate_application_candidate_update" after update on "applications" deferrable initially deferred for each row when (OLD."candidate_id" is distinct from NEW."candidate_id") execute function "validate_application_candidate"();
-
-create function "lock_application_candidate"() returns trigger language plpgsql as $$
-    declare ids text[] := array[]::text[];
-    begin
-      if TG_OP <> 'INSERT' then ids := ids || array[OLD.id]; end if;
-      if TG_OP <> 'DELETE' then ids := ids || array[NEW.id]; end if;
-      perform id from objects where id = any(ids) order by id for update;
-      if TG_OP = 'DELETE' then return OLD; else return NEW; end if;
-    end $$;
-
-create trigger "lock_application_candidate" before insert or delete on "applications" for each row execute function "lock_application_candidate"();
-
-create trigger "lock_application_candidate_update" before update on "applications" for each row when (OLD."candidate_id" is distinct from NEW."candidate_id") execute function "lock_application_candidate"();
-
-create function "require_application_candidate_forward"() returns trigger language plpgsql as $$
-begin
-  perform "check_application_candidate"(NEW.id, 'forward');
-  return null;
-end $$;
-
-create constraint trigger "require_application_candidate_forward" after insert on "applications" deferrable initially deferred for each row execute function "require_application_candidate_forward"();
-
-create function "check_reply_ticket"(source_id text, side text) returns void language plpgsql as $$
-declare n bigint;
-begin
-  if side = 'forward' and exists (select 1 from "replies" where id = source_id) then
-    select count(*) into n from "link_reply_ticket" where "forward_id" = source_id;
-    if n < 1 or false then
-      raise exception 'Link % traversal % requires %..% targets; found %', 'replyTicket', 'ticket', 1, '1', n
-        using errcode = '23514', constraint = 'replyTicket.ticket.bounds';
-    end if;
-  end if;
-end $$;
-
-create function "validate_reply_ticket"() returns trigger language plpgsql as $$
-begin
-  if TG_OP <> 'INSERT' then
-    perform "check_reply_ticket"(OLD.id, 'forward');
-  end if;
-  if TG_OP <> 'DELETE' then
-    perform "check_reply_ticket"(NEW.id, 'forward');
-  end if;
-  return null;
-end $$;
-
-create constraint trigger "validate_reply_ticket" after insert or delete on "replies" deferrable initially deferred for each row execute function "validate_reply_ticket"();
-
-create constraint trigger "validate_reply_ticket_update" after update on "replies" deferrable initially deferred for each row when (OLD."ticket_id" is distinct from NEW."ticket_id") execute function "validate_reply_ticket"();
-
-create function "lock_reply_ticket"() returns trigger language plpgsql as $$
-    declare ids text[] := array[]::text[];
-    begin
-      if TG_OP <> 'INSERT' then ids := ids || array[OLD.id]; end if;
-      if TG_OP <> 'DELETE' then ids := ids || array[NEW.id]; end if;
-      perform id from objects where id = any(ids) order by id for update;
-      if TG_OP = 'DELETE' then return OLD; else return NEW; end if;
-    end $$;
-
-create trigger "lock_reply_ticket" before insert or delete on "replies" for each row execute function "lock_reply_ticket"();
-
-create trigger "lock_reply_ticket_update" before update on "replies" for each row when (OLD."ticket_id" is distinct from NEW."ticket_id") execute function "lock_reply_ticket"();
-
-create function "require_reply_ticket_forward"() returns trigger language plpgsql as $$
-begin
-  perform "check_reply_ticket"(NEW.id, 'forward');
-  return null;
-end $$;
-
-create constraint trigger "require_reply_ticket_forward" after insert on "replies" deferrable initially deferred for each row execute function "require_reply_ticket_forward"();
-
-alter table "controller_instances" add constraint "controller_instances_target_unique" unique ("controller_id", "record_id") deferrable initially deferred;
-
-alter table "connections" add constraint "connections_account_unique" unique ("connector_id", "account") deferrable initially deferred;
-
-alter table "campaign_members" add constraint "campaign_members_membership_unique" unique ("campaign_id", "contact_id") deferrable initially deferred;
-
-alter table "github_pull_requests" add constraint "github_pull_requests_number_unique" unique ("repository_id", "number") deferrable initially deferred;
-
-alter table "github_issues" add constraint "github_issues_number_unique" unique ("repository_id", "number") deferrable initially deferred;
-
-alter table "applications" add constraint "applications_candidate_job_unique" unique ("candidate_id", "job_id") deferrable initially deferred;
-
 -- ===========================================================================
 -- Cross-table constraints
 -- ===========================================================================
@@ -1904,33 +1040,33 @@ alter table "objects"
   foreign key ("updated_by_id") references "interface_actor" ("id")
   on delete restrict deferrable initially deferred;
 
-alter table "controllers" add constraint "controller_module_target_fk" foreign key ("module_id") references "module_settings" (id) on delete set null deferrable initially deferred;
+alter table "controllers" add constraint "controller_module_target_fk" foreign key ("module_id") references "module_settings" (id) on delete no action deferrable initially deferred;
 
-alter table "connectors" add constraint "connector_module_target_fk" foreign key ("module_id") references "module_settings" (id) on delete set null deferrable initially deferred;
+alter table "connectors" add constraint "connector_module_target_fk" foreign key ("module_id") references "module_settings" (id) on delete no action deferrable initially deferred;
 
-alter table "connections" add constraint "connection_connector_target_fk" foreign key ("connector_id") references "connectors" (id) on delete set null deferrable initially deferred;
+alter table "connections" add constraint "connection_connector_target_fk" foreign key ("connector_id") references "connectors" (id) on delete no action deferrable initially deferred;
 
-alter table "controller_instances" add constraint "controller_instance_controller_target_fk" foreign key ("controller_id") references "controllers" (id) on delete set null deferrable initially deferred;
+alter table "controller_instances" add constraint "controller_instance_controller_target_fk" foreign key ("controller_id") references "controllers" (id) on delete no action deferrable initially deferred;
 
 alter table "controller_instances" add constraint "controller_instance_record_target_fk" foreign key ("record_id") references "interface_controller_target" (id) on delete set null deferrable initially deferred;
 
 alter table "accounts" add constraint "account_owner_target_fk" foreign key ("owner_id") references "users" (id) on delete set null deferrable initially deferred;
 
-alter table "affiliations" add constraint "affiliation_contact_target_fk" foreign key ("contact_id") references "contacts" (id) on delete set null deferrable initially deferred;
+alter table "affiliations" add constraint "affiliation_contact_target_fk" foreign key ("contact_id") references "contacts" (id) on delete no action deferrable initially deferred;
 
-alter table "affiliations" add constraint "affiliation_account_target_fk" foreign key ("account_id") references "accounts" (id) on delete set null deferrable initially deferred;
+alter table "affiliations" add constraint "affiliation_account_target_fk" foreign key ("account_id") references "accounts" (id) on delete no action deferrable initially deferred;
 
 alter table "activities" add constraint "activity_owner_target_fk" foreign key ("owner_id") references "users" (id) on delete set null deferrable initially deferred;
 
-alter table "line_items" add constraint "opportunity_line_items_target_fk" foreign key ("opportunity_id") references "opportunities" (id) on delete set null deferrable initially deferred;
+alter table "line_items" add constraint "opportunity_line_items_target_fk" foreign key ("opportunity_id") references "opportunities" (id) on delete no action deferrable initially deferred;
 
 alter table "opportunities" add constraint "opportunity_owner_target_fk" foreign key ("owner_id") references "users" (id) on delete set null deferrable initially deferred;
 
-alter table "leads" add constraint "lead_account_target_fk" foreign key ("account_id") references "accounts" (id) on delete set null deferrable initially deferred;
+alter table "leads" add constraint "lead_account_target_fk" foreign key ("account_id") references "accounts" (id) on delete no action deferrable initially deferred;
 
 alter table "leads" add constraint "lead_owner_target_fk" foreign key ("owner_id") references "users" (id) on delete set null deferrable initially deferred;
 
-alter table "leads" add constraint "lead_contact_target_fk" foreign key ("contact_id") references "contacts" (id) on delete set null deferrable initially deferred;
+alter table "leads" add constraint "lead_contact_target_fk" foreign key ("contact_id") references "contacts" (id) on delete no action deferrable initially deferred;
 
 alter table "leads" add constraint "lead_opportunity_target_fk" foreign key ("opportunity_id") references "opportunities" (id) on delete set null deferrable initially deferred;
 
@@ -1942,13 +1078,13 @@ alter table "contents" add constraint "content_campaign_target_fk" foreign key (
 
 alter table "contents" add constraint "content_owner_target_fk" foreign key ("owner_id") references "users" (id) on delete set null deferrable initially deferred;
 
-alter table "campaign_members" add constraint "campaign_member_campaign_target_fk" foreign key ("campaign_id") references "campaigns" (id) on delete set null deferrable initially deferred;
+alter table "campaign_members" add constraint "campaign_member_campaign_target_fk" foreign key ("campaign_id") references "campaigns" (id) on delete no action deferrable initially deferred;
 
-alter table "campaign_members" add constraint "campaign_member_contact_target_fk" foreign key ("contact_id") references "contacts" (id) on delete set null deferrable initially deferred;
+alter table "campaign_members" add constraint "campaign_member_contact_target_fk" foreign key ("contact_id") references "contacts" (id) on delete no action deferrable initially deferred;
 
 alter table "outreaches" add constraint "outreach_campaign_target_fk" foreign key ("campaign_id") references "campaigns" (id) on delete set null deferrable initially deferred;
 
-alter table "outreaches" add constraint "outreach_contact_target_fk" foreign key ("contact_id") references "contacts" (id) on delete set null deferrable initially deferred;
+alter table "outreaches" add constraint "outreach_contact_target_fk" foreign key ("contact_id") references "contacts" (id) on delete no action deferrable initially deferred;
 
 alter table "outreaches" add constraint "outreach_owner_target_fk" foreign key ("owner_id") references "users" (id) on delete set null deferrable initially deferred;
 
@@ -1958,21 +1094,21 @@ alter table "issues" add constraint "issue_project_target_fk" foreign key ("proj
 
 alter table "issues" add constraint "issue_assignee_target_fk" foreign key ("assignee_id") references "users" (id) on delete set null deferrable initially deferred;
 
-alter table "github_repositories" add constraint "github_repository_connection_target_fk" foreign key ("connection_id") references "connections" (id) on delete set null deferrable initially deferred;
+alter table "github_repositories" add constraint "github_repository_connection_target_fk" foreign key ("connection_id") references "connections" (id) on delete no action deferrable initially deferred;
 
 alter table "github_repositories" add constraint "github_repository_maintainer_target_fk" foreign key ("maintainer_id") references "users" (id) on delete set null deferrable initially deferred;
 
-alter table "github_issues" add constraint "github_issue_repository_target_fk" foreign key ("repository_id") references "github_repositories" (id) on delete set null deferrable initially deferred;
+alter table "github_issues" add constraint "github_issue_repository_target_fk" foreign key ("repository_id") references "github_repositories" (id) on delete no action deferrable initially deferred;
 
-alter table "github_pull_requests" add constraint "github_pull_request_repository_target_fk" foreign key ("repository_id") references "github_repositories" (id) on delete set null deferrable initially deferred;
+alter table "github_pull_requests" add constraint "github_pull_request_repository_target_fk" foreign key ("repository_id") references "github_repositories" (id) on delete no action deferrable initially deferred;
 
-alter table "applications" add constraint "application_job_target_fk" foreign key ("job_id") references "job_postings" (id) on delete set null deferrable initially deferred;
+alter table "applications" add constraint "application_job_target_fk" foreign key ("job_id") references "job_postings" (id) on delete no action deferrable initially deferred;
 
-alter table "applications" add constraint "application_candidate_target_fk" foreign key ("candidate_id") references "candidates" (id) on delete set null deferrable initially deferred;
+alter table "applications" add constraint "application_candidate_target_fk" foreign key ("candidate_id") references "candidates" (id) on delete no action deferrable initially deferred;
 
 alter table "job_postings" add constraint "job_posting_hiring_manager_target_fk" foreign key ("hiring_manager_id") references "users" (id) on delete set null deferrable initially deferred;
 
-alter table "replies" add constraint "reply_ticket_target_fk" foreign key ("ticket_id") references "tickets" (id) on delete set null deferrable initially deferred;
+alter table "replies" add constraint "reply_ticket_target_fk" foreign key ("ticket_id") references "tickets" (id) on delete no action deferrable initially deferred;
 
 alter table "tickets" add constraint "ticket_account_target_fk" foreign key ("account_id") references "accounts" (id) on delete set null deferrable initially deferred;
 

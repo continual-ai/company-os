@@ -1,7 +1,10 @@
 import { Effect } from "effect"
 
 import type { LinkDirection, ModelCatalog } from "#/runtime/model/index.ts"
-import { LinkCardinalityConflict } from "#/runtime/server/errors.ts"
+import {
+  LinkCardinalityConflict,
+  RequiredLinkMissing,
+} from "#/runtime/server/errors.ts"
 import {
   linkStorage,
   type LinkStorage,
@@ -78,46 +81,87 @@ export function makeLinkRepository<const TModel extends ModelCatalog>(
     "@company/runtime/storage/LinkRepository.applyForeignKey"
   )(function* (
     plan: Extract<LinkStorage, { kind: "foreignKey" }>,
-    pair: LinkPair,
-    operation: "link" | "unlink"
+    mutations: ReadonlyArray<
+      LinkPair & { readonly operation: "link" | "unlink" }
+    >
   ) {
-    const { forwardId, reverseId } = linkPairEndpoints(pair)
-    const ownerId = plan.side === "forward" ? forwardId : reverseId
-    const targetId = plan.side === "forward" ? reverseId : forwardId
+    const owners = new Map<
+      string,
+      Array<{ targetId: string; operation: "link" | "unlink" }>
+    >()
+    for (const pair of mutations) {
+      const { forwardId, reverseId } = linkPairEndpoints(pair)
+      const ownerId = plan.side === "forward" ? forwardId : reverseId
+      const targetId = plan.side === "forward" ? reverseId : forwardId
+      const changes = owners.get(ownerId) ?? []
+      changes.push({ targetId, operation: pair.operation })
+      owners.set(ownerId, changes)
+    }
+    const first = mutations[0]!
+    const link = storage.model.links[first.linkId]!
     const owner =
       storage.objects[plan.ownerType] ?? storage.interfaces[plan.ownerType]
     if (!owner)
       return yield* Effect.die(`Missing FK owner '${plan.ownerType}'.`)
     const column = sql.literal(quoteIdentifier(plan.column))
-    if (operation === "link") {
+    const changes: LinkChange[] = []
+    for (const [ownerId, edits] of owners) {
       const [existing] = yield* sql<{
         target: string | null
       }>`select ${column} as target from ${owner} where id = ${ownerId} for update`
       if (!existing)
         return yield* Effect.die(`Missing relationship owner ${ownerId}.`)
-      if (existing.target === targetId) return []
-      if (existing.target !== null)
+      const added = [
+        ...new Set(
+          edits
+            .filter((edit) => edit.operation === "link")
+            .map((edit) => edit.targetId)
+        ),
+      ]
+      const removed = new Set(
+        edits
+          .filter((edit) => edit.operation === "unlink")
+          .map((edit) => edit.targetId)
+      )
+      const current = existing.target
+      if (
+        added.length > 1 ||
+        (current !== null &&
+          added.length === 1 &&
+          added[0] !== current &&
+          !removed.has(current))
+      )
         return yield* Effect.fail(
           new LinkCardinalityConflict({
-            linkId: pair.linkId,
-            sourceId: pair.sourceId,
-            targetId: pair.targetId,
+            linkId: first.linkId,
+            sourceId: first.sourceId,
+            targetId: first.targetId,
           })
         )
-      yield* sql`update ${owner} set ${column} = ${targetId} where id = ${ownerId}`
-    } else {
-      const rows =
-        yield* sql`update ${owner} set ${column} = null where id = ${ownerId} and ${column} = ${targetId} returning id`
-      if (rows.length === 0) return []
+      const next =
+        added[0] ?? (current !== null && removed.has(current) ? null : current)
+      if (next === current) continue
+      if (next === null && link[plan.side].min === 1)
+        return yield* Effect.fail(
+          new RequiredLinkMissing({
+            objectType: plan.ownerType,
+            traversal: link[plan.side].key,
+          })
+        )
+      yield* sql`update ${owner} set ${column} = ${next} where id = ${ownerId}`
+      for (const [kind, targetId] of [
+        ["unlinked", current],
+        ["linked", next],
+      ] as const)
+        if (targetId !== null)
+          changes.push({
+            linkId: first.linkId,
+            kind,
+            forwardId: plan.side === "forward" ? ownerId : targetId,
+            reverseId: plan.side === "reverse" ? ownerId : targetId,
+          })
     }
-    return [
-      {
-        kind: operation === "link" ? "linked" : "unlinked",
-        linkId: pair.linkId,
-        forwardId,
-        reverseId,
-      } satisfies LinkChange,
-    ]
+    return changes
   })
 
   const ids = (pair: Omit<LinkPair, "targetId">) => {
@@ -146,7 +190,11 @@ export function makeLinkRepository<const TModel extends ModelCatalog>(
       const changes: LinkChange[] = []
       const groups = new Map<string, Array<(typeof mutations)[number]>>()
       for (const mutation of mutations) {
-        const key = `${mutation.linkId}:${mutation.operation}`
+        const plan = linkStorage(storage.model.links[mutation.linkId]!)
+        const key =
+          plan.kind === "foreignKey"
+            ? mutation.linkId
+            : `${mutation.linkId}:${mutation.operation}`
         const group = groups.get(key) ?? []
         group.push(mutation)
         groups.set(key, group)
@@ -156,10 +204,7 @@ export function makeLinkRepository<const TModel extends ModelCatalog>(
         const { table, link: linkDefinition } = definition(first.linkId)
         const plan = linkStorage(linkDefinition)
         if (plan.kind === "foreignKey") {
-          for (const pair of group)
-            changes.push(
-              ...(yield* applyForeignKey(plan, pair, pair.operation))
-            )
+          changes.push(...(yield* applyForeignKey(plan, group)))
           continue
         }
         const pairs = [

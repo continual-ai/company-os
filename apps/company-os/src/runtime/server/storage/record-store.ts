@@ -13,6 +13,7 @@ import {
   makeObjectSeedRepository as makePostgresObjectSeedRepository,
   type ObjectDeleteTarget,
   type ObjectInsert,
+  type InitialReferences,
   type ObjectRepositoryUpdate,
 } from "#/runtime/server/storage/object-repository.ts"
 import { updateSearchIndex } from "#/runtime/server/storage/search-index.ts"
@@ -146,8 +147,8 @@ function trackRepository<const O extends ObjectType>(object: O) {
 
     return {
       ...repository,
-      insert: (input: ObjectInsert<O>) =>
-        track(repository.insert(input), "created"),
+      insert: (input: ObjectInsert<O>, references?: InitialReferences) =>
+        track(repository.insert(input, references), "created"),
       update: (input: ObjectRepositoryUpdate<O>) =>
         track(repository.update(input), "updated", inputFields(input)),
       delete: (target: ObjectDeleteTarget<O>) =>
