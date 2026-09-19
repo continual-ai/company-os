@@ -128,55 +128,9 @@ end $$`)
           ? plan.column
           : undefined
       })
-      if (nativeColumns.every((column) => column !== undefined)) {
-        ddl.push(
-          `alter table ${q(tableFor(object.id))} add constraint ${q(`${snakeCase(object.collection)}_${snakeCase(rule)}_unique`)} unique (${nativeColumns.map(q).join(", ")}) deferrable initially deferred`
-        )
-        continue
-      }
-      const joins = ends.flatMap((item, i) =>
-        item
-          ? [
-              `join ${q(`link_${snakeCase(item.link.id)}`)} e${i} on e${i}.${q(`${item.side}_id`)} = o.id`,
-            ]
-          : []
-      )
-      const columns = keys.map((key, i) =>
-        ends[i]
-          ? `e${i}.${q(ends[i].side === "forward" ? "reverse_id" : "forward_id")}`
-          : `o.${q(snakeCase(key))}`
-      )
-      const fn = q(`unique_${snakeCase(object.id)}_${snakeCase(rule)}`)
-      ddl.push(`create function ${fn}() returns trigger language plpgsql as $$
-begin
-  if exists (select 1 from ${q(tableFor(object.id))} o ${joins.join(" ")} where ${columns.map((column) => `${column} is not null`).join(" and ")} group by ${columns.join(", ")} having count(*) > 1) then
-    raise exception 'Unique relationship rule % violated', ${literal(`${object.id}.${rule}`)} using errcode = '23505', constraint = ${literal(`${snakeCase(object.collection)}_${snakeCase(rule)}_unique`)};
-  end if;
-  return null;
-end $$`)
-      const lock = q(`lock_unique_${snakeCase(object.id)}_${snakeCase(rule)}`)
       ddl.push(
-        `create function ${lock}() returns trigger language plpgsql as $$ begin perform pg_advisory_xact_lock(hashtextextended(${literal(`unique:${object.id}:${rule}`)}, 0)); return null; end $$`
+        `alter table ${q(tableFor(object.id))} add constraint ${q(`${snakeCase(object.collection)}_${snakeCase(rule)}_unique`)} unique (${nativeColumns.map((column) => q(column!)).join(", ")}) deferrable initially deferred`
       )
-      for (const table of new Set([
-        tableFor(object.id),
-        ...ends.flatMap((item) => {
-          if (!item) return []
-          const plan = linkStorage(item.link)
-          return [
-            plan.kind === "join"
-              ? `link_${snakeCase(item.link.id)}`
-              : tableFor(plan.ownerType),
-          ]
-        }),
-      ])) {
-        ddl.push(
-          `create trigger ${lock} before insert or update or delete on ${q(table)} for each statement execute function ${lock}()`
-        )
-        ddl.push(
-          `create constraint trigger ${fn} after insert or update or delete on ${q(table)} deferrable initially deferred for each row execute function ${fn}()`
-        )
-      }
     }
   }
   return ddl

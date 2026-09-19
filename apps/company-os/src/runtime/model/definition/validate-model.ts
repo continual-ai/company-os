@@ -2,7 +2,10 @@ import { isStandardActionId } from "#/runtime/model/definition/action.ts"
 import { controllerWatchPaths } from "#/runtime/model/definition/controller-watch.ts"
 import { definitionId } from "#/runtime/model/definition/identity.ts"
 import type { InterfaceType } from "#/runtime/model/definition/interface.ts"
-import type { LinkType } from "#/runtime/model/definition/link.ts"
+import {
+  linkReferenceSide,
+  type LinkType,
+} from "#/runtime/model/definition/link.ts"
 import type { ModuleDefinition } from "#/runtime/model/definition/module.ts"
 import type { ObjectType } from "#/runtime/model/definition/object.ts"
 import type { AnySchema } from "#/runtime/model/definition/schema.ts"
@@ -253,22 +256,29 @@ function assertUniqueRulesResolvable({
   for (const object of objects) {
     for (const [ruleId, fields] of Object.entries(object.uniqueBy)) {
       for (const field of fields) {
-        if (
-          !Object.hasOwn(object.properties, field) &&
-          !links.some((link) =>
-            [link.forward, link.reverse].some(
-              (end) =>
-                (end.from.typeId === object.id ||
-                  Object.hasOwn(object.interfaces, end.from.typeId)) &&
-                end.key === field &&
-                end.max === 1
-            )
+        if (Object.hasOwn(object.properties, field)) continue
+        const link = links.find((link) =>
+          [link.forward, link.reverse].some(
+            (end) =>
+              (end.from.typeId === object.id ||
+                Object.hasOwn(object.interfaces, end.from.typeId)) &&
+              end.key === field &&
+              end.max === 1
           )
-        ) {
+        )
+        if (!link)
           throw new Error(
             `Object '${object.id}' unique rule '${ruleId}' references unknown field '${field}'.`
           )
-        }
+        const side = linkReferenceSide(link)
+        if (
+          side === undefined ||
+          link[side].from.typeId !== object.id ||
+          link[side].key !== field
+        )
+          throw new Error(
+            `Object '${object.id}' unique rule '${ruleId}' requires field '${field}' to be stored on the object's own table.`
+          )
       }
     }
   }

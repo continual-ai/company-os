@@ -402,6 +402,38 @@ describe("model definitions", () => {
     ).not.toThrow()
   })
 
+  it("rejects uniqueness across an inverse reference", () => {
+    const Account = defineObject({
+      id: "account",
+      collection: "accounts",
+      name: "Account",
+      pluralName: "Accounts",
+      properties: { name: schema.string() },
+      display: { title: "name" },
+      uniqueBy: { profile: ["profile"] },
+    })
+    const Profile = defineObject({
+      id: "profile",
+      collection: "profiles",
+      name: "Profile",
+      pluralName: "Profiles",
+      properties: { name: schema.string() },
+      display: { title: "name" },
+    })
+    const link = defineLink({
+      id: "profileAccount",
+      from: { object: Profile, key: "account", max: 1 },
+      to: { object: Account, key: "profile", max: 1 },
+    })
+    expect(() =>
+      defineTestModel({
+        name: "Inverse uniqueness",
+        objects: [Account, Profile],
+        links: [link],
+      })
+    ).toThrow(/own table/)
+  })
+
   it("registers the kernel interfaces before any module", () => {
     const model = defineTestModel({
       interfaces: [],

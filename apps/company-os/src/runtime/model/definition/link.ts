@@ -149,3 +149,14 @@ export function defineLink<const D extends LinkDefinition>(
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   return link as LinkType<D>
 }
+
+/** The singular end stores the reference; one-to-one ties use the authored from end. */
+export function linkReferenceSide(
+  link: LinkType
+): "forward" | "reverse" | undefined {
+  return link.forward.max === 1
+    ? "forward"
+    : link.reverse.max === 1
+      ? "reverse"
+      : undefined
+}

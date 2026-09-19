@@ -1,3 +1,4 @@
+import { linkReferenceSide } from "#/runtime/model/definition/link.ts"
 import type { LinkType, ModelCatalog } from "#/runtime/model/index.ts"
 import { snakeCase } from "#/runtime/server/storage/table.ts"
 
@@ -12,12 +13,7 @@ export type LinkStorage = ForeignKeyLink | { readonly kind: "join" }
 
 /** The singular end owns the FK; ties deliberately use the authored from end. */
 export function linkStorage(link: LinkType): LinkStorage {
-  const side =
-    link.forward.max === 1
-      ? "forward"
-      : link.reverse.max === 1
-        ? "reverse"
-        : undefined
+  const side = linkReferenceSide(link)
   if (side === undefined) return { kind: "join" }
   const end = link[side]
   return {
