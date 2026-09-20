@@ -5,11 +5,10 @@ import {
   projectOperations,
   type OperationContract,
 } from "#/runtime/contract/operation-contract.ts"
-import { toEffectRecordIdentifierSchema } from "#/runtime/contract/schema.ts"
-import type {
-  ApiError,
-  ModelCatalog,
-  ModuleDefinition,
+import {
+  type ApiError,
+  type ModelCatalog,
+  type ModuleDefinition,
 } from "#/runtime/model/index.ts"
 import type {
   LinkListInput,
@@ -20,7 +19,7 @@ import {
   requireModuleOperation,
 } from "#/runtime/platform/server/activation.ts"
 import { requireProjectAccess } from "#/runtime/server/auth/project-access.ts"
-import { Database } from "#/runtime/server/database.ts"
+import type { Database } from "#/runtime/server/database.ts"
 import {
   CurrentInvocation,
   type InvocationContext,
@@ -28,12 +27,17 @@ import {
 import { withOperationLogging } from "#/runtime/server/logging.ts"
 import type { ModelContext } from "#/runtime/server/model-context.ts"
 import type { OperationRequirements } from "#/runtime/server/module-server.ts"
+import {
+  completeImmediately,
+  operationMethod,
+  type OperationHandler,
+} from "#/runtime/server/operation-handler.ts"
 import { type OperationServices } from "#/runtime/server/operation-handlers.ts"
 import { runOperation } from "#/runtime/server/operation-mode.ts"
-import { assertRecordWritable } from "#/runtime/server/operation-policy.ts"
 import type { PageTokens } from "#/runtime/server/page-tokens.ts"
 import { createRecordBatchGet } from "#/runtime/server/record-batch.ts"
 import { createRecordSearch } from "#/runtime/server/record-search.ts"
+import { RecordRepositories } from "#/runtime/server/repository.ts"
 import { CommittedChanges } from "#/runtime/server/storage/committed-changes.ts"
 import type { RecordIdentifiers } from "#/runtime/server/storage/identifiers.ts"
 import { Links } from "#/runtime/server/storage/link-store.ts"
@@ -50,6 +54,7 @@ type OperationModuleRequirements<C extends ReadonlyArray<Contribution>> =
 type Foundation =
   | PageTokens
   | Database
+  | RecordRepositories
   | ModelContext
   | RecordStore
   | Links
@@ -59,15 +64,6 @@ type Foundation =
 type Handler = (
   input: unknown
 ) => Effect.Effect<unknown, unknown, CurrentInvocation>
-
-function method(group: object, name: string): Handler {
-  const handler: unknown = Reflect.get(group, name)
-  if (typeof handler !== "function")
-    throw new Error(`Operation '${name}' has no implementation.`)
-  // SAFETY: the installed model selects the repository method or a checked custom implementation.
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  return handler as Handler
-}
 
 /** Runtime dispatch is erased once; domain callers recover types against the installed definition. */
 export class OperationExecutor extends Context.Service<
@@ -118,7 +114,7 @@ function operationExecutorLayer<
       const foundationContext: Context.Context<Foundation> = context
       const links = Context.get(context, Links)
       const database = Context.get(context, SqlDatabase)
-      const repositories = Context.get(context, Database)
+      const repositories = Context.get(context, RecordRepositories)
       const customHandlers = new Map<string, Handler>()
       for (const contribution of contributions) {
         if (!Object.values(model.modules).includes(contribution.module))
@@ -167,7 +163,10 @@ function operationExecutorLayer<
       const activeModel = activeModuleModel().pipe(
         Effect.provideContext(foundationContext)
       )
-      const bind = (contract: OperationContract, handler: Handler): Handler => {
+      const bind = (
+        contract: OperationContract,
+        handler: OperationHandler
+      ): Handler => {
         const decode = Schema.decodeUnknownEffect(contract.input)
         const validate = Schema.decodeUnknownEffect(contract.output)
         return (input) =>
@@ -177,42 +176,14 @@ function operationExecutorLayer<
             Effect.gen(function* () {
               yield* requireProjectAccess
               const decoded = yield* decode(input ?? {})
-              // Public editability belongs here; repository invariants apply to every caller.
-              if (
-                contract.object &&
-                contract.kind === "action" &&
-                contract.id !== "create" &&
-                !customHandlers.has(contract.key)
-              ) {
-                const object = contract.object
-                const repository = repositories.repository(object)
-                const records =
-                  contract.id === "batchDelete"
-                    ? (yield* repository.batchGet(
-                        yield* Schema.decodeUnknownEffect(
-                          Schema.Struct({
-                            ids: Schema.Array(
-                              toEffectRecordIdentifierSchema(object.id)
-                            ),
-                          })
-                        )(decoded)
-                      )).items
-                    : [
-                        yield* repository.get(
-                          yield* Schema.decodeUnknownEffect(
-                            Schema.Struct({
-                              id: toEffectRecordIdentifierSchema(object.id),
-                            })
-                          )(decoded)
-                        ),
-                      ]
-                for (const record of records)
-                  yield* assertRecordWritable(object, record)
-              }
-              const result = yield* handler(decoded)
-              yield* validate(result ?? {}).pipe(Effect.orDie)
-              return result
-            })
+              return yield* handler(decoded)
+            }),
+            (response) =>
+              response.pipe(
+                Effect.tap((result) =>
+                  validate(result ?? {}).pipe(Effect.orDie)
+                )
+              )
           )
       }
       const contracts = operationContracts(model)
@@ -220,46 +191,59 @@ function operationExecutorLayer<
         contracts.map((contract) => {
           const custom = customHandlers.get(contract.key)
           const traversal = contract.linkTraversal
-          let handler: Handler
+          let handler: OperationHandler
           if (contract.builtin)
             handler = (input) =>
               activeModel.pipe(
                 Effect.flatMap(({ model: active }) => {
                   const read =
                     contract.builtin === "batchGetRecords"
-                      ? createRecordBatchGet(active)
-                      : createRecordSearch(active)
-                  return method({ read }, "read")(input)
+                      ? completeImmediately(createRecordBatchGet(active))
+                      : completeImmediately(createRecordSearch(active))
+                  return operationMethod({ read }, "read")(input)
                 }),
                 Effect.provideContext(foundationContext)
               )
-          else if (custom) handler = custom
+          else if (custom) handler = completeImmediately(custom)
           else if (traversal)
-            handler = (input) => {
-              if (contract.kind === "query") {
-                // SAFETY: the operation's input schema validates this traversal request.
+            handler = completeImmediately(
+              (
+                input: unknown
+              ): Effect.Effect<unknown, unknown, CurrentInvocation> => {
+                if (contract.kind === "query") {
+                  // SAFETY: the operation's input schema validates this traversal request.
+                  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+                  const page = links.list(traversal, input as LinkListInput)
+                  return contract.id === "get"
+                    ? page.pipe(
+                        Effect.map((value) => ({
+                          item: value.items[0] ?? null,
+                        }))
+                      )
+                    : page
+                }
+                // SAFETY: the operation's input schema validates this mutation request.
                 // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-                const page = links.list(traversal, input as LinkListInput)
-                return contract.id === "get"
-                  ? page.pipe(
-                      Effect.map((value) => ({ item: value.items[0] ?? null }))
+                const mutation = input as LinkMutationInput
+                return repositories
+                  .get(traversal.source)
+                  .checkWritable([mutation.id])
+                  .pipe(
+                    Effect.andThen(
+                      contract.id === "link"
+                        ? links.link(traversal, mutation)
+                        : links.unlink(traversal, mutation)
                     )
-                  : page
+                  )
               }
-              // SAFETY: the operation's input schema validates this mutation request.
-              // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-              const mutation = input as LinkMutationInput
-              return contract.id === "link"
-                ? links.link(traversal, mutation)
-                : links.unlink(traversal, mutation)
-            }
+            )
           else {
             if (!contract.object)
               throw new Error(
                 `Operation '${contract.key}' has no implementation.`
               )
-            handler = method(
-              repositories.repository(contract.object),
+            handler = operationMethod(
+              repositories.get(contract.object).operations,
               contract.id
             )
           }

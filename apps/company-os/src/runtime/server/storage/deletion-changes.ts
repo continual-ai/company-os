@@ -3,6 +3,7 @@ import { Effect } from "effect"
 import { SYSTEM_SERVICE_ACCOUNT_ID } from "#/runtime/model/system-records.ts"
 import { CascadeDeleteRestricted } from "#/runtime/server/errors.ts"
 import { makeEventWriter } from "#/runtime/server/events/event-writer.ts"
+import { preserveRecordSnapshots } from "#/runtime/server/events/record-snapshots.ts"
 import { currentActorId } from "#/runtime/server/invocation-context.ts"
 import type { ModelContext } from "#/runtime/server/model-context.ts"
 import {
@@ -77,6 +78,7 @@ export function deletionChanges(
           return yield* Effect.fail(
             new CascadeDeleteRestricted({ recordId: target.id })
           )
+      yield* preserveRecordSnapshots(visited)
       const events = makeEventWriter(database, context)
       const touched = new Set<string>()
       for (const link of links) {

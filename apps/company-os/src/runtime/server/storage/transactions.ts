@@ -12,6 +12,10 @@ import {
   PendingEvents,
 } from "#/runtime/server/events/event-buffer.ts"
 import { flushEvents } from "#/runtime/server/events/flush-events.ts"
+import {
+  FinalSnapshots,
+  resolveRecordSnapshots,
+} from "#/runtime/server/events/record-snapshots.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
 import { CommittedChanges } from "#/runtime/server/storage/committed-changes.ts"
 import { objectUniqueConstraintName } from "#/runtime/server/storage/schema.ts"
@@ -46,14 +50,17 @@ export interface PostgresDatabase {
    * "try, recover, continue" flows need an explicit rollback strategy. Options
    * apply only to the call that opens the transaction. An explicit access mode
    * must agree with the enclosing transaction; a Query cannot inherit write access.
+   * `finalize` assembles the operation response after final snapshots and before journal flush.
+   * It must only read. Nested calls resolve immediately so Action code can use their results.
    */
-  readonly transaction: <A, E, R>(
+  readonly transaction: <A, E, R, B = A, E2 = never, R2 = never>(
     body: (database: PostgresDatabase) => Effect.Effect<A, E, R>,
-    options?: TransactionOptions
+    options?: TransactionOptions,
+    finalize?: (value: A) => Effect.Effect<B, E2, R2>
   ) => Effect.Effect<
-    A,
-    E | SqlError | ObjectUniqueConflict | ObjectCheckFailed,
-    R
+    A | B,
+    E | E2 | SqlError | ObjectUniqueConflict | ObjectCheckFailed,
+    R | Exclude<R2, FinalSnapshots>
   >
 }
 
@@ -103,7 +110,7 @@ const make = Effect.gen(function* () {
   )
   const database: PostgresDatabase = {
     sql,
-    transaction: (body, options) =>
+    transaction: (body, options, finalize) =>
       Effect.gen(function* () {
         // A pending buffer exists exactly while this fiber runs inside a transaction opened here.
         const enclosing = yield* PendingEvents
@@ -115,7 +122,12 @@ const make = Effect.gen(function* () {
             return yield* Effect.die(
               "Cannot change access mode inside an open transaction. Read through database.repository(Object) inside an Action; invoke Queries outside its write transaction."
             )
-          return yield* body(database)
+          const value = yield* body(database)
+          return finalize
+            ? yield* finalize(value).pipe(
+                Effect.provideService(FinalSnapshots, FinalSnapshots.make())
+              )
+            : value
         }
         const events: Array<PendingEvent> = []
         const result = yield* sql.withTransaction(
@@ -141,15 +153,14 @@ const make = Effect.gen(function* () {
               { records, relationships },
               context
             )
-            for (let i = 0; i < events.length; i++) {
-              const pending = events[i]!
-              if (pending.snapshot !== undefined) {
-                const { snapshot, ...event } = pending
-                events[i] = { ...event, data: yield* snapshot }
-              }
-            }
+            const response = yield* Effect.gen(function* () {
+              yield* resolveRecordSnapshots(events, context.eventFactSchema)
+              return finalize ? yield* finalize(value) : value
+            }).pipe(
+              Effect.provideService(FinalSnapshots, FinalSnapshots.make())
+            )
             yield* flushEvents(database, events)
-            return value
+            return response
           }).pipe(
             Effect.provideService(PendingEvents, events),
             Effect.provideService(

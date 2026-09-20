@@ -1,6 +1,6 @@
 import { isDeepStrictEqual } from "node:util"
 
-import { Effect, Schema } from "effect"
+import { Context, Effect, Layer, Schema } from "effect"
 import { typeid } from "typeid-js"
 
 import { expansionInputSchema } from "#/runtime/contract/expansion.ts"
@@ -46,9 +46,12 @@ import {
   InvalidBatchRequest,
   ImmutablePropertyError,
 } from "#/runtime/server/errors.ts"
+import { FinalSnapshots } from "#/runtime/server/events/record-snapshots.ts"
 import { CurrentInvocation } from "#/runtime/server/invocation.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
+import { completeImmediately } from "#/runtime/server/operation-handler.ts"
 import { requireWritableOperation } from "#/runtime/server/operation-mode.ts"
+import { assertRecordWritable } from "#/runtime/server/operation-policy.ts"
 import { makeRecordHydration } from "#/runtime/server/storage/hydration.ts"
 import { RecordIdentifiers } from "#/runtime/server/storage/identifiers.ts"
 import {
@@ -57,6 +60,7 @@ import {
   type LinkUpdates,
 } from "#/runtime/server/storage/link-writes.ts"
 import { invalidListRequest } from "#/runtime/server/storage/object-query.ts"
+import type { StoredRecord } from "#/runtime/server/storage/object-repository.ts"
 import { RecordStore } from "#/runtime/server/storage/record-store.ts"
 import { SqlDatabase } from "#/runtime/server/storage/transactions.ts"
 
@@ -87,7 +91,7 @@ function validateBatchSize(
   return Effect.void
 }
 
-export function makeRepository<const O extends ObjectType>(object: O) {
+function makeRepository<const O extends ObjectType>(object: O) {
   return Effect.gen(function* () {
     const context = yield* ModelContext
     const { model } = context
@@ -182,13 +186,7 @@ export function makeRepository<const O extends ObjectType>(object: O) {
           })
         )
       }
-      const records = yield* repository.batchGet(recordIds)
-      const found = new Set(records.map(({ id }) => id))
-      const missing = recordIds.find((id) => !found.has(id))
-      if (missing !== undefined)
-        return yield* Effect.fail(
-          new ObjectNotFound({ objectType: object.id, recordId: missing })
-        )
+      const records = yield* repository.getStates(recordIds)
       yield* repository.batchDelete(
         records.map(({ etag, id }) => ({ etag, id }))
       )
@@ -202,7 +200,7 @@ export function makeRepository<const O extends ObjectType>(object: O) {
       toEffectObjectWriterUpdateSchema(object)
     )
 
-    const create = Effect.fn(`${object.id}.create`)(
+    const createRecord = Effect.fn(`${object.id}.write.create`)(
       function* (
         input: ObjectCreateInput<O> &
           Partial<ObjectUpdateValues<O>> & { readonly links?: InitialLinks }
@@ -223,7 +221,7 @@ export function makeRepository<const O extends ObjectType>(object: O) {
         const actorId = invocation.actorId as ObjectRecord<O>["createdBy"]
         const id = RecordId(object.id)(generateRecordId(object.id))
         const plan = yield* graph.prepareCreate(object, id, links)
-        const record = yield* repository.insert(
+        yield* repository.insert(
           {
             ...canonical,
             aliases: canonical.aliases ?? [],
@@ -235,13 +233,13 @@ export function makeRepository<const O extends ObjectType>(object: O) {
           },
           plan.references
         )
-        yield* plan.apply(record.id)
-        return yield* repository.get(record.id)
+        yield* plan.apply(id)
+        return id
       },
       (effect) => database.transaction(() => effect)
     )
 
-    const update = Effect.fn(`${object.id}.update`)(
+    const updateRecord = Effect.fn(`${object.id}.write.update`)(
       function* (
         input: ObjectWriterUpdateInput<O> & { readonly links?: LinkUpdates },
         skipUnchanged = false
@@ -264,7 +262,7 @@ export function makeRepository<const O extends ObjectType>(object: O) {
         // SAFETY: see the corresponding create boundary above.
         // oxlint-disable-next-line typescript/no-unsafe-type-assertion
         const actorId = invocation.actorId as ObjectRecord<O>["updatedBy"]
-        const current = yield* repository.get(id)
+        const current = yield* repository.getStored(id)
         const secretFields = Object.keys(values).filter(
           (key) =>
             object.properties[key] && containsSecret(object.properties[key])
@@ -304,16 +302,47 @@ export function makeRepository<const O extends ObjectType>(object: O) {
           )
         ) {
           yield* plan.apply()
-          return yield* repository.get(id)
+          return id
         }
-        const record = yield* repository.update({
+        yield* repository.update({
           ...canonical,
           etag: requestedEtag ?? current.etag,
           id,
           updatedBy: actorId,
         })
-        yield* plan.apply(record.id)
-        return yield* repository.get(record.id)
+        yield* plan.apply(id)
+        return id
+      },
+      (effect) => database.transaction(() => effect)
+    )
+
+    const create = Effect.fn(`${object.id}.create`)(
+      function* (
+        input: ObjectCreateInput<O> &
+          Partial<ObjectUpdateValues<O>> & { readonly links?: InitialLinks }
+      ): Effect.fn.Return<
+        ObjectRecord<O>,
+        | Effect.Error<ReturnType<typeof createRecord>>
+        | Effect.Error<ReturnType<typeof repository.get>>,
+        CurrentInvocation
+      > {
+        const id = yield* createRecord(input)
+        return yield* repository.get(id)
+      },
+      (effect) => database.transaction(() => effect)
+    )
+    const update = Effect.fn(`${object.id}.update`)(
+      function* (
+        input: ObjectWriterUpdateInput<O> & { readonly links?: LinkUpdates },
+        skipUnchanged = false
+      ): Effect.fn.Return<
+        ObjectRecord<O>,
+        | Effect.Error<ReturnType<typeof updateRecord>>
+        | Effect.Error<ReturnType<typeof repository.get>>,
+        CurrentInvocation
+      > {
+        const id = yield* updateRecord(input, skipUnchanged)
+        return yield* repository.get(id)
       },
       (effect) => database.transaction(() => effect)
     )
@@ -366,26 +395,105 @@ export function makeRepository<const O extends ObjectType>(object: O) {
         identifier,
         resolveAliases
       ).pipe(Effect.map(RecordId(object.id)))
-      const current = yield* repository.get(id)
+      const current = yield* repository.getStored(id)
       yield* repository.delete({ etag: etag ?? current.etag, id })
     })
 
+    const checkWritable = Effect.fn(`${object.id}.checkWritable`)(function* (
+      ids: ReadonlyArray<ObjectGetInput<O>["id"]>
+    ) {
+      const resolved = yield* resolveIdentifiers(object.id, ids, resolveAliases)
+      for (const record of yield* repository.getStates(resolved))
+        yield* assertRecordWritable(object, record)
+    })
+    const finalRecord = (id: RecordId<O["id"]>) =>
+      Effect.gen(function* () {
+        const snapshots = yield* FinalSnapshots
+        const record = yield* snapshots.get(
+          id,
+          repository.get(id).pipe(
+            Effect.catchTag("ObjectNotFound", () => Effect.succeed(undefined)),
+            Effect.orDie
+          )
+        )
+        if (record === undefined)
+          return yield* Effect.fail(
+            new ObjectNotFound({ objectType: object.id, recordId: id })
+          )
+        return record
+      })
+    const operations = {
+      get: completeImmediately(get),
+      list: completeImmediately(list),
+      batchGet: completeImmediately(batchGet),
+      create: (input: Parameters<typeof create>[0]) =>
+        createRecord(input).pipe(Effect.map(finalRecord)),
+      update: (
+        input: ObjectWriterUpdateInput<O> & { readonly links?: LinkUpdates }
+      ) =>
+        checkWritable([input.id]).pipe(
+          Effect.andThen(updateRecord(input)),
+          Effect.map(finalRecord)
+        ),
+      delete: completeImmediately((input: ObjectDeleteInput<O>) =>
+        checkWritable([input.id]).pipe(Effect.andThen(remove(input)))
+      ),
+      batchDelete: completeImmediately((input: ObjectBatchDeleteInput<O>) =>
+        checkWritable(input.ids).pipe(Effect.andThen(batchDelete(input)))
+      ),
+    }
     return {
-      batchDelete,
-      batchGet,
-      create,
-      delete: remove,
-      get,
-      list,
-      update,
-      upsert,
+      repository: {
+        batchDelete,
+        batchGet,
+        create,
+        delete: remove,
+        get,
+        list,
+        update,
+        upsert,
+      },
+      operations,
+      checkWritable,
     }
   })
 }
 
-export type Repository<O extends ObjectType> = Effect.Success<
+type RepositoryImplementation<O extends ObjectType> = Effect.Success<
   ReturnType<typeof makeRepository<O>>
 >
+export type Repository<O extends ObjectType> =
+  RepositoryImplementation<O>["repository"]
+
+/** Kernel-owned implementations; Database exposes only the module-facing repository. */
+export class RecordRepositories extends Context.Service<RecordRepositories>()(
+  "@company/RecordRepositories",
+  {
+    make: Effect.gen(function* () {
+      const context = yield* ModelContext
+      const entries = yield* Effect.forEach(
+        Object.values(context.model.objects),
+        (object) =>
+          makeRepository(object).pipe(
+            Effect.map((implementation) => [object.id, implementation] as const)
+          )
+      )
+      const repositories = new Map(entries)
+      return {
+        get: <O extends ObjectType>(object: O): RepositoryImplementation<O> => {
+          const implementation = repositories.get(object.id)
+          if (!context.installed(object) || implementation === undefined)
+            throw new Error(`Object '${object.id}' is not installed.`)
+          // SAFETY: implementations are built against this exact installed model definition.
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+          return implementation as unknown as RepositoryImplementation<O>
+        },
+      }
+    }),
+  }
+) {
+  static readonly layer = Layer.effect(this, this.make)
+}
 
 /** Generates the canonical opaque identifier used by standard and custom actions. */
 function generateRecordId(objectType: string): string {
@@ -397,7 +505,7 @@ function generateRecordId(objectType: string): string {
 
 function assertImmutableFields<O extends ObjectType>(
   object: O,
-  current: ObjectRecord<O>,
+  current: StoredRecord<O>,
   input: ObjectUpdateValues<O>
 ): Effect.Effect<void, ImmutablePropertyError> {
   const currentValues = new Map(Object.entries(current))

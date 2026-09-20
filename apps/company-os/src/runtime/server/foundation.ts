@@ -8,6 +8,7 @@ import { Database } from "#/runtime/server/database.ts"
 import { EventJournal } from "#/runtime/server/events/event-journal.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
 import { PageTokens } from "#/runtime/server/page-tokens.ts"
+import { RecordRepositories } from "#/runtime/server/repository.ts"
 import { RecordIdentifiers } from "#/runtime/server/storage/identifiers.ts"
 import { Links } from "#/runtime/server/storage/link-store.ts"
 import { RecordSecrets } from "#/runtime/server/storage/record-secrets.ts"
@@ -44,6 +45,9 @@ export function foundationLayer<E>(
     Credentials.layer.pipe(Layer.provide(base)),
     journal,
     links,
-    Database.layer.pipe(Layer.provide(base))
+    Database.layer.pipe(
+      Layer.provideMerge(RecordRepositories.layer),
+      Layer.provide(base)
+    )
   )
 }

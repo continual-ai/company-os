@@ -73,10 +73,15 @@ function trackRepository<const O extends ObjectType>(object: O) {
             version: 1,
             data: record,
             ...(writtenFields === undefined ? {} : { writtenFields }),
-            snapshot: repository.get(RecordId(object.id)(record.id)).pipe(
-              Effect.catchTag("ObjectNotFound", () => Effect.succeed(record)),
-              Effect.orDie
-            ),
+            snapshot: {
+              id: record.id,
+              read: repository.get(RecordId(object.id)(record.id)).pipe(
+                Effect.catchTag("ObjectNotFound", () =>
+                  Effect.succeed(undefined)
+                ),
+                Effect.orDie
+              ),
+            },
             subjects: yield* events.subjects([record.id]),
           })
           return record

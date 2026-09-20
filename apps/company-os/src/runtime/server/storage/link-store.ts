@@ -46,7 +46,7 @@ const make = Effect.gen(function* () {
     const sourceId = yield* identifiers.resolve(traversal.source.id, input.id)
     yield* records
       .get(traversal.source)
-      .get(RecordId(traversal.source.id)(sourceId))
+      .getStates([RecordId(traversal.source.id)(sourceId)])
     const target = Object.values(Model.objects).find(
       (object) => object.id === traversal.target.from.typeId
     )

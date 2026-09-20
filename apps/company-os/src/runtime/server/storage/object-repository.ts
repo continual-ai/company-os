@@ -2,7 +2,10 @@ import { Cause, Effect, Option, Schema } from "effect"
 import { isSqlError, type SqlError } from "effect/unstable/sql/SqlError"
 import type { Fragment } from "effect/unstable/sql/Statement"
 
-import { toEffectObjectSchema } from "#/runtime/contract/schema.ts"
+import {
+  toEffectObjectFields,
+  toEffectObjectSchema,
+} from "#/runtime/contract/schema.ts"
 import { modelObjectLinkTraversals } from "#/runtime/model/definition/model.ts"
 import type {
   BaseRecord,
@@ -15,8 +18,9 @@ import type {
 } from "#/runtime/model/definition/request.ts"
 import {
   normalizePageSize,
-  type Etag,
+  Etag,
   type InferProperty,
+  type InferProperties,
   type ModelCatalog,
   type ObjectRecord,
   type ObjectType,
@@ -96,6 +100,12 @@ type ObjectUpdatePropertyValues<TObject extends ObjectType> = Omit<
 type CanonicalStoragePropertyValues<TObject extends ObjectType> =
   | ObjectInsertPropertyValues<TObject>
   | ObjectUpdatePropertyValues<TObject>
+
+export type StoredRecord<O extends ObjectType> = Omit<
+  BaseRecord<O["id"]>,
+  "links" | "label"
+> &
+  InferProperties<O["properties"]>
 
 /** Resolved reference columns keyed by their physical object or interface table. */
 export type InitialReferences = Readonly<
@@ -241,6 +251,15 @@ function makeRepository<
     const secrets = yield* RecordSecrets
     const RecordSchema = toEffectObjectSchema(object)
     const RecordsSchema = Schema.Array(RecordSchema)
+    // SAFETY: the same model fields and codecs as the public record, excluding computed read projections.
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+    const StoredSchema = Schema.Struct(
+      Object.fromEntries(
+        Object.entries(toEffectObjectFields(object)).filter(
+          ([key]) => key !== "links" && key !== "label"
+        )
+      )
+    ) as unknown as Schema.Codec<StoredRecord<TObject>, unknown>
     const linkPreviews = modelObjectLinkTraversals(storage.model, object).map(
       ({ link, direction, traversal }) => {
         const edges = storage.linkTables[link.id]!
@@ -283,6 +302,8 @@ function makeRepository<
       updatedAt: objects.columns.updatedAt,
       updatedBy: objects.columns.updatedById,
     }
+
+    const { links: _links, label: _label, ...storedSelection } = selection
 
     const queryColumns = {
       label: Object.assign(label, { name: "label", type: "text" }),
@@ -347,10 +368,48 @@ function makeRepository<
     const get = Effect.fn(`${object.id}.repository.get`)(function* (
       id: RecordId<TObject["id"]>
     ) {
-      const rows = yield* select(sql`${idColumn} = ${id}`, undefined, 1)
-      const row = rows[0]
+      const row = (yield* select(sql`${idColumn} = ${id}`, undefined, 1))[0]
       if (row === undefined) return yield* Effect.fail(notFound(object, id))
       return yield* decodeRecord(row)
+    })
+
+    const getStored = Effect.fn(`${object.id}.repository.getStored`)(function* (
+      id: RecordId<TObject["id"]>
+    ) {
+      const [row] = yield* sql<
+        SelectionRow<typeof storedSelection>
+      >`select ${projection(storedSelection)}
+        from ${table} inner join ${objects} on ${idColumn} = ${objects.columns.id}
+        where ${idColumn} = ${id}`
+      if (row === undefined) return yield* Effect.fail(notFound(object, id))
+      return yield* Schema.decodeUnknownEffect(StoredSchema)(
+        redactRecordSecrets(object, row)
+      )
+    })
+
+    const getStates = Effect.fn(`${object.id}.repository.getStates`)(function* (
+      ids: ReadonlyArray<RecordId<TObject["id"]>>
+    ) {
+      if (ids.length === 0) return []
+      const fields = {
+        id: objects.columns.id,
+        etag: objects.columns.etag,
+        systemManaged: objects.columns.systemManaged,
+      }
+      const rows = yield* sql<
+        SelectionRow<typeof fields>
+      >`select ${projection(fields)}
+        from ${table} inner join ${objects} on ${idColumn} = ${objects.columns.id}
+        where ${inValues(sql, idColumn, ids)}`
+      const byId = new Map(rows.map((row) => [row.id, row]))
+      const missing = ids.find((id) => !byId.has(id))
+      if (missing !== undefined)
+        return yield* Effect.fail(notFound(object, missing))
+      return ids.map((id) => ({
+        ...byId.get(id)!,
+        id,
+        etag: Etag(byId.get(id)!.etag),
+      }))
     })
 
     const batchGet = Effect.fn(`${object.id}.repository.batchGet`)(function* (
@@ -555,7 +614,7 @@ function makeRepository<
         return undefined
       })
 
-      return yield* get(id)
+      return yield* getStored(id)
     })
 
     const upsert = Effect.fn(`${object.id}.repository.upsert`)(function* (
@@ -650,7 +709,7 @@ function makeRepository<
         return undefined
       })
 
-      return yield* get(id)
+      return yield* getStored(id)
     })
 
     const update = Effect.fn(`${object.id}.repository.update`)(function* ({
@@ -744,7 +803,7 @@ function makeRepository<
         return undefined
       })
 
-      return yield* get(id)
+      return yield* getStored(id)
     })
 
     const deleteObject = Effect.fn(`${object.id}.repository.delete`)(
@@ -819,6 +878,8 @@ function makeRepository<
       batchGet,
       delete: deleteObject,
       get,
+      getStored,
+      getStates,
       insert,
       makeList,
       update,

@@ -19,6 +19,7 @@ import {
   type EventSubject,
 } from "#/runtime/server/events/event-buffer.ts"
 import { eventReferences } from "#/runtime/server/events/event-references.ts"
+import type { RecordSnapshot } from "#/runtime/server/events/record-snapshots.ts"
 import { CurrentInvocation } from "#/runtime/server/invocation.ts"
 import type { ModelContext } from "#/runtime/server/model-context.ts"
 import {
@@ -68,17 +69,21 @@ export function makeEventWriter(
     /** Transient property names used to route this write; never journaled. */
     readonly writtenFields?: ReadonlyArray<string>
     readonly controllerKeys?: ControllerKeys
-    readonly snapshot?: Effect.Effect<unknown>
+    readonly snapshot?: RecordSnapshot
   }) {
     const { actorId } = yield* CurrentInvocation
     const occurredAt = DateTime.formatIso(yield* DateTime.now)
-    // Validate against the installed public contract before a bad event could poison replay.
-    const decoded = yield* Schema.decodeUnknownEffect(eventFactSchema)({
-      type: input.type,
+    const fact = {
       subjects: input.subjects,
+      type: input.type,
       version: input.version ?? 1,
       data: input.data,
-    })
+    }
+    // Snapshot facts are validated at finalization, after their computed read fields exist.
+    const decoded =
+      input.snapshot === undefined
+        ? yield* Schema.decodeUnknownEffect(eventFactSchema)(fact)
+        : fact
     yield* stageEvent({
       id: `ev_${randomUUID()}`,
       type: decoded.type,

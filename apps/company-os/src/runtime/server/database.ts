@@ -7,7 +7,10 @@ import type {
   ObjectCheckFailed,
 } from "#/runtime/server/errors.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
-import { makeRepository, type Repository } from "#/runtime/server/repository.ts"
+import {
+  RecordRepositories,
+  type Repository,
+} from "#/runtime/server/repository.ts"
 import {
   SqlDatabase,
   type PostgresDatabase,
@@ -29,29 +32,14 @@ interface DatabaseService extends Omit<PostgresDatabase, "transaction"> {
 const make = Effect.gen(function* () {
   const sql = yield* SqlDatabase
   const context = yield* ModelContext
-  const entries = yield* Effect.forEach(
-    Object.values(context.model.objects),
-    (object) =>
-      makeRepository(object).pipe(
-        Effect.map((repository) => [object.id, repository] as const)
-      )
-  )
-  const repositories = new Map(entries)
+  const repositories = yield* RecordRepositories
   const database: DatabaseService = {
     ...sql,
     transaction: (body, options) =>
       sql.transaction(() => body(database), options),
     table: (object) => context.table(object),
-    repository: <O extends ObjectType>(object: O): Repository<O> => {
-      const repository = repositories.get(object.id)
-      if (!context.installed(object) || repository === undefined)
-        throw new Error(`Object '${object.id}' is not installed.`)
-      // SAFETY: the repository was constructed from this exact installed object definition.
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-      return repository as unknown as Effect.Success<
-        ReturnType<typeof makeRepository<O>>
-      >
-    },
+    repository: <O extends ObjectType>(object: O): Repository<O> =>
+      repositories.get(object).repository,
   }
   return database
 })

@@ -47,7 +47,14 @@ type CustomOperations<M extends ModelCatalog> = Extract<
 type OperationResult<
   A,
   O extends ObjectType,
-  K extends keyof Repository<O>,
+  K extends
+    | "create"
+    | "update"
+    | "delete"
+    | "batchDelete"
+    | "get"
+    | "list"
+    | "batchGet",
 > = Effect.Effect<
   A,
   | Effect.Error<ReturnType<Repository<O>[K]>>
