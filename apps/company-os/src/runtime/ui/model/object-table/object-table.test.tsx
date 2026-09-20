@@ -31,6 +31,7 @@ it.each([true, false])(
           object={ServiceAccount}
           records={records}
           viewport={{
+            rowCount: 10_000,
             totalSize: 10_000,
             totalSizeExact,
             loading: false,

@@ -9,6 +9,7 @@ import {
 } from "#/runtime/model/index.ts"
 import type { LinkListInput } from "#/runtime/model/link-input.ts"
 import { InvalidListRequest } from "#/runtime/server/errors.ts"
+import { boundedCount, countSummary } from "#/runtime/server/storage/count.ts"
 import type { RecordIdentifiers } from "#/runtime/server/storage/identifiers.ts"
 import {
   cursorCondition,
@@ -157,12 +158,11 @@ export function interfaceQuery(
     const items = rows.slice(0, pageSize)
     const count = yield* sql<{
       totalSize: number
-    }>`select count(*)::double precision as "totalSize" from ${from} where ${compiled.filter}`
+    }>`select ${boundedCount(sql, sql`from ${from} where ${compiled.filter}`)} as "totalSize"`
     const last = items.at(-1)
     return {
       items: items.map(({ id, objectType }) => ({ id, objectType })),
-      totalSize: count[0]!.totalSize,
-      totalSizeExact: true,
+      ...countSummary(count[0]!.totalSize),
       nextPageToken:
         rows.length > pageSize && last
           ? encodeCursor(pageTokens, {

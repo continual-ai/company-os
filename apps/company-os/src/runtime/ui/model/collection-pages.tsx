@@ -43,6 +43,7 @@ export function ViewportCollectionPages({
     ...pages,
     load: pages.refetch,
     viewport: {
+      rowCount: pages.rowCount,
       totalSize: pages.totalSize,
       totalSizeExact: pages.totalSizeExact,
       loading: pages.isFetching,

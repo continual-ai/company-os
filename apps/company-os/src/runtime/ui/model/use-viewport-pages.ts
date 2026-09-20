@@ -4,7 +4,7 @@ import {
   useQuery,
   type UseQueryResult,
 } from "@tanstack/react-query"
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 
 import { isNewerOrEqualRecord } from "#/runtime/client/model-cache.ts"
 import { isUnavailable } from "#/runtime/client/query-errors.ts"
@@ -63,6 +63,27 @@ export function viewportPageIndices(
   ].sort((a, b) => a - b)
 }
 
+/** A lower-bound total is not the end: keep one fetchable page beyond the known rows. */
+export function viewportSize(
+  first: Page<unknown> | undefined,
+  pages: ReadonlyArray<{ offset: number; data: Page<unknown> | undefined }>,
+  pageSize: number,
+  previous: { rows: number; complete: boolean }
+): { rows: number; complete: boolean } {
+  if (!first) return { rows: 0, complete: false }
+  if (first.totalSizeExact) return { rows: first.totalSize, complete: true }
+  let extent = Math.max(previous.rows, first.totalSize + pageSize)
+  let complete = previous.complete
+  for (const { offset, data } of pages) {
+    if (!data) continue
+    const end = offset + data.items.length
+    if (data.nextPageToken === null) return { rows: end, complete: true }
+    if (end >= previous.rows) complete = false
+    extent = Math.max(extent, end + pageSize)
+  }
+  return complete ? previous : { rows: extent, complete: false }
+}
+
 /** Subscribe to the viewport, leaving previously visited pages in Query's inactive cache. */
 export function useViewportPages(
   list: ObjectCollectionList,
@@ -78,10 +99,22 @@ export function useViewportPages(
   const first = useQuery(firstQuery)
   const firstData = isUnavailable(first.error) ? undefined : first.data
   const totalSize = firstData?.totalSize ?? 0
+  const [extent, setExtent] = useState({
+    key: key,
+    rows: 0,
+    complete: false,
+  })
+  const available = viewportSize(
+    firstData,
+    [],
+    pageSize,
+    extent.key === key ? extent : { rows: 0, complete: false }
+  )
+  const availableRows = available.rows
   const pages = requested.key === key ? requested.pages : initialPages
   const offsets = useMemo(
-    () => pages.filter((page) => page > 0 && page * pageSize < totalSize),
-    [pages, pageSize, totalSize]
+    () => pages.filter((page) => page > 0 && page * pageSize < availableRows),
+    [pages, pageSize, availableRows]
   )
   const others = useQueries({
     combine: combinePages,
@@ -89,6 +122,28 @@ export function useViewportPages(
       list.queryOptions({ ...request, pageOffset: page * pageSize })
     ),
   })
+  const size = viewportSize(
+    firstData,
+    [
+      { offset: 0, data: firstData },
+      ...others.data.map((data, index) => ({
+        offset: offsets[index]! * pageSize,
+        data,
+      })),
+    ],
+    pageSize,
+    available
+  )
+  const rowCount = size.rows
+  useEffect(() => {
+    setExtent((current) =>
+      current.key === key &&
+      current.rows === rowCount &&
+      current.complete === size.complete
+        ? current
+        : { key: key, rows: rowCount, complete: size.complete }
+    )
+  }, [key, rowCount, size.complete])
   const data = useMemo(() => {
     const batches = [
       { offset: 0, data: firstData },
@@ -119,7 +174,7 @@ export function useViewportPages(
   }, [firstData, others.data, offsets, pageSize])
   const onRangeChange = useCallback(
     (range: TableRange) => {
-      const next = viewportPageIndices(range, pageSize, totalSize)
+      const next = viewportPageIndices(range, pageSize, rowCount)
       setRequested((current) =>
         current.key === key &&
         current.pages.length === next.length &&
@@ -128,11 +183,12 @@ export function useViewportPages(
           : { key, pages: next }
       )
     },
-    [key, pageSize, totalSize]
+    [key, pageSize, rowCount]
   )
   return {
     ...data,
     totalSize,
+    rowCount,
     totalSizeExact: firstData?.totalSizeExact ?? true,
     onRangeChange,
     error: first.error ?? others.error,

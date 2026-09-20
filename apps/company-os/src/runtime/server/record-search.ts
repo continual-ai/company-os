@@ -10,6 +10,7 @@ import { InvalidListRequest } from "#/runtime/server/errors.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
 import { PageTokens } from "#/runtime/server/page-tokens.ts"
 import { searchSnippets } from "#/runtime/server/search-snippets.ts"
+import { boundedCount, countSummary } from "#/runtime/server/storage/count.ts"
 import { recordSearch } from "#/runtime/server/storage/infrastructure.ts"
 import {
   decodeCursor,
@@ -94,7 +95,7 @@ export function createRecordSearch(model: ModelCatalog) {
       where ${recordSearch.columns.document} @@ q.query and (${sql.join(" OR ")(visible)})`
     const [total] = yield* sql<{
       totalSize: number
-    }>`select count(*)::double precision as "totalSize" ${matches}`
+    }>`select ${boundedCount(sql, matches)} as "totalSize"`
     const rows = yield* sql<{
       id: string
       objectType: string
@@ -120,8 +121,7 @@ export function createRecordSearch(model: ModelCatalog) {
     const snippets = yield* searchSnippets(model, page, page[0]?.query ?? "")
     const last = page.at(-1)
     return yield* Schema.decodeUnknownEffect(recordSearchResult)({
-      totalSize: total!.totalSize,
-      totalSizeExact: true,
+      ...countSummary(total!.totalSize),
       items: page.map(({ rank: _rank, query: _query, ...hit }) => ({
         ...hit,
         snippets: snippets.get(hit.id) ?? [],

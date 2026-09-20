@@ -35,6 +35,11 @@ import {
   RecordAliasConflict,
 } from "#/runtime/server/errors.ts"
 import {
+  boundedCount,
+  countSummary,
+  COUNT_LIMIT,
+} from "#/runtime/server/storage/count.ts"
+import {
   cursorCondition,
   cursorFingerprint,
   decodeCursor,
@@ -249,7 +254,8 @@ function makeRepository<
             : edges.columns.forwardId
         if (traversal.max === 1)
           return sql`${traversal.key}::text, (select ${target} from ${edges} where ${source} = ${objects.columns.id})`
-        return sql`${traversal.key}::text, jsonb_build_object('ids', array(select ${target} from ${edges} where ${source} = ${objects.columns.id} order by ${target} limit 3), 'totalSize', (select count(*) from ${edges} where ${source} = ${objects.columns.id}), 'totalSizeExact', true)`
+        // OFFSET 0 keeps the shared count subquery from being duplicated for its two output fields.
+        return sql`${traversal.key}::text, (select jsonb_build_object('ids', array(select ${target} from ${edges} where ${source} = ${objects.columns.id} order by ${target} limit 3), 'totalSize', least(matches, ${COUNT_LIMIT}), 'totalSizeExact', matches <= ${COUNT_LIMIT}) from (select ${boundedCount(sql, sql`from ${edges} where ${source} = ${objects.columns.id}`)} as matches offset 0) summary)`
       }
     )
     const label = recordLabelSql(sql, storage, object)
@@ -324,11 +330,12 @@ function makeRepository<
     const countMatching = (where?: Fragment, includeCoreObjects = true) =>
       sql<{
         totalSize: number
-      }>`select count(*)::double precision as "totalSize"
-          from ${table}
+      }>`select ${boundedCount(
+        sql,
+        sql`from ${table}
         ${includeCoreObjects ? sql`inner join ${objects} on ${idColumn} = ${objects.columns.id}` : sql.literal("")}
-
           where ${where ?? sql.literal("true")}`
+      )} as "totalSize"`
 
     const decodeRecord = (row: object) =>
       Schema.decodeUnknownEffect(RecordSchema)(redactRecordSecrets(object, row))
@@ -482,8 +489,7 @@ function makeRepository<
                   version: 1,
                 })
               : null,
-          totalSize,
-          totalSizeExact: true,
+          ...countSummary(totalSize),
         }
       })
 

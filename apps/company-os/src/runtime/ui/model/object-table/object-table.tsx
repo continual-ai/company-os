@@ -73,6 +73,7 @@ interface ObjectTableViewport {
   readonly totalSize: number
   readonly totalSizeExact: boolean
   readonly indices: ReadonlyMap<string, number>
+  readonly rowCount: number
   readonly onRangeChange: (range: TableRange) => void
 }
 
@@ -387,7 +388,7 @@ export function ObjectTable({
     columnIds: navigableColumnIds,
     rowIds,
     rowsByIndex,
-    rowCount: viewport?.totalSize ?? rowIds.length,
+    rowCount: viewport?.rowCount ?? rowIds.length,
   })
   const scrollRef = useRef<HTMLDivElement>(null)
   const resetViewport = useEffectEvent(() => {
@@ -401,7 +402,7 @@ export function ObjectTable({
   const renderedTableWidth = table.getTotalSize() + addColumnWidth
   const renderedTableSurfaceHeight =
     tableHeaderHeight +
-    tableRowHeight * (viewport?.totalSize ?? visibleRows.length)
+    tableRowHeight * (viewport?.rowCount ?? visibleRows.length)
 
   return (
     <section

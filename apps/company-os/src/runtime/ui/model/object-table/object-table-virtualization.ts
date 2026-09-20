@@ -10,7 +10,7 @@ export function useObjectTableRows(
   rowsByIndex: ReadonlyMap<number, string>,
   retainedRowIds: ReadonlyArray<string | undefined>,
   scrollRef: RefObject<HTMLDivElement | null>,
-  viewport?: { totalSize: number; indices: ReadonlyMap<string, number> }
+  viewport?: { rowCount: number; indices: ReadonlyMap<string, number> }
 ) {
   "use no memo"
   // Virtual v3's mutable getters are incompatible with React Compiler memoization.
@@ -30,7 +30,7 @@ export function useObjectTableRows(
   // This uncompiled boundary exposes values, never the mutable instance or its getters.
   // oxlint-disable-next-line react/incompatible-library
   const virtualizer = useVirtualizer({
-    count: viewport?.totalSize ?? rowIds.length,
+    count: viewport?.rowCount ?? rowIds.length,
     getScrollElement: () => scrollRef.current,
     getItemKey,
     estimateSize: () => tableRowHeight,
