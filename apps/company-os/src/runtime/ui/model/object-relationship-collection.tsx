@@ -1,5 +1,5 @@
 import { Button } from "@company/ui/button"
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query"
+import { useInfiniteQuery } from "@tanstack/react-query"
 import { UnlinkIcon } from "lucide-react"
 import { useState, type ReactNode } from "react"
 
@@ -14,10 +14,7 @@ import { ObjectRecordFeed } from "#/runtime/ui/model/object-record-feed.tsx"
 import { ObjectReferenceSelect } from "#/runtime/ui/model/object-reference-select.tsx"
 import { objectHref } from "#/runtime/ui/model/object-routing.ts"
 import { RecordRelatedCreateMenu } from "#/runtime/ui/model/record-related-create-menu.tsx"
-import {
-  relationshipCapabilities,
-  type RecordRelationship,
-} from "#/runtime/ui/model/record-relationships.ts"
+import { type RecordRelationship } from "#/runtime/ui/model/record-relationships.ts"
 import { useModelRuntime } from "#/runtime/ui/model/runtime-context.tsx"
 
 /** A relationship supplies context and actions; collection rendering stays object-owned. */
@@ -26,7 +23,6 @@ export function ObjectRelationshipCollection({
 }: {
   readonly relationship: RecordRelationship
 }) {
-  const total = useQuery(relationship.list.queryOptions({ pageSize: 3 }))
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string>()
   const mutate = async (operation: () => Promise<void>) => {
@@ -44,14 +40,10 @@ export function ObjectRelationshipCollection({
       setPending(false)
     }
   }
-  const { canAdd: hasRoom, canRemove } = relationshipCapabilities(
-    relationship,
-    total.data?.totalSize
-  )
   const canConnect = !pending
-  const creates = hasRoom ? relationship.creates : []
+  const creates = relationship.creates
   const renderLink = (records: ReadonlyArray<ClientRecord>) =>
-    hasRoom && canConnect && relationship.connect ? (
+    canConnect && relationship.connect ? (
       <ObjectReferenceSelect
         allowCreate={false}
         id={`${relationship.key}-link`}
@@ -70,7 +62,7 @@ export function ObjectRelationshipCollection({
       />
     ) : null
   const unlink =
-    canConnect && canRemove && relationship.disconnect
+    canConnect && relationship.disconnect
       ? (record: ClientRecord) => mutate(() => relationship.disconnect!(record))
       : undefined
   return (
@@ -160,7 +152,6 @@ function RelatedRecordFeed({
       <div className="flex min-h-10 flex-wrap items-center justify-end gap-2 border-b px-page-gutter py-1">
         <RecordRelatedCreateMenu
           relationships={[{ ...relationship, creates }]}
-          totals={new Map([[relationship.key, page.data?.pages[0]?.totalSize]])}
         />
         {renderLink(records)}
       </div>

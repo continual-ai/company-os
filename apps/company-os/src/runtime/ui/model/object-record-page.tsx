@@ -119,7 +119,6 @@ export function ObjectRecordPage({
     state.record,
     state.references
   )
-  const totals = new Map(previews.map(({ key, totalSize }) => [key, totalSize]))
   const select = (value: string) => {
     // Let the router commit routed tabs inside its view transition.
     if (onTabChange) onTabChange(value)
@@ -472,10 +471,7 @@ export function ObjectRecordPage({
                 can={state.can}
                 placement="record"
               />
-              <RecordRelatedCreateMenu
-                relationships={allRelated}
-                totals={totals}
-              />
+              <RecordRelatedCreateMenu relationships={allRelated} />
               {edit && (
                 <Button
                   variant="ghost"

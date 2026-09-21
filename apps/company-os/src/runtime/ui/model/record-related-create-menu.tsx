@@ -9,34 +9,24 @@ import { ChevronDownIcon, PlusIcon } from "lucide-react"
 
 import { useObjectCreate } from "#/runtime/ui/model/object-create-context.ts"
 import { ObjectIcon } from "#/runtime/ui/model/object-record-identity.tsx"
-import {
-  relationshipCapabilities,
-  type RecordRelationship,
-} from "#/runtime/ui/model/record-relationships.ts"
+import { type RecordRelationship } from "#/runtime/ui/model/record-relationships.ts"
 
 /** Creation defaults and authority come from the same relationship projection as its collection. */
 export function RecordRelatedCreateMenu({
   relationships,
-  totals,
   compact = false,
 }: {
   readonly relationships: ReadonlyArray<RecordRelationship>
-  readonly totals: ReadonlyMap<string, number | undefined>
   readonly compact?: boolean
 }) {
   const openCreate = useObjectCreate()
-  const entries = relationships
-    .filter(
-      (item) => relationshipCapabilities(item, totals.get(item.key)).canAdd
-    )
-    .flatMap((item) =>
-      item.creates.map((create) => ({
-        ...create,
-        key: `${item.key}:${create.target.id}`,
-        label: item.label,
-      }))
-    )
-  const available = entries
+  const available = relationships.flatMap((item) =>
+    item.creates.map((create) => ({
+      ...create,
+      key: `${item.key}:${create.target.id}`,
+      label: item.label,
+    }))
+  )
   if (available.length === 0) return null
   const single = compact && available.length === 1 ? available[0] : undefined
   if (single)

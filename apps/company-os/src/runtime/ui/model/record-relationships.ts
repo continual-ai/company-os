@@ -1,5 +1,6 @@
 import { modelPagedQuery } from "#/runtime/client/model-query-client.ts"
 import { modelObjectLinkTraversals, type Page } from "#/runtime/model/index.ts"
+import { linkPreview } from "#/runtime/model/record-links.ts"
 import {
   clientFor,
   linkClientFor,
@@ -25,8 +26,7 @@ export interface RecordRelationship {
   readonly featured: boolean
   readonly targetType: string
   readonly target?: ModelObject | undefined
-  readonly min: number
-  readonly max: number | undefined
+  readonly max: 1 | undefined
   readonly list: ObjectCollectionList
   readonly creates: ReadonlyArray<RelatedCreate>
   readonly connect?: ((id: string) => Promise<void>) | undefined
@@ -60,8 +60,7 @@ export function recordRelationships(
       description: traversal.traversal.description,
       targetType: traversal.target.from.typeId,
       target,
-      min: traversal.traversal.min,
-      max: traversal.traversal.max,
+      max: traversal.traversal.max === 1 ? 1 : undefined,
       featured: targets.some(
         (item) => runtime.ui[item.id]?.navigation?.hidden !== true
       ),
@@ -70,6 +69,11 @@ export function recordRelationships(
       ),
       creates: targets.flatMap((item) => {
         if (!editable || !clientFor(runtime, item).create) return []
+        if (
+          traversal.traversal.max === 1 &&
+          linkPreview(record.links?.[traversal.traversal.key]).ids.length > 0
+        )
+          return []
         const inverse = inverseFor(item)
         if (!inverse.writable) return []
         return [
@@ -101,17 +105,4 @@ export function recordRelationships(
         : {}),
     }
   })
-}
-
-/** Local affordances reflect known bounds; the server validates both ends atomically. */
-export function relationshipCapabilities(
-  relationship: Pick<RecordRelationship, "min" | "max">,
-  total: number | undefined
-) {
-  return {
-    canAdd:
-      total !== undefined &&
-      (relationship.max === undefined || total < relationship.max),
-    canRemove: total !== undefined && total > relationship.min,
-  }
 }

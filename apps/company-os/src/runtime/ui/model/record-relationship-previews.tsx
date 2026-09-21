@@ -61,7 +61,6 @@ export function RecordRelationshipPreviews({
               <RecordRelatedCreateMenu
                 compact
                 relationships={[preview.relationship]}
-                totals={new Map([[preview.key, preview.totalSize]])}
               />
             </div>
           </PageSectionHeader>

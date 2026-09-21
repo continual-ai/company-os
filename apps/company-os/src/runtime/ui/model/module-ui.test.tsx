@@ -124,7 +124,6 @@ describe("module UI composition", () => {
                     targetType: Prospect.id,
                     target: Prospect,
                     featured: true,
-                    min: 0,
                     max: undefined,
                     creates: [{ target: Prospect, options: {} }],
                     list: {
