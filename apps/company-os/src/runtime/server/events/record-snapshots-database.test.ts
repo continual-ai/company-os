@@ -11,6 +11,7 @@ import {
 import { PlatformModule } from "#/runtime/platform/model/index.ts"
 import { Database } from "#/runtime/server/database.ts"
 import { EventJournal } from "#/runtime/server/events/event-journal.ts"
+import { RecordStore } from "#/runtime/server/storage/record-store.ts"
 import { testFoundation } from "#/runtime/testing/foundation.ts"
 
 const Node = defineObject({
@@ -26,6 +27,16 @@ const Children = defineLink({
   from: { object: Node, key: "children", onDelete: "restrict" },
   to: { object: Node, key: "parent", max: 1 },
 })
+const Related = defineLink({
+  id: "aSnapshotRelated",
+  from: { object: Node, key: "related" },
+  to: { object: Node, key: "source", max: 1 },
+})
+const Owned = defineLink({
+  id: "bSnapshotOwned",
+  from: { object: Node, key: "owned", onDelete: "cascade" },
+  to: { object: Node, key: "owner", max: 1 },
+})
 const model = defineModel({
   name: "Snapshot recovery",
   modules: [
@@ -34,7 +45,7 @@ const model = defineModel({
       id: "snapshots",
       name: "Snapshots",
       objects: [Node],
-      links: [Children],
+      links: [Related, Owned, Children],
     }),
   ],
 })
@@ -77,3 +88,86 @@ fixture.test(
       expect(updates.map((event) => event.data)).toEqual([result, result])
     })
 )
+
+for (const restricted of ["root", "child"] as const)
+  fixture.test(
+    `a recovered ${restricted} restriction leaves edges, cascades, and journal unchanged`,
+    () =>
+      Effect.gen(function* () {
+        const database = yield* Database
+        const journal = yield* EventJournal
+        const repository = database.repository(Node)
+        const parent = yield* repository.create({ name: "Parent" })
+        const related = yield* repository.create({
+          name: "Related",
+          links: { source: parent.id },
+        })
+        const owned = yield* repository.create({
+          name: "Owned",
+          links: { owner: parent.id },
+        })
+        yield* repository.create({
+          name: "Blocker",
+          links: { parent: restricted === "root" ? parent.id : owned.id },
+        })
+        const ids = [parent.id, related.id, owned.id]
+        const beforeRecords = yield* repository.batchGet({ ids })
+        const before = yield* journal.list({ cursor: "now" })
+        yield* database.transaction(() =>
+          repository.delete({ id: parent.id }).pipe(
+            Effect.match({
+              onSuccess: () => {
+                throw new Error("Expected restriction")
+              },
+              onFailure: (error) =>
+                expect(error._tag).toBe("CascadeDeleteRestricted"),
+            })
+          )
+        )
+        expect(yield* repository.batchGet({ ids })).toEqual(beforeRecords)
+        expect(
+          (yield* journal.list({ cursor: before.nextCursor })).items
+        ).toEqual([])
+      })
+  )
+
+for (const batch of [false, true])
+  fixture.test(
+    `a recovered stale ${batch ? "batch" : "single"} deletion leaves owned records and journal unchanged`,
+    () =>
+      Effect.gen(function* () {
+        const database = yield* Database
+        const journal = yield* EventJournal
+        const store = (yield* RecordStore).get(Node)
+        const repository = database.repository(Node)
+        const parent = yield* repository.create({ name: "Parent" })
+        const owned = yield* repository.create({
+          name: "Owned",
+          links: { owner: parent.id },
+        })
+        const unrelated = yield* repository.create({ name: "Other root" })
+        const stale = yield* repository.get({ id: parent.id })
+        yield* repository.update({ id: parent.id, name: "Changed" })
+        const ids = [parent.id, owned.id, unrelated.id]
+        const beforeRecords = yield* repository.batchGet({ ids })
+        const before = yield* journal.list({ cursor: "now" })
+        yield* database.transaction(() =>
+          (batch
+            ? store.batchDelete([unrelated, stale])
+            : repository.delete({ id: stale.id, etag: stale.etag })
+          ).pipe(
+            Effect.match({
+              onSuccess: () => {
+                throw new Error("Expected conflict")
+              },
+              onFailure: (error) =>
+                expect(error._tag).toBe("ObjectWriteConflict"),
+            })
+          )
+        )
+        expect(yield* repository.batchGet({ ids })).toEqual(beforeRecords)
+        expect(
+          (yield* journal.list({ cursor: before.nextCursor })).items
+        ).toEqual([])
+      })
+  )

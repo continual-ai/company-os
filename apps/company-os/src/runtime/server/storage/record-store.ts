@@ -4,6 +4,7 @@ import { replaceAssetReferences } from "#/runtime/assets/server/asset-references
 import { compileAssetReferences } from "#/runtime/assets/server/references.ts"
 import { RecordId, type ObjectType } from "#/runtime/model/index.ts"
 import { resourceProperties } from "#/runtime/model/resource-properties.ts"
+import { ObjectWriteConflict } from "#/runtime/server/errors.ts"
 import { makeEventWriter } from "#/runtime/server/events/event-writer.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
 import { PageTokens } from "#/runtime/server/page-tokens.ts"
@@ -89,11 +90,12 @@ function trackRepository<const O extends ObjectType>(object: O) {
       )
 
     const remove = <A, E, R>(
-      ids: ReadonlyArray<string>,
+      expected: ReadonlyArray<ObjectDeleteTarget<O>>,
       operation: Effect.Effect<A, E, R>
     ) =>
       database.transaction(() =>
         Effect.gen(function* () {
+          const ids = expected.map(({ id }) => id)
           const targetsFields = {
             id: core.columns.id,
             objectType: core.columns.objectType,
@@ -109,6 +111,20 @@ function trackRepository<const O extends ObjectType>(object: O) {
           from ${core}
           where ${inValues(sql, core.columns.id, [...ids])}
           order by ${sql.csv([core.columns.id])} for update`
+          const byId = new Map(targets.map((target) => [target.id, target]))
+          for (const target of expected) {
+            const current = byId.get(target.id)
+            if (
+              current?.objectType !== object.id ||
+              current.etag !== target.etag
+            )
+              return yield* Effect.fail(
+                new ObjectWriteConflict({
+                  objectType: object.id,
+                  recordId: target.id,
+                })
+              )
+          }
           const children = yield* deleting(ids)
           const result = yield* operation
           for (const target of [...targets, ...children])
@@ -157,12 +173,9 @@ function trackRepository<const O extends ObjectType>(object: O) {
       update: (input: ObjectRepositoryUpdate<O>) =>
         track(repository.update(input), "updated", inputFields(input)),
       delete: (target: ObjectDeleteTarget<O>) =>
-        remove([target.id], repository.delete(target)),
+        remove([target], repository.delete(target)),
       batchDelete: (targets: ReadonlyArray<ObjectDeleteTarget<O>>) =>
-        remove(
-          targets.map((target) => target.id),
-          repository.batchDelete(targets)
-        ),
+        remove(targets, repository.batchDelete(targets)),
       upsert,
     }
   })

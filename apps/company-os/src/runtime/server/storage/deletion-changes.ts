@@ -13,7 +13,7 @@ import {
 } from "#/runtime/server/storage/statement.ts"
 import type { SqlDatabase } from "#/runtime/server/storage/transactions.ts"
 
-/** Resolve explicit ownership, journal removed edges, then delete owned records in the same transaction. */
+/** Collect and validate the complete deletion before changing records or staging journal facts. */
 export function deletionChanges(
   database: typeof SqlDatabase.Service,
   context: typeof ModelContext.Service
@@ -78,9 +78,11 @@ export function deletionChanges(
           return yield* Effect.fail(
             new CascadeDeleteRestricted({ recordId: target.id })
           )
-      yield* preserveRecordSnapshots(visited)
-      const events = makeEventWriter(database, context)
-      const touched = new Set<string>()
+      const removed: Array<{
+        linkId: string
+        forwardId: string
+        reverseId: string
+      }> = []
       for (const link of links) {
         const table = storage.linkTables[link.id]!
         const pairFields = {
@@ -107,18 +109,21 @@ export function deletionChanges(
                   : pair.reverseId,
               })
             )
-          touched.add(pair.forwardId)
-          touched.add(pair.reverseId)
-          yield* events.record({
-            type: `${link.id}.unlinked`,
-            subjects: yield* events.subjects([pair.forwardId, pair.reverseId]),
-            data: { link: link.id },
-            controllerKeys: yield* events.linkTargets({
-              linkId: link.id,
-              ...pair,
-            }),
-          })
+          removed.push({ linkId: link.id, ...pair })
         }
+      }
+      yield* preserveRecordSnapshots(visited)
+      const events = makeEventWriter(database, context)
+      const touched = new Set<string>()
+      for (const pair of removed) {
+        touched.add(pair.forwardId)
+        touched.add(pair.reverseId)
+        yield* events.record({
+          type: `${pair.linkId}.unlinked`,
+          subjects: yield* events.subjects([pair.forwardId, pair.reverseId]),
+          data: { link: pair.linkId },
+          controllerKeys: yield* events.linkTargets(pair),
+        })
       }
       const deleted = new Set(allIds)
       const surviving = [...touched].filter((id) => !deleted.has(id))
