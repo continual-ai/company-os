@@ -175,15 +175,16 @@ export function useViewportPages(
   const onRangeChange = useCallback(
     (range: TableRange) => {
       const next = viewportPageIndices(range, pageSize, rowCount)
-      setRequested((current) =>
-        current.key === key &&
-        current.pages.length === next.length &&
-        current.pages.every((page, index) => page === next[index])
-          ? current
-          : { key, pages: next }
+      // A layout effect reports the range on render; don't enqueue an update for the same pages.
+      if (
+        requested.key === key &&
+        requested.pages.length === next.length &&
+        requested.pages.every((page, index) => page === next[index])
       )
+        return
+      setRequested({ key, pages: next })
     },
-    [key, pageSize, rowCount]
+    [key, pageSize, rowCount, requested]
   )
   return {
     ...data,
