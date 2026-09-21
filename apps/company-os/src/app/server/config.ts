@@ -6,6 +6,8 @@ import { ConfigProvider, Effect, Option } from "effect"
  */
 export const developmentDefaults = ConfigProvider.fromUnknown({
   APP_SECRET: "company-os-application-secret-local-development-only",
+  // The local event listener and controller host reserve connections for their lifetimes.
+  DATABASE_MAX_CONNECTIONS: 10,
   DATABASE_URL: "postgresql://localhost:5433/company_os",
 })
 
