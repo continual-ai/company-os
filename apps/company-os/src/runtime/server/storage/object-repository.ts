@@ -17,7 +17,6 @@ import type {
   CanonicalObjectFilter,
 } from "#/runtime/model/definition/request.ts"
 import {
-  normalizePageSize,
   Etag,
   type InferProperty,
   type InferProperties,
@@ -35,7 +34,7 @@ import {
   ObjectWriteConflict,
   ObjectDeleteRestricted,
   type ObjectUniqueConflict,
-  InvalidListRequest,
+  type InvalidListRequest,
   RecordAliasConflict,
 } from "#/runtime/server/errors.ts"
 import {
@@ -44,9 +43,7 @@ import {
   COUNT_LIMIT,
 } from "#/runtime/server/storage/count.ts"
 import {
-  cursorCondition,
-  cursorFingerprint,
-  decodeCursor,
+  prepareListQuery,
   encodeCursor,
   invalidListRequest,
   makeObjectQueryCompiler,
@@ -60,7 +57,6 @@ import {
 } from "#/runtime/server/storage/record-secrets.ts"
 import { relationalQuery } from "#/runtime/server/storage/relational-query.ts"
 import type { PostgresStorage } from "#/runtime/server/storage/schema.ts"
-import { searchMatch } from "#/runtime/server/storage/search-query.ts"
 import {
   assignments,
   conflictColumns,
@@ -321,7 +317,7 @@ function makeRepository<
     }
 
     const relations = relationalQuery(sql, storage, object, idColumn)
-    const { compileFilter, resolveSort } = makeObjectQueryCompiler(
+    const compiler = makeObjectQueryCompiler(
       sql,
       object,
       queryColumns,
@@ -435,68 +431,20 @@ function makeRepository<
         Page<ObjectRecord<TObject>>,
         PostgresRepositoryError
       > {
-        if (
-          request.pageOffset !== undefined &&
-          (!Number.isSafeInteger(request.pageOffset) ||
-            request.pageOffset < 0 ||
-            request.pageToken !== undefined)
+        const {
+          size,
+          sort: resolvedSort,
+          fingerprint,
+          matching: predicates,
+          after,
+        } = yield* prepareListQuery(
+          sql,
+          object,
+          idColumn,
+          compiler,
+          request,
+          pageTokens
         )
-          return yield* Effect.fail(
-            invalidListRequest(
-              object,
-              "pageOffset must be a non-negative safe integer and cannot be combined with pageToken."
-            )
-          )
-        const size = yield* Effect.try({
-          try: () => normalizePageSize(request.pageSize),
-          catch: () =>
-            invalidListRequest(
-              object,
-              "pageSize must be a non-negative integer."
-            ),
-        })
-        const resolvedSort = yield* Effect.try({
-          try: () => resolveSort(request),
-          catch: (error) =>
-            error instanceof InvalidListRequest
-              ? error
-              : invalidListRequest(object, "The sort request is invalid."),
-        })
-        const publicSort = resolvedSort.map(
-          ({ column: _column, ...sort }) => sort
-        )
-        const fingerprint = cursorFingerprint(object, request, publicSort)
-        const cursor =
-          request.pageToken === undefined
-            ? undefined
-            : yield* Effect.try({
-                try: () =>
-                  decodeCursor(
-                    object,
-                    pageTokens,
-                    request.pageToken!,
-                    fingerprint,
-                    resolvedSort.length
-                  ),
-                catch: (error) =>
-                  error instanceof InvalidListRequest
-                    ? error
-                    : invalidListRequest(object, "The page token is invalid."),
-              })
-        const filter = yield* Effect.try({
-          try: () =>
-            request.filter === undefined
-              ? undefined
-              : compileFilter(request.filter),
-          catch: (error) =>
-            error instanceof InvalidListRequest
-              ? error
-              : invalidListRequest(object, "The filter request is invalid."),
-        })
-        const after =
-          cursor === undefined
-            ? undefined
-            : cursorCondition(sql, resolvedSort, cursor.values)
         let related
         if (request.relatedTo !== undefined) {
           const { linkId, direction, sourceId } = request.relatedTo
@@ -514,9 +462,8 @@ function makeRepository<
           from ${edge}
           where ${source} = ${sourceId} and ${target} = ${idColumn})`
         }
-        const search = searchMatch(sql, idColumn, request.query)
         const matching = sql.and(
-          [filter, related, search].filter((part) => part !== undefined)
+          [predicates, related].filter((part) => part !== undefined)
         )
         const rows = yield* select(
           sql.and([matching, after].filter((part) => part !== undefined)),
@@ -536,7 +483,7 @@ function makeRepository<
             ? items.length
             : ((yield* countMatching(
                 matching,
-                filter !== undefined || related !== undefined
+                request.filter !== undefined || related !== undefined
               ))[0]?.totalSize ?? 0)
         return {
           items,
@@ -551,6 +498,35 @@ function makeRepository<
           ...countSummary(totalSize),
         }
       })
+
+    const claimAliases = Effect.fn(`${object.id}.repository.claimAliases`)(
+      function* (id: string, aliases: ReadonlyArray<RecordAlias>) {
+        if (aliases.length === 0) return undefined
+        yield* sql`insert into ${recordAliases} ${insertValues(
+          sql,
+          recordAliases,
+          aliases.map((alias) => ({ alias, objectId: id }))
+        )} on conflict do nothing`
+        const fields = {
+          alias: recordAliases.columns.alias,
+          objectId: recordAliases.columns.objectId,
+        }
+        const owners = yield* sql<
+          SelectionRow<typeof fields>
+        >`select ${projection(fields)} from ${recordAliases}
+        where ${inValues(sql, recordAliases.columns.alias, aliases)}`
+        const conflictOwner = owners.find((owner) => owner.objectId !== id)
+        if (conflictOwner !== undefined)
+          return yield* Effect.fail(
+            new RecordAliasConflict({
+              alias: conflictOwner.alias,
+              conflictingRecordId: conflictOwner.objectId,
+              recordId: id,
+            })
+          )
+        return undefined
+      }
+    )
 
     const insert = Effect.fn(`${object.id}.repository.insert`)(function* (
       record: ObjectInsert<TObject>,
@@ -575,33 +551,7 @@ function makeRepository<
           systemManaged,
           updatedById: updatedBy,
         })}`
-        if (aliases.length > 0) {
-          yield* sql`insert into ${recordAliases} ${insertValues(
-            sql,
-            recordAliases,
-            aliases.map((alias) => ({ alias, objectId: id }))
-          )}
-          on conflict do nothing`
-          const ownersFields = {
-            alias: recordAliases.columns.alias,
-            objectId: recordAliases.columns.objectId,
-          }
-          const owners = yield* sql<
-            SelectionRow<typeof ownersFields>
-          >`select ${projection(ownersFields)}
-          from ${recordAliases}
-          where ${inValues(sql, recordAliases.columns.alias, [...aliases])}`
-          const conflictOwner = owners.find((owner) => owner.objectId !== id)
-          if (conflictOwner !== undefined) {
-            return yield* Effect.fail(
-              new RecordAliasConflict({
-                alias: conflictOwner.alias,
-                conflictingRecordId: conflictOwner.objectId,
-                recordId: id,
-              })
-            )
-          }
-        }
+        yield* claimAliases(id, aliases)
         const objectValues = {
           id,
           ...toStorageProperties(properties, id),
@@ -662,33 +612,7 @@ function makeRepository<
             updatedById: updatedBy,
           })}`
 
-        if (aliases.length > 0) {
-          yield* sql`insert into ${recordAliases} ${insertValues(
-            sql,
-            recordAliases,
-            aliases.map((alias) => ({ alias, objectId: id }))
-          )}
-          on conflict do nothing`
-          const ownersFields2 = {
-            alias: recordAliases.columns.alias,
-            objectId: recordAliases.columns.objectId,
-          }
-          const owners = yield* sql<
-            SelectionRow<typeof ownersFields2>
-          >`select ${projection(ownersFields2)}
-          from ${recordAliases}
-          where ${inValues(sql, recordAliases.columns.alias, [...aliases])}`
-          const conflictOwner = owners.find((owner) => owner.objectId !== id)
-          if (conflictOwner !== undefined) {
-            return yield* Effect.fail(
-              new RecordAliasConflict({
-                alias: conflictOwner.alias,
-                conflictingRecordId: conflictOwner.objectId,
-                recordId: id,
-              })
-            )
-          }
-        }
+        yield* claimAliases(id, aliases)
         yield* sql`delete
           from ${recordAliases}
           where ${recordAliases.columns.objectId} = ${id}
@@ -752,33 +676,7 @@ function makeRepository<
             : isAliasReplacement(aliases)
               ? aliases
               : (aliases.add ?? [])
-        if (aliasesToAdd.length > 0) {
-          yield* sql`insert into ${recordAliases} ${insertValues(
-            sql,
-            recordAliases,
-            aliasesToAdd.map((alias) => ({ alias, objectId: id }))
-          )}
-          on conflict do nothing`
-          const ownersFields3 = {
-            alias: recordAliases.columns.alias,
-            objectId: recordAliases.columns.objectId,
-          }
-          const owners = yield* sql<
-            SelectionRow<typeof ownersFields3>
-          >`select ${projection(ownersFields3)}
-          from ${recordAliases}
-          where ${inValues(sql, recordAliases.columns.alias, [...aliasesToAdd])}`
-          const conflictOwner = owners.find((owner) => owner.objectId !== id)
-          if (conflictOwner !== undefined) {
-            return yield* Effect.fail(
-              new RecordAliasConflict({
-                alias: conflictOwner.alias,
-                conflictingRecordId: conflictOwner.objectId,
-                recordId: id,
-              })
-            )
-          }
-        }
+        yield* claimAliases(id, aliasesToAdd)
 
         if (aliases !== undefined) {
           if (isAliasReplacement(aliases)) {

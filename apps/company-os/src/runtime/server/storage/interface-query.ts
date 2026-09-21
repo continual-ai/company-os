@@ -8,20 +8,16 @@ import {
   type PageTokenCodec,
 } from "#/runtime/model/index.ts"
 import type { LinkListInput } from "#/runtime/model/link-input.ts"
-import { InvalidListRequest } from "#/runtime/server/errors.ts"
 import { boundedCount, countSummary } from "#/runtime/server/storage/count.ts"
 import type { RecordIdentifiers } from "#/runtime/server/storage/identifiers.ts"
 import {
-  cursorCondition,
-  cursorFingerprint,
-  decodeCursor,
+  prepareListQuery,
   encodeCursor,
   makeObjectQueryCompiler,
   orderExpression,
 } from "#/runtime/server/storage/object-query.ts"
 import { relationalQuery } from "#/runtime/server/storage/relational-query.ts"
 import type { PostgresStorage } from "#/runtime/server/storage/schema.ts"
-import { searchMatch } from "#/runtime/server/storage/search-query.ts"
 import {
   tableColumns,
   quoteIdentifier as q,
@@ -100,65 +96,32 @@ export function interfaceQuery(
       identifiers.resolveAliases,
       storage.model
     )
-    const compiled = yield* Effect.try({
-      try: () => {
-        const related = relationalQuery(sql, storage, target, columns.id!)
-        const compiler = makeObjectQueryCompiler(
-          sql,
-          target,
-          columns,
-          related.filter,
-          related.field
-        )
-        const sort = compiler.resolveSort(request)
-        const fingerprint = cursorFingerprint(
-          target,
-          { ...request, relatedTo },
-          sort
-        )
-        const cursor =
-          request.pageToken === undefined
-            ? undefined
-            : decodeCursor(
-                target,
-                pageTokens,
-                request.pageToken,
-                fingerprint,
-                sort.length
-              )
-        return {
-          sort,
-          fingerprint,
-          filter: sql.and([
-            request.filter === undefined
-              ? sql`true`
-              : compiler.compileFilter(request.filter),
-            searchMatch(sql, columns.id!, request.query) ?? sql`true`,
-          ]),
-          after:
-            cursor === undefined
-              ? sql`true`
-              : (cursorCondition(sql, sort, cursor.values) ?? sql`true`),
-        }
-      },
-      catch: (error) =>
-        error instanceof InvalidListRequest
-          ? error
-          : new InvalidListRequest({
-              objectType: target.id,
-              message: "The relationship query is invalid.",
-            }),
-    })
+    const related = relationalQuery(sql, storage, target, columns.id!)
+    const compiler = makeObjectQueryCompiler(
+      sql,
+      target,
+      columns,
+      related.filter,
+      related.field
+    )
+    const compiled = yield* prepareListQuery(
+      sql,
+      target,
+      columns.id!,
+      compiler,
+      { ...request, relatedTo },
+      pageTokens
+    )
     const from = sql`(${sql.join(" union all ")(branches)}) related_records`
     const rows = yield* sql<{
       id: string
       objectType: string
       values: ReadonlyArray<string | null>
-    }>`select ${columns.id}, ${columns.objectType}, jsonb_build_array(${sql.csv(compiled.sort.map(({ column }) => sql`${column}::text`))}) as values from ${from} where ${compiled.filter} and ${compiled.after} order by ${sql.csv(compiled.sort.map((sort) => orderExpression(sql, sort)))} limit ${pageSize + 1} offset ${request.pageOffset ?? 0}`
+    }>`select ${columns.id}, ${columns.objectType}, jsonb_build_array(${sql.csv(compiled.sort.map(({ column }) => sql`${column}::text`))}) as values from ${from} where ${compiled.matching} and ${compiled.after} order by ${sql.csv(compiled.sort.map((sort) => orderExpression(sql, sort)))} limit ${pageSize + 1} offset ${request.pageOffset ?? 0}`
     const items = rows.slice(0, pageSize)
     const count = yield* sql<{
       totalSize: number
-    }>`select ${boundedCount(sql, sql`from ${from} where ${compiled.filter}`)} as "totalSize"`
+    }>`select ${boundedCount(sql, sql`from ${from} where ${compiled.matching}`)} as "totalSize"`
     const last = items.at(-1)
     return {
       items: items.map(({ id, objectType }) => ({ id, objectType })),

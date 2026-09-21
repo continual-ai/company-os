@@ -1,12 +1,13 @@
 import { createHash } from "node:crypto"
 
-import { Schema } from "effect"
+import { Effect, Schema } from "effect"
 import type { Constructor, Fragment } from "effect/unstable/sql/Statement"
 
 import { decodeQueryValue } from "#/runtime/contract/query-validation.ts"
 import type { LinkFilter } from "#/runtime/model/definition/request.ts"
 import { containsSecret } from "#/runtime/model/definition/schema.ts"
 import {
+  normalizePageSize,
   type ObjectSort,
   type ObjectType,
   type PageToken,
@@ -23,6 +24,7 @@ import {
   type RepositoryListRequest,
 } from "#/runtime/server/storage/object-repository.ts"
 import type { QueryField } from "#/runtime/server/storage/relational-query.ts"
+import { searchMatch } from "#/runtime/server/storage/search-query.ts"
 import { inValues } from "#/runtime/server/storage/statement.ts"
 import { type Column } from "#/runtime/server/storage/table.ts"
 
@@ -119,7 +121,7 @@ function laterCursorValue(
     : comparison
 }
 
-export function cursorCondition(
+function cursorCondition(
   sql: Constructor,
   sort: ReadonlyArray<ResolvedSort>,
   values: ReadonlyArray<QueryValue>,
@@ -153,7 +155,7 @@ function cursorFilter<TObject extends ObjectType>(
     : [filter.field, filter.operator]
 }
 
-export function cursorFingerprint<TObject extends ObjectType>(
+function cursorFingerprint<TObject extends ObjectType>(
   object: { readonly id: string },
   request: RepositoryListRequest<TObject>,
   sort: ReadonlyArray<CursorSort>
@@ -425,4 +427,63 @@ export function makeObjectQueryCompiler(
     return compileFilter(filter)
   }
   return { compileFilter: boundedFilter, resolveSort }
+}
+
+/** Objects and interface unions share request preparation, while retaining their own SQL sources and loaders. */
+export function prepareListQuery<TObject extends ObjectType>(
+  sql: Constructor,
+  object: QueryType,
+  id: Column,
+  compiler: ReturnType<typeof makeObjectQueryCompiler>,
+  request: RepositoryListRequest<TObject>,
+  pageTokens: PageTokenCodec
+) {
+  return Effect.try({
+    try: () => {
+      if (
+        request.pageOffset !== undefined &&
+        (!Number.isSafeInteger(request.pageOffset) ||
+          request.pageOffset < 0 ||
+          request.pageToken !== undefined)
+      )
+        throw invalidListRequest(
+          object,
+          "pageOffset must be a non-negative safe integer and cannot be combined with pageToken."
+        )
+      const size = normalizePageSize(request.pageSize)
+      const sort = compiler.resolveSort(request)
+      const fingerprint = cursorFingerprint(object, request, sort)
+      const cursor =
+        request.pageToken === undefined
+          ? undefined
+          : decodeCursor(
+              object,
+              pageTokens,
+              request.pageToken,
+              fingerprint,
+              sort.length
+            )
+      const filter =
+        request.filter === undefined
+          ? undefined
+          : compiler.compileFilter(request.filter)
+      const search = searchMatch(sql, id, request.query)
+      return {
+        size,
+        sort,
+        fingerprint,
+        matching: sql.and(
+          [filter, search].filter((part) => part !== undefined)
+        ),
+        after:
+          cursor === undefined
+            ? sql`true`
+            : (cursorCondition(sql, sort, cursor.values) ?? sql`true`),
+      }
+    },
+    catch: (error) =>
+      error instanceof InvalidListRequest
+        ? error
+        : invalidListRequest(object, "The list request is invalid."),
+  })
 }
