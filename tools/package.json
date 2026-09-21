@@ -9,7 +9,7 @@
   },
   "scripts": {
     "lint": "oxlint .",
-    "test": "vitest run",
+    "test": "vitest run --exclude '**/fixtures/**'",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

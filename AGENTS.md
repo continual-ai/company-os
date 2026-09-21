@@ -30,7 +30,7 @@ Revisit compatibility and migration guarantees before v1.
 
 - Private hub imports use `#/` with explicit `.ts`/`.tsx` extensions. No barrels or `export *`;
   named re-exports belong only in registered entrypoints. Follow the rules enforced by
-  `tools/oxlint/company-os` and Vite import protection.
+  `tools/oxlint` and Vite import protection.
 - Model code is browser-safe. Runtime never imports business modules or the shell. Modules import
   other modules' models, never their implementations; seeds may compose seed entrypoints.
 - Satellites use only `company-os/model`, `company-os/client`, `company-os/config`, and `@company/ui`.

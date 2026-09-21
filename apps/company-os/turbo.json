@@ -17,7 +17,7 @@
     },
     "db:check": {},
     "test": {
-      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/fixtures/**", ".env"],
+      "inputs": ["$TURBO_DEFAULT$", ".env"],
       "passThroughEnv": [
         "DATABASE_MAX_CONNECTIONS",
         "DATABASE_SCHEMA",

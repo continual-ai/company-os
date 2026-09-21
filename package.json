@@ -52,7 +52,7 @@
       "pg_dump"
     ],
     "ignore": [
-      "fixtures/**"
+      "tools/oxlint/tests/fixtures/**"
     ],
     "workspaces": {
       "apps/company-os": {

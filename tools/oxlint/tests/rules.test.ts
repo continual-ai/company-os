@@ -27,9 +27,9 @@ const repositoryRoot = resolve(
   "../../.."
 )
 
-const IMPORT_BOUNDARIES = "company-os(import-boundaries)"
-const NO_INTERNAL_REEXPORTS = "company-os(no-internal-reexports)"
-const FILENAME_CASE = "company-os(filename-case)"
+const IMPORT_BOUNDARIES = "repo(import-boundaries)"
+const NO_INTERNAL_REEXPORTS = "repo(no-internal-reexports)"
+const FILENAME_CASE = "repo(filename-case)"
 
 /** Expected diagnostic counts per fixture; fixtures absent here must lint clean. */
 const expectedDiagnostics: Record<string, Record<string, number>> = {
@@ -84,15 +84,15 @@ const expectedDiagnostics: Record<string, Record<string, number>> = {
   },
 }
 
-describe("Company OS Oxlint rules", () => {
+describe("Repository Oxlint rules", () => {
   it("enforces import direction, module layout, and public entrypoints", () => {
     const result = spawnSync(
       resolve(repositoryRoot, "node_modules/.bin/oxlint"),
       [
-        "--config=tools/oxlint/company-os/fixture-config.json",
+        "--config=tools/oxlint/tests/oxlint.json",
         "--format=json",
         "--no-ignore",
-        "fixtures/oxlint/company-os",
+        "tools/oxlint/tests/fixtures",
       ],
       { cwd: repositoryRoot, encoding: "utf8" }
     )
@@ -110,7 +110,7 @@ describe("Company OS Oxlint rules", () => {
       const fixture =
         filename
           .replaceAll("\\", "/")
-          .split("fixtures/oxlint/company-os/")
+          .split("tools/oxlint/tests/fixtures/")
           .at(-1) ?? filename
       const counts = (actual[fixture] ??= {})
       counts[code] = (counts[code] ?? 0) + 1

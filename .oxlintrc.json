@@ -21,8 +21,8 @@
   },
   "jsPlugins": [
     {
-      "name": "company-os",
-      "specifier": "./tools/oxlint/company-os/index.ts"
+      "name": "repo",
+      "specifier": "./tools/oxlint/index.ts"
     }
   ],
   "ignorePatterns": [
@@ -38,12 +38,12 @@
     ".roo/**",
     ".windsurf/**",
     "**/routeTree.gen.ts",
-    "fixtures/**"
+    "tools/oxlint/tests/fixtures/**"
   ],
   "rules": {
-    "company-os/filename-case": "error",
-    "company-os/import-boundaries": "error",
-    "company-os/no-internal-reexports": "error",
+    "repo/filename-case": "error",
+    "repo/import-boundaries": "error",
+    "repo/no-internal-reexports": "error",
     "effecttsgo/any-unknown-in-error-context": "off",
     "effecttsgo/catch-unfailable-effect": "off",
     "effecttsgo/class-self-mismatch": "error",

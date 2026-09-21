@@ -3,5 +3,6 @@
   "compilerOptions": {
     "types": ["node", "vitest/globals"]
   },
-  "include": ["*.ts", "oxlint/**/*.ts"]
+  "include": ["*.ts", "oxlint/**/*.ts"],
+  "exclude": ["oxlint/tests/fixtures/**"]
 }

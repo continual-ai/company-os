@@ -20,6 +20,23 @@ and their callers together; backward compatibility is not a pre-release requirem
 | `pnpm ui:add <component>`    | Add a shadcn primitive to `packages/ui`                                         |
 | `pnpm ui:remove <component>` | Remove an unused primitive                                                      |
 
+**Lint rules:** [`.oxlintrc.json`](../.oxlintrc.json) configures linting for every
+workspace. Custom rules live in [`tools/oxlint`](../tools/oxlint), under the `repo/`
+plugin prefix (`repo` means this repository):
+
+- `filename-case`: kebab-case filenames, with framework naming conventions.
+- `import-boundaries`: keep the runtime independent of business modules, module
+  implementations private, models portable, and browser code free of server imports.
+- `no-internal-reexports`: named re-exports only at explicit public entrypoints;
+  no wildcard barrels.
+
+All rule tests live in [`tools/oxlint/tests`](../tools/oxlint/tests). Its `fixtures/`
+directory contains valid and deliberately invalid example code. `rules.test.ts` runs
+Oxlint against those examples with the test-only `oxlint.json` configuration, which
+enables only these custom rules so unrelated lint rules cannot affect the assertions.
+Fixtures are excluded from normal linting, typechecking, and test discovery. Run
+`pnpm --filter @company/tools test` to check the rules, or `pnpm check` to lint the workspace.
+
 **Getting started:** run `docker compose up -d` for PostgreSQL 18 on host port 5433, then use
 `pnpm install` and `pnpm dev`. Turbo runs schema generation, migrations, and demo seeding
 before either app starts. The local database is created if missing. Subsequent starts preserve

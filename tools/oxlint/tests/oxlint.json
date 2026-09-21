@@ -1,0 +1,14 @@
+{
+  "$schema": "../../../node_modules/oxlint/configuration_schema.json",
+  "jsPlugins": [
+    {
+      "name": "repo",
+      "specifier": "../index.ts"
+    }
+  ],
+  "rules": {
+    "repo/filename-case": "error",
+    "repo/import-boundaries": "error",
+    "repo/no-internal-reexports": "error"
+  }
+}

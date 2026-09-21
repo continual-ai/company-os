@@ -23,7 +23,7 @@
       "inputs": [
         "$TURBO_DEFAULT$",
         "$TURBO_ROOT$/.oxlintrc.json",
-        "$TURBO_ROOT$/tools/oxlint/company-os/**/*.ts"
+        "$TURBO_ROOT$/tools/oxlint/**/*.ts"
       ]
     },
     "test": {},
