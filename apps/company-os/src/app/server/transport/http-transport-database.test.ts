@@ -959,7 +959,6 @@ describe("application HTTP server", () => {
           from ${identityBindings}
           where ${identityBindings.columns.subject} = ${"us_test"}`
         expect(binding).toEqual({ identityId: "us_test" })
-      }),
-    10_000
+      })
   )
 })
