@@ -40,8 +40,7 @@ export function interfaceQuery(
       readonly direction: "forward" | "reverse"
       readonly linkId: string
       readonly sourceId: string
-    },
-    pageSize: number
+    }
   ) {
     const columns: Record<string, Column> = {}
     const branches = Object.values(storage.model.objects)
@@ -112,6 +111,7 @@ export function interfaceQuery(
       { ...request, relatedTo },
       pageTokens
     )
+    const pageSize = compiled.size
     const from = sql`(${sql.join(" union all ")(branches)}) related_records`
     const rows = yield* sql<{
       id: string

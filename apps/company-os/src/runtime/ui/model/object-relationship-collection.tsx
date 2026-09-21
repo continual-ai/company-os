@@ -41,7 +41,6 @@ export function ObjectRelationshipCollection({
     }
   }
   const canConnect = !pending
-  const creates = relationship.creates
   const renderLink = (records: ReadonlyArray<ClientRecord>) =>
     canConnect && relationship.connect ? (
       <ObjectReferenceSelect
@@ -79,14 +78,13 @@ export function ObjectRelationshipCollection({
         <RelatedObjectCollection
           object={relationship.target}
           relationship={relationship}
-          create={creates[0]?.options}
+          create={relationship.creates[0]?.options}
           renderLink={renderLink}
           unlink={unlink}
         />
       ) : (
         <RelatedRecordFeed
           relationship={relationship}
-          creates={creates}
           renderLink={renderLink}
           unlink={unlink}
         />
@@ -126,12 +124,10 @@ function RelatedObjectCollection({
 /** Mixed endpoints use the same cursor chain and summaries, without inventing shared table columns. */
 function RelatedRecordFeed({
   relationship,
-  creates,
   renderLink,
   unlink,
 }: {
   readonly relationship: RecordRelationship
-  readonly creates: RecordRelationship["creates"]
   readonly renderLink: (records: ReadonlyArray<ClientRecord>) => ReactNode
   readonly unlink: ((record: ClientRecord) => Promise<void>) | undefined
 }) {
@@ -150,9 +146,7 @@ function RelatedRecordFeed({
   return (
     <>
       <div className="flex min-h-10 flex-wrap items-center justify-end gap-2 border-b px-page-gutter py-1">
-        <RecordRelatedCreateMenu
-          relationships={[{ ...relationship, creates }]}
-        />
+        <RecordRelatedCreateMenu relationships={[relationship]} />
         {renderLink(records)}
       </div>
       {page.isError && (

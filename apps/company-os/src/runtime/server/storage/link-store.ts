@@ -3,7 +3,7 @@ import { Context, Effect, Layer } from "effect"
 import { resolveListRequest } from "#/runtime/contract/object-input.ts"
 import { validateQuery } from "#/runtime/contract/query-validation.ts"
 import { type ModelLinkTraversal } from "#/runtime/model/definition/model.ts"
-import { normalizePageSize, RecordId } from "#/runtime/model/index.ts"
+import { RecordId } from "#/runtime/model/index.ts"
 import type { LinkListInput } from "#/runtime/model/link-input.ts"
 import { requireProjectAccess } from "#/runtime/server/auth/project-access.ts"
 import { InvalidLinkRequest } from "#/runtime/server/errors.ts"
@@ -35,14 +35,6 @@ const make = Effect.gen(function* () {
     input: LinkListInput
   ) {
     yield* requireProjectAccess
-    const pageSize = yield* Effect.try({
-      try: () => normalizePageSize(input.pageSize),
-      catch: () =>
-        new InvalidLinkRequest({
-          message: "pageSize must be a non-negative integer.",
-          path: ["pageSize"],
-        }),
-    })
     const sourceId = yield* identifiers.resolve(traversal.source.id, input.id)
     yield* records
       .get(traversal.source)
@@ -79,9 +71,7 @@ const make = Effect.gen(function* () {
       sourceId,
     }
     if (target) {
-      const page = yield* records
-        .get(target)
-        .list({ ...query, pageSize, relatedTo })
+      const page = yield* records.get(target).list({ ...query, relatedTo })
       return {
         ...page,
         items: yield* hydration.expand(page.items, input.expand),
@@ -90,8 +80,7 @@ const make = Effect.gen(function* () {
     const page = yield* listInterface(
       Model.interfaces[traversal.target.from.typeId]!,
       input,
-      relatedTo,
-      pageSize
+      relatedTo
     )
     return {
       ...page,
