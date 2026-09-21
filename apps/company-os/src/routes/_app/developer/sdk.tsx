@@ -96,8 +96,8 @@ function SdkPage() {
             src/modules/&lt;domain&gt;/model/&lt;object&gt;.ts
           </dt>
           <dd className="text-muted-foreground">
-            Define fields, relationships, Queries, and Actions. Standard CRUD
-            and contracts derive from this model.
+            Define fields, links, Queries, and Actions. Standard CRUD and
+            contracts derive from this model.
           </dd>
           <dt className="font-mono">&lt;domain&gt;/server/</dt>
           <dd className="text-muted-foreground">

@@ -3,7 +3,7 @@ import { Context, Effect, Layer } from "effect"
 import { replaceAssetReferences } from "#/runtime/assets/server/asset-references.ts"
 import { compileAssetReferences } from "#/runtime/assets/server/references.ts"
 import { RecordId, type ObjectType } from "#/runtime/model/index.ts"
-import { resourceProperties } from "#/runtime/model/resource-properties.ts"
+import { recordProperties } from "#/runtime/model/record-properties.ts"
 import { ObjectWriteConflict } from "#/runtime/server/errors.ts"
 import { makeEventWriter } from "#/runtime/server/events/event-writer.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
@@ -43,7 +43,7 @@ function trackRepository<const O extends ObjectType>(object: O) {
     const deleting = deletionChanges(database, context)
     const writableFields = new Set([
       ...Object.keys(object.properties),
-      ...Object.entries(resourceProperties)
+      ...Object.entries(recordProperties)
         .filter(([, property]) => !property.outputOnly)
         .map(([key]) => key),
     ])

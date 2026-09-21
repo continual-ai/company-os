@@ -20,6 +20,6 @@ export {
   objectFormDefaultValues,
 } from "#/runtime/ui/model/object-form.ts"
 
-export type { RelationshipOverviewProps } from "#/runtime/ui/model/module-ui.tsx"
+export type { LinkOverviewProps } from "#/runtime/ui/model/module-ui.tsx"
 
 export { OperationAction } from "#/runtime/ui/model/operation-action.tsx"

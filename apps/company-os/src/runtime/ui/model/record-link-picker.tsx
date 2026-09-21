@@ -10,12 +10,12 @@ import { Popover, PopoverContent, PopoverTrigger } from "@company/ui/popover"
 import { CheckIcon, ChevronDownIcon, LinkIcon } from "lucide-react"
 import { useState } from "react"
 
-export function RecordRelationshipPicker({
-  relationships,
+export function RecordLinkPicker({
+  links,
   selected,
   onSelect,
 }: {
-  readonly relationships: ReadonlyArray<{
+  readonly links: ReadonlyArray<{
     readonly key: string
     readonly label: string
   }>
@@ -29,8 +29,8 @@ export function RecordRelationshipPicker({
         render={<Button variant="ghost" size="sm" className="max-w-48" />}
       >
         <span className="truncate">
-          {relationships.find(({ key }) => key === selected)?.label ??
-            "More relationships"}
+          {links.find(({ key }) => key === selected)?.label ??
+            "More related records"}
         </span>
         <ChevronDownIcon />
       </PopoverTrigger>
@@ -39,10 +39,10 @@ export function RecordRelationshipPicker({
         className="w-80 max-w-[calc(100vw-2rem)] p-0"
       >
         <Command>
-          <CommandInput placeholder="Find a relationship…" />
+          <CommandInput placeholder="Find related records…" />
           <CommandList>
-            <CommandEmpty>No relationships found.</CommandEmpty>
-            {relationships.map((item) => (
+            <CommandEmpty>No related records found.</CommandEmpty>
+            {links.map((item) => (
               <CommandItem
                 key={item.key}
                 value={item.label}

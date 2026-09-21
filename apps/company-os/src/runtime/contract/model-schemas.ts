@@ -68,7 +68,7 @@ export function objectListInputSchema(
   model: ModelCatalog
 ) {
   const field = Schema.String.check(Schema.isNonEmpty()).annotate({
-    description: `A declared property or dot-separated path through singular relationships (at most three traversals). Aggregate sorts may traverse a plural relationship. Use relationship.$count to filter counts. Properties: ${Object.keys(object.properties).join(", ")}.`,
+    description: `A declared property or dot-separated path through singular links (at most three traversals). Aggregate sorts may traverse a plural link. Use link.$count to filter counts. Properties: ${Object.keys(object.properties).join(", ")}.`,
     identifier: `${pascalCase(object.id)}FilterField`,
   })
   let filter: Schema.Codec<unknown, unknown>
@@ -162,10 +162,10 @@ export function linkListInputSchema(
   traversal: ModelLinkTraversal
 ) {
   const target = modelObjects(model).find(
-    (object) => object.id === traversal.target.from.typeId
+    (object) => object.id === traversal.inverse.from.typeId
   )
   return objectListInputSchema(
-    target ?? model.interfaces[traversal.target.from.typeId]!,
+    target ?? model.interfaces[traversal.inverse.from.typeId]!,
     model
   )
 }
@@ -198,13 +198,13 @@ export function objectPageOutputSchema(
   })
 }
 
-/** Relationship pages contain discriminated, complete target records. */
+/** Link pages contain discriminated, complete target records. */
 export function linkPageOutputSchema(
   model: ModelCatalog,
   traversal: ModelLinkTraversal
 ) {
   const targets = modelObjects(model).filter((object) =>
-    modelTypeAccepts(model, object.id, traversal.target.from.typeId)
+    modelTypeAccepts(model, object.id, traversal.inverse.from.typeId)
   )
   const records = targets.map((object) => expandableRecordSchema(object, model))
   return pageSchema(Schema.Union(records))

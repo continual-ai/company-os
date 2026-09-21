@@ -45,7 +45,7 @@ export function ModelControllers({
             {" · "}Minimum interval per key: {controller.minInterval ?? "None"}
           </p>
           <div className="mt-4">
-            <p className="text-xs font-medium">Watched relationships</p>
+            <p className="text-xs font-medium">Watched links</p>
             <p className="mt-1 text-xs text-muted-foreground">
               Target record changes are watched automatically.
             </p>

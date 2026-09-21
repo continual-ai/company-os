@@ -21,7 +21,7 @@ it("requires explicit count accuracy and permits lower bounds independently of c
   ).toThrow()
 })
 
-it("uses the same nonnegative integer count contract for relationship previews", () => {
+it("uses the same nonnegative integer count contract for link previews", () => {
   const decode = Schema.decodeUnknownSync(Schema.Struct(totalSizeFields))
   expect(decode({ totalSize: 0, totalSizeExact: true })).toEqual({
     totalSize: 0,

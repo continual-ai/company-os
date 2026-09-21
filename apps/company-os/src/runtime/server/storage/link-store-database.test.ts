@@ -134,69 +134,65 @@ fixture.test(
     })
 )
 
-fixture.test(
-  "replaces plural relationships without coupling independent links",
-  () =>
-    Effect.gen(function* () {
-      const services = yield* implementation
-      const links = yield* Links
-      const people = yield* Effect.forEach([1, 2, 3], (n) =>
-        services.person.create({ name: `Member ${n}` })
-      )
-      const first = people[0]!,
-        second = people[1]!,
-        third = people[2]!
-      const team = yield* services.team.create({
-        name: "Small team",
-        links: { members: [first.id] },
-      })
-      yield* services.team.update({
-        id: team.id,
-        links: { members: [second.id] },
-      })
-      expect(
-        linkPreview((yield* services.team.get({ id: team.id })).links.members)
-          .ids
-      ).toEqual([second.id])
-      yield* links.link(traversal(Person, "teams"), {
-        id: third.id,
-        target: team.id,
-      })
-      const account = yield* services.account.create({ name: "Membership" })
-      yield* services.person.update({
-        id: first.id,
-        links: { billingAccount: account.id },
-      })
-      expect(
-        (yield* services.person.get({ id: first.id })).links.billingAccount
-      ).toBe(account.id)
-      yield* services.person.update({
-        id: first.id,
-        links: {
-          accounts: { add: [account.id] },
-          billingAccount: account.id,
-        },
-      })
-      yield* links.unlink(traversal(Person, "accounts"), {
-        id: first.id,
-        target: account.id,
-      })
-      expect(
-        (yield* services.person.get({ id: first.id })).links.billingAccount
-      ).toBe(account.id)
-      yield* services.person.update({
-        id: first.id,
-        links: {
-          accounts: { remove: [account.id] },
-          billingAccount: null,
-        },
-      })
-      expect(
-        linkPreview(
-          (yield* services.person.get({ id: first.id })).links.accounts
-        ).totalSize
-      ).toBe(0)
+fixture.test("replaces plural links without coupling independent links", () =>
+  Effect.gen(function* () {
+    const services = yield* implementation
+    const links = yield* Links
+    const people = yield* Effect.forEach([1, 2, 3], (n) =>
+      services.person.create({ name: `Member ${n}` })
+    )
+    const first = people[0]!,
+      second = people[1]!,
+      third = people[2]!
+    const team = yield* services.team.create({
+      name: "Small team",
+      links: { members: [first.id] },
     })
+    yield* services.team.update({
+      id: team.id,
+      links: { members: [second.id] },
+    })
+    expect(
+      linkPreview((yield* services.team.get({ id: team.id })).links.members).ids
+    ).toEqual([second.id])
+    yield* links.link(traversal(Person, "teams"), {
+      id: third.id,
+      target: team.id,
+    })
+    const account = yield* services.account.create({ name: "Membership" })
+    yield* services.person.update({
+      id: first.id,
+      links: { billingAccount: account.id },
+    })
+    expect(
+      (yield* services.person.get({ id: first.id })).links.billingAccount
+    ).toBe(account.id)
+    yield* services.person.update({
+      id: first.id,
+      links: {
+        accounts: { add: [account.id] },
+        billingAccount: account.id,
+      },
+    })
+    yield* links.unlink(traversal(Person, "accounts"), {
+      id: first.id,
+      target: account.id,
+    })
+    expect(
+      (yield* services.person.get({ id: first.id })).links.billingAccount
+    ).toBe(account.id)
+    yield* services.person.update({
+      id: first.id,
+      links: {
+        accounts: { remove: [account.id] },
+        billingAccount: null,
+      },
+    })
+    expect(
+      linkPreview((yield* services.person.get({ id: first.id })).links.accounts)
+        .totalSize
+    ).toBe(0)
+  })
 )
 
 fixture.test(
@@ -357,7 +353,7 @@ fixture.test("serializes competing additions without exceeding a maximum", () =>
   })
 )
 
-fixture.test("filters and sorts complete relationships before pagination", () =>
+fixture.test("filters and sorts complete links before pagination", () =>
   Effect.gen(function* () {
     const services = yield* implementation
     const alpha = yield* services.account.create({ name: "Alpha" })
@@ -701,7 +697,7 @@ fixture.test(
     })
 )
 
-fixture.test("attributes a record once per atomic relationship update", () =>
+fixture.test("attributes a record once per atomic link update", () =>
   Effect.gen(function* () {
     const services = yield* implementation
     const accounts = yield* Effect.forEach([1, 2, 3], (n) =>

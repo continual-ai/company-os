@@ -7,7 +7,7 @@ export interface ControllerWatchStep {
   readonly direction: "forward" | "reverse"
 }
 
-/** Resolve against the composed model: relationships need not live beside their source object. */
+/** Resolve against the composed model: links need not live beside their source object. */
 export function controllerWatchPaths(
   model: {
     readonly objects: ReadonlyArray<ObjectType>
@@ -32,7 +32,7 @@ export function controllerWatchPaths(
       )
       if (matches.length !== 1)
         throw new Error(
-          `Controller '${controller.id}' watch '${path}' must resolve '${typeId}.${key}' to exactly one relationship.`
+          `Controller '${controller.id}' watch '${path}' must resolve '${typeId}.${key}' to exactly one link.`
         )
       const step = matches[0]!
       typeId = step.link[step.direction].to.typeId

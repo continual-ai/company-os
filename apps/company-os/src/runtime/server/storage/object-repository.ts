@@ -451,7 +451,7 @@ function makeRepository<
           const edge = storage.linkTables[linkId]
           if (edge === undefined)
             return yield* Effect.fail(
-              invalidListRequest(object, "Unknown relationship.")
+              invalidListRequest(object, "Unknown link.")
             )
           const edgeColumns = tableColumns(edge)
           const source =

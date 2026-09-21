@@ -115,7 +115,7 @@ function traversal(
   }
 }
 
-/** One stored relationship, with two named traversals and constraints on both ends. */
+/** One stored link, with two named traversals and constraints on both ends. */
 export function defineLink<const D extends LinkDefinition>(
   definition: D &
     NoExtraKeys<D, LinkDefinition> & {

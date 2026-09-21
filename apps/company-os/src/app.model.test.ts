@@ -5,7 +5,7 @@ import { Model, type ActorId, type IdentityId } from "#/app.model.ts"
 import { type ModelObjectCreateInput } from "#/runtime/model/definition/model-input.ts"
 import {
   describeModel,
-  type ModelObjectRef,
+  type ModelRecordRef,
   type ObjectRecord,
   type QueryInput,
   type QueryOutput,
@@ -250,7 +250,7 @@ describe("model contract", () => {
   })
 
   it("keeps heterogeneous object references discriminated", () => {
-    type Ref = ModelObjectRef<typeof Model>
+    type Ref = ModelRecordRef<typeof Model>
     type AccountRef = Extract<Ref, { readonly objectType: "account" }>
     type ContactRef = Extract<Ref, { readonly objectType: "contact" }>
 

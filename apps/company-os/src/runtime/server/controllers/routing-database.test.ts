@@ -88,7 +88,7 @@ fixture.test(
 )
 
 fixture.test(
-  "routes both former and new ancestors when replacing a reverse relationship",
+  "routes both former and new ancestors when replacing a reverse link",
   () =>
     Effect.gen(function* () {
       const database = yield* Database

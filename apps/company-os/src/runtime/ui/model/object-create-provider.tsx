@@ -1,9 +1,9 @@
 import { useCallback, useRef, useState, type ReactNode } from "react"
 
+import type { ObjectType } from "#/runtime/model/definition/object.ts"
 import {
   clientFor,
   type ClientRecord,
-  type ModelObject,
 } from "#/runtime/ui/model/object-client.ts"
 import {
   ObjectCreateContext,
@@ -14,7 +14,7 @@ import { useModelRuntime } from "#/runtime/ui/model/runtime-context.tsx"
 
 interface ObjectCreateRequest extends ObjectCreateOptions {
   readonly id: number
-  readonly object: ModelObject
+  readonly object: ObjectType
 }
 
 const emptyReferenceLabels = new Map<string, string>()
@@ -33,7 +33,7 @@ export function ObjectCreateProvider({
   )
 
   const open = useCallback(
-    (object: ModelObject, options: ObjectCreateOptions = {}) => {
+    (object: ObjectType, options: ObjectCreateOptions = {}) => {
       if (clientFor(runtime, object).create === undefined) {
         throw new Error(`Creation is not available for '${object.id}'.`)
       }

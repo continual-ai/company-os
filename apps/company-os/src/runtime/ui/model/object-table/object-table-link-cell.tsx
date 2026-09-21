@@ -47,7 +47,7 @@ export function ObjectTableLinkCell({
         <ObjectTableLinkEditor
           object={object}
           recordId={record.id}
-          relationship={link.traversal.key}
+          link={link.traversal.key}
           onOpenChange={setOpen}
         />
       )}
@@ -58,12 +58,12 @@ export function ObjectTableLinkCell({
 function ObjectTableLinkEditor({
   object,
   recordId,
-  relationship,
+  link,
   onOpenChange,
 }: {
   object: ObjectType
   recordId: string
-  relationship: string
+  link: string
   onOpenChange: (open: boolean) => void
 }) {
   const runtime = useModelRuntime()
@@ -76,7 +76,7 @@ function ObjectTableLinkEditor({
           mode="edit"
           object={object}
           record={current.data}
-          fields={[relationship]}
+          fields={[link]}
           referenceLabels={new Map()}
           open
           onOpenChange={onOpenChange}

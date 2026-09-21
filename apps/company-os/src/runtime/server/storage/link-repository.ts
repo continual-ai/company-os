@@ -109,8 +109,7 @@ export function makeLinkRepository<const TModel extends ModelCatalog>(
       const [existing] = yield* sql<{
         target: string | null
       }>`select ${column} as target from ${owner} where id = ${ownerId} for update`
-      if (!existing)
-        return yield* Effect.die(`Missing relationship owner ${ownerId}.`)
+      if (!existing) return yield* Effect.die(`Missing link owner ${ownerId}.`)
       const added = [
         ...new Set(
           edits

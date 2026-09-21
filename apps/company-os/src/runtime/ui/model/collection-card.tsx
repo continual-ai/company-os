@@ -5,11 +5,11 @@ import { Link } from "@tanstack/react-router"
 import { GripVerticalIcon, PencilIcon } from "lucide-react"
 import type { ReactNode } from "react"
 
+import type { ObjectType } from "#/runtime/model/definition/object.ts"
 import { objectFields } from "#/runtime/model/object-fields.ts"
 import {
   recordLabel,
   type ClientRecord,
-  type ModelObject,
   type ObjectRecordPresentation,
 } from "#/runtime/ui/model/object-client.ts"
 import { objectFieldValue } from "#/runtime/ui/model/object-field-value.ts"
@@ -24,7 +24,7 @@ export type CollectionDragData = {
   value?: string | null
 }
 export interface CollectionPresentation {
-  object: ModelObject
+  object: ObjectType
   columns: ReadonlyArray<string>
   references: ReadonlyMap<string, ObjectRecordPresentation>
   recordHref?: ((id: string) => string) | undefined

@@ -21,7 +21,7 @@ export type ControllerDefinition = {
   readonly description?: string
   /** Ignore target updates that write only these properties. Mixed updates still trigger. */
   readonly ignoreUpdates?: ReadonlyArray<string>
-  /** Named relationship paths whose records and edges affect this target. */
+  /** Named link paths whose records and edges affect this target. */
   readonly watch?: ReadonlyArray<string>
   readonly schedule?: { readonly cron: string; readonly timeZone?: string }
   readonly minInterval?: ControllerDuration
@@ -78,7 +78,7 @@ export function defineController<const D extends ControllerDefinition>(
     )
   )
     throw new Error(
-      "Controller watches must be relationship paths, such as affiliations.account.notes."
+      "Controller watches must be link paths, such as affiliations.account.notes."
     )
   if (definition.minInterval !== undefined)
     controllerDurationMillis(definition.minInterval)

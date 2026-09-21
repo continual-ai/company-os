@@ -8,25 +8,25 @@ import {
   Account,
 } from "#/runtime/testing/fixture-model.ts"
 import { testPresentation } from "#/runtime/testing/presentation.ts"
-import { recordRelationships } from "#/runtime/ui/model/record-relationships.ts"
+import { recordLinkViews } from "#/runtime/ui/model/record-link-views.ts"
 
-it("does not offer creation through an action-owned relationship", () => {
+it("does not offer creation through an action-owned link", () => {
   const data = createModelQueries(
     fixtureModel,
     createEffectClient(fixtureModel, { baseUrl: "https://unused.example" })
   )
   const runtime = { ...testPresentation(fixtureModel), data }
-  const relationships = recordRelationships(runtime, Prospect, {
+  const links = recordLinkViews(runtime, Prospect, {
     id: "prospect_test",
     etag: "1",
     objectType: "prospect",
     name: "Prospect",
     links: {},
   })
-  const converted = relationships.find(({ key }) => key === "convertedAccount")!
+  const converted = links.find(({ key }) => key === "convertedAccount")!
   expect(converted).toBeDefined()
   expect(converted.creates).toEqual([])
-  expect(converted.connect).toBeUndefined()
+  expect(converted.link).toBeUndefined()
 })
 
 it("offers plural creation immediately and singular creation only when empty", () => {
@@ -36,21 +36,17 @@ it("offers plural creation immediately and singular creation only when empty", (
   )
   const runtime = { ...testPresentation(fixtureModel), data }
   for (const occupied of [false, true]) {
-    const relationships = recordRelationships(
-      runtime,
-      fixtureModel.objects.person,
-      {
-        id: "person_test",
-        etag: "1",
-        objectType: "person",
-        name: "Person",
-        links: { billingAccount: occupied ? "account_test" : null },
-      }
-    )
-    const account = relationships.find(({ key }) => key === "billingAccount")!
+    const links = recordLinkViews(runtime, fixtureModel.objects.person, {
+      id: "person_test",
+      etag: "1",
+      objectType: "person",
+      name: "Person",
+      links: { billingAccount: occupied ? "account_test" : null },
+    })
+    const account = links.find(({ key }) => key === "billingAccount")!
     expect(account.creates.length > 0).toBe(!occupied)
   }
-  const plural = recordRelationships(runtime, Account, {
+  const plural = recordLinkViews(runtime, Account, {
     id: "account_test",
     etag: "1",
     objectType: "account",
@@ -58,17 +54,17 @@ it("offers plural creation immediately and singular creation only when empty", (
     links: {},
   }).find(({ key }) => key === "people")!
   expect(plural.creates.length).toBeGreaterThan(0)
-  expect(plural.connect).toBeDefined()
-  expect(plural.disconnect).toBeDefined()
+  expect(plural.link).toBeDefined()
+  expect(plural.unlink).toBeDefined()
 })
 
-it("hides relationship writes on system-managed records", () => {
+it("hides link writes on system-managed records", () => {
   const data = createModelQueries(
     fixtureModel,
     createEffectClient(fixtureModel, { baseUrl: "https://unused.example" })
   )
   const runtime = { ...testPresentation(fixtureModel), data }
-  const relationships = recordRelationships(runtime, Account, {
+  const links = recordLinkViews(runtime, Account, {
     id: "account_system",
     etag: "1",
     objectType: "account",
@@ -76,9 +72,9 @@ it("hides relationship writes on system-managed records", () => {
     systemManaged: true,
     links: {},
   })
-  const people = relationships.find(({ key }) => key === "people")!
+  const people = links.find(({ key }) => key === "people")!
   expect(people).toBeDefined()
   expect(people.creates).toEqual([])
-  expect(people.connect).toBeUndefined()
-  expect(people.disconnect).toBeUndefined()
+  expect(people.link).toBeUndefined()
+  expect(people.unlink).toBeUndefined()
 })

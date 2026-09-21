@@ -63,7 +63,7 @@ export function updateSearchIndex(
   database: PostgresDatabase,
   changes: {
     readonly records: ReadonlyArray<EventSubject>
-    readonly relationships?: ReadonlyArray<EventSubject>
+    readonly links?: ReadonlyArray<EventSubject>
   },
   context: typeof ModelContext.Service
 ) {
@@ -82,7 +82,7 @@ export function updateSearchIndex(
     // Link changes affect the endpoint's own derived title, not every sibling that refers to it.
     const affected = [
       ...subjects,
-      ...(changes.relationships ?? []).filter((subject) =>
+      ...(changes.links ?? []).filter((subject) =>
         context.model.objects[subject.objectType]?.display.titleFields?.some(
           (path) => path.includes(".")
         )

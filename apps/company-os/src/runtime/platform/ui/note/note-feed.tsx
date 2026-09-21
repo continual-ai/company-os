@@ -23,19 +23,19 @@ import {
 import { objectListRequest } from "#/runtime/ui/model/object-collection-query.ts"
 import { ObjectRecordDialog } from "#/runtime/ui/model/object-record-dialog.tsx"
 import { ObjectRecordSummary } from "#/runtime/ui/model/object-record-summary.tsx"
-import { ObjectReferenceSelect } from "#/runtime/ui/model/object-reference-select.tsx"
 import { readFilterValue } from "#/runtime/ui/model/object-table/object-table-config.ts"
+import { RecordSelect } from "#/runtime/ui/model/record-select.tsx"
 import { useModelRuntime } from "#/runtime/ui/model/runtime-context.tsx"
 import { useObjectCollection } from "#/runtime/ui/model/use-object-collection.ts"
 import {
   decodeObjectForm,
   objectFormDefaultValues,
   useAppForm,
-  type RelationshipOverviewProps,
+  type LinkOverviewProps,
 } from "#/runtime/ui/module.ts"
 
 /** The same linked notes live in each subject's overview; posting creates and links atomically. */
-export function NoteFeed({ relationship }: RelationshipOverviewProps) {
+export function NoteFeed({ link }: LinkOverviewProps) {
   const [query, setQuery] = useState("")
   const [filters, setFilters] = useState<ObjectCollectionFilter[]>([])
   const [sorting, setSorting] = useState<SortingState>([
@@ -45,7 +45,7 @@ export function NoteFeed({ relationship }: RelationshipOverviewProps) {
     ...objectListRequest(Note, filters, sorting),
     ...(query.trim() ? { query: query.trim() } : {}),
   }
-  const pages = useInfiniteCollectionPages(relationship.list, request)
+  const pages = useInfiniteCollectionPages(link.list, request)
   const collection = useObjectCollection(Note, request, pages)
   const [editing, setEditing] = useState<ClientRecord>()
   const [pending, setPending] = useState(false)
@@ -71,8 +71,8 @@ export function NoteFeed({ relationship }: RelationshipOverviewProps) {
     >
       <PageSectionHeader>
         <h2 className="text-sm font-semibold">Notes</h2>
-        {relationship.connect && (
-          <ObjectReferenceSelect
+        {link.link && (
+          <RecordSelect
             id="notes-link"
             name="note"
             appearance="action"
@@ -85,13 +85,11 @@ export function NoteFeed({ relationship }: RelationshipOverviewProps) {
             includeHiddenInput={false}
             selectedValues={collection.records.map((record) => record.id)}
             onBlur={() => undefined}
-            onValueChange={(id) => void mutate(() => relationship.connect!(id))}
+            onValueChange={(id) => void mutate(() => link.link!(id))}
           />
         )}
       </PageSectionHeader>
-      {collection.canCreate && relationship.creates[0] && (
-        <NoteComposer relationship={relationship} />
-      )}
+      {collection.canCreate && link.creates[0] && <NoteComposer link={link} />}
       <CollectionQueryToolbar
         search={{ value: query, onChange: setQuery }}
         object={Note}
@@ -141,13 +139,11 @@ export function NoteFeed({ relationship }: RelationshipOverviewProps) {
                       <PencilIcon />
                     </IconButton>
                   )}
-                  {relationship.disconnect && (
+                  {link.unlink && (
                     <IconButton
                       label="Unlink note"
                       disabled={pending}
-                      onClick={() =>
-                        void mutate(() => relationship.disconnect!(record))
-                      }
+                      onClick={() => void mutate(() => link.unlink!(record))}
                     >
                       <UnlinkIcon />
                     </IconButton>
@@ -206,9 +202,9 @@ export function NoteFeed({ relationship }: RelationshipOverviewProps) {
   )
 }
 
-function NoteComposer({ relationship }: RelationshipOverviewProps) {
+function NoteComposer({ link }: LinkOverviewProps) {
   const runtime = useModelRuntime()
-  const options = relationship.creates[0]!.options
+  const options = link.creates[0]!.options
   const [defaultValues] = useState(() =>
     objectFormDefaultValues(
       runtime,

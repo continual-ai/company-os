@@ -79,7 +79,7 @@ export const makeRecordHydration = Effect.gen(function* () {
       if (unknown)
         return yield* Effect.fail(
           new InvalidExpansion({
-            message: `Unknown relationship '${object.id}.${unknown}'.`,
+            message: `Unknown link '${object.id}.${unknown}'.`,
             path: ["expand", unknown],
           })
         )
@@ -90,7 +90,7 @@ export const makeRecordHydration = Effect.gen(function* () {
       return yield* Effect.fail(
         new InvalidExpansion({
           message:
-            "Expansion exceeds 1000 distinct target records. Select fewer relationships or a smaller page.",
+            "Expansion exceeds 1000 distinct target records. Select fewer links or a smaller page.",
           path: ["expand"],
         })
       )

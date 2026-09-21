@@ -39,6 +39,10 @@ Revisit compatibility and migration guarantees before v1.
 
 ## Business behavior
 
+Use the [model vocabulary](docs/development.md#vocabulary): Object, Record, Link, Traversal,
+Record reference, Property, and Field. Use `links` in configuration, `link` / `unlink` for operations,
+and “Related records” in the UI. Avoid technical synonyms and aliases that add no meaning.
+
 - Keep one authority per fact. Use Links for all relationships, with named forward/reverse
   traversals and min/max bounds. Ownership is explicit `onDelete: "cascade"` on a traversal;
   ordinary unlinking never deletes records. Use Objects for relationships with a lifecycle,

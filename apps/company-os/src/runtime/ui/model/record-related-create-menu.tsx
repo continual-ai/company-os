@@ -9,18 +9,18 @@ import { ChevronDownIcon, PlusIcon } from "lucide-react"
 
 import { useObjectCreate } from "#/runtime/ui/model/object-create-context.ts"
 import { ObjectIcon } from "#/runtime/ui/model/object-record-identity.tsx"
-import { type RecordRelationship } from "#/runtime/ui/model/record-relationships.ts"
+import { type RecordLinkView } from "#/runtime/ui/model/record-link-views.ts"
 
-/** Creation defaults and authority come from the same relationship projection as its collection. */
+/** Creation defaults and authority come from the same link projection as its collection. */
 export function RecordRelatedCreateMenu({
-  relationships,
+  links,
   compact = false,
 }: {
-  readonly relationships: ReadonlyArray<RecordRelationship>
+  readonly links: ReadonlyArray<RecordLinkView>
   readonly compact?: boolean
 }) {
   const openCreate = useObjectCreate()
-  const available = relationships.flatMap((item) =>
+  const available = links.flatMap((item) =>
     item.creates.map((create) => ({
       ...create,
       key: `${item.key}:${create.target.id}`,
@@ -49,9 +49,7 @@ export function RecordRelatedCreateMenu({
             variant={compact ? "ghost" : "outline"}
             size="sm"
             aria-label={
-              compact
-                ? `New ${relationships[0]?.label.toLowerCase()}`
-                : undefined
+              compact ? `New ${links[0]?.label.toLowerCase()}` : undefined
             }
           />
         }

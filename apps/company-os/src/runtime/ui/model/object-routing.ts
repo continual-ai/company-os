@@ -10,10 +10,7 @@ import {
   type ObjectCollectionSearch,
   type ObjectCollectionView,
 } from "#/runtime/ui/model/collection-view.ts"
-import {
-  clientFor,
-  type ModelObject,
-} from "#/runtime/ui/model/object-client.ts"
+import { clientFor } from "#/runtime/ui/model/object-client.ts"
 import { objectListRequest } from "#/runtime/ui/model/object-collection-query.ts"
 import {
   emptyObjectCollectionViewState,
@@ -49,7 +46,7 @@ export function objectRecordHref(
 }
 
 /** The object served under `/objects/<id>`; objects at a configured path or without pages are not found here. */
-export function routeObject(runtime: ModelUiRuntime, id: string): ModelObject {
+export function routeObject(runtime: ModelUiRuntime, id: string): ObjectType {
   const object = Object.values(runtime.model.objects).find(
     (candidate) => candidate.id === id
   )
@@ -66,7 +63,7 @@ export function routeObject(runtime: ModelUiRuntime, id: string): ModelObject {
 export function routeObjectAtPath(
   runtime: ModelUiRuntime,
   path: string
-): ModelObject {
+): ObjectType {
   const object = Object.values(runtime.model.objects).find(
     (candidate) => runtime.ui[candidate.id]?.navigation?.path === path
   )
@@ -77,7 +74,7 @@ export function routeObjectAtPath(
 export async function preloadObject(
   runtime: ModelUiRuntime,
   cache: QueryClient,
-  object: ModelObject,
+  object: ObjectType,
   recordId: string
 ) {
   if (runtime.ui[object.id]?.record?.pageComponent !== undefined) return
@@ -88,7 +85,7 @@ export async function preloadObject(
 export async function preloadCollection(
   runtime: ModelUiRuntime,
   cache: QueryClient,
-  object: ModelObject,
+  object: ObjectType,
   search: ObjectCollectionSearch,
   views: ReadonlyArray<ObjectCollectionView> | undefined = runtime.ui[object.id]
     ?.collection?.views

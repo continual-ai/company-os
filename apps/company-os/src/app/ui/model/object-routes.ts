@@ -2,8 +2,8 @@ import type { QueryClient } from "@tanstack/react-query"
 
 import { presentation } from "#/app/app-presentation.ts"
 import { documentHead, type PageMetadata } from "#/app/ui/route-metadata.ts"
+import type { ObjectType } from "#/runtime/model/definition/object.ts"
 import type { ObjectCollectionSearch } from "#/runtime/ui/model/collection-view.ts"
-import type { ModelObject } from "#/runtime/ui/model/object-client.ts"
 import { validateObjectCollectionSearch } from "#/runtime/ui/model/object-collection-view.ts"
 import { validateObjectRecordSearch } from "#/runtime/ui/model/object-record-view.ts"
 import {
@@ -20,7 +20,7 @@ interface PageLoaderData {
 
 /** Every collection URL validates the same search state and preloads the exact request its screen renders. */
 export function objectCollectionRoute<Params>(
-  resolve: (params: Params) => ModelObject
+  resolve: (params: Params) => ObjectType
 ) {
   return {
     validateSearch: validateObjectCollectionSearch,
@@ -50,7 +50,7 @@ export function objectCollectionRoute<Params>(
 }
 
 export function objectRecordRoute<Params>(
-  resolve: (params: Params) => ModelObject
+  resolve: (params: Params) => ObjectType
 ) {
   return {
     validateSearch: validateObjectRecordSearch,

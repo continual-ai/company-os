@@ -1,12 +1,12 @@
 import { Button } from "@company/ui/button"
 import { PencilIcon } from "lucide-react"
 
+import type { ObjectType } from "#/runtime/model/definition/object.ts"
 import { modelObjectLinkTraversals } from "#/runtime/model/index.ts"
 import { linkPreview } from "#/runtime/model/record-links.ts"
 import { isSupportedFormSchema } from "#/runtime/ui/forms/schema-form-values.ts"
 import {
   type ClientRecord,
-  type ModelObject,
   type ObjectRecordPresentation,
 } from "#/runtime/ui/model/object-client.ts"
 import { objectFormProperties } from "#/runtime/ui/model/object-form.ts"
@@ -24,7 +24,7 @@ export function ObjectPropertiesCard({
 }: {
   readonly fields?: ReadonlyArray<string> | undefined
   readonly onEdit?: ((field: string) => void) | undefined
-  readonly object: ModelObject
+  readonly object: ObjectType
   readonly record: ClientRecord
   readonly references: ReadonlyMap<string, ObjectRecordPresentation>
 }) {

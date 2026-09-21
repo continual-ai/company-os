@@ -10,7 +10,7 @@ its standard internal pages.
 UI uses `useClient(Model)` from `runtime/ui/module.ts`, importing the application contract from
 `app.model.ts`. Pass an operation’s `queryOptions(input)` to `useQuery`, `mutationOptions()` to
 `useMutation`, or a collection’s `infiniteQueryOptions(input)` to `useInfiniteQuery`. Expanded
-relationships are inferred from the model. Keep models outside React; the hook reads the provided
+links are inferred from the model. Keep models outside React; the hook reads the provided
 client. Loaders use the same option factories on the request’s client and QueryClient. Use the
 existing forms, error paths, and server-driven invalidation. Prefer
 `defineModuleUi` additions/replacements, then a module-owned page for a distinct workflow. Do not

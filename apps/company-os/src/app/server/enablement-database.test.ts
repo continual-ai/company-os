@@ -16,7 +16,7 @@ import { Links } from "#/runtime/server/storage/link-store.ts"
 import { testFoundation } from "#/runtime/testing/foundation.ts"
 
 // Persistence always runs on the complete model. Disabling a module only narrows
-// what transports expose, so relationships into the hidden module still cascade
+// what transports expose, so links into the hidden module still cascade
 // and journal when the visible side changes.
 const withoutFeedback = enableModules(Model, [
   "platform",
@@ -36,7 +36,7 @@ const ticketIssues = modelObjectLinkTraversals(Model, Ticket).find(
 )!
 
 fixture.test(
-  "keeps hidden relationships consistent when a linked record is deleted",
+  "keeps hidden links consistent when a linked record is deleted",
   () =>
     Effect.gen(function* () {
       const services = yield* implementation

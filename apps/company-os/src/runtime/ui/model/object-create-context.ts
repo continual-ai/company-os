@@ -1,9 +1,7 @@
 import { createContext, useContext } from "react"
 
-import type {
-  ClientRecord,
-  ModelObject,
-} from "#/runtime/ui/model/object-client.ts"
+import type { ObjectType } from "#/runtime/model/definition/object.ts"
+import type { ClientRecord } from "#/runtime/ui/model/object-client.ts"
 import type { ObjectFormInput } from "#/runtime/ui/model/object-form.ts"
 
 export interface ObjectCreateOptions {
@@ -13,7 +11,7 @@ export interface ObjectCreateOptions {
 }
 
 export type OpenObjectCreate = (
-  object: ModelObject,
+  object: ObjectType,
   options?: ObjectCreateOptions
 ) => void
 

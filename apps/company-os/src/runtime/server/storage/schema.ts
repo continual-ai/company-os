@@ -232,7 +232,7 @@ export function makePostgresSchema<const M extends ModelCatalog>(
         {
           type: "text",
           nullable: link[storage.side].min === 0,
-          description: "Relationship reference.",
+          description: "Link reference.",
         },
       ])
     )
@@ -325,10 +325,7 @@ export function makePostgresSchema<const M extends ModelCatalog>(
     }
   }
   ddl.push(
-    ...section(
-      "Relationships",
-      "Association pairs and cardinality constraints."
-    )
+    ...section("Links", "Association pairs and cardinality constraints.")
   )
   for (const link of Object.values(model.links)) {
     const table = defineTable(

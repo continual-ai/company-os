@@ -93,6 +93,6 @@ export const ControllerInstanceRecord = defineLink({
   },
 })
 
-/** The alias identifies a work item; its relationships are stored only as Links. */
+/** The alias identifies a work item; its links are stored only as Links. */
 export const controllerInstanceAlias = (definitionId: string, key: string) =>
   RecordAlias(`system:controller-instance:${definitionId}:${key}`)

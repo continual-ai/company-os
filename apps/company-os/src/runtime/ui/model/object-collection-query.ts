@@ -1,3 +1,4 @@
+import type { ObjectType } from "#/runtime/model/definition/object.ts"
 import {
   modelObjectLinkTraversals,
   type ModelCatalog,
@@ -15,7 +16,6 @@ import type {
   ObjectCollectionSort,
   ObjectTableFilterValue,
 } from "#/runtime/ui/model/collection-view.ts"
-import type { ModelObject } from "#/runtime/ui/model/object-client.ts"
 import { objectTablePropertySchema } from "#/runtime/ui/model/object-table/object-table-cell-types.ts"
 import { readFilterValue } from "#/runtime/ui/model/object-table/object-table-config.ts"
 
@@ -127,7 +127,7 @@ const boundary = (field: PropertyDefinition, value: string) =>
     : value
 
 export function objectListRequest(
-  object: ModelObject,
+  object: ObjectType,
   columnFilters: ReadonlyArray<ObjectCollectionFilter>,
   sorting: ReadonlyArray<ObjectCollectionSort>,
   pageToken?: ListRequest["pageToken"],

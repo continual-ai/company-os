@@ -12,7 +12,7 @@ import {
 import type { ClientRecord } from "#/runtime/ui/model/object-client.ts"
 import { objectFieldValue } from "#/runtime/ui/model/object-field-value.ts"
 
-it("reads relationship previews and expansions without flattening or colliding with record properties", () => {
+it("reads link previews and expansions without flattening or colliding with record properties", () => {
   const fields = objectFields(Person, fixtureModel)
   const account = { id: "account_example", etag: "1", name: "Acme" }
   for (const accounts of [

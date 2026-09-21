@@ -2,7 +2,7 @@ import { Predicate } from "effect"
 
 import type { ApiError } from "#/runtime/model/index.ts"
 
-/** Translate recognized PostgreSQL relationship and concurrency failures. */
+/** Translate recognized PostgreSQL link and concurrency failures. */
 export function constraintApiError(error: unknown): ApiError | undefined {
   let cause = error
   for (
@@ -15,7 +15,7 @@ export function constraintApiError(error: unknown): ApiError | undefined {
       return {
         status: "FAILED_PRECONDITION",
         reason: "FAILED_PRECONDITION",
-        message: "The change would leave an invalid relationship.",
+        message: "The change would leave an invalid link.",
         details: {
           violations: [
             {
@@ -29,7 +29,7 @@ export function constraintApiError(error: unknown): ApiError | undefined {
       return {
         status: "ALREADY_EXISTS",
         reason: "ALREADY_EXISTS",
-        message: "A record or relationship with these values already exists.",
+        message: "A record or link with these values already exists.",
         details: {
           violations: [
             {

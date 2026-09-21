@@ -58,7 +58,7 @@ export function makeControllerRouting(
   )
 
   // Share identical path lookups between controllers only within one routing call.
-  // A later call must observe intervening relationship writes.
+  // A later call must observe intervening link writes.
   const roots = (
     cache: Map<string, ReadonlyArray<string>>,
     objectType: string,

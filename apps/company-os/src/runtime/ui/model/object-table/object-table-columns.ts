@@ -82,11 +82,11 @@ export function objectTableFieldColumnDef(
           ? { link: field.traversal }
           : { propertyId: id }),
         ...(field.kind === "related" && field.related.count
-          ? { countRelationship: field.related.traversal.traversal.key }
+          ? { countLink: field.related.traversal.traversal.key }
           : {}),
         ...(plural
           ? {
-              relationship: field.related.traversal.traversal.label,
+              linkLabel: field.related.traversal.traversal.label,
               displayProperty: normalizeProperties({
                 value: schema.array(schema.string(), {
                   label,

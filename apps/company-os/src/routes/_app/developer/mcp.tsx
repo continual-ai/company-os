@@ -30,7 +30,7 @@ function McpPage() {
           Give agents governed tools.
         </h1>
         <p className="mt-3 leading-7 text-muted-foreground">
-          The MCP server exposes the model’s queries, actions, and relationship
+          The MCP server exposes the model’s queries, actions, and link
           operations. Agents use the same authorization, validation,
           transactions, and durable events as people using the app.
         </p>
@@ -68,9 +68,9 @@ function McpPage() {
           <h2 className="text-lg font-medium">Call a model operation</h2>
           <p className="text-sm leading-6 text-muted-foreground">
             Tool names follow <code>object.operation</code> and
-            <code> object.relationship.operation</code>. Discoverability does
-            not grant access: each call verifies project admission and enforces
-            business rules.
+            <code> object.link.operation</code>. Discoverability does not grant
+            access: each call verifies project admission and enforces business
+            rules.
           </p>
           <CodeBlock
             language="json"

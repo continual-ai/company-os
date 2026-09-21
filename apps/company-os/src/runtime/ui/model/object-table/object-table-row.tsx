@@ -206,11 +206,9 @@ export const ObjectTableRow = memo(function ObjectTableRow({
                   resolveImageSrc={resolveImageSrc}
                   resolveRecord={resolveRecord}
                   value={
-                    meta.countRelationship
+                    meta.countLink
                       ? formatTotalSize(
-                          linkPreview(
-                            row.original.links?.[meta.countRelationship]
-                          )
+                          linkPreview(row.original.links?.[meta.countLink])
                         )
                       : cellValue
                   }

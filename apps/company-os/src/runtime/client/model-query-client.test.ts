@@ -112,7 +112,7 @@ it("rejects incomplete ordinary record responses", async () => {
   ).rejects.toBeDefined()
 })
 
-it("generates native pagination options for collections and relationships", async () => {
+it("generates native pagination options for collections and links", async () => {
   const calls: Array<{ path: string; input: unknown }> = []
   const queries = createModelQueries(
     fixtureModel,
@@ -166,12 +166,12 @@ it("generates native pagination options for collections and relationships", asyn
         },
       },
     ])
-    const relationship = queries.person.accounts.list.infiniteQueryOptions({
+    const link = queries.person.accounts.list.infiniteQueryOptions({
       id: RecordId("person")("person_example"),
       expand: { orders: true },
     })
     const related = await cache.fetchInfiniteQuery({
-      ...relationship,
+      ...link,
       pages: 2,
     })
     expectTypeOf(related.pages[0]!.items[0]!).toEqualTypeOf<
@@ -191,7 +191,7 @@ it("generates native pagination options for collections and relationships", asyn
         input: { expand: '{"orders":true}', pageToken: "next" },
       },
     ])
-    expect(relationship.meta?.objectTypes).toContain("order")
+    expect(link.meta?.objectTypes).toContain("order")
     // A component observes the loader's exact query without a second request.
     const observer = new InfiniteQueryObserver(cache, collection)
     const unsubscribe = observer.subscribe(() => undefined)
@@ -208,7 +208,7 @@ it("generates native pagination options for collections and relationships", asyn
   }
 })
 
-it("preserves required relationship capabilities when projecting the client", () => {
+it("preserves required link capabilities when projecting the client", () => {
   const Thing = defineObject({
     id: "thing",
     collection: "things",
@@ -230,7 +230,7 @@ it("preserves required relationship capabilities when projecting the client", ()
     to: { object: Thing, key: "children", label: "Children", min: 0 },
   })
   const model = defineModel({
-    name: "Required relationships",
+    name: "Required links",
     modules: [
       defineModule({
         id: "test",

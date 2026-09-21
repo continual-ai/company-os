@@ -11,7 +11,7 @@ import type {
 } from "#/runtime/model/definition/module.ts"
 import type {
   ObjectDefinition,
-  ObjectRef,
+  RecordRef,
   ObjectType,
 } from "#/runtime/model/definition/object.ts"
 import {
@@ -28,7 +28,7 @@ import type {
 import {
   assertModelDefinitionsValid,
   assertModulesClosed,
-  assertRelationshipNamesUnambiguous,
+  assertLinkKeysUnambiguous,
 } from "#/runtime/model/definition/validate-model.ts"
 import { resolveQueryField } from "#/runtime/model/query-fields.ts"
 
@@ -224,7 +224,7 @@ export type RecordIdOf<
     : never
 
 /** A discriminated record reference for any object registered in a model. */
-export type ModelObjectRef<TModel extends ModelCatalog> = ObjectRef<
+export type ModelRecordRef<TModel extends ModelCatalog> = RecordRef<
   ModelObject<TModel>["id"]
 >
 
@@ -243,11 +243,11 @@ export type LinkDirection = "forward" | "reverse"
 /** One Link traversal projected onto a concrete object that can own an API route. */
 export interface ModelLinkTraversal {
   readonly direction: LinkDirection
-  /** Whether standard create may establish this traversal atomically. */
   readonly link: LinkType
   readonly source: ObjectType
   readonly traversal: LinkType[LinkDirection]
-  readonly target: LinkType[LinkDirection]
+  readonly inverse: LinkType[LinkDirection]
+  /** Whether standard create may establish this traversal atomically. */
   readonly writable: boolean
 }
 
@@ -363,7 +363,7 @@ export function defineModel<
     objects,
     queries,
   }
-  assertRelationshipNamesUnambiguous(moduleObjects, modelLinks(catalog))
+  assertLinkKeysUnambiguous(moduleObjects, modelLinks(catalog))
   for (const object of moduleObjects) {
     for (const path of object.display.titleFields ?? []) {
       const field = resolveQueryField(catalog, object, path)
@@ -378,7 +378,7 @@ export function defineModel<
         )
       )
         throw new Error(
-          `Object '${object.id}' title field '${path}' must be a scalar property through singular relationships.`
+          `Object '${object.id}' title field '${path}' must be a scalar property through singular links.`
         )
     }
   }
@@ -426,7 +426,7 @@ export function modelLinkTraversals(model: ModelCatalog, typeId: string) {
         {
           direction,
           link,
-          target: link[opposite],
+          inverse: link[opposite],
           traversal,
           writable: !link.outputOnly,
         },

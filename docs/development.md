@@ -229,11 +229,36 @@ by a custom control. `useClient(Model)` exposes every object and custom operatio
 pass these directly to TanStack Query hooks. `OperationAction` can place a global Action on a module page. Queries provide typed cache
 options for views, without inventing a visualization from their output schema.
 
-### Relationships
+### Vocabulary
 
-Declare every relationship once with `defineLink`; both directions use the same stored edge.
+Use one name for each concept in code, documentation, and generated API descriptions:
+
+| Concept                                 | Name             | Example                                         |
+| --------------------------------------- | ---------------- | ----------------------------------------------- |
+| Business data definition                | Object           | `Account`, represented by `ObjectType`          |
+| An instance of an Object                | Record           | Northstar Robotics                              |
+| A modeled connection between records    | Link             | `AffiliationAccount`, represented by `LinkType` |
+| One named direction through a Link      | Traversal        | `account.affiliations`                          |
+| The identity of a record                | Record reference | `RecordRef`: `{ objectType, id }`               |
+| A value exposed for display or querying | Field            | `name`, `account.name`, `affiliations.$count`   |
+
+A Property is a value declared on an Object; a Field can also expose standard record values,
+Link values, or values reached through a Link (`RelatedField`). `recordProperties` defines the
+standard record properties. Use `ObjectType` directly rather than introducing synonyms;
+`ModelObject<M>` specifically means the Object types in model `M`.
+
+Use `links` for Link configuration and record values, and `link` / `unlink` for operations.
+`LinkTraversal` describes a direction; `ModelLinkTraversal.inverse` is its opposite traversal.
+`RecordLinkView` supplies a record's traversal with UI labels, queries, and operations.
+Selectors choose records (`RecordSelect`, `RecordMultiSelect`). User-facing sections say
+**Related records**; developer tools say **Links**. Reserve “relationship” for business language,
+such as a contact's relationship strength. Foreign keys and join tables are storage details.
+
+### Links
+
+Declare every link once with `defineLink`; both directions use the same stored edge.
 Scalar properties contain values. `schema.id` is for Action and Query inputs or outputs,
-not stored relationships.
+not stored links.
 
 ```ts
 const DealOwner = defineLink({
@@ -247,7 +272,7 @@ const DealOwner = defineLink({
 Links support optional singular (`max: 1`), required singular (`min: 1, max: 1`),
 and optional unbounded plural traversals (no bounds). At most one end can be required.
 Singular references use foreign keys; many-to-many associations use join tables. Both
-traversals address the same relationship. `uniqueBy` can combine ordinary fields with
+traversals address the same link. `uniqueBy` can combine ordinary fields with
 references stored on the object's own table; it cannot impose uniqueness through joins.
 
 Get, list, and batch-get return scalar properties alongside `objectType` and `links`:
@@ -279,14 +304,14 @@ Create accepts `links: { owner: userId, companies: [companyId] }`. Update accept
 IDs or null, plural arrays to replace the whole set, or `{ add, remove }` for partial edits.
 Required references must be supplied at creation and replaced directly; they cannot be
 cleared temporarily, even inside a transaction. Linking a second target to a singular
-relationship fails; use explicit replacement. Record and relationship changes, search
+link fails; use explicit replacement. Record and link changes, search
 updates, and journal events commit together.
 
 Ownership is a link traversal with `onDelete: "cascade"`; its opposite direction must have
 `max: 1`. Deleting the source then deletes its linked targets. The default only removes edges,
-and fails if surviving records would lose a required relationship. Unlinking never deletes
+and fails if surviving records would lose a required link. Unlinking never deletes
 records. `outputOnly: true` reserves a link for trusted Actions and removes public mutation
-operations in both directions. Use an Object when the relationship itself needs properties,
+operations in both directions. Use an Object when an association needs properties,
 Actions, or a lifecycle.
 
 ### Page spacing
@@ -349,17 +374,17 @@ where controllers appear in the UI; either controller can read or change other o
 use the target's branded record ID type. Object handlers take no key.
 
 Target creation, updates, and deletion request reconciliation automatically. `watch` declares named
-relationship paths, such as `notes` or `affiliations.account.notes`. Changes to related records or
-any relationship along a path request reconciliation for the affected targets. Every intermediate
+link paths, such as `notes` or `affiliations.account.notes`. Changes to related records or
+any link along a path request reconciliation for the affected targets. Every intermediate
 record is a dependency too: an account rename matters even when the path ends at its notes. Paths
 are validated against the composed model; event suffixes and property names are not watch paths.
 
 The writer captures affected keys in the same transaction as the change, including before removing
 links or deleting records. The journal consumer queues these saved keys without reconstructing old
-relationships. No `onEvent` handler is needed. An unrelated record change does not wake the controller.
+links. No `onEvent` handler is needed. An unrelated record change does not wake the controller.
 
 `ignoreUpdates: ["summary"]` suppresses target updates that write only those properties. Mixed
-updates still trigger, and relationship changes are independent. This is a trigger filter, not field
+updates still trigger, and link changes are independent. This is a trigger filter, not field
 ownership: human and agent summary-only edits are both ignored. A later input change or manual run
 can update the summary again. Related-record dependencies remain independent of this target filter.
 The writer uses supplied property names only while routing the write; the journal stores the resulting
@@ -414,7 +439,7 @@ record and its controller instances.
 Registry records have generated canonical IDs. The stable name
 `system:controller:issue-greeting` is an alias accepted by the normal record APIs.
 Internal registration uses `Database.repository(Controller).upsert({ alias, values, links })`:
-concurrent calls for an alias converge on one record, supplied values and relationships are
+concurrent calls for an alias converge on one record, supplied values and links are
 validated normally, and omitted fields and other aliases are preserved. An unchanged upsert
 produces no write or event. This repository operation is internal; it does not enable public CRUD.
 
@@ -429,9 +454,9 @@ and Cluster queues remain internal. See [deployment](deployment.md#controller-ho
 
 Per-key state is stored in publicly read-only `ControllerInstance` records. Each instance links to
 its Controller and, for record controllers, its target record. Record targets implement the
-`ControllerTarget` interface. Standard list/get, expansion, relationship previews, and pages expose
+`ControllerTarget` interface. Standard list/get, expansion, link previews, and pages expose
 state, run and failure counts, timestamps, errors, and the agent session reference. The record header
-summarizes these instances; the Controller instances relationship tab exposes the full list.
+summarizes these instances; the Controller instances link tab exposes the full list.
 `client.controllerInstance.reconcile({ id })` runs a particular instance through the same queue.
 
 `client.controller.reconcile({ id, key? })` durably requests another pass through the same keyed

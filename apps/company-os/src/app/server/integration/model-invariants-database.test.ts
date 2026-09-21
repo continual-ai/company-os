@@ -23,7 +23,7 @@ const application = testApplication({
 })
 
 application.test(
-  "derives relationship labels consistently and refreshes search after related renames",
+  "derives link labels consistently and refreshes search after related renames",
   () =>
     Effect.gen(function* () {
       const api = yield* HttpTransport

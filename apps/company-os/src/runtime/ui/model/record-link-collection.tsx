@@ -3,25 +3,23 @@ import { useInfiniteQuery } from "@tanstack/react-query"
 import { UnlinkIcon } from "lucide-react"
 import { useState, type ReactNode } from "react"
 
+import type { ObjectType } from "#/runtime/model/definition/object.ts"
 import { CollectionPagination } from "#/runtime/ui/model/collection-pagination.tsx"
 import { useObjectUi } from "#/runtime/ui/model/module-ui.tsx"
-import {
-  type ClientRecord,
-  type ModelObject,
-} from "#/runtime/ui/model/object-client.ts"
+import { type ClientRecord } from "#/runtime/ui/model/object-client.ts"
 import { ObjectCollection } from "#/runtime/ui/model/object-collection.tsx"
 import { ObjectRecordFeed } from "#/runtime/ui/model/object-record-feed.tsx"
-import { ObjectReferenceSelect } from "#/runtime/ui/model/object-reference-select.tsx"
 import { objectHref } from "#/runtime/ui/model/object-routing.ts"
+import { type RecordLinkView } from "#/runtime/ui/model/record-link-views.ts"
 import { RecordRelatedCreateMenu } from "#/runtime/ui/model/record-related-create-menu.tsx"
-import { type RecordRelationship } from "#/runtime/ui/model/record-relationships.ts"
+import { RecordSelect } from "#/runtime/ui/model/record-select.tsx"
 import { useModelRuntime } from "#/runtime/ui/model/runtime-context.tsx"
 
-/** A relationship supplies context and actions; collection rendering stays object-owned. */
-export function ObjectRelationshipCollection({
-  relationship,
+/** A link supplies context and actions; collection rendering stays object-owned. */
+export function RecordLinkCollection({
+  link,
 }: {
-  readonly relationship: RecordRelationship
+  readonly link: RecordLinkView
 }) {
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string>()
@@ -32,37 +30,35 @@ export function ObjectRelationshipCollection({
       await operation()
     } catch (cause) {
       setError(
-        cause instanceof Error
-          ? cause.message
-          : "Could not update the relationship."
+        cause instanceof Error ? cause.message : "Could not update the link."
       )
     } finally {
       setPending(false)
     }
   }
-  const canConnect = !pending
+  const canLink = !pending
   const renderLink = (records: ReadonlyArray<ClientRecord>) =>
-    canConnect && relationship.connect ? (
-      <ObjectReferenceSelect
+    canLink && link.link ? (
+      <RecordSelect
         allowCreate={false}
-        id={`${relationship.key}-link`}
-        name="relationship"
+        id={`${link.key}-link`}
+        name="link"
         appearance="action"
-        placeholder={`Link ${relationship.target?.name.toLowerCase() ?? "record"}`}
-        typeId={relationship.targetType}
+        placeholder={`Link ${link.target?.name.toLowerCase() ?? "record"}`}
+        typeId={link.targetType}
         value=""
         required
         includeHiddenInput={false}
         selectedValues={records.map((record) => record.id)}
         onBlur={() => undefined}
         onValueChange={(id) => {
-          void mutate(() => relationship.connect!(id))
+          void mutate(() => link.link!(id))
         }}
       />
     ) : null
   const unlink =
-    canConnect && relationship.disconnect
-      ? (record: ClientRecord) => mutate(() => relationship.disconnect!(record))
+    canLink && link.unlink
+      ? (record: ClientRecord) => mutate(() => link.unlink!(record))
       : undefined
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -74,17 +70,17 @@ export function ObjectRelationshipCollection({
           {error}
         </p>
       )}
-      {relationship.target ? (
+      {link.target ? (
         <RelatedObjectCollection
-          object={relationship.target}
-          relationship={relationship}
-          create={relationship.creates[0]?.options}
+          object={link.target}
+          link={link}
+          create={link.creates[0]?.options}
           renderLink={renderLink}
           unlink={unlink}
         />
       ) : (
         <RelatedRecordFeed
-          relationship={relationship}
+          link={link}
           renderLink={renderLink}
           unlink={unlink}
         />
@@ -95,14 +91,14 @@ export function ObjectRelationshipCollection({
 
 function RelatedObjectCollection({
   object,
-  relationship,
+  link,
   create,
   renderLink,
   unlink,
 }: {
-  readonly object: ModelObject
-  readonly relationship: RecordRelationship
-  readonly create: RecordRelationship["creates"][number]["options"] | undefined
+  readonly object: ObjectType
+  readonly link: RecordLinkView
+  readonly create: RecordLinkView["creates"][number]["options"] | undefined
   readonly renderLink: (records: ReadonlyArray<ClientRecord>) => ReactNode
   readonly unlink: ((record: ClientRecord) => Promise<void>) | undefined
 }) {
@@ -116,25 +112,25 @@ function RelatedObjectCollection({
       actions={ui?.actions}
       toolbarComponent={ui?.collection?.toolbarComponent}
       recordHref={(id) => objectHref(runtime, object, id)}
-      source={{ list: relationship.list, create, renderLink, unlink }}
+      source={{ list: link.list, create, renderLink, unlink }}
     />
   )
 }
 
 /** Mixed endpoints use the same cursor chain and summaries, without inventing shared table columns. */
 function RelatedRecordFeed({
-  relationship,
+  link,
   renderLink,
   unlink,
 }: {
-  readonly relationship: RecordRelationship
+  readonly link: RecordLinkView
   readonly renderLink: (records: ReadonlyArray<ClientRecord>) => ReactNode
   readonly unlink: ((record: ClientRecord) => Promise<void>) | undefined
 }) {
   const runtime = useModelRuntime()
 
   const page = useInfiniteQuery(
-    relationship.list.infiniteQueryOptions({ pageSize: 50 })
+    link.list.infiniteQueryOptions({ pageSize: 50 })
   )
   const records = page.data?.pages.flatMap((result) => result.items) ?? []
   const items = records.flatMap((record) => {
@@ -146,7 +142,7 @@ function RelatedRecordFeed({
   return (
     <>
       <div className="flex min-h-10 flex-wrap items-center justify-end gap-2 border-b px-page-gutter py-1">
-        <RecordRelatedCreateMenu relationships={[relationship]} />
+        <RecordRelatedCreateMenu links={[link]} />
         {renderLink(records)}
       </div>
       {page.isError && (
@@ -162,7 +158,7 @@ function RelatedRecordFeed({
       )}
       <ObjectRecordFeed
         items={items}
-        label={relationship.label}
+        label={link.label}
         loading={page.isPending}
         renderActions={(record) =>
           unlink ? (

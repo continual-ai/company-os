@@ -30,10 +30,10 @@ type Matches<
 type Side<O extends ObjectType, L> = L extends LinkType
   ?
       | (Matches<O, L["forward"]["from"]> extends true
-          ? { link: L; side: L["forward"]; target: L["reverse"] }
+          ? { link: L; side: L["forward"]; inverse: L["reverse"] }
           : never)
       | (Matches<O, L["reverse"]["from"]> extends true
-          ? { link: L; side: L["reverse"]; target: L["forward"] }
+          ? { link: L; side: L["reverse"]; inverse: L["forward"] }
           : never)
   : never
 export type ModelRecordSides<
@@ -86,7 +86,7 @@ type Value<
       : Raw<M, S, T>
     : Raw<M, S, T>
 
-/** Complete record with relationships inferred from the composed model and literal expansion request. */
+/** Complete record with links inferred from the composed model and literal expansion request. */
 export type ModelRecord<
   M extends ModelCatalog,
   O extends ObjectType,
@@ -97,7 +97,7 @@ export type ModelRecord<
         readonly [S in ModelRecordSides<M, O> as S["side"]["key"]]: Value<
           M,
           S["side"],
-          S["target"],
+          S["inverse"],
           E
         >
       }

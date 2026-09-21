@@ -37,10 +37,7 @@ import {
 } from "#/runtime/model/index.ts"
 
 type ModelDefinition = ModelCatalog
-type ModelObject = ObjectType
-type ModelInterface = InterfaceType
-type Relationship = LinkType
-type ModelItem = ModelObject | ModelInterface
+type ModelItem = ObjectType | InterfaceType
 
 const allModules = "all"
 
@@ -53,7 +50,7 @@ function itemKey(item: ModelItem) {
 }
 
 function displayRole(
-  definition: Pick<ModelObject | ModelInterface, "display">,
+  definition: Pick<ObjectType | InterfaceType, "display">,
   propertyId: string
 ) {
   return Object.entries(definition.display ?? {}).find(
@@ -61,20 +58,20 @@ function displayRole(
   )?.[0]
 }
 
-function relationshipsForItem(
+function linksForItem(
   model: ModelDefinition,
-  catalog: ReadonlyArray<Relationship>,
+  catalog: ReadonlyArray<LinkType>,
   item: ModelItem
 ) {
-  return catalog.flatMap((relationship) =>
-    [relationship.forward, relationship.reverse]
+  return catalog.flatMap((link) =>
+    [link.forward, link.reverse]
       .filter((direction) =>
         item.kind === "object"
           ? modelTypeAccepts(model, item.id, direction.from.typeId)
           : direction.from.kind === "interface" &&
             direction.from.typeId === item.id
       )
-      .map((current) => ({ current, relationship, related: current.to }))
+      .map((current) => ({ current, link, related: current.to }))
   )
 }
 
@@ -84,7 +81,7 @@ function countLabel(count: number, singular: string, plural = `${singular}s`) {
 
 function propertyDetails(
   property: AnySchema,
-  objects: ReadonlyArray<ModelObject>
+  objects: ReadonlyArray<ObjectType>
 ) {
   const details: Array<string> = []
 
@@ -151,8 +148,8 @@ function PropertyTable({
   definition,
   objects,
 }: {
-  definition: ModelObject | ModelInterface
-  objects: ReadonlyArray<ModelObject>
+  definition: ObjectType | InterfaceType
+  objects: ReadonlyArray<ObjectType>
 }) {
   const properties = Object.entries(definition.properties)
 
@@ -254,24 +251,22 @@ function DetailSection({
   )
 }
 
-function RelationshipList({
+function LinkList({
   items,
   model,
   onSelect,
 }: {
-  items: ReturnType<typeof relationshipsForItem>
+  items: ReturnType<typeof linksForItem>
   model: ModelDefinition
   onSelect: (key: string) => void
 }) {
   if (items.length === 0) {
-    return (
-      <DeveloperBrowserEmpty>No declared relationships.</DeveloperBrowserEmpty>
-    )
+    return <DeveloperBrowserEmpty>No declared links.</DeveloperBrowserEmpty>
   }
 
   return (
     <div className="grid gap-3 md:grid-cols-2">
-      {items.map(({ current, relationship, related }) => {
+      {items.map(({ current, link, related }) => {
         const target =
           related.kind === "object"
             ? Object.values(model.objects).find(
@@ -282,7 +277,7 @@ function RelationshipList({
               )
         return (
           <button
-            key={`${relationship.id}:${current.key}`}
+            key={`${link.id}:${current.key}`}
             type="button"
             disabled={target === undefined}
             className="rounded-lg border p-4 text-left transition-colors outline-none hover:bg-muted/30 focus-visible:ring-1 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-60"
@@ -362,16 +357,16 @@ function ObjectDetail({
   onSelect,
 }: {
   actions: ReadonlyArray<ModelAction>
-  catalog: ReadonlyArray<Relationship>
+  catalog: ReadonlyArray<LinkType>
   model: ModelDefinition
-  object: ModelObject
+  object: ObjectType
   onSelect: (key: string) => void
 }) {
   const modules = Object.values(model.modules)
   const module = modules.find((candidate) =>
     candidate.objects.some(({ id }) => id === object.id)
   )
-  const relationships = relationshipsForItem(model, catalog, object)
+  const links = linksForItem(model, catalog, object)
   const implementations = Object.values(object.interfaces)
   const controllers = modules
     .flatMap((candidate) => candidate.controllers)
@@ -417,9 +412,9 @@ function ObjectDetail({
             label: "Properties",
           },
           {
-            count: relationships.length,
-            href: "#relationships",
-            label: "Relationships",
+            count: links.length,
+            href: "#links",
+            label: "Links",
           },
           {
             count: implementations.length,
@@ -449,16 +444,12 @@ function ObjectDetail({
         </DetailSection>
 
         <DetailSection
-          id="relationships"
+          id="links"
           icon={<Link2Icon />}
-          title="Relationships"
-          count={relationships.length}
+          title="Links"
+          count={links.length}
         >
-          <RelationshipList
-            items={relationships}
-            model={model}
-            onSelect={onSelect}
-          />
+          <LinkList items={links} model={model} onSelect={onSelect} />
         </DetailSection>
 
         <DetailSection
@@ -534,16 +525,16 @@ function InterfaceDetail({
   modelInterface,
   onSelect,
 }: {
-  catalog: ReadonlyArray<Relationship>
+  catalog: ReadonlyArray<LinkType>
   model: ModelDefinition
-  modelInterface: ModelInterface
+  modelInterface: InterfaceType
   onSelect: (key: string) => void
 }) {
   const modules = Object.values(model.modules)
   const module = modules.find((candidate) =>
     candidate.interfaces.some(({ id }) => id === modelInterface.id)
   )
-  const relationships = relationshipsForItem(model, catalog, modelInterface)
+  const links = linksForItem(model, catalog, modelInterface)
   const implementers = Object.values(model.objects).filter((object) =>
     Object.values(object.interfaces).some(
       ({ interfaceId }) => interfaceId === modelInterface.id
@@ -595,9 +586,9 @@ function InterfaceDetail({
             label: "Implementers",
           },
           {
-            count: relationships.length,
-            href: "#relationships",
-            label: "Relationships",
+            count: links.length,
+            href: "#links",
+            label: "Links",
           },
         ]}
       />
@@ -650,16 +641,12 @@ function InterfaceDetail({
         </DetailSection>
 
         <DetailSection
-          id="relationships"
+          id="links"
           icon={<Link2Icon />}
-          title="Relationships"
-          count={relationships.length}
+          title="Links"
+          count={links.length}
         >
-          <RelationshipList
-            items={relationships}
-            model={model}
-            onSelect={onSelect}
-          />
+          <LinkList items={links} model={model} onSelect={onSelect} />
         </DetailSection>
       </div>
     </article>
@@ -796,7 +783,7 @@ export function ModelExplorer({
         { label: "modules", value: modules.length },
         { label: "objects", value: objects.length },
         { label: "interfaces", value: interfaces.length },
-        { label: "relationships", value: catalog.length },
+        { label: "links", value: catalog.length },
         { label: "actions", value: actions.length },
         { label: "controllers", value: controllers.length },
       ]}
@@ -848,11 +835,7 @@ export function ModelExplorer({
                 >
                   {items.map((item) => {
                     const key = itemKey(item)
-                    const relationshipCount = relationshipsForItem(
-                      model,
-                      catalog,
-                      item
-                    ).length
+                    const linkCount = linksForItem(model, catalog, item).length
                     const actionCount =
                       item.kind === "object"
                         ? actions.filter(
@@ -875,7 +858,7 @@ export function ModelExplorer({
                         }
                         meta={
                           item.kind === "object"
-                            ? `${countLabel(Object.keys(item.properties).length, "property", "properties")} · ${countLabel(relationshipCount, "relationship")} · ${countLabel(actionCount, "action")}`
+                            ? `${countLabel(Object.keys(item.properties).length, "property", "properties")} · ${countLabel(linkCount, "link")} · ${countLabel(actionCount, "action")}`
                             : `interface · ${countLabel(Object.keys(item.properties).length, "property", "properties")}`
                         }
                         onClick={() => selectItem(key)}

@@ -2,13 +2,13 @@ import { hashKey, useQueries } from "@tanstack/react-query"
 import { useMemo } from "react"
 
 import { isNewerOrEqualRecord } from "#/runtime/client/model-cache.ts"
+import type { ObjectType } from "#/runtime/model/definition/object.ts"
 import { MAX_PAGE_SIZE } from "#/runtime/model/index.ts"
 import { linkPreview } from "#/runtime/model/record-links.ts"
 import {
   recordBatchFor,
   recordLabel,
   type ClientRecord,
-  type ModelObject,
   type ObjectRecordPresentation,
 } from "#/runtime/ui/model/object-client.ts"
 import {
@@ -25,15 +25,15 @@ function chunks<T>(values: ReadonlyArray<T>, size: number): ReadonlyArray<T[]> {
 }
 
 /** Batch references once for labels and rich identity displays; unavailable records stay unresolved. */
-export function useObjectReferences(
-  object: ModelObject,
+export function useObjectRecordReferences(
+  object: ObjectType,
   records: ReadonlyArray<ClientRecord>
 ) {
-  return useObjectReferencePages(object, [records])
+  return useObjectRecordReferencePages(object, [records])
 }
 
-export function useObjectReferencePages(
-  object: ModelObject,
+export function useObjectRecordReferencePages(
+  object: ObjectType,
   pages: ReadonlyArray<ReadonlyArray<ClientRecord>>,
   links?: ReadonlyArray<string>
 ) {
@@ -45,7 +45,7 @@ export function useObjectReferencePages(
 }
 
 type ReferenceItem = {
-  readonly object: ModelObject
+  readonly object: ObjectType
   readonly record: ClientRecord
 }
 

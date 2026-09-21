@@ -193,7 +193,7 @@ create unique index "module_settings_module_unique" on "module_settings" ("modul
 -- desired state.
 create table "controllers" (
   "id" text not null,
-  -- Relationship reference.
+  -- Link reference.
   "module_id" text not null,
   "paused" boolean not null default false,
   "definition_id" text not null,
@@ -215,9 +215,9 @@ create unique index "controllers_definition_unique" on "controllers" ("definitio
 -- whole collection.
 create table "controller_instances" (
   "id" text not null,
-  -- Relationship reference.
+  -- Link reference.
   "controller_id" text not null,
-  -- Relationship reference.
+  -- Link reference.
   "record_id" text,
   "state" text not null default 'pending',
   "runs" integer not null default 0,
@@ -238,7 +238,7 @@ alter table "controller_instances" add constraint "controller_instances_target_u
 -- A code-defined integration available to configured connections.
 create table "connectors" (
   "id" text not null,
-  -- Relationship reference.
+  -- Link reference.
   "module_id" text not null,
   "definition_id" text not null,
   "name" text not null,
@@ -257,7 +257,7 @@ create unique index "connectors_definition_unique" on "connectors" ("definition_
 -- accessible to the token.
 create table "connections" (
   "id" text not null,
-  -- Relationship reference.
+  -- Link reference.
   "connector_id" text not null,
   -- Enter the account's username or organization slug, not a display name or
   -- URL.
@@ -283,7 +283,7 @@ alter table "connections" add constraint "connections_account_unique" unique ("c
 -- A customer, prospect, or partner organization.
 create table "accounts" (
   "id" text not null,
-  -- Relationship reference.
+  -- Link reference.
   "owner_id" text,
   "name" text not null,
   "logo" jsonb,
@@ -325,7 +325,7 @@ create table "contacts" (
 -- A task, call, or meeting with a customer or prospect.
 create table "activities" (
   "id" text not null,
-  -- Relationship reference.
+  -- Link reference.
   "owner_id" text,
   "title" text not null,
   "kind" text not null default 'task',
@@ -341,9 +341,9 @@ create table "activities" (
 -- different roles or periods.
 create table "affiliations" (
   "id" text not null,
-  -- Relationship reference.
+  -- Link reference.
   "contact_id" text not null,
-  -- Relationship reference.
+  -- Link reference.
   "account_id" text not null,
   "job_title" text,
   "start_date" date,
@@ -363,13 +363,13 @@ alter table "affiliations" add constraint "affiliations_check_dates" check ("sta
 -- live on the linked CRM records.
 create table "leads" (
   "id" text not null,
-  -- Relationship reference.
+  -- Link reference.
   "account_id" text not null,
-  -- Relationship reference.
+  -- Link reference.
   "owner_id" text,
-  -- Relationship reference.
+  -- Link reference.
   "contact_id" text not null,
-  -- Relationship reference.
+  -- Link reference.
   "opportunity_id" text,
   "name" text not null,
   "source" text not null default 'unknown',
@@ -382,7 +382,7 @@ create table "leads" (
 -- A sales opportunity with its value, stage, and next steps.
 create table "opportunities" (
   "id" text not null,
-  -- Relationship reference.
+  -- Link reference.
   "owner_id" text,
   "name" text not null,
   "stage" text not null default 'discovery',
@@ -402,7 +402,7 @@ create table "opportunities" (
 -- A product or service included in a opportunity.
 create table "line_items" (
   "id" text not null,
-  -- Relationship reference.
+  -- Link reference.
   "opportunity_id" text not null,
   "name" text not null,
   "quantity" integer not null default 1,
@@ -419,7 +419,7 @@ create table "line_items" (
 -- Plan a marketing campaign and track its budget, dates, and audience.
 create table "campaigns" (
   "id" text not null,
-  -- Relationship reference.
+  -- Link reference.
   "owner_id" text,
   "name" text not null,
   "objective" text,
@@ -438,9 +438,9 @@ alter table "campaigns" add constraint "campaigns_check_dates" check ("start_dat
 -- Track an article, post, or ad. Saving does not publish it.
 create table "contents" (
   "id" text not null,
-  -- Relationship reference.
+  -- Link reference.
   "campaign_id" text,
-  -- Relationship reference.
+  -- Link reference.
   "owner_id" text,
   "title" text not null,
   "format" text not null default 'article',
@@ -458,9 +458,9 @@ create table "contents" (
 -- Track a contact's progress and next follow-up in a campaign.
 create table "campaign_members" (
   "id" text not null,
-  -- Relationship reference.
+  -- Link reference.
   "campaign_id" text not null,
-  -- Relationship reference.
+  -- Link reference.
   "contact_id" text not null,
   "status" text not null default 'queued',
   "step" integer not null default 0,
@@ -476,11 +476,11 @@ alter table "campaign_members" add constraint "campaign_members_membership_uniqu
 -- Track a message and its delivery status. Saving does not send it.
 create table "outreaches" (
   "id" text not null,
-  -- Relationship reference.
+  -- Link reference.
   "campaign_id" text,
-  -- Relationship reference.
+  -- Link reference.
   "contact_id" text not null,
-  -- Relationship reference.
+  -- Link reference.
   "owner_id" text,
   "subject" text not null,
   "channel" text not null default 'email',
@@ -502,7 +502,7 @@ create table "outreaches" (
 -- Related work organized around a goal and target date.
 create table "projects" (
   "id" text not null,
-  -- Relationship reference.
+  -- Link reference.
   "owner_id" text,
   "name" text not null,
   "objective" text,
@@ -516,9 +516,9 @@ create table "projects" (
 -- A bug, request, or task to investigate and resolve.
 create table "issues" (
   "id" text not null,
-  -- Relationship reference.
+  -- Link reference.
   "project_id" text,
-  -- Relationship reference.
+  -- Link reference.
   "assignee_id" text,
   "title" text not null,
   "description" text,
@@ -540,9 +540,9 @@ create table "issues" (
 -- and pull requests.
 create table "github_repositories" (
   "id" text not null,
-  -- Relationship reference.
+  -- Link reference.
   "connection_id" text not null,
-  -- Relationship reference.
+  -- Link reference.
   "maintainer_id" text,
   "sync_error" text,
   "sync_page" integer,
@@ -567,7 +567,7 @@ create unique index "github_repositories_github_unique" on "github_repositories"
 -- Track a code change, its reviews, and checks. Merge it in GitHub.
 create table "github_pull_requests" (
   "id" text not null,
-  -- Relationship reference.
+  -- Link reference.
   "repository_id" text not null,
   "node_id" text not null,
   "body" text,
@@ -590,7 +590,7 @@ alter table "github_pull_requests" add constraint "github_pull_requests_number_u
 -- An issue tracked in GitHub, separate from internal product planning.
 create table "github_issues" (
   "id" text not null,
-  -- Relationship reference.
+  -- Link reference.
   "repository_id" text not null,
   "node_id" text not null,
   "number" integer not null,
@@ -614,7 +614,7 @@ alter table "github_issues" add constraint "github_issues_number_unique" unique 
 -- A role your account is hiring for.
 create table "job_postings" (
   "id" text not null,
-  -- Relationship reference.
+  -- Link reference.
   "hiring_manager_id" text,
   "title" text not null,
   "description" text not null,
@@ -648,9 +648,9 @@ create unique index "candidates_email_unique" on "candidates" ("email");
 -- A candidate's application for a specific job posting.
 create table "applications" (
   "id" text not null,
-  -- Relationship reference.
+  -- Link reference.
   "job_id" text not null,
-  -- Relationship reference.
+  -- Link reference.
   "candidate_id" text not null,
   "stage" text not null default 'new',
   "source" text not null default 'unknown',
@@ -672,11 +672,11 @@ alter table "applications" add constraint "applications_candidate_job_unique" un
 -- A customer request or problem to investigate and resolve.
 create table "tickets" (
   "id" text not null,
-  -- Relationship reference.
+  -- Link reference.
   "account_id" text,
-  -- Relationship reference.
+  -- Link reference.
   "requester_id" text,
-  -- Relationship reference.
+  -- Link reference.
   "owner_id" text,
   "subject" text not null,
   "description" text,
@@ -693,7 +693,7 @@ create table "tickets" (
 -- A message about a support ticket. Saving does not send it.
 create table "replies" (
   "id" text not null,
-  -- Relationship reference.
+  -- Link reference.
   "ticket_id" text not null,
   "subject" text not null,
   "direction" text not null default 'inbound',
@@ -707,7 +707,7 @@ create table "replies" (
 );
 
 -- ===========================================================================
--- Relationships
+-- Links
 -- ===========================================================================
 -- Association pairs and cardinality constraints.
 

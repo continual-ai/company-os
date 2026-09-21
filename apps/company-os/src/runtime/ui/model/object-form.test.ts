@@ -22,7 +22,7 @@ import {
 const presentation = testPresentation(fixtureModel)
 
 describe("object forms", () => {
-  it("preserves initial relationship targets through create decoding", () => {
+  it("preserves initial link targets through create decoding", () => {
     const values = objectFormDefaultValues(
       presentation,
       Memo,
@@ -54,7 +54,7 @@ describe("object forms", () => {
       ).links
     ).toEqual({ topics: { add: [], remove: [] } })
   })
-  it("keeps focused updates separate from other fields and relationship drafts", () => {
+  it("keeps focused updates separate from other fields and link drafts", () => {
     expect(
       decodeObjectForm(
         presentation,
@@ -144,7 +144,7 @@ describe("object forms", () => {
     })
   })
 
-  it("nests initial relationships under the generated links envelope", () => {
+  it("nests initial links under the generated links envelope", () => {
     const form = {
       content: "Introductory call",
       links: { topics: ["account_northstar", "person_ada"] },
@@ -156,7 +156,7 @@ describe("object forms", () => {
     })
   })
 
-  it("derives writable relationships for creation and editing and decodes Link deltas", () => {
+  it("derives writable links for creation and editing and decodes Link deltas", () => {
     expect(
       objectFormDefaultValues(presentation, Account, "create").links
     ).not.toHaveProperty("convertedProspects")
@@ -201,7 +201,7 @@ describe("object forms", () => {
     })
   })
 
-  it("preserves singular relationships when editing an expanded record", () => {
+  it("preserves singular links when editing an expanded record", () => {
     for (const account of [
       "account_northstar",
       { id: "account_northstar", etag: "1", name: "Northstar" },

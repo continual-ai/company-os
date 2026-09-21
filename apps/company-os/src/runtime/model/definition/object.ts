@@ -48,7 +48,7 @@ import {
 } from "#/runtime/model/definition/schema.ts"
 
 /** A typed reference used when records from multiple object types can appear. */
-export type ObjectRef<TObjectType extends string = string> =
+export type RecordRef<TObjectType extends string = string> =
   TObjectType extends string
     ? {
         readonly id: RecordId<TObjectType>
@@ -239,7 +239,7 @@ export interface ObjectType<D extends ObjectDefinition = ObjectDefinition> {
   uniqueBy: Readonly<Record<string, ReadonlyArray<string>>>
 }
 
-/** Record fields, with precise relationships when the composed model is supplied. */
+/** Record fields, with precise links when the composed model is supplied. */
 export type ObjectRecord<
   TObject extends ObjectType,
   M extends ModelCatalog | undefined = undefined,
@@ -398,7 +398,7 @@ const reservedPropertyIds = new Set([
 
 /**
  * Defines a portable model object and derives its enabled standard actions.
- * Business relationships and ownership are declared as Links.
+ * Business links and ownership are declared as Links.
  */
 function isOrderedProperty(property: AnySchema): boolean {
   return (

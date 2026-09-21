@@ -2,6 +2,7 @@ import {
   toEffectModelObjectCreateSchema,
   toEffectModelObjectUpdateSchema,
 } from "#/runtime/contract/schema.ts"
+import type { ObjectType } from "#/runtime/model/definition/object.ts"
 import {
   modelObjectLinkTraversals,
   type AnySchema,
@@ -29,7 +30,6 @@ import {
   modelObjectProperty,
   type ClientRecord,
   type ClientValue,
-  type ModelObject,
 } from "#/runtime/ui/model/object-client.ts"
 import { objectTablePropertySchema } from "#/runtime/ui/model/object-table/object-table-cell-types.ts"
 import { type ModelUiRuntime } from "#/runtime/ui/model/runtime-context.tsx"
@@ -65,7 +65,7 @@ export interface ObjectFormProperty {
 
 export function objectFormLinks(
   runtime: ModelUiRuntime,
-  object: ModelObject
+  object: ObjectType
 ): ReadonlyArray<ModelLinkTraversal> {
   return modelObjectLinkTraversals(runtime.model, object).filter(
     (traversal) => traversal.writable
@@ -73,7 +73,7 @@ export function objectFormLinks(
 }
 
 export function objectFormProperties(
-  object: ModelObject,
+  object: ObjectType,
   mode: ObjectFormMode
 ): ReadonlyArray<ObjectFormProperty> {
   return Object.entries(object.properties).flatMap(([id, property]) => {
@@ -88,7 +88,7 @@ export function objectFormFieldRequired(property: PropertyDefinition): boolean {
 }
 
 function semanticFormViolation(
-  object: ModelObject,
+  object: ObjectType,
   violation: Violation
 ): Violation {
   const propertyId = violation.path?.[0]
@@ -211,7 +211,7 @@ function scalarValue(
 
 export function decodeObjectForm(
   runtime: ModelUiRuntime,
-  object: ModelObject,
+  object: ObjectType,
   values: ObjectFormValues,
   mode: ObjectFormMode,
   fields?: ReadonlyArray<string>
@@ -363,7 +363,7 @@ function initialValue(
 
 export function objectFormDefaultValues(
   runtime: ModelUiRuntime,
-  object: ModelObject,
+  object: ObjectType,
   mode: ObjectFormMode,
   record?: ClientRecord,
   now = new Date(),

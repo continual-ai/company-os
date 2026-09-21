@@ -33,7 +33,6 @@ import {
   recordBatchFor,
   recordLabel,
 } from "#/runtime/ui/model/object-client.ts"
-import { ObjectReferenceSelect } from "#/runtime/ui/model/object-reference-select.tsx"
 import { objectTablePropertySchema } from "#/runtime/ui/model/object-table/object-table-cell-types.ts"
 import {
   objectTableColumnMeta,
@@ -50,6 +49,7 @@ import {
   type ObjectTableInstance,
 } from "#/runtime/ui/model/object-table/object-table-config.ts"
 import { ObjectTableProperty } from "#/runtime/ui/model/object-table/object-table-property.tsx"
+import { RecordSelect } from "#/runtime/ui/model/record-select.tsx"
 import { useModelRuntime } from "#/runtime/ui/model/runtime-context.tsx"
 
 interface FilterOption {
@@ -157,7 +157,7 @@ function InitialFilterValue({
 
       {property.kind === "recordId" ? (
         <div className="p-1.5">
-          <ObjectReferenceSelect
+          <RecordSelect
             allowCreate={false}
             name={`filter-${column.id}`}
             typeId={property.typeId}
@@ -472,7 +472,7 @@ function RecordFilterValue({
     : undefined
   const label = record && object ? recordLabel(object, record) : undefined
   return (
-    <ObjectReferenceSelect
+    <RecordSelect
       appearance="inline"
       allowCreate={false}
       includeHiddenInput={false}
@@ -562,7 +562,7 @@ function ObjectTableFilterItem({
       <div className="flex h-full items-center px-2 font-medium">
         <ObjectTableProperty label={meta.label} property={meta.property} />
       </div>
-      {meta.relationship ? (
+      {meta.linkLabel ? (
         <DropdownMenu>
           <DropdownMenuTrigger
             render={

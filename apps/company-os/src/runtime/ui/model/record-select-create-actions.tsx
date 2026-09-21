@@ -7,35 +7,33 @@ import {
 } from "@company/ui/dropdown-menu"
 import { PlusIcon } from "lucide-react"
 
-import {
-  recordObjectTypes,
-  type ModelObject,
-} from "#/runtime/ui/model/object-client.ts"
+import type { ObjectType } from "#/runtime/model/definition/object.ts"
+import { recordObjectTypes } from "#/runtime/ui/model/object-client.ts"
 import { ObjectIcon } from "#/runtime/ui/model/object-record-identity.tsx"
 import {
   type ModelUiRuntime,
   useModelRuntime,
 } from "#/runtime/ui/model/runtime-context.tsx"
 
-export function creatableReferenceObjects(
+export function creatableRecordTypes(
   runtime: ModelUiRuntime,
   typeId: string
-): ReadonlyArray<ModelObject> {
+): ReadonlyArray<ObjectType> {
   return recordObjectTypes(runtime, typeId).filter(
     (object) => "create" in object.actions
   )
 }
 
-export function ObjectReferenceCreateActions({
+export function RecordSelectCreateActions({
   onCreate,
   typeId,
 }: {
-  readonly onCreate: (object: ModelObject) => void
+  readonly onCreate: (object: ObjectType) => void
   readonly typeId: string
 }) {
   const runtime = useModelRuntime()
 
-  const available = creatableReferenceObjects(runtime, typeId)
+  const available = creatableRecordTypes(runtime, typeId)
   if (available.length === 0) return null
 
   return (

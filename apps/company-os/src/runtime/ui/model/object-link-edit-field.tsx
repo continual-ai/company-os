@@ -3,6 +3,7 @@ import { useInfiniteQuery } from "@tanstack/react-query"
 import { useMemo, useState } from "react"
 
 import { queryErrorMessage } from "#/runtime/client/query-errors.ts"
+import type { ObjectType } from "#/runtime/model/definition/object.ts"
 import type { ModelLinkTraversal } from "#/runtime/model/index.ts"
 import type {
   FormLinkDeltaValue,
@@ -12,13 +13,12 @@ import {
   describeReferences,
   linkClientFor,
   type ClientRecord,
-  type ModelObject,
 } from "#/runtime/ui/model/object-client.ts"
 import { ObjectRecordPill } from "#/runtime/ui/model/object-record-identity.tsx"
 import {
-  ObjectReferenceSelect,
-  type ReferenceOption,
-} from "#/runtime/ui/model/object-reference-select.tsx"
+  RecordSelect,
+  type RecordOption,
+} from "#/runtime/ui/model/record-select.tsx"
 import { useModelRuntime } from "#/runtime/ui/model/runtime-context.tsx"
 
 interface LinkDelta {
@@ -57,7 +57,7 @@ function PluralLinkEditField({
   readonly id: string
   readonly invalid: boolean
   readonly name: string
-  readonly object: ModelObject
+  readonly object: ObjectType
   readonly onBlur: () => void
   readonly onValueChange: (value: FormLinkDeltaValue | string | null) => void
   readonly record: ClientRecord
@@ -71,7 +71,7 @@ function PluralLinkEditField({
     [runtime, object, traversal, record]
   )
   const [addedOptions, setAddedOptions] = useState<
-    ReadonlyMap<string, ReferenceOption>
+    ReadonlyMap<string, RecordOption>
   >(new Map())
   const page = useInfiniteQuery(
     client.list.infiniteQueryOptions({
@@ -92,7 +92,7 @@ function PluralLinkEditField({
     remove: ReadonlyArray<string>
   ) => onValueChange({ add: unique(add), remove: unique(remove) })
 
-  const remember = (option?: ReferenceOption) => {
+  const remember = (option?: RecordOption) => {
     if (option === undefined) return
     setAddedOptions((options) => new Map(options).set(option.id, option))
   }
@@ -171,7 +171,7 @@ function PluralLinkEditField({
           {loading ? "Loading…" : "Load more"}
         </Button>
       )}
-      <ObjectReferenceSelect
+      <RecordSelect
         appearance="inline"
         ariaDescribedBy={ariaDescribedBy}
         closeOnSelect={false}
@@ -181,7 +181,7 @@ function PluralLinkEditField({
         name={name}
         placeholder="Link a record"
         selectedValues={visible.map(({ id: target }) => target)}
-        typeId={traversal.target.from.typeId}
+        typeId={traversal.inverse.from.typeId}
         value=""
         onBlur={onBlur}
         onValueChange={(target, option) => {
@@ -206,7 +206,7 @@ export function ObjectLinkEditField(
   if (props.traversal.traversal.max !== 1)
     return <PluralLinkEditField {...props} />
   return (
-    <ObjectReferenceSelect
+    <RecordSelect
       id={props.id}
       name={props.name}
       invalid={props.invalid}
@@ -214,7 +214,7 @@ export function ObjectLinkEditField(
       includeHiddenInput={false}
       clearable={props.traversal.traversal.min === 0}
       required={props.traversal.traversal.min > 0}
-      typeId={props.traversal.target.from.typeId}
+      typeId={props.traversal.inverse.from.typeId}
       value={typeof props.value === "string" ? props.value : ""}
       onBlur={props.onBlur}
       onValueChange={(id) => props.onValueChange(id || null)}

@@ -4,13 +4,13 @@ import { PageSectionHeader } from "@company/ui/page"
 import type { Page } from "#/runtime/model/definition/request.ts"
 import { formatTotalSize } from "#/runtime/ui/model/format-total-size.ts"
 import { ObjectRecordSummary } from "#/runtime/ui/model/object-record-summary.tsx"
-import { useRecordReferences } from "#/runtime/ui/model/object-references.ts"
 import { objectHref } from "#/runtime/ui/model/object-routing.ts"
+import type { recordLinkPreviews } from "#/runtime/ui/model/record-link-preview-data.ts"
+import { useRecordReferences } from "#/runtime/ui/model/record-references.ts"
 import { RecordRelatedCreateMenu } from "#/runtime/ui/model/record-related-create-menu.tsx"
-import type { recordRelationshipPreviews } from "#/runtime/ui/model/record-relationship-preview-data.ts"
 import { useModelRuntime } from "#/runtime/ui/model/runtime-context.tsx"
 
-export function RelationshipCount({
+export function LinkCount({
   count,
 }: {
   readonly count:
@@ -24,11 +24,11 @@ export function RelationshipCount({
   )
 }
 
-export function RecordRelationshipPreviews({
+export function RecordLinkPreviews({
   previews,
   onSelect,
 }: {
-  readonly previews: ReturnType<typeof recordRelationshipPreviews>
+  readonly previews: ReturnType<typeof recordLinkPreviews>
   readonly onSelect: (key: string) => void
 }) {
   const runtime = useModelRuntime()
@@ -46,9 +46,7 @@ export function RecordRelationshipPreviews({
           <PageSectionHeader className="flex-wrap">
             <h2 className="flex items-center gap-2 text-sm font-semibold">
               {preview.label}
-              <RelationshipCount
-                count={preview.pending ? undefined : preview}
-              />
+              <LinkCount count={preview.pending ? undefined : preview} />
             </h2>
             <div className="ml-auto flex shrink-0 items-center gap-1">
               <Button
@@ -58,10 +56,7 @@ export function RecordRelationshipPreviews({
               >
                 View all
               </Button>
-              <RecordRelatedCreateMenu
-                compact
-                relationships={[preview.relationship]}
-              />
+              <RecordRelatedCreateMenu compact links={[preview.link]} />
             </div>
           </PageSectionHeader>
           {preview.pending ? (

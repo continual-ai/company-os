@@ -28,7 +28,7 @@ const AllContacts = defineController({
   watch: ["affiliations.account.notes"],
 })
 const Model = defineModel({
-  name: "Controller relationship watches",
+  name: "Controller link watches",
   modules: [
     PlatformModule,
     CrmModule,
@@ -138,7 +138,7 @@ fixture.test(
     })
 )
 
-fixture.test("captures old and new targets when replacing a relationship", () =>
+fixture.test("captures old and new targets when replacing a link", () =>
   Effect.gen(function* () {
     const {
       affiliations,
@@ -158,7 +158,7 @@ fixture.test("captures old and new targets when replacing a relationship", () =>
       })
     )
     expect(keys(events)).toEqual([first.id, unrelated.id].sort())
-    // Replay still contains the former contact after the live relationship has moved.
+    // Replay still contains the former contact after the live link has moved.
     expect(keys(events, "contact-summary")).toEqual(
       [first.id, unrelated.id].sort()
     )
@@ -231,7 +231,7 @@ fixture.test(
 )
 
 fixture.test(
-  "filters summary-only writes without suppressing mixed or relationship changes",
+  "filters summary-only writes without suppressing mixed or link changes",
   () =>
     Effect.gen(function* () {
       const { contacts, first, changes, keys } = yield* setup

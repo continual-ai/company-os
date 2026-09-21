@@ -15,7 +15,7 @@ import { testFoundation } from "#/runtime/testing/foundation.ts"
 const fixture = testFoundation(fixtureModel, { servers: [FixtureServer] })
 
 fixture.test(
-  "caps summaries without truncating object, relationship, interface, or search pages",
+  "caps summaries without truncating object, link, interface, or search pages",
   () =>
     Effect.gen(function* () {
       const database = yield* SqlDatabase

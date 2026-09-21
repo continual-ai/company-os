@@ -128,10 +128,10 @@ function runtimeApiError(error: RuntimeError): ApiError {
     case "LinkCardinalityConflict":
       return violationError(
         "ALREADY_EXISTS",
-        "The relationship would violate its declared cardinality.",
+        "The link would violate its declared cardinality.",
         [
           {
-            message: "This relationship already has its allowed target.",
+            message: "This link already has its allowed target.",
             path: ["target"],
             reason: "LINK_CARDINALITY_CONFLICT",
           },
@@ -181,7 +181,7 @@ function runtimeApiError(error: RuntimeError): ApiError {
     case "LinkMutationNotAllowed":
       return violationError("INVALID_ARGUMENT", "The request is invalid.", [
         {
-          message: "This relationship is read-only.",
+          message: "This link is read-only.",
           path: ["links", error.traversal],
           reason: "INVALID_REQUEST",
         },

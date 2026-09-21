@@ -12,7 +12,7 @@ import {
   containsSecret,
   type AnySchema,
 } from "#/runtime/model/definition/schema.ts"
-import { resourceProperties } from "#/runtime/model/resource-properties.ts"
+import { recordProperties } from "#/runtime/model/record-properties.ts"
 
 export interface QueryType {
   readonly id: string
@@ -29,7 +29,7 @@ export function queryProperty(
   if (!value)
     return ["aliases", "metadata", "etag", "objectType"].includes(key)
       ? undefined
-      : resourceProperties[key]
+      : recordProperties[key]
   const cached = normalized.get(value)
   if (cached) return cached
   const property = normalizeProperties({ value }).value
@@ -77,27 +77,24 @@ export function resolveQueryField(
   const count = aggregate === "count" || parts.at(-1) === "$count"
   if (parts.at(-1) === "$count") parts.pop()
   if (count && parts.length !== 1)
-    throw new Error(
-      "Count requires a relationship key, without a property path."
-    )
+    throw new Error("Count requires a link key, without a property path.")
   let current: QueryType = object
   const traversals: LinkTraversal[] = []
-  const relationshipKeys = count ? parts : parts.slice(0, -1)
-  if (relationshipKeys.length > 3)
-    throw new Error("Relationship paths may contain at most three traversals.")
-  for (const key of relationshipKeys) {
+  const linkKeys = count ? parts : parts.slice(0, -1)
+  if (linkKeys.length > 3)
+    throw new Error("Link paths may contain at most three traversals.")
+  for (const key of linkKeys) {
     const traversal = modelLinkTraversals(model, current.id).find(
       (entry) => entry.traversal.key === key
     )?.traversal
-    if (!traversal)
-      throw new Error(`Unknown relationship '${current.id}.${key}'.`)
+    if (!traversal) throw new Error(`Unknown link '${current.id}.${key}'.`)
     if (traversal.max !== 1 && !count && aggregate === undefined)
       throw new Error(
-        `Plural relationship '${key}' requires a quantifier or aggregate.`
+        `Plural link '${key}' requires a quantifier or aggregate.`
       )
     if (traversals.length > 0 && traversal.max !== 1 && aggregate !== "preview")
       throw new Error(
-        "Aggregate paths may traverse only one plural relationship, at the first hop."
+        "Aggregate paths may traverse only one plural link, at the first hop."
       )
     traversals.push(traversal)
     current =

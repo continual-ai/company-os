@@ -21,7 +21,7 @@ import {
 } from "#/runtime/ui/model/module-ui.tsx"
 import { ObjectCreateContext } from "#/runtime/ui/model/object-create-context.ts"
 import { ObjectRecordFeed } from "#/runtime/ui/model/object-record-feed.tsx"
-import { RecordRelationshipPreviews } from "#/runtime/ui/model/record-relationship-previews.tsx"
+import { RecordLinkPreviews } from "#/runtime/ui/model/record-link-previews.tsx"
 import { ModelUiProvider } from "#/runtime/ui/model/runtime-context.tsx"
 
 const presentation = testPresentation(fixtureModel)
@@ -47,7 +47,7 @@ const composeAccountView = (view: ReturnType<typeof defineCollectionView>) =>
   )
 
 describe("module UI composition", () => {
-  it("places relationship contributions on accepting records without replacing their UI", () => {
+  it("places link contributions on accepting records without replacing their UI", () => {
     const overview = defineModuleUi(
       FixtureModule,
       {
@@ -56,10 +56,10 @@ describe("module UI composition", () => {
       [{ link: { id: "memoTopics" }, side: "reverse", component }]
     )
     const ui = composeModelUi(fixtureModel, overview)
-    expect(ui.account?.record?.overviewRelationships?.memos).toBe(component)
-    expect(ui.person?.record?.overviewRelationships?.memos).toBe(component)
+    expect(ui.account?.record?.overviewLinks?.memos).toBe(component)
+    expect(ui.person?.record?.overviewLinks?.memos).toBe(component)
     expect(ui.account?.record?.properties).toEqual(["domain"])
-    expect(ui.memo?.record?.overviewRelationships).toBeUndefined()
+    expect(ui.memo?.record?.overviewLinks).toBeUndefined()
     expect(composeModelUi(kernelModel, overview)).toEqual({})
     expect(() =>
       defineModuleUi(FixtureModule, {}, [
@@ -83,7 +83,7 @@ describe("module UI composition", () => {
     expect(render(false, "record")).toBe("")
   })
 
-  it("uses one object summary in feeds and relationship previews without owning data loading", () => {
+  it("uses one object summary in feeds and link previews without owning data loading", () => {
     const custom = defineModuleUi(FixtureModule, {
       prospect: {
         record: {
@@ -113,12 +113,12 @@ describe("module UI composition", () => {
             renderActions={() => <button>Edit prospect</button>}
           />
           <ObjectCreateContext value={() => undefined}>
-            <RecordRelationshipPreviews
+            <RecordLinkPreviews
               previews={[
                 {
                   key: "prospects",
                   label: "Prospects",
-                  relationship: {
+                  link: {
                     key: "prospects",
                     label: "Prospects",
                     targetType: Prospect.id,
@@ -257,13 +257,13 @@ describe("module UI composition", () => {
     ).not.toThrow()
   })
 
-  it("validates overview relationships against the composed model", () => {
+  it("validates overview links against the composed model", () => {
     expect(() =>
       composeModelUi(
         fixtureModel,
         defineModuleUi(FixtureModule, {
           account: {
-            record: { properties: ["domain"], relationships: ["people"] },
+            record: { properties: ["domain"], links: ["people"] },
           },
         })
       )
@@ -272,10 +272,10 @@ describe("module UI composition", () => {
       composeModelUi(
         fixtureModel,
         defineModuleUi(FixtureModule, {
-          account: { record: { relationships: ["missing"] } },
+          account: { record: { links: ["missing"] } },
         })
       )
-    ).toThrow("Unknown overview relationship")
+    ).toThrow("Unknown overview link")
     expect(() =>
       composeModelUi(
         fixtureModel,

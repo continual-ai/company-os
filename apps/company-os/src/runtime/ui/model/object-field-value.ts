@@ -13,7 +13,7 @@ export function objectFieldValue(
   record: ObjectTableRecord,
   resolveRecord?: ObjectTableRecordResolver
 ): ObjectTableValue {
-  if (field.kind === "property" || field.kind === "resource")
+  if (field.kind === "property" || field.kind === "record")
     return record[field.id] ?? null
   if (field.kind === "link") return linkPreview(record.links?.[field.id]).ids
   const related = field.related
@@ -24,7 +24,7 @@ export function objectFieldValue(
     const reference = resolveRecord?.(id)
     const target = reference?.record
     const mapping =
-      reference?.object.interfaces[related.traversal.target.from.typeId]
+      reference?.object.interfaces[related.traversal.inverse.from.typeId]
         ?.propertyMapping ?? {}
     const value = target?.[mapping[related.key] ?? related.key]
     return value === null || value === undefined ? [] : [value]

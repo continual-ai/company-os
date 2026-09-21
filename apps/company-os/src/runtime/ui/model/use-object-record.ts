@@ -5,23 +5,21 @@ import {
   isUnavailable,
   queryErrorMessage,
 } from "#/runtime/client/query-errors.ts"
+import type { ObjectType } from "#/runtime/model/definition/object.ts"
 import { objectActionAvailable } from "#/runtime/ui/model/object-actions.ts"
-import {
-  clientFor,
-  type ModelObject,
-} from "#/runtime/ui/model/object-client.ts"
+import { clientFor } from "#/runtime/ui/model/object-client.ts"
 import type { ObjectFormInput } from "#/runtime/ui/model/object-form.ts"
-import { useObjectReferences } from "#/runtime/ui/model/object-references.ts"
+import { useObjectRecordReferences } from "#/runtime/ui/model/record-references.ts"
 import { useModelRuntime } from "#/runtime/ui/model/runtime-context.tsx"
 
-export function useObjectRecord(object: ModelObject, recordId: string) {
+export function useObjectRecord(object: ObjectType, recordId: string) {
   const runtime = useModelRuntime()
 
   const client = useMemo(() => clientFor(runtime, object), [runtime, object])
   const query = useMemo(() => client.get({ id: recordId }), [client, recordId])
   const result = useQuery(query)
   const record = isUnavailable(result.error) ? undefined : result.data
-  const references = useObjectReferences(
+  const references = useObjectRecordReferences(
     object,
     record === undefined ? [] : [record]
   )

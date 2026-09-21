@@ -3,20 +3,20 @@ import type {
   ClientRecord,
   ObjectRecordPresentation,
 } from "#/runtime/ui/model/object-client.ts"
-import type { RecordRelationship } from "#/runtime/ui/model/record-relationships.ts"
+import type { RecordLinkView } from "#/runtime/ui/model/record-link-views.ts"
 
 /** Counts and bounded IDs come from the record; hydration is shared with its other fields. */
-export function recordRelationshipPreviews(
-  relationships: ReadonlyArray<RecordRelationship>,
+export function recordLinkPreviews(
+  links: ReadonlyArray<RecordLinkView>,
   record: ClientRecord | undefined,
   references: ReadonlyMap<string, ObjectRecordPresentation>
 ) {
-  return relationships.map((relationship) => {
-    const preview = linkPreview(record?.links?.[relationship.key])
+  return links.map((link) => {
+    const preview = linkPreview(record?.links?.[link.key])
     return {
-      relationship,
-      key: relationship.key,
-      label: relationship.label,
+      link,
+      key: link.key,
+      label: link.label,
       totalSize: preview.totalSize,
       totalSizeExact: preview.totalSizeExact,
       pending: record === undefined,

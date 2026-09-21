@@ -1,10 +1,10 @@
 import type { ReactNode } from "react"
 
+import type { ObjectType } from "#/runtime/model/definition/object.ts"
 import { useObjectUi } from "#/runtime/ui/model/module-ui.tsx"
 import {
   type ObjectRecordPresentation,
   type ClientRecord,
-  type ModelObject,
 } from "#/runtime/ui/model/object-client.ts"
 import { ObjectRecordIdentity } from "#/runtime/ui/model/object-record-identity.tsx"
 import { objectHref } from "#/runtime/ui/model/object-routing.ts"
@@ -19,7 +19,7 @@ export function ObjectRecordSummary({
   actions,
   author,
 }: {
-  readonly object: ModelObject
+  readonly object: ObjectType
   readonly record: ClientRecord
   readonly href?: string | undefined
   readonly variant: "feed" | "preview"

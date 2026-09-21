@@ -10,17 +10,17 @@ import {
 } from "#/runtime/model/definition/property.ts"
 import { schema } from "#/runtime/model/definition/schema.ts"
 import { fieldOperators, queryProperty } from "#/runtime/model/query-fields.ts"
+import { recordProperties } from "#/runtime/model/record-properties.ts"
 import {
-  relationshipFields,
-  type RelationshipField,
-} from "#/runtime/model/relationship-fields.ts"
-import { resourceProperties } from "#/runtime/model/resource-properties.ts"
+  relatedFields,
+  type RelatedField,
+} from "#/runtime/model/related-fields.ts"
 
 type FieldSource =
   | { readonly kind: "property" }
-  | { readonly kind: "resource" }
+  | { readonly kind: "record" }
   | { readonly kind: "link"; readonly traversal: ModelLinkTraversal }
-  | { readonly kind: "related"; readonly related: RelationshipField }
+  | { readonly kind: "related"; readonly related: RelatedField }
 
 export type ObjectField = FieldSource & {
   readonly id: string
@@ -36,14 +36,14 @@ export function objectFields(
 ): ReadonlyArray<ObjectField> {
   const properties: ObjectField[] = Object.entries({
     ...object.properties,
-    ...resourceProperties,
+    ...recordProperties,
   }).map(([id, property]) => {
     const query = queryProperty(object, id)
     const scalar = query !== undefined && fieldOperators(query).length > 0
     return {
       id,
       property,
-      kind: Object.hasOwn(resourceProperties, id) ? "resource" : "property",
+      kind: Object.hasOwn(recordProperties, id) ? "record" : "property",
       filterable: scalar,
       sortable: scalar,
     }
@@ -53,7 +53,7 @@ export function objectFields(
   if (!model) return properties
   return [
     ...properties,
-    ...relationshipFields(model, object).map((related): ObjectField => ({
+    ...relatedFields(model, object).map((related): ObjectField => ({
       kind: "related",
       id: related.id,
       property: related.property,

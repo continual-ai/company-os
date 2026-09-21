@@ -52,7 +52,7 @@ type RequiredInitialLinks<
     TSide in ModelLinkSide<TModel, TObject> as TSide["side"]["min"] extends 0
       ? never
       : TSide["side"]["key"]
-  ]: InitialLinkValue<TModel, TSide["target"], TSide["side"]>
+  ]: InitialLinkValue<TModel, TSide["inverse"], TSide["side"]>
 }
 
 type OptionalInitialLinks<
@@ -63,7 +63,7 @@ type OptionalInitialLinks<
     TSide in ModelLinkSide<TModel, TObject> as TSide["side"]["min"] extends 0
       ? TSide["side"]["key"]
       : never
-  ]?: InitialLinkValue<TModel, TSide["target"], TSide["side"]>
+  ]?: InitialLinkValue<TModel, TSide["inverse"], TSide["side"]>
 }
 
 type InitialLinksFor<
@@ -91,10 +91,10 @@ type LinkChangesFor<
 
 type UpdateLinksFor<TModel extends ModelCatalog, TObject extends ObjectType> = {
   readonly [TSide in ModelLinkSide<TModel, TObject> as TSide["side"]["key"]]?:
-    | InitialLinkValue<TModel, TSide["target"], TSide["side"]>
+    | InitialLinkValue<TModel, TSide["inverse"], TSide["side"]>
     | (TSide["side"]["max"] extends 1
         ? never
-        : LinkChangesFor<TModel, TSide["target"]>)
+        : LinkChangesFor<TModel, TSide["inverse"]>)
 }
 
 /** Standard update input plus atomic deltas for writable model Links. */

@@ -143,16 +143,12 @@ const make = Effect.gen(function* () {
             // Validate deferred constraints as typed failures before the driver commits.
             yield* sql`set constraints all immediate`
             const records: EventSubject[] = []
-            const relationships: EventSubject[] = []
+            const links: EventSubject[] = []
             for (const event of events)
-              (linkEvents.has(event.type) ? relationships : records).push(
+              (linkEvents.has(event.type) ? links : records).push(
                 ...event.subjects
               )
-            yield* updateSearchIndex(
-              database,
-              { records, relationships },
-              context
-            )
+            yield* updateSearchIndex(database, { records, links }, context)
             const response = yield* Effect.gen(function* () {
               yield* resolveRecordSnapshots(events, context.eventFactSchema)
               return finalize ? yield* finalize(value) : value

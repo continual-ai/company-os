@@ -30,6 +30,7 @@ import {
 } from "react"
 
 import { modelObjectLinkTraversals } from "#/runtime/model/definition/model.ts"
+import type { ObjectType } from "#/runtime/model/definition/object.ts"
 import type { ListRequest } from "#/runtime/model/index.ts"
 import { objectFields } from "#/runtime/model/object-fields.ts"
 import {
@@ -56,7 +57,6 @@ import {
 import {
   clientFor,
   type ClientRecord,
-  type ModelObject,
 } from "#/runtime/ui/model/object-client.ts"
 import { objectListRequest } from "#/runtime/ui/model/object-collection-query.ts"
 import {
@@ -104,7 +104,7 @@ interface ObjectCollectionSource {
 }
 interface ObjectCollectionProps {
   readonly source?: ObjectCollectionSource | undefined
-  readonly object: ModelObject
+  readonly object: ObjectType
   readonly onSearchChange?:
     | ((search: ObjectCollectionSearch) => void)
     | undefined

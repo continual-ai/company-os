@@ -170,29 +170,25 @@ fixture.test("keeps internal capabilities off the module repository", () =>
   })
 )
 
-fixture.test(
-  "uses narrow reads for relationship sources and batch deletion",
-  () =>
-    Effect.gen(function* () {
-      const services = yield* operationsFor(fixtureModel)
-      const links = yield* Links
-      const person = yield* services.person.create({ name: "Related" })
-      const account = yield* services.account.create({
-        name: "Source",
-        links: { people: [person.id] },
-      })
-      const traversal = modelObjectLinkTraversals(fixtureModel, Account).find(
-        ({ traversal: item }) => item.key === "people"
-      )!
-      const listed = yield* traceReads(
-        links.list(traversal, { id: account.id })
-      )
-      expect(listed.result.items.map(({ id }) => id)).toEqual([person.id])
-      // Only the requested related records need a full read shape.
-      expect(listed.fullReads).toBe(1)
-      const deleted = yield* traceReads(
-        services.account.batchDelete({ ids: [account.id] })
-      )
-      expect(deleted.fullReads).toBe(0)
+fixture.test("uses narrow reads for link sources and batch deletion", () =>
+  Effect.gen(function* () {
+    const services = yield* operationsFor(fixtureModel)
+    const links = yield* Links
+    const person = yield* services.person.create({ name: "Related" })
+    const account = yield* services.account.create({
+      name: "Source",
+      links: { people: [person.id] },
     })
+    const traversal = modelObjectLinkTraversals(fixtureModel, Account).find(
+      ({ traversal: item }) => item.key === "people"
+    )!
+    const listed = yield* traceReads(links.list(traversal, { id: account.id }))
+    expect(listed.result.items.map(({ id }) => id)).toEqual([person.id])
+    // Only the requested related records need a full read shape.
+    expect(listed.fullReads).toBe(1)
+    const deleted = yield* traceReads(
+      services.account.batchDelete({ ids: [account.id] })
+    )
+    expect(deleted.fullReads).toBe(0)
+  })
 )

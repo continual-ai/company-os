@@ -33,7 +33,7 @@ import {
   stringValue,
   type ObjectFormValues,
 } from "#/runtime/ui/model/object-form.ts"
-import { ObjectReferenceSelect } from "#/runtime/ui/model/object-reference-select.tsx"
+import { RecordSelect } from "#/runtime/ui/model/record-select.tsx"
 
 const emptyObjectFormValues: ObjectFormValues = {}
 const objectFormContextOptions = { defaultValues: emptyObjectFormValues }
@@ -369,7 +369,7 @@ export function SchemaFormField({
             {({ ariaDescribedBy, invalid, onBlur, onValueChange, value }) => {
               const recordId = stringValue(value)
               return (
-                <ObjectReferenceSelect
+                <RecordSelect
                   ariaDescribedBy={ariaDescribedBy}
                   id={fieldId}
                   invalid={invalid}

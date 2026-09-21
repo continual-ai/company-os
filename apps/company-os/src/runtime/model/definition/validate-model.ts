@@ -295,10 +295,10 @@ export function assertModelDefinitionsValid(
   assertUniqueRulesResolvable(definitions)
 }
 
-/** Every relationship direction must project onto a name no property, method, or other relationship uses. */
-export function assertRelationshipNamesUnambiguous(
+/** Every link direction must project onto a name no property, method, or other link uses. */
+export function assertLinkKeysUnambiguous(
   objects: ReadonlyArray<ObjectType>,
-  relationships: ReadonlyArray<LinkType>
+  links: ReadonlyArray<LinkType>
 ): void {
   for (const object of objects) {
     const names = new Set([
@@ -306,14 +306,14 @@ export function assertRelationshipNamesUnambiguous(
       ...generatedQueryMethodIds,
       ...Object.keys(object.actions),
     ])
-    for (const relationship of relationships) {
-      const sides = [relationship.forward, relationship.reverse]
+    for (const link of links) {
+      const sides = [link.forward, link.reverse]
       for (const side of sides) {
         if (!objectTypeAccepts(object, side.from.typeId)) continue
         definitionId(side.key)
         if (names.has(side.key))
           throw new Error(
-            `Relationship '${object.id}.${side.key}' conflicts with another relationship, property, or method.`
+            `Link '${object.id}.${side.key}' conflicts with another link, property, or method.`
           )
         names.add(side.key)
       }
@@ -379,7 +379,7 @@ export function moduleDependencies(
         depend(
           linkOwners,
           link.id,
-          `controller '${controller.id}' watches relationship '${link.id}'`
+          `controller '${controller.id}' watches link '${link.id}'`
         )
   }
   for (const operation of [...module.actions, ...module.queries]) {

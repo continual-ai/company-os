@@ -1,4 +1,4 @@
-/** Module relationships come from installed source; activation is persisted separately. */
+/** Module dependencies come from installed source; activation is persisted separately. */
 export interface ModuleAvailability {
   readonly id: string
   readonly enabled: boolean

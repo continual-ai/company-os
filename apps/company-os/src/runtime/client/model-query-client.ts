@@ -193,7 +193,7 @@ export function createModelQueries<M extends ModelCatalog>(
       const traversal = contract.linkTraversal
       const targets = traversal
         ? modelObjects(model).filter((object) =>
-            modelTypeAccepts(model, object.id, traversal.target.from.typeId)
+            modelTypeAccepts(model, object.id, traversal.inverse.from.typeId)
           )
         : contract.object
           ? [contract.object]

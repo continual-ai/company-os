@@ -548,7 +548,7 @@ describe("model definitions", () => {
     ).toThrow(/company/)
   })
 
-  it("keeps record identifiers in action schemas and relationships in links", () => {
+  it("keeps record identifiers in action schemas and links in links", () => {
     expect(() =>
       defineObject({
         id: "membership",
@@ -885,7 +885,7 @@ describe("model definitions", () => {
   })
 })
 
-describe("relationship names", () => {
+describe("link names", () => {
   const model = (key: string) => {
     const Message = defineObject({
       id: "message",
@@ -903,7 +903,7 @@ describe("relationship names", () => {
     })
     return defineTestModel({
       interfaces: [TestActor],
-      name: "Relationship names",
+      name: "Link names",
       objects: [Contact, Message],
       links: [Recipient],
     })
@@ -966,8 +966,8 @@ describe("root definitions", () => {
     expect(model.interfaces.workspaceMarker.display).toBeUndefined()
     expect(model.objects.permission.properties).not.toHaveProperty("scope")
     expect(
-      modelObjectLinkTraversals(model, model.objects.permission)[0]?.target.from
-        .typeId
+      modelObjectLinkTraversals(model, model.objects.permission)[0]?.inverse
+        .from.typeId
     ).toBe("workspaceMarker")
     expect(modelTypeAccepts(model, "unknown", "workspaceMarker")).toBe(false)
     expect(modelTypeAccepts(model, "workspace", "workspaceMarker")).toBe(true)

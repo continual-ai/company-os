@@ -56,37 +56,33 @@ export function relationalQuery(
       if (depth >= 3)
         throw invalidListRequest(
           root,
-          "Relationship paths may contain at most three traversals."
+          "Link paths may contain at most three traversals."
         )
       const result = modelLinkTraversals(storage.model, object.id).find(
         ({ traversal }) => traversal.key === key
       )
       if (!result)
-        throw invalidListRequest(
-          root,
-          `Unknown relationship '${object.id}.${key}'.`
-        )
+        throw invalidListRequest(root, `Unknown link '${object.id}.${key}'.`)
       return result
     }
     const validateSharedField = (
       relation: ReturnType<typeof traversalFor>,
       field: string
     ) => {
-      if (relation.target.from.kind !== "interface") return
-      const target = storage.model.interfaces[relation.target.from.typeId]!
+      if (relation.inverse.from.kind !== "interface") return
+      const target = storage.model.interfaces[relation.inverse.from.typeId]!
       const [key, ...tail] = field.split(".")
-      const sharedRelationship = Object.values(storage.model.links).some(
-        (link) =>
-          [link.forward, link.reverse].some(
-            (end) =>
-              end.from.kind === "interface" &&
-              end.from.typeId === target.id &&
-              end.key === key
-          )
+      const sharedLink = Object.values(storage.model.links).some((link) =>
+        [link.forward, link.reverse].some(
+          (end) =>
+            end.from.kind === "interface" &&
+            end.from.typeId === target.id &&
+            end.key === key
+        )
       )
       if (
         tail.length > 0
-          ? !sharedRelationship
+          ? !sharedLink
           : !Object.hasOwn(target.properties, field) &&
             ![
               "id",
@@ -103,7 +99,7 @@ export function relationalQuery(
         )
     }
     const branches = (
-      relationshipKey: string,
+      linkKey: string,
       body: (
         target: ObjectType,
         id: Column,
@@ -111,9 +107,9 @@ export function relationalQuery(
         mapping: Readonly<Record<string, string>>
       ) => Fragment
     ) => {
-      const relation = traversalFor(relationshipKey)
+      const relation = traversalFor(linkKey)
       const table = storage.linkTables[relation.link.id]!
-      const targetType = relation.target.from.typeId
+      const targetType = relation.inverse.from.typeId
       const candidates = Object.values(storage.model.objects).filter((target) =>
         modelTypeAccepts(storage.model, target.id, targetType)
       )
@@ -172,7 +168,7 @@ export function relationalQuery(
       } catch (error) {
         throw invalidListRequest(
           root,
-          error instanceof Error ? error.message : "Invalid relationship field."
+          error instanceof Error ? error.message : "Invalid link field."
         )
       }
       if (resolvedField.count) aggregate = "count"
@@ -181,7 +177,7 @@ export function relationalQuery(
       if (relation.traversal.max !== 1 && aggregate === undefined)
         throw invalidListRequest(
           root,
-          `Plural relationship '${key}' requires a quantifier or aggregate.`
+          `Plural link '${key}' requires a quantifier or aggregate.`
         )
       let property: PropertyDefinition | undefined = resolvedField.property
       let valueType = "text"
@@ -200,10 +196,7 @@ export function relationalQuery(
         return sql`${resolved.column} as value`
       })
       if (selects.length === 0)
-        throw invalidListRequest(
-          root,
-          `Relationship '${key}' has no concrete targets.`
-        )
+        throw invalidListRequest(root, `Link '${key}' has no concrete targets.`)
       const rows = sql.join(" union all ")(selects)
       if (aggregate !== undefined) {
         const fn = sql.literal(aggregate)

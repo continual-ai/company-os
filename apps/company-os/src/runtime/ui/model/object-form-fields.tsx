@@ -1,11 +1,9 @@
+import type { ObjectType } from "#/runtime/model/definition/object.ts"
 import { useTypedAppFormContext } from "#/runtime/ui/forms/app-form.ts"
 import type { FormValue } from "#/runtime/ui/forms/form-value.ts"
 import { SchemaFormField } from "#/runtime/ui/forms/schema-form-field.tsx"
 import type { ResolvedObjectUi } from "#/runtime/ui/model/module-ui.tsx"
-import {
-  type ClientRecord,
-  type ModelObject,
-} from "#/runtime/ui/model/object-client.ts"
+import { type ClientRecord } from "#/runtime/ui/model/object-client.ts"
 import { ObjectFormSection } from "#/runtime/ui/model/object-form-section.tsx"
 import {
   objectFormLinks,
@@ -15,8 +13,8 @@ import {
   type ObjectFormValues,
 } from "#/runtime/ui/model/object-form.ts"
 import { ObjectLinkEditField } from "#/runtime/ui/model/object-link-edit-field.tsx"
-import { ObjectReferenceMultiSelect } from "#/runtime/ui/model/object-reference-multi-select.tsx"
-import { ObjectReferenceSelect } from "#/runtime/ui/model/object-reference-select.tsx"
+import { RecordMultiSelect } from "#/runtime/ui/model/record-multi-select.tsx"
+import { RecordSelect } from "#/runtime/ui/model/record-select.tsx"
 import { useModelRuntime } from "#/runtime/ui/model/runtime-context.tsx"
 
 const emptyObjectFormValues: ObjectFormValues = {}
@@ -38,7 +36,7 @@ export function ObjectFormFields({
   readonly fields?: ReadonlyArray<string> | undefined
   readonly fieldEditors?: ResolvedObjectUi["fieldEditors"]
   readonly mode: ObjectFormMode
-  readonly object: ModelObject
+  readonly object: ObjectType
   readonly record?: ClientRecord | undefined
   readonly referenceLabels: ReadonlyMap<string, string>
 }) {
@@ -85,7 +83,7 @@ export function ObjectFormFields({
         >
           {references.map(renderProperty)}
           {links.map((linkTraversal) => {
-            const { target, traversal } = linkTraversal
+            const { inverse, traversal } = linkTraversal
             const fieldId = `${object.id}-${mode}-link-${traversal.key}`
             const name = `links.${traversal.key}`
             return (
@@ -117,25 +115,25 @@ export function ObjectFormFields({
                           onValueChange={onValueChange}
                         />
                       ) : traversal.max !== 1 ? (
-                        <ObjectReferenceMultiSelect
+                        <RecordMultiSelect
                           referenceLabels={referenceLabels}
                           id={fieldId}
                           name={name}
                           value={stringArrayValue(value)}
                           invalid={invalid}
                           ariaDescribedBy={ariaDescribedBy}
-                          typeId={target.from.typeId}
+                          typeId={inverse.from.typeId}
                           onBlur={onBlur}
                           onValueChange={onValueChange}
                         />
                       ) : (
-                        <ObjectReferenceSelect
+                        <RecordSelect
                           ariaDescribedBy={ariaDescribedBy}
                           id={fieldId}
                           invalid={invalid}
                           name={name}
                           required={traversal.min > 0}
-                          typeId={target.from.typeId}
+                          typeId={inverse.from.typeId}
                           value={stringValue(value)}
                           initialLabel={referenceLabels.get(stringValue(value))}
                           onBlur={onBlur}

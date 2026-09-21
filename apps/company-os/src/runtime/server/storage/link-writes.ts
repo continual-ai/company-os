@@ -93,7 +93,7 @@ export const makeLinkWrites = Effect.gen(function* () {
       linkId: traversal.link.id,
       sourceId,
       targetId: yield* identifiers.resolve(
-        traversal.target.from.typeId,
+        traversal.inverse.from.typeId,
         target
       ),
     } satisfies LinkPair
@@ -128,7 +128,7 @@ export const makeLinkWrites = Effect.gen(function* () {
       ...(source.creating ? [] : [{ id: source.id, type: source.objectType }]),
       ...plan.map(({ pair, traversal }) => ({
         id: pair.targetId,
-        type: traversal.target.from.typeId,
+        type: traversal.inverse.from.typeId,
       })),
     ]
     for (const { id, type } of expected) {
@@ -234,7 +234,7 @@ export const makeLinkWrites = Effect.gen(function* () {
       if (!traversal)
         return yield* Effect.fail(
           new InvalidLinkRequest({
-            message: `Relationship '${object.id}.${key}' is not writable.`,
+            message: `Link '${object.id}.${key}' is not writable.`,
             path: ["links", key],
           })
         )
@@ -246,7 +246,7 @@ export const makeLinkWrites = Effect.gen(function* () {
         return yield* Effect.fail(
           new InvalidLinkRequest({
             message:
-              "Use an ID or null for singular relationships; an array or add/remove delta for plural relationships.",
+              "Use an ID or null for singular links; an array or add/remove delta for plural links.",
             path: ["links", key],
           })
         )
@@ -277,18 +277,18 @@ export const makeLinkWrites = Effect.gen(function* () {
         replacement === undefined
           ? undefined
           : yield* Effect.forEach(replacement, (id) =>
-              identifiers.resolve(traversal.target.from.typeId, id)
+              identifiers.resolve(traversal.inverse.from.typeId, id)
             )
       const add =
         requested === undefined
           ? yield* Effect.forEach(delta.add ?? [], (id) =>
-              identifiers.resolve(traversal.target.from.typeId, id)
+              identifiers.resolve(traversal.inverse.from.typeId, id)
             )
           : requested.filter((id) => !current.includes(id))
       const remove =
         requested === undefined
           ? yield* Effect.forEach(delta.remove ?? [], (id) =>
-              identifiers.resolve(traversal.target.from.typeId, id)
+              identifiers.resolve(traversal.inverse.from.typeId, id)
             )
           : current.filter((id) => !new Set<string>(requested).has(id))
       if (add.some((id) => remove.includes(id)))

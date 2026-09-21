@@ -8,7 +8,7 @@ import {
 import { ModelContext } from "#/runtime/server/model-context.ts"
 import { Links } from "#/runtime/server/storage/link-store.ts"
 
-/** Connects fixtures through the same relationship catalog and mutations as the application. */
+/** Connects fixtures through the same link catalog and mutations as the application. */
 export const linkSeedRecords = Effect.fn("@company/linkSeedRecords")(function* (
   object: ObjectType,
   key: string,
@@ -20,8 +20,6 @@ export const linkSeedRecords = Effect.fn("@company/linkSeedRecords")(function* (
     (entry) => entry.traversal.key === key
   )
   if (traversal === undefined)
-    return yield* Effect.fail(
-      new Error(`Unknown relationship '${object.id}.${key}'.`)
-    )
+    return yield* Effect.fail(new Error(`Unknown link '${object.id}.${key}'.`))
   return yield* (yield* Links).link(traversal, { id, target })
 })

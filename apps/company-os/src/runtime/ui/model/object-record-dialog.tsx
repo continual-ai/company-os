@@ -19,6 +19,7 @@ import {
 import { FieldError } from "@company/ui/field"
 import { useCallback, useMemo, useRef, useState } from "react"
 
+import type { ObjectType } from "#/runtime/model/definition/object.ts"
 import { useAppForm } from "#/runtime/ui/forms/app-form.ts"
 import {
   focusFirstFormError,
@@ -30,7 +31,6 @@ import { useObjectUi } from "#/runtime/ui/model/module-ui.tsx"
 import {
   modelObjectProperty,
   type ClientRecord,
-  type ModelObject,
 } from "#/runtime/ui/model/object-client.ts"
 import { ObjectFormFields } from "#/runtime/ui/model/object-form-fields.tsx"
 import {
@@ -56,7 +56,7 @@ function ObjectRecordEditor({
   readonly fields?: ReadonlyArray<string> | undefined
   readonly initialValues?: ObjectFormInput | undefined
   readonly mode: ObjectFormMode
-  readonly object: ModelObject
+  readonly object: ObjectType
   readonly onOpenChange: (open: boolean) => void
   readonly onSave: (input: ObjectFormInput) => Promise<void>
   readonly open: boolean

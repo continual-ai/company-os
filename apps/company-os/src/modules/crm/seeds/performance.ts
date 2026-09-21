@@ -165,7 +165,7 @@ export const seedCrmPerformance = Effect.fn("@company/seedCrmPerformance")(
     )
     const customers = []
     for (let index = 0; index < size; index++) {
-      // A large account deliberately exercises long relationship lists as well as ordinary small accounts.
+      // A large account deliberately exercises long link lists as well as ordinary small accounts.
       const account =
         accounts[index < Math.ceil(size / 3) ? 0 : index % accounts.length]!
       const owner = owners[index % owners.length]!

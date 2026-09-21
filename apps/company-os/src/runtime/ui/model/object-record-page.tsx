@@ -11,6 +11,7 @@ import {
 } from "lucide-react"
 import { useMemo, useRef, useState } from "react"
 
+import type { ObjectType } from "#/runtime/model/definition/object.ts"
 import {
   ObjectActions,
   type ResolvedObjectUi,
@@ -18,7 +19,6 @@ import {
 import {
   modelObjectProperty,
   recordLabel,
-  type ModelObject,
 } from "#/runtime/ui/model/object-client.ts"
 import { objectFormProperties } from "#/runtime/ui/model/object-form.ts"
 import { ObjectPropertiesCard } from "#/runtime/ui/model/object-properties-card.tsx"
@@ -27,21 +27,21 @@ import { ObjectRecordDialog } from "#/runtime/ui/model/object-record-dialog.tsx"
 import { ObjectRecordIdentity } from "#/runtime/ui/model/object-record-identity.tsx"
 import { ObjectRecordLayout } from "#/runtime/ui/model/object-record-layout.tsx"
 import { ObjectRecordStatusProgress } from "#/runtime/ui/model/object-record-status-progress.tsx"
-import { ObjectRelationshipCollection } from "#/runtime/ui/model/object-relationship-collection.tsx"
 import { objectTablePropertySchema } from "#/runtime/ui/model/object-table/object-table-cell-types.ts"
 import { ModelActions } from "#/runtime/ui/model/operation-action.tsx"
 import { usePageChromeOverride } from "#/runtime/ui/model/page-chrome.tsx"
 import { RecordControllerStatus } from "#/runtime/ui/model/record-controller-status.tsx"
+import { RecordLinkCollection } from "#/runtime/ui/model/record-link-collection.tsx"
+import { RecordLinkPicker } from "#/runtime/ui/model/record-link-picker.tsx"
+import { recordLinkPreviews } from "#/runtime/ui/model/record-link-preview-data.ts"
+import {
+  RecordLinkPreviews,
+  LinkCount,
+} from "#/runtime/ui/model/record-link-previews.tsx"
+import { recordLinkViews } from "#/runtime/ui/model/record-link-views.ts"
 import { useRecordNavigation } from "#/runtime/ui/model/record-navigation.tsx"
 import { RecordOptions } from "#/runtime/ui/model/record-options.tsx"
 import { RecordRelatedCreateMenu } from "#/runtime/ui/model/record-related-create-menu.tsx"
-import { RecordRelationshipPicker } from "#/runtime/ui/model/record-relationship-picker.tsx"
-import { recordRelationshipPreviews } from "#/runtime/ui/model/record-relationship-preview-data.ts"
-import {
-  RecordRelationshipPreviews,
-  RelationshipCount,
-} from "#/runtime/ui/model/record-relationship-previews.tsx"
-import { recordRelationships } from "#/runtime/ui/model/record-relationships.ts"
 import { useModelRuntime } from "#/runtime/ui/model/runtime-context.tsx"
 import { useObjectRecord } from "#/runtime/ui/model/use-object-record.ts"
 
@@ -56,23 +56,23 @@ export function ObjectRecordPage({
   recordId,
   actions,
   overviewComponent: Overview,
-  overviewRelationships,
+  overviewLinks,
   title: recordTitle,
   additionalTabs: customTabs = [],
   properties,
-  relationships,
+  links,
   tab,
 }: {
-  readonly object: ModelObject
+  readonly object: ObjectType
   readonly onTabChange?: ((tab: string) => void) | undefined
   readonly recordId: string
   readonly actions?: ResolvedObjectUi["actions"]
   readonly title?: RecordUi["title"]
   readonly overviewComponent?: RecordUi["overviewComponent"]
-  readonly overviewRelationships?: RecordUi["overviewRelationships"]
+  readonly overviewLinks?: RecordUi["overviewLinks"]
   readonly additionalTabs?: RecordUi["additionalTabs"]
   readonly properties?: RecordUi["properties"]
-  readonly relationships?: RecordUi["relationships"]
+  readonly links?: RecordUi["links"]
   readonly tab?: string | undefined
 }) {
   const runtime = useModelRuntime()
@@ -92,30 +92,23 @@ export function ObjectRecordPage({
   const [localTab, setLocalTab] = useState("overview")
   const [editing, setEditing] = useState<ReadonlyArray<string> | "all">()
   const allRelated = useMemo(
-    () =>
-      state.record ? recordRelationships(runtime, object, state.record) : [],
+    () => (state.record ? recordLinkViews(runtime, object, state.record) : []),
     [runtime, object, state.record]
   )
-  const inlineRelationships = allRelated.filter(
-    (item) => overviewRelationships?.[item.key]
-  )
+  const inlineLinks = allRelated.filter((item) => overviewLinks?.[item.key])
   const related = allRelated.filter(
-    (item) => item.max !== 1 && !overviewRelationships?.[item.key]
+    (item) => item.max !== 1 && !overviewLinks?.[item.key]
   )
   const preferred =
-    relationships === undefined
+    links === undefined
       ? related.filter((item) => item.featured)
-      : relationships.flatMap((key) =>
-          related.filter((item) => item.key === key)
-        )
-  const visibleRelationships = (
-    preferred.length > 0 ? preferred : related
-  ).slice(0, 4)
-  const otherRelationships = related.filter(
-    (item) => !visibleRelationships.some(({ key }) => key === item.key)
+      : links.flatMap((key) => related.filter((item) => item.key === key))
+  const visibleLinks = (preferred.length > 0 ? preferred : related).slice(0, 4)
+  const otherLinks = related.filter(
+    (item) => !visibleLinks.some(({ key }) => key === item.key)
   )
-  const previews = recordRelationshipPreviews(
-    visibleRelationships,
+  const previews = recordLinkPreviews(
+    visibleLinks,
     state.record,
     state.references
   )
@@ -183,9 +176,7 @@ export function ObjectRecordPage({
       object.display.status,
       object.display.subtitle,
       ...allFields,
-      ...allRelated
-        .filter((relationship) => relationship.max === 1)
-        .map((relationship) => relationship.key),
+      ...allRelated.filter((link) => link.max === 1).map((link) => link.key),
     ]),
   ].filter(
     (id): id is string =>
@@ -207,12 +198,11 @@ export function ObjectRecordPage({
     customTabs.some(({ id }) => id === requested)
       ? requested
       : "overview"
-  const activeRelationship = related.find(({ key }) => key === active)
-  const relationshipTabs =
-    activeRelationship &&
-    !visibleRelationships.some(({ key }) => key === active)
-      ? [...visibleRelationships, activeRelationship]
-      : visibleRelationships
+  const activeLink = related.find(({ key }) => key === active)
+  const linkTabs =
+    activeLink && !visibleLinks.some(({ key }) => key === active)
+      ? [...visibleLinks, activeLink]
+      : visibleLinks
   const edit = state.can("update")
     ? (id: string) => setEditing([id])
     : undefined
@@ -225,7 +215,7 @@ export function ObjectRecordPage({
         className="min-h-0 flex-1 overflow-y-auto text-xs/relaxed"
       >
         <PageContent>
-          <RecordRelationshipPreviews previews={previews} onSelect={select} />
+          <RecordLinkPreviews previews={previews} onSelect={select} />
         </PageContent>
       </aside>
     ) : null
@@ -307,19 +297,14 @@ export function ObjectRecordPage({
                 can={state.can}
               />
             )}
-            {inlineRelationships.map((relationship) => {
-              const Component = overviewRelationships![relationship.key]!
-              return (
-                <Component
-                  key={`${record.id}:${relationship.key}`}
-                  relationship={relationship}
-                />
-              )
+            {inlineLinks.map((link) => {
+              const Component = overviewLinks![link.key]!
+              return <Component key={`${record.id}:${link.key}`} link={link} />
             })}
             {detailFields.length === 0 &&
               narrative.length === 0 &&
               !Overview &&
-              inlineRelationships.length === 0 && (
+              inlineLinks.length === 0 && (
                 <p className="text-sm text-muted-foreground">
                   No additional details.
                 </p>
@@ -327,16 +312,16 @@ export function ObjectRecordPage({
           </PageContent>
         </ObjectRecordLayout>
       </TabsContent>
-      {related.map((relationship) => (
+      {related.map((link) => (
         <TabsContent
-          key={relationship.key}
-          value={relationship.key}
+          key={link.key}
+          value={link.key}
           className="m-0 flex min-h-80 flex-1 flex-col overflow-hidden @3xl:min-h-0"
         >
-          {active === relationship.key && (
-            <ObjectRelationshipCollection
-              key={`${record.id}:${relationship.key}`}
-              relationship={relationship}
+          {active === link.key && (
+            <RecordLinkCollection
+              key={`${record.id}:${link.key}`}
+              link={link}
             />
           )}
         </TabsContent>
@@ -382,10 +367,10 @@ export function ObjectRecordPage({
               <div className="min-w-0 flex-1 overflow-x-auto">
                 <TabsList variant="header">
                   <TabsTrigger value="overview">Overview</TabsTrigger>
-                  {relationshipTabs.map(({ key, label }) => (
+                  {linkTabs.map(({ key, label }) => (
                     <TabsTrigger key={key} value={key}>
                       {label}
-                      <RelationshipCount
+                      <LinkCount
                         count={previews.find(
                           (preview) => preview.key === key && !preview.pending
                         )}
@@ -401,9 +386,9 @@ export function ObjectRecordPage({
               </div>
               {related.length > 0 && (
                 <>
-                  {otherRelationships.length > 0 && (
-                    <RecordRelationshipPicker
-                      relationships={otherRelationships}
+                  {otherLinks.length > 0 && (
+                    <RecordLinkPicker
+                      links={otherLinks}
                       selected={active}
                       onSelect={select}
                     />
@@ -471,7 +456,7 @@ export function ObjectRecordPage({
                 can={state.can}
                 placement="record"
               />
-              <RecordRelatedCreateMenu relationships={allRelated} />
+              <RecordRelatedCreateMenu links={allRelated} />
               {edit && (
                 <Button
                   variant="ghost"

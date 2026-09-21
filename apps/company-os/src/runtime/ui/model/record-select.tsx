@@ -12,6 +12,7 @@ import { useQueries } from "@tanstack/react-query"
 import { CheckIcon, ChevronDownIcon, XIcon } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 
+import type { ObjectType } from "#/runtime/model/definition/object.ts"
 import type { ListRequest } from "#/runtime/model/index.ts"
 import { queryProperty } from "#/runtime/model/query-fields.ts"
 import { fieldOperators } from "#/runtime/model/query-fields.ts"
@@ -19,27 +20,26 @@ import {
   clientFor,
   recordLabel,
   recordObjectTypes,
-  type ModelObject,
   type ObjectRecordPresentation,
 } from "#/runtime/ui/model/object-client.ts"
 import { useObjectCreate } from "#/runtime/ui/model/object-create-context.ts"
 import { ObjectRecordOption } from "#/runtime/ui/model/object-record-identity.tsx"
-import { ObjectReferenceCreateActions } from "#/runtime/ui/model/object-reference-create-actions.tsx"
+import { RecordSelectCreateActions } from "#/runtime/ui/model/record-select-create-actions.tsx"
 import {
   type ModelUiRuntime,
   useModelRuntime,
 } from "#/runtime/ui/model/runtime-context.tsx"
 
-export interface ReferenceOption {
+export interface RecordOption {
   readonly id: string
   readonly label: string
   readonly presentation?: ObjectRecordPresentation | undefined
 }
 
-const noConstraints: ReadonlyArray<ReferenceConstraint> = []
+const noConstraints: ReadonlyArray<RecordSelectConstraint> = []
 const noSelectedValues: ReadonlyArray<string> = []
 
-interface ReferenceListRequest {
+interface RecordSelectRequest {
   query?: string
   filter?: Exclude<ListRequest["filter"], undefined>
   pageSize: number
@@ -50,7 +50,7 @@ function findOptions(
   runtime: ModelUiRuntime,
   typeId: string,
   query: string,
-  constraints: ReadonlyArray<ReferenceConstraint>
+  constraints: ReadonlyArray<RecordSelectConstraint>
 ) {
   const normalizedQuery = query.trim()
   return recordObjectTypes(runtime, typeId).map((object) => {
@@ -90,7 +90,7 @@ function findOptions(
             },
           ]
         : undefined
-    const request: ReferenceListRequest = { pageSize: 20 }
+    const request: RecordSelectRequest = { pageSize: 20 }
     if (object.search && normalizedQuery) request.query = normalizedQuery
     if (filter !== undefined) {
       request.filter = filter
@@ -105,7 +105,7 @@ function findOptions(
   })
 }
 
-export function ObjectReferenceSelect({
+export function RecordSelect({
   appearance = "field",
   allowCreate = true,
   ariaDescribedBy,
@@ -134,12 +134,12 @@ export function ObjectReferenceSelect({
   readonly disabled?: boolean
   readonly id?: string | undefined
   readonly includeHiddenInput?: boolean
-  readonly constraints?: ReadonlyArray<ReferenceConstraint>
+  readonly constraints?: ReadonlyArray<RecordSelectConstraint>
   readonly initialLabel?: string | undefined
   readonly invalid?: boolean | undefined
   readonly name: string
   readonly onBlur: () => void
-  readonly onValueChange: (value: string, option?: ReferenceOption) => void
+  readonly onValueChange: (value: string, option?: RecordOption) => void
   readonly placeholder?: string
   readonly required?: boolean
   readonly selectedValues?: ReadonlyArray<string>
@@ -151,7 +151,7 @@ export function ObjectReferenceSelect({
   const openObjectCreate = useObjectCreate()
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState("")
-  const [selection, setSelection] = useState<ReferenceOption>()
+  const [selection, setSelection] = useState<RecordOption>()
   const [search, setSearch] = useState("")
   const searchInput = useRef<HTMLInputElement>(null)
   useEffect(() => {
@@ -165,7 +165,7 @@ export function ObjectReferenceSelect({
       enabled: open,
     })),
   })
-  const options: ReferenceOption[] = results.flatMap((result, index) => {
+  const options: RecordOption[] = results.flatMap((result, index) => {
     const object = requests[index]!.object
     return (result.data?.items ?? []).map((record) => ({
       id: record.id,
@@ -186,7 +186,7 @@ export function ObjectReferenceSelect({
     options.find((option) => option.id === value) ??
     (selection?.id === value ? selection : undefined)
 
-  const create = (object: ModelObject) => {
+  const create = (object: ObjectType) => {
     setOpen(false)
     openObjectCreate(object, {
       onCreated: (record) => {
@@ -321,7 +321,7 @@ export function ObjectReferenceSelect({
             </CommandList>
           </Command>
           {allowCreate && (
-            <ObjectReferenceCreateActions typeId={typeId} onCreate={create} />
+            <RecordSelectCreateActions typeId={typeId} onCreate={create} />
           )}
         </PopoverContent>
       </Popover>
@@ -329,7 +329,7 @@ export function ObjectReferenceSelect({
   )
 }
 
-export interface ReferenceConstraint {
+export interface RecordSelectConstraint {
   readonly field: string
   readonly value: boolean | number | string
 }

@@ -4,7 +4,7 @@ import type { HttpClientError } from "effect/unstable/http"
 import type {
   PolymorphicReads,
   RecordReads,
-  RelationshipReads,
+  LinkReads,
 } from "#/runtime/client/read-types.ts"
 import {
   httpOperation,
@@ -49,10 +49,11 @@ export type CustomOperations<M extends ModelCatalog> = Extract<
 type InputOf<T extends CustomOperation> = InferInputSchema<T["input"]>
 type OutputOf<T extends CustomOperation> = InferSchema<T["output"]>
 
-type ObjectLinkClient<
-  M extends ModelCatalog,
-  O extends ObjectType,
-> = RelationshipReads<M, O, "effect"> & {
+type ObjectLinkClient<M extends ModelCatalog, O extends ObjectType> = LinkReads<
+  M,
+  O,
+  "effect"
+> & {
   readonly [
     S in ModelRecordSides<M, O> as S["side"]["key"]
   ]: S["side"]["max"] extends 1

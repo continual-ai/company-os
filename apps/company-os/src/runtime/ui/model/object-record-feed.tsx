@@ -1,11 +1,9 @@
 import type { ReactNode } from "react"
 
-import type {
-  ClientRecord,
-  ModelObject,
-} from "#/runtime/ui/model/object-client.ts"
+import type { ObjectType } from "#/runtime/model/definition/object.ts"
+import type { ClientRecord } from "#/runtime/ui/model/object-client.ts"
 import { ObjectRecordSummary } from "#/runtime/ui/model/object-record-summary.tsx"
-import { useRecordReferences } from "#/runtime/ui/model/object-references.ts"
+import { useRecordReferences } from "#/runtime/ui/model/record-references.ts"
 
 /** Collection owners supply loaded records and actions; summaries remain reusable presentation. */
 export function ObjectRecordFeed({
@@ -16,7 +14,7 @@ export function ObjectRecordFeed({
   renderActions,
 }: {
   readonly items: ReadonlyArray<{
-    readonly object: ModelObject
+    readonly object: ObjectType
     readonly record: ClientRecord
   }>
   readonly label: string

@@ -5,7 +5,7 @@ import {
 import { schema } from "#/runtime/model/definition/schema.ts"
 
 /** Standard record fields; caller-owned metadata and aliases remain writable. */
-export const resourceProperties: Readonly<Record<string, PropertyDefinition>> =
+export const recordProperties: Readonly<Record<string, PropertyDefinition>> =
   normalizeProperties({
     aliases: schema.array(schema.string(), { label: "Aliases" }),
     metadata: schema.map(schema.string(), { label: "Metadata" }),

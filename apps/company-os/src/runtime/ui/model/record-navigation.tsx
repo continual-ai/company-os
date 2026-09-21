@@ -9,12 +9,10 @@ import {
   type ReactNode,
 } from "react"
 
+import type { ObjectType } from "#/runtime/model/definition/object.ts"
 import type { ListRequest } from "#/runtime/model/index.ts"
 import type { CollectionPages } from "#/runtime/ui/model/collection-pages.tsx"
-import {
-  clientFor,
-  type ModelObject,
-} from "#/runtime/ui/model/object-client.ts"
+import { clientFor } from "#/runtime/ui/model/object-client.ts"
 import { objectHref } from "#/runtime/ui/model/object-routing.ts"
 import { useModelRuntime } from "#/runtime/ui/model/runtime-context.tsx"
 
@@ -111,7 +109,7 @@ export function useCaptureCollectionNavigation(
 
 /** Fetch just the two neighbors, even when the collection was opened at a distant offset. */
 export function useRecordNavigation(
-  object: ModelObject,
+  object: ObjectType,
   recordId: string,
   enabled: boolean
 ) {

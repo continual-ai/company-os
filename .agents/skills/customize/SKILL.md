@@ -15,7 +15,7 @@ only when it exists and its company policy matters. Paths below start at `apps/c
 ## Find the smallest change
 
 Start from the closest existing object, Link, or operation definition. Match its naming, schema,
-relationship, and operation conventions; reuse existing definitions instead of duplicating concepts.
+link, and operation conventions; reuse existing definitions instead of duplicating concepts.
 Read the relevant builder/type declaration only if the example leaves the API unclear. Choose the
 relevant row below; do not survey every definition or trace the runtime before starting.
 
@@ -59,16 +59,16 @@ At most one end can be required. `uniqueBy` accepts stored fields and references
 Required references must be supplied at creation and can only be replaced, never temporarily cleared.
 Create and update accept singular IDs or null and plural ID arrays. On update, arrays replace the whole
 set and `[]` clears it; use `{ add, remove }` when editing a partial preview. Plural reads return three
-preview IDs plus `totalSize` and `totalSizeExact`; use the relationship list to retrieve the full set. Reads accept
-`expand: true` or a map of relationship keys set to `true`. Expansion hydrates one hop: singular IDs
+preview IDs plus `totalSize` and `totalSizeExact`; use the link list to retrieve the full set. Reads accept
+`expand: true` or a map of link keys set to `true`. Expansion hydrates one hop: singular IDs
 become records and plural previews become `{ items, totalSize, totalSizeExact }`. Counts are exact through 1,000; larger collections return `totalSize: 1000` and
 `totalSizeExact: false`, a guaranteed lower bound, never an estimate. Use the model-aware client for inferred
-result types. Collection views request expansion for visible relationship columns. Related filters use
-`some`, `none`, or `every`; `relationship.$count` supports count filtering.
+result types. Collection views request expansion for visible link columns. Related filters use
+`some`, `none`, or `every`; `link.$count` supports count filtering.
 Use `display.title: ["contact.name", "account.name"]` for derived record labels. Paths may cross one
-singular relationship; labels are read-only and computed from current values. Use `checks` for ordered
+singular link; labels are read-only and computed from current values. Use `checks` for ordered
 field comparisons such as start/end dates. PostgreSQL enforces these for every write; null endpoints
-are allowed. Keep relationship attributes on a relationship Object, as Affiliation does for job titles.
+are allowed. Use an Object for associations with business attributes, as Affiliation does for job titles.
 Public intake gets an explicit contract separate from private records. External effects need a
 commit/failure boundary and retries that avoid duplicating the effect.
 

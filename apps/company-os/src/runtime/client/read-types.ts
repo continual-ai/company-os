@@ -97,7 +97,7 @@ type Target<M extends ModelCatalog, T extends LinkTraversal> = Extract<
   ModelObject<M>,
   { readonly id: ModelEndpointObjectTypeId<M, T["from"]> }
 >
-export type RelationshipReads<
+export type LinkReads<
   M extends ModelCatalog,
   O extends ObjectType,
   Kind extends "effect" | "promise" | "query",
@@ -108,13 +108,13 @@ export type RelationshipReads<
     ? {
         get: ReadMethod<
           <
-            const E extends ModelExpansion<M, Target<M, S["target"]>> = false,
+            const E extends ModelExpansion<M, Target<M, S["inverse"]>> = false,
           >(input: {
             readonly id: RecordIdentifier<O["id"]>
             readonly expand?: E
           }) => Result<
             {
-              readonly item: ObjectRecord<Target<M, S["target"]>, M, E> | null
+              readonly item: ObjectRecord<Target<M, S["inverse"]>, M, E> | null
             },
             Kind
           >,
@@ -125,39 +125,42 @@ export type RelationshipReads<
         list: Kind extends "query"
           ? {
               queryOptions: <
-                const E extends ModelExpansion<M, Target<M, S["target"]>> =
+                const E extends ModelExpansion<M, Target<M, S["inverse"]>> =
                   false,
               >(
-                input: Omit<ListRequest<Target<M, S["target"]>>, "expand"> & {
+                input: Omit<ListRequest<Target<M, S["inverse"]>>, "expand"> & {
                   readonly id: RecordIdentifier<O["id"]>
                   readonly expand?: E
                 }
               ) => Result<
-                Page<ObjectRecord<Target<M, S["target"]>, M, E>>,
+                Page<ObjectRecord<Target<M, S["inverse"]>, M, E>>,
                 Kind
               >
               infiniteQueryOptions: <
-                const E extends ModelExpansion<M, Target<M, S["target"]>> =
+                const E extends ModelExpansion<M, Target<M, S["inverse"]>> =
                   false,
               >(
                 input: Omit<
-                  ListRequest<Target<M, S["target"]>>,
+                  ListRequest<Target<M, S["inverse"]>>,
                   "expand" | "pageToken"
                 > & {
                   readonly id: RecordIdentifier<O["id"]>
                   readonly expand?: E
                 }
               ) => ModelInfiniteQueryOptions<
-                ObjectRecord<Target<M, S["target"]>, M, E>,
+                ObjectRecord<Target<M, S["inverse"]>, M, E>,
                 ModelClientError
               >
             }
-          : <const E extends ModelExpansion<M, Target<M, S["target"]>> = false>(
-              input: Omit<ListRequest<Target<M, S["target"]>>, "expand"> & {
+          : <
+              const E extends ModelExpansion<M, Target<M, S["inverse"]>> =
+                false,
+            >(
+              input: Omit<ListRequest<Target<M, S["inverse"]>>, "expand"> & {
                 readonly id: RecordIdentifier<O["id"]>
                 readonly expand?: E
               }
-            ) => Result<Page<ObjectRecord<Target<M, S["target"]>, M, E>>, Kind>
+            ) => Result<Page<ObjectRecord<Target<M, S["inverse"]>, M, E>>, Kind>
       }
 }
 
@@ -167,11 +170,11 @@ export type ReadProjection<
   O extends ObjectType,
   C,
   Kind extends "effect" | "promise" | "query",
-> = Omit<C, "get" | "list" | "batchGet" | keyof RelationshipReads<M, O, Kind>> &
+> = Omit<C, "get" | "list" | "batchGet" | keyof LinkReads<M, O, Kind>> &
   RecordReads<M, O, Kind> & {
-    readonly [K in keyof RelationshipReads<M, O, Kind>]: Omit<
+    readonly [K in keyof LinkReads<M, O, Kind>]: Omit<
       K extends keyof C ? C[K] : never,
       "get" | "list"
     > &
-      RelationshipReads<M, O, Kind>[K]
+      LinkReads<M, O, Kind>[K]
   }

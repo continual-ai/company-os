@@ -94,7 +94,7 @@ it("projects controller metadata and validates IDs, targets, and watches", () =>
         }),
       ],
     })
-  ).toThrow("exactly one relationship")
+  ).toThrow("exactly one link")
 })
 
 it("validates portable scheduling and throttle settings", () => {
@@ -129,7 +129,7 @@ it("validates portable scheduling and throttle settings", () => {
   ).toThrow("positive and finite")
 })
 
-it("validates complete relationship paths and retains their owning module dependencies", () => {
+it("validates complete link paths and retains their owning module dependencies", () => {
   const Tree = defineLink({
     id: "taskTree",
     from: { object: Task, key: "children" },
@@ -140,9 +140,9 @@ it("validates complete relationship paths and retains their owning module depend
     name: "Records",
     objects: [Task],
   })
-  const relationships = defineModule({
-    id: "relationships",
-    name: "Relationships",
+  const links = defineModule({
+    id: "links",
+    name: "Links",
     links: [Tree],
   })
   const controller = defineController({
@@ -157,11 +157,11 @@ it("validates complete relationship paths and retains their owning module depend
   })
   const model = defineModel({
     name: "Tree",
-    modules: [records, relationships, workers],
+    modules: [records, links, workers],
   })
   expect(controller.watch).toEqual(["children.parent.children", "children"])
   expect(() => enableModules(model, ["recordsModule", "workers"])).toThrow(
-    "relationships"
+    "links"
   )
   for (const path of [
     "title",
@@ -174,7 +174,7 @@ it("validates complete relationship paths and retains their owning module depend
         name: "Invalid",
         modules: [
           records,
-          relationships,
+          links,
           defineModule({
             id: "workers",
             name: "Workers",
@@ -184,11 +184,11 @@ it("validates complete relationship paths and retains their owning module depend
           }),
         ],
       })
-    ).toThrow("exactly one relationship")
+    ).toThrow("exactly one link")
   }
   for (const path of ["", "children.", "children..parent", "children.*"]) {
     expect(() =>
       defineController({ id: "bad", record: Task, watch: [path] })
-    ).toThrow("relationship paths")
+    ).toThrow("link paths")
   }
 })

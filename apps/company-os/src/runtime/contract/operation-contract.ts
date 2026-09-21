@@ -192,7 +192,7 @@ function resolveOperations(
       idempotent: definition.kind === "query" || definition.idempotent,
     }))
     for (const linkTraversal of modelObjectLinkTraversals(model, object)) {
-      const { traversal, target, writable } = linkTraversal
+      const { traversal, inverse, writable } = linkTraversal
       const common = {
         moduleId: Object.values(model.modules).find((module) =>
           module.links.includes(linkTraversal.link)
@@ -244,7 +244,7 @@ function resolveOperations(
           description: `${method === "link" ? "Links" : "Unlinks"} ${traversal.label.toLowerCase()}.`,
           input: Schema.Struct({
             id,
-            target: toEffectRecordIdentifierSchema(target.from.typeId),
+            target: toEffectRecordIdentifierSchema(inverse.from.typeId),
             etag: Schema.optionalKey(Schema.String.check(Schema.isNonEmpty())),
           }),
           output: Schema.Struct({}),

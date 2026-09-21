@@ -3,24 +3,24 @@ import { useCallback, useMemo } from "react"
 
 import type { modelPagedQuery } from "#/runtime/client/model-query-client.ts"
 import { queryErrorMessage } from "#/runtime/client/query-errors.ts"
+import type { ObjectType } from "#/runtime/model/definition/object.ts"
 import type { ListRequest, Page } from "#/runtime/model/index.ts"
 import type { CollectionPages } from "#/runtime/ui/model/collection-pages.tsx"
 import { objectActionAvailable } from "#/runtime/ui/model/object-actions.ts"
 import {
   clientFor,
   type ClientRecord,
-  type ModelObject,
 } from "#/runtime/ui/model/object-client.ts"
 import type { ObjectFormInput } from "#/runtime/ui/model/object-form.ts"
-import { useObjectReferencePages } from "#/runtime/ui/model/object-references.ts"
 import type { ObjectTableValue } from "#/runtime/ui/model/object-table/object-table-config.ts"
+import { useObjectRecordReferencePages } from "#/runtime/ui/model/record-references.ts"
 import { useModelRuntime } from "#/runtime/ui/model/runtime-context.tsx"
 
 export type ObjectCollectionList = ReturnType<
   typeof modelPagedQuery<Page<ClientRecord>>
 >
 export function useObjectCollection(
-  object: ModelObject,
+  object: ObjectType,
   request: ListRequest,
   pages: CollectionPages
 ) {
@@ -35,7 +35,7 @@ export function useObjectCollection(
         : undefined,
     [request.expand]
   )
-  const references = useObjectReferencePages(
+  const references = useObjectRecordReferencePages(
     object,
     recordPages,
     referenceLinks

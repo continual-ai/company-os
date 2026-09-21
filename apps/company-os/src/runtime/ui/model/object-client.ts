@@ -12,20 +12,18 @@ import {
   type Batch,
   type ListRequest,
   type ModelLinkTraversal,
-  type ObjectRef,
+  type RecordRef,
   type ObjectType,
   type Page,
   type PropertyDefinition,
 } from "#/runtime/model/index.ts"
 import { linkPreview } from "#/runtime/model/record-links.ts"
-import { resourceProperties } from "#/runtime/model/resource-properties.ts"
+import { recordProperties } from "#/runtime/model/record-properties.ts"
 import {
   type ObjectTableRecord,
   objectTableValueText,
 } from "#/runtime/ui/model/object-table/object-table-config.ts"
 import { type ModelUiRuntime } from "#/runtime/ui/model/runtime-context.tsx"
-
-export type ModelObject = ObjectType
 
 export type ClientValue =
   | boolean
@@ -98,7 +96,7 @@ export interface DynamicLinkClient {
   readonly link?: (input: DynamicLinkMutationInput) => Promise<void>
   readonly list: ReturnType<
     typeof modelPagedQuery<
-      Page<ClientRecord & ObjectRef>,
+      Page<ClientRecord & RecordRef>,
       unknown,
       DynamicLinkListInput
     >
@@ -164,7 +162,7 @@ function mutationMethod<A>(options: DynamicOptions, input: ModelClientRequest) {
 
 export function clientFor(
   runtime: ModelUiRuntime,
-  object: ModelObject
+  object: ObjectType
 ): DynamicObjectClient {
   const group = Reflect.get(runtime.data, object.id)
   const get = operation(group, "get")
@@ -206,10 +204,10 @@ export function clientFor(
   }
 }
 
-/** Dynamic adapter only for the generated relationship renderer. */
+/** Dynamic adapter only for the generated link renderer. */
 export function linkClientFor(
   runtime: ModelUiRuntime,
-  object: ModelObject,
+  object: ObjectType,
   traversal: ModelLinkTraversal,
   source: ClientRecord
 ): DynamicLinkClient {
@@ -224,16 +222,13 @@ export function linkClientFor(
       target: string | null
     ) => {
       const record = source
-      if (!objectClient.update)
-        throw new Error("This relationship is read-only.")
+      if (!objectClient.update) throw new Error("This link is read-only.")
       if (
         target === null &&
         linkPreview(record.links?.[traversal.traversal.key]).ids[0] !==
           input.target
       )
-        throw new Error(
-          "This relationship changed. Refresh before clearing it."
-        )
+        throw new Error("This link changed. Refresh before clearing it.")
       await objectClient.update({
         id: record.id,
         etag: record.etag,
@@ -242,10 +237,10 @@ export function linkClientFor(
     }
     return {
       list: modelPagedQuery(({ id }: DynamicLinkListInput) => {
-        const query = queryMethod<{ item: (ClientRecord & ObjectRef) | null }>(
+        const query = queryMethod<{ item: (ClientRecord & RecordRef) | null }>(
           operation(group, "get")({ id })
         )
-        return modelQuery<Page<ClientRecord & ObjectRef>>(
+        return modelQuery<Page<ClientRecord & RecordRef>>(
           query.meta.objectTypes,
           `${traversal.traversal.key}.page`,
           { id },
@@ -276,7 +271,7 @@ export function linkClientFor(
   }
   return {
     list: modelPagedQuery((input: DynamicLinkListInput) =>
-      queryMethod<Page<ClientRecord & ObjectRef>>(
+      queryMethod<Page<ClientRecord & RecordRef>>(
         operation(group, "list")(input)
       )
     ),
@@ -302,13 +297,13 @@ export function linkClientFor(
 }
 
 export function modelObjectProperty(
-  object: ModelObject,
+  object: ObjectType,
   propertyId: string
 ): PropertyDefinition | undefined {
-  return object.properties[propertyId] ?? resourceProperties[propertyId]
+  return object.properties[propertyId] ?? recordProperties[propertyId]
 }
 
-export function recordLabel(object: ModelObject, record: ClientRecord): string {
+export function recordLabel(object: ObjectType, record: ClientRecord): string {
   if (typeof record.label === "string") return record.label
   return objectTableValueText(record[object.display.title]) || record.id
 }
@@ -316,16 +311,16 @@ export function recordLabel(object: ModelObject, record: ClientRecord): string {
 export function recordObjectTypes(
   runtime: ModelUiRuntime,
   typeId: string
-): ReadonlyArray<ModelObject> {
+): ReadonlyArray<ObjectType> {
   return Object.values(runtime.model.objects).filter((candidate) =>
     modelTypeAccepts(runtime.model, candidate.id, typeId)
   )
 }
 
-/** Relationship reads already return canonical records; never hydrate them again. */
+/** Link reads already return canonical records; never hydrate them again. */
 export function describeReferences(
   runtime: ModelUiRuntime,
-  records: ReadonlyArray<ClientRecord & ObjectRef>
+  records: ReadonlyArray<ClientRecord & RecordRef>
 ): ReadonlyArray<RelatedRecord> {
   return records.map((record) => {
     const object = Object.values(runtime.model.objects).find(

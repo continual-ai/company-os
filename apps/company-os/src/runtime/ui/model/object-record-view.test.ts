@@ -6,7 +6,7 @@ import {
 } from "#/runtime/ui/model/object-record-view.ts"
 
 describe("object record view", () => {
-  it("decodes a relationship tab from URL search", () => {
+  it("decodes a link tab from URL search", () => {
     expect(validateObjectRecordSearch({ tab: "notes" })).toEqual({
       tab: "notes",
     })

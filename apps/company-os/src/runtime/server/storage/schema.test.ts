@@ -42,7 +42,7 @@ describe("makePostgresSchema", () => {
     expect(storage.core).not.toHaveProperty("roots")
   })
 
-  it("projects model fields, relationships, and infrastructure constraints", () => {
+  it("projects model fields, links, and infrastructure constraints", () => {
     const storage = makePostgresSchema(fixtureModel)
     expect(Object.keys(getTableColumns(storage.objects.person))).toEqual([
       "id",

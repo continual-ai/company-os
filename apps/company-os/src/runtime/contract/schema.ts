@@ -36,7 +36,7 @@ import type {
   ValidationError,
   Violation,
 } from "#/runtime/model/definition/standard-error.ts"
-import { resourceProperties } from "#/runtime/model/resource-properties.ts"
+import { recordProperties } from "#/runtime/model/record-properties.ts"
 
 const formatSchemaIssues = SchemaIssue.makeFormatterStandardSchemaV1()
 
@@ -550,14 +550,14 @@ export function toEffectObjectSchema(
   return compiled
 }
 
-/** Shared record fields for full records and discriminated relationship results. */
+/** Shared record fields for full records and discriminated link results. */
 export function toEffectObjectFields(object: ObjectType, model?: ModelCatalog) {
   const id = Schema.String.annotate({
     readOnly: true,
     title: `${object.name} ID`,
   }).pipe(Schema.fromBrand(`RecordId:${object.id}`, RecordId(object.id)))
   const fields: CompiledSchemaFields = Object.fromEntries([
-    ...Object.entries(resourceProperties).map(([key, property]) =>
+    ...Object.entries(recordProperties).map(([key, property]) =>
       entry(key, toEffectSchema(property))
     ),
     entry("id", id),
@@ -583,8 +583,8 @@ export function toEffectObjectFields(object: ObjectType, model?: ModelCatalog) {
         : Schema.Struct(
             Object.fromEntries(
               modelObjectLinkTraversals(model, object).map(
-                ({ traversal, target }) => {
-                  const targetId = recordIdSchema(target.from.typeId)
+                ({ traversal, inverse }) => {
+                  const targetId = recordIdSchema(inverse.from.typeId)
                   return [
                     traversal.key,
                     traversal.max === 1
@@ -643,10 +643,10 @@ export function toEffectModelObjectCreateSchema(
     ({ writable }) => writable
   )
   const linkFields: CompiledSchemaFields = Object.fromEntries(
-    traversals.map(({ target, traversal }) => {
+    traversals.map(({ inverse, traversal }) => {
       const identifier = toEffectRecordIdentifierSchema(
-        target.from.typeId
-      ).annotate({ title: target.label })
+        inverse.from.typeId
+      ).annotate({ title: inverse.label })
       const many = Schema.Array(identifier).check(
         Schema.isMinLength(traversal.min),
         ...(traversal.max === undefined
@@ -741,8 +741,8 @@ export function toEffectModelObjectUpdateSchema(
     ({ writable }) => writable
   )
   const linkFields: CompiledSchemaFields = Object.fromEntries(
-    traversals.map(({ target, traversal }) => {
-      const identifier = toEffectRecordIdentifierSchema(target.from.typeId)
+    traversals.map(({ inverse, traversal }) => {
+      const identifier = toEffectRecordIdentifierSchema(inverse.from.typeId)
       let identifiers = Schema.Array(identifier).check(Schema.isUnique())
       if (traversal.max !== undefined) {
         identifiers = identifiers.check(Schema.isMaxLength(traversal.max))

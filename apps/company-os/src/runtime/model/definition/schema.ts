@@ -413,7 +413,7 @@ function containsRecordId(value: AnySchema): boolean {
   }
 }
 
-/** Record identifiers are transport values; stored relationships belong in defineLink. */
+/** Record identifiers are transport values; stored links belong in defineLink. */
 export function assertStoredProperty(
   owner: string,
   key: string,
@@ -423,7 +423,7 @@ export function assertStoredProperty(
   assertSecretStorage(value)
   if (containsRecordId(value))
     throw new Error(
-      `${owner} property '${key}' stores a record relationship. Use defineLink instead.`
+      `${owner} property '${key}' stores a record link. Use defineLink instead.`
     )
 }
 

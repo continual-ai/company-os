@@ -78,9 +78,7 @@ export function validateQuery(
         value.field
       )
       if (hops + traversals.length > 3)
-        throw new Error(
-          "Relationship paths may contain at most three traversals."
-        )
+        throw new Error("Link paths may contain at most three traversals.")
       if (!fieldOperators(property).includes(value.operator))
         throw new Error(
           `Operator '${value.operator}' is not supported for '${value.field}'.`
@@ -102,9 +100,7 @@ export function validateQuery(
     if ("link" in value && typeof value.link === "string") {
       const resolved = resolveQueryField(model, type, value.link, "count")
       if (hops >= 3)
-        throw new Error(
-          "Relationship paths may contain at most three traversals."
-        )
+        throw new Error("Link paths may contain at most three traversals.")
       for (const key of ["some", "none", "every"] as const) {
         if (key in value) {
           const nested: unknown = Reflect.get(value, key)

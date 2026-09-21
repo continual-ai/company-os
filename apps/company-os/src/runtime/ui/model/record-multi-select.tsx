@@ -2,11 +2,11 @@ import { useState } from "react"
 
 import { ObjectRecordPill } from "#/runtime/ui/model/object-record-identity.tsx"
 import {
-  ObjectReferenceSelect,
-  type ReferenceOption,
-} from "#/runtime/ui/model/object-reference-select.tsx"
+  RecordSelect,
+  type RecordOption,
+} from "#/runtime/ui/model/record-select.tsx"
 
-export function ObjectReferenceMultiSelect({
+export function RecordMultiSelect({
   ariaDescribedBy,
   id,
   invalid = false,
@@ -27,11 +27,11 @@ export function ObjectReferenceMultiSelect({
   readonly typeId: string
   readonly value: ReadonlyArray<string>
 }) {
-  const [options, setOptions] = useState<ReadonlyMap<string, ReferenceOption>>(
+  const [options, setOptions] = useState<ReadonlyMap<string, RecordOption>>(
     new Map()
   )
 
-  const add = (target: string, option?: ReferenceOption) => {
+  const add = (target: string, option?: RecordOption) => {
     if (value.includes(target)) return
     if (option !== undefined) {
       setOptions((current) => new Map(current).set(option.id, option))
@@ -58,7 +58,7 @@ export function ObjectReferenceMultiSelect({
           />
         )
       })}
-      <ObjectReferenceSelect
+      <RecordSelect
         appearance="inline"
         ariaDescribedBy={ariaDescribedBy}
         closeOnSelect={false}

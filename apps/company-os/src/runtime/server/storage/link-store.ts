@@ -40,13 +40,13 @@ const make = Effect.gen(function* () {
       .get(traversal.source)
       .getStates([RecordId(traversal.source.id)(sourceId)])
     const target = Object.values(Model.objects).find(
-      (object) => object.id === traversal.target.from.typeId
+      (object) => object.id === traversal.inverse.from.typeId
     )
     yield* Effect.try({
       try: () =>
         validateQuery(
           Model,
-          target ?? Model.interfaces[traversal.target.from.typeId]!,
+          target ?? Model.interfaces[traversal.inverse.from.typeId]!,
           input
         ),
       catch: (error) =>
@@ -78,7 +78,7 @@ const make = Effect.gen(function* () {
       }
     }
     const page = yield* listInterface(
-      Model.interfaces[traversal.target.from.typeId]!,
+      Model.interfaces[traversal.inverse.from.typeId]!,
       input,
       relatedTo
     )

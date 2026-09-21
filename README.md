@@ -63,7 +63,7 @@ modules give you a starting point. Every model, workflow, and screen is yours to
 ## Put your agents to work
 
 Connect your preferred MCP-compatible agent through **Developer Center → MCP** in your app.
-Agents can follow relationships, read and update records, and carry out business operations
+Agents can follow links, read and update records, and carry out business operations
 through one API.
 
 With the demo data, try:
@@ -72,7 +72,7 @@ With the demo data, try:
 > customer replies, then add a note summarizing what is blocking each ticket.
 
 The notes appear on the tickets. Ask the agent to **create an issue linked to the affected
-tickets and opportunities**. Record creation and relationship changes commit together.
+tickets and opportunities**. Record creation and link changes commit together.
 
 Company OS provides the data and operations; your chosen agent runtime handles reasoning,
 scheduling, and execution.
@@ -103,13 +103,13 @@ This first integration uses token authentication and polling, with no writes bac
 The Company Model describes **what your business works with, how it connects, and what can
 happen**. It gives your software and agents a shared understanding of the business.
 
-| Concept        | Purpose                                         | Example                                   |
-| -------------- | ----------------------------------------------- | ----------------------------------------- |
-| **Objects**    | Business records and their properties           | Customers, tickets, projects              |
-| **Links**      | Relationships you can follow in both directions | A ticket's account; an account's tickets  |
-| **Interfaces** | Capabilities shared across record types         | Customers and tickets can both have notes |
-| **Queries**    | Read records or calculate results               | Summarize the sales pipeline              |
-| **Actions**    | Change records or perform work                  | Convert a lead into an opportunity        |
+| Concept        | Purpose                                               | Example                                   |
+| -------------- | ----------------------------------------------------- | ----------------------------------------- |
+| **Objects**    | Business records and their properties                 | Customers, tickets, projects              |
+| **Links**      | Connections between records with two named traversals | A ticket's account; an account's tickets  |
+| **Interfaces** | Capabilities shared across record types               | Customers and tickets can both have notes |
+| **Queries**    | Read records or calculate results                     | Summarize the sales pipeline              |
+| **Actions**    | Change records or perform work                        | Convert a lead into an opportunity        |
 
 One model drives storage, validation, search, standard pages, and APIs. Extend it, and the
 pages and APIs follow. Business rules apply whether work comes from a person, an integration,

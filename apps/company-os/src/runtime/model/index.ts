@@ -64,7 +64,7 @@ export type {
   ModelEndpointObjectTypeId,
   ModelLinkTraversal,
   ModelObject,
-  ModelObjectRef,
+  ModelRecordRef,
   RecordIdOf,
 } from "#/runtime/model/definition/model.ts"
 export { defineModule } from "#/runtime/model/definition/module.ts"
@@ -82,7 +82,7 @@ export type {
   ObjectDisplay,
   ObjectGetInput,
   ObjectRecord,
-  ObjectRef,
+  RecordRef,
   ObjectType,
   ObjectUpdateInput,
   RecordAliasDelta,

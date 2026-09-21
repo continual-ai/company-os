@@ -1,5 +1,6 @@
 import { type ComponentType } from "react"
 
+import type { ObjectType } from "#/runtime/model/definition/object.ts"
 import {
   modelObjectLinkTraversals,
   modelTypeAccepts,
@@ -14,7 +15,6 @@ import { collectionLayoutError } from "#/runtime/ui/model/collection-layout.ts"
 import type {
   ObjectRecordPresentation,
   ClientRecord,
-  ModelObject,
 } from "#/runtime/ui/model/object-client.ts"
 import type {
   ObjectUi,
@@ -22,7 +22,7 @@ import type {
   RecordSummaryProps,
   RecordPageUiProps,
 } from "#/runtime/ui/model/object-ui.ts"
-import type { RecordRelationship } from "#/runtime/ui/model/record-relationships.ts"
+import type { RecordLinkView } from "#/runtime/ui/model/record-link-views.ts"
 import { useModelRuntime } from "#/runtime/ui/model/runtime-context.tsx"
 
 type ModuleUi<M extends ModuleDefinition> = {
@@ -34,14 +34,14 @@ type ModuleUi<M extends ModuleDefinition> = {
   >
 }
 
-export interface RelationshipOverviewProps {
-  readonly relationship: RecordRelationship
+export interface LinkOverviewProps {
+  readonly link: RecordLinkView
 }
 
-interface RelationshipOverview {
+interface LinkOverview {
   readonly link: { readonly id: string }
   readonly side: "forward" | "reverse"
-  readonly component: ComponentType<RelationshipOverviewProps>
+  readonly component: ComponentType<LinkOverviewProps>
 }
 
 interface DynamicRecordProps {
@@ -54,8 +54,8 @@ export interface ResolvedObjectUi {
   readonly fieldEditors?: Readonly<
     Record<string, ComponentType<FieldEditorProps>>
   >
-  readonly navigation?: ObjectUi<ModelObject>["navigation"]
-  readonly collection?: ObjectUi<ModelObject>["collection"]
+  readonly navigation?: ObjectUi<ObjectType>["navigation"]
+  readonly collection?: ObjectUi<ObjectType>["collection"]
   readonly actions?: Readonly<
     Record<
       string,
@@ -66,18 +66,18 @@ export interface ResolvedObjectUi {
     >
   >
   readonly record?: {
-    readonly overviewRelationships?: Readonly<
-      Record<string, ComponentType<RelationshipOverviewProps>>
+    readonly overviewLinks?: Readonly<
+      Record<string, ComponentType<LinkOverviewProps>>
     >
 
     readonly title?: (props: DynamicRecordProps) => string
     readonly summaryComponent?: ComponentType<
-      Omit<RecordSummaryProps<ModelObject>, "record"> & {
+      Omit<RecordSummaryProps<ObjectType>, "record"> & {
         readonly record: ClientRecord
       }
     >
     readonly properties?: ReadonlyArray<string>
-    readonly relationships?: ReadonlyArray<string>
+    readonly links?: ReadonlyArray<string>
     readonly pageComponent?: ComponentType<RecordPageUiProps>
     readonly overviewComponent?: ComponentType<DynamicRecordProps>
     readonly additionalTabs?: ReadonlyArray<{
@@ -92,7 +92,7 @@ export interface ResolvedObjectUi {
 export function defineModuleUi<M extends ModuleDefinition>(
   module: M,
   objects: ModuleUi<NoInfer<M>>,
-  relationshipOverviews: ReadonlyArray<RelationshipOverview> = []
+  linkOverviews: ReadonlyArray<LinkOverview> = []
 ) {
   // SAFETY: module keys and component props are checked at the authoring boundary.
   // Renderers dispatch only decoded records belonging to that same object.
@@ -134,13 +134,13 @@ export function defineModuleUi<M extends ModuleDefinition>(
         throw new Error(`Unknown overview property '${id}.${field}'.`)
     }
   }
-  for (const contribution of relationshipOverviews) {
+  for (const contribution of linkOverviews) {
     if (!module.links.some((link) => link.id === contribution.link.id))
       throw new Error(
         `Module '${module.id}' cannot extend link '${contribution.link.id}'.`
       )
   }
-  return { module, objects: configurations, relationshipOverviews }
+  return { module, objects: configurations, linkOverviews }
 }
 
 export function composeModelUi(
@@ -164,10 +164,9 @@ export function composeModelUi(
       )
       if (!installedObject)
         throw new Error(`Object '${id}' is not installed in the model.`)
-      const relationships = modelObjectLinkTraversals(
-        Model,
-        installedObject
-      ).map(({ traversal }) => traversal.key)
+      const links = modelObjectLinkTraversals(Model, installedObject).map(
+        ({ traversal }) => traversal.key
+      )
       const fields = objectFields(installedObject, Model)
       for (const view of config.collection?.views ?? []) {
         for (const fieldId of Object.keys(view.state.visibility))
@@ -181,16 +180,16 @@ export function composeModelUi(
         "overview",
         "related",
         "controllers",
-        ...relationships,
+        ...links,
       ])
-      for (const key of config.record?.relationships ?? []) {
+      for (const key of config.record?.links ?? []) {
         if (
           key === "overview" ||
           key === "related" ||
           key === "controllers" ||
           !tabs.has(key)
         )
-          throw new Error(`Unknown overview relationship '${id}.${key}'.`)
+          throw new Error(`Unknown overview link '${id}.${key}'.`)
       }
       for (const tab of config.record?.additionalTabs ?? []) {
         if (!/^[a-z][a-zA-Z0-9-]*$/.test(tab.id))
@@ -202,10 +201,10 @@ export function composeModelUi(
       objects[id] = config
     }
   }
-  // Relationship owners can place an endpoint in every accepting record's overview.
+  // Link owners can place an endpoint in every accepting record's overview.
   for (const contribution of modules) {
     if (!Object.values(Model.modules).includes(contribution.module)) continue
-    for (const overview of contribution.relationshipOverviews) {
+    for (const overview of contribution.linkOverviews) {
       const link = contribution.module.links.find(
         (candidate) => candidate.id === overview.link.id
       )!
@@ -213,16 +212,14 @@ export function composeModelUi(
       for (const object of Object.values(Model.objects)) {
         if (!modelTypeAccepts(Model, object.id, side.from.typeId)) continue
         const config = objects[object.id] ?? {}
-        const existing = config.record?.overviewRelationships ?? {}
+        const existing = config.record?.overviewLinks ?? {}
         if (Object.hasOwn(existing, side.key))
-          throw new Error(
-            `Duplicate relationship overview '${object.id}.${side.key}'.`
-          )
+          throw new Error(`Duplicate link overview '${object.id}.${side.key}'.`)
         objects[object.id] = {
           ...config,
           record: {
             ...config.record,
-            overviewRelationships: {
+            overviewLinks: {
               ...existing,
               [side.key]: overview.component,
             },
@@ -234,7 +231,7 @@ export function composeModelUi(
   return objects
 }
 
-export function useObjectUi(object: ModelObject) {
+export function useObjectUi(object: ObjectType) {
   return useModelRuntime().ui[object.id]
 }
 

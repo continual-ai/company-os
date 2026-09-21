@@ -11,5 +11,5 @@ export const leadUi = {
     description: "Potential customers to qualify and follow up with.",
   },
   collection: { views: leadViews },
-  record: { relationships: ["account", "contact", "opportunity", "notes"] },
+  record: { links: ["account", "contact", "opportunity", "notes"] },
 } satisfies ObjectUi<typeof Lead>

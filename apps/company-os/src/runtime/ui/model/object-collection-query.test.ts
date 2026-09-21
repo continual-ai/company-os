@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import { validateQuery } from "#/runtime/contract/query-validation.ts"
 import { defineObject, PageToken, schema } from "#/runtime/model/index.ts"
-import { relationshipFields } from "#/runtime/model/relationship-fields.ts"
+import { relatedFields } from "#/runtime/model/related-fields.ts"
 import {
   Account,
   Person,
@@ -48,7 +48,7 @@ describe("object collection queries", () => {
     })
   })
 
-  it("projects relationships into graph membership filters, including empty links", () => {
+  it("projects links into graph membership filters, including empty links", () => {
     expect(
       defaultFilterOperator({
         ...schema.id(Account),
@@ -156,7 +156,7 @@ it("uses quantified related filters and exact count sorts in table requests", ()
   })
 })
 
-it("preserves quantified negation and supports relationship count filters", () => {
+it("preserves quantified negation and supports link count filters", () => {
   expect(
     objectListRequest(
       Person,
@@ -193,7 +193,7 @@ it("preserves quantified negation and supports relationship count filters", () =
 })
 
 it("uses target nullability inside plural quantifiers and path nullability for singular fields", () => {
-  const fields = relationshipFields(fixtureModel, Person)
+  const fields = relatedFields(fixtureModel, Person)
   expect(
     fields.find(({ id }) => id === "accounts.name")?.property.nullable
   ).toBe(false)

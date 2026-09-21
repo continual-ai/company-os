@@ -19,7 +19,7 @@ export const expansionSchema = Schema.Union([
 ]).annotate({
   identifier: "Expansion",
   description:
-    "True expands all immediate relationships; an object of relationship keys set to true selects relationships. One hop only, hydrating the existing plural previews. At most 1000 distinct targets per request. Unknown relationships and unavailable targets fail the request.",
+    "True expands all immediate links; an object of link keys set to true selects links. One hop only, hydrating the existing plural previews. At most 1000 distinct targets per request. Unknown links and unavailable targets fail the request.",
 })
 
 /** A closed key map makes expansion discoverable in OpenAPI and MCP, including on empty pages. */
@@ -51,7 +51,7 @@ export function expansionInputSchema(
   ]).annotate({
     identifier: `${type.id[0]!.toUpperCase()}${type.id.slice(1)}Expansion`,
     description:
-      "Expand all immediate relationships with true, or select keys. Plural expansion hydrates up to three preview records and retains totalSize and totalSizeExact; nested records remain unexpanded. At most 1000 distinct targets per request.",
+      "Expand all immediate links with true, or select keys. Plural expansion hydrates up to three preview records and retains totalSize and totalSizeExact; nested records remain unexpanded. At most 1000 distinct targets per request.",
   })
 }
 
@@ -77,11 +77,11 @@ export function expandableRecordSchema(
     links: Schema.Struct(
       Object.fromEntries(
         modelObjectLinkTraversals(model, object).map(
-          ({ traversal, target }) => {
+          ({ traversal, inverse }) => {
             const records = Schema.Union(
               Object.values(model.objects)
                 .filter((candidate) =>
-                  modelTypeAccepts(model, candidate.id, target.from.typeId)
+                  modelTypeAccepts(model, candidate.id, inverse.from.typeId)
                 )
                 .map((candidate) => toEffectObjectSchema(candidate, model))
             )

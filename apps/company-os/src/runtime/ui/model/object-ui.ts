@@ -99,8 +99,8 @@ export interface ObjectUi<
         readonly summaryComponent?: ComponentType<RecordSummaryProps<O>>
         /** Ordered detail fields; remaining fields follow in model order. */
         readonly properties?: ReadonlyArray<keyof O["properties"] & string>
-        /** Prioritized relationship tabs; remaining relationships stay searchable. */
-        readonly relationships?: ReadonlyArray<string>
+        /** Prioritized link tabs; remaining links stay searchable. */
+        readonly links?: ReadonlyArray<string>
         readonly pageComponent?: ComponentType<RecordPageUiProps<O>>
         /** Replaces the main overview; details and other tabs remain available. */
         readonly overviewComponent?: ComponentType<RecordUiProps<O>>

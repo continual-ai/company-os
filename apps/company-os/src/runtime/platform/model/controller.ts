@@ -28,7 +28,7 @@ export const Controller = defineObject({
     }),
     scope: schema.enumeration(["record", "object"], { outputOnly: true }),
     watch: schema.array(schema.string(), {
-      label: "Watched relationships",
+      label: "Watched links",
       outputOnly: true,
     }),
     schedule: schema.object(

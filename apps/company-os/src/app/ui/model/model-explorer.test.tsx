@@ -17,7 +17,7 @@ import {
   schema,
 } from "#/runtime/model/index.ts"
 
-it("shows link traversals and inherited interface relationships on concrete objects", () => {
+it("shows link traversals and inherited interface links on concrete objects", () => {
   const router = createRouter({
     routeTree: createRootRoute(),
     history: createMemoryHistory({ initialEntries: ["/"] }),
@@ -90,7 +90,7 @@ it("shows record and object controllers from any module on their target's model 
   expect(markup).toContain("Deliver tasks")
   expect(markup).toContain("Prioritize tasks")
   expect(markup).not.toContain("Triage signals")
-  expect(markup).toContain("Watched relationships")
+  expect(markup).toContain("Watched links")
   expect(markup).toContain("Target record changes are watched automatically.")
   expect(markup).toContain(
     'href="/objects/controller/system:controller:deliver"'
