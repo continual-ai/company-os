@@ -37,9 +37,9 @@ import type {
   ObjectType,
   PropertyDefinition,
 } from "#/runtime/model/index.ts"
+import { EmptyFieldValue } from "#/runtime/ui/model/empty-field-value.tsx"
 import { ObjectChoiceBadge } from "#/runtime/ui/model/object-choice-badge.tsx"
 import { ObjectRecordIdentity } from "#/runtime/ui/model/object-record-identity.tsx"
-import { objectRecordHref } from "#/runtime/ui/model/object-routing.ts"
 import {
   formatObjectTableCellText,
   objectTableCellInputValue,
@@ -67,7 +67,7 @@ import {
   type ObjectTableRecord,
   type ObjectTableValue,
 } from "#/runtime/ui/model/object-table/object-table-config.ts"
-import { useModelRuntime } from "#/runtime/ui/model/runtime-context.tsx"
+import { RecordLinkValue } from "#/runtime/ui/model/record-link-value.tsx"
 
 interface ObjectTableCellProps {
   active: boolean
@@ -105,8 +105,6 @@ function TextCell({
   type,
   value,
 }: ObjectTableCellProps & { type: ObjectTableCellType }) {
-  const runtime = useModelRuntime()
-
   const { clearStatus, commit, renderedValue, status } =
     useObjectTableCellCommit(value, onCommit, onEditingChange)
   const externalValue = objectTableCellInputValue(renderedValue)
@@ -205,16 +203,6 @@ function TextCell({
 
   const href = objectTableLinkHref(type, externalValue)
   const opensNewWindow = type === "url"
-  const reference =
-    type === "recordId" ? resolveRecord?.(externalValue) : undefined
-  const displayIdentity =
-    identity ??
-    (reference === undefined
-      ? undefined
-      : {
-          ...reference,
-          href: objectRecordHref(runtime, reference.object, externalValue),
-        })
   const formattedValue = formatObjectTableCellText(type, externalValue)
 
   return (
@@ -234,11 +222,16 @@ function TextCell({
           value={externalValue}
           kind={type === "date" ? "date" : "datetime"}
         />
-      ) : displayIdentity !== undefined ? (
-        <ObjectRecordIdentity
-          {...displayIdentity}
+      ) : identity !== undefined ? (
+        <ObjectRecordIdentity {...identity} resolveImageSrc={resolveImageSrc} />
+      ) : type === "recordId" ? (
+        <RecordLinkValue
+          value={externalValue || null}
+          resolveRecord={resolveRecord}
           resolveImageSrc={resolveImageSrc}
         />
+      ) : externalValue.length === 0 ? (
+        <EmptyFieldValue />
       ) : href !== null ? (
         <a
           className={cn(

@@ -11,7 +11,7 @@ const views: ReadonlyArray<ObjectCollectionView> = [
   {
     id: "all",
     label: "All records",
-    state: { filters: [], sorting: [], visibility: { name: true } },
+    state: { filters: [], sorting: [], columns: ["name"] },
   },
   {
     id: "active",
@@ -24,7 +24,7 @@ const views: ReadonlyArray<ObjectCollectionView> = [
         },
       ],
       sorting: [{ desc: false, id: "name" }],
-      visibility: { name: true, status: true },
+      columns: ["name", "status"],
     },
   },
 ]
@@ -44,7 +44,7 @@ describe("object collection view state", () => {
     const state = {
       filters: selected.state.filters,
       sorting: [{ desc: true, id: "name" }],
-      visibility: { name: true, status: false },
+      columns: ["name"],
     }
     const search = objectCollectionStateSearch(selected, state)
 

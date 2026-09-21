@@ -3,13 +3,13 @@ import { cn } from "@company/ui/lib/utils"
 import { TableCell, TableRow } from "@company/ui/table"
 import { memo, type CSSProperties } from "react"
 
-import { linkPreview } from "#/runtime/model/record-links.ts"
-import { formatTotalSize } from "#/runtime/ui/model/format-total-size.ts"
+import { ObjectFieldValue } from "#/runtime/ui/model/object-field.tsx"
 import {
   objectTableCellSelectionClassName,
   objectTablePinnedCellClassName,
   objectTableRowClassName,
 } from "#/runtime/ui/model/object-table/object-table-cell-styles.ts"
+import { ObjectTableCellSurface } from "#/runtime/ui/model/object-table/object-table-cell-surface.tsx"
 import {
   isObjectTableCellEditable,
   objectTableCellShouldExpand,
@@ -188,36 +188,45 @@ export const ObjectTableRow = memo(function ObjectTableRow({
           >
             <div className="h-full min-w-0">
               <div className="min-w-0">
-                <ObjectTableCell
-                  active={active}
-                  editing={editing}
-                  expandActive={expandActive}
-                  initialEditValue={editing ? initialEditValue : undefined}
-                  identity={
-                    meta.propertyId === object.display.title
-                      ? {
-                          href: recordHref?.(row.original.id),
-                          object,
-                          record: row.original,
-                        }
-                      : undefined
-                  }
-                  property={meta.displayProperty ?? meta.property}
-                  resolveImageSrc={resolveImageSrc}
-                  resolveRecord={resolveRecord}
-                  value={
-                    meta.countLink
-                      ? formatTotalSize(
-                          linkPreview(row.original.links?.[meta.countLink])
-                        )
-                      : cellValue
-                  }
-                  onCancelEditing={() => navigation.cancelCellEditing(address)}
-                  onEditingChange={(nextEditing) =>
-                    navigation.setCellEditing(address, nextEditing)
-                  }
-                  onCommit={commitCell}
-                />
+                {meta.field?.kind === "related" ? (
+                  <ObjectTableCellSurface
+                    active={active}
+                    expandActive={expandActive}
+                  >
+                    <ObjectFieldValue
+                      field={meta.field}
+                      record={row.original}
+                      resolveRecord={resolveRecord}
+                    />
+                  </ObjectTableCellSurface>
+                ) : (
+                  <ObjectTableCell
+                    active={active}
+                    editing={editing}
+                    expandActive={expandActive}
+                    initialEditValue={editing ? initialEditValue : undefined}
+                    identity={
+                      meta.propertyId === object.display.title
+                        ? {
+                            href: recordHref?.(row.original.id),
+                            object,
+                            record: row.original,
+                          }
+                        : undefined
+                    }
+                    property={meta.property}
+                    resolveImageSrc={resolveImageSrc}
+                    resolveRecord={resolveRecord}
+                    value={cellValue}
+                    onCancelEditing={() =>
+                      navigation.cancelCellEditing(address)
+                    }
+                    onEditingChange={(nextEditing) =>
+                      navigation.setCellEditing(address, nextEditing)
+                    }
+                    onCommit={commitCell}
+                  />
+                )}
               </div>
             </div>
           </TableCell>

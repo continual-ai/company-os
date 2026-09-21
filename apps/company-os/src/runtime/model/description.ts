@@ -17,7 +17,7 @@ import type { ModuleMetadata } from "#/runtime/model/definition/module.ts"
 import type { ObjectType } from "#/runtime/model/definition/object.ts"
 import type { StandardQuery, Query } from "#/runtime/model/definition/query.ts"
 
-export const MODEL_DESCRIPTION_VERSION = "0.36" as const
+export const MODEL_DESCRIPTION_VERSION = "0.37" as const
 
 type ObjectDescription = Omit<ObjectType, "actions" | "kind">
 

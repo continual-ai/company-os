@@ -11,11 +11,13 @@ import {
 } from "lucide-react"
 
 import type { ObjectType } from "#/runtime/model/index.ts"
+import { objectFields } from "#/runtime/model/object-fields.ts"
 import {
   collectionLayoutFields,
   defaultCollectionLayout,
   type CollectionLayout,
 } from "#/runtime/ui/model/collection-layout.ts"
+import { useModelRuntime } from "#/runtime/ui/model/runtime-context.tsx"
 
 const layouts = [
   { type: "feed", label: "Feed", icon: ListIcon },
@@ -38,6 +40,7 @@ export function CollectionLayoutControl({
   layout: CollectionLayout
   onChange: (layout: CollectionLayout) => void
 }) {
+  const runtime = useModelRuntime()
   const { groups, dates } = collectionLayoutFields(object)
   const active = layouts.find(({ type }) => type === layout.type)!
   return (
@@ -107,17 +110,14 @@ export function CollectionLayoutControl({
         ) : null}
         {layout.type === "kanban" && (
           <fieldset className="space-y-2 border-t pt-3">
-            <legend className="text-xs font-medium">
-              Card fields · up to four
-            </legend>
+            <legend className="text-xs font-medium">Card fields</legend>
             <div className="max-h-44 space-y-2 overflow-y-auto">
-              {Object.entries(object.properties)
-                .filter(([id]) => id !== object.display.title)
-                .map(([id, field]) => (
+              {objectFields(object, runtime.model)
+                .filter(({ id }) => id !== object.display.title)
+                .map(({ id, property }) => (
                   <label key={id} className="flex items-center gap-2 text-xs">
                     <Checkbox
                       checked={columns.includes(id)}
-                      disabled={!columns.includes(id) && columns.length >= 4}
                       onCheckedChange={(checked) =>
                         onColumnsChange(
                           checked
@@ -126,7 +126,7 @@ export function CollectionLayoutControl({
                         )
                       }
                     />
-                    {field.label ?? id}
+                    {property.label ?? id}
                   </label>
                 ))}
             </div>

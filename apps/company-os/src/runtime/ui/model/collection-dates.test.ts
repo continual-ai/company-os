@@ -200,7 +200,7 @@ it("validates source field mappings and URL layouts without creating saved-view 
   const state = {
     filters: [],
     sorting: [],
-    visibility: {},
+    columns: [],
     layout: { type: "kanban", groupBy: "status" },
   }
   expect(validateObjectCollectionSearch({ view: "all", state })).toEqual({

@@ -1,7 +1,6 @@
 import { createColumnHelper } from "@tanstack/react-table"
 
-import { normalizeProperties } from "#/runtime/model/definition/property.ts"
-import { schema, type ObjectType } from "#/runtime/model/index.ts"
+import { type ObjectType } from "#/runtime/model/index.ts"
 import type { ObjectField } from "#/runtime/model/object-fields.ts"
 import { objectFieldValue } from "#/runtime/ui/model/object-field-value.ts"
 import {
@@ -54,12 +53,20 @@ export function objectTableFieldColumnDef(
   const { id, property } = field
   const isIdentity = id === object.display.title
   const label = isIdentity ? object.name : (property.label ?? id)
-  const plural =
-    field.kind === "related" &&
-    !field.related.count &&
-    field.related.traversal.traversal.max !== 1
   return columnHelper.accessor(
-    (record): unknown => objectFieldValue(field, record, resolveRecord),
+    (record): unknown => {
+      const value = objectFieldValue(field, record, resolveRecord)
+      switch (value.kind) {
+        case "scalar":
+          return value.value
+        case "count":
+          return value.totalSize
+        case "link":
+          return value.ids
+        default:
+          return value.values
+      }
+    },
     {
       id,
       header: label,
@@ -74,6 +81,7 @@ export function objectTableFieldColumnDef(
       minSize: isIdentity ? 176 : 120,
       maxSize: 560,
       meta: {
+        field,
         label,
         property,
         essential: isIdentity,
@@ -81,20 +89,6 @@ export function objectTableFieldColumnDef(
         ...(field.kind === "link"
           ? { link: field.traversal }
           : { propertyId: id }),
-        ...(field.kind === "related" && field.related.count
-          ? { countLink: field.related.traversal.traversal.key }
-          : {}),
-        ...(plural
-          ? {
-              linkLabel: field.related.traversal.traversal.label,
-              displayProperty: normalizeProperties({
-                value: schema.array(schema.string(), {
-                  label,
-                  outputOnly: true,
-                }),
-              }).value,
-            }
-          : {}),
       },
     }
   )

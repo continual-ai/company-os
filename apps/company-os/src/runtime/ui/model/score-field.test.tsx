@@ -2,8 +2,6 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { expect, it } from "vitest"
 
 import { defineObject, schema } from "#/runtime/model/index.ts"
-import { fixtureModel } from "#/runtime/testing/fixture-model.ts"
-import { testPresentation } from "#/runtime/testing/presentation.ts"
 import { objectPropertyValue } from "#/runtime/ui/model/object-property-value.tsx"
 import {
   objectTableCellBehavior,
@@ -27,14 +25,7 @@ const Review = defineObject({
 it("renders a numeric meter consistently in record properties and table cells, preserving zero", () => {
   for (const value of [0, 49, 78, 99]) {
     const property = renderToStaticMarkup(
-      <>
-        {objectPropertyValue(
-          testPresentation(fixtureModel),
-          Review.properties.score,
-          value,
-          new Map()
-        )}
-      </>
+      <>{objectPropertyValue(Review.properties.score, value)}</>
     )
     const cell = renderToStaticMarkup(
       <ObjectTableCell

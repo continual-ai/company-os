@@ -28,7 +28,16 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react"
 
 import type { PropertyDefinition } from "#/runtime/model/index.ts"
-import { type ObjectTableFilterValue } from "#/runtime/ui/model/collection-view.ts"
+import {
+  defaultFilterOperator,
+  decodeCollectionFilterValue,
+  filterInputType,
+  filterOperatorLabel,
+  filterOperatorsForProperty,
+  hasFilterInput,
+  readFilterValue,
+} from "#/runtime/ui/model/collection-filter.ts"
+import { type CollectionFilterValue } from "#/runtime/ui/model/collection-filter.ts"
 import {
   recordBatchFor,
   recordLabel,
@@ -39,15 +48,7 @@ import {
   objectTablePropertyColumns,
   type ObjectTableColumn,
 } from "#/runtime/ui/model/object-table/object-table-columns.ts"
-import {
-  defaultFilterOperator,
-  filterInputType,
-  filterOperatorLabel,
-  filterOperatorsForProperty,
-  hasFilterInput,
-  readFilterValue,
-  type ObjectTableInstance,
-} from "#/runtime/ui/model/object-table/object-table-config.ts"
+import { type ObjectTableInstance } from "#/runtime/ui/model/object-table/object-table-config.ts"
 import { ObjectTableProperty } from "#/runtime/ui/model/object-table/object-table-property.tsx"
 import { RecordSelect } from "#/runtime/ui/model/record-select.tsx"
 import { useModelRuntime } from "#/runtime/ui/model/runtime-context.tsx"
@@ -104,7 +105,7 @@ function applyFilter(
   column.setFilterValue({
     operator: defaultFilterOperator(property),
     values,
-  } satisfies ObjectTableFilterValue)
+  } satisfies CollectionFilterValue)
 }
 
 function InitialFilterValue({
@@ -121,6 +122,7 @@ function InitialFilterValue({
   const meta = objectTableColumnMeta(column)
   const property = meta?.property
   const [draft, setDraft] = useState("")
+  const [invalid, setInvalid] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -137,8 +139,17 @@ function InitialFilterValue({
   const addScalarFilter = () => {
     const value = draft.trim()
     if (value.length === 0) return
-    applyFilter(column, property, [value])
-    onComplete()
+    try {
+      decodeCollectionFilterValue(
+        property,
+        defaultFilterOperator(property),
+        value
+      )
+      applyFilter(column, property, [value])
+      onComplete()
+    } catch {
+      setInvalid(true)
+    }
   }
 
   return (
@@ -184,7 +195,11 @@ function InitialFilterValue({
             className="h-8 flex-1"
             placeholder="Enter value…"
             value={draft}
-            onChange={(event) => setDraft(event.target.value)}
+            aria-invalid={invalid}
+            onChange={(event) => {
+              setInvalid(false)
+              setDraft(event.target.value)
+            }}
           />
           <Button type="submit" size="sm" disabled={draft.trim().length === 0}>
             Add
@@ -306,7 +321,7 @@ function FilterOperator({
   filter,
 }: {
   column: ObjectTableColumn
-  filter: ObjectTableFilterValue
+  filter: CollectionFilterValue
 }) {
   const property = objectTableColumnMeta(column)?.property
   if (property === undefined) return null
@@ -336,7 +351,7 @@ function FilterOperator({
                   ...filter,
                   operator,
                   values: hasFilterInput(operator) ? filter.values : [],
-                } satisfies ObjectTableFilterValue)
+                } satisfies CollectionFilterValue)
               }}
             >
               <span className="flex-1">{filterOperatorLabel(operator)}</span>
@@ -369,10 +384,12 @@ function ScalarFilterEditor({
   property,
 }: {
   column: ObjectTableColumn
-  filter: ObjectTableFilterValue
+  filter: CollectionFilterValue
   property: PropertyDefinition
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
+  const [draft, setDraft] = useState(filter.values[0] ?? "")
+  const [invalid, setInvalid] = useState(false)
 
   useEffect(() => {
     inputRef.current?.focus()
@@ -386,12 +403,23 @@ function ScalarFilterEditor({
       type={filterInputType(property)}
       className="h-8"
       placeholder="Enter value…"
-      value={filter.values[0] ?? ""}
+      value={draft}
+      aria-invalid={invalid}
       onChange={(event) => {
-        column.setFilterValue({
-          ...filter,
-          values: [event.target.value],
-        } satisfies ObjectTableFilterValue)
+        const value = event.target.value
+        setDraft(value)
+        try {
+          if (value !== "")
+            decodeCollectionFilterValue(property, filter.operator, value)
+          setInvalid(false)
+          column.setFilterValue({
+            ...filter,
+            values: value === "" ? [] : [value],
+          } satisfies CollectionFilterValue)
+        } catch {
+          // Keep unfinished or invalid input in the editor, outside the active query.
+          setInvalid(true)
+        }
       }}
     />
   )
@@ -404,7 +432,7 @@ function OptionFilterEditor({
   table,
 }: {
   column: ObjectTableColumn
-  filter: ObjectTableFilterValue
+  filter: CollectionFilterValue
   options: ReadonlyArray<FilterOption>
   table: ObjectTableInstance
 }) {
@@ -433,7 +461,7 @@ function OptionFilterEditor({
                     values: selected
                       ? filter.values.filter((value) => value !== option.value)
                       : [...filter.values, option.value],
-                  } satisfies ObjectTableFilterValue)
+                  } satisfies CollectionFilterValue)
                 }}
               >
                 <span className="truncate">{option.label}</span>
@@ -457,7 +485,7 @@ function RecordFilterValue({
   typeId,
 }: {
   column: ObjectTableColumn
-  filter: ObjectTableFilterValue
+  filter: CollectionFilterValue
   typeId: string
 }) {
   const runtime = useModelRuntime()
@@ -494,7 +522,7 @@ function FilterValue({
   table,
 }: {
   column: ObjectTableColumn
-  filter: ObjectTableFilterValue
+  filter: CollectionFilterValue
   table: ObjectTableInstance
 }) {
   const property = objectTableColumnMeta(column)?.property
@@ -551,7 +579,7 @@ function ObjectTableFilterItem({
   table,
 }: {
   column: ObjectTableColumn
-  filter: ObjectTableFilterValue
+  filter: CollectionFilterValue
   table: ObjectTableInstance
 }) {
   const meta = objectTableColumnMeta(column)
@@ -562,7 +590,9 @@ function ObjectTableFilterItem({
       <div className="flex h-full items-center px-2 font-medium">
         <ObjectTableProperty label={meta.label} property={meta.property} />
       </div>
-      {meta.linkLabel ? (
+      {meta.field?.kind === "related" &&
+      !meta.field.related.count &&
+      meta.field.related.traversal.traversal.max !== 1 ? (
         <DropdownMenu>
           <DropdownMenuTrigger
             render={

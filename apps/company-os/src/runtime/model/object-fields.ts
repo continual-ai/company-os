@@ -93,3 +93,35 @@ export function requireObjectField(
     throw new Error(`Field '${id}' does not support ${use}.`)
   return field
 }
+
+/** Authored order comes first; unlisted fields retain model order for discovery. */
+export function orderObjectFields(
+  fields: ReadonlyArray<ObjectField>,
+  order: ReadonlyArray<string> = []
+): ReadonlyArray<ObjectField> {
+  const remaining = new Map(fields.map((field) => [field.id, field]))
+  const ordered: ObjectField[] = []
+  for (const id of order) {
+    const field = remaining.get(id)
+    if (field) {
+      ordered.push(field)
+      remaining.delete(id)
+    }
+  }
+  return [...ordered, ...remaining.values()]
+}
+
+/** Standard collections show stored properties and singular Links. */
+export function defaultObjectColumns(
+  object: ObjectType,
+  model: ModelCatalog
+): ReadonlyArray<string> {
+  return objectFields(object, model)
+    .filter(
+      (field) =>
+        field.kind === "property" ||
+        field.id === object.display.title ||
+        (field.kind === "link" && field.traversal.traversal.max === 1)
+    )
+    .map((field) => field.id)
+}

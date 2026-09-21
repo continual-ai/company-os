@@ -1,20 +1,20 @@
 import { expect, it } from "vitest"
 
 import { EngineeringModule } from "#/modules/engineering/model/index.ts"
-import { ProductModule } from "#/modules/product/model/index.ts"
+import { WorkModule } from "#/modules/work/model/index.ts"
 import { defineModel, describeModel } from "#/runtime/model/index.ts"
 import { PlatformModule } from "#/runtime/platform/model/index.ts"
 
 it("composes Notes with Engineering without installing Sales", () => {
   const model = defineModel({
     name: "Engineering",
-    modules: [PlatformModule, ProductModule, EngineeringModule],
+    modules: [PlatformModule, WorkModule, EngineeringModule],
   })
   const description = describeModel(model)
   expect(description.objects.map(({ id }) => id)).toEqual(
     expect.arrayContaining([
       "note",
-      "issue",
+      "task",
       "project",
       "connection",
       "githubRepository",
@@ -31,5 +31,5 @@ it("composes Notes with Engineering without installing Sales", () => {
       reverse: expect.objectContaining({ key: "notes" }),
     })
   )
-  expect(model.objects.issue.interfaces).toHaveProperty("noteSubject")
+  expect(model.objects.task.interfaces).toHaveProperty("noteSubject")
 })

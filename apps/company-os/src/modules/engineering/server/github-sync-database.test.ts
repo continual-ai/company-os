@@ -15,7 +15,7 @@ import {
 import { githubDiscovery } from "#/modules/engineering/server/github-discovery.ts"
 import { githubRepositorySync } from "#/modules/engineering/server/github-repository-sync.ts"
 import { EngineeringServer } from "#/modules/engineering/server/index.ts"
-import { Issue, ProductModule } from "#/modules/product/model/index.ts"
+import { Task, WorkModule } from "#/modules/work/model/index.ts"
 import { defineModel, RecordAlias, WebUrl } from "#/runtime/model/index.ts"
 import { Connection } from "#/runtime/platform/model/connection.ts"
 import { connectorAlias } from "#/runtime/platform/model/connector.ts"
@@ -32,7 +32,7 @@ import { testFoundation } from "#/runtime/testing/foundation.ts"
 
 const model = defineModel({
   name: "GitHub sync",
-  modules: [PlatformModule, ProductModule, EngineeringModule],
+  modules: [PlatformModule, WorkModule, EngineeringModule],
 })
 const fixture = testFoundation(model, { servers: [EngineeringServer] })
 const noop = () => {}
@@ -270,11 +270,11 @@ fixture.test(
         id: RecordAlias("github:issue:I_test"),
       })
       const internal = yield* database
-        .repository(Issue)
+        .repository(Task)
         .create({ title: "Internal priority" })
       yield* issues.update({
         id: imported.id,
-        links: { productIssues: [internal.id] },
+        links: { tasks: [internal.id] },
       })
       expect((yield* issues.list({})).items).toHaveLength(1)
       expect(
@@ -316,7 +316,7 @@ fixture.test(
       ).toBe(true)
       const updated = yield* issues.get({ id: imported.id, expand: true })
       expect(updated.state).toBe("closed")
-      expect(updated.links.productIssues).toMatchObject({
+      expect(updated.links.tasks).toMatchObject({
         items: [{ id: internal.id }],
         totalSize: 1,
         totalSizeExact: true,

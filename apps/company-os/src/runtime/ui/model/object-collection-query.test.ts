@@ -8,8 +8,8 @@ import {
   Person,
   fixtureModel,
 } from "#/runtime/testing/fixture-model.ts"
+import { defaultFilterOperator } from "#/runtime/ui/model/collection-filter.ts"
 import { objectListRequest } from "#/runtime/ui/model/object-collection-query.ts"
-import { defaultFilterOperator } from "#/runtime/ui/model/object-table/object-table-config.ts"
 
 describe("object collection queries", () => {
   it("projects table filters and sorting into the portable list contract", () => {
@@ -295,7 +295,7 @@ it("keeps indexed text search separate from column filters and list sorting", ()
     undefined,
     undefined,
     fixtureModel,
-    {},
+    [],
     "  quasar  "
   )
   expect(request).toMatchObject({
@@ -311,8 +311,39 @@ it("keeps indexed text search separate from column filters and list sorting", ()
       undefined,
       undefined,
       fixtureModel,
-      {},
+      [],
       "  "
     )
   ).not.toHaveProperty("query")
+})
+
+it("allows unfinished live filters without weakening authored validation", () => {
+  expect(
+    objectListRequest(
+      Account,
+      [{ id: "name", value: { operator: "contains", values: [] } }],
+      []
+    )
+  ).not.toHaveProperty("filter")
+  expect(() =>
+    objectListRequest(
+      Account,
+      [{ id: "name", value: { operator: "empty", values: [] } }],
+      []
+    )
+  ).toThrow("not supported")
+  expect(() =>
+    objectListRequest(
+      Account,
+      [{ id: "stage", value: { operator: "equals", values: ["unknown"] } }],
+      []
+    )
+  ).toThrow()
+  expect(
+    objectListRequest(
+      Account,
+      [{ id: "name", value: { operator: "endsWith", values: ["labs"] } }],
+      []
+    ).filter
+  ).toEqual({ field: "name", operator: "endsWith", value: "labs" })
 })

@@ -45,7 +45,7 @@ application.test(
         baseUrl: "http://company.test",
         fetch,
       })
-      const id = controllerAlias("issue-greeting")
+      const id = controllerAlias("contact-summary")
       expect(
         yield* anonymous.controller.list({}).pipe(Effect.flip)
       ).toMatchObject({ status: "UNAUTHENTICATED" })
@@ -56,7 +56,7 @@ application.test(
         yield* anonymous.controller.reconcile({ id }).pipe(Effect.flip)
       ).toMatchObject({ status: "UNAUTHENTICATED" })
       const listed = yield* client.controller.list({
-        filter: { field: "targetObjectType", operator: "eq", value: "issue" },
+        filter: { field: "targetObjectType", operator: "eq", value: "contact" },
         expand: { module: true },
       })
       expect(listed.items).toHaveLength(1)
@@ -64,12 +64,12 @@ application.test(
       expect(canonicalId).toMatch(/^controller_[0-9a-z]{26}$/)
       expect(listed.items[0]).toMatchObject({
         aliases: [id],
-        definitionId: "issue-greeting",
+        definitionId: "contact-summary",
         scope: "record",
-        links: { module: { moduleId: "product" } },
+        links: { module: { moduleId: "crm" } },
       })
       expect(yield* client.controller.get({ id })).toMatchObject({
-        name: "Issue greeting",
+        name: "Contact summary",
       })
       expect(
         yield* client.controller.status({ id, key: "unseen" })
@@ -91,19 +91,24 @@ application.test(
         paused: true,
       })
       yield* client.controller.update({ id, paused: false })
-      const issue = yield* client.issue.create({
-        title: "Manual reconciliation",
-        aliases: [RecordAlias("external:issue:manual")],
+      const contact = yield* client.contact.create({
+        name: "Manual reconciliation",
+        aliases: [RecordAlias("external:contact:manual")],
       })
-      expect(yield* client.controller.reconcile({ id, key: issue.id })).toEqual(
-        { accepted: true }
-      )
       expect(
-        yield* client.controller.reconcile({ id, key: "external:issue:manual" })
+        yield* client.controller.reconcile({ id, key: contact.id })
+      ).toEqual({
+        accepted: true,
+      })
+      expect(
+        yield* client.controller.reconcile({
+          id,
+          key: "external:contact:manual",
+        })
       ).toEqual({ accepted: true })
       expect(
-        yield* client.controller.status({ id, key: "external:issue:manual" })
-      ).toEqual(yield* client.controller.status({ id, key: issue.id }))
+        yield* client.controller.status({ id, key: "external:contact:manual" })
+      ).toEqual(yield* client.controller.status({ id, key: contact.id }))
       expect(yield* client.controller.reconcile({ id })).toEqual({
         accepted: true,
       })
@@ -112,8 +117,8 @@ application.test(
         type: "controller.reconciliationRequested",
       })
       expect(requests.items.map((event) => event.data)).toEqual([
-        { key: issue.id },
-        { key: issue.id },
+        { key: contact.id },
+        { key: contact.id },
         { key: null },
       ])
       expect(
@@ -122,8 +127,8 @@ application.test(
         )
       ).toBe(true)
       expect(requests.items[0]!.subjects).toContainEqual({
-        objectType: "issue",
-        id: issue.id,
+        objectType: "contact",
+        id: contact.id,
       })
 
       // Generated public contracts expose reads and custom operations, only operator settings, never definition writes or legacy globals.
@@ -131,20 +136,20 @@ application.test(
         ["POST", "/api/v1/controllers", {}],
         [
           "POST",
-          "/api/v1/moduleSettings/system:module:product/controllers:link",
+          "/api/v1/moduleSettings/system:module:crm/controllers:link",
           { ids: [id] },
         ],
         [
           "POST",
-          "/api/v1/moduleSettings/system:module:product/controllers:unlink",
+          "/api/v1/moduleSettings/system:module:crm/controllers:unlink",
           { ids: [id] },
         ],
         ["DELETE", `/api/v1/controllers/${id}`, {}],
-        ["POST", "/api/v1/:controllerStatus", { objectType: "issue" }],
+        ["POST", "/api/v1/:controllerStatus", { objectType: "contact" }],
         [
           "POST",
           "/api/v1/:reconcileController",
-          { controllerId: "issue-greeting" },
+          { controllerId: "contact-summary" },
         ],
       ] as const) {
         const response = yield* http.handle(
@@ -171,7 +176,7 @@ application.test(
         })
       )
       expect(yield* client.controller.get({ id })).toMatchObject({
-        name: "Issue greeting",
+        name: "Contact summary",
         paused: true,
       })
       const mcp = yield* McpTransport
@@ -211,13 +216,17 @@ application.test(
         expect(body).not.toContain('"isError":true')
         expect(body).toContain('"result"')
       }
-      for (const moduleId of [
-        "customerFeedback",
-        "productDemand",
-        "engineering",
-        "product",
-      ])
-        yield* client.moduleSetting.setEnabled({ moduleId, enabled: false })
+      yield* client.moduleSetting.setEnabled({
+        moduleId: "crm",
+        enabled: false,
+        disableDependents: [
+          "sales",
+          "marketing",
+          "service",
+          "feedback",
+          "workDemand",
+        ],
+      })
       expect(yield* client.controller.status({ id })).toMatchObject({
         enabled: false,
       })
@@ -229,7 +238,6 @@ application.test(
         "contact-summary",
         "github-discovery",
         "github-repository-sync",
-        "issue-greeting",
       ])
       expect(
         yield* client.controller.reconcile({ id }).pipe(Effect.flip)
@@ -249,23 +257,23 @@ application.test(
         headers: { "x-test-user": "owner" },
       })
       const storage = yield* ControllerStorage
-      const issues = yield* Effect.forEach([1, 2, 3, 4], (index) =>
-        client.issue.create({ title: `Controlled ${index}` })
+      const contacts = yield* Effect.forEach([1, 2, 3, 4], (index) =>
+        client.contact.create({ name: `Controlled ${index}` })
       )
-      yield* Effect.forEach(issues, (issue) =>
-        storage.pending("issue-greeting", issue.id)
+      yield* Effect.forEach(contacts, (contact) =>
+        storage.pending("contact-summary", contact.id)
       )
-      const issue = issues[0]!
-      yield* storage.started("issue-greeting", issue.id)
-      yield* storage.failed("issue-greeting", issue.id, "Try again")
-      yield* storage.saveSession("issue-greeting", issue.id, {
+      const contact = contacts[0]!
+      yield* storage.started("contact-summary", contact.id)
+      yield* storage.failed("contact-summary", contact.id, "Try again")
+      yield* storage.saveSession("contact-summary", contact.id, {
         id: "test-session",
         url: "https://agent.example.test/sessions/test",
       })
       const page = yield* client.controllerInstance.list({
         filter: {
           link: "record",
-          some: { field: "id", operator: "eq", value: issue.id },
+          some: { field: "id", operator: "eq", value: contact.id },
         },
         expand: { controller: true, record: true },
       })
@@ -278,20 +286,20 @@ application.test(
         lastError: "Try again",
         agentSessionId: "test-session",
         links: {
-          controller: { definitionId: "issue-greeting" },
-          record: { id: issue.id, title: issue.title },
+          controller: { definitionId: "contact-summary" },
+          record: { id: contact.id, name: contact.name },
         },
       })
       const controller = yield* client.controller.get({
-        id: controllerAlias("issue-greeting"),
+        id: controllerAlias("contact-summary"),
         expand: { instances: true },
       })
       expect(controller.links.instances.totalSize).toBe(4)
       expect(controller.links.instances.items).toHaveLength(3)
       const all = yield* client.controller.instances.list({ id: controller.id })
       expect(all.items).toHaveLength(4)
-      const contactView = yield* client.issue.get({
-        id: issue.id,
+      const contactView = yield* client.contact.get({
+        id: contact.id,
         expand: { controllerInstances: true },
       })
       expect(contactView.links.controllerInstances.items[0]?.id).toBe(
@@ -303,7 +311,7 @@ application.test(
       const requests = yield* (yield* EventJournal).list({
         type: "controller.reconciliationRequested",
       })
-      expect(requests.items.at(-1)?.data).toEqual({ key: issue.id })
+      expect(requests.items.at(-1)?.data).toEqual({ key: contact.id })
       for (const method of ["PATCH", "DELETE"])
         expect(
           (yield* http.handle(
@@ -344,12 +352,12 @@ application.test(
       const body = yield* Effect.promise(() => response.text())
       expect(body).not.toContain('"isError":true')
       expect(body).toContain("test-session")
-      yield* client.issue.delete({ id: issue.id })
+      yield* client.contact.delete({ id: contact.id })
       expect(
         yield* client.controllerInstance
           .get({ id: instance.id })
           .pipe(Effect.flip)
       ).toMatchObject({ status: "NOT_FOUND" })
-      expect(yield* storage.pending("issue-greeting", issue.id)).toBe(false)
+      expect(yield* storage.pending("contact-summary", contact.id)).toBe(false)
     }).pipe(Effect.provide(ControllerStorage.layer))
 )

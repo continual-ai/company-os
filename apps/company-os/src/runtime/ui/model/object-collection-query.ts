@@ -3,6 +3,7 @@ import {
   modelObjectLinkTraversals,
   type ModelCatalog,
   type ListRequest,
+  type ObjectFilter,
   type PropertyDefinition,
 } from "#/runtime/model/index.ts"
 import {
@@ -11,114 +12,48 @@ import {
 } from "#/runtime/model/object-fields.ts"
 import { queryProperty } from "#/runtime/model/query-fields.ts"
 import { type CollectionDateWindow } from "#/runtime/ui/model/collection-dates.ts"
+import {
+  filterOperator,
+  decodeCollectionFilterValue,
+  filterOperatorsForProperty,
+  type CollectionFilterValue,
+} from "#/runtime/ui/model/collection-filter.ts"
 import type {
   ObjectCollectionFilter,
   ObjectCollectionSort,
-  ObjectTableFilterValue,
 } from "#/runtime/ui/model/collection-view.ts"
-import { objectTablePropertySchema } from "#/runtime/ui/model/object-table/object-table-cell-types.ts"
-import { readFilterValue } from "#/runtime/ui/model/object-table/object-table-config.ts"
-
-type RuntimeFilter =
-  | { readonly link: string; readonly some: RuntimeFilter }
-  | { readonly link: string; readonly none: RuntimeFilter }
-  | { readonly link: string; readonly every: RuntimeFilter }
-  | { readonly link: string; readonly contains: string }
-  | { readonly link: string; readonly isEmpty: true }
-  | {
-      readonly field: string
-      readonly operator:
-        | "contains"
-        | "eq"
-        | "gt"
-        | "gte"
-        | "in"
-        | "isNull"
-        | "lt"
-        | "lte"
-        | "startsWith"
-      readonly value?: unknown
-    }
-  | { readonly and: ReadonlyArray<RuntimeFilter> }
-  | { readonly or: ReadonlyArray<RuntimeFilter> }
-  | { readonly not: RuntimeFilter }
-
-interface CollectionSort {
-  readonly aggregate?: "count" | "min" | "max"
-  readonly direction: "asc" | "desc"
-  readonly field: string
-  readonly nulls: "last"
-}
-
-interface CollectionListRequest {
-  filter?: RuntimeFilter
-  pageSize: number
-  pageToken?: ListRequest["pageToken"]
-  sort?: ReadonlyArray<CollectionSort>
-}
-
-function filterScalar(
-  property: PropertyDefinition,
-  value: string
-): boolean | number | string {
-  const resolved = objectTablePropertySchema(property)
-  if (resolved.kind === "boolean") return value === "true"
-  if (resolved.kind === "number") return Number(value)
-  return value
-}
-
-function equalityFilter(
-  field: string,
-  property: PropertyDefinition,
-  values: ReadonlyArray<string>
-): RuntimeFilter {
-  const parsed = values.map((value) => filterScalar(property, value))
-  return parsed.length === 1
-    ? { field, operator: "eq", value: parsed[0]! }
-    : { field, operator: "in", value: parsed }
-}
 
 function propertyFilter(
   field: string,
   property: PropertyDefinition,
-  filter: ObjectTableFilterValue
-): RuntimeFilter | undefined {
-  if (filter.operator === "empty" || filter.operator === "notEmpty") {
-    if (!property.nullable) return undefined
-    const isNull: RuntimeFilter = { field, operator: "isNull" }
-    return filter.operator === "empty" ? isNull : { not: isNull }
+  filter: CollectionFilterValue
+): ObjectFilter | undefined {
+  if (!filterOperatorsForProperty(property).includes(filter.operator))
+    throw new Error(
+      `Operator '${filter.operator}' is not supported for '${field}'.`
+    )
+  const operator = filterOperator(filter.operator).operator
+  let expression: ObjectFilter
+  if (operator === "isNull") {
+    if (filter.values.length > 0)
+      throw new Error(`Filter '${field}' does not accept values.`)
+    expression = { field, operator }
+  } else {
+    // Incomplete input belongs only to the live filter controls; authored views reject it.
+    if (filter.values.length === 0) return undefined
+    if (operator !== "eq" && filter.values.length !== 1)
+      throw new Error(`Filter '${field}' requires exactly one value.`)
+    const values = filter.values.map((value) =>
+      decodeCollectionFilterValue(property, filter.operator, value)
+    )
+    expression =
+      operator === "eq" && values.length > 1
+        ? { field, operator: "in", value: values }
+        : { field, operator, value: values[0]! }
   }
-
-  if (filter.values.length === 0) return undefined
-  const equality = equalityFilter(field, property, filter.values)
-  if (filter.operator === "equals") return equality
-  if (filter.operator === "notEquals") return { not: equality }
-
-  const value = filterScalar(property, filter.values[0]!)
-  switch (filter.operator) {
-    case "contains":
-      return { field, operator: "contains", value: String(value) }
-    case "doesNotContain":
-      return {
-        not: { field, operator: "contains", value: String(value) },
-      }
-    case "startsWith":
-      return { field, operator: "startsWith", value: String(value) }
-    case "greaterThan":
-    case "after":
-      return { field, operator: "gt", value }
-    case "atLeast":
-    case "onOrAfter":
-      return { field, operator: "gte", value }
-    case "lessThan":
-    case "before":
-      return { field, operator: "lt", value }
-    case "atMost":
-    case "onOrBefore":
-      return { field, operator: "lte", value }
-    default:
-      return undefined
-  }
+  return ["notEquals", "doesNotContain", "notEmpty"].includes(filter.operator)
+    ? { not: expression }
+    : expression
 }
 
 const boundary = (field: PropertyDefinition, value: string) =>
@@ -133,15 +68,24 @@ export function objectListRequest(
   pageToken?: ListRequest["pageToken"],
   window?: CollectionDateWindow,
   model?: ModelCatalog,
-  visibility?: Readonly<Record<string, boolean>>,
+  columns?: ReadonlyArray<string>,
   query?: string
 ): ListRequest {
   const fields = objectFields(object, model)
   const filters = columnFilters.flatMap((columnFilter) => {
     const field = requireObjectField(fields, columnFilter.id, "filter")
+    if (
+      columnFilter.value.quantifier &&
+      !(
+        field.kind === "related" &&
+        !field.related.count &&
+        field.related.traversal.traversal.max !== 1
+      )
+    )
+      throw new Error(`Filter '${field.id}' does not support a quantifier.`)
     const related = field.kind === "related" ? field.related : undefined
     if (related) {
-      const value = readFilterValue(columnFilter.value)
+      const value = columnFilter.value
       const filter = propertyFilter(
         related.count || related.traversal.traversal.max === 1
           ? related.id
@@ -161,27 +105,25 @@ export function objectListRequest(
                     : value.quantifier === "every"
                       ? { every: filter }
                       : { some: filter }),
-                } satisfies RuntimeFilter),
+                } satisfies ObjectFilter),
           ]
     }
     if (field.kind === "link") {
-      const { operator, values } = readFilterValue(columnFilter.value)
+      const { operator, values } = columnFilter.value
       if (operator === "empty")
-        return [
-          { link: columnFilter.id, isEmpty: true } satisfies RuntimeFilter,
-        ]
+        return [{ link: columnFilter.id, isEmpty: true } satisfies ObjectFilter]
       if (operator === "notEmpty")
         return [
           {
             not: { link: columnFilter.id, isEmpty: true },
-          } satisfies RuntimeFilter,
+          } satisfies ObjectFilter,
         ]
-      if (
-        values.length === 0 ||
-        (operator !== "equals" && operator !== "notEquals")
-      )
-        return []
-      const matches: RuntimeFilter = {
+      if (operator !== "equals" && operator !== "notEquals")
+        throw new Error(
+          `Operator '${operator}' is not supported for '${field.id}'.`
+        )
+      if (values.length === 0) return []
+      const matches: ObjectFilter = {
         or: values.map((contains) => ({ link: columnFilter.id, contains })),
       }
       return [operator === "notEquals" ? { not: matches } : matches]
@@ -189,7 +131,7 @@ export function objectListRequest(
     const filter = propertyFilter(
       columnFilter.id,
       field.property,
-      readFilterValue(columnFilter.value)
+      columnFilter.value
     )
     return filter === undefined ? [] : [filter]
   })
@@ -200,7 +142,7 @@ export function objectListRequest(
         ? undefined
         : queryProperty(object, window.endField)
     if (start?.kind === "string") {
-      const inWindow: RuntimeFilter = {
+      const inWindow: ObjectFilter = {
         and: [
           {
             field: window.startField,
@@ -214,7 +156,7 @@ export function objectListRequest(
           },
         ],
       }
-      const alternatives: RuntimeFilter[] = [inWindow]
+      const alternatives: ObjectFilter[] = [inWindow]
       if (start.nullable)
         alternatives.push({ field: window.startField, operator: "isNull" })
       if (end !== undefined && window.endField !== undefined)
@@ -235,47 +177,42 @@ export function objectListRequest(
       filters.push({ or: alternatives })
     }
   }
-  const sort = sorting.map((columnSort): CollectionSort => {
-    const field = requireObjectField(fields, columnSort.id, "sort")
-    const count = field.kind === "related" && field.related.count
-    return {
-      direction: columnSort.desc ? "desc" : "asc",
-      field: count ? field.related.traversal.traversal.key : field.id,
-      nulls: "last",
-      ...(count ? { aggregate: "count" } : {}),
+  const sort = sorting.map(
+    (columnSort): NonNullable<ListRequest["sort"]>[number] => {
+      const field = requireObjectField(fields, columnSort.id, "sort")
+      const count = field.kind === "related" && field.related.count
+      return {
+        direction: columnSort.desc ? "desc" : "asc",
+        field: count ? field.related.traversal.traversal.key : field.id,
+        nulls: "last",
+        ...(count ? { aggregate: "count" } : {}),
+      }
     }
-  })
+  )
 
-  const request: CollectionListRequest & {
-    query?: string
-    expand?: Readonly<Record<string, true>>
-  } = { pageSize: 100 }
-  if (model && visibility !== undefined) {
-    const configured = Object.keys(visibility).length > 0
-    request.expand = Object.fromEntries(
+  let expand: ListRequest["expand"]
+  if (model && columns !== undefined) {
+    expand = Object.fromEntries(
       modelObjectLinkTraversals(model, object)
         .filter(({ traversal }) =>
-          configured
-            ? Object.entries(visibility).some(
-                ([key, visible]) =>
-                  visible &&
-                  (key === traversal.key ||
-                    (key.startsWith(`${traversal.key}.`) &&
-                      key !== `${traversal.key}.$count`))
-              )
-            : traversal.max === 1
+          columns.some(
+            (key) =>
+              key === traversal.key ||
+              (key.startsWith(`${traversal.key}.`) &&
+                key !== `${traversal.key}.$count`)
+          )
         )
         .map(({ traversal }) => [traversal.key, true])
     )
   }
-  if (query?.trim()) request.query = query.trim()
-  if (filters.length > 0) {
-    request.filter = filters.length === 1 ? filters[0]! : { and: filters }
+  return {
+    pageSize: 100,
+    ...(expand === undefined ? {} : { expand }),
+    ...(query?.trim() ? { query: query.trim() } : {}),
+    ...(filters.length > 0
+      ? { filter: filters.length === 1 ? filters[0]! : { and: filters } }
+      : {}),
+    ...(pageToken === undefined ? {} : { pageToken }),
+    ...(sort.length > 0 ? { sort } : {}),
   }
-  if (pageToken !== undefined) request.pageToken = pageToken
-  if (sort.length > 0) request.sort = sort
-  // SAFETY: filters and sorts are constructed only from fields and operators
-  // supported by the closed object's portable ListRequest contract.
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  return request as ListRequest
 }

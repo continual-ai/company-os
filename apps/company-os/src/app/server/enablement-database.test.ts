@@ -21,7 +21,7 @@ import { testFoundation } from "#/runtime/testing/foundation.ts"
 const withoutFeedback = enableModules(Model, [
   "platform",
   "crm",
-  "product",
+  "work",
   "sales",
   "marketing",
   "engineering",
@@ -31,8 +31,8 @@ const fixture = testFoundation(Model, {
   servers: [SalesServer],
 })
 const implementation = operationsFor(Model)
-const ticketIssues = modelObjectLinkTraversals(Model, Ticket).find(
-  (traversal) => traversal.traversal.key === "issues"
+const ticketTasks = modelObjectLinkTraversals(Model, Ticket).find(
+  (traversal) => traversal.traversal.key === "tasks"
 )!
 
 fixture.test(
@@ -47,25 +47,25 @@ fixture.test(
         description: "Customer export is missing files.",
         priority: "high",
       })
-      const issue = yield* services.issue.create({
+      const task = yield* services.task.create({
         title: "Fix export",
         description: "Attachments are skipped.",
         priority: "high",
       })
-      yield* links.link(ticketIssues, { id: ticket.id, target: issue.id })
+      yield* links.link(ticketTasks, { id: ticket.id, target: task.id })
       const checkpoint = yield* journal.list({ cursor: "now" })
 
-      yield* services.issue.delete({ id: issue.id })
+      yield* services.task.delete({ id: task.id })
 
       const types = (yield* journal.list({
         cursor: checkpoint.nextCursor,
       })).items
         .map((event) => event.type)
         .sort()
-      expect(types).toEqual(["issue.deleted", "ticketIssues.unlinked"])
-      expect(
-        (yield* links.list(ticketIssues, { id: ticket.id })).items
-      ).toEqual([])
+      expect(types).toEqual(["task.deleted", "ticketTasks.unlinked"])
+      expect((yield* links.list(ticketTasks, { id: ticket.id })).items).toEqual(
+        []
+      )
     })
 )
 
@@ -74,13 +74,13 @@ fixture.test("exposes only enabled operations over HTTP", () =>
     const { api } = createApplicationHttpApi(withoutFeedback)
     const paths = Object.keys(OpenApi.fromApi(api).paths)
     expect(paths.some((path) => path.startsWith("/api/v1/tickets"))).toBe(true)
-    expect(paths.some((path) => path.includes("/tickets/{id}/issues"))).toBe(
+    expect(paths.some((path) => path.includes("/tickets/{id}/tasks"))).toBe(
       false
     )
     const complete = Object.keys(
       OpenApi.fromApi(createApplicationHttpApi(Model).api).paths
     )
-    expect(complete.some((path) => path.includes("/tickets/{id}/issues"))).toBe(
+    expect(complete.some((path) => path.includes("/tickets/{id}/tasks"))).toBe(
       true
     )
     yield* Effect.void

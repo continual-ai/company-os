@@ -1,7 +1,9 @@
+import { Model } from "#/app.model.ts"
+import { Opportunity } from "#/modules/sales/model/opportunity.ts"
 import { defineCollectionView } from "#/runtime/ui/module.ts"
 
 export const opportunityViews = [
-  defineCollectionView("all", "All opportunities", {
+  defineCollectionView(Model, Opportunity, "all", "All opportunities", {
     columns: [
       "name",
       "accounts",
@@ -13,7 +15,7 @@ export const opportunityViews = [
     ],
     sorting: [{ id: "expectedCloseDate", desc: false }],
   }),
-  defineCollectionView("open", "Open opportunities", {
+  defineCollectionView(Model, Opportunity, "open", "Open opportunities", {
     columns: [
       "name",
       "accounts",
@@ -34,7 +36,7 @@ export const opportunityViews = [
     ],
     sorting: [{ id: "expectedCloseDate", desc: false }],
   }),
-  defineCollectionView("won", "Won", {
+  defineCollectionView(Model, Opportunity, "won", "Won", {
     columns: [
       "name",
       "accounts",
@@ -46,12 +48,18 @@ export const opportunityViews = [
     filters: [{ id: "stage", value: { operator: "equals", values: ["won"] } }],
     sorting: [{ id: "expectedCloseDate", desc: true }],
   }),
-  defineCollectionView("pipeline", "Pipeline", {
+  defineCollectionView(Model, Opportunity, "pipeline", "Pipeline", {
     layout: { type: "kanban", groupBy: "stage" },
     columns: ["name", "amount", "healthScore", "expectedCloseDate"],
   }),
-  defineCollectionView("closing-calendar", "Closing calendar", {
-    layout: { type: "calendar", start: "expectedCloseDate" },
-    columns: ["name", "stage", "amount"],
-  }),
+  defineCollectionView(
+    Model,
+    Opportunity,
+    "closing-calendar",
+    "Closing calendar",
+    {
+      layout: { type: "calendar", start: "expectedCloseDate" },
+      columns: ["name", "stage", "amount"],
+    }
+  ),
 ] as const

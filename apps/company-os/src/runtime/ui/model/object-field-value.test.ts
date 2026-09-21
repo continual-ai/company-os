@@ -29,20 +29,31 @@ it("reads link previews and expansions without flattening or colliding with reco
     }
     expect(
       objectFieldValue(requireObjectField(fields, "accounts.$count"), record)
-    ).toBe(12)
+    ).toEqual({ kind: "count", totalSize: 12, totalSizeExact: true })
     expect(
       objectFieldValue(requireObjectField(fields, "accounts"), record)
-    ).toEqual([account.id])
+    ).toEqual({
+      kind: "link",
+      ids: [account.id],
+      totalSize: 12,
+      totalSizeExact: true,
+    })
     expect(
       objectFieldValue(
         requireObjectField(fields, "accounts.name"),
         record,
         () => ({ object: Account, record: account })
       )
-    ).toEqual(["Acme", "+11 more"])
+    ).toEqual({
+      kind: "values",
+      values: ["Acme"],
+      loadedSize: 1,
+      totalSize: 12,
+      totalSizeExact: true,
+    })
     expect(
       objectFieldValue(requireObjectField(fields, "metadata"), record)
-    ).toBe(record.metadata)
+    ).toEqual({ kind: "scalar", value: record.metadata })
     expect(record.accountsTotalSize).toBe(999)
   }
 })

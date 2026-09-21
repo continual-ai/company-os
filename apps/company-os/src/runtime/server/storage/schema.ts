@@ -8,6 +8,7 @@ import type {
   RecordId,
   RecordIdOf,
 } from "#/runtime/model/index.ts"
+import { acyclicLinkDdl } from "#/runtime/server/storage/acyclic-links.ts"
 import {
   foreignKeys,
   linkStorage,
@@ -225,6 +226,18 @@ export function makePostgresSchema<const M extends ModelCatalog>(
     ),
   ]
   const constraints: string[] = []
+  const acyclicLinks = Object.values(model.links).filter((link) => link.acyclic)
+  if (acyclicLinks.length > 0) {
+    const guards = defineTable(
+      claim("link_graph_guards"),
+      {
+        linkId: { type: "text" },
+        revision: { type: "bigint", default: "0" },
+      },
+      { constraints: ['primary key ("link_id")'] }
+    )
+    ddl.push(...guards.ddl(documentation))
+  }
   const referenceFields = (typeId: string): Record<string, ColumnDefinition> =>
     Object.fromEntries(
       foreignKeys(model, typeId).map(({ storage, link }) => [
@@ -382,6 +395,14 @@ export function makePostgresSchema<const M extends ModelCatalog>(
       `create index ${q(`${table.name}_reverse_id_idx`)} on ${q(table.name)} ("reverse_id", "forward_id")`
     )
   }
+  for (const link of acyclicLinks)
+    constraints.push(
+      ...acyclicLinkDdl(
+        link,
+        tableFor(link.forward.from.typeId),
+        linkTables[link.id]!.name
+      )
+    )
   // The closed model supplies every table and its exact physical row type.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   return {

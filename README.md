@@ -57,7 +57,7 @@ Start with one process you want to improve. For example:
 > Adapt Company OS to our support process. Set response deadlines based on ticket priority,
 > flag overdue tickets, and show the engineering work blocking each resolution.
 
-Try it, refine it, and expand from there. Shared CRM, sales, marketing, service, product, engineering, and hiring
+Try it, refine it, and expand from there. Shared CRM, sales, marketing, service, work, engineering, and hiring
 modules give you a starting point. Every model, workflow, and screen is yours to change.
 
 ## Put your agents to work
@@ -71,7 +71,7 @@ With the demo data, try:
 > Find Northstar Robotics' open support tickets. Check the linked engineering issues and
 > customer replies, then add a note summarizing what is blocking each ticket.
 
-The notes appear on the tickets. Ask the agent to **create an issue linked to the affected
+The notes appear on the tickets. Ask the agent to **create a task linked to the affected
 tickets and opportunities**. Record creation and link changes commit together.
 
 Company OS provides the data and operations; your chosen agent runtime handles reasoning,
@@ -90,7 +90,7 @@ Sync starts automatically when you save the token. Repository discovery repeats 
 All discovered repositories appear in **Engineering → GitHub repositories** and automatically import
 issues and pull requests, including closed and merged work, then check for changes every five minutes.
 Imports resume page by page; a daily full scan repairs missed changes. GitHub fields are refreshed
-without replacing internal project and product-issue links. Review and check results show
+without replacing internal project and task links. Review and check results show
 **Not fetched** until a future integration imports that evidence.
 
 Each connection and repository exposes its controller activity, including **Run now** for a manual

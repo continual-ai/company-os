@@ -1,17 +1,18 @@
-import type { Application } from "#/modules/hiring/model/application.ts"
+import { Model } from "#/app.model.ts"
+import { Application } from "#/modules/hiring/model/application.ts"
 import { defineCollectionView, type ObjectUi } from "#/runtime/ui/module.ts"
 
 export const applicationUi = {
   collection: {
     views: [
-      defineCollectionView("all", "All applications", {
+      defineCollectionView(Model, Application, "all", "All applications", {
         columns: ["candidate", "job", "stage", "source", "rating"],
       }),
-      defineCollectionView("pipeline", "Pipeline", {
+      defineCollectionView(Model, Application, "pipeline", "Pipeline", {
         layout: { type: "kanban", groupBy: "stage" },
         columns: ["candidate", "job", "source", "rating"],
       }),
-      defineCollectionView("active", "Active", {
+      defineCollectionView(Model, Application, "active", "Active", {
         columns: ["candidate", "job", "stage", "source", "rating"],
         filters: [
           {

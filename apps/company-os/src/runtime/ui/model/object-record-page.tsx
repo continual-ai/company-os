@@ -280,10 +280,9 @@ export function ObjectRecordPage({
                   </PageSectionHeader>
                   <div className="text-sm leading-relaxed whitespace-pre-wrap">
                     {objectPropertyValue(
-                      runtime,
                       modelObjectProperty(object, id),
                       record[id],
-                      state.references
+                      (referenceId) => state.references.get(referenceId)
                     )}
                   </div>
                 </section>

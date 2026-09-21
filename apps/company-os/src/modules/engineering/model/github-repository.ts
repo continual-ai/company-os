@@ -1,4 +1,4 @@
-import { Project } from "#/modules/product/model/project.ts"
+import { Project } from "#/modules/work/model/project.ts"
 import { User } from "#/runtime/access/model/index.ts"
 import { defineLink, defineObject, schema } from "#/runtime/model/index.ts"
 import { Connection } from "#/runtime/platform/model/connection.ts"

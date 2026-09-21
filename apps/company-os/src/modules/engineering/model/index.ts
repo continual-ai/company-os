@@ -19,9 +19,9 @@ import {
 } from "#/modules/engineering/model/github-sync.ts"
 import { GitHubIssuePullRequests } from "#/modules/engineering/model/links/github-issue-pull-requests.ts"
 import {
-  IssueGitHubIssues,
-  IssueGitHubPullRequests,
-} from "#/modules/engineering/model/links/product-issues.ts"
+  TaskGitHubIssues,
+  TaskGitHubPullRequests,
+} from "#/modules/engineering/model/links/work-tasks.ts"
 import { defineModule } from "#/runtime/model/index.ts"
 
 export const EngineeringModule = defineModule({
@@ -41,8 +41,8 @@ export const EngineeringModule = defineModule({
     GitHubIssueRepository,
     GitHubPullRequestRepository,
     GitHubIssuePullRequests,
-    IssueGitHubIssues,
-    IssueGitHubPullRequests,
+    TaskGitHubIssues,
+    TaskGitHubPullRequests,
   ],
   objects: [GitHubRepository, GitHubPullRequest, GitHubIssue],
   connectors: [GitHub],

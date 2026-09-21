@@ -13,6 +13,7 @@ import {
   formErrorFromCause,
   formErrorMessages,
 } from "#/runtime/ui/forms/form-errors.ts"
+import { readFilterValue } from "#/runtime/ui/model/collection-filter.ts"
 import { useInfiniteCollectionPages } from "#/runtime/ui/model/collection-pages.tsx"
 import { CollectionQueryToolbar } from "#/runtime/ui/model/collection-query-toolbar.tsx"
 import type { ObjectCollectionFilter } from "#/runtime/ui/model/collection-view.ts"
@@ -23,7 +24,6 @@ import {
 import { objectListRequest } from "#/runtime/ui/model/object-collection-query.ts"
 import { ObjectRecordDialog } from "#/runtime/ui/model/object-record-dialog.tsx"
 import { ObjectRecordSummary } from "#/runtime/ui/model/object-record-summary.tsx"
-import { readFilterValue } from "#/runtime/ui/model/object-table/object-table-config.ts"
 import { RecordSelect } from "#/runtime/ui/model/record-select.tsx"
 import { useModelRuntime } from "#/runtime/ui/model/runtime-context.tsx"
 import { useObjectCollection } from "#/runtime/ui/model/use-object-collection.ts"

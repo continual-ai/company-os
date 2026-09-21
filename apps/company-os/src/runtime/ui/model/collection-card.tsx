@@ -12,8 +12,7 @@ import {
   type ClientRecord,
   type ObjectRecordPresentation,
 } from "#/runtime/ui/model/object-client.ts"
-import { objectFieldValue } from "#/runtime/ui/model/object-field-value.ts"
-import { objectPropertyValue } from "#/runtime/ui/model/object-property-value.tsx"
+import { ObjectFieldValue } from "#/runtime/ui/model/object-field.tsx"
 import { objectHref } from "#/runtime/ui/model/object-routing.ts"
 import { useModelRuntime } from "#/runtime/ui/model/runtime-context.tsx"
 
@@ -59,10 +58,7 @@ export function CollectionCard({
   const values = p.columns.flatMap((id) => {
     const field = fields.find((entry) => entry.id === id)
     if (!field || id === p.object.display.title) return []
-    const value = objectFieldValue(field, record, (key) =>
-      p.references.get(key)
-    )
-    return value === null ? [] : [{ field, value }]
+    return [field]
   })
   return (
     <article
@@ -110,7 +106,7 @@ export function CollectionCard({
       {!compact && (
         <>
           <dl className="mt-3 space-y-2">
-            {values.slice(0, 4).map(({ field, value }) => (
+            {values.map((field) => (
               <div
                 key={field.id}
                 className="flex min-w-0 items-center justify-between gap-2 text-xs"
@@ -119,12 +115,11 @@ export function CollectionCard({
                   {field.property.label ?? field.id}
                 </dt>
                 <dd className="max-w-[65%] truncate text-right">
-                  {objectPropertyValue(
-                    runtime,
-                    field.property,
-                    value,
-                    p.references
-                  )}
+                  <ObjectFieldValue
+                    field={field}
+                    record={record}
+                    resolveRecord={(id) => p.references.get(id)}
+                  />
                 </dd>
               </div>
             ))}

@@ -29,6 +29,108 @@ const application = testApplication({
 })
 
 application.test(
+  "Feedback uses admitted CRUD and retains evidence while disabled",
+  () =>
+    Effect.gen(function* () {
+      const http = yield* HttpTransport
+      const fetch: typeof globalThis.fetch = (input, init) =>
+        Effect.runPromise(http.handle(new Request(input, init)))
+      const client = createEffectClient(Model, {
+        baseUrl: "http://company.test",
+        fetch,
+        headers: { "x-test-user": "owner" },
+      })
+      const anonymous = createEffectClient(Model, {
+        baseUrl: "http://company.test",
+        fetch,
+      })
+      expect(
+        yield* anonymous.feedback.create({ title: "Denied" }).pipe(Effect.flip)
+      ).toMatchObject({ status: "UNAUTHENTICATED" })
+      const report = yield* client.feedback.create({
+        title: "Service access is too narrow",
+      })
+      const task = yield* client.task.create({
+        title: "Review service clearance",
+        links: { feedback: [report.id] },
+      })
+      expect(
+        (yield* client.feedback.get({ id: report.id, expand: true })).links
+          .tasks.items
+      ).toMatchObject([{ id: task.id }])
+      yield* client.moduleSetting.setEnabled({
+        moduleId: "feedback",
+        enabled: false,
+      })
+      expect(
+        yield* client.feedback.get({ id: report.id }).pipe(Effect.flip)
+      ).toMatchObject({ status: "PERMISSION_DENIED" })
+      expect((yield* client.task.get({ id: task.id })).title).toBe(
+        "Review service clearance"
+      )
+      yield* client.moduleSetting.setEnabled({
+        moduleId: "feedback",
+        enabled: true,
+      })
+      expect(
+        (yield* client.feedback.get({ id: report.id })).links.tasks.ids
+      ).toEqual([task.id])
+    })
+)
+
+application.test(
+  "exposes Work hierarchy and dependencies with sanitized cycle errors and admission",
+  () =>
+    Effect.gen(function* () {
+      const http = yield* HttpTransport
+      const fetch: typeof globalThis.fetch = (input, init) =>
+        Effect.runPromise(http.handle(new Request(input, init)))
+      const client = createEffectClient(Model, {
+        baseUrl: "http://company.test",
+        fetch,
+        headers: { "x-test-user": "owner" },
+      })
+      const anonymous = createEffectClient(Model, {
+        baseUrl: "http://company.test",
+        fetch,
+      })
+      expect(
+        yield* anonymous.task.create({ title: "Denied" }).pipe(Effect.flip)
+      ).toMatchObject({ status: "UNAUTHENTICATED" })
+      const parent = yield* client.task.create({ title: "Deliver workshop" })
+      const child = yield* client.task.create({
+        title: "Install panels",
+        links: { parent: parent.id },
+      })
+      expect(
+        yield* client.task.subtasks
+          .link({ id: child.id, target: parent.id })
+          .pipe(Effect.flip)
+      ).toMatchObject({
+        status: "INVALID_ARGUMENT",
+        message: "Task hierarchy cannot contain a cycle.",
+      })
+      yield* client.task.dependsOn.link({ id: child.id, target: parent.id })
+      expect(
+        yield* client.task.dependsOn
+          .link({ id: parent.id, target: child.id })
+          .pipe(Effect.flip)
+      ).toMatchObject({
+        status: "INVALID_ARGUMENT",
+        message: "Task dependencies cannot contain a cycle.",
+      })
+      expect(
+        (yield* client.task.get({ id: child.id, expand: true })).links.parent
+      ).toMatchObject({ id: parent.id })
+      expect(
+        (yield* client.task.subtasks.list({ id: parent.id })).items.map(
+          ({ id }) => id
+        )
+      ).toEqual([child.id])
+    })
+)
+
+application.test(
   "activation governs discovery and operations, preserves records and survives system seeding",
   () =>
     Effect.gen(function* () {
@@ -163,7 +265,7 @@ application.test("required modules and dependency closure are enforced", () =>
       ).toMatchObject({ status: "FAILED_PRECONDITION" })
     }
     yield* client.moduleSetting.setEnabled({
-      moduleId: "customerFeedback",
+      moduleId: "feedback",
       enabled: false,
     })
     yield* client.moduleSetting.setEnabled({
@@ -171,11 +273,11 @@ application.test("required modules and dependency closure are enforced", () =>
       enabled: false,
     })
     const result = yield* client.moduleSetting.setEnabled({
-      moduleId: "customerFeedback",
+      moduleId: "feedback",
       enabled: true,
     })
     expect(result.enabledModules).toEqual(
-      expect.arrayContaining(["customerFeedback", "service", "product"])
+      expect.arrayContaining(["feedback", "service", "work"])
     )
   })
 )
@@ -210,13 +312,13 @@ application.test(
           "sales",
           "marketing",
           "service",
-          "customerFeedback",
-          "productDemand",
+          "feedback",
+          "workDemand",
         ],
       })
       expect(result.enabledModules).toEqual([
         "platform",
-        "product",
+        "work",
         "engineering",
         "hiring",
       ])
@@ -236,7 +338,7 @@ application.test(
       expect(enabled).toEqual([
         "platform",
         "crm",
-        "product",
+        "work",
         "engineering",
         "hiring",
         "service",

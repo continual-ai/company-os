@@ -4,11 +4,12 @@ import { Model } from "#/app.model.ts"
 import { seedDevelopmentTeam } from "#/app/seeds/team.server.ts"
 import { applicationOperations } from "#/app/server/application-services.ts"
 import { seedCrmPerformance } from "#/modules/crm/seeds/index.ts"
+import { seedFeedbackPerformance } from "#/modules/feedback/seeds/index.ts"
 import { seedHiringPerformance } from "#/modules/hiring/seeds/index.ts"
 import { seedMarketingPerformance } from "#/modules/marketing/seeds/index.ts"
-import { seedProductPerformance } from "#/modules/product/seeds/index.ts"
 import { seedSalesPerformance } from "#/modules/sales/seeds/index.ts"
 import { seedServicePerformance } from "#/modules/service/seeds/index.ts"
+import { seedWorkPerformance } from "#/modules/work/seeds/index.ts"
 
 export function performanceScenario(size: number) {
   if (!Number.isInteger(size) || size < 1 || size > 10000)
@@ -25,7 +26,11 @@ export function performanceScenario(size: number) {
       const crm = yield* seedCrmPerformance(size, owners)
       yield* seedSalesPerformance(crm)
       yield* seedHiringPerformance(size, owners)
-      const product = yield* seedProductPerformance(crm)
+      const work = yield* seedWorkPerformance(crm)
+      yield* seedFeedbackPerformance(
+        crm,
+        work.tasks.map(({ id }) => id)
+      )
       yield* seedMarketingPerformance(crm)
       const tickets = yield* seedServicePerformance(crm)
       const services = yield* applicationOperations
@@ -33,11 +38,11 @@ export function performanceScenario(size: number) {
         yield* services.ticket.update({
           id: ticket,
           links: {
-            issues: [product.issues[index % product.issues.length]!.id],
+            tasks: [work.tasks[index % work.tasks.length]!.id],
           },
         })
       yield* Effect.log(
-        `Prepared ${tickets.length} customer reports linked to product work.`
+        `Prepared ${tickets.length} customer reports linked to work.`
       )
     }),
   }

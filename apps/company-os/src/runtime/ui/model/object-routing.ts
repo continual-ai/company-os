@@ -105,7 +105,7 @@ export async function preloadCollection(
       calendarDay(state.date) ?? new Date().toISOString().slice(0, 10)
     ),
     runtime.model,
-    state.visibility,
+    state.columns,
     state.query
   )
   const list = clientFor(runtime, object).list

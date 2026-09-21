@@ -1,19 +1,20 @@
-import type { Campaign } from "#/modules/marketing/model/campaign.ts"
+import { Model } from "#/app.model.ts"
+import { Campaign } from "#/modules/marketing/model/campaign.ts"
 import { defineCollectionView, type ObjectUi } from "#/runtime/ui/module.ts"
 
 export const campaignUi = {
   collection: {
     views: [
-      defineCollectionView("all", "All campaigns", {
+      defineCollectionView(Model, Campaign, "all", "All campaigns", {
         columns: ["name", "channel", "status", "owner", "startDate"],
       }),
-      defineCollectionView("active", "Active", {
+      defineCollectionView(Model, Campaign, "active", "Active", {
         columns: ["name", "channel", "status", "owner", "startDate"],
         filters: [
           { id: "status", value: { operator: "equals", values: ["active"] } },
         ],
       }),
-      defineCollectionView("planning", "Planning", {
+      defineCollectionView(Model, Campaign, "planning", "Planning", {
         columns: ["name", "channel", "status", "owner", "startDate"],
         filters: [
           {
@@ -22,15 +23,15 @@ export const campaignUi = {
           },
         ],
       }),
-      defineCollectionView("board", "Board", {
+      defineCollectionView(Model, Campaign, "board", "Board", {
         layout: { type: "kanban", groupBy: "status" },
         columns: ["name", "channel", "owner", "startDate"],
       }),
-      defineCollectionView("calendar", "Calendar", {
+      defineCollectionView(Model, Campaign, "calendar", "Calendar", {
         layout: { type: "calendar", start: "startDate", end: "endDate" },
         columns: ["name", "channel", "owner"],
       }),
-      defineCollectionView("timeline", "Timeline", {
+      defineCollectionView(Model, Campaign, "timeline", "Timeline", {
         layout: { type: "gantt", start: "startDate", end: "endDate" },
         columns: ["name", "status", "owner"],
       }),

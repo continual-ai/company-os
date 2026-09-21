@@ -6,22 +6,20 @@ import type { ReactNode } from "react"
 import { AssetPreviews } from "#/runtime/assets/ui/asset-preview.tsx"
 import type { AnySchema } from "#/runtime/model/index.ts"
 import { unionMember } from "#/runtime/ui/forms/schema-form-values.ts"
+import { EmptyFieldValue } from "#/runtime/ui/model/empty-field-value.tsx"
 import { ObjectChoiceBadge } from "#/runtime/ui/model/object-choice-badge.tsx"
-import type { ObjectRecordPresentation } from "#/runtime/ui/model/object-client.ts"
-import { ObjectRecordIdentity } from "#/runtime/ui/model/object-record-identity.tsx"
-import { objectRecordHref } from "#/runtime/ui/model/object-routing.ts"
 import { objectTablePropertySchema } from "#/runtime/ui/model/object-table/object-table-cell-types.ts"
+import type { ObjectTableRecordResolver } from "#/runtime/ui/model/object-table/object-table-config.ts"
 import {
   objectTableValueText,
   type ObjectTableValue,
 } from "#/runtime/ui/model/object-table/object-table-config.ts"
-import { type ModelUiRuntime } from "#/runtime/ui/model/runtime-context.tsx"
+import { RecordLinkValue } from "#/runtime/ui/model/record-link-value.tsx"
 
 export function objectPropertyValue(
-  runtime: ModelUiRuntime,
   property: AnySchema | undefined,
   value: ObjectTableValue | undefined,
-  references: ReadonlyMap<string, ObjectRecordPresentation>
+  resolveRecord?: ObjectTableRecordResolver
 ): ReactNode {
   const schema =
     property === undefined ? undefined : objectTablePropertySchema(property)
@@ -37,19 +35,10 @@ export function objectPropertyValue(
     value === "" ||
     (Array.isArray(value) && value.length === 0)
   ) {
-    return <span className="text-muted-foreground/60">Empty</span>
+    return <EmptyFieldValue />
   }
   if (schema?.kind === "recordId" && typeof value === "string") {
-    const reference = references.get(value)
-    return reference === undefined ? (
-      value
-    ) : (
-      <ObjectRecordIdentity
-        {...reference}
-        className="max-w-full"
-        href={objectRecordHref(runtime, reference.object, value)}
-      />
-    )
+    return <RecordLinkValue value={value} resolveRecord={resolveRecord} />
   }
   if (schema === undefined) return objectTableValueText(value)
   if (schema.kind === "string" && schema.secret)
@@ -61,7 +50,7 @@ export function objectPropertyValue(
   if (schema.kind === "union") {
     const member = unionMember(schema, value)
     return member ? (
-      objectPropertyValue(runtime, member, value, references)
+      objectPropertyValue(member, value, resolveRecord)
     ) : (
       <span className="text-muted-foreground">Unavailable</span>
     )
@@ -83,10 +72,9 @@ export function objectPropertyValue(
             </dt>
             <dd className="min-w-0 text-sm leading-5 wrap-anywhere">
               {objectPropertyValue(
-                runtime,
                 field,
                 Reflect.get(value, key),
-                references
+                resolveRecord
               )}
             </dd>
           </div>
@@ -210,7 +198,7 @@ export function objectPropertyValue(
       <ul className="space-y-2">
         {value.map((item, index) => (
           <li key={index} className="min-w-0">
-            {objectPropertyValue(runtime, schema.items, item, references)}
+            {objectPropertyValue(schema.items, item, resolveRecord)}
           </li>
         ))}
       </ul>

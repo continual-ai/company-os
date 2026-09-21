@@ -7,7 +7,7 @@ import {
   GitHubPullRequest,
   GitHubRepository,
 } from "#/modules/engineering/model/index.ts"
-import { Issue, ProductModule } from "#/modules/product/model/index.ts"
+import { Task, WorkModule } from "#/modules/work/model/index.ts"
 import { defineModel, WebUrl } from "#/runtime/model/index.ts"
 import { Connection } from "#/runtime/platform/model/connection.ts"
 import { connectorAlias } from "#/runtime/platform/model/connector.ts"
@@ -19,7 +19,7 @@ import { testFoundation } from "#/runtime/testing/foundation.ts"
 const fixture = testFoundation(
   defineModel({
     name: "GitHub model test",
-    modules: [PlatformModule, ProductModule, EngineeringModule],
+    modules: [PlatformModule, WorkModule, EngineeringModule],
   })
 )
 
@@ -44,8 +44,8 @@ fixture.test(
         ...repositoryInput,
         links: { connection: connection.id },
       })
-      const productIssue = yield* records
-        .repository(Issue)
+      const task = yield* records
+        .repository(Task)
         .create({ title: "Improve imports", status: "planned" })
       const githubIssue = yield* records.repository(GitHubIssue).create({
         nodeId: "I_example",
@@ -53,7 +53,7 @@ fixture.test(
         title: "Import timeout",
         state: "closed",
         url: WebUrl("https://github.com/example/platform/issues/1"),
-        links: { repository: repository.id, productIssues: [productIssue.id] },
+        links: { repository: repository.id, tasks: [task.id] },
       })
       const pr = yield* records.repository(GitHubPullRequest).create({
         nodeId: "PR_example",
@@ -63,7 +63,7 @@ fixture.test(
         links: {
           repository: repository.id,
           githubIssues: [githubIssue.id],
-          productIssues: [productIssue.id],
+          tasks: [task.id],
         },
       })
       expect(
@@ -89,8 +89,8 @@ fixture.test(
         totalSizeExact: true,
       })
       const internal = yield* records
-        .repository(Issue)
-        .get({ id: productIssue.id, expand: true })
+        .repository(Task)
+        .get({ id: task.id, expand: true })
       expect(internal.status).toBe("planned")
       expect(internal.links.githubIssues).toMatchObject({
         items: [{ id: githubIssue.id }],
@@ -104,9 +104,9 @@ fixture.test(
       })
       yield* records
         .repository(GitHubIssue)
-        .update({ id: githubIssue.id, links: { productIssues: [] } })
+        .update({ id: githubIssue.id, links: { tasks: [] } })
       expect(
-        (yield* records.repository(Issue).get({ id: productIssue.id })).status
+        (yield* records.repository(Task).get({ id: task.id })).status
       ).toBe("planned")
     })
 )

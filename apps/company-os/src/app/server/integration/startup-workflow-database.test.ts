@@ -88,9 +88,8 @@ application.test(
       const nextProject = yield* client.project.create({
         name: "Enterprise readiness",
       })
-      const issue = yield* client.issue.create({
+      const task = yield* client.task.create({
         title: "Resume interrupted imports",
-        kind: "bug",
         links: {
           project: project.id,
           tickets: [ticket.id, secondTicket.id],
@@ -116,9 +115,9 @@ application.test(
         url: WebUrl("https://github.com/example/platform/pull/42"),
         title: "Checkpoint import batches",
         number: 42,
-        links: { repository: repository.id, productIssues: [issue.id] },
+        links: { repository: repository.id, tasks: [task.id] },
       })
-      const expanded = yield* client.issue.get({ id: issue.id, expand: true })
+      const expanded = yield* client.task.get({ id: task.id, expand: true })
       expect(expanded.links.tickets).toMatchObject({
         totalSize: 2,
         totalSizeExact: true,
@@ -140,22 +139,22 @@ application.test(
         })).links.projects.totalSize
       ).toBe(2)
       expect(
-        (yield* client.issue.list({
+        (yield* client.task.list({
           filter: { link: "tickets", contains: ticket.id },
         })).items.map(({ id }) => id)
-      ).toEqual([issue.id])
+      ).toEqual([task.id])
       // Every source points to the same fix; unlinking evidence must not delete product work.
-      yield* client.ticket.update({ id: ticket.id, links: { issues: [] } })
+      yield* client.ticket.update({ id: ticket.id, links: { tasks: [] } })
       expect(
-        (yield* client.issue.get({ id: issue.id })).links.tickets
+        (yield* client.task.get({ id: task.id })).links.tickets
       ).toMatchObject({
         ids: [secondTicket.id],
         totalSize: 1,
         totalSizeExact: true,
       })
       expect(
-        (yield* client.opportunity.get({ id: opportunity.id })).links.issues
-      ).toMatchObject({ ids: [issue.id] })
+        (yield* client.opportunity.get({ id: opportunity.id })).links.tasks
+      ).toMatchObject({ ids: [task.id] })
       expect(Model.objects).not.toHaveProperty("escalation")
     })
 )
@@ -173,7 +172,7 @@ application.test(
       yield* client.moduleSetting.setEnabled({
         moduleId: "sales",
         enabled: false,
-        disableDependents: ["productDemand"],
+        disableDependents: ["workDemand"],
       })
       yield* client.moduleSetting.setEnabled({
         moduleId: "engineering",
@@ -188,8 +187,8 @@ application.test(
           "crm",
           "marketing",
           "service",
-          "product",
-          "customerFeedback",
+          "work",
+          "feedback",
         ])
       )
       expect(enabledModules).not.toContain("sales")
@@ -208,14 +207,14 @@ application.test(
         name: "Community event",
       })
       expect(campaign.name).toBe("Community event")
-      const issue = yield* client.issue.create({
+      const task = yield* client.task.create({
         title: "Product work without a Git integration",
         links: { tickets: [ticket.id] },
       })
       expect(
-        (yield* client.ticket.get({ id: ticket.id, expand: true })).links.issues
+        (yield* client.ticket.get({ id: ticket.id, expand: true })).links.tasks
       ).toMatchObject({
-        items: [{ id: issue.id, objectType: "issue" }],
+        items: [{ id: task.id, objectType: "task" }],
         totalSize: 1,
         totalSizeExact: true,
       })

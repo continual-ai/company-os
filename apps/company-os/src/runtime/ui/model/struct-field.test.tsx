@@ -13,21 +13,14 @@ const runtime = testPresentation(fixtureModel)
 it("renders JSON values without treating null and empty collections as absent", () => {
   for (const value of [null, [], {}, false, 0]) {
     const html = renderToStaticMarkup(
-      <>{objectPropertyValue(runtime, schema.json(), value, new Map())}</>
+      <>{objectPropertyValue(schema.json(), value)}</>
     )
     expect(html).toContain(JSON.stringify(value))
     expect(html).not.toContain("Empty")
   }
   expect(
     renderToStaticMarkup(
-      <>
-        {objectPropertyValue(
-          runtime,
-          schema.optional(schema.json()),
-          null,
-          new Map()
-        )}
-      </>
+      <>{objectPropertyValue(schema.optional(schema.json()), null)}</>
     )
   ).toContain("null")
 })
@@ -117,7 +110,6 @@ it("renders optional structs and arrays of union members without exposing secret
   const html = renderToStaticMarkup(
     <>
       {objectPropertyValue(
-        runtime,
         property,
         {
           entries: [
@@ -133,7 +125,7 @@ it("renders optional structs and arrays of union members without exposing secret
             },
           ],
         },
-        new Map()
+        undefined
       )}
     </>
   )

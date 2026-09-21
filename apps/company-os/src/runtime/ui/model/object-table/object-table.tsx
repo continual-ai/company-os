@@ -13,6 +13,7 @@ import { cn } from "@company/ui/lib/utils"
 import { Table, TableHead, TableHeader, TableRow } from "@company/ui/table"
 import {
   createColumnHelper,
+  functionalUpdate,
   useTable,
   type ColumnFiltersState,
   type HeaderContext,
@@ -38,7 +39,11 @@ import {
 } from "react"
 
 import { type ObjectType } from "#/runtime/model/index.ts"
-import { objectFields } from "#/runtime/model/object-fields.ts"
+import {
+  objectFields,
+  defaultObjectColumns,
+  orderObjectFields,
+} from "#/runtime/model/object-fields.ts"
 import { CollectionPagination } from "#/runtime/ui/model/collection-pagination.tsx"
 import { formatTotalSize } from "#/runtime/ui/model/format-total-size.ts"
 import { ObjectIcon } from "#/runtime/ui/model/object-record-identity.tsx"
@@ -83,7 +88,7 @@ export interface ObjectTableProps {
   canDeleteRecord?: ((recordId: string) => boolean) | undefined
   canUpdateRecord?: ((recordId: string) => boolean) | undefined
   columnFilters?: ColumnFiltersState | undefined
-  columnVisibility?: Readonly<Record<string, boolean>> | undefined
+  columns?: ReadonlyArray<string> | undefined
   enableRowSelection?: boolean | undefined
   object: ObjectType
   onCellCommit?:
@@ -100,7 +105,7 @@ export interface ObjectTableProps {
   records: ReadonlyArray<ObjectTableRecord>
   resetKey?: string | undefined
   onColumnFiltersChange?: OnChangeFn<ColumnFiltersState> | undefined
-  onColumnVisibilityChange?: OnChangeFn<Record<string, boolean>> | undefined
+  onColumnsChange?: ((columns: ReadonlyArray<string>) => void) | undefined
   onSortingChange?: OnChangeFn<SortingState> | undefined
   pagination?:
     | {
@@ -119,7 +124,6 @@ export interface ObjectTableProps {
   resolveRecord?: ObjectTableRecordResolver | undefined
   sorting?: SortingState | undefined
   tableTitle?: ReactNode
-  visiblePropertyIds?: ReadonlyArray<string> | undefined
 }
 
 const columnHelper = createColumnHelper<
@@ -221,7 +225,7 @@ export function ObjectTable({
   canDeleteRecord,
   canUpdateRecord,
   columnFilters,
-  columnVisibility,
+  columns: selectedColumns,
   enableRowSelection = true,
   object,
   onCellCommit,
@@ -231,7 +235,7 @@ export function ObjectTable({
   resetKey,
   recordHref,
   onColumnFiltersChange,
-  onColumnVisibilityChange,
+  onColumnsChange,
   onSortingChange,
   pagination,
   renderSelectedRecordActions,
@@ -240,7 +244,6 @@ export function ObjectTable({
   resolveRecord,
   sorting,
   tableTitle,
-  visiblePropertyIds,
   viewport,
 }: ObjectTableProps) {
   useKeyboardShortcuts([
@@ -269,8 +272,9 @@ export function ObjectTable({
   const [isHorizontallyScrolled, setIsHorizontallyScrolled] = useState(false)
   const runtime = useModelRuntime()
   const fields = useMemo(
-    () => objectFields(object, runtime.model),
-    [object, runtime.model]
+    () =>
+      orderObjectFields(objectFields(object, runtime.model), selectedColumns),
+    [object, runtime.model, selectedColumns]
   )
   const columns = useMemo(() => {
     const selectionColumns = enableRowSelection
@@ -297,41 +301,25 @@ export function ObjectTable({
     ])
   }, [fields, object, resolveRecord, enableRowSelection])
 
-  const initialState = useMemo(() => {
-    const defaultPropertyIds = new Set(
-      visiblePropertyIds ??
-        [
-          object.display.title,
-          object.display.status,
-          object.display.subtitle,
-          ...Object.keys(object.properties),
-        ].filter((propertyId): propertyId is string => propertyId !== undefined)
+  const columnVisibility = useMemo(() => {
+    const visible = new Set(
+      selectedColumns ?? defaultObjectColumns(object, runtime.model)
     )
-
-    return {
-      columnPinning: {
-        start: [
-          ...(enableRowSelection ? ["selection"] : []),
-          object.display.title,
-        ],
-        end: [],
-      },
-      columnVisibility: Object.fromEntries(
-        fields.map((field) => [
-          field.id,
-          defaultPropertyIds.has(field.id) ||
-            (visiblePropertyIds === undefined &&
-              field.kind === "link" &&
-              field.traversal.traversal.max === 1),
-        ])
-      ),
-    }
-  }, [object, enableRowSelection, fields, visiblePropertyIds])
-
-  const mergedVisibility = useMemo(
-    () => ({ ...initialState.columnVisibility, ...columnVisibility }),
-    [initialState.columnVisibility, columnVisibility]
-  )
+    visible.add(object.display.title)
+    return Object.fromEntries(
+      fields.map((field) => [field.id, visible.has(field.id)])
+    )
+  }, [selectedColumns, object, runtime.model, fields])
+  const initialState = {
+    columnPinning: {
+      start: [
+        ...(enableRowSelection ? ["selection"] : []),
+        object.display.title,
+      ],
+      end: [],
+    },
+    columnVisibility,
+  }
   const table = useTable({
     features: objectTableFeatures,
     columns,
@@ -345,16 +333,29 @@ export function ObjectTable({
     manualFiltering: onColumnFiltersChange !== undefined,
     manualSorting: onSortingChange !== undefined,
     ...(onColumnFiltersChange === undefined ? {} : { onColumnFiltersChange }),
-    ...(onColumnVisibilityChange === undefined
+    ...(onColumnsChange === undefined
       ? {}
-      : { onColumnVisibilityChange }),
+      : {
+          onColumnVisibilityChange: (
+            update: Parameters<OnChangeFn<Record<string, boolean>>>[0]
+          ) => {
+            const next = functionalUpdate(update, columnVisibility)
+            onColumnsChange(
+              fields
+                .filter(
+                  (field) => field.id === object.display.title || next[field.id]
+                )
+                .map((field) => field.id)
+            )
+          },
+        }),
     ...(onSortingChange === undefined ? {} : { onSortingChange }),
     state: {
       ...(columnFilters === undefined ? {} : { columnFilters }),
-      ...(columnVisibility === undefined
+      ...(onColumnsChange === undefined
         ? {}
         : {
-            columnVisibility: mergedVisibility,
+            columnVisibility,
           }),
       ...(sorting === undefined ? {} : { sorting }),
     },
@@ -482,7 +483,7 @@ export function ObjectTable({
                         >
                           <ObjectTableProperty
                             label={meta.label}
-                            property={meta.displayProperty ?? meta.property}
+                            property={meta.property}
                           />
                           {direction === "asc" ? (
                             <ArrowDownIcon className="ml-auto" />
@@ -500,7 +501,7 @@ export function ObjectTable({
                         >
                           <ObjectTableProperty
                             label={meta.label}
-                            property={meta.displayProperty ?? meta.property}
+                            property={meta.property}
                           />
                           {direction === "asc" ? (
                             <ArrowDownIcon className="ml-auto" />

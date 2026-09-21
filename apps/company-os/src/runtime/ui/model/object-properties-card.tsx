@@ -2,17 +2,18 @@ import { Button } from "@company/ui/button"
 import { PencilIcon } from "lucide-react"
 
 import type { ObjectType } from "#/runtime/model/definition/object.ts"
-import { modelObjectLinkTraversals } from "#/runtime/model/index.ts"
-import { linkPreview } from "#/runtime/model/record-links.ts"
-import { isSupportedFormSchema } from "#/runtime/ui/forms/schema-form-values.ts"
 import {
-  type ClientRecord,
-  type ObjectRecordPresentation,
+  objectFields,
+  orderObjectFields,
+} from "#/runtime/model/object-fields.ts"
+import { isSupportedFormSchema } from "#/runtime/ui/forms/schema-form-values.ts"
+import type {
+  ClientRecord,
+  ObjectRecordPresentation,
 } from "#/runtime/ui/model/object-client.ts"
+import { ObjectFieldValue } from "#/runtime/ui/model/object-field.tsx"
 import { objectFormProperties } from "#/runtime/ui/model/object-form.ts"
-import { objectPropertyValue } from "#/runtime/ui/model/object-property-value.tsx"
 import { objectTablePropertySchema } from "#/runtime/ui/model/object-table/object-table-cell-types.ts"
-import { RecordLinkValue } from "#/runtime/ui/model/record-link-value.tsx"
 import { useModelRuntime } from "#/runtime/ui/model/runtime-context.tsx"
 
 export function ObjectPropertiesCard({
@@ -29,27 +30,25 @@ export function ObjectPropertiesCard({
   readonly references: ReadonlyMap<string, ObjectRecordPresentation>
 }) {
   const runtime = useModelRuntime()
-
-  const editable = new Set(
+  const editableProperties = new Set(
     objectFormProperties(object, "edit")
       .filter(({ schema }) => isSupportedFormSchema(schema))
       .map(({ id }) => id)
   )
-  const traversals = modelObjectLinkTraversals(runtime.model, object).filter(
-    ({ traversal }) =>
-      traversal.max === 1 &&
-      (fields === undefined || fields.includes(traversal.key))
+  const displayed = orderObjectFields(
+    objectFields(object, runtime.model),
+    fields
+  ).filter((field) =>
+    fields
+      ? fields.includes(field.id)
+      : field.kind === "property" ||
+        (field.kind === "link" && field.traversal.traversal.max === 1)
   )
-  const available = Object.entries(object.properties)
-  const properties =
-    fields === undefined
-      ? available
-      : fields.flatMap((field) => available.filter(([id]) => id === field))
-
   return (
     <section className="min-w-0">
       <dl className="-mx-2">
-        {properties.map(([propertyId, property]) => {
+        {displayed.map((field) => {
+          const { id, property } = field
           const schema = objectTablePropertySchema(property)
           const grouped =
             schema.kind === "struct" ||
@@ -57,22 +56,28 @@ export function ObjectPropertiesCard({
               schema.members.some(
                 (member) => objectTablePropertySchema(member).kind === "struct"
               ))
+          const editable =
+            field.kind === "link"
+              ? field.traversal.writable
+              : field.kind === "property" && editableProperties.has(id)
           const directEdit =
             onEdit &&
-            editable.has(propertyId) &&
-            schema &&
+            editable &&
+            field.kind === "property" &&
             (["boolean", "decimal", "enum", "number"].includes(schema.kind) ||
               (schema.kind === "string" && schema.format === undefined))
-          const value = objectPropertyValue(
-            runtime,
-            property,
-            record[propertyId],
-            references
+          const value = (
+            <ObjectFieldValue
+              field={field}
+              record={record}
+              resolveRecord={(recordId) => references.get(recordId)}
+            />
           )
+          const label = property.label ?? id
           return (
             <div
-              key={propertyId}
-              data-record-field={propertyId}
+              key={id}
+              data-record-field={id}
               className={
                 grouped
                   ? "group relative space-y-2 px-2 py-3"
@@ -86,21 +91,21 @@ export function ObjectPropertiesCard({
                     : "text-xs text-muted-foreground"
                 }
               >
-                {property.label ?? propertyId}
+                {label}
               </dt>
               <dd
                 className={
                   grouped
                     ? "min-w-0"
-                    : "min-w-0 pr-3 text-xs wrap-break-word whitespace-pre-wrap [&_a]:max-w-full [&_a]:truncate"
+                    : "min-w-0 pr-5 text-xs wrap-break-word whitespace-pre-wrap [&_a]:max-w-full [&_a]:truncate"
                 }
               >
                 {directEdit ? (
                   <button
                     type="button"
                     className="w-full cursor-pointer rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    aria-label={`Edit ${property.label ?? propertyId}`}
-                    onClick={() => onEdit(propertyId)}
+                    aria-label={`Edit ${label}`}
+                    onClick={() => onEdit(id)}
                   >
                     {value}
                   </button>
@@ -108,46 +113,20 @@ export function ObjectPropertiesCard({
                   value
                 )}
               </dd>
-              {onEdit && editable.has(propertyId) && !directEdit ? (
+              {onEdit && editable && !directEdit && (
                 <Button
                   size="icon-xs"
                   variant="ghost"
                   className="absolute top-1 right-0 bg-background opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100"
-                  aria-label={`Edit ${property.label ?? propertyId}`}
-                  onClick={() => onEdit(propertyId)}
+                  aria-label={`Edit ${label}`}
+                  onClick={() => onEdit(id)}
                 >
                   <PencilIcon />
                 </Button>
-              ) : null}
+              )}
             </div>
           )
         })}
-        {traversals.map(({ traversal, writable }) => (
-          <div
-            key={traversal.key}
-            data-record-field={traversal.key}
-            className="group relative grid min-h-8 grid-cols-[7.5rem_minmax(0,1fr)] items-center gap-x-2 rounded-md px-2 py-1.5 hover:bg-muted/40"
-          >
-            <dt className="text-xs text-muted-foreground">{traversal.label}</dt>
-            <dd className="min-w-0 pr-5 text-xs">
-              <RecordLinkValue
-                {...linkPreview(record.links?.[traversal.key])}
-                resolveRecord={(id) => references.get(id)}
-              />
-            </dd>
-            {onEdit && writable && (
-              <Button
-                size="icon-xs"
-                variant="ghost"
-                className="absolute right-0 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
-                aria-label={`Edit ${traversal.label}`}
-                onClick={() => onEdit(traversal.key)}
-              >
-                <PencilIcon />
-              </Button>
-            )}
-          </div>
-        ))}
       </dl>
     </section>
   )

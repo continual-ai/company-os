@@ -169,7 +169,7 @@ export function composeModelUi(
       )
       const fields = objectFields(installedObject, Model)
       for (const view of config.collection?.views ?? []) {
-        for (const fieldId of Object.keys(view.state.visibility))
+        for (const fieldId of view.state.columns ?? [])
           requireObjectField(fields, fieldId)
         for (const { id: fieldId } of view.state.filters)
           requireObjectField(fields, fieldId, "filter")

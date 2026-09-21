@@ -63,7 +63,6 @@ function PatternExamples({
 }: {
   section: "records" | "table" | "layouts" | "forms"
 }) {
-  const runtime = useModelRuntime()
   const [records, setRecords] = useState(exampleRecords)
   const [editing, setEditing] = useState<ClientRecord>()
   const [open, setOpen] = useState(false)
@@ -199,10 +198,9 @@ function PatternExamples({
                     </dt>
                     <dd className="text-sm">
                       {objectPropertyValue(
-                        runtime,
                         modelObjectProperty(ExampleProject, id),
                         first[id],
-                        references
+                        (recordId) => references.get(recordId)
                       )}
                     </dd>
                   </div>
@@ -214,10 +212,9 @@ function PatternExamples({
                 </dt>
                 <dd>
                   {objectPropertyValue(
-                    runtime,
                     ExampleProject.properties.email,
                     null,
-                    references
+                    (recordId) => references.get(recordId)
                   )}
                 </dd>
               </div>
@@ -272,7 +269,7 @@ function PatternExamples({
               key={state}
               object={ExampleProject}
               records={state === "empty" || state === "loading" ? [] : records}
-              visiblePropertyIds={[
+              columns={[
                 "name",
                 "status",
                 "score",

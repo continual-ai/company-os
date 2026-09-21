@@ -238,21 +238,36 @@ describe("module UI composition", () => {
       { columns: ["name"], sorting: [{ id: "removed", desc: false }] },
     ] as const) {
       expect(() =>
-        composeAccountView(defineCollectionView("all", "All", options))
+        composeAccountView(
+          defineCollectionView(
+            fixtureModel,
+            fixtureModel.objects.account,
+            "all",
+            "All",
+            // @ts-expect-error Stale fields must also fail runtime composition.
+            options
+          )
+        )
       ).toThrow("Unknown field 'removed'.")
     }
     expect(() =>
       composeAccountView(
-        defineCollectionView("related", "Related", {
-          columns: ["name", "people", "people.name", "people.$count"],
-          filters: [
-            {
-              id: "people.name",
-              value: { operator: "contains", values: ["Maya"] },
-            },
-          ],
-          sorting: [{ id: "people.$count", desc: true }],
-        })
+        defineCollectionView(
+          fixtureModel,
+          fixtureModel.objects.account,
+          "related",
+          "Related",
+          {
+            columns: ["name", "people", "people.name", "people.$count"],
+            filters: [
+              {
+                id: "people.name",
+                value: { operator: "contains", values: ["Maya"] },
+              },
+            ],
+            sorting: [{ id: "people.$count", desc: true }],
+          }
+        )
       )
     ).not.toThrow()
   })
@@ -308,31 +323,51 @@ describe("module UI composition", () => {
 it("allows resource columns without advertising unsupported query capabilities", () => {
   expect(() =>
     composeAccountView(
-      defineCollectionView("audit", "Audit", {
-        columns: ["name", "metadata", "aliases", "etag", "createdBy"],
-        sorting: [{ id: "updatedAt", desc: true }],
-      })
+      defineCollectionView(
+        fixtureModel,
+        fixtureModel.objects.account,
+        "audit",
+        "Audit",
+        {
+          columns: ["name", "metadata", "aliases", "etag", "createdBy"],
+          sorting: [{ id: "updatedAt", desc: true }],
+        }
+      )
     )
   ).not.toThrow()
   expect(() =>
     composeAccountView(
-      defineCollectionView("invalid", "Invalid", {
-        columns: ["name"],
-        filters: [
-          {
-            id: "metadata",
-            value: { operator: "contains", values: ["import"] },
-          },
-        ],
-      })
+      defineCollectionView(
+        fixtureModel,
+        fixtureModel.objects.account,
+        "invalid",
+        "Invalid",
+        {
+          columns: ["name"],
+          filters: [
+            {
+              // @ts-expect-error Metadata is display-only.
+              id: "metadata",
+              value: { operator: "contains", values: ["import"] },
+            },
+          ],
+        }
+      )
     )
   ).toThrow("Field 'metadata' does not support filter.")
   expect(() =>
     composeAccountView(
-      defineCollectionView("invalid", "Invalid", {
-        columns: ["name"],
-        sorting: [{ id: "etag", desc: true }],
-      })
+      defineCollectionView(
+        fixtureModel,
+        fixtureModel.objects.account,
+        "invalid",
+        "Invalid",
+        {
+          columns: ["name"],
+          // @ts-expect-error ETags are display-only.
+          sorting: [{ id: "etag", desc: true }],
+        }
+      )
     )
   ).toThrow("Field 'etag' does not support sort.")
 })

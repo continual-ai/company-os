@@ -10,7 +10,7 @@ import {
   SelectValue,
 } from "@company/ui/select"
 import { defaultStringifySearch } from "@tanstack/react-router"
-import { functionalUpdate, type OnChangeFn } from "@tanstack/react-table"
+import { functionalUpdate } from "@tanstack/react-table"
 import {
   LayersIcon,
   PencilIcon,
@@ -29,14 +29,14 @@ import {
   type ReactNode,
 } from "react"
 
-import { modelObjectLinkTraversals } from "#/runtime/model/definition/model.ts"
 import type { ObjectType } from "#/runtime/model/definition/object.ts"
 import type { ListRequest } from "#/runtime/model/index.ts"
-import { objectFields } from "#/runtime/model/object-fields.ts"
+import { defaultObjectColumns } from "#/runtime/model/object-fields.ts"
 import {
   calendarDay,
   collectionDateWindow,
 } from "#/runtime/ui/model/collection-dates.ts"
+import { readFilterValue } from "#/runtime/ui/model/collection-filter.ts"
 import { CollectionLayoutControl } from "#/runtime/ui/model/collection-layout-control.tsx"
 import {
   ViewportCollectionPages,
@@ -72,7 +72,6 @@ import type { ObjectFormInput } from "#/runtime/ui/model/object-form.ts"
 import { ObjectRecordDialog } from "#/runtime/ui/model/object-record-dialog.tsx"
 import { ObjectRecordFeed } from "#/runtime/ui/model/object-record-feed.tsx"
 import { objectHref } from "#/runtime/ui/model/object-routing.ts"
-import { readFilterValue } from "#/runtime/ui/model/object-table/object-table-config.ts"
 import { ObjectTable } from "#/runtime/ui/model/object-table/object-table.tsx"
 import { type CollectionToolbarProps } from "#/runtime/ui/model/object-ui.ts"
 import { ModelActions } from "#/runtime/ui/model/operation-action.tsx"
@@ -146,7 +145,7 @@ export function ObjectCollection(props: ObjectCollectionProps) {
         undefined,
         collectionDateWindow(state.layout, anchor),
         runtime.model,
-        state.visibility,
+        state.columns ?? defaultObjectColumns(object, runtime.model),
         state.query
       ),
     [object, state, anchor, runtime.model]
@@ -219,23 +218,12 @@ function ObjectCollectionContent({
     deleteRecords: collection.deleteRecords,
   }
 
-  const columnVisibility = useMemo(() => {
-    const linkColumns = modelObjectLinkTraversals(runtime.model, object)
-    const propertyIds = objectFields(object, runtime.model).map(({ id }) => id)
-    const configuredVisibility = Object.keys(viewState.visibility).length > 0
-    return Object.fromEntries(
-      propertyIds.map((propertyId) => [
-        propertyId,
-        configuredVisibility
-          ? viewState.visibility[propertyId] === true
-          : object.properties[propertyId] !== undefined ||
-            linkColumns.some(
-              ({ traversal }) =>
-                traversal.key === propertyId && traversal.max === 1
-            ),
-      ])
-    )
-  }, [runtime.model, object, viewState.visibility])
+  const columns = useMemo(
+    () => [
+      ...(viewState.columns ?? defaultObjectColumns(object, runtime.model)),
+    ],
+    [viewState.columns, object, runtime.model]
+  )
   const resolveRecord = useCallback(
     (recordId: string) => collection.references.get(recordId),
     [collection.references]
@@ -252,14 +240,6 @@ function ObjectCollectionContent({
     const nextSearch = objectCollectionStateSearch(resolved.view, next)
     onSearchChange(nextSearch)
   }
-  const onColumnVisibilityChange: OnChangeFn<Record<string, boolean>> = (
-    update
-  ) =>
-    updateState({
-      ...viewState,
-      visibility: functionalUpdate(update, columnVisibility),
-    })
-
   const selectView = (viewId: string) => {
     onSearchChange({ view: viewId })
   }
@@ -377,15 +357,11 @@ function ObjectCollectionContent({
       <CollectionLayoutControl
         object={object}
         layout={layout}
-        columns={Object.keys(columnVisibility)
-          .filter((id) => columnVisibility[id] && id !== object.display.title)
-          .slice(0, 4)}
-        onColumnsChange={(columns) =>
+        columns={columns.filter((id) => id !== object.display.title)}
+        onColumnsChange={(nextColumns) =>
           updateState({
             ...viewState,
-            visibility: Object.fromEntries(
-              [object.display.title, ...columns].map((id) => [id, true])
-            ),
+            columns: [object.display.title, ...nextColumns],
           })
         }
         onChange={(next) => updateState({ ...viewState, layout: next })}
@@ -442,7 +418,7 @@ function ObjectCollectionContent({
               : undefined
           }
           columnFilters={tableFilters}
-          columnVisibility={columnVisibility}
+          columns={columns}
           sorting={tableSorting}
           onColumnFiltersChange={(update) =>
             updateState({
@@ -455,7 +431,9 @@ function ObjectCollectionContent({
               ),
             })
           }
-          onColumnVisibilityChange={onColumnVisibilityChange}
+          onColumnsChange={(nextColumns) =>
+            updateState({ ...viewState, columns: nextColumns })
+          }
           onSortingChange={(update) =>
             updateState({
               ...viewState,
@@ -557,9 +535,7 @@ function ObjectCollectionContent({
                   object,
                   recordHref,
                   references: collection.references,
-                  columns: Object.keys(columnVisibility).filter(
-                    (id) => columnVisibility[id]
-                  ),
+                  columns,
                   canMove: (record) => collection.canUpdate(record.id),
                   canEdit: (record) => collection.canUpdate(record.id),
                   onEdit: setEditing,

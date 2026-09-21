@@ -13,6 +13,7 @@ import type {
   InferInputSchema,
   RecordIdentifier,
 } from "#/runtime/model/definition/schema.ts"
+import type { PropertyFilterOperator } from "#/runtime/model/query-fields.ts"
 
 export const DEFAULT_PAGE_SIZE = 50 as const
 export const MAX_PAGE_SIZE = 100 as const
@@ -93,44 +94,46 @@ type TextFilter<TField extends string, TValue> =
       readonly value: string
     }
 
-type NullableFilter<
-  TField extends string,
-  TProperty extends PropertyDefinition,
-> = TProperty["nullable"] extends true
+type PropertyFilterValue<
+  P extends PropertyDefinition,
+  AcceptAliases extends boolean,
+> = Exclude<
+  P extends { kind: "recordId" }
+    ? AcceptAliases extends true
+      ? InferInputSchema<P>
+      : InferProperty<P>
+    : InferProperty<P>,
+  null
+>
+
+type FilterExpression<
+  Field extends string,
+  Value,
+  Operator,
+> = Operator extends string
   ? {
-      readonly field: TField
-      readonly operator: "isNull"
-    }
+      readonly field: Field
+      readonly operator: Operator
+    } & (Operator extends "isNull"
+      ? {}
+      : {
+          readonly value: Operator extends "in"
+            ? ReadonlyArray<Value>
+            : Operator extends "contains" | "endsWith" | "startsWith"
+              ? string
+              : Value
+        })
   : never
 
 type PropertyFilter<
   TField extends string,
   TProperty extends PropertyDefinition,
   TAcceptAliases extends boolean,
-> =
-  | NullableFilter<TField, TProperty>
-  | (TProperty extends { readonly kind: "boolean" | "enum" | "recordId" }
-      ? EqualityFilter<
-          TField,
-          Exclude<
-            TProperty extends { readonly kind: "recordId" }
-              ? TAcceptAliases extends true
-                ? InferInputSchema<TProperty>
-                : InferProperty<TProperty>
-              : InferProperty<TProperty>,
-            null
-          >
-        >
-      : TProperty extends { readonly kind: "decimal" | "number" }
-        ? OrderedFilter<TField, Exclude<InferProperty<TProperty>, null>>
-        : TProperty extends {
-              readonly format: "date" | "timestamp"
-              readonly kind: "string"
-            }
-          ? OrderedFilter<TField, Exclude<InferProperty<TProperty>, null>>
-          : TProperty extends { readonly kind: "string" }
-            ? TextFilter<TField, Exclude<InferProperty<TProperty>, null>>
-            : never)
+> = FilterExpression<
+  TField,
+  PropertyFilterValue<TProperty, TAcceptAliases>,
+  PropertyFilterOperator<TProperty>
+>
 
 type ObjectPropertyFilter<TObject extends ObjectType> = {
   [TField in keyof TObject["properties"] & string]: PropertyFilter<
@@ -163,17 +166,24 @@ export type LinkFilter = { readonly link: string } & (
   | { readonly every: ObjectFilter | Readonly<Record<string, never>> }
 )
 
+/** Dynamic fields are checked against the model at the query boundary. */
+type FieldFilter<Field extends string> = {
+  readonly field: Field
+  readonly operator: FilterOperator
+  readonly value?:
+    | boolean
+    | number
+    | string
+    | ReadonlyArray<boolean | number | string>
+}
+
 export type ObjectFilter<TObject extends ObjectType = ObjectType> =
   | LinkFilter
-  | {
-      readonly field: `${string}.${string}`
-      readonly operator: FilterOperator
-      readonly value?:
-        | boolean
-        | number
-        | string
-        | ReadonlyArray<boolean | number | string>
-    }
+  | FieldFilter<
+      string extends keyof TObject["properties"]
+        ? string
+        : `${string}.${string}`
+    >
   | BaseObjectFilter<TObject>
   | ObjectPropertyFilter<TObject>
   | {
@@ -195,15 +205,11 @@ type CanonicalBaseObjectFilter<TObject extends ObjectType> =
 
 export type CanonicalObjectFilter<TObject extends ObjectType> =
   | LinkFilter
-  | {
-      readonly field: `${string}.${string}`
-      readonly operator: FilterOperator
-      readonly value?:
-        | boolean
-        | number
-        | string
-        | ReadonlyArray<boolean | number | string>
-    }
+  | FieldFilter<
+      string extends keyof TObject["properties"]
+        ? string
+        : `${string}.${string}`
+    >
   | CanonicalBaseObjectFilter<TObject>
   | CanonicalObjectPropertyFilter<TObject>
   | { readonly and: ReadonlyArray<CanonicalObjectFilter<TObject>> }

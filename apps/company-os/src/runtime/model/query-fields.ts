@@ -36,23 +36,47 @@ export function queryProperty(
   normalized.set(value, property)
   return property
 }
+const scalarOperators = {
+  equality: ["eq", "in"],
+  ordered: ["eq", "gt", "gte", "in", "lt", "lte"],
+  text: ["contains", "endsWith", "eq", "in", "startsWith"],
+} as const
+
+type ScalarOperators<P> = P extends { kind: "boolean" | "enum" | "recordId" }
+  ? (typeof scalarOperators.equality)[number]
+  : P extends
+        | { kind: "decimal" | "number" }
+        | { kind: "string"; format: "date" | "timestamp" }
+    ? (typeof scalarOperators.ordered)[number]
+    : P extends { kind: "string" }
+      ? (typeof scalarOperators.text)[number]
+      : never
+
+export type PropertyFilterOperator<P> = P extends { secret: true }
+  ? never
+  : ScalarOperators<P> extends never
+    ? never
+    : ScalarOperators<P> | (P extends { nullable: true } ? "isNull" : never)
+
 export function fieldOperators(property: AnySchema): ReadonlyArray<string> {
   if (containsSecret(property)) return []
-  const metadata: { readonly kind: string; readonly nullable?: boolean } =
-    property
+  const metadata: { kind: string; nullable?: boolean } = property
   const nullable = metadata.nullable ? ["isNull"] : []
   switch (property.kind) {
     case "boolean":
     case "enum":
     case "recordId":
-      return ["eq", "in", ...nullable]
+      return [...scalarOperators.equality, ...nullable]
     case "decimal":
     case "number":
-      return ["eq", "gt", "gte", "in", "lt", "lte", ...nullable]
+      return [...scalarOperators.ordered, ...nullable]
     case "string":
-      return property.format === "date" || property.format === "timestamp"
-        ? ["eq", "gt", "gte", "in", "lt", "lte", ...nullable]
-        : ["contains", "endsWith", "eq", "in", "startsWith", ...nullable]
+      return [
+        ...(property.format === "date" || property.format === "timestamp"
+          ? scalarOperators.ordered
+          : scalarOperators.text),
+        ...nullable,
+      ]
     default:
       return []
   }

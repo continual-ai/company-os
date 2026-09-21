@@ -188,9 +188,9 @@ export const EscalateTicket = defineAction({
   id: "escalate",
   record: Ticket,
   name: "Escalate to engineering",
-  description: "Creates an engineering issue for an open support ticket.",
+  description: "Creates an engineering task for an open support ticket.",
   input: { id: schema.id(Ticket) },
-  output: { issue: schema.id(Issue) },
+  output: { task: schema.id(Task) },
 })
 ```
 
@@ -314,6 +314,39 @@ records. `outputOnly: true` reserves a link for trusted Actions and removes publ
 operations in both directions. Use an Object when an association needs properties,
 Actions, or a lifecycle.
 
+`acyclic: true` prevents cycles in a Link between records of the same concrete Object.
+PostgreSQL validates the final graph at transaction commit, including writes through either
+traversal and custom SQL. Validation serializes graph edits per Link; conflicting transactions
+at stricter isolation levels may need retrying. Separate acyclic Links remain separate graphs.
+
+### Work
+
+Work uses Project for a bounded outcome and Task for an actionable unit of work. Tasks can
+stand alone or belong to a project, and can decompose recursively through `parent` / `subtasks`.
+Project membership is explicit on each task; nesting does not inherit membership or ownership.
+Deleting a project or parent leaves its tasks intact. Owners can be users or service accounts.
+
+`dependsOn` / `dependents` describe prerequisites independently of decomposition, including
+across projects. Both graphs reject cycles. Status records the task's explicit lifecycle position;
+there is no separate readiness field or automatic execution policy. The Waiting on dependencies
+view shows unfinished tasks with prerequisites that are not done. This filter does not restrict
+status changes or start work automatically. Completion remains an explicit decision supported
+by completion criteria, notes, and attachments. Parent completion does not roll up automatically.
+
+Planned start and finish dates describe the schedule; due date is a separate deadline. Repeated
+operations create separate task records. Production orders, materials, inventory, product
+revisions, and resource capacity belong in business modules that link to Work when needed.
+
+### Collection views
+
+Author collection views with `defineCollectionView(Model, Object, id, label, options)`.
+The composed model supplies typed Link paths alongside the Object's properties. Columns retain
+a single ordered `columns` list across table and card layouts; the table's selection and identity columns
+remain pinned. Filters check field names and enum values, sorting excludes plural previews,
+and schedule mappings accept date fields. Authored filters must be complete and valid; only live
+filter controls may contain unfinished input. Authored definitions also validate at runtime;
+user-edited URL state and public queries retain their runtime validation.
+
 ### Page spacing
 
 Compose layouts with `PageHeader`, `PageToolbar`, `PageContent`, and `PageSectionHeader` from
@@ -341,34 +374,36 @@ A controller keeps a target in the desired state. Its portable declaration belon
 module's `controllers` array. The matching file under `server/` implements it, and `server/index.ts`
 collects controllers alongside custom operations in the module's single server contribution.
 
+The following illustrative controller is a test fixture, not installed business behavior:
+
 ```ts
-// modules/product/model/issue-greeting.ts
-export const IssueGreeting = defineController({
-  id: "issue-greeting",
-  record: Issue,
+// A custom module's model/task-greeting.ts
+export const TaskGreeting = defineController({
+  id: "task-greeting",
+  record: Task,
   schedule: { cron: "*/15 * * * *", timeZone: "UTC" },
   minInterval: "1 second",
-  name: "Issue greeting",
-  description: "Ensures each issue has a Hello world note.",
+  name: "Task greeting",
+  description: "Ensures each task has a Hello world note.",
   watch: ["notes"],
 })
 
-// modules/product/server/issue-greeting.ts
-export const issueGreeting = defineControllerServer(IssueGreeting, {
-  reconcile: Effect.fn(function* (issueId) {
+// server/task-greeting.ts
+export const taskGreeting = defineControllerServer(TaskGreeting, {
+  reconcile: Effect.fn(function* (taskId) {
     // Read current records and make an idempotent change through Database.
     // Returning completes this attempt; failures are retried.
     // Optionally return { requeueAfter: "10 minutes" } to check this key again.
   }),
 })
 
-// modules/product/server/index.ts
-export const ProductServer = defineModuleServer(ProductModule, {
-  controllers: [issueGreeting],
+// server/index.ts
+export const WorkServer = defineModuleServer(WorkModule, {
+  controllers: [taskGreeting],
 })
 ```
 
-`record: Issue` reconciles each issue ID independently. `object: Issue` reconciles once for the
+`record: Task` reconciles each task ID independently. `object: Task` reconciles once for the
 whole installation, with `reconcile()` taking no argument. These targets determine scheduling and
 where controllers appear in the UI; either controller can read or change other objects. Record handlers
 use the target's branded record ID type. Object handlers take no key.
@@ -437,7 +472,7 @@ changed definitions without resetting journal progress; removing a definition re
 record and its controller instances.
 
 Registry records have generated canonical IDs. The stable name
-`system:controller:issue-greeting` is an alias accepted by the normal record APIs.
+`system:controller:contact-summary` is an alias accepted by the normal record APIs.
 Internal registration uses `Database.repository(Controller).upsert({ alias, values, links })`:
 concurrent calls for an alias converge on one record, supplied values and links are
 validated normally, and omitted fields and other aliases are preserved. An unchanged upsert
@@ -474,6 +509,6 @@ pending work while paused; cron and manual requests use that same queue. Resume 
 processes retained work without an extra scan. Registration and process restarts preserve pause state.
 The UI derives applicable definitions from the model and exposes Run now and controller-wide pause/resume.
 
-Module registry records also use generated IDs and stable aliases (`system:module:product`).
+Module registry records also use generated IDs and stable aliases (`system:module:work`).
 Registration uses the normal repository upsert and preserves existing activation choices. Controller-to-module
 Links resolve these aliases rather than constructing primary keys.

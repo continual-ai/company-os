@@ -1,31 +1,26 @@
+import { validateQuery } from "#/runtime/contract/query-validation.ts"
+import type { ModelCatalog, ObjectType } from "#/runtime/model/index.ts"
+import {
+  objectFields,
+  requireObjectField,
+} from "#/runtime/model/object-fields.ts"
+import {
+  isCompleteFilter,
+  type CollectionFilterValue,
+} from "#/runtime/ui/model/collection-filter.ts"
+import { collectionLayoutError } from "#/runtime/ui/model/collection-layout.ts"
 import type { CollectionLayout } from "#/runtime/ui/model/collection-layout.ts"
-
-export type ObjectTableFilterOperator =
-  | "after"
-  | "atLeast"
-  | "atMost"
-  | "before"
-  | "contains"
-  | "doesNotContain"
-  | "empty"
-  | "equals"
-  | "greaterThan"
-  | "lessThan"
-  | "notEmpty"
-  | "notEquals"
-  | "onOrAfter"
-  | "onOrBefore"
-  | "startsWith"
-
-export interface ObjectTableFilterValue {
-  quantifier?: "some" | "none" | "every"
-  operator: ObjectTableFilterOperator
-  values: ReadonlyArray<string>
-}
+import type {
+  ViewColumn,
+  ViewFilter,
+  ViewSort,
+  ViewLayout,
+} from "#/runtime/ui/model/collection-view-types.ts"
+import { objectListRequest } from "#/runtime/ui/model/object-collection-query.ts"
 
 export interface ObjectCollectionFilter {
   readonly id: string
-  readonly value: ObjectTableFilterValue
+  readonly value: CollectionFilterValue
 }
 
 export interface ObjectCollectionSort {
@@ -39,7 +34,7 @@ export interface ObjectCollectionViewState {
   readonly date?: string
   readonly filters: ReadonlyArray<ObjectCollectionFilter>
   readonly sorting: ReadonlyArray<ObjectCollectionSort>
-  readonly visibility: Readonly<Record<string, boolean>>
+  readonly columns?: ReadonlyArray<string>
 }
 
 export interface ObjectCollectionView {
@@ -55,16 +50,47 @@ export interface ObjectCollectionSearch {
 }
 
 /** Defines a saved view with empty filters and sorting unless specified. */
-export function defineCollectionView(
+export function defineCollectionView<
+  M extends ModelCatalog,
+  O extends ObjectType,
+>(
+  model: M,
+  object: O,
   id: string,
   label: string,
   options: {
-    readonly layout?: CollectionLayout
-    readonly columns: ReadonlyArray<string>
-    readonly filters?: ObjectCollectionView["state"]["filters"]
-    readonly sorting?: ObjectCollectionView["state"]["sorting"]
+    readonly layout?: ViewLayout<NoInfer<O>>
+    readonly columns: ReadonlyArray<ViewColumn<NoInfer<M>, NoInfer<O>>>
+    readonly filters?: ReadonlyArray<ViewFilter<NoInfer<M>, NoInfer<O>>>
+    readonly sorting?: ReadonlyArray<ViewSort<NoInfer<M>, NoInfer<O>>>
   }
 ): ObjectCollectionView {
+  const fields = objectFields(object, model)
+  for (const column of options.columns) requireObjectField(fields, column)
+  for (const filter of options.filters ?? []) {
+    requireObjectField(fields, filter.id, "filter")
+    if (!isCompleteFilter(filter.value))
+      throw new Error(`Filter '${filter.id}' requires a value.`)
+  }
+  for (const sort of options.sorting ?? [])
+    requireObjectField(fields, sort.id, "sort")
+  const error = collectionLayoutError(
+    object,
+    options.layout ?? { type: "table" }
+  )
+  if (error) throw new Error(`Invalid view '${object.id}.${id}': ${error}`)
+  validateQuery(
+    model,
+    object,
+    objectListRequest(
+      object,
+      options.filters ?? [],
+      options.sorting ?? [],
+      undefined,
+      undefined,
+      model
+    )
+  )
   return {
     id,
     label,
@@ -72,9 +98,7 @@ export function defineCollectionView(
       ...(options.layout === undefined ? {} : { layout: options.layout }),
       filters: options.filters ?? [],
       sorting: options.sorting ?? [],
-      visibility: Object.fromEntries(
-        options.columns.map((column) => [column, true])
-      ),
+      columns: options.columns,
     },
   }
 }

@@ -51,6 +51,8 @@ export interface LinkDefinition {
   readonly from: LinkEndDefinition
   readonly to: LinkEndDefinition
   readonly outputOnly?: boolean
+  /** Prevent directed cycles, including self-links, between records of the same Object. */
+  readonly acyclic?: boolean
 }
 
 type EndpointOf<T extends LinkTarget> = LinkEndpoint<T["id"], T["kind"]>
@@ -71,6 +73,7 @@ export interface LinkType<D extends LinkDefinition = LinkDefinition> {
   id: D["id"]
   name: string
   description?: string
+  acyclic: boolean
   outputOnly: OpenOr<
     D,
     boolean,
@@ -126,6 +129,13 @@ export function defineLink<const D extends LinkDefinition>(
   const input: LinkDefinition = definition
   const forward = traversal(input.from, input.from.object, input.to.object)
   const reverse = traversal(input.to, input.to.object, input.from.object)
+  if (
+    input.acyclic &&
+    (input.from.object.kind !== "object" ||
+      input.to.object.kind !== "object" ||
+      input.from.object.id !== input.to.object.id)
+  )
+    throw new Error(`Acyclic link '${input.id}' must connect the same Object.`)
   if (forward.min === 1 && reverse.min === 1)
     throw new Error(`Link '${input.id}' cannot require existence on both ends.`)
   if (
@@ -141,6 +151,7 @@ export function defineLink<const D extends LinkDefinition>(
     id: definitionId(input.id),
     name: input.name ?? `${input.from.object.name} ${input.from.key}`,
     outputOnly: input.outputOnly ?? false,
+    acyclic: input.acyclic ?? false,
     forward,
     reverse,
     ...(input.description === undefined

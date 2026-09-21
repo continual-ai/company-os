@@ -6,11 +6,12 @@ import {
   CodeIcon,
   HandshakeIcon,
   HeadsetIcon,
-  LifeBuoyIcon,
+  MessageSquareIcon,
   MegaphoneIcon,
   UsersIcon,
   ScanFaceIcon,
   WrenchIcon,
+  ListTodoIcon,
   type LucideIcon,
 } from "lucide-react"
 
@@ -52,12 +53,12 @@ export const workspaceModuleOrder = [
   "crm",
   "sales",
   "marketing",
-  "product",
+  "work",
   "engineering",
   "hiring",
   "service",
-  "customerFeedback",
-  "productDemand",
+  "feedback",
+  "workDemand",
   "platform",
 ]
 
@@ -66,12 +67,12 @@ export const workspaceModuleIcons: Record<string, LucideIcon> = {
   crm: UsersIcon,
   sales: HandshakeIcon,
   marketing: MegaphoneIcon,
-  product: BlocksIcon,
+  work: ListTodoIcon,
   engineering: CodeIcon,
   hiring: UsersIcon,
   service: HeadsetIcon,
-  customerFeedback: LifeBuoyIcon,
-  productDemand: HandshakeIcon,
+  feedback: MessageSquareIcon,
+  workDemand: HandshakeIcon,
 }
 
 export const workspaceSections = [

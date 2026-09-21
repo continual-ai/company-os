@@ -1,12 +1,12 @@
 import { Schema } from "effect"
 
 import { calendarDay } from "#/runtime/ui/model/collection-dates.ts"
+import { CollectionFilterValueSchema } from "#/runtime/ui/model/collection-filter.ts"
 import { CollectionLayoutSchema } from "#/runtime/ui/model/collection-layout.ts"
 import type {
   ObjectCollectionSearch,
   ObjectCollectionView,
   ObjectCollectionViewState,
-  ObjectTableFilterOperator,
 } from "#/runtime/ui/model/collection-view.ts"
 
 interface ResolvedObjectCollectionView {
@@ -17,26 +17,7 @@ interface ResolvedObjectCollectionView {
 export const emptyObjectCollectionViewState: ObjectCollectionViewState = {
   filters: [],
   sorting: [],
-  visibility: {},
 }
-
-const filterOperators = [
-  "after",
-  "atLeast",
-  "atMost",
-  "before",
-  "contains",
-  "doesNotContain",
-  "empty",
-  "equals",
-  "greaterThan",
-  "lessThan",
-  "notEmpty",
-  "notEquals",
-  "onOrAfter",
-  "onOrBefore",
-  "startsWith",
-] as const satisfies ReadonlyArray<ObjectTableFilterOperator>
 
 const ObjectCollectionViewStateSchema = Schema.Struct({
   query: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(200))),
@@ -51,19 +32,13 @@ const ObjectCollectionViewStateSchema = Schema.Struct({
   filters: Schema.Array(
     Schema.Struct({
       id: Schema.String,
-      value: Schema.Struct({
-        quantifier: Schema.optionalKey(
-          Schema.Literals(["some", "none", "every"])
-        ),
-        operator: Schema.Literals(filterOperators),
-        values: Schema.Array(Schema.String),
-      }),
+      value: CollectionFilterValueSchema,
     })
   ),
   sorting: Schema.Array(
     Schema.Struct({ desc: Schema.Boolean, id: Schema.String })
   ),
-  visibility: Schema.Record(Schema.String, Schema.Boolean),
+  columns: Schema.optionalKey(Schema.Array(Schema.String)),
 })
 
 const ObjectCollectionSearchSchema = Schema.Struct({

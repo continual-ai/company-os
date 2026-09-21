@@ -1,10 +1,11 @@
-import type { Ticket } from "#/modules/service/model/ticket.ts"
+import { Model } from "#/app.model.ts"
+import { Ticket } from "#/modules/service/model/ticket.ts"
 import { defineCollectionView, type ObjectUi } from "#/runtime/ui/module.ts"
 
 export const ticketUi = {
   collection: {
     views: [
-      defineCollectionView("all", "All tickets", {
+      defineCollectionView(Model, Ticket, "all", "All tickets", {
         columns: [
           "subject",
           "status",
@@ -14,7 +15,7 @@ export const ticketUi = {
           "respondByAt",
         ],
       }),
-      defineCollectionView("triage", "Triage", {
+      defineCollectionView(Model, Ticket, "triage", "Triage", {
         columns: [
           "subject",
           "status",
@@ -27,7 +28,7 @@ export const ticketUi = {
           { id: "status", value: { operator: "equals", values: ["new"] } },
         ],
       }),
-      defineCollectionView("open", "Open", {
+      defineCollectionView(Model, Ticket, "open", "Open", {
         columns: [
           "subject",
           "status",
@@ -43,7 +44,7 @@ export const ticketUi = {
           },
         ],
       }),
-      defineCollectionView("waiting", "Waiting on customer", {
+      defineCollectionView(Model, Ticket, "waiting", "Waiting on customer", {
         columns: [
           "subject",
           "status",
@@ -59,11 +60,11 @@ export const ticketUi = {
           },
         ],
       }),
-      defineCollectionView("board", "Board", {
+      defineCollectionView(Model, Ticket, "board", "Board", {
         layout: { type: "kanban", groupBy: "status" },
         columns: ["subject", "priority", "account", "owner"],
       }),
-      defineCollectionView("calendar", "Response calendar", {
+      defineCollectionView(Model, Ticket, "calendar", "Response calendar", {
         layout: { type: "calendar", start: "respondByAt" },
         columns: ["subject", "priority", "owner"],
       }),

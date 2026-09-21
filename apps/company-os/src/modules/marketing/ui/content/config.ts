@@ -1,10 +1,11 @@
-import type { Content } from "#/modules/marketing/model/content.ts"
+import { Model } from "#/app.model.ts"
+import { Content } from "#/modules/marketing/model/content.ts"
 import { defineCollectionView, type ObjectUi } from "#/runtime/ui/module.ts"
 
 export const contentUi = {
   collection: {
     views: [
-      defineCollectionView("all", "All content", {
+      defineCollectionView(Model, Content, "all", "All content", {
         columns: [
           "title",
           "format",
@@ -14,7 +15,7 @@ export const contentUi = {
           "scheduledAt",
         ],
       }),
-      defineCollectionView("review", "Needs review", {
+      defineCollectionView(Model, Content, "review", "Needs review", {
         columns: [
           "title",
           "format",
@@ -27,7 +28,7 @@ export const contentUi = {
           { id: "status", value: { operator: "equals", values: ["review"] } },
         ],
       }),
-      defineCollectionView("scheduled", "Scheduled", {
+      defineCollectionView(Model, Content, "scheduled", "Scheduled", {
         columns: [
           "title",
           "format",
@@ -43,11 +44,11 @@ export const contentUi = {
           },
         ],
       }),
-      defineCollectionView("calendar", "Publishing calendar", {
+      defineCollectionView(Model, Content, "calendar", "Publishing calendar", {
         layout: { type: "calendar", start: "scheduledAt" },
         columns: ["title", "status"],
       }),
-      defineCollectionView("board", "Board", {
+      defineCollectionView(Model, Content, "board", "Board", {
         layout: { type: "kanban", groupBy: "status" },
         columns: ["title", "format", "scheduledAt"],
       }),

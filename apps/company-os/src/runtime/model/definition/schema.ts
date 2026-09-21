@@ -803,11 +803,12 @@ function string<const TOptions extends StringSchemaOptions = {}>(
 
 function semanticString<
   TValue extends string,
+  const TFormat extends NonNullable<StringSchema["format"]>,
   const TOptions extends SemanticStringOptions<TValue> = {},
 >(
-  format: NonNullable<StringSchema["format"]>,
+  format: TFormat,
   options?: TOptions
-): StringSchema<TValue> & TOptions {
+): StringSchema<TValue> & { format: TFormat } & TOptions {
   const values = configured(options)
   assertRange("String length", values.minLength, values.maxLength)
   return { kind: "string", format, ...values }
@@ -815,43 +816,43 @@ function semanticString<
 
 function markdown<const TOptions extends SemanticStringOptions<string> = {}>(
   options?: TOptions
-): StringSchema & TOptions {
+): StringSchema & { format: "markdown" } & TOptions {
   return semanticString("markdown", options)
 }
 
 function date<const TOptions extends SemanticStringOptions<CalendarDate> = {}>(
   options?: TOptions
-): StringSchema<CalendarDate> & TOptions {
+): StringSchema<CalendarDate> & { format: "date" } & TOptions {
   return semanticString("date", options)
 }
 
 function domain<const TOptions extends SemanticStringOptions<DomainName> = {}>(
   options?: TOptions
-): StringSchema<DomainName> & TOptions {
+): StringSchema<DomainName> & { format: "domain" } & TOptions {
   return semanticString("domain", options)
 }
 
 function email<const TOptions extends SemanticStringOptions<EmailAddress> = {}>(
   options?: TOptions
-): StringSchema<EmailAddress> & TOptions {
+): StringSchema<EmailAddress> & { format: "email" } & TOptions {
   return semanticString("email", options)
 }
 
 function phone<const TOptions extends SemanticStringOptions<PhoneNumber> = {}>(
   options?: TOptions
-): StringSchema<PhoneNumber> & TOptions {
+): StringSchema<PhoneNumber> & { format: "phone" } & TOptions {
   return semanticString("phone", options)
 }
 
 function timestamp<const TOptions extends TimestampSchemaOptions = {}>(
   options?: TOptions
-): StringSchema<Timestamp> & TOptions {
+): StringSchema<Timestamp> & { format: "timestamp" } & TOptions {
   return semanticString("timestamp", options)
 }
 
 function url<const TOptions extends SemanticStringOptions<WebUrl> = {}>(
   options?: TOptions
-): StringSchema<WebUrl> & TOptions {
+): StringSchema<WebUrl> & { format: "url" } & TOptions {
   return semanticString("url", options)
 }
 

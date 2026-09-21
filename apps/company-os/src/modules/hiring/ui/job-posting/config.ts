@@ -1,10 +1,11 @@
-import type { JobPosting } from "#/modules/hiring/model/job-posting.ts"
+import { Model } from "#/app.model.ts"
+import { JobPosting } from "#/modules/hiring/model/job-posting.ts"
 import { defineCollectionView, type ObjectUi } from "#/runtime/ui/module.ts"
 
 export const jobPostingUi = {
   collection: {
     views: [
-      defineCollectionView("all", "All job postings", {
+      defineCollectionView(Model, JobPosting, "all", "All job postings", {
         columns: [
           "title",
           "status",
@@ -14,7 +15,7 @@ export const jobPostingUi = {
           "hiringManager",
         ],
       }),
-      defineCollectionView("open", "Open", {
+      defineCollectionView(Model, JobPosting, "open", "Open", {
         columns: [
           "title",
           "employmentType",

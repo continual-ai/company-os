@@ -1,41 +1,51 @@
 import type { ObjectField } from "#/runtime/model/object-fields.ts"
 import { linkPreview } from "#/runtime/model/record-links.ts"
-import { formatTotalSize } from "#/runtime/ui/model/format-total-size.ts"
 import type {
   ObjectTableRecord,
   ObjectTableRecordResolver,
   ObjectTableValue,
 } from "#/runtime/ui/model/object-table/object-table-config.ts"
 
-/** Read canonical records; expansion and preview counts never become synthetic properties. */
+type Count = { readonly totalSize: number; readonly totalSizeExact: boolean }
+export type FieldValue =
+  | { readonly kind: "scalar"; readonly value: ObjectTableValue }
+  | ({ readonly kind: "link"; readonly ids: ReadonlyArray<string> } & Count)
+  | ({ readonly kind: "count" } & Count)
+  | ({
+      readonly kind: "values"
+      readonly values: ReadonlyArray<ObjectTableValue>
+      readonly loadedSize: number
+    } & Count)
+
+/** Preserve preview metadata; presentation text never becomes a field value. */
 export function objectFieldValue(
   field: ObjectField,
   record: ObjectTableRecord,
   resolveRecord?: ObjectTableRecordResolver
-): ObjectTableValue {
+): FieldValue {
   if (field.kind === "property" || field.kind === "record")
-    return record[field.id] ?? null
-  if (field.kind === "link") return linkPreview(record.links?.[field.id]).ids
+    return { kind: "scalar", value: record[field.id] ?? null }
+  if (field.kind === "link")
+    return { kind: "link", ...linkPreview(record.links?.[field.id]) }
   const related = field.related
-  const link = record.links?.[related.traversal.traversal.key]
-  const { ids, totalSize, totalSizeExact } = linkPreview(link)
-  if (related.count) return totalSize
-  const values = ids.flatMap((id) => {
+  const { ids, totalSize, totalSizeExact } = linkPreview(
+    record.links?.[related.traversal.traversal.key]
+  )
+  if (related.count) return { kind: "count", totalSize, totalSizeExact }
+  const values = ids.map((id) => {
     const reference = resolveRecord?.(id)
-    const target = reference?.record
     const mapping =
       reference?.object.interfaces[related.traversal.inverse.from.typeId]
         ?.propertyMapping ?? {}
-    const value = target?.[mapping[related.key] ?? related.key]
-    return value === null || value === undefined ? [] : [value]
+    return reference?.record[mapping[related.key] ?? related.key] ?? null
   })
-  if (related.traversal.traversal.max === 1) return values[0] ?? null
-  return [
-    ...values,
-    ...(totalSize > ids.length
-      ? [
-          `+${formatTotalSize({ totalSize: totalSize - ids.length, totalSizeExact })} more`,
-        ]
-      : []),
-  ]
+  if (related.traversal.traversal.max === 1)
+    return { kind: "scalar", value: values[0] ?? null }
+  return {
+    kind: "values",
+    values,
+    loadedSize: ids.length,
+    totalSize,
+    totalSizeExact,
+  }
 }

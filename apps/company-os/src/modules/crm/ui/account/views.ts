@@ -1,10 +1,12 @@
+import { Model } from "#/app.model.ts"
+import { Account } from "#/modules/crm/model/account.ts"
 import { defineCollectionView } from "#/runtime/ui/module.ts"
 
 export const accountViews = [
-  defineCollectionView("all", "All accounts", {
+  defineCollectionView(Model, Account, "all", "All accounts", {
     columns: ["name", "domain", "industry", "fitScore", "lifecycleStage"],
   }),
-  defineCollectionView("prospects", "Prospects", {
+  defineCollectionView(Model, Account, "prospects", "Prospects", {
     columns: ["name", "domain", "industry", "fitScore", "lifecycleStage"],
     filters: [
       {
@@ -13,7 +15,7 @@ export const accountViews = [
       },
     ],
   }),
-  defineCollectionView("customers", "Customers", {
+  defineCollectionView(Model, Account, "customers", "Customers", {
     columns: [
       "name",
       "domain",

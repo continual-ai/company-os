@@ -53,10 +53,10 @@ application.test(
     Effect.gen(function* () {
       const database = yield* Database
       const controllers = database.repository(Controller)
-      const id = controllerAlias("issue-greeting")
+      const id = controllerAlias("contact-summary")
       const original = yield* controllers.get({ id })
       const storage = yield* ControllerStorage
-      yield* storage.saveCursor("issue-greeting", "saved-progress")
+      yield* storage.saveCursor("contact-summary", "saved-progress")
       yield* seedSystem()
       expect((yield* controllers.get({ id })).etag).toBe(original.etag)
       yield* controllers.update({ id, name: "Stale metadata", paused: true })
@@ -64,18 +64,18 @@ application.test(
         definitionId: "removed-controller",
         name: "Removed",
         description: "",
-        targetObjectType: "issue",
+        targetObjectType: "task",
         scope: "record",
         watch: [],
-        links: { module: moduleAlias("product") },
+        links: { module: moduleAlias("work") },
       })
       yield* storage.saveCursor("removed-controller", "old-progress")
       yield* seedSystem()
       expect(yield* controllers.get({ id })).toMatchObject({
-        name: "Issue greeting",
+        name: "Contact summary",
         paused: true,
       })
-      expect(yield* storage.cursor("issue-greeting")).toBe("saved-progress")
+      expect(yield* storage.cursor("contact-summary")).toBe("saved-progress")
       expect(yield* storage.cursor("removed-controller")).toBeUndefined()
       expect(
         yield* controllers.get({ id: extra.id }).pipe(Effect.flip)
@@ -88,7 +88,7 @@ application.test(
   () =>
     Effect.gen(function* () {
       const modules = (yield* Database).repository(ModuleSetting)
-      const id = moduleAlias("product")
+      const id = moduleAlias("work")
       const original = yield* modules.get({ id })
       expect(original.id).toMatch(/^module_setting_[0-9a-z]{26}$/)
       expect(original.aliases).toContain(id)

@@ -126,7 +126,7 @@ it.each([true, false])(
               },
             },
           ]}
-          visiblePropertyIds={["name", "accounts.name", "accounts.$count"]}
+          columns={["name", "accounts.name", "accounts.$count"]}
           resolveRecord={() => ({
             object: Account,
             record: { id: "account_example", name: "Acme" },
@@ -165,7 +165,7 @@ it("renders standard resource columns from records with expanded links", () => {
       <ObjectTable
         object={Person}
         records={[record]}
-        visiblePropertyIds={[
+        columns={[
           "name",
           "createdAt",
           "updatedAt",

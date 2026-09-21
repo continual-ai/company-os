@@ -755,6 +755,24 @@ describe("model definitions", () => {
     ).toThrow(/bounds/)
   })
 
+  it("limits acyclic links to one concrete Object", () => {
+    const link = defineLink({
+      id: "contactHierarchy",
+      acyclic: true,
+      from: { object: Contact, key: "parent", max: 1 },
+      to: { object: Contact, key: "children" },
+    })
+    expect(link.acyclic).toBe(true)
+    expect(() =>
+      defineLink({
+        id: "invalidGraph",
+        acyclic: true,
+        from: { object: Contact, key: "actors" },
+        to: { object: TestActor, key: "contacts" },
+      })
+    ).toThrow(/same Object/)
+  })
+
   it("allows interface endpoints without deriving hidden properties", () => {
     const Party = defineInterface({
       id: "party",

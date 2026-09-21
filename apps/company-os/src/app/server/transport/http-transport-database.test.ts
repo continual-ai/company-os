@@ -292,7 +292,7 @@ describe("application HTTP server", () => {
           subject: "HTTP to MCP customer report",
         })
 
-        const issue = yield* model.issue.create({
+        const task = yield* model.task.create({
           title: ticket.subject,
           links: { tickets: [ticket.id] },
         })
@@ -302,8 +302,8 @@ describe("application HTTP server", () => {
           expand: true,
         })
         expect(
-          expandedTicket.links.issues.items.map((item) => item.id)
-        ).toContain(issue.id)
+          expandedTicket.links.tasks.items.map((item) => item.id)
+        ).toContain(task.id)
         const mcpExpanded = yield* callMcp("ticket.get", {
           id: ticket.id,
           expand: true,
@@ -312,11 +312,11 @@ describe("application HTTP server", () => {
         expect(mcpExpanded.structuredContent).toEqual(expandedTicket)
 
         const hydrated = yield* model.records.batchGet({
-          ids: [ticket.id, issue.id, "missing"],
+          ids: [ticket.id, task.id, "missing"],
         })
         expect(hydrated.items.map((item) => item.objectType)).toEqual([
           "ticket",
-          "issue",
+          "task",
         ])
         expect(hydrated.missingIds).toEqual(["missing"])
         const mcpHydrated = yield* Effect.promise(() =>
@@ -337,7 +337,7 @@ describe("application HTTP server", () => {
                   params: {
                     name: "records.batchGet",
                     arguments: {
-                      ids: [ticket.id, issue.id, "missing"],
+                      ids: [ticket.id, task.id, "missing"],
                     },
                   },
                 }),
@@ -370,7 +370,7 @@ describe("application HTTP server", () => {
           hydratedPayload.result.structuredContent.items.map(
             (item) => item.objectType
           )
-        ).toEqual(["ticket", "issue"])
+        ).toEqual(["ticket", "task"])
         expect(hydratedPayload.result.structuredContent.missingIds).toEqual([
           "missing",
         ])
@@ -391,8 +391,8 @@ describe("application HTTP server", () => {
                   jsonrpc: "2.0",
                   method: "tools/call",
                   params: {
-                    name: "issue.get",
-                    arguments: { id: issue.id },
+                    name: "task.get",
+                    arguments: { id: task.id },
                   },
                 }),
               })
@@ -422,10 +422,10 @@ describe("application HTTP server", () => {
         expect(repeatedPayload.result.isError).not.toBe(true)
         expect(
           repeatedPayload.result.content.some((item) =>
-            item.text?.includes(issue.id)
+            item.text?.includes(task.id)
           )
         ).toBe(true)
-        expect((yield* model.issue.list({})).totalSize).toBe(1)
+        expect((yield* model.task.list({})).totalSize).toBe(1)
 
         const streamed = yield* model.changes.stream("now").pipe(
           Effect.flatMap((stream) =>

@@ -2,20 +2,20 @@ import { expect, it } from "vitest"
 
 import { CrmModule } from "#/modules/crm/model/index.ts"
 import { CrmUi } from "#/modules/crm/ui/index.ts"
-import { CustomerFeedbackModule } from "#/modules/customer-feedback/model/index.ts"
-import { ProductDemandModule } from "#/modules/product-demand/model/index.ts"
-import { ProductModule } from "#/modules/product/model/index.ts"
-import { ProductUi } from "#/modules/product/ui/index.ts"
+import { FeedbackModule } from "#/modules/feedback/model/index.ts"
 import { SalesModule } from "#/modules/sales/model/index.ts"
 import { SalesUi } from "#/modules/sales/ui/index.ts"
 import { ServiceModule } from "#/modules/service/model/index.ts"
 import { ServiceUi } from "#/modules/service/ui/index.ts"
+import { WorkDemandModule } from "#/modules/work-demand/model/index.ts"
+import { WorkModule } from "#/modules/work/model/index.ts"
+import { WorkUi } from "#/modules/work/ui/index.ts"
 import { defineModel } from "#/runtime/model/index.ts"
 import { PlatformModule } from "#/runtime/platform/model/index.ts"
 import { composeModelUi } from "#/runtime/ui/model/module-ui.tsx"
 
 const service = [PlatformModule, CrmModule, ServiceModule] as const
-it("keeps a business-free starter and allows Service without Product", () => {
+it("keeps a business-free starter and allows Service without Work", () => {
   const minimal = defineModel({
     name: "Minimal",
     modules: [PlatformModule],
@@ -28,35 +28,38 @@ it("keeps a business-free starter and allows Service without Product", () => {
     modules: service,
   })
   expect(Object.keys(standalone.objects)).toContain("ticket")
-  expect(Object.keys(standalone.objects)).not.toContain("issue")
+  expect(Object.keys(standalone.objects)).not.toContain("task")
 })
-it("requires both domains for the optional customer feedback module", () => {
+it("requires both domains for the feedback module", () => {
   expect(() =>
     defineModel({
       name: "Incomplete",
-      modules: [...service, CustomerFeedbackModule],
+      modules: [...service, FeedbackModule],
     })
   ).toThrow()
   const dogfood = defineModel({
-    name: "Product and service",
-    modules: [...service, ProductModule, CustomerFeedbackModule],
+    name: "Work and service",
+    modules: [...service, WorkModule, FeedbackModule],
   })
-  expect(dogfood.links.ticketIssues).toBeDefined()
+  expect(dogfood.links.ticketTasks).toBeDefined()
+  expect(dogfood.objects.feedback).toBeDefined()
+  expect(dogfood.links.feedbackTasks).toBeDefined()
+  expect(dogfood.links.feedbackTickets).toBeDefined()
   expect(dogfood.objects).not.toHaveProperty("opportunity")
 })
 
-it("composes product demand without requiring customer service", () => {
+it("composes work demand without requiring customer service", () => {
   const model = defineModel({
-    name: "Sales and product",
+    name: "Sales and work",
     modules: [
       PlatformModule,
       CrmModule,
       SalesModule,
-      ProductModule,
-      ProductDemandModule,
+      WorkModule,
+      WorkDemandModule,
     ],
   })
-  expect(model.links.opportunityIssues).toBeDefined()
+  expect(model.links.opportunityTasks).toBeDefined()
   expect(model.objects).not.toHaveProperty("ticket")
 })
 
@@ -65,9 +68,9 @@ it("composes domain UIs with only their owning model dependencies", () => {
     name: "CRM",
     modules: [PlatformModule, CrmModule],
   })
-  const product = defineModel({
-    name: "Product",
-    modules: [PlatformModule, ProductModule],
+  const work = defineModel({
+    name: "Work",
+    modules: [PlatformModule, WorkModule],
   })
   const sales = defineModel({
     name: "Sales",
@@ -75,7 +78,7 @@ it("composes domain UIs with only their owning model dependencies", () => {
   })
   const serviceModel = defineModel({ name: "Service", modules: service })
   expect(composeModelUi(crm, CrmUi).account).toBeDefined()
-  expect(composeModelUi(product, ProductUi).issue).toBeDefined()
+  expect(composeModelUi(work, WorkUi).task).toBeDefined()
   expect(composeModelUi(sales, CrmUi, SalesUi).opportunity).toBeDefined()
   expect(composeModelUi(serviceModel, CrmUi, ServiceUi).ticket).toBeDefined()
 })

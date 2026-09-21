@@ -47,7 +47,7 @@ create table "objects" (
     'campaignMember',
     'outreach',
     'project',
-    'issue',
+    'task',
     'githubRepository',
     'githubPullRequest',
     'githubIssue',
@@ -55,7 +55,8 @@ create table "objects" (
     'candidate',
     'application',
     'ticket',
-    'reply'
+    'reply',
+    'feedback'
   ))
 );
 
@@ -76,6 +77,11 @@ create index "record_aliases_object_id_idx" on "record_aliases" ("object_id");
 -- ===========================================================================
 -- Each row identifies an implementing record. Properties remain in the domain
 -- tables.
+create table "link_graph_guards" (
+  "link_id" text not null,
+  "revision" bigint not null default 0,
+  primary key ("link_id")
+);
 
 -- Actor membership (actor)
 -- Who performed an action, such as a user, agent, or anonymous visitor.
@@ -495,7 +501,7 @@ create table "outreaches" (
 );
 
 -- ===========================================================================
--- Domain objects: Product
+-- Domain objects: Work
 -- ===========================================================================
 
 -- Project (project)
@@ -512,24 +518,33 @@ create table "projects" (
   foreign key ("id") references "objects" ("id") on delete cascade
 );
 
--- Issue (issue)
--- A bug, request, or task to investigate and resolve.
-create table "issues" (
+-- Task (task)
+-- Work with an accountable owner and completion criteria. Tasks may stand
+-- alone, belong to a project, or contain subtasks.
+create table "tasks" (
   "id" text not null,
   -- Link reference.
   "project_id" text,
   -- Link reference.
-  "assignee_id" text,
+  "owner_id" text,
+  -- Link reference.
+  "parent_id" text,
   "title" text not null,
+  -- Context, instructions, and the intended outcome.
   "description" text,
-  "kind" text not null default 'task',
+  -- The observable result and evidence needed to accept this work.
+  "acceptance_criteria" text,
   "priority" text not null default 'normal',
   "due_date" date,
+  "planned_start_date" date,
+  "planned_finish_date" date,
   "status" text not null default 'backlog',
   "attachments" jsonb not null default '[]'::jsonb,
   primary key ("id"),
   foreign key ("id") references "objects" ("id") on delete cascade
 );
+
+alter table "tasks" add constraint "tasks_check_plannedDates" check ("planned_start_date" <= "planned_finish_date");
 
 -- ===========================================================================
 -- Domain objects: Engineering
@@ -701,6 +716,34 @@ create table "replies" (
   "body" text not null,
   "external_id" text,
   "sent_at" timestamp with time zone,
+  "attachments" jsonb not null default '[]'::jsonb,
+  primary key ("id"),
+  foreign key ("id") references "objects" ("id") on delete cascade
+);
+
+-- ===========================================================================
+-- Domain objects: Feedback
+-- ===========================================================================
+
+-- Feedback (feedback)
+-- An observation, request, or report to consider. Feedback preserves the
+-- evidence independently of any work it leads to.
+create table "feedback" (
+  "id" text not null,
+  -- Link reference.
+  "owner_id" text,
+  -- Link reference.
+  "reporter_id" text,
+  "title" text not null,
+  -- Preserve the original words, context, and observed impact.
+  "description" text,
+  -- Review progress, independent of the status of linked tasks.
+  "status" text not null default 'new',
+  -- Where this came from, such as an interview or field inspection.
+  "source" text,
+  "source_url" text,
+  -- The assessment, decision, and reason for any next steps.
+  "review_notes" text,
   "attachments" jsonb not null default '[]'::jsonb,
   primary key ("id"),
   foreign key ("id") references "objects" ("id") on delete cascade
@@ -883,13 +926,30 @@ create view "link_project_owner" as select "id" as forward_id, "owner_id" as rev
 
 create index "project_owner_target_idx" on "projects" ("owner_id", "id");
 
-create view "link_issue_project" as select "id" as forward_id, "project_id" as reverse_id from "issues" where "project_id" is not null;
+create view "link_task_project" as select "id" as forward_id, "project_id" as reverse_id from "tasks" where "project_id" is not null;
 
-create index "issue_project_target_idx" on "issues" ("project_id", "id");
+create index "task_project_target_idx" on "tasks" ("project_id", "id");
 
-create view "link_issue_assignee" as select "id" as forward_id, "assignee_id" as reverse_id from "issues" where "assignee_id" is not null;
+create view "link_task_owner" as select "id" as forward_id, "owner_id" as reverse_id from "tasks" where "owner_id" is not null;
 
-create index "issue_assignee_target_idx" on "issues" ("assignee_id", "id");
+create index "task_owner_target_idx" on "tasks" ("owner_id", "id");
+
+create view "link_task_parent" as select "id" as forward_id, "parent_id" as reverse_id from "tasks" where "parent_id" is not null;
+
+create index "task_parent_target_idx" on "tasks" ("parent_id", "id");
+
+-- Task dependencies (taskDependencies)
+create table "link_task_dependencies" (
+  -- References tasks.id.
+  "forward_id" text not null,
+  -- References tasks.id.
+  "reverse_id" text not null,
+  primary key ("forward_id", "reverse_id"),
+  foreign key ("forward_id") references "tasks" ("id") on delete cascade,
+  foreign key ("reverse_id") references "tasks" ("id") on delete cascade
+);
+
+create index "link_task_dependencies_reverse_id_idx" on "link_task_dependencies" ("reverse_id", "forward_id");
 
 create view "link_github_repository_connection" as select "id" as forward_id, "connection_id" as reverse_id from "github_repositories" where "connection_id" is not null;
 
@@ -933,31 +993,31 @@ create table "link_github_issue_pull_requests" (
 
 create index "link_github_issue_pull_requests_reverse_id_idx" on "link_github_issue_pull_requests" ("reverse_id", "forward_id");
 
--- Product issue GitHub issues (issueGithubIssues)
-create table "link_issue_github_issues" (
-  -- References issues.id.
+-- Task GitHub issues (taskGithubIssues)
+create table "link_task_github_issues" (
+  -- References tasks.id.
   "forward_id" text not null,
   -- References github_issues.id.
   "reverse_id" text not null,
   primary key ("forward_id", "reverse_id"),
-  foreign key ("forward_id") references "issues" ("id") on delete cascade,
+  foreign key ("forward_id") references "tasks" ("id") on delete cascade,
   foreign key ("reverse_id") references "github_issues" ("id") on delete cascade
 );
 
-create index "link_issue_github_issues_reverse_id_idx" on "link_issue_github_issues" ("reverse_id", "forward_id");
+create index "link_task_github_issues_reverse_id_idx" on "link_task_github_issues" ("reverse_id", "forward_id");
 
--- Product issue GitHub pull requests (issueGithubPullRequests)
-create table "link_issue_github_pull_requests" (
-  -- References issues.id.
+-- Task GitHub pull requests (taskGithubPullRequests)
+create table "link_task_github_pull_requests" (
+  -- References tasks.id.
   "forward_id" text not null,
   -- References github_pull_requests.id.
   "reverse_id" text not null,
   primary key ("forward_id", "reverse_id"),
-  foreign key ("forward_id") references "issues" ("id") on delete cascade,
+  foreign key ("forward_id") references "tasks" ("id") on delete cascade,
   foreign key ("reverse_id") references "github_pull_requests" ("id") on delete cascade
 );
 
-create index "link_issue_github_pull_requests_reverse_id_idx" on "link_issue_github_pull_requests" ("reverse_id", "forward_id");
+create index "link_task_github_pull_requests_reverse_id_idx" on "link_task_github_pull_requests" ("reverse_id", "forward_id");
 
 create view "link_application_job" as select "id" as forward_id, "job_id" as reverse_id from "applications" where "job_id" is not null;
 
@@ -987,31 +1047,65 @@ create view "link_ticket_owner" as select "id" as forward_id, "owner_id" as reve
 
 create index "ticket_owner_target_idx" on "tickets" ("owner_id", "id");
 
--- Customer reported issues (ticketIssues)
-create table "link_ticket_issues" (
+create view "link_feedback_owner" as select "id" as forward_id, "owner_id" as reverse_id from "feedback" where "owner_id" is not null;
+
+create index "feedback_owner_target_idx" on "feedback" ("owner_id", "id");
+
+create view "link_feedback_reporter" as select "id" as forward_id, "reporter_id" as reverse_id from "feedback" where "reporter_id" is not null;
+
+create index "feedback_reporter_target_idx" on "feedback" ("reporter_id", "id");
+
+-- Feedback tasks (feedbackTasks)
+create table "link_feedback_tasks" (
+  -- References feedback.id.
+  "forward_id" text not null,
+  -- References tasks.id.
+  "reverse_id" text not null,
+  primary key ("forward_id", "reverse_id"),
+  foreign key ("forward_id") references "feedback" ("id") on delete cascade,
+  foreign key ("reverse_id") references "tasks" ("id") on delete cascade
+);
+
+create index "link_feedback_tasks_reverse_id_idx" on "link_feedback_tasks" ("reverse_id", "forward_id");
+
+-- Feedback source tickets (feedbackTickets)
+create table "link_feedback_tickets" (
+  -- References feedback.id.
+  "forward_id" text not null,
+  -- References tickets.id.
+  "reverse_id" text not null,
+  primary key ("forward_id", "reverse_id"),
+  foreign key ("forward_id") references "feedback" ("id") on delete cascade,
+  foreign key ("reverse_id") references "tickets" ("id") on delete cascade
+);
+
+create index "link_feedback_tickets_reverse_id_idx" on "link_feedback_tickets" ("reverse_id", "forward_id");
+
+-- Customer reported tasks (ticketTasks)
+create table "link_ticket_tasks" (
   -- References tickets.id.
   "forward_id" text not null,
-  -- References issues.id.
+  -- References tasks.id.
   "reverse_id" text not null,
   primary key ("forward_id", "reverse_id"),
   foreign key ("forward_id") references "tickets" ("id") on delete cascade,
-  foreign key ("reverse_id") references "issues" ("id") on delete cascade
+  foreign key ("reverse_id") references "tasks" ("id") on delete cascade
 );
 
-create index "link_ticket_issues_reverse_id_idx" on "link_ticket_issues" ("reverse_id", "forward_id");
+create index "link_ticket_tasks_reverse_id_idx" on "link_ticket_tasks" ("reverse_id", "forward_id");
 
--- Opportunity product needs (opportunityIssues)
-create table "link_opportunity_issues" (
+-- Opportunity work (opportunityTasks)
+create table "link_opportunity_tasks" (
   -- References opportunities.id.
   "forward_id" text not null,
-  -- References issues.id.
+  -- References tasks.id.
   "reverse_id" text not null,
   primary key ("forward_id", "reverse_id"),
   foreign key ("forward_id") references "opportunities" ("id") on delete cascade,
-  foreign key ("reverse_id") references "issues" ("id") on delete cascade
+  foreign key ("reverse_id") references "tasks" ("id") on delete cascade
 );
 
-create index "link_opportunity_issues_reverse_id_idx" on "link_opportunity_issues" ("reverse_id", "forward_id");
+create index "link_opportunity_tasks_reverse_id_idx" on "link_opportunity_tasks" ("reverse_id", "forward_id");
 
 -- ===========================================================================
 -- Cross-table constraints
@@ -1076,11 +1170,13 @@ alter table "outreaches" add constraint "outreach_contact_target_fk" foreign key
 
 alter table "outreaches" add constraint "outreach_owner_target_fk" foreign key ("owner_id") references "users" (id) on delete set null deferrable initially deferred;
 
-alter table "projects" add constraint "project_owner_target_fk" foreign key ("owner_id") references "users" (id) on delete set null deferrable initially deferred;
+alter table "projects" add constraint "project_owner_target_fk" foreign key ("owner_id") references "interface_identity" (id) on delete set null deferrable initially deferred;
 
-alter table "issues" add constraint "issue_project_target_fk" foreign key ("project_id") references "projects" (id) on delete set null deferrable initially deferred;
+alter table "tasks" add constraint "task_project_target_fk" foreign key ("project_id") references "projects" (id) on delete set null deferrable initially deferred;
 
-alter table "issues" add constraint "issue_assignee_target_fk" foreign key ("assignee_id") references "users" (id) on delete set null deferrable initially deferred;
+alter table "tasks" add constraint "task_owner_target_fk" foreign key ("owner_id") references "interface_identity" (id) on delete set null deferrable initially deferred;
+
+alter table "tasks" add constraint "task_parent_target_fk" foreign key ("parent_id") references "tasks" (id) on delete set null deferrable initially deferred;
 
 alter table "github_repositories" add constraint "github_repository_connection_target_fk" foreign key ("connection_id") references "connections" (id) on delete no action deferrable initially deferred;
 
@@ -1103,6 +1199,62 @@ alter table "tickets" add constraint "ticket_account_target_fk" foreign key ("ac
 alter table "tickets" add constraint "ticket_requester_target_fk" foreign key ("requester_id") references "contacts" (id) on delete set null deferrable initially deferred;
 
 alter table "tickets" add constraint "ticket_owner_target_fk" foreign key ("owner_id") references "users" (id) on delete set null deferrable initially deferred;
+
+alter table "feedback" add constraint "feedback_owner_target_fk" foreign key ("owner_id") references "interface_identity" (id) on delete set null deferrable initially deferred;
+
+alter table "feedback" add constraint "feedback_reporter_target_fk" foreign key ("reporter_id") references "contacts" (id) on delete set null deferrable initially deferred;
+
+create function "task_parent_acyclic"() returns trigger language plpgsql as $$
+begin
+  -- Removed edges and empty references cannot introduce a cycle.
+  if not exists (select 1 from "link_task_parent" where forward_id = new."id" and reverse_id = new."parent_id") then
+    return null;
+  end if;
+  -- A write serializes graph validation and rejects stale repeatable-read snapshots.
+  -- Endpoint row locks alone cannot protect cycles formed by disjoint new edges.
+  insert into "link_graph_guards" ("link_id", "revision") values ('taskParent', 1)
+    on conflict ("link_id") do update set "revision" = "link_graph_guards"."revision" + 1;
+  if exists (
+      with recursive reachable(id) as (
+        select new."parent_id"
+        union
+        select edge.reverse_id from "link_task_parent" edge join reachable on edge.forward_id = reachable.id
+      )
+      select 1 from reachable where id = new."id"
+    ) then
+    raise exception using errcode = '23514', constraint = 'task_parent_acyclic', message = 'Link cannot contain a cycle.';
+  end if;
+  return null;
+end
+$$;
+
+create constraint trigger "task_parent_acyclic" after insert or update of "parent_id" on "tasks" deferrable initially deferred for each row execute function "task_parent_acyclic"();
+
+create function "task_dependencies_acyclic"() returns trigger language plpgsql as $$
+begin
+  -- Removed edges and empty references cannot introduce a cycle.
+  if not exists (select 1 from "link_task_dependencies" where forward_id = new."forward_id" and reverse_id = new."reverse_id") then
+    return null;
+  end if;
+  -- A write serializes graph validation and rejects stale repeatable-read snapshots.
+  -- Endpoint row locks alone cannot protect cycles formed by disjoint new edges.
+  insert into "link_graph_guards" ("link_id", "revision") values ('taskDependencies', 1)
+    on conflict ("link_id") do update set "revision" = "link_graph_guards"."revision" + 1;
+  if exists (
+      with recursive reachable(id) as (
+        select new."reverse_id"
+        union
+        select edge.reverse_id from "link_task_dependencies" edge join reachable on edge.forward_id = reachable.id
+      )
+      select 1 from reachable where id = new."forward_id"
+    ) then
+    raise exception using errcode = '23514', constraint = 'task_dependencies_acyclic', message = 'Link cannot contain a cycle.';
+  end if;
+  return null;
+end
+$$;
+
+create constraint trigger "task_dependencies_acyclic" after insert or update of "forward_id", "reverse_id" on "link_task_dependencies" deferrable initially deferred for each row execute function "task_dependencies_acyclic"();
 
 -- ===========================================================================
 -- Application infrastructure

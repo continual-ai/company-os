@@ -17,6 +17,7 @@ import {
   resolveRecordSnapshots,
 } from "#/runtime/server/events/record-snapshots.ts"
 import { ModelContext } from "#/runtime/server/model-context.ts"
+import { acyclicConstraintName } from "#/runtime/server/storage/acyclic-links.ts"
 import { CommittedChanges } from "#/runtime/server/storage/committed-changes.ts"
 import { objectUniqueConstraintName } from "#/runtime/server/storage/schema.ts"
 import { updateSearchIndex } from "#/runtime/server/storage/search-index.ts"
@@ -108,6 +109,14 @@ const make = Effect.gen(function* () {
       )
     )
   )
+  for (const link of Object.values(context.model.links))
+    if (link.acyclic)
+      checks.set(acyclicConstraintName(link), {
+        objectType: link.forward.from.typeId,
+        rule: "acyclic",
+        fields: [link.forward.key, link.reverse.key],
+        message: `${link.name} cannot contain a cycle.`,
+      })
   const database: PostgresDatabase = {
     sql,
     transaction: (body, options, finalize) =>
