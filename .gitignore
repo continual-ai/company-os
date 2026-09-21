@@ -23,6 +23,3 @@ todos.json
 
 # typescript
 *.tsbuildinfo
-
-# Agent worktrees
-.claude/worktrees/

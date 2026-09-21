@@ -16,8 +16,6 @@
     ".agent/**",
     ".agents/**",
     ".lavish/**",
-    ".claude/**",
-    ".codex/**",
     ".continue/**",
     ".cursor/**",
     ".gemini/**",
