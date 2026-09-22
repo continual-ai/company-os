@@ -218,14 +218,14 @@ catalogs:
       specifier: 0.1.4
       version: 0.1.4
     '@effect/platform-node':
-      specifier: 4.0.0-rc.116
-      version: 4.0.0-rc.116
+      specifier: 4.0.0-rc.117
+      version: 4.0.0-rc.117
     '@effect/sql-pg':
-      specifier: 4.0.0-rc.116
-      version: 4.0.0-rc.116
+      specifier: 4.0.0-rc.117
+      version: 4.0.0-rc.117
     '@effect/vitest':
-      specifier: 4.0.0-rc.116
-      version: 4.0.0-rc.116
+      specifier: 4.0.0-rc.117
+      version: 4.0.0-rc.117
     '@fontsource-variable/geist':
       specifier: 5.3.0
       version: 5.3.0
@@ -272,8 +272,8 @@ catalogs:
       specifier: 4.4.0
       version: 4.4.0
     effect:
-      specifier: 4.0.0-rc.116
-      version: 4.0.0-rc.116
+      specifier: 4.0.0-rc.117
+      version: 4.0.0-rc.117
     lucide-react:
       specifier: 1.30.0
       version: 1.30.0
@@ -328,9 +328,6 @@ catalogs:
     zod:
       specifier: 4.4.3
       version: 4.4.3
-
-patchedDependencies:
-  effect@4.0.0-rc.116: 3aaa06a42eee6ddf6209b0db38926cec6884e8b89a9af816323ad455b86eff01
 
 importers:
 
@@ -417,10 +414,10 @@ importers:
         version: 0.5.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@effect/platform-node':
         specifier: 'catalog:'
-        version: 4.0.0-rc.116(effect@4.0.0-rc.116(patch_hash=3aaa06a42eee6ddf6209b0db38926cec6884e8b89a9af816323ad455b86eff01))(redis@6.2.1)
+        version: 4.0.0-rc.117(effect@4.0.0-rc.117)(redis@6.2.1)
       '@effect/sql-pg':
         specifier: 'catalog:'
-        version: 4.0.0-rc.116(effect@4.0.0-rc.116(patch_hash=3aaa06a42eee6ddf6209b0db38926cec6884e8b89a9af816323ad455b86eff01))
+        version: 4.0.0-rc.117(effect@4.0.0-rc.117)
       '@modelcontextprotocol/server':
         specifier: 'catalog:'
         version: 2.0.0
@@ -456,7 +453,7 @@ importers:
         version: 3.14.10(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       effect:
         specifier: 'catalog:'
-        version: 4.0.0-rc.116(patch_hash=3aaa06a42eee6ddf6209b0db38926cec6884e8b89a9af816323ad455b86eff01)
+        version: 4.0.0-rc.117
       file-type:
         specifier: 22.0.2
         version: 22.0.2
@@ -484,7 +481,7 @@ importers:
         version: 0.1.4(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@tanstack/react-start@1.168.26(crossws@0.4.12(srvx@1.0.5))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite@8.0.16(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0)))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vite@8.0.16(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0))
       '@effect/vitest':
         specifier: 'catalog:'
-        version: 4.0.0-rc.116(effect@4.0.0-rc.116(patch_hash=3aaa06a42eee6ddf6209b0db38926cec6884e8b89a9af816323ad455b86eff01))(vitest@5.0.1(@types/node@24.13.3)(vite@8.0.16(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0)))
+        version: 4.0.0-rc.117(effect@4.0.0-rc.117)(vitest@5.0.1(@types/node@24.13.3)(vite@8.0.16(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0)))
       '@types/node':
         specifier: 'catalog:'
         version: 24.13.3
@@ -869,23 +866,23 @@ packages:
   '@dotenvx/primitives@0.8.0':
     resolution: {integrity: sha512-VYJy0uhFm9zTJ1TxBaW/pA8bjbOM/OttaNMwZ1RHG4JKyRG7DhSdiqD1ipQoAyoD22olUtxbP78W9xY3Wd11bg==}
 
-  '@effect/platform-node-shared@4.0.0-rc.116':
-    resolution: {integrity: sha512-4FB6UriGqArWFUaFqVchhfCRmmtOVzmD/k/bH6LErlKY8a9amt5dk6c3Arsi7AvUpChsdO+3jsG+P85HsxMkNA==}
+  '@effect/platform-node-shared@4.0.0-rc.117':
+    resolution: {integrity: sha512-GyRkEfLBG49MwJe+/XDPiXYcQ44RA9p2z0AurlsWhR1cd1PqOUMEZU1pORL+/R5hR8aH6ZuqoJYD8lAc6h+wlA==}
     engines: {node: '>=18.0.0'}
     peerDependencies:
-      effect: ^4.0.0-rc.116
+      effect: ^4.0.0-rc.117
 
-  '@effect/platform-node@4.0.0-rc.116':
-    resolution: {integrity: sha512-uA66Nh998OcChBVX83tQDkBDvQQcVaMXodP9gNGWVeIwWWquy7bzIkAq/fMZGKs/BVFhFQ0XCp3VIqYjnXu5ng==}
+  '@effect/platform-node@4.0.0-rc.117':
+    resolution: {integrity: sha512-WbPcvQDkqXFnCeG6LohJ9eVNapCDhZbCpezhYKxm0IsZEk7swakRh7RkC1t2CXzd3hGmszTv2k9e/pXyZuL+wQ==}
     engines: {node: '>=18.0.0'}
     peerDependencies:
-      effect: ^4.0.0-rc.116
+      effect: ^4.0.0-rc.117
       redis: '>=5.0.0 <7.0.0'
 
-  '@effect/sql-pg@4.0.0-rc.116':
-    resolution: {integrity: sha512-cnvH+XyNsCfd+m6buOzVpuYUyQYWC9pkkC6L6J+gQXrogcZ3O/WAxlcaxsEMC4Ru66vO0PZiWBUzhee5jh3KRQ==}
+  '@effect/sql-pg@4.0.0-rc.117':
+    resolution: {integrity: sha512-UQwKoulwVUQ5w4/lMonKf02VbMqZTrhgZXEreOWlTNNNVPYjlBZKBJNJmLPKZMHPMlHHltKjoi504uT/N9S2aQ==}
     peerDependencies:
-      effect: ^4.0.0-rc.116
+      effect: ^4.0.0-rc.117
 
   '@effect/tsgo-darwin-arm64@0.38.0':
     resolution: {integrity: sha512-CDTPKA0qcL+zqtBcZ0Z6BlvYnSW5MI8fOhFTI5zJUEfqSBwC/ddDHscZN4LBzra6EPR+8UwjNdGRr0wwtKiLJA==}
@@ -926,10 +923,10 @@ packages:
     resolution: {integrity: sha512-eazN0kX+WNT1jNjIm/l5esnkpKVfd1wNh2ig0pfaULKuI2PZh0JwjbepDPUr6MWx5cqOiUgwStNf5hGhg2w00g==}
     hasBin: true
 
-  '@effect/vitest@4.0.0-rc.116':
-    resolution: {integrity: sha512-q42ue4hAa5AcPBwqi8rvMvR1Jstr+JjsyyxEBUoBk+WWm8otnqFxQ+XbWslW1QSwdg5+2Fdgd7z59IValt9Oiw==}
+  '@effect/vitest@4.0.0-rc.117':
+    resolution: {integrity: sha512-jJg9M7T3OhTcvoD9Zi28S5+0H+axlSHAYjXM8TYeLJy/FVlPe0B/Vc3ZfaqUF0rwkfQ6ziyCdjiBS46+182H1Q==}
     peerDependencies:
-      effect: ^4.0.0-rc.116
+      effect: ^4.0.0-rc.117
       vitest: '>=5.0.0 <6.0.0'
 
   '@emnapi/core@1.10.0':
@@ -3696,8 +3693,8 @@ packages:
   ee-first@1.1.1:
     resolution: {integrity: sha512-WMwm9LhRUo+WUaRN+vRuETqG89IgZphVSNkdFgeb6sS/E4OrDIN7t48CAewSHXc6C8lefD8KKfr5vY61brQlow==}
 
-  effect@4.0.0-rc.116:
-    resolution: {integrity: sha512-nawqJHSjHV8XIBRZNZ+D7cLZpN3kkSjzy6aiT9ofKENsl7xAMFKEoDa0itN5JFl3GUQ1PIN1T1HNlva5+xyO/A==}
+  effect@4.0.0-rc.117:
+    resolution: {integrity: sha512-UUyi9QiOW4nySFIBM3KnYbNMd9EZliOdKfBcyLD0mPMPheO2fkuXS5y0opjWc9oqzlJxPQICEGm8gGw3kh9j/w==}
 
   electron-to-chromium@1.5.362:
     resolution: {integrity: sha512-PUY2DrLvkjkUuWqq+KPL2iWshrJsZOcIojzRQ7eXFacc9dWga7MGMJAa15VbiejSZB1PAXaRLAiKgruHP8LB1w==}
@@ -5848,28 +5845,28 @@ snapshots:
 
   '@dotenvx/primitives@0.8.0': {}
 
-  '@effect/platform-node-shared@4.0.0-rc.116(effect@4.0.0-rc.116(patch_hash=3aaa06a42eee6ddf6209b0db38926cec6884e8b89a9af816323ad455b86eff01))':
+  '@effect/platform-node-shared@4.0.0-rc.117(effect@4.0.0-rc.117)':
     dependencies:
       '@types/ws': 8.18.1
-      effect: 4.0.0-rc.116(patch_hash=3aaa06a42eee6ddf6209b0db38926cec6884e8b89a9af816323ad455b86eff01)
+      effect: 4.0.0-rc.117
       ws: 8.21.3
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
 
-  '@effect/platform-node@4.0.0-rc.116(effect@4.0.0-rc.116(patch_hash=3aaa06a42eee6ddf6209b0db38926cec6884e8b89a9af816323ad455b86eff01))(redis@6.2.1)':
+  '@effect/platform-node@4.0.0-rc.117(effect@4.0.0-rc.117)(redis@6.2.1)':
     dependencies:
-      '@effect/platform-node-shared': 4.0.0-rc.116(effect@4.0.0-rc.116(patch_hash=3aaa06a42eee6ddf6209b0db38926cec6884e8b89a9af816323ad455b86eff01))
-      effect: 4.0.0-rc.116(patch_hash=3aaa06a42eee6ddf6209b0db38926cec6884e8b89a9af816323ad455b86eff01)
+      '@effect/platform-node-shared': 4.0.0-rc.117(effect@4.0.0-rc.117)
+      effect: 4.0.0-rc.117
       redis: 6.2.1
       undici: 8.10.2
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
 
-  '@effect/sql-pg@4.0.0-rc.116(effect@4.0.0-rc.116(patch_hash=3aaa06a42eee6ddf6209b0db38926cec6884e8b89a9af816323ad455b86eff01))':
+  '@effect/sql-pg@4.0.0-rc.117(effect@4.0.0-rc.117)':
     dependencies:
-      effect: 4.0.0-rc.116(patch_hash=3aaa06a42eee6ddf6209b0db38926cec6884e8b89a9af816323ad455b86eff01)
+      effect: 4.0.0-rc.117
 
   '@effect/tsgo-darwin-arm64@0.38.0':
     optional: true
@@ -5902,9 +5899,9 @@ snapshots:
       '@effect/tsgo-win32-arm64': 0.38.0
       '@effect/tsgo-win32-x64': 0.38.0
 
-  '@effect/vitest@4.0.0-rc.116(effect@4.0.0-rc.116(patch_hash=3aaa06a42eee6ddf6209b0db38926cec6884e8b89a9af816323ad455b86eff01))(vitest@5.0.1(@types/node@24.13.3)(vite@8.0.16(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0)))':
+  '@effect/vitest@4.0.0-rc.117(effect@4.0.0-rc.117)(vitest@5.0.1(@types/node@24.13.3)(vite@8.0.16(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0)))':
     dependencies:
-      effect: 4.0.0-rc.116(patch_hash=3aaa06a42eee6ddf6209b0db38926cec6884e8b89a9af816323ad455b86eff01)
+      effect: 4.0.0-rc.117
       vitest: 5.0.1(@types/node@24.13.3)(vite@8.0.16(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0))
 
   '@emnapi/core@1.10.0':
@@ -7933,7 +7930,7 @@ snapshots:
 
   ee-first@1.1.1: {}
 
-  effect@4.0.0-rc.116(patch_hash=3aaa06a42eee6ddf6209b0db38926cec6884e8b89a9af816323ad455b86eff01): {}
+  effect@4.0.0-rc.117: {}
 
   electron-to-chromium@1.5.362: {}
 
