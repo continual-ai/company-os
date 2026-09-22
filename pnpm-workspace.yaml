@@ -9,9 +9,9 @@ catalog:
   "@continual/cli": 0.5.8
   "@continual/sdk": 0.5.6
   "@continual/tanstack-start": 0.1.4
-  "@effect/platform-node": 4.0.0-rc.116
-  "@effect/sql-pg": 4.0.0-rc.116
-  "@effect/vitest": 4.0.0-rc.116
+  "@effect/platform-node": 4.0.0-rc.117
+  "@effect/sql-pg": 4.0.0-rc.117
+  "@effect/vitest": 4.0.0-rc.117
   "@modelcontextprotocol/server": 2.0.0
   "@openai/codex-sdk": 0.154.0
   "@fontsource-variable/geist": 5.3.0
@@ -26,7 +26,7 @@ catalog:
   "clsx": 2.1.1
   "cmdk": 1.1.1
   "date-fns": 4.4.0
-  "effect": 4.0.0-rc.116
+  "effect": 4.0.0-rc.117
   "lucide-react": 1.30.0
   "react-resizable-panels": 4.12.4
   "react": 19.2.6
@@ -60,7 +60,3 @@ minimumReleaseAgeExclude:
   - "@continual/cli@0.5.8"
   - "@continual/sdk@0.1.5"
   - "@continual/tanstack-start@0.1.4"
-
-patchedDependencies:
-  # PostgreSQL retains completed nested savepoints unless they are explicitly released.
-  effect@4.0.0-rc.116: patches/effect@4.0.0-rc.116.patch
