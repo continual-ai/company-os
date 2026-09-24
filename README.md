@@ -18,6 +18,8 @@
 
 ![Demo app: a support ticket connects its customer, replies, and engineering work](docs/images/record-overview.png)
 
+For the Continual-hosted template pilot, see [Platform template](docs/platform-template.md).
+
 ## Every company will have its own operating system.
 
 We believe every company will run on software uniquely tailored to its business, built first

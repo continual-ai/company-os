@@ -16,7 +16,12 @@ import { githubDiscovery } from "#/modules/engineering/server/github-discovery.t
 import { githubRepositorySync } from "#/modules/engineering/server/github-repository-sync.ts"
 import { EngineeringServer } from "#/modules/engineering/server/index.ts"
 import { Task, WorkModule } from "#/modules/work/model/index.ts"
-import { defineModel, RecordAlias, WebUrl } from "#/runtime/model/index.ts"
+import {
+  defineModel,
+  RecordAlias,
+  Timestamp,
+  WebUrl,
+} from "#/runtime/model/index.ts"
 import { Connection } from "#/runtime/platform/model/connection.ts"
 import { connectorAlias } from "#/runtime/platform/model/connector.ts"
 import { PlatformModule } from "#/runtime/platform/model/index.ts"
@@ -423,5 +428,57 @@ fixture.test(
       ).toBeNull()
       yield* run
       expect(requests).toBe(1)
+    })
+)
+
+fixture.test(
+  "managed snapshots are idempotent, reject stale configuration and preserve local links",
+  () =>
+    Effect.gen(function* () {
+      yield* seedModuleSettings()
+      const { database, repository, connection } = yield* setup
+      const api = yield* operationsFor(model)
+      const snapshot = {
+        id: repository.id,
+        etag: repository.etag,
+        nodeId: repository.nodeId,
+        fullName: "example/renamed",
+        url: WebUrl("https://github.com/example/renamed"),
+        description: "Upstream description",
+        defaultBranch: "main",
+        visibility: "private" as const,
+        archived: false,
+        sourceUpdatedAt: Timestamp("2026-09-20T00:00:00.000Z"),
+      }
+      expect(yield* api.githubRepository.applySnapshot(snapshot)).toEqual({
+        applied: true,
+      })
+      expect(yield* api.githubRepository.applySnapshot(snapshot)).toEqual({
+        applied: false,
+      })
+      expect(
+        yield* api.githubRepository.applySnapshot({
+          ...snapshot,
+          sourceUpdatedAt: Timestamp("2026-09-19T00:00:00.000Z"),
+        })
+      ).toEqual({ applied: false })
+      expect(
+        yield* api.githubRepository
+          .applySnapshot({ ...snapshot, nodeId: "other" })
+          .pipe(Effect.isFailure)
+      ).toBe(true)
+      expect(
+        yield* api.githubRepository
+          .applySnapshot({
+            ...snapshot,
+            sourceUpdatedAt: Timestamp("2026-09-21T00:00:00.000Z"),
+          })
+          .pipe(Effect.isFailure)
+      ).toBe(true)
+      const saved = yield* database
+        .repository(GitHubRepository)
+        .get({ id: repository.id })
+      expect(saved.fullName).toBe("example/renamed")
+      expect(saved.links.connection).toBe(connection.id)
     })
 )

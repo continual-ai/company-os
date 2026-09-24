@@ -9,9 +9,16 @@ export const Connection = defineObject({
   name: "Connection",
   pluralName: "Connections",
   description:
-    "Select a connector and enter the organization or username and access token. Sync starts automatically and imports only data owned by that account and accessible to the token.",
+    "Select a connector and the account to import. On Continual, reference an authorized Project Connection; credentials remain on the platform.",
   implements: [{ interface: ControllerTarget }, { interface: NoteSubject }],
   properties: {
+    platformConnectionId: schema.string({
+      label: "Continual Connection ID",
+      nullable: true,
+      maxLength: 200,
+      description:
+        "An authorized Connection in this Project. Stores a reference, never an OAuth grant.",
+    }),
     account: schema.string({
       label: "Organization or username",
       description:

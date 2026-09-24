@@ -39,6 +39,7 @@ import { Route as AppDeveloperApiRouteImport } from './routes/_app/developer/api
 import { Route as AppSettingsModulesIndexRouteImport } from './routes/_app/settings/modules/index'
 import { Route as AppSettingsCollectionIndexRouteImport } from './routes/_app/settings/$collection/index'
 import { Route as AppObjectsObjectTypeIndexRouteImport } from './routes/_app/objects/$objectType/index'
+import { Route as ApiIntegrationsGithubIdRouteImport } from './routes/api/integrations/github/$id'
 import { Route as AppSettingsModulesRecordIdRouteImport } from './routes/_app/settings/modules/$recordId'
 import { Route as AppSettingsCollectionRecordIdRouteImport } from './routes/_app/settings/$collection/$recordId'
 import { Route as AppObjectsObjectTypeRecordIdRouteImport } from './routes/_app/objects/$objectType/$recordId'
@@ -196,6 +197,11 @@ const AppObjectsObjectTypeIndexRoute =
     path: '/objects/$objectType/',
     getParentRoute: () => AppRouteRoute,
   } as any)
+const ApiIntegrationsGithubIdRoute = ApiIntegrationsGithubIdRouteImport.update({
+  id: '/api/integrations/github/$id',
+  path: '/api/integrations/github/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppSettingsModulesRecordIdRoute =
   AppSettingsModulesRecordIdRouteImport.update({
     id: '/modules/$recordId',
@@ -251,6 +257,7 @@ export interface FileRoutesByFullPath {
   '/objects/$objectType/$recordId': typeof AppObjectsObjectTypeRecordIdRoute
   '/settings/$collection/$recordId': typeof AppSettingsCollectionRecordIdRoute
   '/settings/modules/$recordId': typeof AppSettingsModulesRecordIdRoute
+  '/api/integrations/github/$id': typeof ApiIntegrationsGithubIdRoute
   '/objects/$objectType/': typeof AppObjectsObjectTypeIndexRoute
   '/settings/$collection/': typeof AppSettingsCollectionIndexRoute
   '/settings/modules/': typeof AppSettingsModulesIndexRoute
@@ -284,6 +291,7 @@ export interface FileRoutesByTo {
   '/objects/$objectType/$recordId': typeof AppObjectsObjectTypeRecordIdRoute
   '/settings/$collection/$recordId': typeof AppSettingsCollectionRecordIdRoute
   '/settings/modules/$recordId': typeof AppSettingsModulesRecordIdRoute
+  '/api/integrations/github/$id': typeof ApiIntegrationsGithubIdRoute
   '/objects/$objectType': typeof AppObjectsObjectTypeIndexRoute
   '/settings/$collection': typeof AppSettingsCollectionIndexRoute
   '/settings/modules': typeof AppSettingsModulesIndexRoute
@@ -321,6 +329,7 @@ export interface FileRoutesById {
   '/_app/objects/$objectType/$recordId': typeof AppObjectsObjectTypeRecordIdRoute
   '/_app/settings/$collection/$recordId': typeof AppSettingsCollectionRecordIdRoute
   '/_app/settings/modules/$recordId': typeof AppSettingsModulesRecordIdRoute
+  '/api/integrations/github/$id': typeof ApiIntegrationsGithubIdRoute
   '/_app/objects/$objectType/': typeof AppObjectsObjectTypeIndexRoute
   '/_app/settings/$collection/': typeof AppSettingsCollectionIndexRoute
   '/_app/settings/modules/': typeof AppSettingsModulesIndexRoute
@@ -358,6 +367,7 @@ export interface FileRouteTypes {
     | '/objects/$objectType/$recordId'
     | '/settings/$collection/$recordId'
     | '/settings/modules/$recordId'
+    | '/api/integrations/github/$id'
     | '/objects/$objectType/'
     | '/settings/$collection/'
     | '/settings/modules/'
@@ -391,6 +401,7 @@ export interface FileRouteTypes {
     | '/objects/$objectType/$recordId'
     | '/settings/$collection/$recordId'
     | '/settings/modules/$recordId'
+    | '/api/integrations/github/$id'
     | '/objects/$objectType'
     | '/settings/$collection'
     | '/settings/modules'
@@ -427,6 +438,7 @@ export interface FileRouteTypes {
     | '/_app/objects/$objectType/$recordId'
     | '/_app/settings/$collection/$recordId'
     | '/_app/settings/modules/$recordId'
+    | '/api/integrations/github/$id'
     | '/_app/objects/$objectType/'
     | '/_app/settings/$collection/'
     | '/_app/settings/modules/'
@@ -442,6 +454,7 @@ export interface RootRouteChildren {
   ApiMcpRoute: typeof ApiMcpRoute
   ApiOpenapiRoute: typeof ApiOpenapiRoute
   ApiV1SplatRoute: typeof ApiV1SplatRoute
+  ApiIntegrationsGithubIdRoute: typeof ApiIntegrationsGithubIdRoute
   ApiV1AssetsAssetIdContentRoute: typeof ApiV1AssetsAssetIdContentRoute
 }
 
@@ -657,6 +670,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppObjectsObjectTypeIndexRouteImport
       parentRoute: typeof AppRouteRoute
     }
+    '/api/integrations/github/$id': {
+      id: '/api/integrations/github/$id'
+      path: '/api/integrations/github/$id'
+      fullPath: '/api/integrations/github/$id'
+      preLoaderRoute: typeof ApiIntegrationsGithubIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_app/settings/modules/$recordId': {
       id: '/_app/settings/modules/$recordId'
       path: '/modules/$recordId'
@@ -775,6 +795,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiMcpRoute: ApiMcpRoute,
   ApiOpenapiRoute: ApiOpenapiRoute,
   ApiV1SplatRoute: ApiV1SplatRoute,
+  ApiIntegrationsGithubIdRoute: ApiIntegrationsGithubIdRoute,
   ApiV1AssetsAssetIdContentRoute: ApiV1AssetsAssetIdContentRoute,
 }
 export const routeTree = rootRouteImport

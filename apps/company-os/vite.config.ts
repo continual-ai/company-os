@@ -27,6 +27,7 @@ export default defineConfig({
           loadEnvFile(new URL(file, import.meta.url))
 
     return {
+      ssr: { noExternal: ["react", "react-dom", "use-sync-external-store"] },
       // Use Shiki's portable WASM entry; Nitro's unwasm condition selects a raw file.
       resolve: { alias: { "shiki/wasm": "shiki/dist/wasm.mjs" } },
       server: {
@@ -51,6 +52,7 @@ export default defineConfig({
               exclude: [
                 "src/**/*-database.test.{ts,tsx}",
                 "tools/**/*-live.test.ts",
+                "tools/**/*.e2e.test.ts",
               ],
               include: ["src/**/*.test.{ts,tsx}", "tools/**/*.test.ts"],
               name: "unit",
@@ -64,6 +66,13 @@ export default defineConfig({
               hookTimeout: 60_000,
               name: "database",
               testTimeout: 60_000,
+            },
+          },
+          {
+            extends: true,
+            test: {
+              name: "platform-live",
+              include: ["tools/platform/*.e2e.test.ts"],
             },
           },
           {

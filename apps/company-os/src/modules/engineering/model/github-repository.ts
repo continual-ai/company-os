@@ -1,6 +1,12 @@
 import { Project } from "#/modules/work/model/project.ts"
 import { User } from "#/runtime/access/model/index.ts"
-import { defineLink, defineObject, schema } from "#/runtime/model/index.ts"
+import {
+  defineAction,
+  defineLink,
+  defineObject,
+  schema,
+  standardErrors,
+} from "#/runtime/model/index.ts"
 import { Connection } from "#/runtime/platform/model/connection.ts"
 import { ControllerTarget } from "#/runtime/platform/model/controller-instance.ts"
 import { NoteSubject } from "#/runtime/platform/model/note-subject.ts"
@@ -14,6 +20,11 @@ export const GitHubRepository = defineObject({
     "A GitHub repository connected to internal projects and its imported issues and pull requests.",
   implements: [{ interface: ControllerTarget }, { interface: NoteSubject }],
   properties: {
+    sourceUpdatedAt: schema.timestamp({
+      label: "GitHub updated at",
+      nullable: true,
+      outputOnly: true,
+    }),
     syncError: schema.string({
       label: "Sync error",
       nullable: true,
@@ -116,4 +127,27 @@ export const GitHubRepositoryMaintainer = defineLink({
     max: 1,
   },
   to: { object: User, key: "githubRepositories", label: "GitHub repositories" },
+})
+
+export const ApplyRepositorySnapshot = defineAction({
+  id: "applySnapshot",
+  record: GitHubRepository,
+  name: "Apply GitHub snapshot",
+  description:
+    "Applies authoritative GitHub metadata to an already connected repository. Refuses a different GitHub node ID and ignores older snapshots. Leaves internal project links and ownership intact.",
+  idempotent: true,
+  errors: [standardErrors.aborted, standardErrors.failedPrecondition],
+  input: {
+    id: schema.id(GitHubRepository),
+    etag: schema.string(),
+    nodeId: schema.string(),
+    fullName: schema.string({ minLength: 1, maxLength: 300 }),
+    url: schema.url(),
+    description: schema.string({ nullable: true, maxLength: 10000 }),
+    defaultBranch: schema.string({ nullable: true, maxLength: 200 }),
+    visibility: schema.enumeration(["public", "private", "internal"]),
+    archived: schema.boolean(),
+    sourceUpdatedAt: schema.timestamp(),
+  },
+  output: { applied: schema.boolean() },
 })

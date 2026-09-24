@@ -66,7 +66,14 @@ function toolResponse(result: ModelMcpResult) {
   }
 }
 
+const schemaCache = new WeakMap<
+  Schema.Codec<unknown, unknown>,
+  ReturnType<typeof fromJsonSchema>
+>()
+
 function mcpSchema(schema: Schema.Codec<unknown, unknown>) {
+  const cached = schemaCache.get(schema)
+  if (cached) return cached
   // The SDK requires an object at the JSON Schema root; a root $ref makes it
   // wrap otherwise identical outputs in { result }. Keep names on nested schemas.
   const standard = Schema.toStandardJSONSchemaV1(
@@ -95,10 +102,12 @@ function mcpSchema(schema: Schema.Codec<unknown, unknown>) {
         }
       },
   }
-  return fromJsonSchema(
+  const result = fromJsonSchema(
     standard["~standard"].jsonSchema.input({ target: "draft-2020-12" }),
     validator
   )
+  schemaCache.set(schema, result)
+  return result
 }
 
 /** Projects every query and action in a model implementation as an MCP tool. */

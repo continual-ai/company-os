@@ -26,6 +26,7 @@
     "dev": "vite dev --port 3002 --host 0.0.0.0",
     "lint": "oxlint .",
     "model:check": "tsx tools/lint-model.ts",
+    "platform:setup": "tsx tools/platform/setup.ts",
     "preview": "pnpm build && vite preview --port 3102 --host 0.0.0.0",
     "reset": "tsx tools/db-reset.ts && pnpm db:seed",
     "test": "vitest run --project unit --project database",

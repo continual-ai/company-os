@@ -9,6 +9,7 @@ import {
 } from "#/modules/engineering/model/github-pull-request.ts"
 import {
   GitHubRepository,
+  ApplyRepositorySnapshot,
   GitHubRepositoryConnection,
   GitHubRepositoryProjects,
   GitHubRepositoryMaintainer,
@@ -45,6 +46,7 @@ export const EngineeringModule = defineModule({
     TaskGitHubPullRequests,
   ],
   objects: [GitHubRepository, GitHubPullRequest, GitHubIssue],
+  actions: [ApplyRepositorySnapshot],
   connectors: [GitHub],
   controllers: [GitHubDiscovery, GitHubRepositorySync],
 })

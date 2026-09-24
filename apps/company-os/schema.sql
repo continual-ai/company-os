@@ -39,6 +39,7 @@ create table "objects" (
     'contact',
     'activity',
     'affiliation',
+    'contactBrief',
     'lead',
     'opportunity',
     'lineItem',
@@ -258,13 +259,15 @@ create table "connectors" (
 create unique index "connectors_definition_unique" on "connectors" ("definition_id");
 
 -- Connection (connection)
--- Select a connector and enter the organization or username and access token.
--- Sync starts automatically and imports only data owned by that account and
--- accessible to the token.
+-- Select a connector and the account to import. On Continual, reference an
+-- authorized Project Connection; credentials remain on the platform.
 create table "connections" (
   "id" text not null,
   -- Link reference.
   "connector_id" text not null,
+  -- An authorized Connection in this Project. Stores a reference, never an
+  -- OAuth grant.
+  "platform_connection_id" text,
   -- Enter the account's username or organization slug, not a display name or
   -- URL.
   "account" text not null,
@@ -359,6 +362,26 @@ create table "affiliations" (
 );
 
 alter table "affiliations" add constraint "affiliations_check_dates" check ("start_date" <= "end_date");
+
+-- Contact brief (contactBrief)
+-- A durable request and result for a platform-managed contact brief.
+create table "contact_briefs" (
+  "id" text not null,
+  -- Link reference.
+  "contact_id" text not null,
+  "request_key" text not null,
+  "status" text not null default 'pending',
+  "thread_id" text,
+  "lease_token" text,
+  "lease_expires_at" timestamp with time zone,
+  "input_revision" text,
+  "result" text,
+  "error" text,
+  primary key ("id"),
+  foreign key ("id") references "objects" ("id") on delete cascade
+);
+
+alter table "contact_briefs" add constraint "contact_briefs_request_unique" unique ("contact_id", "request_key") deferrable initially deferred;
 
 -- ===========================================================================
 -- Domain objects: Sales
@@ -559,6 +582,7 @@ create table "github_repositories" (
   "connection_id" text not null,
   -- Link reference.
   "maintainer_id" text,
+  "source_updated_at" timestamp with time zone,
   "sync_error" text,
   "sync_page" integer,
   "sync_started_at" timestamp with time zone,
@@ -786,6 +810,10 @@ create index "controller_instance_controller_target_idx" on "controller_instance
 create view "link_controller_instance_record" as select "id" as forward_id, "record_id" as reverse_id from "controller_instances" where "record_id" is not null;
 
 create index "controller_instance_record_target_idx" on "controller_instances" ("record_id", "id");
+
+create view "link_contact_brief_contact" as select "id" as forward_id, "contact_id" as reverse_id from "contact_briefs" where "contact_id" is not null;
+
+create index "contact_brief_contact_target_idx" on "contact_briefs" ("contact_id", "id");
 
 create view "link_account_owner" as select "id" as forward_id, "owner_id" as reverse_id from "accounts" where "owner_id" is not null;
 
@@ -1131,6 +1159,8 @@ alter table "connections" add constraint "connection_connector_target_fk" foreig
 alter table "controller_instances" add constraint "controller_instance_controller_target_fk" foreign key ("controller_id") references "controllers" (id) on delete no action deferrable initially deferred;
 
 alter table "controller_instances" add constraint "controller_instance_record_target_fk" foreign key ("record_id") references "interface_controller_target" (id) on delete set null deferrable initially deferred;
+
+alter table "contact_briefs" add constraint "contact_brief_contact_target_fk" foreign key ("contact_id") references "contacts" (id) on delete no action deferrable initially deferred;
 
 alter table "accounts" add constraint "account_owner_target_fk" foreign key ("owner_id") references "users" (id) on delete set null deferrable initially deferred;
 

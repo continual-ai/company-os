@@ -186,6 +186,8 @@ application.test("supports a paginated, repeatable performance dataset", () =>
     for (const module of Object.values(Model.modules)) {
       if (module.id === "platform" || module.id === "engineering") continue
       for (const object of module.objects) {
+        // Brief executions are created by requests, never invented by seed data.
+        if (object.id === "contactBrief") continue
         const table = Storage.objects[object.id]
         const [row] = yield* sql<{
           count: number

@@ -7,6 +7,7 @@ import {
   GitHubPullRequest,
   GitHubRepository,
 } from "#/modules/engineering/model/index.ts"
+import { EngineeringServer } from "#/modules/engineering/server/index.ts"
 import { Task, WorkModule } from "#/modules/work/model/index.ts"
 import { defineModel, WebUrl } from "#/runtime/model/index.ts"
 import { Connection } from "#/runtime/platform/model/connection.ts"
@@ -20,7 +21,8 @@ const fixture = testFoundation(
   defineModel({
     name: "GitHub model test",
     modules: [PlatformModule, WorkModule, EngineeringModule],
-  })
+  }),
+  { servers: [EngineeringServer] }
 )
 
 const repositoryInput = {

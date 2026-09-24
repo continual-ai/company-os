@@ -1,5 +1,12 @@
 import { getRequest } from "@tanstack/react-start/server"
-import { ConfigProvider, Effect, Layer, Logger, ManagedRuntime } from "effect"
+import {
+  Config,
+  ConfigProvider,
+  Effect,
+  Layer,
+  Logger,
+  ManagedRuntime,
+} from "effect"
 
 import { applicationLayer } from "#/app/server/application-layer.ts"
 import { developmentDefaults } from "#/app/server/config.ts"
@@ -15,14 +22,17 @@ function makeApplicationRuntime() {
   const controllers = runningInWorkerd()
     ? Layer.empty
     : Layer.unwrap(
-        Effect.promise(async () => {
-          await previousRuntimeDisposal
-          return import("#/app/server/controllers.ts")
-        }).pipe(
-          Effect.map(({ controllersLayer }) =>
-            controllersLayer.pipe(Layer.provide(applicationLayer))
-          )
-        )
+        Effect.gen(function* () {
+          const enabled = yield* Config.Boolean(
+            "COMPANY_OS_CONTROLLER_HOST"
+          ).pipe(Config.withDefault(false))
+          if (!enabled) return Layer.empty
+          const { controllersLayer } = yield* Effect.promise(async () => {
+            await previousRuntimeDisposal
+            return import("#/app/server/controllers.ts")
+          })
+          return controllersLayer.pipe(Layer.provide(applicationLayer))
+        })
       )
   return ManagedRuntime.make(
     Layer.merge(applicationLayer, controllers).pipe(

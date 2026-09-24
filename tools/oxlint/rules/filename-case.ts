@@ -11,6 +11,7 @@ const ALLOWED_SOURCE_SUFFIXES = new Set([
   "client",
   "gen",
   "test",
+  "e2e",
 ])
 const KEBAB_CASE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 const TANSTACK_DYNAMIC_ROUTE =

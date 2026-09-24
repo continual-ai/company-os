@@ -333,7 +333,7 @@ function operationCatalog(model: ModelCatalog) {
 }
 
 /** Resolve once per composed model, sharing schema instances across every consumer. */
-export function operationContracts(
+function buildOperationContracts(
   model: ModelCatalog
 ): ReadonlyArray<OperationContract> {
   return [...operationCatalog(model).values()]
@@ -370,4 +370,17 @@ export function projectOperations(
     group[path.at(-1)!] = project(contract)
   }
   return result
+}
+
+const contractCache = new WeakMap<
+  ModelCatalog,
+  ReturnType<typeof buildOperationContracts>
+>()
+
+export function operationContracts(model: ModelCatalog) {
+  const cached = contractCache.get(model)
+  if (cached) return cached
+  const contracts = buildOperationContracts(model)
+  contractCache.set(model, contracts)
+  return contracts
 }

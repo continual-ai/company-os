@@ -1,15 +1,7 @@
 import { PgClient } from "@effect/sql-pg"
-import {
-  ConfigProvider,
-  Effect,
-  Layer,
-  Logger,
-  ManagedRuntime,
-  Schema,
-  Stream,
-} from "effect"
+import { Effect, Layer, Logger, ManagedRuntime, Schema, Stream } from "effect"
 import { OpenApi } from "effect/unstable/httpapi"
-import { describe, expect, vi } from "vitest"
+import { afterEach, describe, expect, vi } from "vitest"
 
 import { Model } from "#/app.model.ts"
 import { createChangeConsumer } from "#/app/client/change-consumer.ts"
@@ -46,6 +38,11 @@ import {
 import { identityBindings } from "#/runtime/server/storage/infrastructure.ts"
 import { SqlDatabase } from "#/runtime/server/storage/transactions.ts"
 
+afterEach(() => {
+  vi.unstubAllEnvs()
+  vi.unstubAllGlobals()
+})
+
 const application = testApplication()
 const { objects } = Storage.core
 const { note: notes, user: users } = Storage.objects
@@ -79,14 +76,14 @@ describe("application HTTP server", () => {
     "assembles generated CRUD with Continual identity and anonymous authorization",
     () =>
       Effect.gen(function* () {
+        vi.stubEnv("CONTINUAL_URL", "https://continual.example")
+        vi.stubEnv("CONTINUAL_PROJECT_ID", "project_test")
+        vi.stubEnv("CONTINUAL_EXECUTION_TOKEN", "")
         vi.stubGlobal(
           "fetch",
           vi.fn(async () =>
             Response.json({
               actorId: "us_test",
-              kind: "user",
-              projectId: "project_test",
-              projectAccess: true,
               email: "owner@example.com",
               name: "Owner",
             })
@@ -106,17 +103,7 @@ describe("application HTTP server", () => {
                 sql: Layer.succeed(PgClient.PgClient, database.sql),
                 pageTokens: Layer.succeed(PageTokens, testPageTokens),
                 applicationKeys: ApplicationKeys.layerTest,
-              }).pipe(
-                Layer.provide(logging),
-                Layer.provide(
-                  ConfigProvider.layer(
-                    ConfigProvider.fromEnvRecord({
-                      CONTINUAL_URL: "https://continual.example",
-                      CONTINUAL_PROJECT_ID: "project_test",
-                    })
-                  )
-                )
-              )
+              }).pipe(Layer.provide(logging))
             )
           ),
           (managedRuntime) => Effect.promise(() => managedRuntime.dispose())

@@ -2,6 +2,7 @@ import { Effect } from "effect"
 import { expect } from "vitest"
 
 import { CrmModule, Contact } from "#/modules/crm/model/index.ts"
+import { CrmServer } from "#/modules/crm/server/index.ts"
 import { Feedback, FeedbackModule } from "#/modules/feedback/model/index.ts"
 import { ServiceModule, Ticket } from "#/modules/service/model/index.ts"
 import { WorkModule, Task } from "#/modules/work/model/index.ts"
@@ -21,7 +22,8 @@ const fixture = testFoundation(
       WorkModule,
       FeedbackModule,
     ],
-  })
+  }),
+  { servers: [CrmServer] }
 )
 
 fixture.test(

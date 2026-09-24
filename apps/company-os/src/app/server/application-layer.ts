@@ -51,5 +51,5 @@ export function makeApplicationLayer(
 /** The deployed application: PostgreSQL infrastructure, business services, authentication, and transports. */
 export const applicationLayer = makeApplicationLayer({
   sql: Postgres.sqlLayer,
-  eventNotifications: Postgres.eventNotificationsLayer,
+  eventNotifications: EventNotifications.layerPolling,
 })

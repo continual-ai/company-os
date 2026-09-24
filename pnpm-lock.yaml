@@ -209,11 +209,11 @@ catalogs:
       specifier: 1.7.0
       version: 1.7.0
     '@continual/cli':
+      specifier: 0.5.16
+      version: 0.5.16
+    '@continual/sdk':
       specifier: 0.5.8
       version: 0.5.8
-    '@continual/sdk':
-      specifier: 0.5.6
-      version: 0.5.6
     '@continual/tanstack-start':
       specifier: 0.1.4
       version: 0.1.4
@@ -335,7 +335,7 @@ importers:
     devDependencies:
       '@continual/cli':
         specifier: 'catalog:'
-        version: 0.5.8
+        version: 0.5.16
       '@effect/tsgo':
         specifier: 0.38.0
         version: 0.38.0
@@ -365,7 +365,7 @@ importers:
         version: link:../../packages/ui
       '@continual/sdk':
         specifier: 'catalog:'
-        version: 0.5.6
+        version: 0.5.8
       '@tanstack/react-router':
         specifier: 'catalog:'
         version: 1.170.16(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
@@ -408,7 +408,7 @@ importers:
         version: link:../../packages/ui
       '@continual/sdk':
         specifier: 'catalog:'
-        version: 0.5.6
+        version: 0.5.8
       '@dnd-kit/react':
         specifier: ^0.5.0
         version: 0.5.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
@@ -813,13 +813,13 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@continual/cli@0.5.8':
-    resolution: {integrity: sha512-DvxPhDxAxcdgmDFmNBcetnAj3IiDX09cHdcPUcrNJsqGx0FjsBBNBbUdv06ZTyP5+6jFlGGVd4lIQxbm61hy7w==}
+  '@continual/cli@0.5.16':
+    resolution: {integrity: sha512-J4vQhZlZcaIXqqm+BoZmjiZobwfR5Ejj5OfgmI8gy2qq7Vwf9p5Nac3vpljrTHNBxjc2yZhU+ApGY/+Oo0uG8w==}
     engines: {node: '>=24.0.0'}
     hasBin: true
 
-  '@continual/sdk@0.5.6':
-    resolution: {integrity: sha512-shH0J+yCiDHmifh/0Ew6Hs1uepCEmyJ22+4FHJoCsJYqK+6EqzqLlkC5k+DGRu+HfKR1bkk7r/f4Hg5LEssOFQ==}
+  '@continual/sdk@0.5.8':
+    resolution: {integrity: sha512-crjZW8OWop07gIbJB1JXbTmBd8ivZCYTdTwXtlZBYTgdwoeWvi10i5CTS0YQJ0fDgdcUOE7yOf8PBhOzhq9YjA==}
     engines: {node: '>=24.0.0'}
 
   '@continual/tanstack-start@0.1.4':
@@ -5751,9 +5751,9 @@ snapshots:
   '@cloudflare/workerd-windows-64@1.20260903.1':
     optional: true
 
-  '@continual/cli@0.5.8': {}
+  '@continual/cli@0.5.16': {}
 
-  '@continual/sdk@0.5.6':
+  '@continual/sdk@0.5.8':
     dependencies:
       zod: 3.25.76
       zod-to-json-schema: 3.25.2(zod@3.25.76)
